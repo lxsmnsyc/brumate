@@ -3,7 +3,7 @@ import * as $$b from 'brumate/server';
 
 export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
-  const $$s1 = $$ctx.scope();
+  const $$s1 = $$ctx.scope(1, undefined, "Blocks_jlmev2");
   const { items, tab: initialTab } = $$props;
   let tab = (initialTab);
   let list = (items);
@@ -28,13 +28,14 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   $$html += "<ul>";
   {
     const $$list0 = Array.from(( list));
-    let $$index1 = 0;
     $$html += "<!--b" + $$s1 + ":4-->";
-    for (const item of $$list0) {
-      const i = $$index1++;
-      const $$s5 = $$ctx.scope();
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const item = $$item1;
+      const i = $$index2;
+      const $$s5 = $$ctx.scope(5, $$s1);
       $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + await $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + await $$b.insert((item)) + "<!--/t--></li>";
       $$ctx.slots($$s5, [item, i]);
+      $$ctx.item($$s5, $$item1);
       $$html += "<!--/i-->";
     }
     if ($$list0.length === 0) {
@@ -44,36 +45,108 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   $$html += "</ul>";
   {
-    const $$list2 = Array.from(( ['x', 'y']));
-    for (const item of $$list2) {
+    const $$list3 = Array.from(( ['x', 'y']));
+    for (const [$$index5, $$item4] of $$list3.entries()) {
+      const item = $$item4;
       $$html += "<span>" + await $$b.insert((item)) + "</span>";
     }
   }
   {
-    const $$list4 = Array.from({ length: ( 2) }, (_, index) => index);
-    let $$index5 = 0;
-    for (const $$item6 of $$list4) {
-      const n = $$index5++;
+    const $$list6 = Array.from({ length: ( 2) }, (_, index) => index);
+    for (const [$$index8, $$item7] of $$list6.entries()) {
+      const n = $$index8;
       $$html += await $$b.insert((row(n)));
     }
   }
-  const $$before7 = $$html;
+  const $$before9 = $$html;
   try {
     $$html += await $$b.component(Broken, {  }, $$ctx);
-  } catch ($$error8) {
-    $$html = $$before7;
-    const error = $$error8;
+  } catch ($$error10) {
+    $$html = $$before9;
+    const error = $$error10;
     $$html += "<p>" + await $$b.insert((String(error))) + "</p>";
   }
-  $$html += "<!--b" + $$s1 + ":5--><!--/b-->";
-  const $$children9 = await (async () => {
+  $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  const $$children11 = await (async () => {
     let $$html = '';
     $$html += "Dynamic";
     return $$b.raw($$html);
   })();
-  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children9, $$ctx) + "<p>" + await $$b.insert(('<escaped>')) + " " + await $$b.insert((null)) + " " + await $$b.insert((false)) + " " + await $$b.insert(([1, 2])) + "</p>";
+  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx) + "<p>" + await $$b.insert(('<escaped>')) + " " + await $$b.insert((null)) + " " + await $$b.insert((false)) + " " + await $$b.insert(([1, 2])) + "</p>";
   $$ctx.slots($$s1, [tab, list, input]);
   return $$html;
+}
+
+# Client module
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export const id = "Blocks_jlmev2";
+export const props = {  };
+export const g = { 1: { 0: [[1, "b7"], [1, "u17"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
+
+export function c4($$s) {
+  $$b.effect($$s, "c4", () => {
+    $$b.get($$s, 2).focus();
+  });
+}
+export const h6 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 0, event.key === 'b' ? 'b' : 'a')))(...$$a);
+export const h19 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, [])))(...$$a);
+export function b7($$s) {
+  $$b.branch($$s, 3, ($$b.get($$s, 0) === 'a') ? 0 : 1, [r3, r4], [3, 4]);
+}
+export function b8($$s) {
+  $$b.list($$s, 4, Array.from($$b.get($$s, 1)), ($$item) => $$item, r5, a5, r6, [6]);
+}
+export function a5($$s, $$item, $$index) {
+  $$s.i = $$item;
+  const item = $$item;
+  $$b.set($$s, 0, item);
+  $$b.set($$s, 1, $$index);
+}
+export function u9($$s) {
+  $$b.text($$s, 0, $$b.get($$s, 1));
+}
+export function u10($$s) {
+  $$b.text($$s, 1, $$b.get($$s, 0));
+}
+export function u17($$s) {
+  $$b.attr($$s, 6, "class", { active: $$b.get($$s, 0) === 'a' });
+}
+export function r3($$p) {
+  let $$html = '';
+  $$html += "<p>A</p>";
+  return $$html;
+}
+export function r4($$p) {
+  let $$html = '';
+  $$html += "<p>B</p>";
+  return $$html;
+}
+export function r5($$p, $$item, $$index) {
+  let $$html = '';
+  const item = $$item;
+  const i = $$index;
+  const $$s5 = $$ctx.scope(5, $$p);
+  $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + $$b.insert((item)) + "<!--/t--></li>";
+  $$ctx.slots($$s5, [item, i]);
+  $$ctx.item($$s5, $$item);
+  $$html += "<!--/i-->";
+  return $$html;
+}
+export function r6($$p) {
+  let $$html = '';
+  $$html += "<li>Empty</li>";
+  return $$html;
+}
+export function r11($$p) {
+  let $$html = '';
+  $$html += "<p>Client only</p>";
+  return $$html;
+}
+export function k11($$s) {
+  $$b.fill($$s, 5, r11);
 }
 
 # HTML
@@ -104,10 +177,12 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
 <b>0</b>
 <b>10</b>
 <p>Error: Broken</p>
+<template data-b="0:5" data-client="idle=Blocks_jlmev2#k11">
+</template>
 <!--b0:5-->
 <!--/b-->
 <section style="font-size:12px" data-b="0:6" data-on="click=Blocks_jlmev2#h19">Dynamic</section>
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script type="brumate/state">{"t":{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["s"],"v":[{"t":9,"i":2,"a":[{"t":1,"s":"b"},{"t":9,"i":3,"a":[{"t":1,"s":"one"},{"t":1,"s":"two"}],"o":0},{"t":25,"i":4,"s":{"a":{"t":0,"s":0},"b":{"t":0,"s":2}},"c":"brumate/element"}],"o":0}]},"o":0},{"t":10,"i":5,"p":{"k":["s"],"v":[{"t":9,"i":6,"a":[{"t":1,"s":"one"},{"t":0,"s":0}],"o":0}]},"o":0},{"t":10,"i":7,"p":{"k":["s"],"v":[{"t":9,"i":8,"a":[{"t":1,"s":"two"},{"t":0,"s":1}],"o":0}]},"o":0}]},"o":0},"f":127,"m":[]}</script>
+<script type="brumate/state">{"t":{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Blocks_jlmev2"},{"t":9,"i":2,"a":[{"t":1,"s":"b"},{"t":9,"i":3,"a":[{"t":1,"s":"one"},{"t":1,"s":"two"}],"o":0},{"t":25,"i":4,"s":{"a":{"t":0,"s":0},"b":{"t":0,"s":2}},"c":"brumate/element"}],"o":0}]},"o":0},{"t":10,"i":5,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":6,"a":[{"t":1,"s":"one"},{"t":0,"s":0}],"o":0},{"t":1,"s":"one"}]},"o":0},{"t":10,"i":7,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":8,"a":[{"t":1,"s":"two"},{"t":0,"s":1}],"o":0},{"t":1,"s":"two"}]},"o":0}]},"o":0},"f":127,"m":[]}</script>

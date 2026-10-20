@@ -1,4 +1,5 @@
 import { analyze } from './analyze.ts';
+import { generateClient } from './codegen/client.ts';
 import { generateServer } from './codegen/server.ts';
 import { getLocation } from './error.ts';
 import { buildGraph } from './graph.ts';
@@ -15,6 +16,8 @@ export interface CompileOptions {
 export interface CompileResult {
   /** The server module, as TypeScript. Its default export renders the component. */
   server: string;
+  /** The client module, as TypeScript. The loader imports it on the first event. */
+  client: string;
   plan: Plan;
   warnings: Diagnostic[];
 }
@@ -45,8 +48,14 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     throw new CompileError(source, filename, errors);
   }
   const plan = createPlan(file, graph);
+  const client = generateClient(file, plan);
+  const clientErrors = client.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
+  if (clientErrors.length > 0) {
+    throw new CompileError(source, filename, clientErrors);
+  }
   return {
     server: generateServer(file, plan),
+    client: client.code,
     plan,
     warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning'),
   };

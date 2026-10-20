@@ -1,0 +1,125 @@
+// HTML string helpers that the server and the client both use.
+
+const RAW: unique symbol = Symbol.for('brumate.raw');
+
+/** HTML that is inserted as it is, such as the output of a template. */
+export interface Raw {
+  [RAW]: string;
+}
+
+export function raw(html: string): Raw {
+  return { [RAW]: html };
+}
+
+export function isRaw(value: unknown): value is Raw {
+  return typeof value === 'object' && value !== null && RAW in value;
+}
+
+export function rawHTML(value: Raw): string {
+  return value[RAW];
+}
+
+const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+
+export function escape(value: string): string {
+  return value.replace(/[&<>]/g, (char) => ESCAPES[char]!);
+}
+
+export function escapeAttribute(value: string): string {
+  return value.replace(/[&<"]/g, (char) => ESCAPES[char]!);
+}
+
+/** Renders a value inserted in markup. Promises are not awaited. */
+export function insertValue(value: unknown): string {
+  if (isRaw(value)) {
+    return value[RAW];
+  }
+  if (value === null || value === undefined || typeof value === 'boolean') {
+    return '';
+  }
+  if (Array.isArray(value)) {
+    return value.map(insertValue).join('');
+  }
+  return escape(String(value));
+}
+
+function toKebabCase(name: string): string {
+  return name.startsWith('--') ? name : name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
+}
+
+function classValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(classValue).filter(Boolean).join(' ');
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.entries(value)
+      .filter(([, enabled]) => enabled)
+      .map(([name]) => name)
+      .join(' ');
+  }
+  return value ? String(value) : '';
+}
+
+function styleValue(value: unknown): string {
+  if (typeof value === 'object' && value !== null) {
+    return Object.entries(value)
+      .filter(([, item]) => item !== null && item !== undefined && item !== false)
+      .map(([name, item]) => `${toKebabCase(name)}:${String(item)}`)
+      .join(';');
+  }
+  return String(value);
+}
+
+/**
+ * Returns the text of an attribute, or undefined if the attribute is not
+ * rendered. `true` renders as an empty value.
+ */
+export function attributeText(name: string, value: unknown): string | undefined {
+  if (value === null || value === undefined || value === false || typeof value === 'function') {
+    return undefined;
+  }
+  if (value === true) {
+    return '';
+  }
+  if (name === 'class') {
+    const text = classValue(value);
+    return text === '' ? undefined : text;
+  }
+  return name === 'style' ? styleValue(value) : String(value);
+}
+
+/** Renders one attribute, with a leading space. */
+export function attribute(name: string, value: unknown): string {
+  const text = attributeText(name, value);
+  if (text === undefined) {
+    return '';
+  }
+  return value === true ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
+}
+
+/** Renders an object of attributes. */
+export function spread(attributes: Record<string, unknown>): string {
+  let result = '';
+  for (const [name, value] of Object.entries(attributes)) {
+    if (name !== 'children' && !/^on[A-Z]/.test(name)) {
+      result += attribute(name, value);
+    }
+  }
+  return result;
+}
+
+export const VOID_ELEMENTS: Set<string> = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);

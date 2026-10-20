@@ -72,6 +72,14 @@ export const plugins: Plugin<any, any>[] = [ElementPlugin, FunctionPlugin];
 
 /** The state of one scope in the page. */
 export interface ScopeState {
+  /** The scope's ID in the compiled component. */
+  k?: number;
+  /** The ID of the scope that contains this one. Component root scopes have none. */
+  p?: number;
+  /** The component ID of a component's root scope. */
+  m?: string;
+  /** The item of a list item scope. */
+  i?: unknown;
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */

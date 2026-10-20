@@ -89,6 +89,8 @@ A handler chunk loads asynchronously, so it cannot call `event.preventDefault()`
 
 The loader applies them before it imports the handler.
 
+The handler runs after the event has finished dispatching. The core keeps `event.currentTarget` set to the element, so handlers can read it as usual.
+
 ## Prefetching
 
 The first interaction waits for the handler chunk to load. To hide that delay, the loader preloads a handler's chunk before the event. The default is to preload on `pointerenter` and `focus`. A `prefetch` attribute changes it:

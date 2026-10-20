@@ -1,0 +1,149 @@
+import type * as Client from './client.ts';
+import type { ClientModule } from './client.ts';
+
+export interface LoaderOptions {
+  /** Imports the client module of a component, by component ID. */
+  load: (id: string) => Promise<ClientModule>;
+  /** The URL prefix of server function calls. */
+  rpc?: string;
+}
+
+interface Entry {
+  raw: string;
+  type: string;
+  modifiers: string[];
+  ref: string;
+}
+
+function entries(element: Element): Entry[] {
+  return (element.getAttribute('data-on') ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .map((entry) => {
+      const [name, ref] = entry.split('=') as [string, string];
+      const [type, ...modifiers] = name.split(':') as [string, ...string[]];
+      return { raw: entry, type, modifiers, ref };
+    });
+}
+
+/**
+ * Starts resuming the page. Listens to the events in `data-on` attributes
+ * and loads `brumate/client` and the component's module on the first one.
+ * Returns a function that removes the listeners.
+ */
+export function start(options: LoaderOptions): () => void {
+  let core: Promise<typeof Client> | undefined;
+  const types = new Set<string>();
+  const removers: (() => void)[] = [];
+  const listen = (
+    target: EventTarget,
+    type: string,
+    listener: (event: Event) => void,
+    flags?: AddEventListenerOptions | boolean,
+  ): void => {
+    target.addEventListener(type, listener, flags);
+    removers.push(() => target.removeEventListener(type, listener, flags));
+  };
+
+  const run = (element: Element, ref: string, event?: Event): void => {
+    core ??= import('./client.ts').then((client) => {
+      client.init({ ...options, listen: scan });
+      return client;
+    });
+    void core.then((client) => client.handle(element, ref, event));
+  };
+
+  const apply = (event: Event, element: Element, entry: Entry): boolean => {
+    if (entry.modifiers.includes('prevent')) {
+      event.preventDefault();
+    }
+    if (entry.modifiers.includes('once')) {
+      const rest = (element.getAttribute('data-on') ?? '')
+        .split(' ')
+        .filter((item) => item !== entry.raw);
+      element.setAttribute('data-on', rest.join(' '));
+    }
+    run(element, entry.ref, event);
+    return entry.modifiers.includes('stop');
+  };
+
+  // Handlers run from the target outwards, as if each element had its own listener.
+  const onEvent = (event: Event): void => {
+    for (
+      let node = event.target as Node | null;
+      node && node !== document;
+      node = node.parentNode
+    ) {
+      if (node.nodeType !== 1 || !(node as Element).hasAttribute('data-on')) {
+        continue;
+      }
+      let stop = false;
+      for (const entry of entries(node as Element)) {
+        if (entry.type === event.type && apply(event, node as Element, entry)) {
+          stop = true;
+        }
+      }
+      if (stop) {
+        event.stopPropagation();
+        return;
+      }
+    }
+  };
+
+  const scan = (root: ParentNode): void => {
+    for (const element of root.querySelectorAll('[data-on]:not(template)')) {
+      for (const { type } of entries(element)) {
+        if (!types.has(type)) {
+          types.add(type);
+          listen(document, type, onEvent, true);
+        }
+      }
+    }
+    for (const template of root.querySelectorAll('template[data-listen]')) {
+      const target = template.getAttribute('data-listen') === 'window' ? window : document;
+      for (const entry of entries(template)) {
+        listen(target, entry.type, (event) => apply(event, template, entry));
+      }
+    }
+    for (const template of root.querySelectorAll('template[data-client]')) {
+      const [trigger, ref] = template.getAttribute('data-client')!.split('=') as [string, string];
+      const go = (): void => run(template, ref);
+      const next = template.nextElementSibling;
+      if (trigger === 'idle') {
+        (window.requestIdleCallback ?? setTimeout)(go);
+      } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
+        const observer = new IntersectionObserver((records) => {
+          if (records.some((record) => record.isIntersecting)) {
+            observer.disconnect();
+            go();
+          }
+        });
+        observer.observe(next);
+      } else {
+        go();
+      }
+    }
+  };
+
+  // Preloads a component's module when the pointer is over one of its handlers.
+  listen(
+    document,
+    'pointerover',
+    (event) => {
+      const element = (event.target as Element).closest?.('[data-on]');
+      if (element && element.getAttribute('data-prefetch') !== 'none') {
+        for (const entry of entries(element)) {
+          void options.load(entry.ref.split('#')[0]!);
+        }
+      }
+    },
+    { passive: true },
+  );
+
+  scan(document);
+  return () => {
+    for (const remove of removers.splice(0)) {
+      remove();
+    }
+  };
+}

@@ -1,0 +1,652 @@
+import type {
+  Attribute,
+  Block,
+  Body,
+  ComponentNode,
+  DynamicTagNode,
+  ElementNode,
+  Expression,
+  ForBlock,
+  Markup,
+  RepeatBlock,
+  SFCFile,
+  TemplateDecl,
+} from '../ast.ts';
+import { isWithin } from '../model.ts';
+import type { Declaration, Scope, Site } from '../model.ts';
+import type { oxc } from '../oxc.ts';
+import type { Plan } from '../plan.ts';
+import { cleanText } from './patch.ts';
+import type { Patch } from './patch.ts';
+import { instanceScope, scopePath, slotIndex } from './scopes.ts';
+
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
+
+export const TYPE_DECLARATIONS: Set<string> = new Set([
+  'TSInterfaceDeclaration',
+  'TSTypeAliasDeclaration',
+  'TSDeclareFunction',
+  'TSModuleDeclaration',
+]);
+
+type Part = { static: string } | { code: string };
+
+export interface EmitterOptions {
+  mode: 'server' | 'client';
+  /**
+   * For a client render function: the body scope it renders, the scope that
+   * contains the body, and the expression for that scope's instance.
+   */
+  outer?: { body: Scope; base: Scope; baseVar: string };
+}
+
+/** Writes code that renders markup to an HTML string, on the server or on the client. */
+export class Emitter {
+  readonly lines: string[] = [];
+  private readonly file: SFCFile;
+  private readonly plan: Plan;
+  private readonly patch: Patch;
+  private readonly options: EmitterOptions;
+  private readonly sitesByNode = new Map<object, Site>();
+  private readonly refTargets = new Map<object, Declaration>();
+  private readonly wait: string;
+  private readonly async: string;
+  private parts: Part[] = [];
+  private depth = 0;
+  private counter = 0;
+
+  constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
+    this.file = file;
+    this.plan = plan;
+    this.patch = patch;
+    this.options = options;
+    this.wait = options.mode === 'server' ? 'await ' : '';
+    this.async = options.mode === 'server' ? 'async ' : '';
+    for (const site of plan.graph.model.sites) {
+      this.sitesByNode.set(site.node, site);
+    }
+    for (const declaration of plan.graph.model.declarations) {
+      for (const ref of declaration.refs) {
+        this.refTargets.set(ref.attribute, declaration);
+      }
+    }
+  }
+
+  // Output
+
+  line(code: string): void {
+    this.flush();
+    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    if (code.endsWith('{')) {
+      this.depth++;
+    }
+  }
+
+  close(code = '}'): void {
+    this.flush();
+    this.depth--;
+    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    if (code.endsWith('{')) {
+      this.depth++;
+    }
+  }
+
+  /** Copies source code, keeping the indentation of its lines relative to the first. */
+  raw(code: string, offset: number): void {
+    this.flush();
+    const lineStart = this.file.source.lastIndexOf('\n', offset - 1) + 1;
+    const column = offset - lineStart;
+    const indent = '  '.repeat(this.depth);
+    code.split('\n').forEach((line, index) => {
+      const text = index === 0 ? line : line.replace(new RegExp(`^ {0,${column}}`), '');
+      this.lines.push(text.trim() === '' ? '' : `${indent}${text}`);
+    });
+  }
+
+  private html(text: string): void {
+    const last = this.parts.at(-1);
+    if (last && 'static' in last) {
+      last.static += text;
+    } else {
+      this.parts.push({ static: text });
+    }
+  }
+
+  private code(code: string): void {
+    this.parts.push({ code });
+  }
+
+  flush(): void {
+    if (this.parts.length === 0) {
+      return;
+    }
+    const parts = this.parts;
+    this.parts = [];
+    const value = parts
+      .map((part) => ('static' in part ? JSON.stringify(part.static) : part.code))
+      .join(' + ');
+    this.lines.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
+  }
+
+  private unique(prefix: string): string {
+    return `$$${prefix}${this.counter++}`;
+  }
+
+  private expression(expression: Expression): string {
+    return `(${this.patch.slice(expression.start, expression.end)})`;
+  }
+
+  // Scopes
+
+  /** The expression for the instance of a scope that gets an ID. */
+  scopeVar(scope: Scope): string {
+    const outer = this.options.outer;
+    if (outer && !isWithin(scope, outer.body)) {
+      return scopePath(this.plan, outer.baseVar, outer.base, scope);
+    }
+    return `$$s${scope.id}`;
+  }
+
+  private anchor(scope: Scope, target: object): { scope: string; index: number } | undefined {
+    const index = this.plan.anchors.get(target as Markup);
+    return index === undefined ? undefined : { scope: this.scopeVar(scope), index };
+  }
+
+  /** Creates the instance of a body scope. */
+  private createScope(scope: Scope): void {
+    const parent = instanceScope(this.plan, scope.parent!);
+    this.line(
+      `const ${this.scopeVar(scope)} = $$ctx.scope(${scope.id}, ${this.scopeVar(parent)});`,
+    );
+  }
+
+  emitSlots(scope: Scope): void {
+    const slots = this.plan.scopes.get(scope)?.slots ?? [];
+    if (slots.length > 0) {
+      this.line(
+        `$$ctx.slots(${this.scopeVar(scope)}, [${slots.map((slot) => slot.name).join(', ')}]);`,
+      );
+    }
+  }
+
+  emitStatements(statements: oxc.Node[]): void {
+    for (const statement of statements) {
+      if (statement.type === 'ExpressionStatement') {
+        const expression = statement.expression;
+        if (
+          expression.type === 'CallExpression' &&
+          expression.callee.type === 'Identifier' &&
+          (expression.callee.name === '$effect' || expression.callee.name === '$client')
+        ) {
+          continue;
+        }
+      }
+      if (statement.type === 'ImportDeclaration' || TYPE_DECLARATIONS.has(statement.type)) {
+        continue;
+      }
+      if (this.options.mode === 'client' && this.isFunctionStatement(statement)) {
+        // Client functions are module functions in the client module.
+        continue;
+      }
+      this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+    }
+  }
+
+  private isFunctionStatement(statement: oxc.Node): boolean {
+    if (statement.type === 'FunctionDeclaration') {
+      return true;
+    }
+    if (statement.type !== 'VariableDeclaration') {
+      return false;
+    }
+    return statement.declarations.every((declarator) => {
+      const init = declarator.init;
+      return init?.type === 'ArrowFunctionExpression' || init?.type === 'FunctionExpression';
+    });
+  }
+
+  /** Emits `<template>` markers for the `$client` callbacks of a scope. */
+  private emitClientAnchors(scope: Scope): void {
+    for (const site of this.plan.graph.model.sites) {
+      if (site.kind !== 'client' || site.scope !== scope) {
+        continue;
+      }
+      const anchor = this.anchor(scope, site)!;
+      this.html('<template data-b="');
+      this.code(anchor.scope);
+      this.html(
+        `:${anchor.index}" data-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"></template>`,
+      );
+    }
+  }
+
+  /** Emits the content of the component, without creating its scope. */
+  emitComponentContent(setup: oxc.Node[]): void {
+    const component = this.plan.graph.model.component;
+    this.emitStatements(setup);
+    for (const template of this.file.templates) {
+      this.emitTemplate(template);
+    }
+    this.emitClientAnchors(component);
+    this.emitNodes(this.file.children, component);
+    this.emitSlots(component);
+    this.flush();
+  }
+
+  /** Emits a body: its scope, script, templates, markup and slots. */
+  emitBody(body: Body, createScope = true): void {
+    const scope = this.plan.bodyScopes.get(body)!;
+    const plan = this.plan.scopes.get(scope)!;
+    if (plan.needsId && createScope) {
+      this.createScope(scope);
+    }
+    if (body.script) {
+      this.emitStatements(body.script.program.body);
+    }
+    for (const template of body.templates) {
+      this.emitTemplate(template);
+    }
+    this.emitClientAnchors(scope);
+    this.emitNodes(body.children, scope);
+    this.emitSlots(scope);
+  }
+
+  /** Emits one item of `#for` or `#repeat`, given expressions for the item and its index. */
+  emitItem(block: ForBlock | RepeatBlock, item: string, index: string): void {
+    const scope = this.plan.bodyScopes.get(block.body)!;
+    const anchored = this.plan.anchors.has(block);
+    if (block.kind === 'for') {
+      this.line(`const ${this.file.source.slice(block.item.start, block.item.end)} = ${item};`);
+    }
+    if (block.index) {
+      this.line(`const ${block.index.name} = ${index};`);
+    }
+    const needsId = this.plan.scopes.get(scope)!.needsId;
+    if (needsId) {
+      this.createScope(scope);
+    }
+    if (anchored) {
+      this.html('<!--i');
+      this.code(this.scopeVar(scope));
+      this.html('-->');
+    }
+    this.emitBody(block.body, false);
+    if (anchored) {
+      this.line(`$$ctx.item(${this.scopeVar(scope)}, ${item});`);
+      this.html('<!--/i-->');
+    }
+  }
+
+  private emitTemplate(template: TemplateDecl): void {
+    const first = template.params[0];
+    const last = template.params.at(-1);
+    const params = first && last ? this.file.source.slice(first.start, last.end) : '';
+    const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
+    this.line(`${this.async}function ${template.name}(${params})${type} {`);
+    this.line(`let $$html = '';`);
+    this.emitBody(template.body);
+    this.flush();
+    this.line('return $$b.raw($$html);');
+    this.close();
+  }
+
+  // Markup
+
+  emitNodes(nodes: Markup[], scope: Scope): void {
+    for (const node of nodes) {
+      this.emitNode(node, scope);
+    }
+  }
+
+  private emitNode(node: Markup, scope: Scope): void {
+    switch (node.kind) {
+      case 'text':
+        this.html(cleanText(node.value));
+        return;
+      case 'insert': {
+        const anchor = this.anchor(scope, node);
+        const value = `${this.wait}$$b.insert(${this.expression(node.expression)})`;
+        if (anchor) {
+          this.html('<!--t');
+          this.code(anchor.scope);
+          this.html(`:${anchor.index}-->`);
+          this.code(value);
+          this.html('<!--/t-->');
+        } else {
+          this.code(value);
+        }
+        return;
+      }
+      case 'element':
+        this.emitElement(node, scope);
+        return;
+      case 'component':
+        this.emitComponent(node, scope);
+        return;
+      case 'dynamic':
+        this.emitDynamic(node, scope);
+        return;
+      case 'fragment':
+        this.emitNodes(node.children, scope);
+        return;
+      case 'listener': {
+        const anchor = this.anchor(scope, node)!;
+        const events = node.attributes.map((attribute) =>
+          this.eventEntry(attribute.event, attribute.modifiers, attribute.handler),
+        );
+        this.html('<template data-b="');
+        this.code(anchor.scope);
+        this.html(
+          `:${anchor.index}" data-listen="${node.target}" data-on="${events.join(' ')}"></template>`,
+        );
+        return;
+      }
+      default:
+        this.emitBlock(node, scope);
+    }
+  }
+
+  private eventEntry(event: string, modifiers: string[], handler: Expression): string {
+    const site = this.sitesByNode.get(handler.ast)!;
+    const name = [event, ...modifiers].join(':');
+    return `${name}=${this.plan.id}#${this.plan.symbols.get(site)}`;
+  }
+
+  private emitRef(
+    target: string,
+    attribute: object,
+    anchor: { scope: string; index: number },
+  ): void {
+    const declaration = this.refTargets.get(attribute);
+    const element = `$$ctx.element(${anchor.scope}, ${anchor.index})`;
+    const outer = this.options.outer;
+    if (declaration && outer && !isWithin(declaration.scope, outer.body)) {
+      // The signal belongs to a scope outside this render, so it is written after the element is in the page.
+      const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
+      this.line(
+        `$$ctx.after(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
+      );
+    } else {
+      this.line(`${target} = ${element};`);
+    }
+  }
+
+  private emitElement(node: ElementNode, scope: Scope): void {
+    this.html(`<${node.tag}`);
+    const events: string[] = [];
+    let prefetch: string | undefined;
+    const anchor = this.anchor(scope, node);
+    for (const attribute of node.attributes) {
+      switch (attribute.kind) {
+        case 'static':
+          this.html(
+            attribute.value === true
+              ? ` ${attribute.name}`
+              : ` ${attribute.name}="${attribute.value}"`,
+          );
+          break;
+        case 'value':
+          this.code(
+            `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
+          );
+          break;
+        case 'spread':
+          this.code(`$$b.spread(${this.expression(attribute.value)})`);
+          break;
+        case 'computed':
+          this.code(
+            `$$b.attribute(${this.expression(attribute.name)}, ${attribute.value === true ? 'true' : this.expression(attribute.value)})`,
+          );
+          break;
+        case 'event':
+          events.push(this.eventEntry(attribute.event, attribute.modifiers, attribute.handler));
+          break;
+        case 'ref':
+          if (anchor) {
+            this.emitRef(attribute.target, attribute, anchor);
+          }
+          break;
+        case 'prefetch':
+          prefetch = attribute.strategy;
+          break;
+      }
+    }
+    if (anchor) {
+      this.html(' data-b="');
+      this.code(anchor.scope);
+      this.html(`:${anchor.index}"`);
+    }
+    if (events.length > 0) {
+      this.html(` data-on="${events.join(' ')}"`);
+      if (prefetch) {
+        this.html(` data-prefetch="${prefetch}"`);
+      }
+    }
+    this.html('>');
+    if (VOID_ELEMENTS.has(node.tag)) {
+      return;
+    }
+    this.emitNodes(node.children, scope);
+    this.html(`</${node.tag}>`);
+  }
+
+  /** Renders children into a variable, for a component or a dynamic tag. */
+  private emitChildren(nodes: Markup[], scope: Scope): string | undefined {
+    if (nodes.length === 0) {
+      return undefined;
+    }
+    const name = this.unique('children');
+    this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
+    this.line(`let $$html = '';`);
+    this.emitNodes(nodes, scope);
+    this.flush();
+    this.line('return $$b.raw($$html);');
+    this.close('})();');
+    return name;
+  }
+
+  private props(attributes: Attribute[], scope: Scope, extra: string[] = []): string {
+    const entries: string[] = [];
+    for (const attribute of attributes) {
+      switch (attribute.kind) {
+        case 'static':
+          entries.push(
+            `${JSON.stringify(attribute.name)}: ${attribute.value === true ? 'true' : JSON.stringify(attribute.value)}`,
+          );
+          break;
+        case 'value':
+          entries.push(
+            `${JSON.stringify(attribute.name)}: ${this.propValue(attribute.value, scope)}`,
+          );
+          break;
+        case 'event':
+          entries.push(
+            `${JSON.stringify(attribute.name)}: ${this.propValue(attribute.handler, scope)}`,
+          );
+          break;
+        case 'spread':
+          entries.push(`...${this.expression(attribute.value)}`);
+          break;
+        case 'computed':
+          entries.push(
+            `[${this.expression(attribute.name)}]: ${attribute.value === true ? 'true' : this.expression(attribute.value)}`,
+          );
+          break;
+        default:
+          break;
+      }
+    }
+    return `{ ${[...entries, ...extra].join(', ')} }`;
+  }
+
+  /** A prop value. A client function is marked so it serializes as a reference. */
+  private propValue(expression: Expression, scope: Scope): string {
+    const code = this.expression(expression);
+    const site = this.sitesByNode.get(expression.ast);
+    const symbol = site && this.plan.symbols.get(site);
+    if (symbol) {
+      const instance = this.scopeVar(instanceScope(this.plan, scope));
+      return `$$ctx.fn(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`;
+    }
+    return code;
+  }
+
+  private emitComponent(node: ComponentNode, scope: Scope): void {
+    const childrenName = this.emitChildren(node.children, scope);
+    const props = this.props(
+      node.attributes,
+      scope,
+      childrenName ? [`children: ${childrenName}`] : [],
+    );
+    const anchor = this.anchor(scope, node);
+    const link = anchor ? `, ${anchor.scope}, ${anchor.index}` : '';
+    this.code(`${this.wait}$$b.component(${node.name}, ${props}, $$ctx${link})`);
+  }
+
+  private emitDynamic(node: DynamicTagNode, scope: Scope): void {
+    const childrenName = this.emitChildren(node.children, scope);
+    const extra: string[] = [];
+    const anchor = this.anchor(scope, node);
+    if (anchor) {
+      extra.push(`"data-b": \`\${${anchor.scope}}:${anchor.index}\``);
+    }
+    const events = node.attributes.flatMap((attribute) =>
+      attribute.kind === 'event'
+        ? [this.eventEntry(attribute.event, attribute.modifiers, attribute.handler)]
+        : [],
+    );
+    if (events.length > 0) {
+      extra.push(`"data-on": ${JSON.stringify(events.join(' '))}`);
+    }
+    const attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
+    this.code(
+      `${this.wait}$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx)`,
+    );
+  }
+
+  // Blocks
+
+  private open(scope: Scope, block: Block, suffix?: string): void {
+    const anchor = this.anchor(scope, block);
+    if (anchor) {
+      this.html('<!--b');
+      this.code(anchor.scope);
+      this.html(`:${anchor.index}${suffix === undefined ? '' : `:${suffix}`}-->`);
+    }
+  }
+
+  private end(block: Block): void {
+    if (this.plan.anchors.has(block)) {
+      this.html('<!--/b-->');
+    }
+  }
+
+  private emitBlock(block: Block, scope: Scope): void {
+    switch (block.kind) {
+      case 'if':
+      case 'switch': {
+        const branches = block.kind === 'if' ? block.branches : block.cases;
+        const fallback = block.fallback;
+        branches.forEach((branch, index) => {
+          if (index === 0) {
+            this.line(`if ${this.expression(branch.condition)} {`);
+          } else {
+            this.close(`} else if ${this.expression(branch.condition)} {`);
+          }
+          this.open(scope, block, String(index));
+          this.emitBody(branch.body);
+          this.end(block);
+        });
+        this.close('} else {');
+        this.open(scope, block, fallback ? String(branches.length) : '-1');
+        if (fallback) {
+          this.emitBody(fallback);
+        }
+        this.end(block);
+        this.close();
+        return;
+      }
+      case 'for':
+      case 'repeat': {
+        const list = this.unique('list');
+        const item = this.unique('item');
+        const index = this.unique('index');
+        this.line('{');
+        if (block.kind === 'for') {
+          this.line(`const ${list} = Array.from(${this.expression(block.list)});`);
+        } else {
+          this.line(
+            `const ${list} = Array.from({ length: ${this.expression(block.count)} }, (_, index) => index);`,
+          );
+        }
+        this.open(scope, block);
+        this.line(`for (const [${index}, ${item}] of ${list}.entries()) {`);
+        this.emitItem(block, item, index);
+        this.close();
+        if (block.fallback) {
+          this.line(`if (${list}.length === 0) {`);
+          this.emitBody(block.fallback);
+          this.close();
+        }
+        this.end(block);
+        this.close();
+        return;
+      }
+      case 'try': {
+        const before = this.unique('before');
+        const error = this.unique('error');
+        this.open(scope, block);
+        this.flush();
+        this.line(`const ${before} = $$html;`);
+        this.line('try {');
+        this.emitBody(block.body);
+        this.close(`} catch (${error}) {`);
+        this.line(`$$html = ${before};`);
+        if (block.error) {
+          this.line(`const ${block.error.name} = ${error};`);
+        }
+        if (block.reset) {
+          this.line(`const ${block.reset.name} = undefined;`);
+        }
+        this.emitBody(block.fallback);
+        this.close();
+        this.end(block);
+        return;
+      }
+      case 'client': {
+        const anchor = this.anchor(scope, block)!;
+        const body = this.plan.bodyScopes.get(block.body)!;
+        this.html('<template data-b="');
+        this.code(anchor.scope);
+        this.html(
+          `:${anchor.index}" data-client="${block.trigger}=${this.plan.id}#k${body.id}"></template>`,
+        );
+        this.open(scope, block);
+        this.end(block);
+        return;
+      }
+      default:
+        // `#key`, `#loading`, `#portal` and `#static` render their body in place.
+        // TODO: render `#portal` at the end of the page.
+        this.open(scope, block);
+        this.line('{');
+        this.emitBody(block.body);
+        this.close();
+        this.end(block);
+    }
+  }
+}

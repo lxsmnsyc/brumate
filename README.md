@@ -4,7 +4,7 @@
 
 `brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
 
-This repository holds the design and the compiler. The compiler parses and analyzes `.brm` files and generates the server module. It does not generate client code yet.
+This repository holds the design and the compiler. The compiler generates a server module that renders HTML with the state, and a client module that resumes it. There is no bundler plugin yet.
 
 ## Goals
 
@@ -67,7 +67,7 @@ pnpm lint
 pnpm format
 ```
 
-The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the module, the HTML and the state with a snapshot.
+The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the modules, the HTML and the state with a snapshot. The tests in `test/resume.test.ts` load that HTML into a DOM, start the loader, and check that events update the page.
 
 ## Name
 

@@ -61,6 +61,7 @@ Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i
 
 - `data-listen` is `window` or `document`. The loader adds these listeners when the page loads.
 - `data-client` is `<trigger>=<reference>`. For `visible`, the loader observes the next element sibling.
+- A `#client` block has the same `<template>` before its markers. Its reference is `k<n>`, which renders the block.
 
 ## State
 
@@ -72,6 +73,14 @@ The script holds a [seroval](https://github.com/lxsmnsyc/seroval) JSON tree. `fr
 
 ```ts
 type PageState = Record<number, {
+  /** The scope's ID in the compiled component, which selects its updates. */
+  k?: number;
+  /** The ID of the scope that contains this one. A component's root scope has none. */
+  p?: number;
+  /** The component ID, on a component's root scope. */
+  m?: string;
+  /** The item, on an item scope of a list that can change. */
+  i?: unknown;
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */

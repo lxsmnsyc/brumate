@@ -1,0 +1,130 @@
+// @vitest-environment happy-dom
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { compile } from '../src/index.ts';
+import { renderToString, stateScript } from '../src/runtime/server.ts';
+
+// The DOM environment replaces URL, so paths are plain strings.
+const input = resolve(import.meta.dirname, 'render');
+const output = resolve(import.meta.dirname, '.output/resume');
+const file = (name: string): string => pathToFileURL(join(output, name)).href;
+const modules = new Map<string, string>();
+
+beforeAll(() => {
+  rmSync(output, { recursive: true, force: true });
+  mkdirSync(output, { recursive: true });
+  for (const name of readdirSync(input)) {
+    if (!name.endsWith('.brm')) {
+      copyFileSync(join(input, name), join(output, name));
+      continue;
+    }
+    const { server, client, plan } = compile(readFileSync(join(input, name), 'utf8'), {
+      filename: name,
+    });
+    writeFileSync(join(output, `${name}.ts`), server.replace(/\.brm'/g, ".brm.ts'"));
+    writeFileSync(join(output, `${name}.client.ts`), client);
+    modules.set(plan.id, file(`${name}.client.ts`));
+  }
+});
+
+let stop: (() => void) | undefined;
+
+afterEach(() => {
+  stop?.();
+  document.body.innerHTML = '';
+  vi.unstubAllGlobals();
+});
+
+async function resume(name: string, props: unknown): Promise<void> {
+  const server = await import(file(`${name}.brm.ts`));
+  const { html, state } = await renderToString(server.default, props);
+  document.body.innerHTML = html + stateScript(state);
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+}
+
+function text(selector: string): string {
+  return document.querySelector(selector)!.textContent!;
+}
+
+function click(element: Element): void {
+  element.dispatchEvent(new Event('click', { bubbles: true }));
+}
+
+describe('resume', () => {
+  it('updates a counter', async () => {
+    await resume('counter', {});
+    expect(text('p')).toBe('0 / 0');
+    click(document.querySelector('button')!);
+    await vi.waitFor(() => expect(text('p')).toBe('1 / 2'));
+    click(document.querySelector('button')!);
+    await vi.waitFor(() => expect(text('p')).toBe('2 / 4'));
+  });
+
+  it('adds and toggles todos', async () => {
+    const calls: [string, unknown][] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push([url, JSON.parse(init.body as string)]);
+      return new Response(JSON.stringify({ t: { t: 2, s: 1 }, f: 127, m: [] }));
+    });
+    await resume('todos', {
+      initial: [
+        { id: '1', title: 'Write the docs', done: true, at: new Date('2026-10-01T00:00:00Z') },
+        { id: '2', title: 'Build the compiler', done: false, at: new Date('2026-10-20T00:00:00Z') },
+      ],
+    });
+    expect(text('p')).toBe('1 left');
+
+    const field = document.querySelector('input')!;
+    field.value = 'Ship it';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    const submit = new Event('submit', { bubbles: true, cancelable: true });
+    document.querySelector('form')!.dispatchEvent(submit);
+    expect(submit.defaultPrevented).toBe(true);
+
+    await vi.waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(3));
+    expect(text('li:last-child')).toContain('Ship it');
+    expect(text('p')).toBe('2 left');
+    expect(field.value).toBe('');
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]![0]).toBe('/_brumate/Todos_t3g9lr%23persist');
+
+    click(document.querySelector('li')!);
+    await vi.waitFor(() => expect(text('p')).toBe('3 left'));
+    expect(document.querySelector('li')!.getAttribute('class')).toBeNull();
+
+    // The new item resumes like the others.
+    click(document.querySelector('li:last-child')!);
+    await vi.waitFor(() => expect(text('p')).toBe('2 left'));
+    expect(document.querySelector('li:last-child')!.getAttribute('class')).toBe('done');
+  });
+
+  it('updates a child through a function prop', async () => {
+    await resume('parent', {});
+    const [first, second] = document.querySelectorAll('button');
+    expect(first!.textContent).toBe('1');
+    click(first!);
+    await vi.waitFor(() => expect(first!.textContent).toBe('2'));
+    click(first!);
+    await vi.waitFor(() => expect(first!.textContent).toBe('3'));
+    expect(second!.textContent).toBe('5');
+  });
+
+  it('switches branches, lists and client blocks', async () => {
+    await resume('blocks', { items: ['one', 'two'], tab: 'b' });
+    expect(text('body > p')).toBe('B');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    await vi.waitFor(() => expect(document.querySelector('body > p')!.textContent).toBe('A'));
+
+    expect(document.querySelectorAll('ul li')).toHaveLength(2);
+    click(document.querySelector('section')!);
+    await vi.waitFor(() => expect(text('ul')).toBe('Empty'));
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Client only'));
+    await vi.waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
+  });
+});

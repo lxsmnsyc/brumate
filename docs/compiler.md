@@ -44,24 +44,40 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
 
 `renderToString` from `brumate/server` runs the module and serializes the state. [Page format](./page-format.md) describes the markers and the state.
 
-The client chunk for `add`:
+The client module for the same component:
 
-```js
-// c/Todos_add.js
-import { set, rpc } from 'brumate/runtime';
+```ts
+import * as $$b from 'brumate/client';
 
-export const h0 = async (scope) => {
-  set(scope, 'todos', [...scope.todos, { id: crypto.randomUUID(), title: scope.draft, done: false }]);
-  set(scope, 'draft', '');
-  await rpc('a1b2c3', [scope.todos]);
-};
+const $$ctx = $$b.context;
+
+export const id = "Counter_m86gta";
+export const props = {  };
+export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
+
+export const h4 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export function m2($$s) {
+  $$b.set($$s, 1, $$b.get($$s, 0) * 2);
+}
+export function u5($$s) {
+  $$b.text($$s, 1, $$b.get($$s, 0));
+}
+export function u6($$s) {
+  $$b.text($$s, 2, $$b.get($$s, 1));
+}
 ```
 
-The update code for `todos`, `left` and the `#for` block is in a separate chunk. It loads on the first write to `todos`.
+- Reads of slots become `$$b.get(scope, slot)`, and writes become `$$b.set(scope, slot, value)`. A value in an outer scope is read through `.p`, such as `$$b.get($$s.p, 0)`.
+- `h<n>` exports are event handlers and functions passed as props. `c<n>` exports are `$client` callbacks.
+- `m<n>` exports compute memos, `u<n>` exports update text, attributes and props, `e<n>` exports run effects, and `b<n>` exports update blocks.
+- `g` maps a scope kind and a slot to the exports that read it. The runtime calls them when the slot is written.
+- `r<n>` exports render the body of a block on the client, with the same markers as the server. `a<n>` exports write a new item into a list item's scope, and `k<n>` exports render a `#client` block.
+- Local functions become module functions that take the scope as their first argument. Server functions become `$$b.rpc` stubs.
+- Only the imports that client code reads are kept.
 
 ## Code splitting
 
-The compiler splits code itself. It does not depend on another splitter or on the bundler.
+Planned. The compiler now writes one client module per component. It will split code itself. It does not depend on another splitter or on the bundler.
 
 - Each client root becomes its own module. The compiler moves the function out of the component and replaces its captured variables with reads from the scope.
 - Each server function becomes its own server module. The client module gets a stub that calls it by ID.
@@ -76,22 +92,44 @@ A bundler plugin connects the compiler to the dev server and the build. It serve
 
 The runtime has two parts.
 
-The loader:
+The loader, `brumate/loader`:
 
-- Is inlined in the page and stays under 1 KB.
-- Listens to events on `document` and finds the nearest element with a `data-on` attribute for the event.
-- Applies event modifiers.
-- Preloads chunks for `prefetch`.
-- Imports the handler chunk and calls the handler with the scope.
+- Is the only code that runs before the first interaction.
+- Listens to the events in `data-on` attributes on `document`, and walks from the target outwards.
+- Applies event modifiers before anything loads.
+- Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
+- Preloads a component's module when the pointer is over one of its handlers.
+- Imports the core and the component's module on the first event, and calls the handler.
 
-The core loads on the first handler call:
+```ts
+import { start } from 'brumate/loader';
 
-- Reads scopes from the state script when a handler needs them.
-- Writes signals and updates the nodes downstream, in order.
-- Finds DOM nodes by their markers.
-- Creates and removes block bodies.
+start({ load: (id) => import(`/assets/${id}.js`) });
+```
+
+The core, `brumate/client`, loads on the first event:
+
+- Reads the state script and links scope instances to their parents.
+- Writes slots and calls the updates in `g`.
+- Finds elements by `data-b` and text and blocks by their comment markers.
+- Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
-- Calls server functions.
+- Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRPC` from `brumate/server` answers them.
+
+Handlers run after the event has finished dispatching, so the core passes them an event whose `currentTarget` is still the element.
+
+## Size
+
+Minified, measured on the test components:
+
+| Code               | Size    | Gzip    |
+| ------------------ | ------- | ------- |
+| Loader             | 1783 B  | 892 B   |
+| Core, with seroval | 33065 B | 10413 B |
+| Counter module     | 327 B   | 229 B   |
+| Todo list module   | 1479 B  | 772 B   |
+
+The loader is the only code that loads before an interaction. The core loads once, on the first event. Most of its size is seroval's deserializer and serializer.
 
 ## Dependencies
 

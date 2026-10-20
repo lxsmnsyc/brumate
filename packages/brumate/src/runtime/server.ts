@@ -1,34 +1,36 @@
-import { toJSONAsync } from 'seroval';
+import { fromJSON, toJSONAsync } from 'seroval';
 import type { SerovalJSON } from 'seroval';
+import { VOID_ELEMENTS, insertValue, isRaw, rawHTML, spread } from './html.ts';
+import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, functionReferences, plugins } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 
+export { attribute, escape, escapeAttribute, raw, spread } from './html.ts';
+export type { Raw } from './html.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
-
-const RAW: unique symbol = Symbol('brumate.raw');
-
-/** HTML that is inserted as it is, such as the output of a template. */
-export interface Raw {
-  [RAW]: string;
-}
-
-export function raw(html: string): Raw {
-  return { [RAW]: html };
-}
-
-function isRaw(value: unknown): value is Raw {
-  return typeof value === 'object' && value !== null && RAW in value;
-}
 
 /** Tracks the scopes of one render. */
 export class Context {
   private nextScope = 0;
   readonly state: PageState = {};
 
-  /** Returns a new scope ID. */
-  scope(): number {
-    return this.nextScope++;
+  /**
+   * Returns a new scope ID. `kind` is the scope's ID in the compiled
+   * component, `parent` is the scope that contains it, and `module` is the
+   * component ID of a component's root scope.
+   */
+  scope(kind: number, parent?: number, module?: string): number {
+    const id = this.nextScope++;
+    const record = this.record(id);
+    record.k = kind;
+    if (parent !== undefined) {
+      record.p = parent;
+    }
+    if (module !== undefined) {
+      record.m = module;
+    }
+    return id;
   }
 
   /** The ID that the next call to `scope()` returns. */
@@ -43,6 +45,11 @@ export class Context {
 
   slots(scope: number, values: unknown[]): void {
     this.record(scope).s = values;
+  }
+
+  /** Records the item of a list that can change on the client. */
+  item(scope: number, value: unknown): void {
+    this.record(scope).i = value;
   }
 
   /** Records the scope of a child component at an anchor of its parent. */
@@ -66,95 +73,14 @@ export class Context {
   }
 }
 
-const TEXT_ESCAPES: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-};
-
-export function escape(value: string): string {
-  return value.replace(/[&<>]/g, (char) => TEXT_ESCAPES[char]!);
-}
-
-export function escapeAttribute(value: string): string {
-  return value.replace(/[&<"]/g, (char) => TEXT_ESCAPES[char]!);
-}
-
 /** Renders a value inserted in markup. */
 export async function insert(value: unknown): Promise<string> {
   const resolved = await value;
-  if (isRaw(resolved)) {
-    return resolved[RAW];
-  }
-  if (resolved === null || resolved === undefined || typeof resolved === 'boolean') {
-    return '';
-  }
   if (Array.isArray(resolved)) {
     const parts = await Promise.all(resolved.map(insert));
     return parts.join('');
   }
-  return escape(String(resolved));
-}
-
-function toKebabCase(name: string): string {
-  return name.startsWith('--') ? name : name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
-}
-
-function classValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.map(classValue).filter(Boolean).join(' ');
-  }
-  if (typeof value === 'object' && value !== null) {
-    return Object.entries(value)
-      .filter(([, enabled]) => enabled)
-      .map(([name]) => name)
-      .join(' ');
-  }
-  return value ? String(value) : '';
-}
-
-function styleValue(value: unknown): string {
-  if (typeof value === 'object' && value !== null) {
-    return Object.entries(value)
-      .filter(([, item]) => item !== null && item !== undefined && item !== false)
-      .map(([name, item]) => `${toKebabCase(name)}:${String(item)}`)
-      .join(';');
-  }
-  return String(value);
-}
-
-/** Renders one attribute, with a leading space. */
-export function attribute(name: string, value: unknown): string {
-  if (value === null || value === undefined || value === false || typeof value === 'function') {
-    return '';
-  }
-  if (value === true) {
-    return ` ${name}`;
-  }
-  let text: string;
-  if (name === 'class') {
-    text = classValue(value);
-    if (text === '') {
-      return '';
-    }
-  } else if (name === 'style') {
-    text = styleValue(value);
-  } else {
-    text = String(value);
-  }
-  return ` ${name}="${escapeAttribute(text)}"`;
-}
-
-/** Renders an object of attributes. */
-export function spread(attributes: Record<string, unknown>): string {
-  let result = '';
-  for (const [name, value] of Object.entries(attributes)) {
-    if (name !== 'children' && !/^on[A-Z]/.test(name)) {
-      result += attribute(name, value);
-    }
-  }
-  return result;
+  return insertValue(resolved);
 }
 
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
@@ -177,22 +103,6 @@ export async function component<P>(
   return Child(props, ctx);
 }
 
-const VOID_ELEMENTS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
-
 /** Renders a dynamic tag, which can be an element name or a component. */
 export async function dynamic(
   tag: string | Component,
@@ -207,7 +117,7 @@ export async function dynamic(
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
-  return `${open}${children ? children[RAW] : ''}</${tag}>`;
+  return `${open}${children && isRaw(children) ? rawHTML(children) : ''}</${tag}>`;
 }
 
 export interface RenderResult {
@@ -227,4 +137,23 @@ export async function renderToString<P>(Root: Component<P>, props: P): Promise<R
 export function stateScript(state: SerovalJSON): string {
   const json = JSON.stringify(state).replace(/</g, '\\u003c');
   return `<script type="brumate/state">${json}</script>`;
+}
+
+/**
+ * Calls a server function for a request from `rpc` in `brumate/client`.
+ * `functions` maps server function IDs to the functions, from the `rpc`
+ * exports of server modules.
+ */
+export async function handleRPC(
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  functions: Record<string, (...args: any[]) => unknown>,
+  id: string,
+  body: SerovalJSON,
+): Promise<SerovalJSON> {
+  const fn = functions[id];
+  if (!fn) {
+    throw new Error(`Unknown server function "${id}"`);
+  }
+  const args = fromJSON<unknown[]>(body, { plugins });
+  return toJSONAsync(await fn(...args), { plugins });
 }
