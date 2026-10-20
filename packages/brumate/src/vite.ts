@@ -206,7 +206,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (cached?.source !== source) {
         cached = {
           source,
-          result: compile(source, { filename: relative(file), liveProps: liveProps.get(file) }),
+          result: compile(source, {
+            filename: relative(file),
+            liveProps: liveProps.get(file),
+            path: file,
+          }),
         };
         compiled.set(file, cached);
       }

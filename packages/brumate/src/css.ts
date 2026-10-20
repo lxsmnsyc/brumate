@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
@@ -86,25 +87,31 @@ function loadPreprocessor<T>(name: string): T | undefined {
 }
 
 interface Sass {
-  compileString(source: string, options: { syntax: 'scss' }): { css: string };
+  compileString(source: string, options: { syntax: 'scss'; url?: URL }): { css: string };
 }
 
 interface Less {
   render(
     source: string,
-    options: { syncImport: boolean },
+    options: { syncImport: boolean; filename?: string },
     callback: (error: Error | undefined, output: { css: string } | undefined) => void,
   ): void;
 }
 
-/** Turns SCSS or Less into CSS. Throws with a message when it cannot. */
-function preprocess(lang: 'scss' | 'less', source: string): string {
+/**
+ * Turns SCSS or Less into CSS. `file` is the absolute path of the component,
+ * for imports of files next to it. Throws with a message when it cannot.
+ */
+function preprocess(lang: 'scss' | 'less', source: string, file?: string): string {
   if (lang === 'scss') {
     const sass = loadPreprocessor<Sass>('sass');
     if (!sass) {
       throw new Error('<style lang="scss"> needs the sass package. Install it in the project');
     }
-    return sass.compileString(source, { syntax: 'scss' }).css;
+    return sass.compileString(source, {
+      syntax: 'scss',
+      url: file ? pathToFileURL(file) : undefined,
+    }).css;
   }
   const less = loadPreprocessor<Less>('less');
   if (!less) {
@@ -113,7 +120,7 @@ function preprocess(lang: 'scss' | 'less', source: string): string {
   let css: string | undefined;
   let failure: Error | undefined;
   // Less calls back before render returns when nothing is imported.
-  less.render(source, { syncImport: true }, (error, output) => {
+  less.render(source, { syncImport: true, filename: file }, (error, output) => {
     failure = error;
     css = output?.css;
   });
@@ -127,7 +134,7 @@ function preprocess(lang: 'scss' | 'less', source: string): string {
 }
 
 /** Compiles the `<style>` blocks of a file into scoped CSS. */
-export function compileStyles(file: SFCFile, scope: string): StyleOutput {
+export function compileStyles(file: SFCFile, scope: string, filePath?: string): StyleOutput {
   const attribute = `s-${scope}`;
   const diagnostics: Diagnostic[] = [];
   const variables: StyleOutput['variables'] = [];
@@ -147,7 +154,9 @@ export function compileStyles(file: SFCFile, scope: string): StyleOutput {
     }
     content += style.content.slice(position);
     try {
-      const root = parse(style.lang === 'css' ? content : preprocess(style.lang, content));
+      const root = parse(
+        style.lang === 'css' ? content : preprocess(style.lang, content, filePath),
+      );
       scopeRules(root, attribute);
       parts.push(root.toString().trim());
     } catch (error) {

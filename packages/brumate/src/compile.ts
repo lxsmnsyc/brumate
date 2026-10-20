@@ -18,6 +18,8 @@ export interface CompileOptions {
    * `*` means every prop. Without it, every prop can change.
    */
   liveProps?: Set<string>;
+  /** The absolute path of the file, so SCSS and Less can import files next to it. */
+  path?: string;
 }
 
 export interface CompileResult {
@@ -65,7 +67,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     throw new CompileError(source, filename, errors);
   }
-  const plan = createPlan(file, graph);
+  const plan = createPlan(file, graph, options.path);
   const styleErrors = plan.styles.diagnostics.filter(
     (diagnostic) => diagnostic.severity === 'error',
   );

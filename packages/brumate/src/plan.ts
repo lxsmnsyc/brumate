@@ -73,7 +73,7 @@ export function hash(value: string): string {
   return (result >>> 0).toString(36);
 }
 
-export function createPlan(file: SFCFile, graph: Graph): Plan {
+export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
   const model = graph.model;
   const name = getComponentName(file.filename);
   const bodyScopes = new Map<Body, Scope>();
@@ -274,7 +274,7 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
     }
   }
 
-  const styles = compileStyles(file, hash(file.filename));
+  const styles = compileStyles(file, hash(file.filename), path);
   const liveStyles = model.sites.some((site) => site.kind === 'style' && isLiveSite(site));
 
   return {

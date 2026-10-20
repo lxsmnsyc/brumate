@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
 import { compile } from '../src/index.ts';
+
+const path = fileURLToPath(new URL('./styles/Card.brm', import.meta.url));
 
 function source(style: string): string {
   return `<script>\n  const color = 'red';\n</script>\n\n${style}\n\n<div class="card"><p>Hi</p></div>`;
@@ -44,5 +47,24 @@ describe('style languages', () => {
         filename: 'Card.brm',
       }),
     ).toThrow(/Undefined variable/);
+  });
+
+  it('imports files next to the component', () => {
+    const scss = compile(
+      source('<style lang="scss">\n  @use "theme";\n  p { color: theme.$brand; }\n</style>'),
+      {
+        filename: 'Card.brm',
+        path,
+      },
+    );
+    expect(scss.plan.styles.css).toMatch(/color: rebeccapurple/);
+    const less = compile(
+      source('<style lang="less">\n  @import "theme.less";\n  p { color: @brand; }\n</style>'),
+      {
+        filename: 'Card.brm',
+        path,
+      },
+    );
+    expect(less.plan.styles.css).toMatch(/color: teal/);
   });
 });
