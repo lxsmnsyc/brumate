@@ -31,7 +31,7 @@ function importSource(file: SFCFile, name: string): string | undefined {
 }
 
 /** Visits every markup node of a file, including blocks and templates. */
-function forEachNode(nodes: Markup[], visit: (node: Markup) => void): void {
+export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): void {
   for (const node of nodes) {
     visit(node);
     switch (node.kind) {
@@ -139,16 +139,20 @@ export function resolveRelative(specifier: string, importer: string): string | u
   return path.posix.join(path.posix.dirname(importer), specifier);
 }
 
+/** For each file, each prop that can change, and the files that change it. */
+export type ProjectProps = Map<string, Map<string, Set<string>>>;
+
 /**
- * Finds the props that can change on the client, for every file of a
- * project. Props start out unchanged, because code outside `.brm` files
- * renders components only on the server. A prop can change when a parent
- * passes it a value that can change. Files with errors are skipped.
+ * Finds the props that can change on the client, and the parents that
+ * change them, for every file of a project. Props start out unchanged,
+ * because code outside `.brm` files renders components only on the server.
+ * A prop can change when a parent passes it a value that can change. Files
+ * with errors are skipped.
  */
-export function analyzeProject(
+export function analyzeProjectProps(
   files: Map<string, string>,
   resolve: Resolve = resolveRelative,
-): Map<string, Set<string>> {
+): ProjectProps {
   const parsed = new Map<string, SFCFile>();
   for (const [filename, source] of files) {
     try {
@@ -157,29 +161,44 @@ export function analyzeProject(
       // The compile of this file reports the error.
     }
   }
-  const liveProps = new Map<string, Set<string>>();
+  const result: ProjectProps = new Map();
   for (const filename of parsed.keys()) {
-    liveProps.set(filename, new Set());
+    result.set(filename, new Map());
   }
   // Each round can only add props, so this ends.
   for (let changed = true; changed;) {
     changed = false;
     for (const [filename, file] of parsed) {
-      const graph = buildGraph(analyze(file), { liveProps: liveProps.get(filename) });
+      const liveProps = new Set(result.get(filename)!.keys());
+      const graph = buildGraph(analyze(file), { liveProps });
       for (const usage of summarize(file, graph)) {
         const target = resolve(usage.source, filename);
-        const props = target === undefined ? undefined : liveProps.get(target);
+        const props = target === undefined ? undefined : result.get(target);
         if (!props) {
           continue;
         }
         for (const name of usage.liveProps) {
+          const parents = props.get(name) ?? new Set<string>();
           if (!props.has(name)) {
-            props.add(name);
+            props.set(name, parents);
             changed = true;
           }
+          parents.add(filename);
         }
       }
     }
   }
-  return liveProps;
+  return result;
+}
+
+/** Finds the props that can change on the client, for every file of a project. */
+export function analyzeProject(
+  files: Map<string, string>,
+  resolve: Resolve = resolveRelative,
+): Map<string, Set<string>> {
+  const result = new Map<string, Set<string>>();
+  for (const [filename, props] of analyzeProjectProps(files, resolve)) {
+    result.set(filename, new Set(props.keys()));
+  }
+  return result;
 }

@@ -7,6 +7,7 @@ export default defineConfig({
     'src/runtime/client.ts',
     'src/runtime/loader.ts',
     'src/vite.ts',
+    'src/cli.ts',
   ],
   format: 'esm',
   platform: 'node',

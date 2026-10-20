@@ -1,0 +1,22 @@
+Child (Child.brm) Child_108vasc
+
+Client code
+  h0: event button.click (5:18)
+    runs on the event
+
+Changes on the client
+  prop value (2:11)
+    list.brm and parent.brm pass a value that changes
+  insert (5:46)
+    reads prop value
+
+State
+  component: value, onChange
+
+HTML only
+  1 element and 1 inserted value ship no client code
+
+Client modules, before minifying (bytes, gzip)
+  entry: 371 B, 239 B
+  h0: 129 B, 119 B
+  update: 133 B, 125 B

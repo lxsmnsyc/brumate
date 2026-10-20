@@ -64,6 +64,7 @@ pnpm --filter example-todos dev
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
 - [Vite](./docs/vite.md) describes the Vite plugin.
+- [Inspect](./docs/inspect.md) describes `brumate inspect`, which shows what each component ships to the client and why.
 - [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.

@@ -4,6 +4,9 @@
   "description": "A component language and compiler for resumable web apps",
   "license": "MIT",
   "author": "Alexis Munsayac",
+  "bin": {
+    "brumate": "./dist/cli.js"
+  },
   "files": [
     "dist",
     "client.d.ts"

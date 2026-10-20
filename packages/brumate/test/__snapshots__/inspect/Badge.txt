@@ -1,0 +1,20 @@
+Badge (Badge.brm) Badge_1rjt0v5
+
+Client code
+  none
+
+Changes on the client
+  prop label (2:11)
+    toolbar.brm passes a value that changes
+  insert (5:19)
+    reads prop label
+
+State
+  component: label
+
+HTML only
+  1 element and 0 inserted values ship no client code
+
+Client modules, before minifying (bytes, gzip)
+  entry: 296 B, 220 B
+  update: 133 B, 125 B

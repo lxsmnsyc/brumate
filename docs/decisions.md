@@ -14,7 +14,7 @@
 - Server functions may capture module-scope bindings and imports only.
 - An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
-- There is no `#static` block. Markup is static by default, so marking it changes nothing. A tool that reports what ships is better than an assertion in the markup.
+- There is no `#static` block. Markup is static by default, so marking it changes nothing. `brumate inspect` reports what ships and why instead.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
 - Props are live only if a parent passes them values that can change. The project analysis finds these props. A file compiled alone treats every prop as live.
 - The client code of a component is split into an entry, one part per client root, an update part and a shared part.
@@ -45,7 +45,6 @@
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
-- **Reporting what ships.** A dev overlay or a `brumate inspect` command that shows each component's client code and the source lines that caused it.
 - **Stale streamed bodies.** A `#loading` body is rendered with the values of the server. If the client changes a value before the body arrives, the body shows the old value until the value changes again.
 - **Content Security Policy.** The swap scripts are inline, so a strict policy needs a nonce option.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.

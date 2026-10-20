@@ -1,9 +1,10 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { normalizePath, transformWithOxc } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
+import { defaultExclude, findFiles } from './files.ts';
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
@@ -25,30 +26,6 @@ const SERVER = 'virtual:brumate/server';
 
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
-
-function defaultExclude(directory: string): boolean {
-  return directory === 'node_modules' || directory === 'dist' || directory.startsWith('.');
-}
-
-async function findFiles(root: string, exclude: (directory: string) => boolean): Promise<string[]> {
-  const result: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
-    const directories: Promise<void>[] = [];
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const file = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (!exclude(entry.name)) {
-          directories.push(visit(file));
-        }
-      } else if (entry.name.endsWith('.brm')) {
-        result.push(normalizePath(file));
-      }
-    }
-    await Promise.all(directories);
-  };
-  await visit(root);
-  return result.toSorted();
-}
 
 async function readBody(request: IncomingMessage): Promise<string> {
   let body = '';

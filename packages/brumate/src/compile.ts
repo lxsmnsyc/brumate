@@ -8,6 +8,7 @@ import type { Diagnostic } from './model.ts';
 import { parse } from './parser.ts';
 import { createPlan } from './plan.ts';
 import type { Plan } from './plan.ts';
+import type { SFCFile } from './ast.ts';
 
 export interface CompileOptions {
   /** Used for error messages, the component name and the component ID. */
@@ -31,6 +32,8 @@ export interface CompileResult {
    * client, inside a parent's block that changes.
    */
   render: string;
+  /** The parsed file. */
+  file: SFCFile;
   plan: Plan;
   warnings: Diagnostic[];
 }
@@ -71,6 +74,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     client: client.code,
     parts: client.parts,
     render: generateRender(file, plan),
+    file,
     plan,
     warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning'),
   };
