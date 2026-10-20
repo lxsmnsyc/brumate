@@ -14,6 +14,7 @@
 - Server functions may capture module-scope bindings and imports only.
 - An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
+- There is no `#static` block. Markup is static by default, so marking it changes nothing. A tool that reports what ships is better than an assertion in the markup.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
 - A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
 - The client module of a component is one module for now. The loader imports it on the first event for that component.
@@ -43,6 +44,7 @@
 - **Client rendering.** Components, dynamic tags and templates from outer scopes cannot render inside a block that changes on the client yet. The compiler reports an error.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
+- **Reporting what ships.** A dev overlay or a `brumate inspect` command that shows each component's client code and the source lines that caused it.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps

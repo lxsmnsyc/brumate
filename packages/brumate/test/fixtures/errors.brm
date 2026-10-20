@@ -26,8 +26,5 @@
 </script>
 
 <p ref=limit>{count = 1}</p>
-#static {
-  <button onClick=bad>Bad</button>
-  <p>{count}</p>
-}
+<button onClick=bad>Bad</button>
 <button onClick=(() => count++)>+</button>

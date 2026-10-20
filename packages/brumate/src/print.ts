@@ -114,10 +114,6 @@ export function printAST(file: SFCFile): string {
         write(depth, item.target ? `portal (${item.target.code})` : 'portal');
         body(item.body, depth + 1, 'body');
         break;
-      case 'static':
-        write(depth, 'static');
-        body(item.body, depth + 1, 'body');
-        break;
       case 'client':
         write(depth, `client (${item.trigger})`);
         body(item.body, depth + 1, 'body');

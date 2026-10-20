@@ -183,15 +183,7 @@ These blocks work as in solid-sfc:
 
 The difference is that a block's create code ships only if its condition, list or key can change on the client. Otherwise the block is HTML only.
 
-### `#static`
-
-Asserts that the body has no client roots. An event handler, `$effect` or `$client` inside it is a compile error.
-
-```html
-#static {
-  <footer>Built with brumate</footer>
-}
-```
+Markup is static by default. Markup that never changes ships as HTML only, so there is no block to mark it static.
 
 ### `#client`
 

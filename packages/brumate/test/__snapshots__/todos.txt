@@ -13,10 +13,8 @@ element <ul>
         text " "
         element <time>
           insert {format(todo.at)}
-static
-  body
-    element <footer>
-      text "Built with brumate"
+element <footer>
+  text "Built with brumate"
 element <p>
   insert {left}
   text " left"
@@ -34,7 +32,6 @@ scope 1 component
 scope 2 body (for 34:3)
   item todo
   function toggle
-scope 3 body (static 46:1)
 sites
   signal todos (12:23) reads initial
   signal draft (13:23)
@@ -51,7 +48,7 @@ sites
   event li.click (40:43) reads toggle calls toggle
   insert (41:8) reads todo
   insert (41:27) reads format, todo
-  insert (49:5) reads left
+  insert (47:5) reads left
 
 # Graph
 nodes
@@ -66,7 +63,7 @@ nodes
   attribute li.class (40:15) live <- item todo
   insert (41:8) live <- item todo
   insert (41:27) live <- item todo
-  insert (49:5) live <- memo left
+  insert (47:5) live <- memo left
 client
   server function persist (16:18) (stub)
   function add (21:18)

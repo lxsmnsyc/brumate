@@ -46,7 +46,5 @@
 </ul>
 <p>{left} left</p>
 
-#static {
-  <h2>Counter</h2>
-}
+<h2>Counter</h2>
 <Counter start=3 />

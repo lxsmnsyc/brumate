@@ -47,16 +47,6 @@ const SOURCE_KINDS = new Set<DeclarationKind>([
 // Sources that can change without a write from client code.
 const ALWAYS_LIVE = new Set<DeclarationKind>(['prop', 'props-rest']);
 
-/** Returns the `#static` block that contains a scope, if any. */
-function findStatic(scope: Scope): Block | undefined {
-  for (let current: Scope | undefined = scope; current; current = current.parent) {
-    if (current.block?.kind === 'static') {
-      return current.block;
-    }
-  }
-  return undefined;
-}
-
 function isFunctionValue(site: Site): boolean {
   const node = site.node;
   if (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression') {
@@ -287,27 +277,6 @@ export function buildGraph(model: SemanticModel): Graph {
     return model.scopes.some((scope) => created.has(scope) && isWithin(scope, body));
   }
 
-  // Checks.
-  for (const site of model.sites) {
-    const staticBlock = findStatic(site.scope);
-    if (!staticBlock) {
-      continue;
-    }
-    const node = siteNodes.get(site);
-    if (site.kind === 'event' || site.kind === 'client' || site.kind === 'effect') {
-      diagnostics.push({
-        severity: 'error',
-        message: '#static cannot contain event handlers, effects or $client callbacks',
-        range: site.range,
-      });
-    } else if (node && live.has(node)) {
-      diagnostics.push({
-        severity: 'error',
-        message: '#static cannot contain values that change on the client',
-        range: site.range,
-      });
-    }
-  }
   for (const [site, node] of siteNodes) {
     if (site.kind === 'effect' && !live.has(node)) {
       diagnostics.push({

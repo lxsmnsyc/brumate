@@ -43,7 +43,5 @@
   }
 </ul>
 
-#static {
-  <footer>Built with brumate</footer>
-}
+<footer>Built with brumate</footer>
 <p>{left} left</p>

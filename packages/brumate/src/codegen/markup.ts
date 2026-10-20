@@ -640,7 +640,7 @@ export class Emitter {
         return;
       }
       default:
-        // `#key`, `#loading`, `#portal` and `#static` render their body in place.
+        // `#key`, `#loading` and `#portal` render their body in place.
         // TODO: render `#portal` at the end of the page.
         this.open(scope, block);
         this.line('{');

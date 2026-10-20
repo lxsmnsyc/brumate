@@ -103,7 +103,7 @@ Access          = "." Ident | "?." Ident | "(" TS<Arguments> ")"
 
 ```ebnf
 Block           = IfBlock | ForBlock | RepeatBlock | SwitchBlock | KeyBlock
-                | TryBlock | LoadingBlock | PortalBlock | StaticBlock | ClientBlock ;
+                | TryBlock | LoadingBlock | PortalBlock | ClientBlock ;
 
 Body            = "{" [ BlockScript ] { TemplateDecl } { Markup } "}" ;
 BlockScript     = "<script>" TS<Module> "</script>" ;
@@ -120,7 +120,6 @@ KeyBlock        = "#key" "(" TS<Expression> ")" Body ;
 TryBlock        = "#try" Body "#catch" [ "(" Ident [ "," Ident ] ")" ] Body ;
 LoadingBlock    = "#loading" [ "(" TS<Expression> ")" ] Body [ "#else" Body ] ;
 PortalBlock     = "#portal" [ "(" TS<Expression> ")" ] Body ;
-StaticBlock     = "#static" Body ;
 ClientBlock     = "#client" [ "(" Trigger ")" ] Body ;
 Trigger         = '"visible"' | '"idle"' | '"load"'
                 | "'visible'" | "'idle'" | "'load'" ;
@@ -139,7 +138,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 `#` starts a block only when all of these are true:
 
 - It does not come right after a letter, a digit, `_` or `$`.
-- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `static`, `client` or `template`.
+- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `client` or `template`.
 - The keyword is followed by `(` or `{`. `#template` is followed by a name.
 
 Inside a block, `else`, `catch`, `case` and `default` are also keywords where the grammar expects them. Any other `#` is text.
@@ -155,5 +154,5 @@ Expressions cannot contain markup. Use `#for`, `#if` and `#template` instead. Th
 - `<window>` and `<document>` replace `<solid:window>` and `<solid:document>`.
 - Event attributes take `:` modifiers.
 - `ref` and `prefetch` are reserved on elements.
-- `#static` and `#client` are added. `#hydration`, `#no-hydration` and `#reveal` are removed.
+- `#client` is added. `#hydration`, `#no-hydration` and `#reveal` are removed.
 - Scripts, expressions and attribute values cannot contain markup.

@@ -56,7 +56,6 @@ const BLOCK_KEYWORDS = new Set([
   'try',
   'loading',
   'portal',
-  'static',
   'client',
   'template',
 ]);
@@ -840,8 +839,6 @@ class Parser {
         const target = header ? this.expression(header.start, header.end) : undefined;
         return { kind: 'portal', start, end: this.pos, target, body: this.parseBody('portal') };
       }
-      case 'static':
-        return { kind: 'static', start, end: this.pos, body: this.parseBody('static') };
       case 'client': {
         const header = this.parseHeader('client', false);
         let trigger: ClientTrigger = 'visible';

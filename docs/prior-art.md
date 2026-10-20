@@ -24,7 +24,7 @@ brumate's loader follows the same approach.
 
 Astro renders pages on the server and hydrates only the components marked as islands. Each island still hydrates. The rest of the page ships no code.
 
-brumate's `#static` and `#client` blocks are similar in scope, but the parts that run on the client resume instead of hydrating.
+brumate needs no island markers. Markup that never changes ships as HTML only, and the parts that run on the client resume instead of hydrating. `#client` is the closest thing to an island: its body renders only on the client.
 
 ## React Server Components
 

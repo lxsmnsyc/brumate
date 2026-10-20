@@ -214,11 +214,6 @@ export interface PortalBlock extends Range {
   body: Body;
 }
 
-export interface StaticBlock extends Range {
-  kind: 'static';
-  body: Body;
-}
-
 export type ClientTrigger = 'visible' | 'idle' | 'load';
 
 export interface ClientBlock extends Range {
@@ -236,7 +231,6 @@ export type Block =
   | TryBlock
   | LoadingBlock
   | PortalBlock
-  | StaticBlock
   | ClientBlock;
 
 export interface TemplateDecl extends Range {

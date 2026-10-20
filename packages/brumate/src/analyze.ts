@@ -813,7 +813,6 @@ class Analyzer {
         }
         this.visitBody(block.body, scope, block);
         break;
-      case 'static':
       case 'client':
         this.visitBody(block.body, scope, block);
         break;

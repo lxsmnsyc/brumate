@@ -43,11 +43,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     }
     $$html += "<!--/b-->";
   }
-  $$html += "</ul>";
-  {
-    $$html += "<footer>Built with brumate</footer>";
-  }
-  $$html += "<p><!--t" + $$s1 + ":3-->" + await $$b.insert((left)) + "<!--/t--> left</p>";
+  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + await $$b.insert((left)) + "<!--/t--> left</p>";
   $$ctx.slots($$s1, [todos, draft, left]);
   return $$html;
 }

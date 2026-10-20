@@ -12,7 +12,7 @@ The compiler reads a `.brm` file and writes three things:
 2. **Scope analysis.** Find the declarations in each scope: props, signals, memos, functions and block variables.
 3. **Graph.** Build the dependency graph from the reads of each node. Follow local functions. Add edges through child component summaries.
 4. **Reachability.** Start at each client root. Mark every node, function and template that it reaches.
-5. **Checks.** Report captures that cannot be serialized, writes outside client roots, server function captures and client roots inside `#static`.
+5. **Checks.** Report captures that cannot be serialized, writes outside client roots, and server function captures.
 6. **Server codegen.** Write a render function that outputs HTML strings, markers and the state of the reachable scopes.
 7. **Client codegen.** Write one chunk per handler, plus the update code and templates that the reachable nodes need.
 8. **Summary.** Write which props the component reads on the client, which it calls and which bindings depend on them.
