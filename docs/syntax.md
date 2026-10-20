@@ -184,6 +184,7 @@ Runs a callback when the values it reads change, after the page resumes.
 - It never runs on the server.
 - It never runs on page load. Its first run is after the first change.
 - The callback can return a cleanup function. It runs before the next run and when the scope is removed.
+- After a write, effects run once each, after the markup and the memos have updated. They run in the order the write reached them. Writes in an effect schedule more effects, which run after.
 
 ### `$client`
 

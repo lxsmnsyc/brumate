@@ -631,3 +631,15 @@ describe('style variables on dynamic tags', () => {
     );
   });
 });
+
+describe('effect order', () => {
+  it('runs an effect once per write, after the markup updates', async () => {
+    const log: string[] = [];
+    (globalThis as { effectLog?: string[] }).effectLog = log;
+    await resume('effects', {});
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(log).toEqual(['2 3 1']));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(log).toEqual(['2 3 1', '4 6 2']));
+  });
+});

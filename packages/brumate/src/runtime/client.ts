@@ -278,6 +278,7 @@ export function leavePage(): void {
   scopes.clear();
   comments.clear();
   elements.clear();
+  pendingEffects.clear();
   loads.clear();
   loadingSlots.clear();
   nextId = -1;
@@ -515,16 +516,57 @@ function trigger(scope: Scope, slot: number): void {
   });
 }
 
+// Effects wait until every other update of a write has run, and run once each.
+const pendingEffects = new Map<string, () => void>();
+let running = 0;
+let flushing = false;
+
 function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
-  for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
-    const fn = updates[name] as (scope: Scope) => void;
-    if (kind === scope.k) {
-      fn(scope);
-    } else {
-      for (const target of descendants(scope, kind)) {
-        fn(target);
+  running++;
+  try {
+    for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
+      const fn = updates[name] as (scope: Scope) => void;
+      for (const target of kind === scope.k ? [scope] : descendants(scope, kind)) {
+        if (name[0] === 'e') {
+          pendingEffects.set(`${target.id}:${name}`, () => {
+            if (scopes.has(target.id)) {
+              fn(target);
+            }
+          });
+        } else {
+          fn(target);
+        }
       }
     }
+  } finally {
+    running--;
+  }
+  if (running === 0) {
+    flushEffects();
+  }
+}
+
+/**
+ * Runs the effects that writes scheduled, in the order they were first
+ * scheduled. Writes in an effect schedule more effects, which run after.
+ */
+function flushEffects(): void {
+  if (flushing) {
+    return;
+  }
+  flushing = true;
+  try {
+    for (
+      let next = pendingEffects.entries().next();
+      !next.done;
+      next = pendingEffects.entries().next()
+    ) {
+      const [key, effect] = next.value;
+      pendingEffects.delete(key);
+      effect();
+    }
+  } finally {
+    flushing = false;
   }
 }
 

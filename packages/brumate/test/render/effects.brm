@@ -1,0 +1,13 @@
+<script>
+  let count = $signal(0);
+  const double = $memo(count * 2);
+  const triple = $memo(count * 3);
+
+  $effect(() => {
+    const log = ((globalThis as { effectLog?: string[] }).effectLog ??= []);
+    log.push(`${double} ${triple} ${document.querySelector('.text')!.textContent}`);
+  });
+</script>
+
+<p class="text">{count}</p>
+<button class="inc" onClick=(() => count++)>Add</button>

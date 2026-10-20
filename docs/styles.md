@@ -74,4 +74,3 @@ The stylesheet is inlined once per page, as `<style data-brm="<component ID>">`,
 const css = manifest['src/client.ts'].css.map((file) => `<link rel="stylesheet" href="/${file}">`);
 const response = await handle(request, { head: css.join(''), scripts });
 ```
-

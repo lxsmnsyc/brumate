@@ -43,6 +43,7 @@
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
 - Stylesheets are inlined by default. `css: 'file'` in the Vite plugin builds them into one CSS file instead, which the page links in its head.
 - A dynamic tag is a `#key` block on its tag, so a new element name or component renders again. A component in the page state is written as its ID. The client code that changes the value uses the component's render module.
+- Effects run after the other updates of a write, once each, so they see the new markup and every new memo value.
 - `children` ship as the HTML that the server rendered. When the client inserts them again, it runs the updates of the scopes in them, so the values are current. Updates to markup that is not in the page do nothing.
 - Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 
@@ -54,7 +55,6 @@
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 - **Type-checking `.brm` files.** `brumate/types` declares the compile-time functions and `.brm` modules, but the code in `.brm` files is not type-checked, and there is no editor support. solid-sfc does this with a Volar language plugin.
-- **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps
 
