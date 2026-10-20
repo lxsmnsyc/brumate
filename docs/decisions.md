@@ -28,6 +28,8 @@
 - `renderToString` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
+- Server functions read the request with `getRequest`, set response headers with `getResponseHeaders`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
+- Errors in the page state keep their name and message only.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.

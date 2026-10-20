@@ -262,6 +262,35 @@ describe('resume', () => {
     expect(document.querySelector('.error')).toBeNull();
   });
 
+  it('calls server functions with errors and redirects', async () => {
+    vi.resetModules();
+    // The component and the test use the same copy of the runtime, so they share the request.
+    const server = await import(file('session.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    // Calls go straight to the server function handler.
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const assign = vi.fn<(url: string) => void>();
+    vi.stubGlobal('location', { ...window.location, assign });
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const { html, state } = await runtime.renderToString(server.default, {}, { request });
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(text('.user')).toBe('Ada');
+
+    click(document.querySelector('.ok')!);
+    await waitFor(() => expect(text('.message')).toBe('Hello Ada'));
+
+    click(document.querySelector('.empty')!);
+    await waitFor(() => expect(text('.message')).toBe('A name is required'));
+
+    click(document.querySelector('.admin')!);
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'));
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

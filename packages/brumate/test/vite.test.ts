@@ -82,9 +82,22 @@ describe('vite plugin', () => {
     expect(await response.json()).toMatchObject({ t: { t: 2 } });
   });
 
+  it('passes the request to server functions in development', async () => {
+    const http = createHTTPServer(server.middlewares);
+    await new Promise<void>((resolve) => http.listen(0, resolve));
+    const { port } = http.address() as AddressInfo;
+    const response = await fetch(
+      `http://localhost:${port}/_brumate/${encodeURIComponent('Session_1fdcuk2#whoami')}`,
+      { method: 'POST', headers: { 'x-user': 'Ada' }, body: JSON.stringify(toJSON([])) },
+    );
+    http.close();
+    expect(await response.json()).toMatchObject({ t: { s: 'Ada' } });
+  });
+
   it('exports server functions for production', async () => {
     const { functions, handle } = await server.ssrLoadModule('virtual:brumate/server');
-    expect(Object.keys(functions)).toEqual(['Todos_t3g9lr#persist']);
+    expect(Object.keys(functions)).toContain('Todos_t3g9lr#persist');
+    expect(Object.keys(functions)).toContain('Session_1fdcuk2#whoami');
     const response = await handle(
       new Request('http://localhost/_brumate/Todos_t3g9lr%23persist', {
         method: 'POST',

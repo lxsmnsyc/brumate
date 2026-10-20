@@ -1,0 +1,42 @@
+<script>
+  import { ServerError, getRequest, getResponseHeaders, redirect } from 'brumate/server';
+
+  async function whoami() {
+    'use server';
+    return getRequest().headers.get('x-user') ?? 'anonymous';
+  }
+
+  async function login(name: string) {
+    'use server';
+    if (name === '') {
+      throw new ServerError('A name is required', { status: 422 });
+    }
+    if (name === 'admin') {
+      redirect('/admin');
+    }
+    getResponseHeaders().set('set-cookie', `user=${name}`);
+    return `Hello ${name}`;
+  }
+
+  async function crash() {
+    'use server';
+    throw new Error('The database password is hunter2');
+  }
+
+  const user = $memo(whoami());
+  let message = $signal('');
+
+  async function submit(name: string) {
+    try {
+      message = await login(name);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+  }
+</script>
+
+<p class="user">{user}</p>
+<button class="ok" onClick=(() => submit('Ada'))>Log in</button>
+<button class="empty" onClick=(() => submit(''))>Log in without a name</button>
+<button class="admin" onClick=(() => submit('admin'))>Log in as admin</button>
+<p class="message">{message}</p>

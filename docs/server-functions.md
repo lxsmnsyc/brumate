@@ -49,6 +49,43 @@ The capture rule keeps everything that the client sends in the arguments. There 
 
 The compiler splits server functions into their own modules itself. See [Compiler](./compiler.md#code-splitting).
 
+## The request
+
+Server functions read the request, set response headers, and answer with errors and redirects through `brumate/server`:
+
+```ts
+import { ServerError, getRequest, getResponseHeaders, redirect } from 'brumate/server';
+
+async function login(name: string) {
+  'use server';
+  if (name === '') {
+    throw new ServerError('A name is required', { status: 422 });
+  }
+  if (name === 'admin') {
+    redirect('/admin');
+  }
+  const agent = getRequest().headers.get('user-agent');
+  getResponseHeaders().set('set-cookie', `user=${name}`);
+  return `Hello ${name}`;
+}
+```
+
+- `getRequest()` returns the web `Request` of the call.
+- `getResponseHeaders()` returns headers that are added to the response, such as `set-cookie`.
+- `throw new ServerError(message, { status })` answers with that status, and the call on the client rejects with an error that has the message. The status defaults to 400.
+- Any other error answers with status 500 and a generic message, so server details do not reach the browser. The error is logged on the server.
+- `redirect(location)` stops the function, and the browser goes to `location`.
+
+These work while a page renders too, when `renderToString` or `renderToStream` gets the request:
+
+```ts
+const { html, state, headers } = await renderToString(App, props, { request });
+```
+
+`headers` holds the response headers that server functions set while the page rendered. A `redirect` during rendering rejects `renderToString` with an error that `isRedirect` recognizes, so the server can answer with a redirect.
+
+The request is kept with `AsyncLocalStorage` from `node:async_hooks`, so the server runtime needs a runtime that has it.
+
 ## Async `$memo`
 
 An async `$memo` may only call server functions:

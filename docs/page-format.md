@@ -126,6 +126,7 @@ type PageState = Record<number, {
 ```
 
 - The slot order is the declaration order of the scope's slots in the compiled plan. Client modules read slots by index.
+- Errors keep their name and message only. Their stack traces would show the server's files.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
 - A promise is written as pending, and a later record settles it. `renderToString` and `renderToStream` return as soon as the markup is rendered, and send later records as their promises settle.
 

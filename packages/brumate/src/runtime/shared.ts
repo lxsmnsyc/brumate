@@ -1,4 +1,4 @@
-import { createPlugin } from 'seroval';
+import { Feature, createPlugin } from 'seroval';
 import type { Plugin, SerovalNode } from 'seroval';
 
 /** An element that the server rendered. The client finds it by its anchor. */
@@ -69,6 +69,12 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
 
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
 export const plugins: Plugin<any, any>[] = [ElementPlugin, FunctionPlugin];
+
+/**
+ * Errors keep their name and message only. A stack trace would show the
+ * server's files and code to the browser.
+ */
+export const disabledFeatures: number = Feature.ErrorPrototypeStack;
 
 /** The state of one scope in the page. */
 export interface ScopeState {

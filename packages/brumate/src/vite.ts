@@ -120,10 +120,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     try {
       const module = await server.ssrLoadModule(file);
-      const { handleRPC } = await server.ssrLoadModule('brumate/server');
-      const result = await handleRPC(module.rpc ?? {}, id, JSON.parse(await readBody(request)));
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(result));
+      const { handleRequest } = await server.ssrLoadModule('brumate/server');
+      // The same path as production, so server functions can read the request.
+      const webRequest = new Request(new URL(request.url ?? '/', 'http://localhost'), {
+        method: 'POST',
+        headers: Object.entries(request.headers).flatMap(([name, value]) =>
+          value === undefined ? [] : [[name, String(value)] as [string, string]],
+        ),
+        body: await readBody(request),
+      });
+      const answer: Response = await handleRequest(module.rpc ?? {}, webRequest, rpc);
+      response.statusCode = answer.status;
+      answer.headers.forEach((value, name) => response.setHeader(name, value));
+      response.end(await answer.text());
     } catch (error) {
       server.config.logger.error(String((error as Error).stack ?? error));
       response.statusCode = 500;

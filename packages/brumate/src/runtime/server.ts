@@ -10,12 +10,21 @@ import {
   styleElement,
 } from './html.ts';
 import type { Raw } from './html.ts';
-import { ElementReference, FunctionReference, functionReferences, plugins } from './shared.ts';
+import {
+  ElementReference,
+  FunctionReference,
+  disabledFeatures,
+  functionReferences,
+  plugins,
+} from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
+import { Redirect, ServerError, withRequest } from './request.ts';
 
 export { attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
+export { ServerError, getRequest, getResponseHeaders, isRedirect, redirect } from './request.ts';
+export type { Redirect } from './request.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
 
@@ -204,6 +213,7 @@ export function streamState(
   return new Promise((resolve, reject) => {
     toCrossJSONStream(state, {
       plugins,
+      disabledFeatures,
       onParse: (record) => onRecord(record),
       onError: reject,
       onDone: resolve,
@@ -233,6 +243,8 @@ export interface RenderResult {
    * `#loading` blocks, and the state records that settle promises.
    */
   pending: AsyncIterable<string>;
+  /** Headers that server functions set while the page rendered, with `getResponseHeaders`. */
+  headers: Headers;
 }
 
 /** An async iterable that a producer pushes into. */
@@ -291,6 +303,12 @@ function createQueue<T>(): {
  */
 export interface RenderOptions {
   /**
+   * The request of the page. Server functions that run while the page
+   * renders can read it with `getRequest`, and set headers with
+   * `getResponseHeaders`, which `renderToString` returns.
+   */
+  request?: Request;
+  /**
    * A Content Security Policy nonce for the inline scripts that swap in
    * `#loading` bodies. State scripts need none, because they do not run.
    */
@@ -305,7 +323,12 @@ export async function renderToString<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context();
-  const html = (await Root(props, ctx)) + ctx.portals.join('');
+  const headers = new Headers();
+  const render = (): Promise<string> => Root(props, ctx);
+  const rendered = options.request
+    ? await withRequest(options.request, headers, render)
+    : await render();
+  const html = rendered + ctx.portals.join('');
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
@@ -321,6 +344,7 @@ export async function renderToString<P>(
     open++;
     toCrossJSONStream(state, {
       plugins,
+      disabledFeatures,
       refs,
       onParse(record, initial) {
         if (initial) {
@@ -359,7 +383,7 @@ export async function renderToString<P>(
   serialize(ctx.state, (script) => {
     state = script;
   });
-  return { html, state, pending: queue.iterable };
+  return { html, state, pending: queue.iterable, headers };
 }
 
 export interface StreamOptions extends RenderOptions {
@@ -418,12 +442,13 @@ export async function handleRPC(
     throw new Error(`Unknown server function "${id}"`);
   }
   const args = fromJSON<unknown[]>(body, { plugins });
-  return toJSONAsync(await fn(...args), { plugins });
+  return toJSONAsync(await fn(...args), { plugins, disabledFeatures });
 }
 
 /**
  * Answers a server function call from `brumate/client`. Returns undefined
- * when the request is not a call, so other handlers can answer it.
+ * when the request is not a call, so other handlers can answer it. Server
+ * functions can read the request with `getRequest`.
  */
 export async function handleRequest(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
@@ -439,6 +464,28 @@ export async function handleRequest(
   if (!functions[id]) {
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
-  const result = await handleRPC(functions, id, await request.json());
-  return new Response(JSON.stringify(result), { headers: { 'content-type': 'application/json' } });
+  const body = await request.json();
+  const headers = new Headers();
+  return withRequest(request, headers, async () => {
+    try {
+      const result = await handleRPC(functions, id, body);
+      headers.set('content-type', 'application/json');
+      return new Response(JSON.stringify(result), { headers });
+    } catch (error) {
+      if (error instanceof Redirect) {
+        headers.set('x-brumate-redirect', error.location);
+        return new Response(null, { status: 204, headers });
+      }
+      const known = error instanceof ServerError;
+      if (!known) {
+        console.error(error);
+      }
+      headers.set('content-type', 'application/json');
+      const message = known ? error.message : 'The server function failed';
+      return new Response(JSON.stringify({ error: message }), {
+        status: known ? error.status : 500,
+        headers,
+      });
+    }
+  });
 }
