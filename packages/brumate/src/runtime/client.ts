@@ -561,9 +561,9 @@ function flushEffects(): void {
       !next.done;
       next = pendingEffects.entries().next()
     ) {
-      const [key, effect] = next.value;
+      const [key, runEffect] = next.value;
       pendingEffects.delete(key);
-      effect();
+      runEffect();
     }
   } finally {
     flushing = false;
