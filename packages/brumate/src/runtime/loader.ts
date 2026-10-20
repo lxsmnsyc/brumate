@@ -26,6 +26,10 @@ function entries(element: Element): Entry[] {
     });
 }
 
+function strategy(element: Element): string {
+  return element.getAttribute('data-prefetch') ?? 'hover';
+}
+
 /**
  * Starts resuming the page. Listens to the events in `data-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
@@ -177,7 +181,6 @@ export function start(options: LoaderOptions): () => void {
       void options.load(id).then((module) => module.load(/^[hc]\d/.test(name) ? name : 'update'));
     }
   };
-  const strategy = (element: Element): string => element.getAttribute('data-prefetch') ?? 'hover';
 
   listen(
     document,

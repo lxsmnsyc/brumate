@@ -1,4 +1,5 @@
 // Type-checked with the package. It fails to compile if the global declarations are wrong.
+// oxlint-disable-next-line typescript/triple-slash-reference -- The declarations are global, so they cannot be imported.
 /// <reference path="../globals.d.ts" />
 
 interface Todo {
