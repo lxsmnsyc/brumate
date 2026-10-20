@@ -66,6 +66,7 @@ pnpm --filter example-todos dev
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
 - [Vite](./docs/vite.md) describes the Vite plugin.
 - [Routing](./docs/routing.md) describes route files, layouts and sibling routes.
+- [TypeScript](./docs/typescript.md) describes type-checking `.brm` files.
 - [Inspect](./docs/inspect.md) describes `brumate inspect`, which shows what each component ships to the client and why.
 - [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.

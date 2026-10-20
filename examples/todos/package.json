@@ -6,12 +6,13 @@
     "dev": "node server.ts",
     "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
     "start": "node server.prod.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "brumate-tsc --noEmit"
   },
   "dependencies": {
     "brumate": "workspace:*"
   },
   "devDependencies": {
+    "@brumate/tsc": "workspace:*",
     "@types/node": "^24.19.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"

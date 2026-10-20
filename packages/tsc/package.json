@@ -1,0 +1,42 @@
+{
+  "name": "@brumate/tsc",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Type-checks brumate projects, including .brm files",
+  "license": "MIT",
+  "bin": {
+    "brumate-tsc": "./bin/brumate-tsc.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@brumate/language-core": "workspace:*",
+    "@volar/typescript": "2.4.28",
+    "typescript-api": "npm:typescript@6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "brumate": "workspace:*",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

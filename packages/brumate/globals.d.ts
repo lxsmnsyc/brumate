@@ -37,3 +37,6 @@ declare function $context<T>(context: import('brumate/context').Context<T>): T;
 
 /** Changes an object or an array in a signal through a draft, and writes the signal with the result. */
 declare function $produce<T>(signal: T, recipe: (draft: T) => T | void): void;
+
+/** Sets the title of the page. The last component that sets it wins. */
+declare function $title(value: unknown): void;

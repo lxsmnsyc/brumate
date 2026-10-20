@@ -1,0 +1,5 @@
+<script>
+  const { label, count } = $props<{ label: string; count: number }>();
+</script>
+
+<span>{label} {count}</span>

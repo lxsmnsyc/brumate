@@ -18,5 +18,7 @@ export { generateRender } from './codegen/render.ts';
 export { generateServer } from './codegen/server.ts';
 export { createPlan, getComponentName } from './plan.ts';
 export type { AnchorTarget, Plan, ScopePlan } from './plan.ts';
+export { toTypeScript } from './check.ts';
+export type { CheckMapping, CheckOutput } from './check.ts';
 export { formatReport, inspect, report } from './inspect.ts';
 export type { InspectEntry, InspectOptions, InspectReport } from './inspect.ts';
