@@ -36,7 +36,7 @@
 - Server functions read the request with `getRequest`, set response headers with `getResponseHeaders`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
-- The head is `$title` and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A `$title` or `#head` inside a `#loading` body is not supported yet, because the head has been sent by then.
+- The head is `$title` and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A `$title` or `#head` in a `#loading` body that resolves after the first render streams with the body. A script moves it into the head and sets the title.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.

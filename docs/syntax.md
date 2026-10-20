@@ -120,7 +120,7 @@ let count = $signal(0);
 $title(`Clicked ${count} times`);
 ```
 
-The server writes `<title>` into the head of the page. When the value changes on the client, the title changes too. If several components set a title, the last one that renders wins.
+The server writes `<title>` into the head of the page. When the value changes on the client, the title changes too. If several components set a title, the last one that renders wins. A component in a `#loading` body that resolves after the first render sets the title when its body streams in.
 
 ### `$provide` and `$context`
 

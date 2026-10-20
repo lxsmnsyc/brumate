@@ -568,3 +568,21 @@ describe('children', () => {
     await waitFor(() => expect(text('.seen')).toBe('2'));
   });
 });
+
+describe('head in #loading', () => {
+  it('moves the head of a #loading body into the head, and sets the title', async () => {
+    const server = await import(file('lateHead.brm.ts'));
+    const { html, state, head, pending } = await renderParts(server.default, {});
+    expect(head).toBe('<title>Loading</title>');
+    document.head.innerHTML = head;
+    document.body.innerHTML = html + state;
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    expect(document.title).toBe('Profile of Ada');
+    expect(document.head.querySelector('meta[name="author"]')?.getAttribute('content')).toBe('Ada');
+    expect(text('.profile')).toBe('Ada');
+    expect(document.querySelector('template')).toBeNull();
+  });
+});

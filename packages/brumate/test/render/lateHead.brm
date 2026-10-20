@@ -1,0 +1,24 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import Profile from './Profile.brm';
+
+  const name = $memo(await ready);
+  $title('Loading');
+</script>
+
+#loading {
+  <Profile name=name />
+} #else {
+  <p class="fallback">Loading</p>
+}

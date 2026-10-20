@@ -1,0 +1,9 @@
+<script>
+  const { name } = $props<{ name: string }>();
+  $title(`Profile of ${name}`);
+</script>
+
+#head {
+  <meta name="author" content=name>
+}
+<p class="profile">{name}</p>

@@ -103,6 +103,7 @@ Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i
 The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-reference JSON records, one script each. The server writes them with `toCrossJSONStream`, and the client reads them with `fromCrossJSON` and one `refs` map, so later records can refer to values of earlier ones.
 
 - A record with `data-scopes` holds scopes: the page state, or the state of a `#loading` body.
+- A `#loading` body that sets the head after the first render sends `<template data-h="<id>">` with its head markup. `$bH(id, title)` moves it into the head and sets the title.
 - Any other record settles a promise in the state.
 - Records can come after the client has started. The client reads them when they are added to the page.
 

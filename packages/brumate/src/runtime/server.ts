@@ -213,12 +213,30 @@ export class Context {
 
   /** Adds the markup of a `#head` block. */
   head(html: string): void {
-    this.root.heads.push(html);
+    // After the first render, the head has been sent, so a `#loading` body sends its own.
+    (this.root.sent ? this : this.root).heads.push(html);
   }
 
   /** Sets the title of the page. The last call wins. */
   title(value: unknown): void {
-    this.root.pageTitle = value === null || value === undefined ? '' : String(value);
+    (this.root.sent ? this : this.root).pageTitle =
+      value === null || value === undefined ? '' : String(value);
+  }
+
+  /** True once the first render is done, and its head is about to be sent. */
+  private sent = false;
+
+  /** Marks the first render as done. Head markup after it streams with its `#loading` body. */
+  send(): void {
+    this.root.sent = true;
+  }
+
+  /**
+   * The head markup and the title that a `#loading` body set, after the
+   * head was sent. The title is undefined if the body set none.
+   */
+  lateHead(): { html: string; title: string | undefined } {
+    return { html: this.heads.join(''), title: this.pageTitle };
   }
 
   /** The markup for the document's head: the title and the `#head` blocks. */
@@ -387,6 +405,9 @@ export function stateScript(
   return `<script type="brumate/state"${extra}>${json}</script>`;
 }
 
+// Moves the head markup of a `#loading` body into the head, and sets the title.
+const HEAD = `function $bH(i,t){var e=document.querySelector('template[data-h="'+i+'"]');e&&(document.head.append(e.content),e.remove());t!=null&&(document.title=t)}`;
+
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `function $bS(i){var t=document.querySelector('template[data-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
@@ -500,12 +521,14 @@ export async function render<P>(
   const rendered = options.request
     ? await withRequest(options.request, response, run)
     : await run();
+  ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
   let open = 0;
   let swap = false;
+  let headSwap = false;
   const finish = (): void => {
     open--;
     if (open === 0) {
@@ -539,10 +562,21 @@ export async function render<P>(
     boundary.render.then(
       (result) => {
         serialize(result.ctx.state, (script) => {
-          const call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
+          let call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
           swap = true;
+          const late = result.ctx.lateHead();
+          let head = '';
+          if (late.html || late.title !== undefined) {
+            head = `<template data-h="${boundary.id}">${late.html}</template>`;
+            const title =
+              late.title === undefined
+                ? ''
+                : `,${JSON.stringify(late.title).replace(/</g, '\\u003c')}`;
+            call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
+            headSwap = true;
+          }
           queue.push(
-            `<template data-l="${boundary.id}">${result.html}</template>${result.ctx.portals.join('')}${script}${scriptTag}${call}</script>`,
+            `<template data-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${script}${scriptTag}${call}</script>`,
           );
         });
         finish();
