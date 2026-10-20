@@ -129,11 +129,16 @@ function complete(region: Region): boolean {
  * Plans to replace only the routes that change, when the new page has the
  * same root route as the current one. Returns undefined when it cannot.
  */
-function planRoutes(next: Document): Plan | undefined {
+function planRoutes(next: Document, requested: number): Plan | undefined {
   const scripts = document.querySelectorAll(`${STATE}[data-route]`);
   const route = scripts[scripts.length - 1]?.getAttribute('data-route');
   const state = next.body.querySelector(`${STATE}[data-route]`);
   if (!route || state?.getAttribute('data-route') !== route) {
+    return undefined;
+  }
+  // A page that did not start its IDs above this one, such as a static file that
+  // ignores the request header, would mix its IDs with the kept layouts.
+  if (state.getAttribute('data-root') !== String(requested)) {
     return undefined;
   }
   const result = plan(regions(document.body), regions(next.body), {
@@ -273,6 +278,7 @@ function scroll(url: URL, saved: number | undefined): void {
  */
 export async function navigate(visit: Visit): Promise<void> {
   controller?.abort();
+  const requested = base();
   const current = new AbortController();
   controller = current;
   // The scroll position of the page that is left, for the back button.
@@ -280,7 +286,7 @@ export async function navigate(visit: Visit): Promise<void> {
   let response: Response;
   try {
     const headers = new Headers(visit.init?.headers);
-    headers.set('x-brumate-base', String(base()));
+    headers.set('x-brumate-base', String(requested));
     response = await fetch(visit.url, { ...visit.init, headers, signal: current.signal });
   } catch (error) {
     if (!current.signal.aborted) {
@@ -327,7 +333,7 @@ export async function navigate(visit: Visit): Promise<void> {
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
   // A link keeps the layouts that stay the same. A form replaces the whole page,
   // because what it changed can show anywhere on it.
-  const routes = visit.init ? undefined : planRoutes(next);
+  const routes = visit.init ? undefined : planRoutes(next, requested);
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     return;

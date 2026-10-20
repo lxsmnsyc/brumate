@@ -34,7 +34,7 @@ function page(layout: number, route: string, next: number): string {
   return (
     `<nav data-b="${layout}:0">Menu</nav>` +
     `<main><!--R${layout}:children:${layout + 1}:${encodeURIComponent(route)}--><p>${route}</p><!--/R--></main>` +
-    `<script type="brumate/state" data-scopes data-next="${next}" data-route="root">{}</script>`
+    pageState(next, layout)
   );
 }
 
@@ -43,9 +43,10 @@ function region(layout: number, route: string, content: string): string {
   return `<main><!--R${layout}:children:${layout + 1}:${encodeURIComponent(route)}-->${content}<!--/R--></main>`;
 }
 
-/** The first state record of a page with a root route. */
-function pageState(next: number): string {
-  return `<script type="brumate/state" data-scopes data-next="${next}" data-route="root">{}</script>`;
+/** The first state record of a page with a root route. `base` is where its IDs start. */
+function pageState(next: number, base = 0): string {
+  const root = base > 0 ? ` data-root="${base}"` : '';
+  return `<script type="brumate/state" data-scopes data-next="${next}" data-route="root"${root}>{}</script>`;
 }
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
@@ -174,7 +175,7 @@ describe('navigate', () => {
       'fetch',
       vi.fn(async () => {
         const { response, next } = respond([
-          `<!doctype html><html><head><title>B</title></head><body>${region(2, '/b', '<p>b</p>')}<aside><b s-b1>Badge</b></aside>${pageState(4)}</body></html>`,
+          `<!doctype html><html><head><title>B</title></head><body>${region(2, '/b', '<p>b</p>')}<aside><b s-b1>Badge</b></aside>${pageState(4, 2)}</body></html>`,
         ]);
         next();
         next();
@@ -184,5 +185,35 @@ describe('navigate', () => {
     await navigate({ url: '/b', push: true, leave: async () => {}, enter: () => {} });
     expect(document.head.querySelector('style[data-brm="Badge_b1"]')).not.toBeNull();
     expect(document.querySelector('style[data-brm="Card_c1"]')).toBeNull();
+  });
+
+  it('replaces the whole page when the server did not start its IDs above this page', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = page(0, '/a', 2);
+    const nav = document.querySelector('nav');
+    // A static file renders its IDs from 0, whatever the request asks for.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const { response, next } = respond([
+          `<!doctype html><html><head><title>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
+        ]);
+        next();
+        next();
+        return response;
+      }),
+    );
+    let partial: boolean | undefined;
+    await navigate({
+      url: '/b',
+      push: true,
+      leave: async (value) => {
+        partial = value;
+      },
+      enter: () => {},
+    });
+    expect(partial).toBe(false);
+    expect(document.querySelector('nav')).not.toBe(nav);
+    expect(document.querySelectorAll('script[type="brumate/state"]')).toHaveLength(1);
   });
 });

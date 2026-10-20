@@ -107,7 +107,8 @@ A link keeps the layouts that are the same on both pages, with their markup and 
 - A layout is the same when it is the same file with the same params. A layout of `todos/[id]` changes when `id` changes. The root layout never changes.
 - The server renders the whole page, and the client takes only the routes that changed. Comments in the page mark each slot: `<!--R…-->` and `<!--/R-->`.
 - The new routes read contexts from the kept layouts on the client. Their first render shows the values that the server rendered.
-- The server starts the IDs of the new page above the IDs of the page in the browser, so the two never mix.
+- The server starts the IDs of the new page above the IDs of the page in the browser, so the two never mix. The request sends that number in `x-brumate-base`.
+- A page that does not start its IDs there, such as a prerendered file on a static host, replaces the whole page instead. Its layouts render again, and their state resets.
 - A form replaces the whole page, because what it changed can show anywhere on it.
 - Portals of the new routes are not added yet.
 
