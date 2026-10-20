@@ -26,8 +26,8 @@
 - `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
 - Any `$memo` can hold a promise. The server holds every memo as a promise or a value and awaits it where it is read: where it is declared if something outside every `#loading` body reads it, and in the `#loading` bodies otherwise. The client checks each new value, and loads a promise with the old value kept until it settles.
 - `$isPending(memo)` is true while a memo loads on the client, and false on the server.
-- Server rendering streams only. `renderToStream` sends the whole document first and streams `#loading` bodies after it, and `render` returns the parts for custom servers. There is no `renderToString`, because waiting for every `#loading` body defeats streaming.
-- A component can render the whole document. The runtime adds the doctype, puts the head before `</head>`, and the state, scripts, portals and streamed markup before `</body>`.
+- Server rendering streams only. `renderToStream` sends the whole first render at once, closing tags included, and streams what resolves later after it, as Solid does. `render` returns the parts for custom servers. There is no `renderToString`, because waiting for every `#loading` body defeats streaming.
+- A component can render the whole document. The runtime adds the doctype, and puts the head before `</head>` and the state, scripts and portals before `</body>`.
 - `render` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.

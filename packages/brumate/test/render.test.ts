@@ -107,12 +107,12 @@ describe('streaming', () => {
     expect(first.value).toMatch(
       /^<body><p>Hi<\/p><script type="brumate\/state" data-scopes>.*<\/script>/,
     );
-    expect(first.value!.endsWith(scripts)).toBe(true);
+    // `end` is part of the first render too.
+    expect(first.value!.endsWith(`${scripts}</body>`)).toBe(true);
 
     settle('later');
     const second = await reader.read();
     expect(second.value).toMatch(/^<script type="brumate\/state">.*later/);
-    expect((await reader.read()).value).toBe('</body>');
     expect((await reader.read()).done).toBe(true);
   });
 
@@ -153,27 +153,28 @@ describe('documents', () => {
     const head = page.slice(page.indexOf('<head'), page.indexOf('</head>'));
     expect(head).toContain('<style data-brm=');
     expect(head).toContain('<title>Count 0</title>');
-    // The state, the scripts, the portal and the #loading body go before </body>.
+    // The state, the scripts and the portal are part of the first render, before </body>.
     const body = page.slice(page.indexOf('<body'), page.indexOf('</body>'));
     expect(body).toContain('<script type="brumate/state" data-scopes>');
     expect(body).toContain(scripts);
     expect(body).toMatch(/<p [^>]*class="note">Portal<\/p>/);
-    expect(body).toMatch(/<template data-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
-    expect(page.endsWith('</body></html>')).toBe(true);
+    // The #loading body resolves later, so it follows the document.
+    const later = page.slice(page.indexOf('</html>'));
+    expect(later).toMatch(/<template data-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
   });
 
   it('streams a complete document with renderToStream', async () => {
     const module = await import(`${new URL('document.brm.ts', output).href}?stream`);
     const reader = renderToStream(module.default, {}, { scripts }).getReader();
     const first = (await reader.read()).value!;
+    // The first render is a whole document, sent before anything resolves.
     expect(first.startsWith('<!doctype html><html')).toBe(true);
     expect(first).toMatch(/<p [^>]*class="fallback">Loading<\/p>/);
-    expect(first.endsWith(scripts)).toBe(true);
+    expect(first.endsWith(`${scripts}</body></html>`)).toBe(true);
     module.release('Ada');
     const chunks = await readAll(reader);
-    // The body streams before the end of the document.
+    // The body follows when it resolves.
     expect(chunks[0]).toMatch(/<p [^>]*class="greeting">Hello Ada<\/p>/);
-    expect(chunks.at(-1)).toBe('</body></html>');
   });
 });
 

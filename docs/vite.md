@@ -67,12 +67,11 @@ const stream = renderToStream(Root, {}, {
 });
 ```
 
-- The first chunk is the whole document with the fallbacks of `#loading` blocks. It starts with `<!doctype html>`.
-- The head of the components, their `$title`, `#head` blocks and stylesheets, goes before `</head>`.
-- The page state and `scripts` go before `</body>`. Each `#loading` body and each state record that settles a promise streams before `</body></html>` as it is ready.
-- Portal content goes before `</body>` too.
+- The first chunk is the whole first render, sent as soon as it is ready: the document from `<!doctype html>` to `</html>`, with the fallbacks of `#loading` blocks.
+- In the first chunk, the head of the components, their `$title`, `#head` blocks and stylesheets, goes before `</head>`, and the page state, `scripts` and portal content go before `</body>`.
+- Each `#loading` body and each state record that settles a promise follows as it resolves. These chunks come after `</html>`, and the browser's parser moves them into `<body>`, as it does for any content after `</html>`.
 
-A component that renders only part of the page can take `start` and `end`. `start` can be a function that receives the head:
+A component that renders only part of the page can take `start` and `end`, which are part of the first chunk. `start` can be a function that receives the head:
 
 ```ts
 renderToStream(App, {}, {

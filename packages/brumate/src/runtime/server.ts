@@ -480,10 +480,10 @@ export interface DocumentOptions extends RenderOptions {
   start?: string | ((head: string) => string);
   /**
    * Markup right after the page state, such as the client entry. Make
-   * module scripts `async`, so they run before a stream ends.
+   * module scripts `async`, so they run before the stream ends.
    */
   scripts?: string;
-  /** Markup after everything else, for a component that does not render `<html>`. */
+  /** Markup after the first render, for a component that does not render `<html>`. */
   end?: string;
 }
 
@@ -501,19 +501,17 @@ function beforeBodyEnd(html: string, content: string): string {
 }
 
 /**
- * Splits a rendered page around the place for the page state and the
- * markup that streams later. A component that renders `<html>` gets the
- * doctype and the head, and the split is before `</body>`.
+ * Builds the first chunk of a page: the whole rendered document, with the
+ * page state and the scripts. A component that renders `<html>` gets the
+ * doctype, its head before `</head>`, and the state and scripts before
+ * `</body>`. Markup that resolves later is written after it.
  */
-function layout(
-  html: string,
-  head: string,
-  options: DocumentOptions,
-): { before: string; after: string } {
+function firstRender(html: string, head: string, state: string, options: DocumentOptions): string {
+  const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
     const start = typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-    return { before: start + html, after: options.end ?? '' };
+    return start + html + tail + (options.end ?? '');
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
@@ -527,16 +525,14 @@ function layout(
     const at = bodyStart === -1 ? page.indexOf('>') + 1 : bodyStart;
     page = `${page.slice(0, at)}<head>${headContent}</head>${page.slice(at)}`;
   }
-  const bodyEnd = page.toLowerCase().lastIndexOf('</body>');
-  const split = bodyEnd === -1 ? page.length : bodyEnd;
-  return { before: `<!doctype html>${page.slice(0, split)}`, after: page.slice(split) };
+  return `<!doctype html>${beforeBodyEnd(page, tail)}`;
 }
 
 /**
- * Renders a component as a stream. The markup and the page state come
- * first, then each `#loading` body and state record as it is ready. A
- * component that renders `<html>` gets the doctype and its head, and the
- * later markup goes before `</body>`.
+ * Renders a component as a stream. The first chunk is the whole first
+ * render, sent as soon as it is ready. Each `#loading` body and each state
+ * record that settles a promise follows it as it resolves. A component that
+ * renders `<html>` gets the doctype and its head.
  */
 export function renderToStream<P>(
   Root: Component<P>,
@@ -547,13 +543,10 @@ export function renderToStream<P>(
     async start(controller) {
       try {
         const { html, state, pending, head } = await render(Root, props, options);
-        const { before, after } = layout(html, head, options);
-        controller.enqueue(`${before}${state}${options.scripts ?? ''}`);
+        // The first render goes out whole, and what resolves later follows it.
+        controller.enqueue(firstRender(html, head, state, options));
         for await (const chunk of pending) {
           controller.enqueue(chunk);
-        }
-        if (after) {
-          controller.enqueue(after);
         }
         controller.close();
       } catch (error) {
