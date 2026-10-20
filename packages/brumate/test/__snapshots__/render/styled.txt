@@ -1,5 +1,6 @@
 # Server module
 import * as $$b from 'brumate/server';
+export const rpc = {  };
 const $$css = "p[s-9wx0az] {\n    color: var(--s-9wx0az-0);\n    font-size: var(--s-9wx0az-1);\n  }\n  .note[s-9wx0az]::before {\n    content: '*';\n  }\n  body .note[s-9wx0az] {\n    margin: 0;\n  }";
 
 export default async function Styled($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {

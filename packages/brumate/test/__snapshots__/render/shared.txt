@@ -2,6 +2,7 @@
 import * as $$b from 'brumate/server';
 export const STEP = 2;
 const label = 'Count';
+export const rpc = {  };
 
 export default async function Shared($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

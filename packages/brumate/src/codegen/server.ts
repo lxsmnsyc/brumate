@@ -97,9 +97,8 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   const exported = serverFunctions(plan).map(
     (declaration) => `${JSON.stringify(`${plan.id}#${declaration.name}`)}: ${declaration.name}`,
   );
-  if (exported.length > 0) {
-    moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
-  }
+  // Every server module has it, so the server function registry can read it from any file.
+  moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
 
   if (plan.styles.css) {
     moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);

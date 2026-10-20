@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 import Child from './Child.brm';
+export const rpc = {  };
 
 export default async function List($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

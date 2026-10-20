@@ -7,6 +7,7 @@ export const ready = new Promise<string>((resolve) => {
 export function release(value: string): void {
     open(value);
   }
+export const rpc = {  };
 
 export default async function Loading($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

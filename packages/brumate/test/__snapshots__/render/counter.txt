@@ -1,5 +1,6 @@
 # Server module
 import * as $$b from 'brumate/server';
+export const rpc = {  };
 
 export default async function Counter($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

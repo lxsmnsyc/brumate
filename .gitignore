@@ -1,9 +1,9 @@
-node_modules/
-dist/
-coverage/
+.DS_Store
+.env
 *.log
 *.tgz
 *.tsbuildinfo
-.env
-.DS_Store
 **/test/.output/
+coverage/
+dist/
+node_modules/

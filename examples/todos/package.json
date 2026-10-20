@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.ts"
+    "dev": "node server.ts",
+    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
+    "start": "node server.prod.ts"
   },
   "dependencies": {
     "brumate": "workspace:*"

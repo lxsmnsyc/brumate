@@ -65,6 +65,20 @@ for await (const chunk of pending) {
 
 In development, load the component with `vite.ssrLoadModule('/src/App.brm')`. [`examples/todos`](../examples/todos) is a complete server.
 
+## Production
+
+Build the client and the server separately:
+
+```bash
+vite build --outDir dist/client
+vite build --ssr src/server.ts --outDir dist/server
+```
+
+- Set `build.manifest` and make `src/client.ts` the client input, so the server can find the built client entry in `dist/client/.vite/manifest.json`.
+- The server entry exports what the server needs, such as the root component, `renderToStream` and `handle` from `virtual:brumate/server`.
+
+[`examples/todos`](../examples/todos) has a complete production server in `server.prod.ts`.
+
 ## Server functions
 
 In development, the plugin answers `POST /_brumate/<id>` itself.
