@@ -729,6 +729,17 @@ class ClientGenerator {
         this.emitAssign(block);
         return;
       }
+      case 'portal': {
+        if (!block.target) {
+          return;
+        }
+        // A new target moves the body: the old one is removed and the body renders into the new one.
+        const body = this.plan.bodyScopes.get(block.body)!;
+        this.emit(
+          `export function ${fn}($$s) {\n  $$b.portal($$s, ${header(0)}, r${body.id}, [${body.id}]);\n}`,
+        );
+        return;
+      }
       case 'key':
         this.emit(
           `export function ${fn}($$s) {\n  $$b.rekey($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
@@ -850,12 +861,6 @@ class ClientGenerator {
         const header = this.model.sites.find(
           (site) => site.kind === 'block' && site.block === block,
         )!;
-        if (this.live.has(header)) {
-          this.error(
-            'A #portal target that changes on the client is not supported yet',
-            header.range,
-          );
-        }
         const target = this.rewriter.rewrite(header, '$$s', instanceScope(this.plan, base));
         this.emit(
           `export function k${scope.id}($$s) {\n  $$b.portal($$s, ${target}, r${scope.id});\n}`,

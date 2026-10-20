@@ -682,8 +682,12 @@ function serverScopes(root: ParentNode): Scope[] {
   });
 }
 
-/** Renders a `#portal` body into its target, between markers with its scope ID. */
-export function portal(scope: Scope, target: unknown, render: Render): void {
+/**
+ * Renders a `#portal` body into its target, between markers with its scope
+ * ID. `kinds` names the body, so a new target first removes it from the old one.
+ */
+export function portal(scope: Scope, target: unknown, render: Render, kinds: number[] = []): void {
+  disposeKinds(scope, kinds);
   const element = typeof target === 'string' ? document.querySelector(target) : target;
   if (!(element instanceof Element)) {
     return;

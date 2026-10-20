@@ -586,3 +586,16 @@ describe('head in #loading', () => {
     expect(document.querySelector('template')).toBeNull();
   });
 });
+
+describe('portal targets', () => {
+  it('moves the body of a #portal when its target changes', async () => {
+    await resume('movingPortal', {});
+    await waitFor(() => expect(document.querySelector('#left .moved')).not.toBeNull());
+    click(document.querySelector('.move')!);
+    await waitFor(() => expect(document.querySelector('#right .moved')).not.toBeNull());
+    expect(document.querySelectorAll('.moved')).toHaveLength(1);
+    click(document.querySelector('.move')!);
+    await waitFor(() => expect(document.querySelector('#left .moved')).not.toBeNull());
+    expect(document.querySelectorAll('.moved')).toHaveLength(1);
+  });
+});

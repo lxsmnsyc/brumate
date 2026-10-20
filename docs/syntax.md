@@ -319,7 +319,7 @@ Renders its body somewhere else in the page.
 ```
 
 - Without a target, the body goes to the end of the page. The server writes it after the rest of the markup, and the client appends it to `<body>`.
-- With a target, an element or a selector, the client renders the body into the target when the page loads, because the target exists only in the browser. A target that changes on the client is not supported yet.
+- With a target, an element or a selector, the client renders the body into the target when the page loads, because the target exists only in the browser. When the target changes on the client, the body is removed from the old target and renders into the new one.
 - The content of a portal is removed with the block that contains it, such as the `#if` above.
 
 ### `#head`

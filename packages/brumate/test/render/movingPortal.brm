@@ -1,0 +1,10 @@
+<script>
+  let side = $signal('#left');
+</script>
+
+<section id="left"></section>
+<section id="right"></section>
+<button class="move" onClick=(() => (side = side === '#left' ? '#right' : '#left'))>Move</button>
+#portal (side) {
+  <span class="moved">Here</span>
+}
