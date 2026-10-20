@@ -49,6 +49,19 @@ export const h0 = async (scope) => {
 
 The update code for `todos`, `left` and the `#for` block is in a separate chunk. It loads on the first write to `todos`.
 
+## Code splitting
+
+The compiler splits code itself. It does not depend on another splitter or on the bundler.
+
+- Each client root becomes its own module. The compiler moves the function out of the component and replaces its captured variables with reads from the scope.
+- Each server function becomes its own server module. The client module gets a stub that calls it by ID.
+- Code that more than one chunk reaches, such as a local helper function, moves to a shared module that those chunks import.
+- Imports are copied into each module that uses them, and removed where they are no longer used.
+
+The output is plain ES modules with static imports. A bundler can bundle them, but does not need to know how they were split.
+
+A bundler plugin connects the compiler to the dev server and the build. It serves the split modules as virtual modules and maps server function IDs to their modules.
+
 ## Runtime
 
 The runtime has two parts.
@@ -73,5 +86,4 @@ The core loads on the first handler call:
 ## Dependencies
 
 - [seroval](https://github.com/lxsmnsyc/seroval) for serialization.
-- [dismantle](https://github.com/lxsmnsyc/dismantle) to split `'use server'` functions and client chunks.
 - [oxc-parser](https://github.com/oxc-project/oxc) for the scripts, as in solid-sfc.

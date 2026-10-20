@@ -13,7 +13,8 @@
 - Server functions may capture module-scope bindings and imports only.
 - An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
-- seroval is the serializer. dismantle is the code splitter.
+- seroval is the serializer.
+- The compiler splits client roots and server functions into modules itself. It does not use another splitter.
 
 ## Open
 

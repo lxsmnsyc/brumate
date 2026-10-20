@@ -47,7 +47,7 @@ The capture rule keeps everything that the client sends in the arguments. There 
 - On the client, the function becomes a stub: `rpc('<id>', args)`. Its body never ships.
 - The ID is a hash of the file and the function, so source names are not exposed.
 
-[dismantle](https://github.com/lxsmnsyc/dismantle) already splits `'use server'` functions into their own modules, so it is the planned splitter.
+The compiler splits server functions into their own modules itself. See [Compiler](./compiler.md#code-splitting).
 
 ## Async `$memo`
 
