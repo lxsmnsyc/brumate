@@ -90,8 +90,27 @@ export function start(options: LoaderOptions): () => void {
     }
   };
 
+  // Templates are started once, even when markup is scanned again.
+  const started = new WeakSet<Element>();
+  const select = (root: ParentNode, selector: string): Element[] => {
+    const found = [...root.querySelectorAll(selector)];
+    if ((root as Element).matches?.(selector)) {
+      found.unshift(root as Element);
+    }
+    return found.filter((element) => {
+      if (element.tagName !== 'TEMPLATE') {
+        return true;
+      }
+      if (started.has(element)) {
+        return false;
+      }
+      started.add(element);
+      return true;
+    });
+  };
+
   const scan = (root: ParentNode): void => {
-    for (const element of root.querySelectorAll('[data-on]:not(template)')) {
+    for (const element of select(root, '[data-on]:not(template)')) {
       for (const { type } of entries(element)) {
         if (!types.has(type)) {
           types.add(type);
@@ -99,13 +118,13 @@ export function start(options: LoaderOptions): () => void {
         }
       }
     }
-    for (const template of root.querySelectorAll('template[data-listen]')) {
+    for (const template of select(root, 'template[data-listen]')) {
       const target = template.getAttribute('data-listen') === 'window' ? window : document;
       for (const entry of entries(template)) {
         listen(target, entry.type, (event) => apply(event, template, entry));
       }
     }
-    for (const template of root.querySelectorAll('template[data-client]')) {
+    for (const template of select(root, 'template[data-client]')) {
       const [trigger, ref] = template.getAttribute('data-client')!.split('=') as [string, string];
       const go = (): void => run(template, ref);
       const next = template.nextElementSibling;
@@ -141,7 +160,19 @@ export function start(options: LoaderOptions): () => void {
   );
 
   scan(document);
+  // Markup that streams in later, such as a `#loading` body, has handlers too.
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType === 1) {
+          scan(node as Element);
+        }
+      }
+    }
+  });
+  observer.observe(document, { childList: true, subtree: true });
   return () => {
+    observer.disconnect();
     for (const remove of removers.splice(0)) {
       remove();
     }

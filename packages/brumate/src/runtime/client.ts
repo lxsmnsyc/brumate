@@ -57,7 +57,9 @@ const modules = new Map<string, ClientModule>();
 const loading = new Map<string, Promise<ClientModule>>();
 const comments = new Map<string, Comment>();
 const elements = new Map<string, Element>();
-let nextId = 0;
+// Scopes that the client creates get negative IDs, so they never match IDs
+// from state records that the server streams later.
+let nextId = -1;
 
 // Records share references through this map, so a later record can settle a promise of an earlier one.
 let refs: Map<number, unknown> | undefined;
@@ -72,18 +74,19 @@ function readRecord(script: Element): void {
     return;
   }
   read.add(script);
-  const initial = refs === undefined;
   refs ??= new Map();
   const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), { plugins, refs });
-  if (initial) {
+  // Records with scopes: the page state, and the state of each `#loading` body.
+  if (script.hasAttribute('data-scopes')) {
     addScopes(value);
   }
 }
 
 function addScopes(state: PageState): void {
+  const added: Scope[] = [];
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
-    scopes.set(id, {
+    const scope: Scope = {
       id,
       k: record.k ?? 0,
       m: record.m,
@@ -91,8 +94,9 @@ function addScopes(state: PageState): void {
       i: record.i,
       c: record.c,
       children: new Set(),
-    });
-    nextId = Math.max(nextId, id + 1);
+    };
+    scopes.set(id, scope);
+    added.push(scope);
   }
   for (const [key, record] of Object.entries(state)) {
     if (record.p !== undefined) {
@@ -102,7 +106,7 @@ function addScopes(state: PageState): void {
     }
   }
   const seen = new Set<object>();
-  for (const scope of scopes.values()) {
+  for (const scope of added) {
     for (let i = 0; i < scope.s.length; i++) {
       scope.s[i] = callable(scope.s[i], seen);
     }
@@ -297,7 +301,7 @@ function disposeKinds(scope: Scope, kinds: number[]): void {
 
 // DOM
 
-const MARKER = /^[bti]\d/;
+const MARKER = /^[btil]-?\d/;
 
 function markerKey(data: string): string {
   return data[0] === 'b' ? data.split(':').slice(0, 2).join(':') : data;
@@ -503,7 +507,7 @@ export function list(
   const others: Node[] = [];
   let position = 0;
   for (let node = start.nextSibling; node && node !== end;) {
-    if (node.nodeType === 8 && /^i\d+$/.test((node as Comment).data)) {
+    if (node.nodeType === 8 && /^i-?\d+$/.test((node as Comment).data)) {
       const itemEnd = rangeEnd(node as Comment);
       const nodes: Node[] = [];
       for (let current: Node | null = node; current; current = current.nextSibling) {
@@ -665,7 +669,7 @@ class ClientContext {
   readonly after: (() => void)[] = [];
 
   scope(kind: number, parent?: Scope | number, module?: string): number {
-    const id = nextId++;
+    const id = nextId--;
     const parentScope = resolveScope(parent);
     const scope: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
     parentScope?.children.add(scope);

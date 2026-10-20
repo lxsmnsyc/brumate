@@ -64,7 +64,7 @@ Declares writable state. Reading the variable reads the value. Assigning to it w
 Declares a read-only value computed from other values.
 
 - Assigning to it is a compile error.
-- It can hold a promise. The server awaits it. Reading it suspends the nearest `#loading` block on the client.
+- It can hold a promise. On the server, a `#loading` body that reads it renders after the rest of the page, and the stream sends it when the promise settles. Code and markup outside every `#loading` body that read it wait for it where the memo is declared.
 - An async `$memo` may only call server functions. See [Server functions](./server-functions.md).
 
 ### Element references

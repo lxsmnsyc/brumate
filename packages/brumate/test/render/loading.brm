@@ -1,0 +1,24 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  let count = $signal(0);
+  const greeting = $memo(`Hello ${await ready}`);
+</script>
+
+<button class="outer" onClick=(() => count++)>{count}</button>
+#loading {
+  <p class="greeting">{greeting}</p>
+  <button class="inner" onClick=(() => count++)>{count}</button>
+} #else {
+  <p class="fallback">Loading</p>
+}

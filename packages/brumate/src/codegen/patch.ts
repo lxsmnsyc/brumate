@@ -40,12 +40,23 @@ export class Patch {
   }
 }
 
+/** The variable that holds the promise of an async memo on the server. */
+export function promiseName(name: string): string {
+  return `$$p_${name}`;
+}
+
 /**
  * Adds edits that turn compile-time functions into plain values:
  * `$signal(x)` and `$memo(x)` become `(x)`, `$props()` becomes `$$props`
- * and `$untrack(x)` becomes `(x)`.
+ * and `$untrack(x)` becomes `(x)`. On the server, an async memo is renamed
+ * to `$$p_<name>`, because it holds a promise that is awaited where it is read.
  */
-export function addValueEdits(patch: Patch, file: SFCFile, sites: Site[]): void {
+export function addValueEdits(
+  patch: Patch,
+  file: SFCFile,
+  sites: Site[],
+  mode: 'server' | 'client' = 'server',
+): void {
   const sitesByNode = new Map<object, Site>();
   for (const site of sites) {
     sitesByNode.set(site.node, site);
@@ -63,10 +74,22 @@ export function addValueEdits(patch: Patch, file: SFCFile, sites: Site[]): void 
           patch.replace(node.start, node.end, 'undefined');
           return;
         }
-        const isAsync =
-          name === '$memo' && sitesByNode.get(argument)?.declaration?.kind === 'async-memo';
-        patch.replace(node.start, argument.start, isAsync ? '(await (' : '(');
-        patch.replace(argument.end, node.end, isAsync ? '))' : ')');
+        const declaration = name === '$memo' ? sitesByNode.get(argument)?.declaration : undefined;
+        if (declaration?.kind === 'async-memo') {
+          if (mode === 'server') {
+            patch.replace(
+              declaration.range.start,
+              declaration.range.end,
+              promiseName(declaration.name),
+            );
+          }
+          // The memo is a promise, so an `await` in it does not hold up the code after it.
+          patch.replace(node.start, argument.start, '(async () => (');
+          patch.replace(argument.end, node.end, '))()');
+        } else {
+          patch.replace(node.start, argument.start, '(');
+          patch.replace(argument.end, node.end, ')');
+        }
         visit(argument);
         return;
       }

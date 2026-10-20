@@ -10,10 +10,28 @@ export type { Raw } from './html.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
 
-/** Tracks the scopes of one render. */
+/** A `#loading` body that renders after the rest of the page. */
+interface Boundary {
+  id: number;
+  /** Resolves to the body's markup, and its scopes in `ctx.state`. */
+  render: Promise<{ html: string; ctx: Context }>;
+}
+
+/**
+ * Tracks the scopes of one render. A `#loading` body renders in a child
+ * context, so its scopes are written with its markup.
+ */
 export class Context {
-  private nextScope = 0;
   readonly state: PageState = {};
+  private readonly root: Context;
+  private nextScope = 0;
+  private nextBoundary = 0;
+  private readonly boundaries: Boundary[] = [];
+  private onBoundary: ((boundary: Boundary) => void) | undefined;
+
+  constructor(root?: Context) {
+    this.root = root ?? this;
+  }
 
   /**
    * Returns a new scope ID. `kind` is the scope's ID in the compiled
@@ -21,7 +39,7 @@ export class Context {
    * component ID of a component's root scope.
    */
   scope(kind: number, parent?: number, module?: string): number {
-    const id = this.nextScope++;
+    const id = this.root.nextScope++;
     const record = this.record(id);
     record.k = kind;
     if (parent !== undefined) {
@@ -35,7 +53,7 @@ export class Context {
 
   /** The ID that the next call to `scope()` returns. */
   peek(): number {
-    return this.nextScope;
+    return this.root.nextScope;
   }
 
   private record(scope: number): ScopeState {
@@ -70,6 +88,33 @@ export class Context {
       functionReferences.set(value, new FunctionReference(ref, scope));
     }
     return value;
+  }
+
+  /** Returns the ID of a new `#loading` boundary. */
+  boundary(): number {
+    return this.root.nextBoundary++;
+  }
+
+  /** Renders a `#loading` body after the rest of the page, in its own context. */
+  defer(id: number, render: (ctx: Context) => Promise<string>): void {
+    const child = new Context(this.root);
+    const boundary: Boundary = { id, render: render(child).then((html) => ({ html, ctx: child })) };
+    // The page does not wait for it, so a failure must not be unhandled.
+    boundary.render.catch(() => {});
+    const root = this.root;
+    if (root.onBoundary) {
+      root.onBoundary(boundary);
+    } else {
+      root.boundaries.push(boundary);
+    }
+  }
+
+  /** Receives every boundary, including those registered before this call. */
+  watch(onBoundary: (boundary: Boundary) => void): void {
+    this.onBoundary = onBoundary;
+    for (const boundary of this.boundaries.splice(0)) {
+      onBoundary(boundary);
+    }
   }
 }
 
@@ -140,15 +185,28 @@ export function streamState(
   });
 }
 
+/**
+ * Returns the script for one state record. `scopes` marks a record that
+ * holds scopes, as opposed to one that settles a promise.
+ */
+export function stateScript(record: SerovalNode, scopes = false): string {
+  const json = JSON.stringify(record).replace(/</g, '\\u003c');
+  return `<script type="brumate/state"${scopes ? ' data-scopes' : ''}>${json}</script>`;
+}
+
+// Moves a `#loading` body from its <template> into the page, in place of the fallback.
+const SWAP = `function $bS(i){var t=document.querySelector('template[data-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+
 export interface RenderResult {
+  /** The markup. A `#loading` body that is not ready shows its fallback. */
   html: string;
-  /** The first state record. It holds the page state. */
-  state: SerovalNode;
+  /** The script that holds the page state. */
+  state: string;
   /**
-   * The records that settle promises in the state, as they are ready. Write
-   * each one with `stateScript` after the page, so the client can read it.
+   * Markup to write after the page, as it is ready: the bodies of
+   * `#loading` blocks, and the state records that settle promises.
    */
-  pending: AsyncIterable<SerovalNode>;
+  pending: AsyncIterable<string>;
 }
 
 /** An async iterable that a producer pushes into. */
@@ -189,7 +247,7 @@ function createQueue<T>(): {
           } else if (closed) {
             return;
           } else {
-            // oxlint-disable-next-line no-await-in-loop -- Each wait is for the next record.
+            // oxlint-disable-next-line no-await-in-loop -- Each wait is for the next item.
             await new Promise<void>((resolve) => {
               wake = resolve;
             });
@@ -201,46 +259,84 @@ function createQueue<T>(): {
 }
 
 /**
- * Renders a component. It returns as soon as the markup is rendered, with
- * the first state record. Promises in the state do not hold it up: their
- * records come later, from `pending`.
+ * Renders a component. It returns as soon as the markup is rendered.
+ * `#loading` bodies and promises in the state do not hold it up: they come
+ * later, from `pending`.
  */
 export async function renderToString<P>(Root: Component<P>, props: P): Promise<RenderResult> {
   const ctx = new Context();
   const html = await Root(props, ctx);
-  const queue = createQueue<SerovalNode>();
-  let state: SerovalNode | undefined;
-  toCrossJSONStream(ctx.state, {
-    plugins,
-    onParse(record, initial) {
-      if (initial) {
-        state = record;
-      } else {
-        queue.push(record);
-      }
-    },
-    onError: queue.fail,
-    onDone: queue.close,
+  const queue = createQueue<string>();
+  // Records share references, so later records can point into earlier ones.
+  const refs = new Map<unknown, number>();
+  let open = 0;
+  let swap = false;
+  const finish = (): void => {
+    open--;
+    if (open === 0) {
+      queue.close();
+    }
+  };
+  const serialize = (state: PageState, onScopes: (script: string) => void): void => {
+    open++;
+    toCrossJSONStream(state, {
+      plugins,
+      refs,
+      onParse(record, initial) {
+        if (initial) {
+          onScopes(stateScript(record, true));
+        } else {
+          queue.push(stateScript(record));
+        }
+      },
+      onError: queue.fail,
+      onDone: finish,
+    });
+  };
+
+  ctx.watch((boundary) => {
+    open++;
+    boundary.render.then(
+      (result) => {
+        serialize(result.ctx.state, (script) => {
+          const call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
+          swap = true;
+          queue.push(
+            `<template data-l="${boundary.id}">${result.html}</template>${script}<script>${call}</script>`,
+          );
+        });
+        finish();
+      },
+      (error: unknown) => {
+        // The fallback stays in the page.
+        console.error(error);
+        finish();
+      },
+    );
   });
-  // The stream parser writes the first record before it returns.
-  return { html, state: state!, pending: queue.iterable };
+
+  let state = '';
+  serialize(ctx.state, (script) => {
+    state = script;
+  });
+  return { html, state, pending: queue.iterable };
 }
 
 export interface StreamOptions {
   /** Markup before the component, such as the start of the document. */
   start?: string;
   /**
-   * Markup right after the first state record, such as the client entry.
-   * Make module scripts `async`, so they run before the stream ends.
+   * Markup right after the page state, such as the client entry. Make
+   * module scripts `async`, so they run before the stream ends.
    */
   scripts?: string;
-  /** Markup after the component and its state, such as the end of the document. */
+  /** Markup after everything else, such as the end of the document. */
   end?: string;
 }
 
 /**
- * Renders a component as a stream: the markup and the first state record,
- * then a script for each state record as its promise settles.
+ * Renders a component as a stream: the markup and the page state, then each
+ * `#loading` body and state record as it is ready.
  */
 export function renderToStream<P>(
   Root: Component<P>,
@@ -251,11 +347,9 @@ export function renderToStream<P>(
     async start(controller) {
       try {
         const { html, state, pending } = await renderToString(Root, props);
-        controller.enqueue(
-          `${options.start ?? ''}${html}${stateScript(state)}${options.scripts ?? ''}`,
-        );
-        for await (const record of pending) {
-          controller.enqueue(stateScript(record));
+        controller.enqueue(`${options.start ?? ''}${html}${state}${options.scripts ?? ''}`);
+        for await (const chunk of pending) {
+          controller.enqueue(chunk);
         }
         if (options.end) {
           controller.enqueue(options.end);
@@ -266,12 +360,6 @@ export function renderToStream<P>(
       }
     },
   });
-}
-
-/** Returns the script for one state record. */
-export function stateScript(record: SerovalNode): string {
-  const json = JSON.stringify(record).replace(/</g, '\\u003c');
-  return `<script type="brumate/state">${json}</script>`;
 }
 
 /**

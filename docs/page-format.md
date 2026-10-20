@@ -4,7 +4,7 @@ The server writes markers into the HTML and the state into a script. The client 
 
 ## Scope IDs
 
-Every scope that client code needs gets an integer ID at render time. IDs are given in render order, starting at `0`, so they are unique in the page.
+Every scope that client code needs gets an integer ID at render time. The server gives IDs in order, starting at `0`, so they are unique in the page. Scopes that the client creates get negative IDs, so they never match IDs that the server streams later.
 
 - A component instance always gets an ID.
 - A body scope gets an ID when it has slots or anchors, or when it is an item of a `#for` or `#repeat` whose list can change.
@@ -44,6 +44,26 @@ The value of a live insert is between the two comments.
 - `#for`, `#repeat`, `#key`, `#try`, `#loading` and `#client` blocks have no third number.
 - A `#client` block is empty. The client renders it when its trigger fires.
 
+### `#loading`
+
+```html
+<!--l0--><p>Loading…</p><!--/l-->
+```
+
+On the server, `#loading` writes its fallback between `<!--l<id>-->` and `<!--/l-->`, and renders its body after the rest of the page. The number is the boundary ID. When the body is ready, the stream sends:
+
+```html
+<template data-l="0"><blockquote>…</blockquote></template>
+<script type="brumate/state" data-scopes>…</script>
+<script>$bS(0)</script>
+```
+
+- The `<template>` holds the body.
+- The state record holds the scopes of the body.
+- The script swaps the body in, in place of the fallback and the markers. The first swap script also defines `$bS`.
+
+If the body fails, the fallback stays.
+
 ### Items
 
 ```html
@@ -72,8 +92,9 @@ Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i
 
 The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-reference JSON records, one script each. The server writes them with `toCrossJSONStream`, and the client reads them with `fromCrossJSON` and one `refs` map, so later records can refer to values of earlier ones.
 
-- The first record holds the page state.
-- Each later record settles a promise in the state. It can come after the client has started. The client reads it when the script is added to the page.
+- A record with `data-scopes` holds scopes: the page state, or the state of a `#loading` body.
+- Any other record settles a promise in the state.
+- Records can come after the client has started. The client reads them when they are added to the page.
 
 The first record turns into an object keyed by scope ID:
 

@@ -36,6 +36,24 @@ function toRender(code: string): string {
   return code.replace(/\.brm\?brumate-render"/g, '.brm.render.ts"');
 }
 
+/**
+ * Appends streamed markup and runs its inline scripts, as a browser does.
+ * The test DOM does not run scripts, so they run with a global eval.
+ */
+function appendChunk(html: string): void {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  // A copy, because appending moves nodes out of the live list.
+  for (const node of Array.from(template.content.childNodes)) {
+    if (node.nodeName === 'SCRIPT' && !(node as Element).hasAttribute('type')) {
+      // oxlint-disable-next-line no-eval -- The script is the swap code from the server.
+      (0, eval)(node.textContent!);
+    } else {
+      document.body.append(node);
+    }
+  }
+}
+
 function buttons(): HTMLButtonElement[] {
   return [...document.querySelectorAll<HTMLButtonElement>('li button')];
 }
@@ -49,7 +67,7 @@ afterEach(() => {
 async function resume(name: string, props: unknown): Promise<void> {
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderToString(server.default, props);
-  document.body.innerHTML = html + stateScript(state);
+  document.body.innerHTML = html + state;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({ load: (id) => import(modules.get(id)!) });
@@ -72,7 +90,7 @@ describe('resume', () => {
     });
     const records: string[] = [];
     const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
-      records.push(stateScript(record));
+      records.push(stateScript(record, records.length === 0));
     });
     expect(records).toHaveLength(1);
     document.body.innerHTML = records[0]!;
@@ -91,6 +109,29 @@ describe('resume', () => {
     document.body.append(holder.firstChild!);
     await expect(value).resolves.toBe(42);
     client.dispose();
+  });
+
+  it('swaps in #loading bodies that stream after the page', async () => {
+    const server = await import(file('loading.brm.ts'));
+    const { html, state, pending } = await renderToString(server.default, {});
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(text('.fallback')).toBe('Loading');
+
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.greeting')).toBe('Hello Ada');
+    expect(document.querySelector('template[data-l]')).toBeNull();
+
+    // The streamed body resumes, and updates with the rest of the page.
+    click(document.querySelector('.inner')!);
+    await vi.waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.outer')).toBe('1');
   });
 
   it('updates a counter', async () => {

@@ -23,6 +23,8 @@
 - The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
 - A change to a `.brm` file reloads the page instead of replacing modules.
 - A component rendered on the client comes from its render module, a third output next to the server and client modules.
+- `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
+- An async `$memo` is a promise on the server. It is awaited where it is declared only if something outside every `#loading` body reads it.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -34,7 +36,6 @@
 - **Lists.** Without `$store`, changing one item replaces the whole array, and keyed `#for` compares the lists. Large lists will need item-level updates.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One chunk per handler gives the smallest download per event, but more requests. Grouping handlers that read the same scope may be better.
-- **Streaming.** How state for scopes rendered after a `#loading` boundary is written into a streamed page.
 - **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
 - **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
@@ -46,7 +47,8 @@
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
 - **Reporting what ships.** A dev overlay or a `brumate inspect` command that shows each component's client code and the source lines that caused it.
-- **Streaming markup.** Promises in the state no longer hold up the response, but an async `$memo` is still awaited while the server renders, so slow data holds up the markup after it. `#loading` should render its fallback and stream the content later.
+- **Stale streamed bodies.** A `#loading` body is rendered with the values of the server. If the client changes a value before the body arrives, the body shows the old value until the value changes again.
+- **Content Security Policy.** The swap scripts are inline, so a strict policy needs a nonce option.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps

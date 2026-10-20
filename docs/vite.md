@@ -51,13 +51,13 @@ const stream = renderToStream(App, { initial: [] }, {
 });
 ```
 
-`renderToString` returns the same parts without a stream: the markup, the first state record, and the later records as an async iterable. Write each record with `stateScript`.
+`renderToString` returns the same parts without a stream: the markup, the state script, and the rest as an async iterable of markup: `#loading` bodies and state records, in the order they are ready.
 
 ```ts
 const { html, state, pending } = await renderToString(App, { initial: [] });
-write(html + stateScript(state) + clientScript);
-for await (const record of pending) {
-  write(stateScript(record));
+write(html + state + clientScript);
+for await (const chunk of pending) {
+  write(chunk);
 }
 ```
 

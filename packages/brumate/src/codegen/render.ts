@@ -121,7 +121,7 @@ export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
 export function generateRender(file: SFCFile, plan: Plan): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
-  addValueEdits(patch, file, model.sites);
+  addValueEdits(patch, file, model.sites, 'client');
 
   // The names that rendering reads, so server-only imports stay out.
   const names = componentNames(file.children);

@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { compile } from '../src/index.ts';
-import { renderToStream, renderToString, stateScript } from '../src/runtime/server.ts';
+import { renderToStream, renderToString } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
 
 const input = new URL('./render/', import.meta.url);
@@ -18,6 +18,7 @@ const props: Record<string, unknown> = {
   parent: {},
   blocks: { items: ['one', 'two'], tab: 'b' },
   list: {},
+  loading: {},
 };
 
 beforeAll(() => {
@@ -51,7 +52,7 @@ describe('server render', () => {
       html.replace(/></g, '>\n<'),
       '',
       '# State',
-      stateScript(state),
+      state,
       '',
     ].join('\n');
     await expect(text).toMatchFileSnapshot(`./__snapshots__/render/${name}.txt`);
@@ -77,7 +78,9 @@ describe('streaming', () => {
     ).getReader();
 
     const first = await reader.read();
-    expect(first.value).toMatch(/^<body><p>Hi<\/p><script type="brumate\/state">.*<\/script>/);
+    expect(first.value).toMatch(
+      /^<body><p>Hi<\/p><script type="brumate\/state" data-scopes>.*<\/script>/,
+    );
     expect(first.value!.endsWith(scripts)).toBe(true);
 
     settle('later');
@@ -96,5 +99,26 @@ describe('streaming', () => {
     const result = await renderToString(Root, {});
     expect(result.html).toBe('<p>Hi</p>');
     expect(result.state).toBeDefined();
+  });
+});
+
+describe('#loading', () => {
+  it('streams the body after the fallback', async () => {
+    const module = await import(new URL('loading.brm.ts', output).href);
+    const reader = renderToStream(module.default, {}).getReader();
+
+    const first = (await reader.read()).value!;
+    expect(first).toContain('<p class="fallback">Loading</p>');
+    expect(first).not.toContain('greeting');
+
+    module.release('Ada');
+    let rest = '';
+    // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      rest += chunk.value;
+    }
+    expect(rest).toMatch(/^<template data-l="0"><p class="greeting">Hello Ada<\/p>/);
+    expect(rest).toContain('<script type="brumate/state" data-scopes>');
+    expect(rest).toMatch(/<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script>$/);
   });
 });

@@ -17,6 +17,15 @@
     console.log('Saved', list.length, 'todos');
   }
 
+  async function slowQuote() {
+    'use server';
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return 'Ship less code to the browser.';
+  }
+
+  // Streams in after the rest of the page.
+  const quote = $memo(slowQuote());
+
   async function add() {
     if (draft.trim() === '') {
       return;
@@ -45,6 +54,12 @@
   }
 </ul>
 <p>{left} left</p>
+
+#loading {
+  <blockquote>{quote}</blockquote>
+} #else {
+  <p>Loading a quote…</p>
+}
 
 <h2>Counter</h2>
 <Counter start=3 />
