@@ -31,7 +31,3 @@ brumate needs no island markers. Markup that never changes ships as HTML only, a
 Server components run on the server only. Client components still hydrate. The split is chosen by the developer with `'use client'`.
 
 brumate takes `'use server'` from this model, but decides the client side by analysis.
-
-## solid-sfc
-
-solid-sfc is the syntax that brumate starts from. It compiles to Solid 2.0, which hydrates. brumate keeps the file format and the markup, and replaces the reactive functions and the output.

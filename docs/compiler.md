@@ -8,7 +8,7 @@ The compiler reads a `.brm` file and writes three things:
 
 ## Pipeline
 
-1. **Parse.** Read the file into its scripts, styles and a markup tree with blocks. The scanner and the template and control flow parsers of solid-sfc can be reused here.
+1. **Parse.** Read the file into its scripts, styles and a markup tree with blocks.
 2. **Scope analysis.** Find the declarations in each scope: props, signals, memos, functions and block variables.
 3. **Graph.** Build the dependency graph from the reads of each node. Follow local functions. Props are live only if a parent can change them. See [Props across files](#props-across-files).
 4. **Reachability.** Start at each client root. Mark every node, function and template that it reaches.
@@ -16,8 +16,6 @@ The compiler reads a `.brm` file and writes three things:
 6. **Server codegen.** Write a render function that outputs HTML strings, markers and the state of the reachable scopes.
 7. **Client codegen.** Write one chunk per handler, plus the update code and templates that the reachable nodes need.
 8. **Render module.** Write the render function for the client. See [Render modules](#render-modules).
-
-solid-sfc compiles markup to TSX as text. This compiler needs a tree for the markup and a graph for the scripts, so steps 3 to 8 are new.
 
 ## Output sketch
 
@@ -169,4 +167,4 @@ Splitting costs a little on small components. Toggling a todo loads 859 B in thr
 ## Dependencies
 
 - [seroval](https://github.com/lxsmnsyc/seroval) for serialization.
-- [oxc-parser](https://github.com/oxc-project/oxc) for the scripts, as in solid-sfc.
+- [oxc-parser](https://github.com/oxc-project/oxc) for the scripts.

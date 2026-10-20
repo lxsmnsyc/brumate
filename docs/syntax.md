@@ -1,6 +1,6 @@
 # Syntax
 
-The syntax follows [solid-sfc](https://github.com/lxsmnsyc/solid-sfc). The file parts, the attribute syntax, the `#` blocks and block scripts are the same. The compile-time functions are fewer and some have different semantics.
+A `.brm` file has scripts, styles and markup. The markup is HTML with `{…}` expressions, attribute values without quotes, and `#` blocks for control flow.
 
 The file extension is `.brm`.
 
@@ -57,7 +57,7 @@ $untrack(count);
 
 ### `$props`
 
-Returns the props of the component. Destructuring the call keeps each prop reactive, as in solid-sfc.
+Returns the props of the component. Destructuring the call keeps each prop reactive.
 
 ### `$signal`
 
@@ -230,24 +230,19 @@ function toggle(id: string) {
 
 Signals can be written in event handlers, `$effect` callbacks, `$client` callbacks and functions called from them. A write anywhere else is a compile error, such as a write inside a `$memo` or at setup after the declaration.
 
-### Not supported
+### Rules
 
-These solid-sfc functions are not supported:
-
-- `$root`, `$owner`, `$runWithOwner` and `$reaction` need a runtime owner tree.
-- `$renderEffect` and `$trackedEffect` are replaced by `$effect`.
-- `$settled` and `$cleanup` are replaced by `$client` and the cleanup return value.
-- `$derefSignal`, `$derefMemo`, `$get`, `$set`, `$refSignal` and `$property` pass signals out of the file. Signals never leave the file, so the compiler can see every read and write.
+- Signals never leave the file. A function cannot receive a signal, only its value, so the compiler can see every read and write.
 - Changing a value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning, because nothing updates.
 - `$store` and its helpers are not supported. An object or array in a signal changes by assigning a new value, such as `todos = todos.map(…)`, or with `$produce`. A keyed `#for` keeps the elements of items that stay, so only changed items update.
 
-Scripts, expressions and attribute values cannot contain markup, as they can in solid-sfc. Use `#for` for lists and a [`#template`](#control-flow) for markup that is used as a value.
+Scripts, expressions and attribute values cannot contain markup. Use `#for` for lists and a [`#template`](#control-flow) for markup that is used as a value.
 
 Functions imported from other modules receive values, not signals. They run on the server at setup, or on the client inside a client root.
 
 ## Markup
 
-The attribute syntax is the same as solid-sfc:
+Attributes take a quoted string, a bare name or a parenthesized expression:
 
 ```html
 <button onClick=increment disabled=(count > MAX)>{count}</button>
@@ -308,7 +303,7 @@ They are client roots. Their listeners are added when the page resumes, and remo
 
 ## Control flow
 
-These blocks work as in solid-sfc:
+The blocks:
 
 - `#if`, `#else if` and `#else`.
 - `#for (item, index of list by key)` and its `#else`.
@@ -317,7 +312,7 @@ These blocks work as in solid-sfc:
 - `#template`.
 - A `<script>` at the start of a block body.
 
-The difference is that a block's create code ships only if its condition, list or key can change on the client. Otherwise the block is HTML only.
+A block's create code ships only if its condition, list or key can change on the client. Otherwise the block is HTML only.
 
 Markup is static by default. Markup that never changes ships as HTML only, so there is no block to mark it static.
 

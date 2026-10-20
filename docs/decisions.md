@@ -2,7 +2,6 @@
 
 ## Decided
 
-- The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
 - There are twelve compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide`, `$context`, `$id` and `$title`.
@@ -42,11 +41,11 @@
 - Scope IDs are integers given in render order. A render can start above another one with `base`, so several roots and pages that the client loads in place never share IDs.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter. A component whose parts are small in all ships them as one module, because one request costs more than the bytes it saves.
-- A component's stylesheet is inlined before its first instance on the page, as in solid-sfc, so a page carries only the CSS of what it renders. There is no CSS file of every component, because it would load CSS that the page does not use and block rendering.
+- A component's stylesheet is inlined before its first instance on the page, so a page carries only the CSS of what it renders. There is no CSS file of every component, because it would load CSS that the page does not use and block rendering.
 - A dynamic tag is a `#key` block on its tag, so a new element name or component renders again. A component in the page state is written as its ID. The client code that changes the value uses the component's render module.
 - Effects run after the other updates of a write, once each, so they see the new markup and every new memo value.
 - The type checker reports a signal or memo that the client reads and whose type seroval cannot write, such as a function or a class instance with methods.
-- `.brm` files are type-checked through generated TypeScript, with a Volar language plugin, as solid-sfc does. `brumate-tsc` checks a project, and `@brumate/typescript-plugin` serves editors.
+- `.brm` files are type-checked through generated TypeScript, with a Volar language plugin. `brumate-tsc` checks a project, and `@brumate/typescript-plugin` serves editors.
 - `children` ship as the HTML that the server rendered. When the client inserts them again, it runs the updates of the scopes in them, so the values are current. Updates to markup that is not in the page do nothing.
 - Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 

@@ -15,6 +15,9 @@ const TYPES: Record<string, string> = {
 };
 
 const http = createServer(async (request, response) => {
+  // The playground runs a WebAssembly parser with threads, which needs cross-origin isolation.
+  response.setHeader('cross-origin-opener-policy', 'same-origin');
+  response.setHeader('cross-origin-embedder-policy', 'require-corp');
   const url = new URL(request.url ?? '/', 'http://localhost');
   const candidates = [url.pathname, path.join(url.pathname, 'index.html')];
   for (const candidate of candidates) {

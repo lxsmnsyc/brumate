@@ -1,4 +1,4 @@
-import { gzipSync } from 'node:zlib';
+import { builtin } from './node.ts';
 import type { Markup } from './ast.ts';
 import { compile } from './compile.ts';
 import type { CompileOptions, CompileResult } from './compile.ts';
@@ -145,7 +145,13 @@ export function report(
 
   const sizes: InspectReport['sizes'] = [];
   const add = (module: string, code: string): void => {
-    sizes.push({ module, bytes: Buffer.byteLength(code), gzip: gzipSync(code).length });
+    // Outside Node, such as in a browser, the gzip size is not measured.
+    const zlib = builtin('node:zlib');
+    sizes.push({
+      module,
+      bytes: new TextEncoder().encode(code).length,
+      gzip: zlib ? zlib.gzipSync(code).length : 0,
+    });
   };
   add('entry', result.client);
   for (const [name, code] of Object.entries(result.parts)) {

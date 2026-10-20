@@ -11,7 +11,7 @@ This repository holds the design and the compiler. The compiler generates a serv
 - Ship only the client code that an interaction can reach. Markup that never changes ships as HTML and nothing else.
 - Never run component code again on the client to rebuild state.
 - Keep a loader under 1 KB that is the only code loaded before the first interaction.
-- Keep the syntax close to [solid-sfc](https://github.com/lxsmnsyc/solid-sfc), without matching Solid's semantics.
+- Keep the syntax small: scripts, markup with `#` blocks, and a few compile-time functions.
 
 ## Example
 

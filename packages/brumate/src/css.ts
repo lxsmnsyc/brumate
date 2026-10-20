@@ -1,6 +1,4 @@
-import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
+import { builtin } from './node.ts';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
@@ -78,9 +76,15 @@ function scopeRules(root: Root, attribute: string): void {
  * Returns undefined when it is not installed.
  */
 function loadPreprocessor<T>(name: string): T | undefined {
+  const module = builtin('node:module');
+  const path = builtin('node:path');
+  if (!module || !path) {
+    // In a browser, preprocessors are not available.
+    return undefined;
+  }
   for (const base of [path.join(process.cwd(), 'package.json'), import.meta.url]) {
     try {
-      return createRequire(base)(name) as T;
+      return module.createRequire(base)(name) as T;
     } catch {
       // Not installed here.
     }
@@ -121,13 +125,14 @@ function preprocess(
     if (!sass) {
       throw new Error('<style lang="scss"> needs the sass package. Install it in the project');
     }
+    const url = builtin('node:url')!;
     const result = sass.compileString(source, {
       syntax: 'scss',
-      url: file ? pathToFileURL(file) : undefined,
+      url: file ? url.pathToFileURL(file) : undefined,
     });
-    for (const url of result.loadedUrls) {
-      if (url.protocol === 'file:' && fileURLToPath(url) !== file) {
-        dependencies.push(fileURLToPath(url));
+    for (const loaded of result.loadedUrls) {
+      if (loaded.protocol === 'file:' && url.fileURLToPath(loaded) !== file) {
+        dependencies.push(url.fileURLToPath(loaded));
       }
     }
     return result.css;

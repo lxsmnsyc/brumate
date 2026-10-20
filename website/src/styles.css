@@ -816,3 +816,274 @@ pre {
     display: block;
   }
 }
+
+/* Search */
+
+.search {
+  position: relative;
+  flex: 0 1 18rem;
+  margin: 0 1rem;
+}
+
+.search input {
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.search input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  left: 0;
+  min-width: 20rem;
+  max-height: 70vh;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+}
+
+.search-results a {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.search-results a:hover,
+.search-results a:focus {
+  background: var(--surface);
+}
+
+.search-results small {
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+}
+
+.search-results span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.search-empty {
+  margin: 0;
+  padding: 0.6rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 800px) {
+  .search {
+    flex-basis: 9rem;
+    margin: 0 0.5rem;
+  }
+}
+
+/* Playground */
+
+.playground-page {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.playground-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.playground-bar h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.playground-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.playground-bar select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.playground-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.playground-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  height: calc(100vh - var(--header-height) - 6rem);
+  min-height: 28rem;
+}
+
+.editor {
+  position: relative;
+  min-height: 0;
+}
+
+.editor-backdrop,
+.editor textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font: 0.85rem/1.6 var(--mono);
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+}
+
+.editor-backdrop {
+  pointer-events: none;
+}
+
+.editor textarea {
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: none;
+}
+
+.editor textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.editor textarea::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: transparent;
+}
+
+.output {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  padding: 0.3rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: 0.8rem var(--mono);
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.output-code {
+  flex: 1;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.sizes {
+  margin: 1rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sizes th,
+.sizes td {
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.sizes .num {
+  font-family: var(--mono);
+  text-align: right;
+}
+
+.output .playground-note {
+  margin: 0 1rem 1rem;
+}
+
+.warnings {
+  margin: 0;
+  padding: 0.75rem 1rem 0.75rem 2rem;
+  border-top: 1px solid var(--border);
+  color: #b7791f;
+  font-size: 0.85rem;
+}
+
+.error {
+  margin: 0;
+  padding: 1rem;
+  color: #d64545;
+  font: 0.85rem/1.6 var(--mono);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+  .playground-grid {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .editor {
+    height: 24rem;
+  }
+
+  .output {
+    height: 28rem;
+  }
+}
+
+/* Highlighted code from twinkleplop is a <pre> of its own. */
+.code .twinkleplop {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  overflow: visible;
+}

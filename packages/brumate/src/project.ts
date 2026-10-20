@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { analyze } from './analyze.ts';
 import type { Attribute, Markup, SFCFile } from './ast.ts';
 import { buildGraph } from './graph.ts';
@@ -137,7 +136,7 @@ export function resolveRelative(specifier: string, importer: string): string | u
   if (!specifier.startsWith('.') || !specifier.endsWith('.brm')) {
     return undefined;
   }
-  return path.posix.join(path.posix.dirname(importer), specifier);
+  return joinPosix(importer.slice(0, Math.max(0, importer.lastIndexOf('/'))), specifier);
 }
 
 /** For each file, each prop that can change, and the files that change it. */
@@ -202,4 +201,17 @@ export function analyzeProject(
     result.set(filename, new Set(props.keys()));
   }
   return result;
+}
+
+/** Joins a directory and a relative path with `/`, resolving `.` and `..`. */
+function joinPosix(directory: string, specifier: string): string {
+  const parts: string[] = [];
+  for (const part of `${directory}/${specifier}`.split('/')) {
+    if (part === '..') {
+      parts.pop();
+    } else if (part && part !== '.') {
+      parts.push(part);
+    }
+  }
+  return (directory.startsWith('/') ? '/' : '') + parts.join('/');
 }

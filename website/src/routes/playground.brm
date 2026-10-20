@@ -1,0 +1,93 @@
+<script>
+  import { decode, encode, measure, run } from '../playground/compile.ts';
+  import { examples } from '../playground/examples.ts';
+  import { highlight } from '../playground/highlight.ts';
+
+  $title('Playground | brumate');
+
+  let source = $signal(examples[0]!.source);
+  let tab = $signal('server');
+  const output = $memo(run(source));
+  const sizes = $memo(measure(output));
+  const shown = $memo(output.modules.find((module) => module.name === tab) ?? output.modules[0]);
+  const code = $memo(shown ? highlight(shown.code, shown.language) : highlight('', 'ts'));
+  // A line break at the end keeps the last line of the editor and the highlight the same height.
+  const sourceHtml = $memo(highlight(`${source}\n`, 'brm'));
+  let backdrop = $signal<HTMLElement>();
+
+  // A shared link opens its source.
+  $client(() => {
+    const shared = decode(location.hash.slice(1));
+    if (shared) {
+      source = shared;
+    }
+  }, 'idle');
+
+  $effect(() => {
+    history.replaceState(history.state, '', `#${encode(source)}`);
+  });
+
+</script>
+
+<main class="playground-page">
+  <header class="playground-bar">
+    <h1>Playground</h1>
+    <label>
+      Example
+      <select onChange=((event) => (source = examples[Number(event.currentTarget.value)]!.source))>
+        #for (example, index of examples by example.name) {
+          <option value=index>{example.name}</option>
+        }
+      </select>
+    </label>
+    <p class="playground-note">The compiler runs in your browser. It loads with your first edit.</p>
+  </header>
+  <div class="playground-grid">
+    <section class="editor" aria-label="Source">
+      <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
+      <textarea
+        spellcheck="false"
+        value=source
+        onInput=((event) => (source = event.currentTarget.value))
+        onScroll=((event) => {
+          backdrop!.scrollTop = event.currentTarget.scrollTop;
+          backdrop!.scrollLeft = event.currentTarget.scrollLeft;
+        })
+      >{$untrack(source)}</textarea>
+    </section>
+    <section class="output" aria-label="Output">
+      #if (output.ok) {
+        <div class="tabs" role="tablist">
+          #for (module of output.modules by module.name) {
+            <button role="tab" aria-selected=(module.name === tab) class={ active: module.name === tab } onClick=(() => (tab = module.name))>{module.name}</button>
+          }
+          <button role="tab" aria-selected=(tab === 'ships') class={ active: tab === 'ships' } onClick=(() => (tab = 'ships'))>what ships</button>
+        </div>
+        #if (tab === 'ships') {
+          <table class="sizes">
+            <thead>
+              <tr><th>Client module</th><th>Bytes</th><th>gzip</th></tr>
+            </thead>
+            <tbody>
+              #for (size of sizes by size.name) {
+                <tr><td><code>{size.name}</code></td><td class="num">{size.bytes}</td><td class="num">{size.gzip}</td></tr>
+              }
+            </tbody>
+          </table>
+          <p class="playground-note">The entry loads when the component is first used. Each part loads when its event fires or a value it updates changes.</p>
+        } #else {
+          <div class="code output-code">{code}</div>
+        }
+        #if (output.warnings.length > 0) {
+          <ul class="warnings">
+            #for (warning of output.warnings by warning) {
+              <li>{warning}</li>
+            }
+          </ul>
+        }
+      } #else {
+        <pre class="error">{output.error}</pre>
+      }
+    </section>
+  </div>
+</main>

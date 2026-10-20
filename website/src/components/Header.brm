@@ -1,4 +1,6 @@
 <script>
+  import Search from './Search.brm';
+
   const base = import.meta.env.BASE_URL;
 
   // The theme is on the root element, where the inline script put the saved one.
@@ -22,9 +24,11 @@
       <span class="brand-mark" aria-hidden="true"></span>
       brumate
     </a>
+    <Search />
     <nav class="header-nav" aria-label="Main">
       <a href=(`${base}docs`)>Docs</a>
       <a href=(`${base}docs/getting-started`)>Get started</a>
+      <a href=(`${base}playground`)>Playground</a>
       <a href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer">GitHub</a>
       <button class="theme-toggle" type="button" aria-label="Switch theme" onClick=toggleTheme>
         <span class="sun" aria-hidden="true">☀</span>

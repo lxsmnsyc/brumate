@@ -149,11 +149,3 @@ Inside a block, `else`, `catch`, `case` and `default` are also keywords where th
 The scanner finds where a `TS<…>` region ends by matching brackets. It skips strings, template literals, regular expressions and comments while it counts. The region is then parsed with oxc.
 
 Expressions cannot contain markup. Use `#for`, `#if` and `#template` instead. This keeps every expression plain TypeScript.
-
-## Differences from solid-sfc
-
-- `<window>` and `<document>` replace `<solid:window>` and `<solid:document>`.
-- Event attributes take `:` modifiers.
-- `ref` and `prefetch` are reserved on elements.
-- `#client` is added. `#hydration`, `#no-hydration` and `#reveal` are removed.
-- Scripts, expressions and attribute values cannot contain markup.

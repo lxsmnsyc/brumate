@@ -20,3 +20,13 @@ declare module '*.md' {
   const page: Page;
   export default page;
 }
+
+declare module 'virtual:search-index' {
+  export const index: {
+    page: string;
+    pageTitle: string;
+    heading: string;
+    id: string;
+    text: string;
+  }[];
+}

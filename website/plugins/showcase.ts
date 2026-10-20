@@ -38,7 +38,7 @@ export default function showcase(): Plugin {
       };
       return [
         "import { raw } from 'brumate/html';",
-        `export const source = raw(${JSON.stringify(`<pre class="code">${highlight(source.trim())}</pre>`)});`,
+        `export const source = raw(${JSON.stringify(`<div class="code">${highlight(source.trim())}</div>`)});`,
         `export const report = ${JSON.stringify(summary)};`,
       ].join('\n');
     },
