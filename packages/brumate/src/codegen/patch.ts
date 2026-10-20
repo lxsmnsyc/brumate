@@ -40,7 +40,7 @@ export class Patch {
   }
 }
 
-/** The variable that holds the promise of an async memo on the server. */
+/** The variable that holds a memo on the server, which can be a promise. */
 export function promiseName(name: string): string {
   return `$$p_${name}`;
 }
@@ -48,8 +48,8 @@ export function promiseName(name: string): string {
 /**
  * Adds edits that turn compile-time functions into plain values:
  * `$signal(x)` and `$memo(x)` become `(x)`, `$props()` becomes `$$props`
- * and `$untrack(x)` becomes `(x)`. On the server, an async memo is renamed
- * to `$$p_<name>`, because it holds a promise that is awaited where it is read.
+ * and `$untrack(x)` becomes `(x)`. On the server, a memo is renamed to
+ * `$$p_<name>`, because it can hold a promise that is awaited where it is read.
  */
 export function addValueEdits(
   patch: Patch,
@@ -69,6 +69,11 @@ export function addValueEdits(
         patch.replace(node.start, node.end, '$$props');
         return;
       }
+      if (name === '$isPending') {
+        // Nothing loads again on the server.
+        patch.replace(node.start, node.end, 'false');
+        return;
+      }
       if (name === '$produce' && argument?.type === 'Identifier') {
         // `$produce(todos, recipe)` becomes `(todos = $$b.produce(todos, recipe))`.
         patch.replace(node.start, argument.start, `(${argument.name} = $$b.produce(`);
@@ -83,16 +88,18 @@ export function addValueEdits(
           patch.replace(node.start, node.end, 'undefined');
           return;
         }
-        const declaration = name === '$memo' ? sitesByNode.get(argument)?.declaration : undefined;
-        if (declaration?.kind === 'async-memo') {
-          if (mode === 'server') {
-            patch.replace(
-              declaration.range.start,
-              declaration.range.end,
-              promiseName(declaration.name),
-            );
-          }
-          // The memo is a promise, so an `await` in it does not hold up the code after it.
+        const site = name === '$memo' ? sitesByNode.get(argument) : undefined;
+        const declaration = site?.declaration;
+        if (declaration && mode === 'server') {
+          // Any memo can be a promise, so the server holds it as one and awaits it where it is read.
+          patch.replace(
+            declaration.range.start,
+            declaration.range.end,
+            promiseName(declaration.name),
+          );
+        }
+        if (site?.awaits) {
+          // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');
           patch.replace(argument.end, node.end, '))()');
         } else {

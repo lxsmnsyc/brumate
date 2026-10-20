@@ -23,5 +23,8 @@ declare function $client(
 /** Reads a value without depending on it. */
 declare function $untrack<T>(value: T): T;
 
+/** True while a new value of a memo loads on the client. Always false on the server. */
+declare function $isPending(memo: unknown): boolean;
+
 /** Changes an object or an array in a signal through a draft, and writes the signal with the result. */
 declare function $produce<T>(signal: T, recipe: (draft: T) => T | void): void;

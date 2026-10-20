@@ -329,9 +329,6 @@ class ClientGenerator {
       if (live && site.kind === 'tag') {
         this.error('A dynamic tag that changes on the client is not supported yet', site.range);
       }
-      if (live && site.kind === 'memo' && site.declaration?.kind === 'async-memo') {
-        this.error('An async $memo that changes on the client is not supported yet', site.range);
-      }
     }
   }
 
@@ -536,8 +533,10 @@ class ClientGenerator {
         case 'memo': {
           const slot = slotIndex(this.plan, node.declaration);
           if (slot !== -1) {
+            // A promise is loaded with the old value kept until it settles. `await` needs an async function.
+            const value = site.awaits ? `(async () => (${expression()}))()` : expression();
             this.emit(
-              `export function ${name('m')}($$s) {\n  $$b.set($$s, ${slot}, ${expression()});\n}`,
+              `export function ${name('m')}($$s) {\n  $$b.memo($$s, ${slot}, ${value});\n}`,
             );
           }
           break;

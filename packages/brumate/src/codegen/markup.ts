@@ -18,7 +18,14 @@ import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
-import { awaitedMemos, blockingMemos, instanceScope, scopePath, slotIndex } from './scopes.ts';
+import {
+  awaitedMemos,
+  blockingMemos,
+  instanceScope,
+  isMemo,
+  scopePath,
+  slotIndex,
+} from './scopes.ts';
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -203,11 +210,7 @@ export class Emitter {
 
   /** True for an async memo that is a promise where its scope ends, on the server. */
   private isPromise(declaration: Declaration): boolean {
-    return (
-      this.options.mode === 'server' &&
-      declaration.kind === 'async-memo' &&
-      !this.blocking.has(declaration)
-    );
+    return this.options.mode === 'server' && isMemo(declaration) && !this.blocking.has(declaration);
   }
 
   /** Awaits the async memos of a statement that markup outside `#loading` reads. */
@@ -219,7 +222,7 @@ export class Emitter {
       const init = declarator.init;
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
-      if (declaration?.kind === 'async-memo' && this.blocking.has(declaration)) {
+      if (declaration && isMemo(declaration) && this.blocking.has(declaration)) {
         this.line(`const ${declaration.name} = await ${promiseName(declaration.name)};`);
       }
     }

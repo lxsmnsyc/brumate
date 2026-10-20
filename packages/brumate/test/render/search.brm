@@ -1,0 +1,22 @@
+<script>
+  async function search(query: string): Promise<string[]> {
+    'use server';
+    // "ap" answers last, so a later query can finish first.
+    await new Promise((done) => setTimeout(done, query === 'ap' ? 80 : 10));
+    const fruits = ['apple', 'apricot', 'banana'];
+    return query === '' ? fruits : fruits.filter((fruit) => fruit.startsWith(query));
+  }
+
+  let query = $signal('');
+  const results = $memo(search(query));
+</script>
+
+<input value=query onInput=((event) => (query = event.currentTarget.value))>
+#if ($isPending(results)) {
+  <p class="pending">Searching</p>
+}
+<ul>
+  #for (result of results) {
+    <li>{result}</li>
+  }
+</ul>

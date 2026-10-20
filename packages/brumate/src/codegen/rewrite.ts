@@ -218,6 +218,19 @@ export class Rewriter {
         case 'CallExpression':
           if (
             node.callee.type === 'Identifier' &&
+            node.callee.name === '$isPending' &&
+            !references.has(node.callee.start)
+          ) {
+            const memo = node.arguments[0];
+            const declaration = memo && references.get(memo.start)?.declaration;
+            const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+            const value =
+              declaration && slot !== -1 ? `$$b.pending(${path(declaration)}, ${slot})` : 'false';
+            patch.replace(node.start, node.end, value);
+            return;
+          }
+          if (
+            node.callee.type === 'Identifier' &&
             node.callee.name === '$produce' &&
             !references.has(node.callee.start) &&
             node.arguments[0]?.type === 'Identifier'

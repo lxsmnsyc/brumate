@@ -39,15 +39,15 @@ When a client root writes a signal, the runtime marks the nodes downstream of it
 
 ## What the compiler decides for each node
 
-| Node                              | Ships to the client when                                                                                      |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `$signal`                         | A client root writes it. Its value is serialized.                                                             |
-| `$memo`                           | Something upstream is writable on the client. Its value is serialized, so it is not computed again on resume. |
-| Async `$memo`                     | Something upstream is writable on the client. Then the fetch runs again on the client.                        |
-| Markup binding, such as `{count}` | Its source is writable on the client.                                                                         |
-| `#if`, `#switch`, `#key`          | Its condition is writable on the client. Then the branch templates ship.                                      |
-| `#for`, `#repeat`                 | Its list or count is writable on the client. Then the item template ships.                                    |
-| Static text and elements          | Never. They are HTML only.                                                                                    |
+| Node                              | Ships to the client when                                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$signal`                         | A client root writes it. Its value is serialized.                                                                                           |
+| `$memo`                           | Something upstream is writable on the client. Its value is serialized, so it is not computed again on resume.                               |
+| `$memo` that returns a promise    | Something upstream is writable on the client. Then it runs again on the client, and the page keeps the old value until the promise settles. |
+| Markup binding, such as `{count}` | Its source is writable on the client.                                                                                                       |
+| `#if`, `#switch`, `#key`          | Its condition is writable on the client. Then the branch templates ship.                                                                    |
+| `#for`, `#repeat`                 | Its list or count is writable on the client. Then the item template ships.                                                                  |
+| Static text and elements          | Never. They are HTML only.                                                                                                                  |
 
 A signal that no client root writes is a constant after the server renders it. It is not serialized.
 

@@ -25,6 +25,8 @@ const props: Record<string, unknown> = {
   produce: {},
   prefetch: {},
   retry: {},
+  search: {},
+  doubler: {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

@@ -1,0 +1,107 @@
+# Server module
+import * as $$b from 'brumate/server';
+export function double(value: number): Promise<number> {
+    return new Promise((done) => setTimeout(() => done(value * 2), 150));
+  }
+export const rpc = {  };
+
+export default async function Doubler($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Doubler_1bxsryb");
+  let count = (1);
+  const $$p_doubled = (double(count));
+  const doubled = await $$p_doubled;
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--></button><p><!--t" + $$s1 + ":2-->" + await $$b.insert((doubled)) + "<!--/t--></p>";
+  if (false) {
+    $$html += "<!--b" + $$s1 + ":3:0--><span class=\"pending\">Loading</span><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [count, doubled]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Doubler_1bxsryb";
+export const props = {  };
+export const g = { 1: { 0: [[1, "m1"], [1, "u3"]], 1: [[1, "u4"], [1, "b5"]] } };
+const parts = {
+  "h2": () => import("./doubler.brm?brumate-client&part=h2"),
+  "update": () => import("./doubler.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+import { double } from "./doubler.brm?brumate-client&part=shared";
+
+const $$ctx = $$b.context;
+
+export function m1($$s) {
+  $$b.memo($$s, 1, double($$b.get($$s, 0)));
+}
+export function u3($$s) {
+  $$b.text($$s, 1, $$b.get($$s, 0));
+}
+export function u4($$s) {
+  $$b.text($$s, 2, $$b.get($$s, 1));
+}
+export function b5($$s) {
+  $$b.branch($$s, 3, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+}
+export function r2($$p) {
+  let $$html = '';
+  $$html += "<span class=\"pending\">Loading</span>";
+  return $$html;
+}
+
+# Client part: shared
+import * as $$b from 'brumate/client';
+export function double(value: number): Promise<number> {
+    return new Promise((done) => setTimeout(() => done(value * 2), 150));
+  }
+
+
+# Render module
+import * as $$b from 'brumate/client';
+export function double(value: number): Promise<number> {
+    return new Promise((done) => setTimeout(() => done(value * 2), 150));
+  }
+
+const $$ctx = $$b.context;
+
+export default function Doubler($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Doubler_1bxsryb");
+  let count = (1);
+  const doubled = (double(count));
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--></button><p><!--t" + $$s1 + ":2-->" + $$b.insert((doubled)) + "<!--/t--></p>";
+  if (false) {
+    $$html += "<!--b" + $$s1 + ":3:0--><span class=\"pending\">Loading</span><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [count, doubled]);
+  return $$html;
+}
+
+# HTML
+<button data-b="0:0" data-on="click=Doubler_1bxsryb#h2">
+<!--t0:1-->1<!--/t-->
+</button>
+<p>
+<!--t0:2-->2<!--/t-->
+</p>
+<!--b0:3:-1-->
+<!--/b-->
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Doubler_1bxsryb"},{"t":9,"i":2,"a":[{"t":0,"s":1},{"t":0,"s":2}],"o":0}]},"o":0}]},"o":0}</script>

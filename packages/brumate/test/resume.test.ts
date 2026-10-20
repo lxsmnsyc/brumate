@@ -68,6 +68,10 @@ function appendChunk(html: string): void {
   }
 }
 
+function items(): string[] {
+  return [...document.querySelectorAll('li')].map((li) => li.textContent!);
+}
+
 function buttons(): HTMLButtonElement[] {
   return [...document.querySelectorAll<HTMLButtonElement>('li button')];
 }
@@ -153,6 +157,8 @@ describe('resume', () => {
     holder.innerHTML = records[1]!;
     document.body.append(holder.firstChild!);
     await expect(value).resolves.toBe(42);
+    // The slot holds the value once it arrives.
+    await waitFor(() => expect(client.get(client.scopeOf(0)!, 0)).toBe(42));
     client.dispose();
   });
 
@@ -289,6 +295,46 @@ describe('resume', () => {
 
     click(document.querySelector('.admin')!);
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'));
+  });
+
+  it('loads async memos again when their inputs change', async () => {
+    vi.resetModules();
+    const server = await import(file('search.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const { html, state } = await runtime.renderToString(server.default, {});
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(items()).toEqual(['apple', 'apricot', 'banana']);
+
+    const field = document.querySelector('input')!;
+    field.value = 'ap';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    // The old results stay while the new ones load.
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    expect(items()).toEqual(['apple', 'apricot', 'banana']);
+
+    // "b" answers before "ap", and the answer for "ap" is dropped.
+    field.value = 'b';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(items()).toEqual(['banana']));
+    await waitFor(() => expect(document.querySelector('.pending')).toBeNull());
+    await new Promise((done) => setTimeout(done, 120));
+    expect(items()).toEqual(['banana']);
+  });
+
+  it('loads a memo that returns a promise without saying so', async () => {
+    await resume('doubler', {});
+    expect(text('p')).toBe('2');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    expect(text('p')).toBe('2');
+    await waitFor(() => expect(text('p')).toBe('4'));
+    expect(document.querySelector('.pending')).toBeNull();
   });
 
   it('shares functions between parts', async () => {

@@ -86,15 +86,16 @@ const { html, state, headers } = await renderToString(App, props, { request });
 
 The request is kept with `AsyncLocalStorage` from `node:async_hooks`, so the server runtime needs a runtime that has it.
 
-## Async `$memo`
+## In a `$memo`
 
-An async `$memo` may only call server functions:
+A `$memo` that calls a server function loads its value on the server, and again on the client when the values it reads change:
 
 ```ts
+let id = $signal(1);
 const user = $memo(getUser(id));
 ```
 
-When `id` changes on the client, the client calls `getUser` through RPC. Data access stays on the server, and the client chunk for the memo only holds the stub.
+When `id` changes on the client, the client calls `getUser` through RPC, and the page keeps the old `user` until the call answers. Data access stays on the server, and the client only holds the stub. See [`$memo`](./syntax.md#memo).
 
 ## No `'use client'`
 

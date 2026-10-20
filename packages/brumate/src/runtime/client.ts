@@ -161,7 +161,16 @@ function addScopes(state: PageState): Scope[] {
   const seen = new Set<object>();
   for (const scope of added) {
     for (let i = 0; i < scope.s.length; i++) {
-      scope.s[i] = callable(scope.s[i], seen);
+      const value = callable(scope.s[i], seen);
+      scope.s[i] = value;
+      // A value that a later state record settles replaces its promise.
+      if (value instanceof Promise) {
+        void value.then((result) => {
+          if (scope.s[i] === value) {
+            set(scope, i, result);
+          }
+        });
+      }
     }
   }
   return added;
@@ -316,6 +325,61 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
     trigger(scope, slot);
   }
   return value;
+}
+
+// The latest load of each async memo, by `<scope>:<slot>`, so older results are dropped.
+const loads = new Map<string, number>();
+const loadingSlots = new Set<string>();
+
+/**
+ * Writes the result of an async memo when it arrives. Until then the slot
+ * keeps its value, and `pending` is true. Only the latest load is written.
+ */
+export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): void {
+  const key = `${scope.id}:${slot}`;
+  const load = (loads.get(key) ?? 0) + 1;
+  loads.set(key, load);
+  if (!loadingSlots.has(key)) {
+    loadingSlots.add(key);
+    // Readers of the memo update, so `$isPending` becomes true.
+    trigger(scope, slot);
+  }
+  const settle = (value?: unknown, failed = false): void => {
+    if (loads.get(key) !== load) {
+      return;
+    }
+    loadingSlots.delete(key);
+    if (!failed && !Object.is(scope.s[slot], value)) {
+      set(scope, slot, value);
+    } else {
+      trigger(scope, slot);
+    }
+  };
+  promise.then(
+    (value) => settle(value),
+    (error: unknown) => {
+      console.error(error);
+      settle(undefined, true);
+    },
+  );
+}
+
+/** Writes a new value of a memo. A promise is loaded with `asyncMemo`. */
+export function memo(scope: Scope, slot: number, value: unknown): void {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  ) {
+    asyncMemo(scope, slot, Promise.resolve(value));
+  } else {
+    set(scope, slot, value);
+  }
+}
+
+/** True while a new value of an async memo is loading. */
+export function pending(scope: Scope, slot: number): boolean {
+  return loadingSlots.has(`${scope.id}:${slot}`);
 }
 
 /** `x++`, `x--`, `++x` and `--x`. */

@@ -1,0 +1,164 @@
+# Server module
+import * as $$b from 'brumate/server';
+async function search(query: string): Promise<string[]> {
+    'use server';
+    // "ap" answers last, so a later query can finish first.
+    await new Promise((done) => setTimeout(done, query === 'ap' ? 80 : 10));
+    const fruits = ['apple', 'apricot', 'banana'];
+    return query === '' ? fruits : fruits.filter((fruit) => fruit.startsWith(query));
+  }
+export const rpc = { "Search_s4k9u0#search": search };
+
+export default async function Search($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Search_s4k9u0");
+  let query = ('');
+  const $$p_results = (search(query));
+  const results = await $$p_results;
+  $$html += "<input" + $$b.attribute("value", (query)) + " data-b=\"" + $$s1 + ":0\" data-on=\"input=Search_s4k9u0#h4\">";
+  if (false) {
+    $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  $$html += "<ul>";
+  {
+    const $$list0 = Array.from(( results));
+    $$html += "<!--b" + $$s1 + ":2-->";
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const result = $$item1;
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((result)) + "<!--/t--></li>";
+      $$ctx.slots($$s3, [result]);
+      $$ctx.item($$s3, $$item1);
+      $$html += "<!--/i-->";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  $$ctx.slots($$s1, [query, results]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Search_s4k9u0";
+export const props = {  };
+export const g = { 1: { 0: [[1, "m2"], [1, "u3"]], 1: [[1, "b5"], [1, "b6"]] }, 3: { 0: [[3, "u7"]] } };
+const parts = {
+  "update": () => import("./search.brm?brumate-client&part=update"),
+  "h4": () => import("./search.brm?brumate-client&part=h4"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+const search$ = (...$$a) => $$b.rpc("Search_s4k9u0#search", $$a);
+export function m2($$s) {
+  $$b.memo($$s, 1, search$($$b.get($$s, 0)));
+}
+export function u3($$s) {
+  $$b.attr($$s, 0, "value", $$b.get($$s, 0));
+}
+export function b5($$s) {
+  $$b.branch($$s, 1, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+}
+export function b6($$s) {
+  $$b.list($$s, 2, Array.from($$b.get($$s, 1)), ($$item) => $$item, r3, a3, undefined, []);
+}
+export function a3($$s, $$item, $$index) {
+  $$s.i = $$item;
+  const result = $$item;
+  $$b.set($$s, 0, result);
+}
+export function u7($$s) {
+  $$b.text($$s, 0, $$b.get($$s, 0));
+}
+export function r2($$p) {
+  let $$html = '';
+  $$html += "<p class=\"pending\">Searching</p>";
+  return $$html;
+}
+export function r3($$p, $$item, $$index) {
+  let $$html = '';
+  const result = $$item;
+  const $$s3 = $$ctx.scope(3, $$p);
+  $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((result)) + "<!--/t--></li>";
+  $$ctx.slots($$s3, [result]);
+  $$ctx.item($$s3, $$item);
+  $$html += "<!--/i-->";
+  return $$html;
+}
+
+# Client part: h4
+import * as $$b from 'brumate/client';
+
+export const h4 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 0, event.currentTarget.value)))(...$$a);
+
+# Render module
+import * as $$b from 'brumate/client';
+const search = (...$$a) => $$b.rpc("Search_s4k9u0#search", $$a);
+
+const $$ctx = $$b.context;
+
+export default function Search($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Search_s4k9u0");
+  let query = ('');
+  const results = (search(query));
+  $$html += "<input" + $$b.attribute("value", (query)) + " data-b=\"" + $$s1 + ":0\" data-on=\"input=Search_s4k9u0#h4\">";
+  if (false) {
+    $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  $$html += "<ul>";
+  {
+    const $$list0 = Array.from(( results));
+    $$html += "<!--b" + $$s1 + ":2-->";
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const result = $$item1;
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((result)) + "<!--/t--></li>";
+      $$ctx.slots($$s3, [result]);
+      $$ctx.item($$s3, $$item1);
+      $$html += "<!--/i-->";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  $$ctx.slots($$s1, [query, results]);
+  return $$html;
+}
+
+# HTML
+<input value="" data-b="0:0" data-on="input=Search_s4k9u0#h4">
+<!--b0:1:-1-->
+<!--/b-->
+<ul>
+<!--b0:2-->
+<!--i1-->
+<li>
+<!--t1:0-->apple<!--/t-->
+</li>
+<!--/i-->
+<!--i2-->
+<li>
+<!--t2:0-->apricot<!--/t-->
+</li>
+<!--/i-->
+<!--i3-->
+<li>
+<!--t3:0-->banana<!--/t-->
+</li>
+<!--/i-->
+<!--/b-->
+</ul>
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1","2","3"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Search_s4k9u0"},{"t":9,"i":2,"a":[{"t":1,"s":""},{"t":9,"i":3,"a":[{"t":1,"s":"apple"},{"t":1,"s":"apricot"},{"t":1,"s":"banana"}],"o":0}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":9,"i":5,"a":[{"t":1,"s":"apple"}],"o":0},{"t":1,"s":"apple"}]},"o":0},{"t":10,"i":6,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":9,"i":7,"a":[{"t":1,"s":"apricot"}],"o":0},{"t":1,"s":"apricot"}]},"o":0},{"t":10,"i":8,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":9,"i":9,"a":[{"t":1,"s":"banana"}],"o":0},{"t":1,"s":"banana"}]},"o":0}]},"o":0}</script>

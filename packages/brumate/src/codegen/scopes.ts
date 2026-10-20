@@ -52,15 +52,20 @@ export function loadingBody(scope: Scope, limit?: Scope): Scope | undefined {
   return undefined;
 }
 
+/** Any memo can hold a promise, because its expression can call code that returns one. */
+export function isMemo(declaration: Declaration): boolean {
+  return declaration.kind === 'memo' || declaration.kind === 'async-memo';
+}
+
 /**
- * Returns the async memos that the server awaits where they are declared,
+ * Returns the memos that the server awaits where they are declared,
  * because markup or code outside every `#loading` body reads them. The
  * others are awaited by the `#loading` bodies that read them.
  */
 export function blockingMemos(plan: Plan): Set<Declaration> {
   const result = new Set<Declaration>();
   for (const declaration of plan.graph.model.declarations) {
-    if (declaration.kind !== 'async-memo') {
+    if (!isMemo(declaration)) {
       continue;
     }
     for (const read of declaration.reads) {
@@ -82,7 +87,7 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
   return result;
 }
 
-/** Returns the async memos that a `#loading` body awaits before it renders. */
+/** Returns the memos that a `#loading` body awaits before it renders. */
 export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>): Declaration[] {
   const result = new Set<Declaration>();
   for (const site of plan.graph.model.sites) {
@@ -90,7 +95,7 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
       continue;
     }
     for (const read of site.reads) {
-      if (read.declaration.kind === 'async-memo' && !blocking.has(read.declaration)) {
+      if (isMemo(read.declaration) && !blocking.has(read.declaration)) {
         result.add(read.declaration);
       }
     }

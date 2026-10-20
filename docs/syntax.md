@@ -27,7 +27,7 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are seven. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
+There are eight. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
 
 ```json
 { "compilerOptions": { "types": ["brumate/types"] } }
@@ -72,8 +72,27 @@ Declares writable state. Reading the variable reads the value. Assigning to it w
 Declares a read-only value computed from other values.
 
 - Assigning to it is a compile error.
-- It can hold a promise. On the server, a `#loading` body that reads it renders after the rest of the page, and the stream sends it when the promise settles. Code and markup outside every `#loading` body that read it wait for it where the memo is declared.
-- An async `$memo` may only call server functions. See [Server functions](./server-functions.md).
+- Any memo can hold a promise, such as the result of a server function, `fetch` or an imported function. The compiler does not need to know which ones do: it checks the value when the memo runs.
+- On the server, a `#loading` body that reads a promise renders after the rest of the page, and the stream sends it when the promise settles. Code and markup outside every `#loading` body that read the memo wait for it where the memo is declared.
+- On the client, when the values that the memo reads change, the memo runs again. If it returns a promise, the page keeps the old value until the promise settles. Only the latest run is written, so a slow answer to an older run is dropped. If the promise rejects, the old value stays and the error is logged.
+- `await` can be used in the expression, as in `$memo(await load(id))`.
+
+### `$isPending`
+
+`$isPending(memo)` is true while a new value of the memo is loading on the client:
+
+```html
+<script>
+  let query = $signal('');
+  const results = $memo(search(query));
+</script>
+
+#if ($isPending(results)) {
+  <p>Searching</p>
+}
+```
+
+On the server, it is always false.
 
 ### Element references
 

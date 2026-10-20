@@ -5,14 +5,13 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are seven compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack` and `$produce`.
+- There are eight compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce` and `$isPending`.
 - `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
 - `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.
 - Signals never leave the file. Imported code receives values.
 - Server functions use the `'use server'` directive, on a function or on a file.
 - Server functions may capture module-scope bindings and imports only.
-- An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
 - There is no `#static` block. Markup is static by default, so marking it changes nothing. `brumate inspect` reports what ships and why instead.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
@@ -24,7 +23,8 @@
 - A change to a `.brm` file reloads the page instead of replacing modules.
 - A component rendered on the client comes from its render module, a third output next to the server and client modules.
 - `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
-- An async `$memo` is a promise on the server. It is awaited where it is declared only if something outside every `#loading` body reads it.
+- Any `$memo` can hold a promise. The server holds every memo as a promise or a value and awaits it where it is read: where it is declared if something outside every `#loading` body reads it, and in the `#loading` bodies otherwise. The client checks each new value, and loads a promise with the old value kept until it settles.
+- `$isPending(memo)` is true while a memo loads on the client, and false on the server.
 - `renderToString` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
@@ -42,11 +42,9 @@
 - **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
 - **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
-- **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
 - **Styles.** `lang="scss"` and `lang="less"` are not supported, and stylesheets are inlined instead of written as CSS files.
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
-- **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 - **Type-checking `.brm` files.** `brumate/types` declares the compile-time functions and `.brm` modules, but the code in `.brm` files is not type-checked, and there is no editor support. solid-sfc does this with a Volar language plugin.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.

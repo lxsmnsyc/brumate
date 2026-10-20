@@ -1,0 +1,17 @@
+<script module>
+  // Returns a promise, but nothing in the memo below says so.
+  export function double(value: number): Promise<number> {
+    return new Promise((done) => setTimeout(() => done(value * 2), 150));
+  }
+</script>
+
+<script>
+  let count = $signal(1);
+  const doubled = $memo(double(count));
+</script>
+
+<button onClick=(() => count++)>{count}</button>
+<p>{doubled}</p>
+#if ($isPending(doubled)) {
+  <span class="pending">Loading</span>
+}

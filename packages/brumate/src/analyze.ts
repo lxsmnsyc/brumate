@@ -32,6 +32,8 @@ const COMPILE_TIME_FUNCTIONS = new Set([
   '$effect',
   '$client',
   '$untrack',
+  '$produce',
+  '$isPending',
 ]);
 
 const MISPLACED: Record<string, string> = {
@@ -1122,6 +1124,18 @@ class Resolver {
               this.visit(argument);
             }
             this.untracked--;
+            return;
+          }
+          if (name === '$isPending') {
+            const [target] = node.arguments;
+            if (target?.type !== 'Identifier' || node.arguments.length !== 1) {
+              this.analyzer.report(
+                'error',
+                '$isPending needs an async $memo as its only argument',
+                node,
+              );
+            }
+            this.visitChildren(node);
             return;
           }
           if (name === '$produce') {
