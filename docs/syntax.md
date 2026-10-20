@@ -120,7 +120,7 @@ let count = $signal(0);
 $title(`Clicked ${count} times`);
 ```
 
-The server writes `<title>` into the head that `renderToString` returns. When the value changes on the client, the title changes too. If several components set a title, the last one that renders wins.
+The server writes `<title>` into the head of the page. When the value changes on the client, the title changes too. If several components set a title, the last one that renders wins.
 
 ### `$provide` and `$context`
 
@@ -331,7 +331,7 @@ Renders its body into the document's `<head>`, for tags such as `<meta>` and `<l
 }
 ```
 
-- The server collects it into the head that `renderToString` returns, after the `$title`.
+- The server collects it into the head of the page, after the `$title`.
 - Attributes can change on the client.
 - Inside a block that the client renders, the content is added to `<head>`, and removed with the block.
 - Use `$title` for the title. Text in `<title>` cannot hold the markers that updates need.

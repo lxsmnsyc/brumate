@@ -42,7 +42,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
 - Static markup becomes string literals. Only live values get markers.
 - The slots of a scope are recorded after its markup, so `ref` signals hold their elements.
 
-`renderToString` from `brumate/server` runs the module and serializes the state. [Page format](./page-format.md) describes the markers and the state.
+`renderToStream` from `brumate/server` runs the module, serializes the state and streams the page. [Page format](./page-format.md) describes the markers and the state.
 
 The client module for the same component:
 

@@ -5,7 +5,7 @@ import { toJSON } from 'seroval';
 import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { renderToString } from '../src/runtime/server.ts';
+import { render } from '../src/runtime/server.ts';
 import brumate from '../src/vite.ts';
 
 const root = fileURLToPath(new URL('./render/', import.meta.url));
@@ -40,7 +40,7 @@ afterAll(async () => {
 describe('vite plugin', () => {
   it('compiles .brm files for the server', async () => {
     const module = await server.ssrLoadModule('/counter.brm');
-    const { html } = await renderToString(module.default, {});
+    const { html } = await render(module.default, {});
     expect(html).toContain('data-on="click=Counter_m86gta#h4"');
   });
 

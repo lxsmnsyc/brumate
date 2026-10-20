@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { toJSON } from 'seroval';
 import { compile } from '../src/index.ts';
-import { handleRequest, renderToString } from '../src/runtime/server.ts';
+import { handleRequest, render } from '../src/runtime/server.ts';
 
 const source = readFileSync(new URL('./render/session.brm', import.meta.url), 'utf8');
 const output = new URL('./.output/request/', import.meta.url);
@@ -37,7 +37,7 @@ function call(
 describe('server functions and the request', () => {
   it('reads the request while a page renders', async () => {
     const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
-    const { html } = await renderToString(session.default, {}, { request });
+    const { html } = await render(session.default, {}, { request });
     expect(html).toContain('<p class="user">Ada</p>');
   });
 

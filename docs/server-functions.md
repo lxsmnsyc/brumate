@@ -76,13 +76,13 @@ async function login(name: string) {
 - Any other error answers with status 500 and a generic message, so server details do not reach the browser. The error is logged on the server.
 - `redirect(location)` stops the function, and the browser goes to `location`.
 
-These work while a page renders too, when `renderToString` or `renderToStream` gets the request:
+These work while a page renders too, when `render` or `renderToStream` gets the request:
 
 ```ts
-const { html, state, headers } = await renderToString(App, props, { request });
+const { headers } = await render(Root, props, { request });
 ```
 
-`headers` holds the response headers that server functions set while the page rendered. A `redirect` during rendering rejects `renderToString` with an error that `isRedirect` recognizes, so the server can answer with a redirect.
+`headers` holds the response headers that server functions set while the page rendered. A `redirect` during rendering rejects `render`, or errors the stream of `renderToStream`, with an error that `isRedirect` recognizes, so the server can answer with a redirect.
 
 The request is kept with `AsyncLocalStorage` from `node:async_hooks`, so the server runtime needs a runtime that has it.
 

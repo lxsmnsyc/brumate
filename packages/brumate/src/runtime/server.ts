@@ -208,9 +208,12 @@ export class Context {
   }
 
   /** Renders a `#loading` body after the rest of the page, in its own context. */
-  defer(id: number, render: (ctx: Context) => Promise<string>): void {
+  defer(id: number, renderBody: (ctx: Context) => Promise<string>): void {
     const child = new Context(this.root);
-    const boundary: Boundary = { id, render: render(child).then((html) => ({ html, ctx: child })) };
+    const boundary: Boundary = {
+      id,
+      render: renderBody(child).then((html) => ({ html, ctx: child })),
+    };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
     const root = this.root;
@@ -379,16 +382,11 @@ function createQueue<T>(): {
   };
 }
 
-/**
- * Renders a component. It returns as soon as the markup is rendered.
- * `#loading` bodies and promises in the state do not hold it up: they come
- * later, from `pending`.
- */
 export interface RenderOptions {
   /**
    * The request of the page. Server functions that run while the page
    * renders can read it with `getRequest`, and set headers with
-   * `getResponseHeaders`, which `renderToString` returns.
+   * `getResponseHeaders`, which `render` returns.
    */
   request?: Request;
   /**
@@ -398,7 +396,14 @@ export interface RenderOptions {
   nonce?: string;
 }
 
-export async function renderToString<P>(
+/**
+ * Renders the parts of a page. It returns as soon as the markup is rendered.
+ * `#loading` bodies and promises in the state do not hold it up: they come
+ * later, from `pending`. `renderToStream` puts the parts together. Use this
+ * directly to send the response headers that server functions set before
+ * the stream starts.
+ */
+export async function render<P>(
   Root: Component<P>,
   props: P,
   options: RenderOptions = {},
@@ -407,11 +412,9 @@ export async function renderToString<P>(
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context();
   const headers = new Headers();
-  const render = (): Promise<string> => Root(props, ctx);
-  const rendered = options.request
-    ? await withRequest(options.request, headers, render)
-    : await render();
-  const html = rendered + ctx.portals.join('');
+  const run = (): Promise<string> => Root(props, ctx);
+  const rendered = options.request ? await withRequest(options.request, headers, run) : await run();
+  const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
@@ -469,43 +472,88 @@ export async function renderToString<P>(
   return { html, state, pending: queue.iterable, headers, head: ctx.headHTML() };
 }
 
-export interface StreamOptions extends RenderOptions {
+export interface DocumentOptions extends RenderOptions {
   /**
-   * Markup before the component, such as the start of the document. A
-   * function receives the markup for the document's head, which is only known
-   * after the component renders.
+   * Markup before the component, for a component that does not render
+   * `<html>`. A function receives the markup for the document's head.
    */
   start?: string | ((head: string) => string);
   /**
    * Markup right after the page state, such as the client entry. Make
-   * module scripts `async`, so they run before the stream ends.
+   * module scripts `async`, so they run before a stream ends.
    */
   scripts?: string;
-  /** Markup after everything else, such as the end of the document. */
+  /** Markup after everything else, for a component that does not render `<html>`. */
   end?: string;
 }
 
+export type StreamOptions = DocumentOptions;
+
+const HTML = /<html[\s>]/i;
+
+/** Inserts markup before `</body>`, or at the end if there is none. */
+function beforeBodyEnd(html: string, content: string): string {
+  if (!content) {
+    return html;
+  }
+  const index = html.toLowerCase().lastIndexOf('</body>');
+  return index === -1 ? html + content : html.slice(0, index) + content + html.slice(index);
+}
+
 /**
- * Renders a component as a stream: the markup and the page state, then each
- * `#loading` body and state record as it is ready.
+ * Splits a rendered page around the place for the page state and the
+ * markup that streams later. A component that renders `<html>` gets the
+ * doctype and the head, and the split is before `</body>`.
+ */
+function layout(
+  html: string,
+  head: string,
+  options: DocumentOptions,
+): { before: string; after: string } {
+  const match = HTML.exec(html);
+  if (!match) {
+    const start = typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
+    return { before: start + html, after: options.end ?? '' };
+  }
+  // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
+  const headContent = html.slice(0, match.index) + head;
+  let page = html.slice(match.index);
+  const lower = page.toLowerCase();
+  const headEnd = lower.indexOf('</head>');
+  if (headEnd !== -1) {
+    page = page.slice(0, headEnd) + headContent + page.slice(headEnd);
+  } else if (headContent) {
+    const bodyStart = lower.search(/<body[\s>]/);
+    const at = bodyStart === -1 ? page.indexOf('>') + 1 : bodyStart;
+    page = `${page.slice(0, at)}<head>${headContent}</head>${page.slice(at)}`;
+  }
+  const bodyEnd = page.toLowerCase().lastIndexOf('</body>');
+  const split = bodyEnd === -1 ? page.length : bodyEnd;
+  return { before: `<!doctype html>${page.slice(0, split)}`, after: page.slice(split) };
+}
+
+/**
+ * Renders a component as a stream. The markup and the page state come
+ * first, then each `#loading` body and state record as it is ready. A
+ * component that renders `<html>` gets the doctype and its head, and the
+ * later markup goes before `</body>`.
  */
 export function renderToStream<P>(
   Root: Component<P>,
   props: P,
-  options: StreamOptions = {},
+  options: DocumentOptions = {},
 ): ReadableStream<string> {
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        const { html, state, pending, head } = await renderToString(Root, props, options);
-        const start =
-          typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-        controller.enqueue(`${start}${html}${state}${options.scripts ?? ''}`);
+        const { html, state, pending, head } = await render(Root, props, options);
+        const { before, after } = layout(html, head, options);
+        controller.enqueue(`${before}${state}${options.scripts ?? ''}`);
         for await (const chunk of pending) {
           controller.enqueue(chunk);
         }
-        if (options.end) {
-          controller.enqueue(options.end);
+        if (after) {
+          controller.enqueue(after);
         }
         controller.close();
       } catch (error) {

@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
-import { renderToStream, renderToString } from '../src/runtime/server.ts';
+import { render as renderParts, renderToStream } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
 
 const input = new URL('./render/', import.meta.url);
@@ -65,7 +65,7 @@ describe('server render', () => {
       liveProps: liveProps.get(filename),
     });
     const module = await import(new URL(`${name}.brm.ts`, output).href);
-    const { html, state } = await renderToString(module.default, props[name]);
+    const { html, state } = await renderParts(module.default, props[name]);
     const text = [
       '# Server module',
       server,
@@ -116,22 +116,71 @@ describe('streaming', () => {
     expect((await reader.read()).done).toBe(true);
   });
 
-  it('returns from renderToString before promises settle', async () => {
+  it('returns from render before promises settle', async () => {
     const promise = new Promise<string>(() => {});
     const Root = async (_props: unknown, ctx: Context): Promise<string> => {
       ctx.slots(ctx.scope(1, undefined, 'Test'), [promise]);
       return '<p>Hi</p>';
     };
-    const result = await renderToString(Root, {});
+    const result = await renderParts(Root, {});
     expect(result.html).toBe('<p>Hi</p>');
     expect(result.state).toBeDefined();
+  });
+});
+
+/** Reads the rest of a stream, chunk by chunk. */
+async function readAll(
+  source: ReadableStream<string> | ReadableStreamDefaultReader<string>,
+): Promise<string[]> {
+  const reader = 'getReader' in source ? source.getReader() : source;
+  const chunks: string[] = [];
+  // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    chunks.push(chunk.value);
+  }
+  return chunks;
+}
+
+describe('documents', () => {
+  const scripts = '<script type="module" async src="/client.js"></script>';
+
+  it('renders a complete document', async () => {
+    const module = await import(`${new URL('document.brm.ts', output).href}?string`);
+    module.release('Ada');
+    const page = (await readAll(renderToStream(module.default, {}, { scripts }))).join('');
+    expect(page.startsWith('<!doctype html><html')).toBe(true);
+    // The stylesheet and the title go into the head.
+    const head = page.slice(page.indexOf('<head'), page.indexOf('</head>'));
+    expect(head).toContain('<style data-brm=');
+    expect(head).toContain('<title>Count 0</title>');
+    // The state, the scripts, the portal and the #loading body go before </body>.
+    const body = page.slice(page.indexOf('<body'), page.indexOf('</body>'));
+    expect(body).toContain('<script type="brumate/state" data-scopes>');
+    expect(body).toContain(scripts);
+    expect(body).toMatch(/<p [^>]*class="note">Portal<\/p>/);
+    expect(body).toMatch(/<template data-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
+    expect(page.endsWith('</body></html>')).toBe(true);
+  });
+
+  it('streams a complete document with renderToStream', async () => {
+    const module = await import(`${new URL('document.brm.ts', output).href}?stream`);
+    const reader = renderToStream(module.default, {}, { scripts }).getReader();
+    const first = (await reader.read()).value!;
+    expect(first.startsWith('<!doctype html><html')).toBe(true);
+    expect(first).toMatch(/<p [^>]*class="fallback">Loading<\/p>/);
+    expect(first.endsWith(scripts)).toBe(true);
+    module.release('Ada');
+    const chunks = await readAll(reader);
+    // The body streams before the end of the document.
+    expect(chunks[0]).toMatch(/<p [^>]*class="greeting">Hello Ada<\/p>/);
+    expect(chunks.at(-1)).toBe('</body></html>');
   });
 });
 
 describe('head', () => {
   it('collects the title and #head blocks', async () => {
     const module = await import(new URL('page.brm.ts', output).href);
-    const { head, html } = await renderToString(module.default, {});
+    const { head, html } = await renderParts(module.default, {});
     expect(head).toMatch(
       /^<title>Count 0 &lt;<\/title><!--P\d+--><meta name="description" content="Clicked 0 times"/,
     );
@@ -152,7 +201,7 @@ describe('#loading', () => {
     const reader = renderToStream(module.default, {}).getReader();
 
     const first = (await reader.read()).value!;
-    expect(first).toContain('<p class="fallback">Loading</p>');
+    expect(first).toMatch(/<p [^>]*class="fallback">Loading<\/p>/);
     expect(first).not.toContain('greeting');
 
     module.release('Ada');
@@ -169,7 +218,7 @@ describe('#loading', () => {
   it('puts a nonce on the swap scripts', async () => {
     const module = await import(new URL('loading.brm.ts', output).href);
     module.release('Ada');
-    const { pending } = await renderToString(module.default, {}, { nonce: 'a"b' });
+    const { pending } = await renderParts(module.default, {}, { nonce: 'a"b' });
     let rest = '';
     for await (const chunk of pending) {
       rest += chunk;

@@ -6,37 +6,25 @@ import { createServer } from 'vite';
 // and answers server function calls.
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 
-// The head comes from the components, such as their `$title`.
-const start = (head: string): string => `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    ${head}
-    <style>.done { text-decoration: line-through; } li { cursor: pointer; }</style>
-    <script type="module" src="/@vite/client"></script>
-  </head>
-  <body>
-`;
-
-const end = `
-  </body>
-</html>`;
-
 const http = createHTTPServer((request, response) => {
   vite.middlewares(request, response, async () => {
     try {
       const { renderToStream } = await vite.ssrLoadModule('brumate/server');
-      const App = (await vite.ssrLoadModule('/src/App.brm')).default;
+      // Root renders the whole document. The runtime adds its head, the page state and the scripts.
+      const Root = (await vite.ssrLoadModule('/src/Root.brm')).default;
       const stream = renderToStream(
-        App,
+        Root,
         {
           initial: [
             { id: '1', title: 'Write the docs', done: true },
             { id: '2', title: 'Build the compiler', done: false },
           ],
         },
-        // `async`, so the loader starts before the state records that are still pending.
-        { start, scripts: '<script type="module" async src="/src/client.ts"></script>', end },
+        {
+          // `async`, so the loader starts before the #loading bodies that are still pending.
+          scripts:
+            '<script type="module" src="/@vite/client"></script><script type="module" async src="/src/client.ts"></script>',
+        },
       );
       response.setHeader('content-type', 'text/html');
       // The markup is sent first. State records follow as their promises settle.

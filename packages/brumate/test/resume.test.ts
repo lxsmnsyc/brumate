@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
-import { renderToString, stateScript } from '../src/runtime/server.ts';
+import { render as renderParts, stateScript } from '../src/runtime/server.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
 const input = resolve(import.meta.dirname, 'render');
@@ -95,7 +95,7 @@ const loadedParts: string[] = [];
 async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
   loadedParts.length = 0;
   const server = await import(file(`${name}.brm.ts`));
-  const { html, state } = await renderToString(server.default, props);
+  const { html, state } = await renderParts(server.default, props);
   document.body.innerHTML = html + state;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
@@ -168,7 +168,7 @@ describe('resume', () => {
 
   it('swaps in #loading bodies that stream after the page', async () => {
     const server = await import(file('loading.brm.ts'));
-    const { html, state, pending } = await renderToString(server.default, {});
+    const { html, state, pending } = await renderParts(server.default, {});
     document.body.innerHTML = html + state;
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
@@ -284,7 +284,7 @@ describe('resume', () => {
     const assign = vi.fn<(url: string) => void>();
     vi.stubGlobal('location', { ...window.location, assign });
     const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
-    const { html, state } = await runtime.renderToString(server.default, {}, { request });
+    const { html, state } = await runtime.render(server.default, {}, { request });
     document.body.innerHTML = html + state;
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
@@ -308,7 +308,7 @@ describe('resume', () => {
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
       runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
     );
-    const { html, state } = await runtime.renderToString(server.default, {});
+    const { html, state } = await runtime.render(server.default, {});
     document.body.innerHTML = html + state;
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
@@ -375,7 +375,7 @@ describe('resume', () => {
     vi.resetModules();
     const server = await import(file('page.brm.ts'));
     const runtime = await import('../src/runtime/server.ts');
-    const { html, state, head } = await runtime.renderToString(server.default, {});
+    const { html, state, head } = await runtime.render(server.default, {});
     document.head.innerHTML = head;
     document.body.innerHTML = html + state;
     vi.resetModules();
@@ -408,7 +408,7 @@ describe('resume', () => {
     vi.resetModules();
     // A fresh copy of the module, because another test released its data.
     const fresh = await import(`${file('loading.brm.ts')}?stale`);
-    const { html, state, pending } = await renderToString(fresh.default, {});
+    const { html, state, pending } = await renderParts(fresh.default, {});
     document.body.innerHTML = html + state;
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });

@@ -1,0 +1,40 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  let count = $signal(0);
+  const greeting = $memo(`Hello ${await ready}`);
+  $title(`Count ${count}`);
+</script>
+
+<style>
+  p {
+    color: teal;
+  }
+</style>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <button onClick=(() => count++)>{count}</button>
+    #loading {
+      <p class="greeting">{greeting}</p>
+    } #else {
+      <p class="fallback">Loading</p>
+    }
+    #portal {
+      <p class="note">Portal</p>
+    }
+  </body>
+</html>

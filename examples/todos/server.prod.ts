@@ -16,21 +16,6 @@ const TYPES: Record<string, string> = {
   '.css': 'text/css',
 };
 
-// The head comes from the components, such as their `$title`.
-const start = (head: string): string => `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    ${head}
-    <style>.done { text-decoration: line-through; } li { cursor: pointer; }</style>
-  </head>
-  <body>
-`;
-
-const end = `
-  </body>
-</html>`;
-
 /** Turns a Node request into a web Request, for server function calls. */
 async function toRequest(request: IncomingMessage): Promise<Request> {
   let body = '';
@@ -69,14 +54,14 @@ const http = createServer(async (request, response) => {
       return;
     }
     const stream = server.renderToStream(
-      server.App,
+      server.Root,
       {
         initial: [
           { id: '1', title: 'Write the docs', done: true },
           { id: '2', title: 'Build the compiler', done: false },
         ],
       },
-      { start, scripts: `<script type="module" async src="${entry}"></script>`, end },
+      { scripts: `<script type="module" async src="${entry}"></script>` },
     );
     response.setHeader('content-type', 'text/html');
     Readable.fromWeb(stream).pipe(response);

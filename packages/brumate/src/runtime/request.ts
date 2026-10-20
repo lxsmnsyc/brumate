@@ -64,7 +64,7 @@ export class Redirect extends Error {
 
 /**
  * Stops a server function and sends the browser to another page. While a
- * page renders, the error reaches the caller of `renderToString`, which can
+ * page renders, the error reaches the caller of `render`, which can
  * answer with a redirect.
  */
 export function redirect(location: string, status = 303): never {

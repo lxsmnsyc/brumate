@@ -37,34 +37,54 @@ Nothing else runs before the first event. The first event loads `brumate/client`
 
 ## Rendering a page
 
-On the server, render a component with `renderToStream`. It writes the markup and the page state first. Promises in the state do not hold it up: a script for each one follows when it settles.
+Server rendering streams. Render a component that renders the whole document with `renderToStream`:
+
+```html
+<!-- src/Root.brm -->
+<script>
+  import App from './App.brm';
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <App />
+  </body>
+</html>
+```
 
 ```ts
 import { renderToStream } from 'brumate/server';
-import App from './src/App.brm';
+import Root from './src/Root.brm';
 
-const stream = renderToStream(App, { initial: [] }, {
-  // The head holds the $title and the #head blocks of the components.
-  start: (head) => `<!doctype html><html><head>${head}</head><body>`,
-  // `async`, so the loader starts before the pending state records arrive.
+const stream = renderToStream(Root, {}, {
+  // `async`, so the loader starts before the #loading bodies that are still pending.
   scripts: '<script type="module" async src="/src/client.ts"></script>',
-  end: '</body></html>',
   // For a Content Security Policy: the inline scripts that swap in #loading bodies get this nonce.
   nonce,
 });
 ```
 
-`renderToString` returns the same parts without a stream: the markup, the head, the state script, and the rest as an async iterable of markup: `#loading` bodies and state records, in the order they are ready.
+- The first chunk is the whole document with the fallbacks of `#loading` blocks. It starts with `<!doctype html>`.
+- The head of the components, their `$title`, `#head` blocks and stylesheets, goes before `</head>`.
+- The page state and `scripts` go before `</body>`. Each `#loading` body and each state record that settles a promise streams before `</body></html>` as it is ready.
+- Portal content goes before `</body>` too.
+
+A component that renders only part of the page can take `start` and `end`. `start` can be a function that receives the head:
 
 ```ts
-const { html, state, pending } = await renderToString(App, { initial: [] });
-write(html + state + clientScript);
-for await (const chunk of pending) {
-  write(chunk);
-}
+renderToStream(App, {}, {
+  start: (head) => `<!doctype html><html><head>${head}</head><body>`,
+  scripts,
+  end: '</body></html>',
+});
 ```
 
-In development, load the component with `vite.ssrLoadModule('/src/App.brm')`. [`examples/todos`](../examples/todos) is a complete server.
+`render` is the step under `renderToStream`. It returns the parts: the markup, the head, the state script, the response headers that server functions set, and the rest as an async iterable of markup in the order it is ready. It does not wait for `#loading` bodies either. Use it to send the response headers before the stream starts.
+
+In development, load the component with `vite.ssrLoadModule('/src/Root.brm')`. [`examples/todos`](../examples/todos) is a complete server.
 
 ## Production
 
