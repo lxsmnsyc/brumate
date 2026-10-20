@@ -282,6 +282,95 @@ export class Context {
   }
 }
 
+/** Thrown when code reads a memo whose value is still loading. It carries the load. */
+export class NotReady extends Error {
+  readonly source: Promise<unknown>;
+
+  constructor(source: Promise<unknown>) {
+    super('The value is still loading');
+    this.name = 'NotReady';
+    this.source = source;
+  }
+}
+
+/** A memo on the server. It computes on its first read, so nothing waits for a memo that nothing reads. */
+export interface Memo<T = unknown> {
+  compute: () => T;
+  state: 'idle' | 'pending' | 'done' | 'failed';
+  value?: unknown;
+  error?: unknown;
+  load?: Promise<unknown>;
+}
+
+/** Declares a memo. Its value is computed when it is first read. */
+export function memo<T>(compute: () => T): Memo<T> {
+  return { compute, state: 'idle' };
+}
+
+/**
+ * Reads a memo. A value that is still loading throws `NotReady` with its
+ * load, and a memo that read such a value stays unread, so it computes
+ * again when it is read after the load settles.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Memos hold any value.
+export function read(node: Memo): any {
+  if (node.state === 'done') {
+    return node.value;
+  }
+  if (node.state === 'failed') {
+    throw node.error;
+  }
+  if (node.state === 'pending') {
+    throw new NotReady(node.load!);
+  }
+  let value: unknown;
+  try {
+    value = node.compute();
+  } catch (error) {
+    if (!(error instanceof NotReady)) {
+      node.state = 'failed';
+      node.error = error;
+    }
+    throw error;
+  }
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  ) {
+    node.state = 'pending';
+    node.load = Promise.resolve(value).then(
+      (result) => {
+        node.state = 'done';
+        node.value = result;
+      },
+      (error: unknown) => {
+        node.state = 'failed';
+        node.error = error;
+      },
+    );
+    throw new NotReady(node.load);
+  }
+  node.state = 'done';
+  node.value = value;
+  return value;
+}
+
+/** Waits for the value of a memo, through every load it reads. */
+export async function wait(node: Memo): Promise<unknown> {
+  for (;;) {
+    try {
+      return read(node);
+    } catch (error) {
+      if (!(error instanceof NotReady)) {
+        throw error;
+      }
+      // oxlint-disable-next-line no-await-in-loop -- Each load can reveal another one.
+      await error.source.catch(() => {});
+    }
+  }
+}
+
 const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
 /** Markup that renders where it is inserted, so it can read the contexts there. */

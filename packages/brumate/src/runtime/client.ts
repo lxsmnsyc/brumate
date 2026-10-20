@@ -412,6 +412,10 @@ export function scopeOf(id: number): Scope | undefined {
 // oxlint-disable-next-line typescript/no-explicit-any -- Slots hold any value.
 export function get(scope: Scope, slot: number): any {
   const value = scope.s[slot];
+  // A value that the server still streams. A memo that reads it waits for it.
+  if (computing > 0 && value instanceof Promise) {
+    throw new NotReady(value);
+  }
   if (value instanceof ElementReference) {
     const element = findElement(value.scope, value.anchor);
     if (element) {
@@ -472,21 +476,63 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
 }
 
 /** Writes a new value of a memo. A promise is loaded with `asyncMemo`. */
-export function memo(scope: Scope, slot: number, value: unknown): void {
+/** Thrown when a memo reads a value that is still loading. */
+class NotReady extends Error {
+  readonly source: Promise<unknown>;
+
+  constructor(source: Promise<unknown>) {
+    super('The value is still loading');
+    this.source = source;
+  }
+}
+
+// More than 0 while a memo computes, so reading a value that is still loading stops it.
+let computing = 0;
+
+/**
+ * Computes a memo. A promise loads, and the memo keeps its value until it
+ * settles. A memo that reads a value that is still loading keeps its value
+ * too, and is pending until that value arrives and the memo computes again.
+ */
+export function memo(scope: Scope, slot: number, compute: () => unknown): void {
+  const key = `${scope.id}:${slot}`;
+  let value: unknown;
+  computing++;
+  try {
+    value = compute();
+  } catch (error) {
+    if (!(error instanceof NotReady)) {
+      throw error;
+    }
+    if (!loadingSlots.has(key)) {
+      loadingSlots.add(key);
+      trigger(scope, slot);
+    }
+    return;
+  } finally {
+    computing--;
+  }
   if (
     value !== null &&
     typeof value === 'object' &&
     typeof (value as PromiseLike<unknown>).then === 'function'
   ) {
     asyncMemo(scope, slot, Promise.resolve(value));
-  } else {
+    return;
+  }
+  // The values it read have arrived, so it is no longer pending.
+  const waited = loadingSlots.delete(key);
+  loads.delete(key);
+  if (!Object.is(scope.s[slot], value)) {
     set(scope, slot, value);
+  } else if (waited) {
+    trigger(scope, slot);
   }
 }
 
-/** True while a new value of an async memo is loading. */
+/** True while a new value of a memo loads, or while the server still streams its value. */
 export function pending(scope: Scope, slot: number): boolean {
-  return loadingSlots.has(`${scope.id}:${slot}`);
+  return loadingSlots.has(`${scope.id}:${slot}`) || scope.s[slot] instanceof Promise;
 }
 
 /** `x++`, `x--`, `++x` and `--x`. */

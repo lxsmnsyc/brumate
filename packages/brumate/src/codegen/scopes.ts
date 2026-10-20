@@ -69,8 +69,12 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
       continue;
     }
     for (const read of declaration.reads) {
+      if (read.range.start === read.range.end) {
+        continue;
+      }
       const site = read.site;
-      if (DEFERRED_SITES.has(site.kind)) {
+      // A memo reads another memo when it computes, so it does not need the value where it is declared.
+      if (DEFERRED_SITES.has(site.kind) || site.kind === 'memo') {
         continue;
       }
       // Templates can render anywhere, so their reads count as outside.
@@ -95,6 +99,10 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
       continue;
     }
     for (const read of site.reads) {
+      // Reads that `$isPending` adds for the memos a memo reads have no range, and need no value.
+      if (read.range.start === read.range.end) {
+        continue;
+      }
       if (isMemo(read.declaration) && !blocking.has(read.declaration)) {
         result.add(read.declaration);
       }

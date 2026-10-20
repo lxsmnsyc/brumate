@@ -153,6 +153,29 @@ export function isWithin(scope: Scope, ancestor: Scope): boolean {
   return false;
 }
 
+/**
+ * Returns the memos that a memo reads, directly or through other memos. A
+ * memo is pending while any of them loads.
+ */
+export function upstreamMemos(declaration: Declaration): Declaration[] {
+  const result = new Set<Declaration>();
+  const visit = (current: Declaration): void => {
+    for (const read of current.site?.reads ?? []) {
+      const next = read.declaration;
+      if (
+        (next.kind === 'memo' || next.kind === 'async-memo') &&
+        next !== declaration &&
+        !result.has(next)
+      ) {
+        result.add(next);
+        visit(next);
+      }
+    }
+  };
+  visit(declaration);
+  return [...result];
+}
+
 /** Finds a declaration by name, from `scope` outwards. */
 export function lookup(scope: Scope, name: string): Declaration | undefined {
   for (let current: Scope | undefined = scope; current; current = current.parent) {

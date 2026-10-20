@@ -1,5 +1,5 @@
 import type { Block, Range, SFCFile } from '../ast.ts';
-import { isWithin } from '../model.ts';
+import { isWithin, upstreamMemos } from '../model.ts';
 import type { Declaration, Diagnostic, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
@@ -223,9 +223,19 @@ export class Rewriter {
           ) {
             const memo = node.arguments[0];
             const declaration = memo && references.get(memo.start)?.declaration;
-            const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+            // A memo is pending while it or a memo that it reads loads.
+            const checks = (
+              declaration ? [declaration, ...upstreamMemos(declaration)] : []
+            ).flatMap((item) => {
+              const slot = slotIndex(this.plan, item);
+              return slot === -1 ? [] : [`$$b.pending(${path(item)}, ${slot})`];
+            });
             const value =
-              declaration && slot !== -1 ? `$$b.pending(${path(declaration)}, ${slot})` : 'false';
+              checks.length === 0
+                ? 'false'
+                : checks.length === 1
+                  ? checks[0]!
+                  : `(${checks.join(' || ')})`;
             patch.replace(node.start, node.end, value);
             return;
           }

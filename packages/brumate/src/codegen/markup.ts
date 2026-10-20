@@ -212,7 +212,7 @@ export class Emitter {
     const slots = this.plan.scopes.get(scope)?.slots ?? [];
     if (slots.length > 0) {
       const values = slots.map((slot) =>
-        this.isPromise(slot) ? promiseName(slot.name) : slot.name,
+        this.isPromise(slot) ? `$$b.wait(${promiseName(slot.name)})` : slot.name,
       );
       this.line(`$$ctx.slots(${this.scopeVar(scope)}, [${values.join(', ')}]);`);
     }
@@ -233,7 +233,7 @@ export class Emitter {
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
       if (declaration && isMemo(declaration) && this.blocking.has(declaration)) {
-        this.line(`const ${declaration.name} = await ${promiseName(declaration.name)};`);
+        this.line(`const ${declaration.name} = await $$b.wait(${promiseName(declaration.name)});`);
       }
     }
   }
@@ -841,7 +841,7 @@ export class Emitter {
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
-      this.line(`const ${declaration.name} = await ${promiseName(declaration.name)};`);
+      this.line(`const ${declaration.name} = await $$b.wait(${promiseName(declaration.name)});`);
     }
     this.emitBody(block.body);
     this.flush();

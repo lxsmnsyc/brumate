@@ -44,4 +44,4 @@ Client modules, before minifying (bytes, gzip)
   h5: 392 B, 264 B
   h12: 276 B, 195 B
   h7: 142 B, 133 B
-  update: 1381 B, 562 B
+  update: 1387 B, 566 B

@@ -73,13 +73,14 @@ Declares a read-only value computed from other values.
 
 - Assigning to it is a compile error.
 - Any memo can hold a promise, such as the result of a server function, `fetch` or an imported function. The compiler does not need to know which ones do: it checks the value when the memo runs.
-- On the server, a `#loading` body that reads a promise renders after the rest of the page, and the stream sends it when the promise settles. Code and markup outside every `#loading` body that read the memo wait for it where the memo is declared.
-- On the client, when the values that the memo reads change, the memo runs again. If it returns a promise, the page keeps the old value until the promise settles. Only the latest run is written, so a slow answer to an older run is dropped. If the promise rejects, the old value stays and the error is logged.
+- A memo that reads another memo gets its value, never a promise. While that value loads, the memo waits for it.
+- On the server, a memo computes when it is first read. Reading a value that is still loading stops the code that reads it until the value settles. Markup and code outside every `#loading` body wait for it there. A `#loading` body that reads it, directly or through other memos, renders after the rest of the page, and the stream sends it when it is ready.
+- On the client, when the values that the memo reads change, the memo runs again. If it returns a promise, or reads a memo whose value is still loading, the page keeps the old value until the value settles. Only the latest run is written, so a slow answer to an older run is dropped. If the promise rejects, the old value stays and the error is logged.
 - `await` can be used in the expression, as in `$memo(await load(id))`.
 
 ### `$isPending`
 
-`$isPending(memo)` is true while a new value of the memo is loading on the client:
+`$isPending(memo)` is true while a new value of the memo is loading on the client, or a value that it reads, directly or through other memos:
 
 ```html
 <script>

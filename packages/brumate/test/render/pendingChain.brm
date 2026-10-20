@@ -1,0 +1,17 @@
+<script module>
+  export function slowDouble(value: number): Promise<number> {
+    return new Promise((done) => setTimeout(() => done(value * 2), 100));
+  }
+</script>
+
+<script>
+  let count = $signal(1);
+  const doubled = $memo(slowDouble(count));
+  const label = $memo(`Value ${doubled}`);
+</script>
+
+<button class="next" onClick=(() => count++)>Next</button>
+<p class="label">{label}</p>
+#if ($isPending(label)) {
+  <span class="pending">Loading</span>
+}

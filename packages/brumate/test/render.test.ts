@@ -227,3 +227,19 @@ describe('#loading', () => {
     expect(rest).toContain('<script nonce="a&quot;b">function $bS(i)');
   });
 });
+
+describe('memos that read memos', () => {
+  it('does not wait for a memo that only a #loading body reads, through another memo', async () => {
+    const module = await import(new URL('loadingChain.brm.ts', output).href);
+    // render resolves while the user is still loading.
+    const { html, pending } = await renderParts(module.default, {});
+    expect(html).toMatch(/<p class="fallback">Loading<\/p>/);
+    expect(html).not.toContain('ADA');
+    module.release('Ada');
+    let rest = '';
+    for await (const chunk of pending) {
+      rest += chunk;
+    }
+    expect(rest).toMatch(/<p class="label">(<!--t\d+:0-->)?ADA(<!--\/t-->)?<\/p>/);
+  });
+});

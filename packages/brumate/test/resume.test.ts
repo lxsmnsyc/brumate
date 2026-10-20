@@ -664,3 +664,16 @@ describe('several roots', () => {
     expect(document.querySelector('.one p')!.textContent).toBe('1 / 2');
   });
 });
+
+describe('pending through memos', () => {
+  it('is pending while a memo that the memo reads loads', async () => {
+    await resume('pendingChain', {});
+    expect(text('.label')).toBe('Value 2');
+    expect(document.querySelector('.pending')).toBeNull();
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    expect(text('.label')).toBe('Value 2');
+    await waitFor(() => expect(text('.label')).toBe('Value 4'));
+    expect(document.querySelector('.pending')).toBeNull();
+  });
+});

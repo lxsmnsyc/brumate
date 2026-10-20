@@ -11,11 +11,12 @@ import type {
   SFCFile,
   TemplateDecl,
 } from './ast.ts';
-import { lookup } from './model.ts';
+import { lookup, upstreamMemos } from './model.ts';
 import type {
   Declaration,
   DeclarationKind,
   Diagnostic,
+  Reference,
   Scope,
   ScopeKind,
   SemanticModel,
@@ -188,6 +189,7 @@ class Analyzer {
     for (const site of this.sites) {
       new Resolver(this, site).run();
     }
+    this.addPendingReads();
     this.resolveRefs();
     this.check();
 
@@ -199,6 +201,28 @@ class Analyzer {
       sites: this.sites,
       diagnostics: this.diagnostics,
     };
+  }
+
+  /** `$isPending(memo)` calls, which also read the memos that the memo reads. */
+  readonly pendingCalls: { reference: Reference; at: Range }[] = [];
+
+  /**
+   * A memo is pending while a memo that it reads loads. `$isPending(memo)`
+   * reads those memos too, so it updates when they start and stop loading.
+   */
+  private addPendingReads(): void {
+    for (const { reference, at } of this.pendingCalls) {
+      for (const declaration of upstreamMemos(reference.declaration)) {
+        // An empty range after the call, which no identifier starts at.
+        const read: Reference = {
+          ...reference,
+          declaration,
+          range: { start: at.end, end: at.end },
+        };
+        declaration.reads.push(read);
+        reference.site.reads.push(read);
+      }
+    }
   }
 
   report(severity: Diagnostic['severity'], message: string, at: Range): void {
@@ -1229,6 +1253,10 @@ class Resolver {
               );
             }
             this.visitChildren(node);
+            const reference = this.site.reads.at(-1);
+            if (target?.type === 'Identifier' && reference?.range.start === target.start) {
+              this.analyzer.pendingCalls.push({ reference, at: range(node) });
+            }
             return;
           }
           if (name === '$produce') {

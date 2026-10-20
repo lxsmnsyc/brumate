@@ -98,7 +98,29 @@ export function addValueEdits(
             promiseName(declaration.name),
           );
         }
-        if (site?.awaits) {
+        if (declaration && mode === 'server') {
+          // The server computes a memo when it is read. Memos that it reads are read as memos,
+          // so a value that is still loading stops it until the load settles.
+          for (const read of site!.reads) {
+            if (
+              read.range.start !== read.range.end &&
+              read.declaration !== declaration &&
+              (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
+            ) {
+              patch.replace(
+                read.range.start,
+                read.range.end,
+                `$$b.read(${promiseName(read.declaration.name)})`,
+              );
+            }
+          }
+          patch.replace(
+            node.start,
+            argument.start,
+            site!.awaits ? '$$b.memo(async () => (' : '$$b.memo(() => (',
+          );
+          patch.replace(argument.end, node.end, '))');
+        } else if (site?.awaits) {
           // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');
           patch.replace(argument.end, node.end, '))()');

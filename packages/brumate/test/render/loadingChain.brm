@@ -1,0 +1,27 @@
+<script module>
+  let open: (value: { name: string }) => void = () => {};
+
+  export const ready = new Promise<{ name: string }>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(name: string): void {
+    open({ name });
+  }
+
+  function fetchUser(): Promise<{ name: string }> {
+    return ready;
+  }
+</script>
+
+<script>
+  const user = $memo(fetchUser());
+  const label = $memo(user.name.toUpperCase());
+</script>
+
+<h1>Profile</h1>
+#loading {
+  <p class="label">{label}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

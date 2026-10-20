@@ -582,7 +582,7 @@ class ClientGenerator {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
             const value = site.awaits ? `(async () => (${expression()}))()` : expression();
             this.emit(
-              `export function ${name('m')}($$s) {\n  $$b.memo($$s, ${slot}, ${value});\n}`,
+              `export function ${name('m')}($$s) {\n  $$b.memo($$s, ${slot}, () => ${value});\n}`,
             );
           }
           break;
