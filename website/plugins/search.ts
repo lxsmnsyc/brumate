@@ -30,11 +30,13 @@ function plain(markdown: string): string {
     .trim();
 }
 
-async function entries(directories: string[]): Promise<Entry[]> {
+async function entries(directories: string[], pages?: Set<string>): Promise<Entry[]> {
   const result: Entry[] = [];
   for (const directory of directories) {
     // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
-    const files = (await readdir(directory)).filter((file) => file.endsWith('.md'));
+    const files = (await readdir(directory)).filter(
+      (file) => file.endsWith('.md') && (!pages || pages.has(file.replace(/\.md$/, ''))),
+    );
     // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
     const sources = await Promise.all(
       files.map((file) => readFile(path.join(directory, file), 'utf8')),
@@ -60,7 +62,10 @@ async function entries(directories: string[]): Promise<Entry[]> {
   return result;
 }
 
-export default function search(directories: string[]): Plugin {
+/**
+ * `pages` limits the index to the documents of the site, by file name.
+ */
+export default function search(directories: string[], pages?: Set<string>): Plugin {
   return {
     name: 'website:search',
     resolveId(id) {
@@ -74,7 +79,7 @@ export default function search(directories: string[]): Plugin {
       for (const directory of directories) {
         this.addWatchFile(directory);
       }
-      return `export const index = ${JSON.stringify(await entries(directories))};`;
+      return `export const index = ${JSON.stringify(await entries(directories, pages))};`;
     },
   };
 }

@@ -17,6 +17,21 @@ import { language as brm } from '../src/highlight/brm.ts';
 
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
 
+/** The pages of the site. Links to other documents go to GitHub. */
+const SITE_PAGES = new Set([
+  '',
+  'getting-started',
+  'syntax',
+  'server-functions',
+  'routing',
+  'styles',
+  'vite',
+  'typescript',
+  'inspect',
+  'model',
+  'page-format',
+]);
+
 const RAW_MODULE = fileURLToPath(import.meta.resolve('brumate/html'));
 
 export interface Heading {
@@ -62,7 +77,11 @@ function rewriteLink(href: string, base: string): string {
   const page = /^\.\/([\w-]+)\.md(#.*)?$/.exec(href);
   if (page) {
     const name = page[1] === 'index' ? '' : page[1]!;
-    return `${base}docs/${name}${page[2] ?? ''}`;
+    // A design note of the repository is not on the site, so the link goes to GitHub.
+    if (!SITE_PAGES.has(name)) {
+      return `${REPOSITORY}/blob/main/docs/${page[1]}.md${page[2] ?? ''}`;
+    }
+    return `${base}docs${name ? `/${name}` : ''}${page[2] ?? ''}`;
   }
   if (href.startsWith('../')) {
     return `${REPOSITORY}/tree/main/${href.replace(/^(\.\.\/)+/, '')}`;

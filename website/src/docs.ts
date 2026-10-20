@@ -14,7 +14,22 @@ export interface Page {
 }
 
 const site = import.meta.glob<Page>('../docs/*.md', { eager: true, import: 'default' });
-const repository = import.meta.glob<Page>('../../docs/*.md', { eager: true, import: 'default' });
+// Only the documents for users. The design notes of the repository, such as
+// its decisions and the compiler internals, stay on GitHub.
+const repository = import.meta.glob<Page>(
+  [
+    '../../docs/syntax.md',
+    '../../docs/server-functions.md',
+    '../../docs/routing.md',
+    '../../docs/styles.md',
+    '../../docs/vite.md',
+    '../../docs/typescript.md',
+    '../../docs/inspect.md',
+    '../../docs/model.md',
+    '../../docs/page-format.md',
+  ],
+  { eager: true, import: 'default' },
+);
 
 /** The pages, by their path after `/docs/`. */
 export const pages: Record<string, Page> = {};
@@ -30,7 +45,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     pages: ['', 'getting-started', 'syntax', 'server-functions', 'routing', 'styles'],
   },
   { title: 'Tools', pages: ['vite', 'typescript', 'inspect'] },
-  { title: 'How it works', pages: ['model', 'page-format', 'compiler', 'decisions', 'prior-art'] },
+  { title: 'How it works', pages: ['model', 'page-format'] },
 ].map((section) => ({
   title: section.title,
   pages: section.pages.map((slug) => ({
