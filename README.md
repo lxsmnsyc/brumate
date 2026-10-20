@@ -70,6 +70,7 @@ pnpm --filter example-todos dev
 - [Inspect](./docs/inspect.md) describes `brumate inspect`, which shows what each component ships to the client and why.
 - [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
+- [Proposals](./docs/proposals.md) lists features that would be good to add, with a sketch of each.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.
 
 ## Development
