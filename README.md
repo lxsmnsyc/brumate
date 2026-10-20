@@ -1,0 +1,65 @@
+# brumate
+
+> A component language and compiler for resumable web apps.
+
+`brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
+
+This repository holds the design. There is no code yet.
+
+## Goals
+
+- Ship only the client code that an interaction can reach. Markup that never changes ships as HTML and nothing else.
+- Never run component code again on the client to rebuild state.
+- Keep a loader under 1 KB that is the only code loaded before the first interaction.
+- Keep the syntax close to [solid-sfc](https://github.com/lxsmnsyc/solid-sfc), without matching Solid's semantics.
+
+## Example
+
+```html
+<script>
+  import { persist } from './todos.server';
+
+  const { initial } = $props<{ initial: Todo[] }>();
+  let todos = $signal(initial);
+  let draft = $signal('');
+  const left = $memo(todos.filter((todo) => !todo.done).length);
+
+  async function add() {
+    todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false }];
+    draft = '';
+    await persist(todos);
+  }
+</script>
+
+<h1>Todos</h1>
+<form onSubmit:prevent=add>
+  <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
+</form>
+<ul>
+  #for (todo of todos by todo.id) {
+    <li class={ done: todo.done }>{todo.title}</li>
+  }
+</ul>
+<p>{left} left</p>
+```
+
+The `<h1>` produces no client code. The `#for` item template ships because `add` can change `todos`. `persist` is a server function, so the client only gets a call stub.
+
+## Documents
+
+- [Execution model](./docs/model.md) explains what runs where and how the compiler decides what ships.
+- [Syntax](./docs/syntax.md) describes the file format, the compile-time functions, markup and control flow.
+- [Server functions](./docs/server-functions.md) describes the `'use server'` directive.
+- [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
+- [Decisions](./docs/decisions.md) lists what is decided and what is still open.
+- [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.
+
+## Name
+
+Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same with its code. It loads a handler only when an event needs it.
+
+The name is free on npm.
+
+## License
+
+MIT © [lxsmnsyc](https://github.com/lxsmnsyc)
