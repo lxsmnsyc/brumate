@@ -1,0 +1,101 @@
+# Server module
+import * as $$b from 'brumate/server';
+import Themed from './Themed.brm';
+import { Theme } from './theme';
+export const rpc = {  };
+
+export default async function Themes($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Themes_945372");
+  let theme = ('dark');
+  let show = (false);
+  $$ctx.provide(Theme, theme, $$s1);
+  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
+  if (show) {
+    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [theme, show]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Themes_945372";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
+const parts = {
+  "h3": () => import("./themes.brm?brumate-client&part=h3"),
+  "h4": () => import("./themes.brm?brumate-client&part=h4"),
+  "update": () => import("./themes.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h3
+import * as $$b from 'brumate/client';
+
+export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, $$b.get($$s, 0) === 'dark' ? 'light' : 'dark')))(...$$a);
+
+# Client part: h4
+import * as $$b from 'brumate/client';
+
+export const h4 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, true)))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+import Themed from "./Themed.brm?brumate-render";
+import { Theme } from "./theme";
+
+const $$ctx = $$b.context;
+
+export function u2($$s) {
+  $$b.provide($$s, Theme, $$b.get($$s, 0));
+}
+export function b5($$s) {
+  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);
+}
+export function r2($$p) {
+  let $$html = '';
+  $$html += "<div class=\"b\">" + $$b.component(Themed, {  }, $$ctx, $$p) + "</div>";
+  return $$html;
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+import Themed from "./Themed.brm?brumate-render";
+import { Theme } from "./theme";
+
+const $$ctx = $$b.context;
+
+export default function Themes($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Themes_945372");
+  let theme = ('dark');
+  let show = (false);
+  $$ctx.provide(Theme, theme, $$s1);
+  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
+  if (show) {
+    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, $$ctx, $$s1) + "</div><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [theme, show]);
+  return $$html;
+}
+
+# HTML
+<button class="toggle" data-b="0:0" data-on="click=Themes_945372#h3">Toggle</button>
+<button class="show" data-b="0:1" data-on="click=Themes_945372#h4">Show</button>
+<div class="a">
+<span class="themed">
+<!--t1:0-->dark<!--/t-->
+</span>
+</div>
+<!--b0:2:-1-->
+<!--/b-->
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1"],"v":[{"t":10,"i":1,"p":{"k":["k","m","v","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Themes_945372"},{"t":10,"i":2,"p":{"k":["theme"],"v":[{"t":1,"s":"dark"}]},"o":0},{"t":9,"i":3,"a":[{"t":1,"s":"dark"},{"t":2,"s":3}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["k","m","o","x","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Themed_qy9qd3"},{"t":0,"s":0},{"t":10,"i":5,"p":{"k":["theme"],"v":[{"t":0,"s":0}]},"o":0},{"t":9,"i":6,"a":[{"t":1,"s":"dark"}],"o":0}]},"o":0}]},"o":0}</script>

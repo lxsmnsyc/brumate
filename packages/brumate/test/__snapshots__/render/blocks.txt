@@ -61,7 +61,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   const $$before9 = $$html;
   try {
-    $$html += await $$b.component(Broken, {  }, $$ctx);
+    $$html += await $$b.component(Broken, {  }, $$ctx, $$s1);
   } catch ($$error10) {
     $$html = $$before9;
     const error = $$error10;
@@ -73,7 +73,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     $$html += "Dynamic";
     return $$b.raw($$html);
   })();
-  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx) + "<p>" + await $$b.insert(('<escaped>')) + " " + await $$b.insert((null)) + " " + await $$b.insert((false)) + " " + await $$b.insert(([1, 2])) + "</p>";
+  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx, $$s1) + "<p>" + await $$b.insert(('<escaped>')) + " " + await $$b.insert((null)) + " " + await $$b.insert((false)) + " " + await $$b.insert(([1, 2])) + "</p>";
   $$ctx.slots($$s1, [tab, list, input]);
   return $$html;
 }
@@ -237,7 +237,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   }
   const $$before9 = $$html;
   try {
-    $$html += $$b.component(Broken, {  }, $$ctx);
+    $$html += $$b.component(Broken, {  }, $$ctx, $$s1);
   } catch ($$error10) {
     $$html = $$before9;
     const error = $$error10;
@@ -249,7 +249,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$html += "Dynamic";
     return $$b.raw($$html);
   })();
-  $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx) + "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
+  $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx, $$s1) + "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
   $$ctx.slots($$s1, [tab, list, input]);
   return $$html;
 }

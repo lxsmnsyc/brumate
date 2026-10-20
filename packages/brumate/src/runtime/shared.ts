@@ -86,6 +86,12 @@ export interface ScopeState {
   m?: string;
   /** The item of a list item scope. */
   i?: unknown;
+  /** The scope that rendered a component's root scope, for finding contexts. */
+  o?: number;
+  /** The values that the scope provides, by context key. */
+  v?: Record<string, unknown>;
+  /** The slots that hold the contexts that the scope reads, by context key. */
+  x?: Record<string, number>;
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */

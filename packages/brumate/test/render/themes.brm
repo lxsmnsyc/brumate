@@ -1,0 +1,15 @@
+<script>
+  import Themed from './Themed.brm';
+  import { Theme } from './theme';
+
+  let theme = $signal('dark');
+  let show = $signal(false);
+  $provide(Theme, theme);
+</script>
+
+<button class="toggle" onClick=(() => (theme = theme === 'dark' ? 'light' : 'dark'))>Toggle</button>
+<button class="show" onClick=(() => (show = true))>Show</button>
+<div class="a"><Themed /></div>
+#if (show) {
+  <div class="b"><Themed /></div>
+}

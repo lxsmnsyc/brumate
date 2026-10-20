@@ -15,7 +15,10 @@
     "isolatedDeclarations": true,
     "declaration": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "brumate/context": ["./src/runtime/context.ts"]
+    }
   },
   "include": ["src", "test"]
 }

@@ -10,10 +10,12 @@ import {
 import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, plugins } from './shared.ts';
 import type { PageState } from './shared.ts';
+import type { Context as ContextValue } from './context.ts';
 
 export { attribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
+export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
 
@@ -48,6 +50,12 @@ export interface Scope {
   /** The item of a list item scope. */
   i?: unknown;
   c?: Record<number, number>;
+  /** The scope that rendered a component's root scope. */
+  o?: Scope;
+  /** The values that the scope provides, by context key. */
+  v?: Record<string, unknown>;
+  /** The slots that hold the contexts that the scope reads, by context key. */
+  x?: Record<string, number>;
   children: Set<Scope>;
   cleanups?: Map<string, () => void>;
   keys?: Map<number, unknown>;
@@ -146,16 +154,21 @@ function addScopes(state: PageState): Scope[] {
       s: record.s ?? [],
       i: record.i,
       c: record.c,
+      v: record.v,
+      x: record.x,
       children: new Set(),
     };
     scopes.set(id, scope);
     added.push(scope);
   }
   for (const [key, record] of Object.entries(state)) {
+    const scope = scopes.get(Number(key))!;
     if (record.p !== undefined) {
-      const scope = scopes.get(Number(key))!;
       scope.p = scopes.get(record.p);
       scope.p?.children.add(scope);
+    }
+    if (record.o !== undefined) {
+      scope.o = scopes.get(record.o);
     }
   }
   const seen = new Set<object>();
@@ -785,6 +798,28 @@ export function setVar(scope: Scope, name: string, value: unknown): void {
   }
 }
 
+/** The scope that provides a context to `scope`: itself or the nearest one above it. */
+function findProvider(scope: Scope, key: string): Scope | undefined {
+  for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+    if (current.v && key in current.v) {
+      return current;
+    }
+  }
+  return undefined;
+}
+
+/** Writes a provided value, and the slot of every scope that reads it from this provider. */
+export function provide(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
+  scope.v ??= {};
+  scope.v[context.key] = value;
+  for (const target of scopes.values()) {
+    const slot = target.x?.[context.key];
+    if (slot !== undefined && findProvider(target, context.key) === scope) {
+      set(target, slot, value);
+    }
+  }
+}
+
 /** Writes a prop of a child component. */
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   const id = scope.c?.[anchor];
@@ -860,6 +895,9 @@ export function component<P>(
     parent.c ??= {};
     parent.c[anchor] = nextId;
   }
+  if (parent) {
+    context.own(parent);
+  }
   return Child(props);
 }
 
@@ -867,9 +905,16 @@ export function dynamic(
   tag: unknown,
   attributes: Record<string, unknown>,
   children: Raw | undefined,
+  _ctx?: unknown,
+  scope?: Scope | number,
 ): string {
   if (typeof tag === 'function') {
-    return component(tag as Component, children ? { ...attributes, children } : attributes);
+    return component(
+      tag as Component,
+      children ? { ...attributes, children } : attributes,
+      undefined,
+      scope,
+    );
   }
   const name = String(tag);
   const open = `<${name}${spreadText(attributes)}>`;
@@ -880,13 +925,43 @@ class ClientContext {
   /** Work that waits until rendered markup is in the page. */
   readonly after: (() => void)[] = [];
 
+  /** The scope that renders the next component, which becomes its owner. */
+  private owner: Scope | undefined;
+
   scope(kind: number, parent?: Scope | number, module?: string): number {
     const id = nextId--;
     const parentScope = resolveScope(parent);
     const scope: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+    if (module !== undefined && this.owner) {
+      scope.o = this.owner;
+      this.owner = undefined;
+    }
     parentScope?.children.add(scope);
     scopes.set(id, scope);
     return id;
+  }
+
+  /** Sets the owner of the next component's root scope. */
+  own(scope: Scope | number): void {
+    this.owner = resolveScope(scope);
+  }
+
+  /** Provides a value of a context to the scopes inside `scope`. */
+  provide<T>(context: ContextValue<T>, value: T, scope: Scope | number): void {
+    const target = resolveScope(scope)!;
+    target.v ??= {};
+    target.v[context.key] = value;
+  }
+
+  /** Reads a context, and records its slot so that changes to the provided value reach it. */
+  consume<T>(context: ContextValue<T>, scope: Scope | number, slot?: number): T {
+    const target = resolveScope(scope)!;
+    if (slot !== undefined) {
+      target.x ??= {};
+      target.x[context.key] = slot;
+    }
+    const provider = findProvider(target, context.key);
+    return provider ? (provider.v![context.key] as T) : context.defaultValue;
   }
 
   slots(id: number, values: unknown[]): void {

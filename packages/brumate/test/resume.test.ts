@@ -337,6 +337,22 @@ describe('resume', () => {
     expect(document.querySelector('.pending')).toBeNull();
   });
 
+  it('provides contexts to components, and updates them', async () => {
+    await resume('themes', {});
+    expect(text('.a .themed')).toBe('dark');
+
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.a .themed')).toBe('light'));
+
+    // A component that the client renders reads the current value.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.b .themed')).toBe('light'));
+
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.b .themed')).toBe('dark'));
+    expect(text('.a .themed')).toBe('dark');
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

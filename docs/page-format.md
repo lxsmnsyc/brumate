@@ -118,6 +118,12 @@ type PageState = Record<number, {
   m?: string;
   /** The item, on an item scope of a list that can change. */
   i?: unknown;
+  /** On a component's root scope, the scope that rendered it, for finding contexts. */
+  o?: number;
+  /** The values that the scope provides, by context key. */
+  v?: Record<string, unknown>;
+  /** The slots that hold the contexts that the scope reads, by context key. */
+  x?: Record<string, number>;
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */

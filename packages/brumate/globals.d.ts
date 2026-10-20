@@ -26,5 +26,11 @@ declare function $untrack<T>(value: T): T;
 /** True while a new value of a memo loads on the client. Always false on the server. */
 declare function $isPending(memo: unknown): boolean;
 
+/** Provides a value of a context to the components inside this one. */
+declare function $provide<T>(context: import('brumate/context').Context<T>, value: T): void;
+
+/** Reads a context from the nearest component above that provides it, or its default value. */
+declare function $context<T>(context: import('brumate/context').Context<T>): T;
+
 /** Changes an object or an array in a signal through a draft, and writes the signal with the result. */
 declare function $produce<T>(signal: T, recipe: (draft: T) => T | void): void;

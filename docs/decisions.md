@@ -5,7 +5,7 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are eight compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce` and `$isPending`.
+- There are ten compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide` and `$context`.
 - `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
 - `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.
@@ -30,6 +30,7 @@
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
 - Server functions read the request with `getRequest`, set response headers with `getResponseHeaders`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
 - Errors in the page state keep their name and message only.
+- Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.

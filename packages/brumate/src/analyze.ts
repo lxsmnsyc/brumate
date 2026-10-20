@@ -34,9 +34,13 @@ const COMPILE_TIME_FUNCTIONS = new Set([
   '$untrack',
   '$produce',
   '$isPending',
+  '$provide',
+  '$context',
 ]);
 
 const MISPLACED: Record<string, string> = {
+  $provide: 'Call $provide at the top level of a script',
+  $context: 'Read a context with "const name = $context(Context)" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
@@ -396,7 +400,9 @@ class Analyzer {
           break;
         case 'ExpressionStatement': {
           const name = calleeName(statement.expression);
-          if (name === '$effect' || name === '$client') {
+          if (name === '$provide') {
+            this.declareProvide(statement.expression as oxc.CallExpression, scope);
+          } else if (name === '$effect' || name === '$client') {
             this.declareEffect(statement.expression as oxc.CallExpression, name, scope);
           } else {
             this.createSite('setup', scope, statement, 'setup');
@@ -462,6 +468,22 @@ class Analyzer {
         this.addDeclaration(scope, id.name, 'prop', id);
       } else {
         this.report('error', 'Assign $props() to a name or an object pattern', id);
+      }
+      return;
+    }
+
+    if (name === '$context') {
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report('error', 'Read a context with "const name = $context(Context)"', declarator);
+        return;
+      }
+      if (call.arguments.length !== 1) {
+        this.report('error', '$context takes one argument, the context', call);
+      }
+      this.addDeclaration(scope, id.name, 'context', id);
+      const argument = call.arguments[0];
+      if (argument) {
+        this.createSite('setup', scope, argument, `context ${id.name}`);
       }
       return;
     }
@@ -548,6 +570,15 @@ class Analyzer {
       default:
         break;
     }
+  }
+
+  private declareProvide(call: oxc.CallExpression, scope: Scope): void {
+    const [context, value] = call.arguments;
+    if (!context || !value || call.arguments.length !== 2) {
+      this.report('error', '$provide takes two arguments, the context and the value', call);
+      return;
+    }
+    this.createSite('provide', scope, value, 'provide', { extra: [context] });
   }
 
   private declareEffect(call: oxc.CallExpression, name: '$effect' | '$client', scope: Scope): void {
@@ -930,6 +961,9 @@ class Resolver {
       this.visitFunction(node, true);
     } else {
       this.visit(node);
+    }
+    for (const extra of this.site.extra ?? []) {
+      this.visit(extra);
     }
   }
 

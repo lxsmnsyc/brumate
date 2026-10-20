@@ -19,10 +19,12 @@ import {
 } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import { Redirect, ServerError, withRequest } from './request.ts';
+import type { Context as ContextValue } from './context.ts';
 
 export { attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
+export { createContext } from './context.ts';
 export { ServerError, getRequest, getResponseHeaders, isRedirect, redirect } from './request.ts';
 export type { Redirect } from './request.ts';
 export { ElementReference, FunctionReference };
@@ -49,6 +51,10 @@ export class Context {
   /** Markup of `#portal` blocks, written at the end of the page. */
   readonly portals: string[] = [];
   private onBoundary: ((boundary: Boundary) => void) | undefined;
+  /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
+  private readonly tree = new Map<number, { parent?: number; values?: Map<string, unknown> }>();
+  /** The scope that renders the next component, which becomes its owner. */
+  private owner: number | undefined;
 
   constructor(root?: Context) {
     this.root = root ?? this;
@@ -60,16 +66,61 @@ export class Context {
    * component ID of a component's root scope.
    */
   scope(kind: number, parent?: number, module?: string): number {
-    const id = this.root.nextScope++;
+    const root = this.root;
+    const id = root.nextScope++;
     const record = this.record(id);
     record.k = kind;
     if (parent !== undefined) {
       record.p = parent;
     }
+    let up = parent;
     if (module !== undefined) {
       record.m = module;
+      // A component's root scope links to the scope that rendered it.
+      if (root.owner !== undefined) {
+        record.o = root.owner;
+        up = root.owner;
+        root.owner = undefined;
+      }
     }
+    root.tree.set(id, { parent: up });
     return id;
+  }
+
+  /** Sets the owner of the next component's root scope. */
+  own(scope: number): void {
+    this.root.owner = scope;
+  }
+
+  /** Provides a value of a context to the scopes inside `scope`. */
+  provide<T>(context: ContextValue<T>, value: T, scope: number): void {
+    const node = this.root.tree.get(scope)!;
+    node.values ??= new Map();
+    node.values.set(context.key, value);
+    const record = this.record(scope);
+    record.v ??= {};
+    record.v[context.key] = value;
+  }
+
+  /**
+   * Reads a context from the nearest scope that provides it, starting at
+   * `scope`. With `slot`, records which slot holds it, so the client can
+   * update it when the provided value changes.
+   */
+  consume<T>(context: ContextValue<T>, scope: number, slot?: number): T {
+    if (slot !== undefined) {
+      const record = this.record(scope);
+      record.x ??= {};
+      record.x[context.key] = slot;
+    }
+    for (let id: number | undefined = scope; id !== undefined;) {
+      const node = this.root.tree.get(id);
+      if (node?.values?.has(context.key)) {
+        return node.values.get(context.key) as T;
+      }
+      id = node?.parent;
+    }
+    return context.defaultValue;
   }
 
   /** The ID that the next call to `scope()` returns. */
@@ -180,6 +231,9 @@ export async function component<P>(
   if (scope !== undefined && anchor !== undefined) {
     ctx.link(scope, anchor, ctx.peek());
   }
+  if (scope !== undefined) {
+    ctx.own(scope);
+  }
   return Child(props, ctx);
 }
 
@@ -189,9 +243,10 @@ export async function dynamic(
   attributes: Record<string, unknown>,
   children: Raw | undefined,
   ctx: Context,
+  scope?: number,
 ): Promise<string> {
   if (typeof tag === 'function') {
-    return component(tag, children ? { ...attributes, children } : attributes, ctx);
+    return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
   }
   const open = `<${tag}${spread(attributes)}>`;
   if (VOID_ELEMENTS.has(tag)) {

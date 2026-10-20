@@ -27,7 +27,7 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are eight. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
+There are ten. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
 
 ```json
 { "compilerOptions": { "types": ["brumate/types"] } }
@@ -93,6 +93,39 @@ Declares a read-only value computed from other values.
 ```
 
 On the server, it is always false.
+
+### `$provide` and `$context`
+
+A context passes a value to every component inside a component, without props:
+
+```ts
+// theme.ts
+import { createContext } from 'brumate/context';
+
+export const Theme = createContext<'light' | 'dark'>('theme', 'light');
+```
+
+```html
+<!-- Layout.brm -->
+<script>
+  import { Theme } from './theme';
+
+  let theme = $signal<'light' | 'dark'>('dark');
+  $provide(Theme, theme);
+</script>
+
+<!-- Button.brm, anywhere inside Layout -->
+<script>
+  import { Theme } from './theme';
+
+  const theme = $context(Theme);
+</script>
+```
+
+- `createContext(key, defaultValue)` creates a context. The key names it in the page state, so it must be unique in the app.
+- `$provide(context, value)` is a statement at the top level of a script. A block script provides to the markup of its block.
+- `const name = $context(context)` reads the value of the nearest component above that provides it, or the default value.
+- When the provided value changes on the client, every component that reads it from that provider updates, including components that the client renders later.
 
 ### Element references
 

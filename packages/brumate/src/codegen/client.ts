@@ -584,6 +584,13 @@ class ClientGenerator {
       }
       return;
     }
+    if (site.kind === 'provide') {
+      const context = site.extra![0]!;
+      this.emit(
+        `export function ${name('u')}($$s) {\n  $$b.provide($$s, ${this.file.source.slice(context.start, context.end)}, ${expression()});\n}`,
+      );
+      return;
+    }
     if (site.kind === 'style') {
       const variable = this.plan.styles.variables.find((item) => item.expression.ast === site.node);
       if (variable) {

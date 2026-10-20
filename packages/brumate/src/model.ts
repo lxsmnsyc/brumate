@@ -44,7 +44,8 @@ export type DeclarationKind =
   | 'error'
   | 'reset'
   | 'template'
-  | 'template-param';
+  | 'template-param'
+  | 'context';
 
 export interface Declaration {
   id: number;
@@ -91,7 +92,8 @@ export type SiteKind =
   | 'spread'
   | 'tag'
   | 'block'
-  | 'style';
+  | 'style'
+  | 'provide';
 
 /** A place where code runs: a function, a statement or a markup expression. */
 export interface Site {
@@ -117,6 +119,8 @@ export interface Site {
   trigger?: 'visible' | 'idle' | 'load';
   /** True if the site awaits outside a nested function. */
   awaits: boolean;
+  /** More code of the site, such as the context of `$provide(context, value)`. */
+  extra?: oxc.Node[];
 }
 
 export type Severity = 'error' | 'warning';

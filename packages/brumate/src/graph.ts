@@ -35,6 +35,7 @@ export interface Graph {
 }
 
 const SOURCE_KINDS = new Set<DeclarationKind>([
+  'context',
   'signal',
   'prop',
   'props-rest',
@@ -134,6 +135,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       case 'spread':
       case 'tag':
       case 'style':
+      case 'provide':
         node = addNode({ kind: 'binding', site });
         break;
       case 'block':
@@ -271,6 +273,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       const isLive =
         ((declaration.kind === 'prop' || declaration.kind === 'props-rest') &&
           isLiveProp(declaration, options.liveProps)) ||
+        // A provider above can change the value.
+        declaration.kind === 'context' ||
         (declaration.kind === 'signal' &&
           (declaration.writes.some((write) => reached.has(write.site)) ||
             declaration.refs.some((ref) => created.has(ref.scope)))) ||

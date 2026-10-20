@@ -52,6 +52,14 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 
 type Part = { static: string } | { code: string };
 
+function isContext(declarator: oxc.VariableDeclarator): boolean {
+  return (
+    declarator.init?.type === 'CallExpression' &&
+    declarator.init.callee.type === 'Identifier' &&
+    declarator.init.callee.name === '$context'
+  );
+}
+
 export interface EmitterOptions {
   mode: 'server' | 'client';
   /**
@@ -228,17 +236,28 @@ export class Emitter {
     }
   }
 
-  emitStatements(statements: oxc.Node[]): void {
+  emitStatements(statements: oxc.Node[], scope: Scope): void {
     for (const statement of statements) {
       if (statement.type === 'ExpressionStatement') {
         const expression = statement.expression;
-        if (
-          expression.type === 'CallExpression' &&
-          expression.callee.type === 'Identifier' &&
-          (expression.callee.name === '$effect' || expression.callee.name === '$client')
-        ) {
+        const name =
+          expression.type === 'CallExpression' && expression.callee.type === 'Identifier'
+            ? expression.callee.name
+            : undefined;
+        if (name === '$effect' || name === '$client') {
           continue;
         }
+        if (name === '$provide' && expression.type === 'CallExpression') {
+          const [context, value] = expression.arguments;
+          if (context && value) {
+            const target = this.scopeVar(instanceScope(this.plan, scope));
+            this.line(`$$ctx.provide(${this.source(context)}, ${this.source(value)}, ${target});`);
+          }
+          continue;
+        }
+      }
+      if (statement.type === 'VariableDeclaration' && this.emitContexts(statement, scope)) {
+        continue;
       }
       if (statement.type === 'ImportDeclaration' || TYPE_DECLARATIONS.has(statement.type)) {
         continue;
@@ -256,6 +275,36 @@ export class Emitter {
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
       this.awaitMemos(statement);
     }
+  }
+
+  private source(node: { start: number; end: number }): string {
+    return this.patch.slice(node.start, node.end);
+  }
+
+  /**
+   * Writes the declarations of a statement that reads contexts, one per line.
+   * Returns false if the statement reads no context.
+   */
+  private emitContexts(statement: oxc.VariableDeclaration, scope: Scope): boolean {
+    if (!statement.declarations.some(isContext)) {
+      return false;
+    }
+    const target = this.scopeVar(instanceScope(this.plan, scope));
+    for (const declarator of statement.declarations) {
+      const init = declarator.init as oxc.CallExpression;
+      if (!isContext(declarator) || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
+        this.line(`${statement.kind} ${this.source(declarator)};`);
+        continue;
+      }
+      const declaration = scope.declarations.get(declarator.id.name);
+      const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+      // The slot is recorded, so a change to the provided value reaches it on the client.
+      const record = slot === -1 ? '' : `, ${slot}`;
+      this.line(
+        `const ${declarator.id.name} = $$ctx.consume(${this.source(init.arguments[0])}, ${target}${record});`,
+      );
+    }
+    return true;
   }
 
   private isServerStatement(statement: oxc.Node): boolean {
@@ -301,7 +350,7 @@ export class Emitter {
       // The stylesheet is written once per page, before the first instance.
       this.code(`$$ctx.style(${JSON.stringify(this.plan.id)}, $$css)`);
     }
-    this.emitStatements(setup);
+    this.emitStatements(setup, component);
     for (const template of this.file.templates) {
       this.emitTemplate(template);
     }
@@ -319,7 +368,7 @@ export class Emitter {
       this.createScope(scope);
     }
     if (body.script) {
-      this.emitStatements(body.script.program.body);
+      this.emitStatements(body.script.program.body, scope);
     }
     for (const template of body.templates) {
       this.emitTemplate(template);
@@ -631,8 +680,10 @@ export class Emitter {
       childrenName ? [`children: ${childrenName}`] : [],
     );
     const anchor = this.anchor(scope, node);
-    const link = anchor ? `, ${anchor.scope}, ${anchor.index}` : '';
-    this.code(`${this.wait}$$b.component(${node.name}, ${props}, $$ctx${link})`);
+    // The rendering scope becomes the owner of the child, so the child finds the contexts above it.
+    const owner = this.scopeVar(instanceScope(this.plan, scope));
+    const link = anchor ? `, ${anchor.index}` : '';
+    this.code(`${this.wait}$$b.component(${node.name}, ${props}, $$ctx, ${owner}${link})`);
   }
 
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
@@ -655,7 +706,7 @@ export class Emitter {
     }
     const attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     this.code(
-      `${this.wait}$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx)`,
+      `${this.wait}$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))})`,
     );
   }
 

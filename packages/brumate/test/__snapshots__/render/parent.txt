@@ -13,7 +13,7 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
     $$html += "<em>" + await $$b.insert((label)) + "</em>";
     return $$b.raw($$html);
   })();
-  $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx);
+  $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
@@ -67,7 +67,7 @@ export default function Parent($$props: Record<string, never>): string {
     $$html += "<em>" + $$b.insert((label)) + "</em>";
     return $$b.raw($$html);
   })();
-  $$html += $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx);
+  $$html += $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
@@ -86,4 +86,4 @@ export default function Parent($$props: Record<string, never>): string {
 </div>
 
 # State
-<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["k","m","c","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Parent_4bs4t8"},{"t":10,"i":2,"p":{"k":["0"],"v":[{"t":0,"s":1}]},"o":0},{"t":9,"i":3,"a":[{"t":0,"s":1}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":9,"i":5,"a":[{"t":0,"s":1},{"t":25,"i":6,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h3"},"b":{"t":0,"s":0}},"c":"brumate/function"}],"o":0}]},"o":0},{"t":10,"i":7,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":9,"i":8,"a":[{"t":0,"s":5},{"t":25,"i":9,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h6"},"b":{"t":0,"s":0}},"c":"brumate/function"}],"o":0}]},"o":0}]},"o":0}</script>
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["k","m","c","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Parent_4bs4t8"},{"t":10,"i":2,"p":{"k":["0"],"v":[{"t":0,"s":1}]},"o":0},{"t":9,"i":3,"a":[{"t":0,"s":1}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["k","m","o","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":0,"s":0},{"t":9,"i":5,"a":[{"t":0,"s":1},{"t":25,"i":6,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h3"},"b":{"t":0,"s":0}},"c":"brumate/function"}],"o":0}]},"o":0},{"t":10,"i":7,"p":{"k":["k","m","o","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":0,"s":0},{"t":9,"i":8,"a":[{"t":0,"s":5},{"t":25,"i":9,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h6"},"b":{"t":0,"s":0}},"c":"brumate/function"}],"o":0}]},"o":0}]},"o":0}</script>

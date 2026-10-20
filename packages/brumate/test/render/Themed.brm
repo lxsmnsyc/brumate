@@ -1,0 +1,7 @@
+<script>
+  import { Theme } from './theme';
+
+  const theme = $context(Theme);
+</script>
+
+<span class="themed">{theme}</span>
