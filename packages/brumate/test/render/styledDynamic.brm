@@ -1,0 +1,13 @@
+<script>
+  let size = $signal(12);
+  const tag = 'section';
+</script>
+
+<style>
+  section {
+    font-size: ${`${size}px`};
+  }
+</style>
+
+<{tag} class="box" style="color: red">Box</>
+<button class="grow" onClick=(() => size++)>Grow</button>

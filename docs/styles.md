@@ -33,6 +33,7 @@
 
 - The top-level elements of the component set the custom properties in their `style` attribute, so the elements inside inherit them. An element's own `style` comes after them.
 - The elements that markup outside the component's elements renders also count as top-level: children passed to a component, and the markup of a `#template`.
+- A top-level dynamic tag sets them too. A component in a dynamic tag gets them as its `style` prop.
 - If a variable can change on the client, the top-level elements get `data-v="<scope>"`. A change sets the custom property on each of them. A block that the client renders later reads the current values.
 
 ## SCSS and Less
@@ -74,6 +75,3 @@ const css = manifest['src/client.ts'].css.map((file) => `<link rel="stylesheet" 
 const response = await handle(request, { head: css.join(''), scripts });
 ```
 
-## Not supported yet
-
-- Style variables on dynamic tags.

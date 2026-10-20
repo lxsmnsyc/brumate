@@ -759,7 +759,29 @@ export class Emitter {
     if (events.length > 0) {
       extra.push(`"data-on": ${JSON.stringify(events.join(' '))}`);
     }
-    const attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
+    let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
+    const { variables } = this.plan.styles;
+    if (variables.length > 0 && this.nesting === 0) {
+      // A top-level dynamic tag sets the style variables, as a top-level element does.
+      const own = attributes.find(
+        (attribute) =>
+          (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style',
+      );
+      let existing = 'undefined';
+      if (own?.kind === 'static') {
+        existing = own.value === true ? 'undefined' : JSON.stringify(own.value);
+      } else if (own?.kind === 'value') {
+        existing = this.expression(own.value);
+      }
+      attributes = attributes.filter((attribute) => attribute !== own);
+      const values = variables.map(
+        (variable) => `${JSON.stringify(variable.name)}: ${this.expression(variable.expression)}`,
+      );
+      extra.push(`"style": $$b.vars({ ${values.join(', ')} }, ${existing})`);
+      if (this.plan.liveStyles) {
+        extra.push(`"data-v": ${this.scopeVar(this.plan.graph.model.component)}`);
+      }
+    }
     this.code(
       `${this.wait}$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))})`,
     );

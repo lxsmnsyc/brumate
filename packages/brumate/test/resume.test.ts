@@ -619,3 +619,15 @@ describe('dynamic tags', () => {
     await waitFor(() => expect(text('span.info')).toBe('Hello'));
   });
 });
+
+describe('style variables on dynamic tags', () => {
+  it('sets and updates the style variables on a top-level dynamic tag', async () => {
+    await resume('styledDynamic', {});
+    const box = document.querySelector<HTMLElement>('.box')!;
+    expect(box.getAttribute('style')).toMatch(/^--s-\w+-0:12px;color: red$/);
+    click(document.querySelector('.grow')!);
+    await waitFor(() =>
+      expect(box.style.getPropertyValue(box.getAttribute('style')!.split(':')[0]!)).toBe('13px'),
+    );
+  });
+});
