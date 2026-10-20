@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { compile } from '../src/index.ts';
+import { analyzeProject, compile } from '../src/index.ts';
 import { renderToStream, renderToString } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
 
@@ -22,13 +22,23 @@ const props: Record<string, unknown> = {
   shared: {},
 };
 
+// Compiled as the Vite plugin does, with the props that parents can change.
+const sources = new Map(
+  readdirSync(input)
+    .filter((name) => name.endsWith('.brm'))
+    .map((name) => [name, readFileSync(new URL(name, input), 'utf8')]),
+);
+const liveProps = analyzeProject(sources);
+
 beforeAll(() => {
   rmSync(output, { recursive: true, force: true });
   mkdirSync(output, { recursive: true });
   for (const name of readdirSync(input)) {
     if (name.endsWith('.brm')) {
-      const source = readFileSync(new URL(name, input), 'utf8');
-      const { server } = compile(source, { filename: name });
+      const { server } = compile(sources.get(name)!, {
+        filename: name,
+        liveProps: liveProps.get(name),
+      });
       writeFileSync(new URL(`${name}.ts`, output), server.replace(/\.brm'/g, ".brm.ts'"));
     } else {
       copyFileSync(new URL(name, input), new URL(name, output));
@@ -39,7 +49,11 @@ beforeAll(() => {
 describe('server render', () => {
   it.each(Object.keys(props))('%s', async (name) => {
     const source = readFileSync(new URL(`${name}.brm`, input), 'utf8');
-    const { server, client, parts, render } = compile(source, { filename: `${name}.brm` });
+    const filename = `${name}.brm`;
+    const { server, client, parts, render } = compile(source, {
+      filename,
+      liveProps: liveProps.get(filename),
+    });
     const module = await import(new URL(`${name}.brm.ts`, output).href);
     const { html, state } = await renderToString(module.default, props[name]);
     const text = [

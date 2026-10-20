@@ -237,7 +237,7 @@ A node that is not live is rendered on the server and has no client code.
 
 ### Props
 
-A component is compiled without knowing its parents, so it treats every prop as live and writes update code for bindings that read props.
+A component compiled alone does not know its parents, so it treats every prop as live and writes update code for bindings that read props.
 
 This costs nothing at runtime. Update code is in a separate module that loads on the first write that reaches it. If the parent passes a constant, nothing writes the prop, and the module never loads.
 
@@ -246,7 +246,7 @@ The parent decides at render time how to pass each prop:
 - A value that is not live in the parent is serialized as a plain value.
 - A live value is serialized as a reference to the parent's slot. A write in the parent then reaches the child's update code.
 
-Component summaries can later remove update code for props that no parent passes as live. They are an optimization, not a requirement.
+With `liveProps` from `analyzeProject`, only the props that a parent can change are live. The other props need no slots and no update code. See [Props across files](./compiler.md#props-across-files).
 
 ## 4. Output plan
 

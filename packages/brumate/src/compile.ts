@@ -12,6 +12,11 @@ import type { Plan } from './plan.ts';
 export interface CompileOptions {
   /** Used for error messages, the component name and the component ID. */
   filename?: string;
+  /**
+   * The props that a parent can change on the client, from `analyzeProject`.
+   * `*` means every prop. Without it, every prop can change.
+   */
+  liveProps?: Set<string>;
 }
 
 export interface CompileResult {
@@ -49,7 +54,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   const filename = options.filename ?? 'Component.brm';
   const file = parse(source, { filename });
   const model = analyze(file);
-  const graph = buildGraph(model);
+  const graph = buildGraph(model, { liveProps: options.liveProps });
   const diagnostics = [...model.diagnostics, ...graph.diagnostics];
   const errors = diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (errors.length > 0) {

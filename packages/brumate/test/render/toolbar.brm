@@ -1,0 +1,9 @@
+<script>
+  import Badge from './Badge.brm';
+
+  let count = $signal(0);
+</script>
+
+<Badge label="New" />
+<Badge label=(String(count)) tone="dark" />
+<button onClick=(() => count++)>+</button>

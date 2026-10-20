@@ -58,6 +58,11 @@ export interface Declaration {
   block?: Block;
   reads: Reference[];
   writes: Reference[];
+  /**
+   * The prop that a destructured prop reads, such as `user` for
+   * `const { user: { name } } = $props()`. Undefined for the props object.
+   */
+  propKey?: string;
   /** Elements whose `ref` targets this declaration. */
   refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[];
 }

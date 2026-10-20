@@ -7,6 +7,7 @@ import { compile } from './compile.ts';
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
+import { analyzeProject } from './project.ts';
 
 export interface BrumateOptions {
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
@@ -65,6 +66,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
+  /** The props that parents can change, by absolute file path. */
+  let liveProps = new Map<string, Set<string>>();
 
   // The ID is computed from the path relative to the root, so it is the same on every machine.
   const relative = (file: string): string => normalizePath(path.relative(root, file));
@@ -78,6 +81,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     for (const file of await findFiles(root, exclude)) {
       files.set(componentId(file), file);
     }
+    await analyze();
+  };
+
+  // Props are analyzed across the project, so a change to one file can change the output of others.
+  const analyze = async (): Promise<void> => {
+    const sources = new Map<string, string>();
+    for (const file of files.values()) {
+      sources.set(file, await readFile(file, 'utf8'));
+    }
+    liveProps = analyzeProject(sources);
+    compiled.clear();
   };
 
   const manifest = (): string => {
@@ -186,7 +200,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // The entry, the parts and the render module of a file come from one compile.
       let cached = compiled.get(file);
       if (cached?.source !== source) {
-        cached = { source, result: compile(source, { filename: relative(file) }) };
+        const options = { filename: relative(file), liveProps: liveProps.get(file) };
+        cached = { source, result: compile(source, options) };
         compiled.set(file, cached);
       }
       const result = cached.result;
@@ -208,13 +223,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     configureServer(server) {
       server.watcher.on('all', (event, file) => {
-        if (!file.endsWith('.brm') || (event !== 'add' && event !== 'unlink')) {
+        if (!file.endsWith('.brm')) {
           return;
         }
-        void scan().then(() => {
-          for (const name of [MANIFEST, SERVER]) {
-            const module = server.moduleGraph.getModuleById(`\0${name}`);
-            if (module) {
+        const update = event === 'add' || event === 'unlink' ? scan() : analyze();
+        void update.then(() => {
+          for (const module of server.moduleGraph.idToModuleMap.values()) {
+            const id = module.id ?? '';
+            if (id.includes('.brm') || id === `\0${MANIFEST}` || id === `\0${SERVER}`) {
               server.moduleGraph.invalidateModule(module);
             }
           }

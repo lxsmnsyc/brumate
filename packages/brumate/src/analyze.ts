@@ -444,8 +444,14 @@ class Analyzer {
               this.addDeclaration(scope, binding.name, 'props-rest', binding);
             }
           } else {
+            const key = property.computed
+              ? undefined
+              : property.key.type === 'Identifier'
+                ? property.key.name
+                : String((property.key as { value?: unknown }).value);
             for (const binding of getPatternNames(property.value)) {
-              this.addDeclaration(scope, binding.name, 'prop', binding);
+              const declaration = this.addDeclaration(scope, binding.name, 'prop', binding);
+              declaration.propKey = key;
             }
           }
         }

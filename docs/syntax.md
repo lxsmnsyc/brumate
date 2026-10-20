@@ -217,7 +217,6 @@ Skips the body on the server. The client renders it when its trigger fires. The 
 <Child value=count onChange=((value) => (count = value)) />
 ```
 
-- The compiler writes a summary for each component. It lists which props the component's client roots read, which they call, and which bindings depend on them.
-- The parent connects its graph to the child's through the summary.
+- A prop can change on the client only if a parent passes it a value that can change. The compiler finds these props across the project. See [Props across files](./compiler.md#props-across-files).
 - A function passed as a prop must be a client function. The compiler moves it out of the parent and gives it a reference to the parent's scope.
 - `children` and `#template` values passed as props are rendered on the server. They ship only if the client must create them again.

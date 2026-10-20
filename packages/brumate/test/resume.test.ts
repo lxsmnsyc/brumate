@@ -3,7 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { compile } from '../src/index.ts';
+import { analyzeProject, compile } from '../src/index.ts';
 import { renderToString, stateScript } from '../src/runtime/server.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -15,17 +15,22 @@ const modules = new Map<string, string>();
 beforeAll(() => {
   rmSync(output, { recursive: true, force: true });
   mkdirSync(output, { recursive: true });
+  const sources = new Map(
+    readdirSync(input)
+      .filter((name) => name.endsWith('.brm'))
+      .map((name) => [name, readFileSync(join(input, name), 'utf8')]),
+  );
+  // Compiled as the Vite plugin does, with the props that parents can change.
+  const liveProps = analyzeProject(sources);
   for (const name of readdirSync(input)) {
     if (!name.endsWith('.brm')) {
       copyFileSync(join(input, name), join(output, name));
       continue;
     }
-    const { server, client, parts, render, plan } = compile(
-      readFileSync(join(input, name), 'utf8'),
-      {
-        filename: name,
-      },
-    );
+    const { server, client, parts, render, plan } = compile(sources.get(name)!, {
+      filename: name,
+      liveProps: liveProps.get(name),
+    });
     for (const [part, code] of Object.entries(parts)) {
       writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
     }

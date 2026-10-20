@@ -16,7 +16,7 @@
 - There is no `'use client'` directive.
 - There is no `#static` block. Markup is static by default, so marking it changes nothing. A tool that reports what ships is better than an assertion in the markup.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
-- A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
+- Props are live only if a parent passes them values that can change. The project analysis finds these props. A file compiled alone treats every prop as live.
 - The client code of a component is split into an entry, one part per client root, an update part and a shared part.
 - Scope instances link to their parent with `p`, so client code reads outer values by walking up.
 - Lists keep the raw item of each item scope in the state, so keys can be computed again on the client.
@@ -36,7 +36,6 @@
 - **Lists.** Without `$store`, changing one item replaces the whole array, and keyed `#for` compares the lists. Large lists will need item-level updates.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
-- **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
 - **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
@@ -60,4 +59,4 @@
 5. Split client modules per handler and per update. Done. See [Code splitting](./compiler.md#code-splitting).
 6. Render components on the client, inside blocks that change. Done. See [Render modules](./compiler.md#render-modules).
 7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](./vite.md).
-8. Add component summaries.
+8. Add component summaries. Done as a project analysis in the Vite plugin. See [Props across files](./compiler.md#props-across-files).

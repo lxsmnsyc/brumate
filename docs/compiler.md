@@ -4,18 +4,18 @@ The compiler reads a `.brm` file and writes three things:
 
 - A server module that renders the component to HTML with markers and state.
 - Client chunks for the code that client roots reach.
-- A component summary that parent components use to connect their graphs.
+- A render module that renders the component on the client, for parents whose blocks change.
 
 ## Pipeline
 
 1. **Parse.** Read the file into its scripts, styles and a markup tree with blocks. The scanner and the template and control flow parsers of solid-sfc can be reused here.
 2. **Scope analysis.** Find the declarations in each scope: props, signals, memos, functions and block variables.
-3. **Graph.** Build the dependency graph from the reads of each node. Follow local functions. Add edges through child component summaries.
+3. **Graph.** Build the dependency graph from the reads of each node. Follow local functions. Props are live only if a parent can change them. See [Props across files](#props-across-files).
 4. **Reachability.** Start at each client root. Mark every node, function and template that it reaches.
 5. **Checks.** Report captures that cannot be serialized, writes outside client roots, and server function captures.
 6. **Server codegen.** Write a render function that outputs HTML strings, markers and the state of the reachable scopes.
 7. **Client codegen.** Write one chunk per handler, plus the update code and templates that the reachable nodes need.
-8. **Summary.** Write which props the component reads on the client, which it calls and which bindings depend on them.
+8. **Render module.** Write the render function for the client. See [Render modules](#render-modules).
 
 solid-sfc compiles markup to TSX as text. This compiler needs a tree for the markup and a graph for the scripts, so steps 3 to 8 are new.
 
@@ -84,6 +84,18 @@ A component that a parent renders inside a block that changes needs its render f
 - A function passed as a prop calls the parent's exported handler, so it writes the parent's slots.
 - A parent's client module imports a child's render module only when one of its changing blocks renders the child. Other parents never load it.
 - `#template`s that a changing block calls are copied into its render function.
+
+## Props across files
+
+Compiled alone, a component treats every prop as live. `analyzeProject` finds the props that can actually change, across every `.brm` file of a project:
+
+1. Every prop starts out unchanged. Code outside `.brm` files renders components only on the server, so the props it passes are constants.
+2. For each file, the graph is built with the props found so far. Its summary lists each component it renders and the props it passes values that can change. A spread or computed prop that can change counts as every prop.
+3. Those props become live in the child. The steps repeat until nothing changes, because a parent's values can depend on its own props.
+
+`compile` takes the result as `liveProps`. A prop that never changes needs no slot and no update code. A function passed as a prop never changes: it calls the parent's handler, which reads the current values.
+
+The [Vite plugin](./vite.md) runs the analysis when the build starts and when a `.brm` file changes.
 
 ## Code splitting
 

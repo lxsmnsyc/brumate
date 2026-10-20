@@ -93,6 +93,8 @@ export async function fetch(request: Request): Promise<Response> {
 
 The plugin finds `.brm` files under the root when the build starts, and again when files are added or removed. It skips `node_modules`, `dist` and hidden directories. Component IDs come from the path relative to the root, so they are the same on every machine.
 
+The plugin also finds which props each component's parents can change, so props that never change ship no code. A change to any `.brm` file runs this again and reloads every `.brm` module.
+
 ## Options
 
 ```ts

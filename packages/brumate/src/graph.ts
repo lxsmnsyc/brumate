@@ -44,8 +44,34 @@ const SOURCE_KINDS = new Set<DeclarationKind>([
   'template-param',
 ]);
 
-// Sources that can change without a write from client code.
-const ALWAYS_LIVE = new Set<DeclarationKind>(['prop', 'props-rest']);
+export interface GraphOptions {
+  /**
+   * The props that a parent can change on the client. `*` means every prop.
+   * Without it, every prop can change, as when a file is compiled alone.
+   */
+  liveProps?: Set<string>;
+}
+
+/** True if a prop or the rest of the props can change on the client. */
+function isLiveProp(declaration: Declaration, liveProps: Set<string> | undefined): boolean {
+  if (!liveProps || liveProps.has('*')) {
+    return true;
+  }
+  if (declaration.kind === 'props-rest') {
+    // The rest changes when a prop that is not destructured by name changes.
+    const named = new Set(
+      [...declaration.scope.declarations.values()].flatMap((item) =>
+        item.propKey ? [item.propKey] : [],
+      ),
+    );
+    return [...liveProps].some((key) => !named.has(key));
+  }
+  if (declaration.propKey === undefined) {
+    // The props object, or a computed key.
+    return liveProps.size > 0;
+  }
+  return liveProps.has(declaration.propKey);
+}
 
 /** True if a site's expression is a function, such as a function passed as a prop. */
 export function isFunctionValue(site: Site): boolean {
@@ -60,7 +86,7 @@ export function isFunctionValue(site: Site): boolean {
   return false;
 }
 
-export function buildGraph(model: SemanticModel): Graph {
+export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Graph {
   const nodes: GraphNode[] = [];
   const edges: Edge[] = [];
   const declarationNodes = new Map<Declaration, GraphNode>();
@@ -135,6 +161,10 @@ export function buildGraph(model: SemanticModel): Graph {
   };
 
   for (const [site, node] of siteNodes) {
+    // A function prop is a fixed reference to a handler, which reads current values when it runs.
+    if (site.kind === 'prop' && isFunctionValue(site)) {
+      continue;
+    }
     for (const declaration of dependencies(site)) {
       addEdge(declarationNodes.get(declaration)!, node);
     }
@@ -225,7 +255,8 @@ export function buildGraph(model: SemanticModel): Graph {
         continue;
       }
       const isLive =
-        ALWAYS_LIVE.has(declaration.kind) ||
+        ((declaration.kind === 'prop' || declaration.kind === 'props-rest') &&
+          isLiveProp(declaration, options.liveProps)) ||
         (declaration.kind === 'signal' &&
           (declaration.writes.some((write) => reached.has(write.site)) ||
             declaration.refs.some((ref) => created.has(ref.scope)))) ||

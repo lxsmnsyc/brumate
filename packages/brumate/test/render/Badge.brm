@@ -1,0 +1,5 @@
+<script>
+  const { label, tone = 'info' } = $props<{ label: string; tone?: string }>();
+</script>
+
+<span class=tone>{label}</span>
