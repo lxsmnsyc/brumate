@@ -1,0 +1,23 @@
+<script>
+  class Point {
+    constructor(public x: number) {}
+    move(): Point {
+      return new Point(this.x + 1);
+    }
+  }
+
+  interface Todo {
+    id: string;
+    at: Date;
+    tags: Set<string>;
+  }
+
+  let todos = $signal<Todo[]>([]);
+  let point = $signal(new Point(1));
+  let format = $signal((value: number) => String(value));
+  const local = $signal(() => 1);
+</script>
+
+<button onClick=(() => (point = point.move()))>{point.x}</button>
+<p>{todos.length} {format(1)}</p>
+<button onClick=(() => (format = (value) => value.toFixed(1)))>Fixed</button>

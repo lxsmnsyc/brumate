@@ -73,16 +73,17 @@ export function hash(value: string): string {
   return (result >>> 0).toString(36);
 }
 
-export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
+/**
+ * Finds the code that runs on the client, and the declarations that it
+ * reads, by scope. Those declarations are the slots: the server writes
+ * their values into the page state.
+ */
+export function clientState(graph: Graph): {
+  isLiveSite: (site: Site) => boolean;
+  clientSites: Set<Site>;
+  slots: Map<Scope, Declaration[]>;
+} {
   const model = graph.model;
-  const name = getComponentName(file.filename);
-  const bodyScopes = new Map<Body, Scope>();
-  for (const scope of model.scopes) {
-    if (scope.body) {
-      bodyScopes.set(scope.body, scope);
-    }
-  }
-
   const siteNodes = new Map<Site, boolean>();
   for (const node of graph.nodes) {
     if (node.kind !== 'source') {
@@ -110,16 +111,36 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
     }
   }
 
-  const scopes = new Map<Scope, ScopePlan>();
+  const slots = new Map<Scope, Declaration[]>();
   for (const scope of model.scopes) {
     if (scope.kind === 'module') {
       continue;
     }
-    const slots = [...scope.declarations.values()].filter(
-      (declaration) =>
-        !NO_SLOT.has(declaration.kind) &&
-        declaration.reads.some((read) => clientSites.has(read.site)),
+    slots.set(
+      scope,
+      [...scope.declarations.values()].filter(
+        (declaration) =>
+          !NO_SLOT.has(declaration.kind) &&
+          declaration.reads.some((read) => clientSites.has(read.site)),
+      ),
     );
+  }
+  return { isLiveSite, clientSites, slots };
+}
+
+export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
+  const model = graph.model;
+  const name = getComponentName(file.filename);
+  const bodyScopes = new Map<Body, Scope>();
+  for (const scope of model.scopes) {
+    if (scope.body) {
+      bodyScopes.set(scope.body, scope);
+    }
+  }
+
+  const { isLiveSite, clientSites, slots: slotLists } = clientState(graph);
+  const scopes = new Map<Scope, ScopePlan>();
+  for (const [scope, slots] of slotLists) {
     scopes.set(scope, { scope, slots, needsId: scope.kind === 'component', anchors: 0 });
   }
 

@@ -17,7 +17,10 @@ import type {
 import { BrumateError } from './error.ts';
 import type { oxc } from './oxc.ts';
 import { parse } from './parser.ts';
-import { blockBodies, getComponentName } from './plan.ts';
+import { analyze } from './analyze.ts';
+import { buildGraph } from './graph.ts';
+import type { Declaration } from './model.ts';
+import { blockBodies, clientState, getComponentName } from './plan.ts';
 
 /** A range of the generated code that is copied from the file. */
 export interface CheckMapping {
@@ -49,6 +52,10 @@ declare function $$on<T extends string, K extends string>(tag: T, event: K, hand
 declare function $$onWindow<K extends string>(event: K, handler: (event: $$Event<K, WindowEventMap> & { currentTarget: Window }) => unknown): void;
 declare function $$onDocument<K extends string>(event: K, handler: (event: $$Event<K, DocumentEventMap> & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;
+type $$Plain = string | number | boolean | bigint | null | undefined | Date | RegExp | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Blob | Headers | FormData | Request | Response;
+type $$Sendable<T> = T extends $$Plain ? T : T extends { brumateId: string } ? T : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
+/** Checks a value that the page state sends to the client. */
+declare function $$sendable<T>(value: T & $$Sendable<T>): void;
 `;
 
 class Writer {
@@ -134,14 +141,53 @@ function propsType(program: oxc.Program | undefined): Range | undefined {
   return found;
 }
 
+/**
+ * Returns the signals and memos whose values the page state sends to the
+ * client, because client code reads them. Element refs are sent as
+ * references, so they are left out.
+ */
+function sentDeclarations(file: SFCFile): Declaration[] {
+  try {
+    const { slots } = clientState(buildGraph(analyze(file)));
+    return [...slots.values()]
+      .flat()
+      .filter(
+        (declaration) =>
+          (declaration.kind === 'signal' ||
+            declaration.kind === 'memo' ||
+            declaration.kind === 'async-memo') &&
+          declaration.refs.length === 0,
+      );
+  } catch {
+    // A file that the analyzer cannot read is still checked as TypeScript.
+    return [];
+  }
+}
+
 class Generator {
   private readonly file: SFCFile;
   private readonly out: Writer;
   private readonly hoisted: oxc.Node[] = [];
+  private readonly sent: Declaration[];
 
   constructor(file: SFCFile, out: Writer) {
     this.file = file;
     this.out = out;
+    this.sent = sentDeclarations(file);
+  }
+
+  /** Copies a statement, and checks the values it declares that the client receives. */
+  private statement(statement: oxc.Node): void {
+    const { out } = this;
+    out.copy(statement);
+    out.text('\n');
+    for (const declaration of this.sent) {
+      if (declaration.range.start >= statement.start && declaration.range.end <= statement.end) {
+        out.text('$$sendable(');
+        out.copy(declaration.range);
+        out.text(');\n');
+      }
+    }
   }
 
   generate(): void {
@@ -179,8 +225,7 @@ class Generator {
     out.text('$$use($$props, $$ctx);\n');
     for (const statement of body) {
       if (!isTopLevel(statement)) {
-        out.copy(statement);
-        out.text('\n');
+        this.statement(statement);
       }
     }
     for (const style of file.styles) {
@@ -193,6 +238,8 @@ class Generator {
     this.templates(file.templates);
     this.nodes(file.children);
     out.text("return '';\n}\n");
+    // Components are sent to the client by their ID, as the compiled ones are.
+    out.text(`${getComponentName(file.filename)}.brumateId = '';\n`);
   }
 
   private collectBodyImports(nodes: Markup[]): void {
@@ -237,11 +284,9 @@ class Generator {
   }
 
   private body(body: Body): void {
-    const { out } = this;
     for (const statement of body.script?.program.body ?? []) {
       if (statement.type !== 'ImportDeclaration') {
-        out.copy(statement);
-        out.text('\n');
+        this.statement(statement);
       }
     }
     this.templates(body.templates);
