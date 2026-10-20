@@ -54,7 +54,7 @@
 - Install `sass` or `less` in the project. They are optional peer dependencies.
 - `${expression}` works as in CSS, because it becomes `var(…)` before the preprocessor runs.
 - An error of the preprocessor is a compile error.
-- `@use` and `@import` load files next to the component. `compile` needs the `path` option for it, which the Vite plugin passes. A change to an imported file does not reload the page yet.
+- `@use` and `@import` load files next to the component. `compile` needs the `path` option for it, which the Vite plugin passes. In development, a change to an imported file compiles the component again and reloads the page.
 
 ## On the page
 
@@ -64,5 +64,4 @@ The stylesheet is inlined once per page, as `<style data-brm="<component ID>">`,
 
 ## Not supported yet
 
-- Reloading when a file that SCSS or Less imports changes.
 - Style variables on dynamic tags.

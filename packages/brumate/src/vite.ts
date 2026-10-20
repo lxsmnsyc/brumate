@@ -51,6 +51,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
+  /** Files that SCSS and Less import, and the `.brm` files that import them. */
+  const styleImports = new Map<string, Set<string>>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
 
@@ -215,6 +217,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         compiled.set(file, cached);
       }
       const result = cached.result;
+      for (const dependency of result.plan.styles.dependencies) {
+        const normalized = normalizePath(dependency);
+        this.addWatchFile(normalized);
+        if (!styleImports.has(normalized)) {
+          styleImports.set(normalized, new Set());
+        }
+        styleImports.get(normalized)!.add(file);
+      }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
         this.warn(`${warning.message} (${relative(file)}:${line}:${column})`);
@@ -233,6 +243,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     configureServer(server) {
       server.watcher.on('all', (event, file) => {
+        // A stylesheet that a component imports compiles into that component.
+        for (const importer of styleImports.get(normalizePath(file)) ?? []) {
+          compiled.delete(importer);
+          for (const module of server.moduleGraph.getModulesByFile(importer) ?? []) {
+            server.moduleGraph.invalidateModule(module);
+          }
+        }
         if (!file.endsWith('.brm')) {
           return;
         }
@@ -262,7 +279,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     handleHotUpdate({ file, server }) {
       // A resumed page cannot swap a component's code, so the page reloads.
-      if (file.endsWith('.brm')) {
+      if (file.endsWith('.brm') || styleImports.has(normalizePath(file))) {
         server.ws.send({ type: 'full-reload' });
         return [];
       }

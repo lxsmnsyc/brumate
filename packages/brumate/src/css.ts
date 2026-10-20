@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
@@ -15,6 +15,8 @@ export interface StyleOutput {
   /** The custom property for each `${…}` interpolation, in source order. */
   variables: { name: string; expression: Expression }[];
   diagnostics: Diagnostic[];
+  /** Absolute paths of the files that SCSS or Less imported. */
+  dependencies: string[];
 }
 
 type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0];
@@ -87,14 +89,20 @@ function loadPreprocessor<T>(name: string): T | undefined {
 }
 
 interface Sass {
-  compileString(source: string, options: { syntax: 'scss'; url?: URL }): { css: string };
+  compileString(
+    source: string,
+    options: { syntax: 'scss'; url?: URL },
+  ): { css: string; loadedUrls: URL[] };
 }
 
 interface Less {
   render(
     source: string,
     options: { syncImport: boolean; filename?: string },
-    callback: (error: Error | undefined, output: { css: string } | undefined) => void,
+    callback: (
+      error: Error | undefined,
+      output: { css: string; imports: string[] } | undefined,
+    ) => void,
   ): void;
 }
 
@@ -102,16 +110,27 @@ interface Less {
  * Turns SCSS or Less into CSS. `file` is the absolute path of the component,
  * for imports of files next to it. Throws with a message when it cannot.
  */
-function preprocess(lang: 'scss' | 'less', source: string, file?: string): string {
+function preprocess(
+  lang: 'scss' | 'less',
+  source: string,
+  file: string | undefined,
+  dependencies: string[],
+): string {
   if (lang === 'scss') {
     const sass = loadPreprocessor<Sass>('sass');
     if (!sass) {
       throw new Error('<style lang="scss"> needs the sass package. Install it in the project');
     }
-    return sass.compileString(source, {
+    const result = sass.compileString(source, {
       syntax: 'scss',
       url: file ? pathToFileURL(file) : undefined,
-    }).css;
+    });
+    for (const url of result.loadedUrls) {
+      if (url.protocol === 'file:' && fileURLToPath(url) !== file) {
+        dependencies.push(fileURLToPath(url));
+      }
+    }
+    return result.css;
   }
   const less = loadPreprocessor<Less>('less');
   if (!less) {
@@ -123,6 +142,7 @@ function preprocess(lang: 'scss' | 'less', source: string, file?: string): strin
   less.render(source, { syncImport: true, filename: file }, (error, output) => {
     failure = error;
     css = output?.css;
+    dependencies.push(...(output?.imports ?? []));
   });
   if (failure) {
     throw failure;
@@ -138,6 +158,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
   const attribute = `s-${scope}`;
   const diagnostics: Diagnostic[] = [];
   const variables: StyleOutput['variables'] = [];
+  const dependencies: string[] = [];
   const parts: string[] = [];
   for (const style of file.styles) {
     // Interpolations become custom properties. Offsets in `content` start after `<style>`.
@@ -155,7 +176,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
     content += style.content.slice(position);
     try {
       const root = parse(
-        style.lang === 'css' ? content : preprocess(style.lang, content, filePath),
+        style.lang === 'css' ? content : preprocess(style.lang, content, filePath, dependencies),
       );
       scopeRules(root, attribute);
       parts.push(root.toString().trim());
@@ -170,5 +191,5 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
       });
     }
   }
-  return { css: parts.join('\n'), attribute, variables, diagnostics };
+  return { css: parts.join('\n'), attribute, variables, diagnostics, dependencies };
 }

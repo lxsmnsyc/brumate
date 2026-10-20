@@ -1,10 +1,11 @@
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHTTPServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { toJSON } from 'seroval';
 import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
 import brumate from '../src/vite.ts';
 
@@ -122,5 +123,37 @@ describe('vite plugin', () => {
     expect(names.some((name) => name.endsWith('todos.brm?brumate-client&part=h12'))).toBe(true);
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
+  });
+});
+
+describe('style imports', () => {
+  it('compiles a component again when a stylesheet that it imports changes', async () => {
+    const directory = fileURLToPath(new URL('./.output/style-imports/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(`${directory}_theme.scss`, '$brand: teal;\n');
+    writeFileSync(
+      `${directory}Brand.brm`,
+      '<style lang="scss">\n  @use "theme";\n  p { color: theme.$brand; }\n</style>\n\n<p>Hi</p>\n',
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const css = async (): Promise<string> => {
+        const module = await dev.ssrLoadModule('/Brand.brm');
+        return (await render(module.default, {})).html;
+      };
+      expect(await css()).toContain('color: teal');
+      writeFileSync(`${directory}_theme.scss`, '$brand: navy;\n');
+      await vi.waitFor(async () => expect(await css()).toContain('color: navy'), {
+        timeout: 5000,
+      });
+    } finally {
+      await dev.close();
+    }
   });
 });
