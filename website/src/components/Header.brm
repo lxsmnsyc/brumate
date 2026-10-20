@@ -1,0 +1,35 @@
+<script>
+  const base = import.meta.env.BASE_URL;
+
+  // The theme is on the root element, where the inline script put the saved one.
+  function toggleTheme() {
+    const root = document.documentElement;
+    const dark =
+      root.dataset.theme === 'dark' ||
+      (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try {
+      localStorage.setItem('theme', root.dataset.theme);
+    } catch {
+      // Storage can be blocked. The theme still changes for this page.
+    }
+  }
+</script>
+
+<header class="header">
+  <div class="header-inner">
+    <a class="brand" href=base>
+      <span class="brand-mark" aria-hidden="true"></span>
+      brumate
+    </a>
+    <nav class="header-nav" aria-label="Main">
+      <a href=(`${base}docs`)>Docs</a>
+      <a href=(`${base}docs/getting-started`)>Get started</a>
+      <a href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Switch theme" onClick=toggleTheme>
+        <span class="sun" aria-hidden="true">☀</span>
+        <span class="moon" aria-hidden="true">☾</span>
+      </button>
+    </nav>
+  </div>
+</header>

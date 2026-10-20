@@ -2,7 +2,7 @@
 
 The syntax follows [solid-sfc](https://github.com/lxsmnsyc/solid-sfc). The file parts, the attribute syntax, the `#` blocks and block scripts are the same. The compile-time functions are fewer and some have different semantics.
 
-The file extension is `.brm` for now.
+The file extension is `.brm`.
 
 ## Parts of a file
 
@@ -256,6 +256,21 @@ The attribute syntax is the same as solid-sfc:
 ```
 
 `<{tag}>` renders an element name or a component. When `tag` changes on the client, the element or component renders again with the new tag, as in a `#key` block.
+
+### HTML
+
+An inserted value is escaped. `raw` from `brumate/html` inserts HTML as it is, such as the HTML of a Markdown file:
+
+```html
+<script>
+  import { raw } from 'brumate/html';
+  import { html } from './page.md';
+</script>
+
+<article>{raw(html)}</article>
+```
+
+Insert only HTML that you trust.
 
 ### Event modifiers
 

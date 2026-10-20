@@ -1,0 +1,12 @@
+<script>
+  import { setStatus } from 'brumate/server';
+
+  const base = import.meta.env.BASE_URL;
+  setStatus(404);
+  $title('Not found | brumate');
+</script>
+
+<main class="not-found">
+  <h1>Not found</h1>
+  <p>Nothing lives here. <a href=base>Go home</a>.</p>
+</main>

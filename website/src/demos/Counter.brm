@@ -1,0 +1,10 @@
+<script>
+  let count = $signal(0);
+  const double = $memo(count * 2);
+</script>
+
+<div class="demo-counter">
+  <button onClick=(() => count++)>Clicked {count} times</button>
+  <p>Double: {double}</p>
+  <p class="note">This paragraph never changes, so it ships as HTML only.</p>
+</div>

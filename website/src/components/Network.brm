@@ -1,0 +1,13 @@
+<script>
+  const { title = 'Scripts this page loaded' } = $props<{ title?: string }>();
+</script>
+
+<aside class="network" data-network>
+  <header>
+    <span>{title}</span>
+    <strong data-total>0 KB</strong>
+  </header>
+  <ol>
+    <li class="empty">Nothing yet</li>
+  </ol>
+</aside>

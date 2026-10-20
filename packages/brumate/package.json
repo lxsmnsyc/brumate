@@ -41,6 +41,10 @@
       "types": "./dist/runtime/context.d.ts",
       "default": "./dist/runtime/context.js"
     },
+    "./html": {
+      "types": "./dist/runtime/html.d.ts",
+      "default": "./dist/runtime/html.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

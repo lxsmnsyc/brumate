@@ -1,0 +1,41 @@
+<script>
+  interface Todo {
+    id: number;
+    title: string;
+    done: boolean;
+  }
+
+  let todos = $signal<Todo[]>([
+    { id: 1, title: 'Render on the server', done: true },
+    { id: 2, title: 'Resume on the first click', done: false },
+  ]);
+  let draft = $signal('');
+  const left = $memo(todos.filter((todo) => !todo.done).length);
+
+  function add() {
+    if (draft.trim()) {
+      todos = [...todos, { id: Date.now(), title: draft.trim(), done: false }];
+      draft = '';
+    }
+  }
+</script>
+
+<form class="demo-todos" onSubmit:prevent=add>
+  <input value=draft placeholder="Add a todo" onInput=((event) => (draft = event.currentTarget.value))>
+  <button>Add</button>
+</form>
+<ul class="demo-list">
+  #for (todo of todos by todo.id) {
+    <li>
+      <label>
+        <input
+          type="checkbox"
+          checked=todo.done
+          onChange=(() => (todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item))))
+        >
+        <span class={ done: todo.done }>{todo.title}</span>
+      </label>
+    </li>
+  }
+</ul>
+<p class="demo-left">{left} left</p>

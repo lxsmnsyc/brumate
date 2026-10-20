@@ -7,6 +7,7 @@ export default defineConfig({
     'src/runtime/client.ts',
     'src/runtime/loader.ts',
     'src/runtime/context.ts',
+    'src/runtime/html.ts',
     'src/vite.ts',
     'src/cli.ts',
   ],

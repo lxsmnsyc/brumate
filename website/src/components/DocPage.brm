@@ -1,0 +1,52 @@
+<script>
+  import { pages, sections } from '../docs.ts';
+
+  const { slug } = $props<{ slug: string }>();
+  const base = import.meta.env.BASE_URL;
+  const page = pages[slug];
+  const order = sections.flatMap((section) => section.pages);
+  const index = order.findIndex((item) => item.slug === slug);
+  const previous = index > 0 ? order[index - 1] : undefined;
+  const next = index !== -1 ? order[index + 1] : undefined;
+  const link = (target: string): string => `${base}docs${target ? `/${target}` : ''}`;
+  const contents = (page?.headings ?? []).filter((heading) => heading.level === 2 || heading.level === 3);
+  $title(page ? `${page.title} | brumate` : 'Not found | brumate');
+</script>
+
+<div class="docs">
+  <details class="sidebar-toggle">
+    <summary>Menu</summary>
+  </details>
+  <nav class="sidebar" aria-label="Documentation">
+    #for (section of sections by section.title) {
+      <p class="sidebar-title">{section.title}</p>
+      #for (item of section.pages by item.slug) {
+        <a href=(link(item.slug)) class={ active: item.slug === slug }>{item.title}</a>
+      }
+    }
+  </nav>
+  <article class="prose">
+    #if (page) {
+      {page.html}
+      <nav class="pager" aria-label="Pages">
+        #if (previous) {
+          <a class="previous" href=(link(previous.slug))><small>Previous</small>{previous.title}</a>
+        }
+        #if (next) {
+          <a class="next" href=(link(next.slug))><small>Next</small>{next.title}</a>
+        }
+      </nav>
+    } #else {
+      <h1>Not found</h1>
+      <p>No page at this address. <a href=(link(''))>Back to the documentation</a>.</p>
+    }
+  </article>
+  <nav class="toc" aria-label="On this page">
+    #if (contents.length > 0) {
+      <p>On this page</p>
+      #for (heading of contents by heading.id) {
+        <a href=(`#${heading.id}`) class=(`level-${heading.level}`)>{heading.text}</a>
+      }
+    }
+  </nav>
+</div>
