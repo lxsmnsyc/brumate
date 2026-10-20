@@ -75,6 +75,16 @@ export function u6($$s) {
 - Local functions become module functions that take the scope as their first argument. Server functions become `$$b.rpc` stubs.
 - Only the imports that client code reads are kept.
 
+## Render modules
+
+A component that a parent renders inside a block that changes needs its render function on the client. The compiler writes it into a third module, the render module, which a bundler loads as `App.brm?brumate-render`.
+
+- It is the server render function without `async`. The component's script runs, and the result is an HTML string with the same markers.
+- The component's root scope gets its component ID, so the child's client module loads on its first event, as it does for a child that the server rendered.
+- A function passed as a prop calls the parent's exported handler, so it writes the parent's slots.
+- A parent's client module imports a child's render module only when one of its changing blocks renders the child. Other parents never load it.
+- `#template`s that a changing block calls are copied into its render function.
+
 ## Code splitting
 
 Planned. The compiler now writes one client module per component. It will split code itself. It does not depend on another splitter or on the bundler.
@@ -122,12 +132,14 @@ Handlers run after the event has finished dispatching, so the core passes them a
 
 Minified, measured on the test components:
 
-| Code               | Size    | Gzip    |
-| ------------------ | ------- | ------- |
-| Loader             | 1783 B  | 892 B   |
-| Core, with seroval | 33065 B | 10413 B |
-| Counter module     | 327 B   | 229 B   |
-| Todo list module   | 1479 B  | 772 B   |
+| Code                                    | Size    | Gzip    |
+| --------------------------------------- | ------- | ------- |
+| Loader                                  | 1783 B  | 892 B   |
+| Core, with seroval                      | 33065 B | 10413 B |
+| Counter module                          | 327 B   | 229 B   |
+| Todo list module                        | 1479 B  | 772 B   |
+| List of child components, client module | 2105 B  | 954 B   |
+| Child render module                     | 368 B   | 266 B   |
 
 The loader is the only code that loads before an interaction. The core loads once, on the first event. Most of its size is seroval's deserializer and serializer.
 

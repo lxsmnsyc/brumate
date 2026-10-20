@@ -22,6 +22,7 @@
 - Lists keep the raw item of each item scope in the state, so keys can be computed again on the client.
 - The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
 - A change to a `.brm` file reloads the page instead of replacing modules.
+- A component rendered on the client comes from its render module, a third output next to the server and client modules.
 - seroval is the serializer. The state is seroval JSON, so the client reads it without `eval`.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -41,7 +42,7 @@
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
 - **`#portal`.** The server renders the body in place.
 - **Styles.** `<style>` blocks are parsed but not compiled yet.
-- **Client rendering.** Components, dynamic tags and templates from outer scopes cannot render inside a block that changes on the client yet. The compiler reports an error.
+- **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
 - **Reporting what ships.** A dev overlay or a `brumate inspect` command that shows each component's client code and the source lines that caused it.
@@ -54,6 +55,6 @@
 3. Write the server codegen with markers and state. Done. See [Page format](./page-format.md).
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list. Done. See [Compiler](./compiler.md#size).
 5. Split client modules per handler and per update, as described in [Code splitting](./compiler.md#code-splitting).
-6. Render components on the client, inside blocks that change.
+6. Render components on the client, inside blocks that change. Done. See [Render modules](./compiler.md#render-modules).
 7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](./vite.md).
 8. Add component summaries.

@@ -79,6 +79,7 @@ export async function fetch(request: Request): Promise<Response> {
 | -------------------------- | ------------------------------------------------------------------- |
 | `./App.brm` on the server  | The server module. Its default export renders the component.        |
 | `./App.brm` in the browser | The client module.                                                  |
+| `./App.brm?brumate-render` | The render module, for a component rendered on the client.          |
 | `virtual:brumate/start`    | Starts the loader with the manifest.                                |
 | `virtual:brumate/manifest` | Exports `load(id)`, which imports the client module of a component. |
 | `virtual:brumate/server`   | Exports `functions` and `handle(request)`.                          |
