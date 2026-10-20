@@ -199,6 +199,28 @@ export function dispose(): void {
   observer = undefined;
 }
 
+/**
+ * Forgets the page, before another page replaces it. Cleanups run. Loaded
+ * modules and parts stay, so the next page does not load them again.
+ */
+export function leavePage(): void {
+  dispose();
+  for (const scope of scopes.values()) {
+    for (const cleanup of scope.cleanups?.values() ?? []) {
+      cleanup();
+    }
+  }
+  scopes.clear();
+  comments.clear();
+  elements.clear();
+  loads.clear();
+  loadingSlots.clear();
+  nextId = -1;
+  refs = undefined;
+  writes = 0;
+  lastHandler = Promise.resolve();
+}
+
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   options = value;

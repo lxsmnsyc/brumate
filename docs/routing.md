@@ -88,6 +88,18 @@ The response has the headers and the status that were set while the page rendere
 
 ## Navigation
 
-Links are plain `<a>` elements, and each one loads a full page. Each page resumes with only the loader, so no router code ships to the browser. Navigation on the client is not supported yet.
+Links are plain `<a>` elements. Without scripts, each one loads a full page. Once the loader runs, it loads pages itself:
+
+- A click on a link to the same origin fetches the page. The back and forward buttons do too.
+- The first render of the new page replaces the document as soon as it arrives. Markup that streams after it, such as `#loading` bodies, follows as it arrives.
+- The head is updated. Elements that are in both pages stay.
+- The core forgets the state of the old page and reads the state of the new one. Modules that are already loaded are not loaded again.
+- A form that posts to a server function is sent with `fetch`. The page that the server redirects to replaces the current one, and the place on the page is kept when it is the same page.
+
+The code for this is a separate module of about 1 KB. The loader imports it on the first navigation.
+
+A link is left to the browser when it has `target`, `download` or `data-reload`, when a key such as Ctrl is held, or when it only changes the hash. `navigate: false` in the plugin options turns navigation off.
+
+Each navigation renders the whole page, layouts included, and state on the client resets. Keeping the layouts and their state while only the route changes is not supported yet.
 
 [`examples/todos`](../examples/todos) has a layout, three routes, an `@aside` slot and a 404 page. The guestbook route has a form that posts to a server function.

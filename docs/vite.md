@@ -33,7 +33,7 @@ The client entry only starts the loader:
 import 'virtual:brumate/start';
 ```
 
-Nothing else runs before the first event. The first event loads `brumate/client` and the module of the component that handles it.
+Nothing else runs before the first event. The first event loads `brumate/client` and the module of the component that handles it. The first click on a link loads the navigation module. See [Routing](./routing.md#navigation).
 
 ## Rendering a page
 
@@ -142,6 +142,8 @@ brumate({
   exclude: (directory) => directory === 'node_modules',
   // The directory of route files.
   routes: 'src/routes',
+  // Loads pages without a full page load. See Routing.
+  navigate: true,
 });
 ```
 

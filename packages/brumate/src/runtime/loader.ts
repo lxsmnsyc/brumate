@@ -6,6 +6,11 @@ export interface LoaderOptions {
   load: (id: string) => Promise<ClientModule>;
   /** The URL prefix of server function calls. */
   rpc?: string;
+  /**
+   * Loads pages without a full page load: links to the same origin, the back
+   * and forward buttons, and forms that post to a server function. Defaults to true.
+   */
+  navigate?: boolean;
 }
 
 interface Entry {
@@ -199,6 +204,68 @@ export function start(options: LoaderOptions): () => void {
       preload(element);
     }
   });
+
+  if (options.navigate !== false) {
+    const rpc = `${options.rpc ?? '/_brumate'}/`;
+    // The page without its hash, to tell a change of the hash from a change of the page.
+    let page = String(location.href).split('#')[0];
+    const go = (url: string, init?: RequestInit, push = true): void => {
+      page = url.split('#')[0]!;
+      void import('./navigate.ts').then(({ navigate }) =>
+        navigate({
+          url,
+          init,
+          push,
+          // The core forgets the old page, and reads the new one.
+          leave: async () => (await core)?.leavePage(),
+          enter: () => {
+            void core?.then((client) => client.init({ ...options, listen: scan }));
+            page = location.href.split('#')[0]!;
+          },
+        }),
+      );
+    };
+    listen(document, 'click', (event) => {
+      const mouse = event as MouseEvent;
+      const link = (event.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
+      if (
+        !link ||
+        event.defaultPrevented ||
+        mouse.button ||
+        mouse.metaKey ||
+        mouse.ctrlKey ||
+        mouse.shiftKey ||
+        mouse.altKey ||
+        link.target ||
+        link.hasAttribute('download') ||
+        link.hasAttribute('data-reload') ||
+        link.origin !== location.origin ||
+        // A link to a place in the same page scrolls there.
+        (link.hash && link.href.split('#')[0] === page)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      go(link.href);
+    });
+    listen(document, 'submit', (event) => {
+      const form = event.target as HTMLFormElement;
+      const submitter = (event as SubmitEvent).submitter;
+      const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
+      const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
+      if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
+        return;
+      }
+      event.preventDefault();
+      go(action, { method: 'POST', body: new FormData(form, submitter) });
+    });
+    listen(window, 'popstate', () => {
+      // A change of the hash only stays on the page.
+      if (location.href.split('#')[0] !== page) {
+        go(location.href, undefined, false);
+      }
+    });
+  }
 
   scan(document);
   // Markup that streams in later, such as a `#loading` body, has handlers too.

@@ -18,6 +18,8 @@ export interface BrumateOptions {
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
+  /** Loads pages without a full page load when a link is clicked or a form posts. Defaults to true. */
+  navigate?: boolean;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -178,7 +180,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
-          `start({ load, rpc: ${JSON.stringify(rpc)} });`,
+          `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${options.navigate !== false} });`,
         ].join('\n');
       }
       if (id === `\0${MANIFEST}`) {

@@ -112,6 +112,7 @@ A form can post to a server function. It works without client code, so it works 
 - A `redirect(location)` in the function sends the browser there instead.
 - A `ServerError` answers with its status and its message as text. Any other error answers with status 500 and a generic message.
 - The value must be the name of a server function. Other values render as a normal attribute.
+- Once the loader runs, the form is sent with `fetch` and the page is replaced without a full page load. See [Routing](./routing.md#navigation).
 
 The form uses the `rpc` prefix of the render, which defaults to `/_brumate`. `virtual:brumate/routes` passes the prefix of the plugin.
 
