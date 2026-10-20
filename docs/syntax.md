@@ -27,7 +27,13 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are seven. They need no import.
+There are seven. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
+
+```json
+{ "compilerOptions": { "types": ["brumate/types"] } }
+```
+
+The code inside `.brm` files is not type-checked yet.
 
 ```ts
 const { initial } = $props<{ initial: number }>();
@@ -184,7 +190,12 @@ Modifiers follow the event name and apply before the handler loads:
 
 ### `prefetch`
 
-Sets when the loader preloads the chunks of an element's handlers: `'hover'`, the default, `'visible'`, `'idle'` or `'none'`.
+Sets when the loader preloads the core and the parts of an element's handlers, so the first event does not wait for them:
+
+- `'hover'`, the default: when the pointer moves over the element, or the element gets focus.
+- `'visible'`: when the element enters the viewport.
+- `'idle'`: when the browser is idle after the page loads.
+- `'none'`: never.
 
 ### Window and document events
 
@@ -201,7 +212,7 @@ These blocks work as in solid-sfc:
 
 - `#if`, `#else if` and `#else`.
 - `#for (item, index of list by key)` and its `#else`.
-- `#repeat`, `#switch`, `#key`, `#try` with `#catch`, and `#loading`.
+- `#repeat`, `#switch`, `#key`, `#try` with `#catch`, and `#loading`. The `reset` of `#catch (error, reset)` renders the `#try` body again on the client. If it throws again, the fallback renders again.
 - `#portal`. See below.
 - `#template`.
 - A `<script>` at the start of a block body.

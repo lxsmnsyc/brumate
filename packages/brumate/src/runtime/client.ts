@@ -594,6 +594,35 @@ export function rekey(
   insertHTML(end, render(scope));
 }
 
+/**
+ * Renders the body of a `#try` block again, for its `reset` function. If the
+ * body throws, the fallback renders again with the error.
+ */
+export async function reset(
+  scope: Scope,
+  anchor: number,
+  id: string,
+  body: string,
+  fallback: string,
+  kinds: number[],
+): Promise<void> {
+  const updates = await loadPart(await loadModule(id), 'update');
+  const start = findComment(`b${scope.id}:${anchor}`);
+  const end = rangeEnd(start);
+  disposeKinds(scope, kinds);
+  clear(start, end);
+  let html: string;
+  try {
+    html = (updates[body] as Render)(scope);
+  } catch (error) {
+    // Scopes that the body created before it threw.
+    disposeKinds(scope, kinds);
+    context.after.length = 0;
+    html = (updates[fallback] as (parent: Scope, error: unknown) => string)(scope, error);
+  }
+  insertHTML(end, html);
+}
+
 /** Renders the body of a `#client` block once. */
 export function fill(scope: Scope, anchor: number, render: Render): void {
   const start = findComment(`b${scope.id}:${anchor}`);

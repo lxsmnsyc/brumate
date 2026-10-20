@@ -9,7 +9,8 @@
   },
   "files": [
     "dist",
-    "client.d.ts"
+    "types.d.ts",
+    "globals.d.ts"
   ],
   "type": "module",
   "exports": {
@@ -32,6 +33,9 @@
     "./vite": {
       "types": "./dist/vite.d.ts",
       "default": "./dist/vite.js"
+    },
+    "./types": {
+      "types": "./types.d.ts"
     },
     "./package.json": "./package.json"
   },

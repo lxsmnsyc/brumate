@@ -109,7 +109,27 @@ export function start(options: LoaderOptions): () => void {
     });
   };
 
+  const visible =
+    typeof IntersectionObserver === 'undefined'
+      ? undefined
+      : new IntersectionObserver((records) => {
+          for (const record of records) {
+            if (record.isIntersecting) {
+              visible!.unobserve(record.target);
+              preload(record.target);
+            }
+          }
+        });
+  removers.push(() => visible?.disconnect());
+
   const scan = (root: ParentNode): void => {
+    for (const element of select(root, '[data-prefetch="visible"], [data-prefetch="idle"]')) {
+      if (strategy(element) === 'idle' || !visible) {
+        (window.requestIdleCallback ?? setTimeout)(() => preload(element));
+      } else {
+        visible.observe(element);
+      }
+    }
     for (const element of select(root, '[data-on]:not(template)')) {
       for (const { type } of entries(element)) {
         if (!types.has(type)) {
@@ -144,20 +164,38 @@ export function start(options: LoaderOptions): () => void {
     }
   };
 
-  // Preloads a component's module when the pointer is over one of its handlers.
+  // Preloads the core and the parts of an element's handlers, so its first event does not wait for them.
+  const preloaded = new WeakSet<Element>();
+  const preload = (element: Element): void => {
+    if (preloaded.has(element)) {
+      return;
+    }
+    preloaded.add(element);
+    void import('./client.ts');
+    for (const entry of entries(element)) {
+      const [id, name] = entry.ref.split('#') as [string, string];
+      void options.load(id).then((module) => module.load(/^[hc]\d/.test(name) ? name : 'update'));
+    }
+  };
+  const strategy = (element: Element): string => element.getAttribute('data-prefetch') ?? 'hover';
+
   listen(
     document,
     'pointerover',
     (event) => {
       const element = (event.target as Element).closest?.('[data-on]');
-      if (element && element.getAttribute('data-prefetch') !== 'none') {
-        for (const entry of entries(element)) {
-          void options.load(entry.ref.split('#')[0]!);
-        }
+      if (element && strategy(element) === 'hover') {
+        preload(element);
       }
     },
     { passive: true },
   );
+  listen(document, 'focusin', (event) => {
+    const element = (event.target as Element).closest?.('[data-on]');
+    if (element && strategy(element) === 'hover') {
+      preload(element);
+    }
+  });
 
   scan(document);
   // Markup that streams in later, such as a `#loading` body, has handlers too.

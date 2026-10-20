@@ -182,6 +182,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/brumate
     devDependencies:
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
       vite:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.2)

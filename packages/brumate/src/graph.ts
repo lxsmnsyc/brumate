@@ -73,6 +73,16 @@ function isLiveProp(declaration: Declaration, liveProps: Set<string> | undefined
   return liveProps.has(declaration.propKey);
 }
 
+/** True if client code reads the `reset` function of a `#try` block. */
+export function resetUsed(model: SemanticModel, block: Block, reached: Set<Site>): boolean {
+  return model.declarations.some(
+    (declaration) =>
+      declaration.kind === 'reset' &&
+      declaration.block === block &&
+      declaration.reads.some((read) => reached.has(read.site)),
+  );
+}
+
 /** True if a site's expression is a function, such as a function passed as a prop. */
 export function isFunctionValue(site: Site): boolean {
   const node = site.node;
@@ -230,6 +240,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         (block.kind === 'client' ||
           // A portal into a target renders on the client, where the target is.
           (block.kind === 'portal' && block.target !== undefined) ||
+          // Client code can call `reset` to render a `#try` body again.
+          (block.kind === 'try' && resetUsed(model, block, reached)) ||
           (headers.get(block) ?? []).some((node) => live.has(node)) ||
           (block.kind === 'try' && scope.body === block.fallback && tryChanges(block)));
       const templateUsed = scope.kind === 'template' && templateCallChanges(scope);

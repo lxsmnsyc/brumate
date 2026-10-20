@@ -791,7 +791,9 @@ class ClientGenerator {
     for (const scope of this.model.scopes) {
       const block = scope.block;
       const clientOnly =
-        block?.kind === 'client' || (block?.kind === 'portal' && block.target !== undefined);
+        block?.kind === 'client' ||
+        (block?.kind === 'portal' && block.target !== undefined) ||
+        (block?.kind === 'try' && this.plan.anchors.has(block));
       if (scope.kind === 'body' && block && clientOnly && scope.body) {
         this.renders.set(scope, { body: scope.body, block });
       }
@@ -807,8 +809,18 @@ class ClientGenerator {
         outer: { inside, base, baseVar: '$$p' },
       });
       const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
-      emitter.line(`export function r${scope.id}($$p${isItem ? ', $$item, $$index' : ''}) {`);
+      const isCatch = block.kind === 'try' && block.fallback === body;
+      const params = isItem ? ', $$item, $$index' : isCatch ? ', $$error' : '';
+      emitter.line(`export function r${scope.id}($$p${params}) {`);
       emitter.line(`let $$html = '';`);
+      if (block.kind === 'try' && isCatch) {
+        if (block.error) {
+          emitter.line(`const ${block.error.name} = $$error;`);
+        }
+        if (block.reset) {
+          emitter.line(`const ${block.reset.name} = undefined;`);
+        }
+      }
       for (const line of this.prologue(inside, base)) {
         emitter.line(line);
       }

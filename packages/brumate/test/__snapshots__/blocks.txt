@@ -58,17 +58,20 @@ nodes
   signal tab live
   signal stars static
   index i static <- repeat (15:14)
-  error error static
+  error error live
   case (8:10) live <- signal tab
   repeat (15:14) static <- signal stars
   insert (16:10) static <- index i
-  insert (21:7) static <- error error
+  insert (21:7) live <- error error
   key (27:7) live <- signal tab
 client
   event window.keydown (6:20)
+  insert (21:7)
   event button.click (22:19)
 created
   2 body (switch 7:1)
   3 body (switch 7:1)
+  5 body (try 18:1)
+  6 body (try 18:1)
   7 body (client 24:1)
   8 body (key 27:1)

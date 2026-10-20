@@ -46,6 +46,7 @@
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
+- **Type-checking `.brm` files.** `brumate/types` declares the compile-time functions and `.brm` modules, but the code in `.brm` files is not type-checked, and there is no editor support. solid-sfc does this with a Volar language plugin.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps

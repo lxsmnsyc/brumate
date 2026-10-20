@@ -19,7 +19,7 @@ Add the types to `tsconfig.json`:
 ```json
 {
   "compilerOptions": {
-    "types": ["vite/client", "brumate/client"]
+    "types": ["vite/client", "brumate/types"]
   }
 }
 ```

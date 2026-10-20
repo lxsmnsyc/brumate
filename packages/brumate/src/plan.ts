@@ -1,5 +1,5 @@
 import type { Block, Body, Markup, SFCFile } from './ast.ts';
-import { isFunctionValue } from './graph.ts';
+import { isFunctionValue, resetUsed } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
 import type { StyleOutput } from './css.ts';
@@ -239,6 +239,7 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
     const live =
       block.kind === 'client' ||
       portalTarget ||
+      (block.kind === 'try' && resetUsed(model, block, graph.reached)) ||
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);

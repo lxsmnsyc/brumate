@@ -1,0 +1,6 @@
+<script>
+  let count = $signal(0);
+</script>
+
+<button class="idle" prefetch="idle" onClick=(() => count++)>{count}</button>
+<button class="none" prefetch="none" onClick=(() => count--)>-</button>

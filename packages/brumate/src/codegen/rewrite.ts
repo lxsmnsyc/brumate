@@ -1,4 +1,5 @@
-import type { Range, SFCFile } from '../ast.ts';
+import type { Block, Range, SFCFile } from '../ast.ts';
+import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
@@ -61,6 +62,25 @@ export class Rewriter {
       }
       case 'server-function':
         return `${declaration.name}$`;
+      case 'reset': {
+        // Renders the `#try` body again, in the range of the block.
+        const block = declaration.block as Block & { kind: 'try' };
+        const owner = declaration.scope.parent!;
+        const body = this.plan.bodyScopes.get(block.body)!;
+        const fallback = this.plan.bodyScopes.get(block.fallback)!;
+        const kinds = this.plan.graph.model.scopes
+          .filter((scope) => isWithin(scope, body) || isWithin(scope, fallback))
+          .map((scope) => scope.id);
+        const args = [
+          scopePath(this.plan, scopeVar, base, owner),
+          this.plan.anchors.get(block),
+          JSON.stringify(this.plan.id),
+          JSON.stringify(`r${body.id}`),
+          JSON.stringify(`r${fallback.id}`),
+          `[${kinds.join(', ')}]`,
+        ];
+        return `$$b.reset.bind(null, ${args.join(', ')})`;
+      }
       default:
         return undefined;
     }

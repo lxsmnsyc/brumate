@@ -4,7 +4,7 @@
     "lib": ["es2023", "dom"],
     "module": "preserve",
     "moduleResolution": "bundler",
-    "types": ["node", "vite/client", "brumate/client"],
+    "types": ["node", "vite/client", "brumate/types"],
     "strict": true,
     "noEmit": true
   }

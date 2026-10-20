@@ -23,6 +23,8 @@ const props: Record<string, unknown> = {
   styled: {},
   portal: {},
   produce: {},
+  prefetch: {},
+  retry: {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

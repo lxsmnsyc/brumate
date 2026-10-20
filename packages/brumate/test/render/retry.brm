@@ -1,0 +1,21 @@
+<script module>
+  let failing = true;
+
+  export function heal(): void {
+    failing = false;
+  }
+
+  export function check(): string {
+    if (failing) {
+      throw new Error('Not ready');
+    }
+    return 'Ready';
+  }
+</script>
+
+#try {
+  <p class="ok">{check()}</p>
+} #catch (error, reset) {
+  <p class="error">{String(error)}</p>
+  <button class="retry" onClick=reset>Try again</button>
+}

@@ -81,7 +81,11 @@ afterEach(() => {
 /** Delays loading some parts, to test the order in which handlers run. */
 type PartDelays = Record<string, number>;
 
+/** The parts that the loader and the core loaded, as `<component>:<part>`. */
+const loadedParts: string[] = [];
+
 async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
+  loadedParts.length = 0;
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderToString(server.default, props);
   document.body.innerHTML = html + state;
@@ -93,6 +97,7 @@ async function resume(name: string, props: unknown, delays: PartDelays = {}): Pr
       return {
         ...module,
         load: async (part: string) => {
+          loadedParts.push(`${id}:${part}`);
           await new Promise((done) => setTimeout(done, delays[part] ?? 0));
           return module.load(part);
         },
@@ -232,6 +237,29 @@ describe('resume', () => {
     expect(document.querySelectorAll('li')[0]).toBe(first);
     expect(document.querySelectorAll('li')[1]).toBe(second);
     expect(text('li:last-child')).toBe('New');
+  });
+
+  it('preloads handlers when the browser is idle', async () => {
+    await resume('prefetch', {});
+    // Without a click, the idle button's handler part loads, and the other one does not.
+    await waitFor(() => expect(loadedParts).toContain('Prefetch_okfwof:h1'));
+    expect(loadedParts).not.toContain('Prefetch_okfwof:h3');
+  });
+
+  it('renders a #try body again with reset', async () => {
+    await resume('retry', {});
+    expect(text('.error')).toBe('Error: Not ready');
+
+    // The body still fails, so the fallback renders again, and its button still works.
+    click(document.querySelector('.retry')!);
+    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c:update'));
+    await waitFor(() => expect(text('.error')).toBe('Error: Not ready'));
+
+    const shared = await import(file('retry.brm.client.shared.ts'));
+    shared.heal();
+    click(document.querySelector('.retry')!);
+    await waitFor(() => expect(text('.ok')).toBe('Ready'));
+    expect(document.querySelector('.error')).toBeNull();
   });
 
   it('shares functions between parts', async () => {
