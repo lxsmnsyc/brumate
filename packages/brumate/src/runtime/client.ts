@@ -196,12 +196,21 @@ function loadPart(module: ClientModule, name: string): Promise<Part> {
   return promise;
 }
 
-async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
+type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
+
+async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   const module = await loadModule(id);
   const part = await loadPart(module, partOf(name));
-  return (part[name] as (scope: Scope | undefined, ...args: unknown[]) => unknown)(scope, ...args);
+  return part[name] as Handler;
 }
+
+async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
+  return (await resolve(ref))(scope, ...args);
+}
+
+// The handler of the previous event, once it has started.
+let lastHandler: Promise<unknown> = Promise.resolve();
 
 /**
  * Keeps `currentTarget` on an event. The handler runs after the event has
@@ -223,7 +232,15 @@ function withTarget(event: Event, element: Element): Event {
 export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
   const anchor = element.getAttribute('data-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
-  return call(ref, scope, event ? [withTarget(event, element)] : []);
+  const args = event ? [withTarget(event, element)] : [];
+  // Parts load in parallel, but handlers start in the order of their events,
+  // so an input handler runs before the submit handler of a later event.
+  const loaded = resolve(ref);
+  const started = lastHandler
+    .then(() => loaded)
+    .then((handler) => ({ value: handler(scope, ...args) }));
+  lastHandler = started.catch(() => {});
+  return started.then((result) => result.value);
 }
 
 /** Returns the instance of a scope by its ID. */

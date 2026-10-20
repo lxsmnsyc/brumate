@@ -78,13 +78,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function resume(name: string, props: unknown): Promise<void> {
+/** Delays loading some parts, to test the order in which handlers run. */
+type PartDelays = Record<string, number>;
+
+async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderToString(server.default, props);
   document.body.innerHTML = html + state;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
-  stop = start({ load: (id) => import(modules.get(id)!) });
+  stop = start({
+    load: async (id) => {
+      const module = await import(modules.get(id)!);
+      return {
+        ...module,
+        load: async (part: string) => {
+          await new Promise((done) => setTimeout(done, delays[part] ?? 0));
+          return module.load(part);
+        },
+      };
+    },
+  });
 }
 
 /**
@@ -213,6 +227,23 @@ describe('resume', () => {
     click(document.querySelector('li:last-child')!);
     await waitFor(() => expect(text('p')).toBe('2 left'));
     expect(document.querySelector('li:last-child')!.getAttribute('class')).toBe('done');
+  });
+
+  it('runs handlers in the order of their events', async () => {
+    vi.stubGlobal(
+      'fetch',
+      async () => new Response(JSON.stringify({ t: { t: 2, s: 1 }, f: 127, m: [] })),
+    );
+    // The input handler's part loads after the submit handler's part.
+    await resume('todos', { initial: [] }, { h7: 100 });
+    const field = document.querySelector('input')!;
+    field.value = 'First';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    document
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(1));
+    expect(text('li')).toContain('First');
   });
 
   it('updates a child through a function prop', async () => {

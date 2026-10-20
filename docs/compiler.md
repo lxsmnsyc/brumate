@@ -146,6 +146,8 @@ The core, `brumate/client`, loads on the first event:
 
 Handlers run after the event has finished dispatching, so the core passes them an event whose `currentTarget` is still the element.
 
+Parts load in parallel, but handlers start in the order of their events. Typing and then submitting runs the input handler before the submit handler, even when the submit handler's part loads first.
+
 ## Size
 
 Minified, measured on the test components:
