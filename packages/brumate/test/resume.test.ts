@@ -643,3 +643,24 @@ describe('effect order', () => {
     await waitFor(() => expect(log).toEqual(['2 3 1', '4 6 2']));
   });
 });
+
+describe('several roots', () => {
+  it('resumes two roots on one page when the second starts above the first', async () => {
+    const counter = await import(file('counter.brm.ts'));
+    const first = await renderParts(counter.default, { label: 'One' });
+    const second = await renderParts(counter.default, { label: 'Two' }, { base: first.next() });
+    document.body.innerHTML = `<div class="one">${first.html}</div><div class="two">${second.html}</div>${first.state}${second.state}`;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: async (id) => import(modules.get(id)!) });
+    const one = document.querySelector('.one button')!;
+    const two = document.querySelector('.two button')!;
+    click(one);
+    await waitFor(() => expect(document.querySelector('.one p')!.textContent).toBe('1 / 2'));
+    expect(document.querySelector('.two p')!.textContent).toBe('0 / 0');
+    click(two);
+    click(two);
+    await waitFor(() => expect(document.querySelector('.two p')!.textContent).toBe('2 / 4'));
+    expect(document.querySelector('.one p')!.textContent).toBe('1 / 2');
+  });
+});

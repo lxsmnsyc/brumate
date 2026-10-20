@@ -83,6 +83,19 @@ renderToStream(App, {}, {
 
 `render` is the step under `renderToStream`. It returns the parts: the markup, the head, the state script, the response headers that server functions set, and the rest as an async iterable of markup in the order it is ready. It does not wait for `#loading` bodies either. Use it to send the response headers before the stream starts.
 
+### Several roots on one page
+
+A page can hold several roots that render apart, such as islands in a page from another tool. Each one after the first starts its IDs above the one before it, with `base`:
+
+```ts
+const first = await render(Header, {});
+const second = await render(Cart, {}, { base: first.next() });
+```
+
+- `next()` returns a number above every ID of the render. Call it after the `pending` markup of the render has been sent, if a later root must also start above its `#loading` bodies.
+- The records of a render with a `base` carry `data-root`, so the client keeps their references apart.
+- One loader and one core serve every root.
+
 In development, load the component with `vite.ssrLoadModule('/src/Root.brm')`. [`examples/todos`](../examples/todos) is a complete server.
 
 ## Production

@@ -82,8 +82,9 @@ const elements = new Map<string, Element>();
 // from state records that the server streams later.
 let nextId = -1;
 
-// Records share references through this map, so a later record can settle a promise of an earlier one.
-let refs: Map<number, unknown> | undefined;
+// Records of one render share references through a map, so a later record can settle a promise
+// of an earlier one. Each render on the page has its own map, by its `data-root`.
+const refs = new Map<string, Map<number, unknown>>();
 const read = new WeakSet<Element>();
 
 /**
@@ -95,11 +96,14 @@ function readRecord(script: Element): void {
     return;
   }
   read.add(script);
-  // The first record of a page starts its own references. Later records of the page share them.
-  if (script.hasAttribute('data-route') || !refs) {
-    refs = new Map();
+  const root = script.getAttribute('data-root') ?? '0';
+  if (!refs.has(root)) {
+    refs.set(root, new Map());
   }
-  const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), { plugins, refs });
+  const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), {
+    plugins,
+    refs: refs.get(root)!,
+  });
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
     // A page that replaced only some routes of the one before it: see `navigate`.
@@ -282,7 +286,7 @@ export function leavePage(): void {
   loads.clear();
   loadingSlots.clear();
   nextId = -1;
-  refs = undefined;
+  refs.clear();
   writes = 0;
   lastHandler = Promise.resolve();
 }

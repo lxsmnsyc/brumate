@@ -392,12 +392,16 @@ export function streamState(
 export function stateScript(
   record: SerovalNode,
   scopes = false,
-  attributes: { next?: number; route?: string } = {},
+  attributes: { next?: number; route?: string; root?: number } = {},
 ): string {
   const json = JSON.stringify(record).replace(/</g, '\\u003c');
   let extra = scopes ? ' data-scopes' : '';
   if (attributes.next !== undefined) {
     extra += ` data-next="${attributes.next}"`;
+  }
+  // Records of a render that starts above 0 name it, so their references stay apart from other renders.
+  if (attributes.root) {
+    extra += ` data-root="${attributes.root}"`;
   }
   if (attributes.route !== undefined) {
     extra += ` data-route="${escapeAttribute(attributes.route)}"`;
@@ -425,6 +429,11 @@ export interface RenderResult {
   headers: Headers;
   /** The status that `setStatus` set while the page rendered, or 200. */
   status: number;
+  /**
+   * A number above every ID of this render, once its `#loading` bodies have
+   * rendered. Another root on the same page passes it as `base`.
+   */
+  next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
 }
@@ -547,9 +556,9 @@ export async function render<P>(
       refs,
       onParse(record, initial) {
         if (initial) {
-          onScopes(stateScript(record, true, { next: ctx.next(), route }));
+          onScopes(stateScript(record, true, { next: ctx.next(), route, root: options.base }));
         } else {
-          queue.push(stateScript(record));
+          queue.push(stateScript(record, false, { root: options.base }));
         }
       },
       onError: queue.fail,
@@ -603,6 +612,7 @@ export async function render<P>(
     pending: queue.iterable,
     headers: response.headers,
     status: response.status ?? 200,
+    next: () => ctx.next(),
     head: ctx.headHTML(),
   };
 }
