@@ -21,7 +21,7 @@
     <meta charset="utf-8">
   </head>
   <body>
-    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a></nav>
+    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a> | <a href="/guestbook">Guestbook</a></nav>
     <div class="page">
       <main>{children}</main>
       <aside>{aside}</aside>

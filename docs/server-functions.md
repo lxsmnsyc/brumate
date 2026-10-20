@@ -88,6 +88,33 @@ const { headers, status } = await render(Root, props, { request });
 
 The request is kept with `AsyncLocalStorage` from `node:async_hooks`, so the server runtime needs a runtime that has it.
 
+## Forms
+
+A form can post to a server function. It works without client code, so it works before the loader runs and with scripts turned off.
+
+```html
+<script>
+  async function sign(form: FormData) {
+    'use server';
+    await save(String(form.get('name')));
+  }
+</script>
+
+<form action=sign>
+  <input name="name">
+  <button>Sign</button>
+</form>
+```
+
+- `action=fn` on a `<form>`, or `formaction=fn` on a button, renders the URL of the server function. The element gets `method="post"`, or `formmethod="post"`, unless it sets its own.
+- The function gets the `FormData` of the form.
+- When it returns, the browser is sent back to the page that posted, with a 303 redirect. The page renders again with the new data.
+- A `redirect(location)` in the function sends the browser there instead.
+- A `ServerError` answers with its status and its message as text. Any other error answers with status 500 and a generic message.
+- The value must be the name of a server function. Other values render as a normal attribute.
+
+The form uses the `rpc` prefix of the render, which defaults to `/_brumate`. `virtual:brumate/routes` passes the prefix of the plugin.
+
 ## In a `$memo`
 
 A `$memo` that calls a server function loads its value on the server, and again on the client when the values it reads change:

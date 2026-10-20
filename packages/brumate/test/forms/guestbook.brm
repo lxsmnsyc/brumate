@@ -1,0 +1,35 @@
+<script module>
+  export const entries: string[] = [];
+</script>
+
+<script>
+  import { ServerError, redirect } from 'brumate/server';
+
+  let show = $signal(false);
+
+  async function sign(form: FormData) {
+    'use server';
+    const name = String(form.get('name') ?? '');
+    if (!name) {
+      throw new ServerError('A name is needed', { status: 422 });
+    }
+    entries.push(name);
+  }
+
+  async function clear() {
+    'use server';
+    entries.length = 0;
+    redirect('/cleared');
+  }
+</script>
+
+<form class="sign" action=sign>
+  <input name="name">
+  <button>Sign</button>
+  <button class="clear" formaction=clear>Clear</button>
+</form>
+<form class="get" action=sign method="get"></form>
+<button class="more" onClick=(() => (show = true))>More</button>
+#if (show) {
+  <form class="later" action=sign></form>
+}

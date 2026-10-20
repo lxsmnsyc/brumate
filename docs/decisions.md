@@ -27,6 +27,7 @@
 - Any `$memo` can hold a promise. The server holds every memo as a promise or a value and awaits it where it is read: where it is declared if something outside every `#loading` body reads it, and in the `#loading` bodies otherwise. The client checks each new value, and loads a promise with the old value kept until it settles.
 - `$isPending(memo)` is true while a memo loads on the client, and false on the server.
 - Routes are files under `src/routes`. A layout wraps its folder, and `@name` folders are sibling routes that render in the `name` slot of the layout for the same URL. Layouts render before their children, so their contexts reach the routes. Navigation loads full pages, so no router code ships.
+- A form posts to a server function with `action=fn`, without client code. The server answers with a 303 back to the page, so the page renders again with the new data.
 - Server rendering streams only. `renderToStream` sends the whole first render at once, closing tags included, and streams what resolves later after it, as Solid does. `render` returns the parts for custom servers. There is no `renderToString`, because waiting for every `#loading` body defeats streaming.
 - A component can render the whole document. The runtime adds the doctype, and puts the head before `</head>` and the state, scripts and portals before `</body>`.
 - `render` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.

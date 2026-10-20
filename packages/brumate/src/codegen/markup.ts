@@ -12,7 +12,7 @@ import type {
   SFCFile,
   TemplateDecl,
 } from '../ast.ts';
-import { isWithin } from '../model.ts';
+import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
@@ -550,6 +550,36 @@ export class Emitter {
     return true;
   }
 
+  /**
+   * Returns the code for `action={fn}` on a form, or `formaction={fn}` on a
+   * button, when `fn` is a server function. The form then posts to the
+   * server function without client code. Returns undefined otherwise.
+   */
+  private formAction(
+    node: ElementNode,
+    name: string,
+    value: Expression,
+    scope: Scope,
+  ): string | undefined {
+    const method = name === 'action' ? 'method' : name === 'formaction' ? 'formmethod' : undefined;
+    if (!method || value.ast.type !== 'Identifier') {
+      return undefined;
+    }
+    const declaration = lookup(scope, value.ast.name);
+    if (declaration?.kind !== 'server-function') {
+      return undefined;
+    }
+    const ref = JSON.stringify(`${this.plan.id}#${declaration.name}`);
+    // The form posts, unless the element sets its own method.
+    const hasMethod = node.attributes.some(
+      (attribute) => 'name' in attribute && attribute.name === method,
+    );
+    const methodArgument = hasMethod ? '' : `, ${JSON.stringify(method)}`;
+    return this.options.mode === 'server'
+      ? `$$b.action($$ctx, ${JSON.stringify(name)}, ${ref}${methodArgument})`
+      : `$$b.action(${JSON.stringify(name)}, ${ref}${methodArgument})`;
+  }
+
   private emitElement(node: ElementNode, scope: Scope): void {
     this.html(`<${node.tag}`);
     if (this.plan.styles.css) {
@@ -575,11 +605,17 @@ export class Emitter {
               : ` ${attribute.name}="${attribute.value}"`,
           );
           break;
-        case 'value':
+        case 'value': {
+          const action = this.formAction(node, attribute.name, attribute.value, scope);
+          if (action) {
+            this.code(action);
+            break;
+          }
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
           );
           break;
+        }
         case 'spread':
           this.code(`$$b.spread(${this.expression(attribute.value)})`);
           break;

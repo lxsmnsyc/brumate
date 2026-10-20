@@ -1,0 +1,31 @@
+<script module>
+  // Kept in memory for the example. A real app would use a database.
+  const entries: string[] = [];
+</script>
+
+<script>
+  import { ServerError } from 'brumate/server';
+
+  $title('Guestbook');
+
+  // A form posts here without client code. The browser comes back to the page after.
+  async function sign(form: FormData) {
+    'use server';
+    const name = String(form.get('name') ?? '').trim();
+    if (!name) {
+      throw new ServerError('Enter a name', { status: 422 });
+    }
+    entries.push(name);
+  }
+</script>
+
+<h1>Guestbook</h1>
+<form action=sign>
+  <input name="name" placeholder="Your name">
+  <button>Sign</button>
+</form>
+<ul>
+  #for (entry of entries by entry) {
+    <li>{entry}</li>
+  }
+</ul>

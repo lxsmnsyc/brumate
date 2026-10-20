@@ -143,3 +143,18 @@ export const VOID_ELEMENTS: Set<string> = new Set([
   'track',
   'wbr',
 ]);
+
+/**
+ * Renders the attributes of a form that posts to a server function, such as
+ * ` action="/_brumate/App_1abc%23save" method="post"`. `method` is the name of
+ * the method attribute to add, if the element has none.
+ */
+export function actionAttributes(
+  prefix: string,
+  name: string,
+  id: string,
+  method?: string,
+): string {
+  const url = `${prefix}/${encodeURIComponent(id)}`;
+  return ` ${name}="${escapeAttribute(url)}"${method ? ` ${method}="post"` : ''}`;
+}

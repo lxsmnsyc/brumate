@@ -64,8 +64,15 @@ export function routeFiles(paths: string[]): RouteFiles {
   return tree;
 }
 
-/** Writes a route tree as module code, with an import for each file. */
-export function routeModule(tree: RouteFiles, resolve: (file: string) => string): string {
+/**
+ * Writes a route tree as module code, with an import for each file. `rpc`
+ * is the URL prefix of server function calls, for forms that post to one.
+ */
+export function routeModule(
+  tree: RouteFiles,
+  resolve: (file: string) => string,
+  rpc = '/_brumate',
+): string {
   const write = (node: RouteFiles): string => {
     const fields: string[] = [];
     for (const key of ['layout', 'page', 'fallback'] as const) {
@@ -95,7 +102,7 @@ export function routeModule(tree: RouteFiles, resolve: (file: string) => string)
     "import { handleRoute } from 'brumate/server';",
     `export const routes = ${write(tree)};`,
     'export function handle(request, options) {',
-    '  return handleRoute(routes, request, options);',
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, ...options });`,
     '}',
   ].join('\n');
 }

@@ -32,12 +32,13 @@ const ROUTES = 'virtual:brumate/routes';
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
 
-async function readBody(request: IncomingMessage): Promise<string> {
-  let body = '';
+/** Reads a request body as bytes, so files in form data stay intact. */
+async function readBody(request: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
   for await (const chunk of request) {
-    body += chunk;
+    chunks.push(chunk as Buffer);
   }
-  return body;
+  return Buffer.concat(chunks);
 }
 
 /** The Vite plugin for `.brm` files. */
@@ -116,7 +117,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const paths = [...files.values()]
       .filter((file) => file.startsWith(`${directory}/`))
       .map((file) => file.slice(directory.length + 1));
-    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`);
+    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`, rpc);
   };
 
   const handleDevRPC = async (
@@ -140,7 +141,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         headers: Object.entries(request.headers).flatMap(([name, value]) =>
           value === undefined ? [] : [[name, String(value)] as [string, string]],
         ),
-        body: await readBody(request),
+        body: new Uint8Array(await readBody(request)),
       });
       const answer: Response = await handleRequest(module.rpc ?? {}, webRequest, rpc);
       response.statusCode = answer.status;

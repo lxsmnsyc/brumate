@@ -1,6 +1,7 @@
 import { fromCrossJSON } from 'seroval';
 import {
   VOID_ELEMENTS,
+  actionAttributes,
   attributeText,
   insertValue,
   isRaw,
@@ -862,6 +863,11 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   } else {
     scope.cleanups.delete(name);
   }
+}
+
+/** Renders the attributes of a form or button that posts to a server function. */
+export function action(name: string, id: string, method?: string): string {
+  return actionAttributes(options.rpc ?? '/_brumate', name, id, method);
 }
 
 /** Calls a server function. */

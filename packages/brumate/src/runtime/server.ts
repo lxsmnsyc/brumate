@@ -2,6 +2,7 @@ import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
 import type { SerovalJSON, SerovalNode } from 'seroval';
 import {
   VOID_ELEMENTS,
+  actionAttributes,
   escape,
   escapeAttribute,
   insertValue,
@@ -72,8 +73,19 @@ export class Context {
   /** The scope that renders the next component, which becomes its owner. */
   private owner: number | undefined;
 
-  constructor(root?: Context) {
+  /** The URL prefix of server function calls. */
+  private rpcPrefix = '/_brumate';
+
+  constructor(root?: Context, rpc?: string) {
     this.root = root ?? this;
+    if (rpc) {
+      this.rpcPrefix = rpc;
+    }
+  }
+
+  /** Returns the URL prefix of server function calls. */
+  rpc(): string {
+    return this.root.rpcPrefix;
   }
 
   /**
@@ -261,6 +273,11 @@ function isLazy(value: unknown): value is Lazy {
   return typeof value === 'object' && value !== null && LAZY in value;
 }
 
+/** Renders the attributes of a form or button that posts to a server function. */
+export function action(ctx: Context, name: string, id: string, method?: string): string {
+  return actionAttributes(ctx.rpc(), name, id, method);
+}
+
 /**
  * Renders a value inserted in markup. `ctx` and `scope` are where it is
  * inserted, for markup that renders there.
@@ -419,6 +436,8 @@ function createQueue<T>(): {
 }
 
 export interface RenderOptions {
+  /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
+  rpc?: string;
   /**
    * The request of the page. Server functions that run while the page
    * renders can read it with `getRequest`, and set headers with
@@ -446,7 +465,7 @@ export async function render<P>(
 ): Promise<RenderResult> {
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
-  const ctx = new Context();
+  const ctx = new Context(undefined, options.rpc);
   const response: ResponseParts = { headers: new Headers() };
   const run = (): Promise<string> => Root(props, ctx);
   const rendered = options.request
@@ -623,6 +642,46 @@ async function writeParts(
   controller.close();
 }
 
+/** True for a request that a `<form>` sent, without client code. */
+function isFormPost(request: Request): boolean {
+  const type = request.headers.get('content-type') ?? '';
+  return (
+    type.startsWith('application/x-www-form-urlencoded') || type.startsWith('multipart/form-data')
+  );
+}
+
+/**
+ * Calls a server function with the data of a form that the browser sent, and
+ * sends the browser back to the page with a redirect. A `redirect` in the
+ * function sends it there instead. An error answers with a short text page,
+ * because there is no page to report it in.
+ */
+async function handleForm(
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  fn: (...args: any[]) => unknown,
+  request: Request,
+  headers: Headers,
+): Promise<Response> {
+  const back = request.headers.get('referer') ?? '/';
+  try {
+    await fn(await request.formData());
+    headers.set('location', back);
+    return new Response(null, { status: 303, headers });
+  } catch (error) {
+    if (error instanceof Redirect) {
+      headers.set('location', error.location);
+      return new Response(null, { status: error.status, headers });
+    }
+    const known = error instanceof ServerError;
+    if (!known) {
+      console.error(error);
+    }
+    headers.set('content-type', 'text/plain; charset=utf-8');
+    const message = known ? error.message : 'The server function failed';
+    return new Response(message, { status: known ? error.status : 500, headers });
+  }
+}
+
 /**
  * Calls a server function for a request from `rpc` in `brumate/client`.
  * `functions` maps server function IDs to the functions, from the `rpc`
@@ -661,8 +720,11 @@ export async function handleRequest(
   if (!functions[id]) {
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
-  const body = await request.json();
   const headers = new Headers();
+  if (isFormPost(request)) {
+    return withRequest(request, { headers }, () => handleForm(functions[id]!, request, headers));
+  }
+  const body = await request.json();
   return withRequest(request, { headers }, async () => {
     try {
       const result = await handleRPC(functions, id, body);

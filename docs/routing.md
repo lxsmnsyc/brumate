@@ -90,4 +90,4 @@ The response has the headers and the status that were set while the page rendere
 
 Links are plain `<a>` elements, and each one loads a full page. Each page resumes with only the loader, so no router code ships to the browser. Navigation on the client is not supported yet.
 
-[`examples/todos`](../examples/todos) has a layout, two routes, an `@aside` slot and a 404 page.
+[`examples/todos`](../examples/todos) has a layout, three routes, an `@aside` slot and a 404 page. The guestbook route has a form that posts to a server function.

@@ -3,14 +3,15 @@ import { Readable } from 'node:stream';
 
 /** Turns a Node request into a web Request. */
 export async function toRequest(request: IncomingMessage): Promise<Request> {
-  let body = '';
+  // Bytes, so files in form data stay intact.
+  const chunks: Buffer[] = [];
   for await (const chunk of request) {
-    body += chunk;
+    chunks.push(chunk as Buffer);
   }
   return new Request(`http://localhost${request.url}`, {
     method: request.method,
     headers: request.headers as Record<string, string>,
-    body: request.method === 'POST' ? body : undefined,
+    body: request.method === 'POST' ? new Uint8Array(Buffer.concat(chunks)) : undefined,
   });
 }
 
