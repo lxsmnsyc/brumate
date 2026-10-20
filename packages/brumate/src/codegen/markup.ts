@@ -659,6 +659,35 @@ export class Emitter {
   // Blocks
 
   /**
+   * Renders a portal. Without a target, the body goes to the end of the page,
+   * between markers with its scope ID. With a target, the client renders it
+   * into the target when the page loads.
+   */
+  private emitPortal(block: Block & { kind: 'portal' }, scope: Scope): void {
+    const body = this.plan.bodyScopes.get(block.body)!;
+    if (block.target) {
+      const anchor = this.anchor(scope, block)!;
+      this.html('<template data-b="');
+      this.code(anchor.scope);
+      this.html(`:${anchor.index}" data-client="load=${this.plan.id}#k${body.id}"></template>`);
+      return;
+    }
+    const name = this.unique('portal');
+    this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
+    this.line(`let $$html = '';`);
+    this.createScope(body);
+    this.html('<!--P');
+    this.code(this.scopeVar(body));
+    this.html('-->');
+    this.atTopLevel(() => this.emitBody(block.body, false));
+    this.html('<!--/P-->');
+    this.flush();
+    this.line('return $$html;');
+    this.close('})();');
+    this.line(`$$ctx.portal(${name});`);
+  }
+
+  /**
    * Writes the fallback of `#loading` and renders its body after the rest of
    * the page, so data that the body waits for does not hold up the page.
    */
@@ -798,9 +827,11 @@ export class Emitter {
         this.close();
         this.end(block);
         return;
+      case 'portal':
+        this.emitPortal(block, scope);
+        return;
       default:
-        // `#key` and `#portal` render their body in place.
-        // TODO: render `#portal` at the end of the page.
+        // `#key` renders its body in place.
         this.open(scope, block);
         this.line('{');
         this.emitBody(block.body);

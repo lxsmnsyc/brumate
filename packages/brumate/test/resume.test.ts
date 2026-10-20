@@ -200,6 +200,24 @@ describe('resume', () => {
     expect(document.head.querySelectorAll('style[data-brm="Styled_9wx0az"]')).toHaveLength(1);
   });
 
+  it('renders portals at the end of the page and into targets', async () => {
+    await resume('portal', {});
+    // The server writes portal content after the rest of the page.
+    expect(document.querySelector('.host')!.textContent!.trim()).toBe('');
+    expect(document.body.lastElementChild?.matches('script, p.note')).toBe(true);
+    expect(text('p.note')).toBe('Always here');
+    // A portal into a target renders when the page loads.
+    await waitFor(() => expect(text('#target .targeted')).toBe('In the target'));
+
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('body > dialog.modal')).not.toBeNull());
+    expect(document.querySelector('.host dialog')).toBeNull();
+
+    // Content in a portal resumes, and goes away with its block.
+    click(document.querySelector('.close')!);
+    await waitFor(() => expect(document.querySelector('dialog')).toBeNull());
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

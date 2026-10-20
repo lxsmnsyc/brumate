@@ -21,6 +21,7 @@ const props: Record<string, unknown> = {
   loading: {},
   shared: {},
   styled: {},
+  portal: {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

@@ -375,6 +375,14 @@ function destroy(scope: Scope): void {
   for (const child of Array.from(scope.children)) {
     destroy(child);
   }
+  // The content of a `#portal` is elsewhere in the page, so it is removed by its markers.
+  const portal = comments.get(`P${scope.id}`);
+  if (portal?.isConnected) {
+    const end = rangeEnd(portal);
+    clear(portal, end);
+    portal.remove();
+    end.remove();
+  }
   for (const cleanup of scope.cleanups?.values() ?? []) {
     cleanup();
   }
@@ -392,7 +400,7 @@ function disposeKinds(scope: Scope, kinds: number[]): void {
 
 // DOM
 
-const MARKER = /^[btil]-?\d/;
+const MARKER = /^[btilP]-?\d/;
 
 function markerKey(data: string): string {
   return data[0] === 'b' ? data.split(':').slice(0, 2).join(':') : data;
@@ -457,17 +465,35 @@ function clear(start: Node, end: Node): void {
   }
 }
 
-/** Inserts rendered HTML before a node and runs the work that waits for it. */
-function insertHTML(before: Node, html: string): void {
+/**
+ * Inserts rendered HTML before a node, or at the end of a parent, and runs
+ * the work that waits for it.
+ */
+function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const template = document.createElement('template');
   template.innerHTML = html;
   const fragment = template.content;
   indexMarkers(fragment);
   options.listen(fragment);
-  before.parentNode!.insertBefore(fragment, before);
+  if ('parent' in before) {
+    before.parent.append(fragment);
+  } else {
+    before.parentNode!.insertBefore(fragment, before);
+  }
   for (const fn of context.after.splice(0)) {
     fn();
   }
+}
+
+/** Renders a `#portal` body into its target, between markers with its scope ID. */
+export function portal(scope: Scope, target: unknown, render: Render): void {
+  const element = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!(element instanceof Element)) {
+    return;
+  }
+  // The body's scope is the first scope that the render creates.
+  const id = nextId;
+  insertHTML({ parent: element }, `<!--P${id}-->${render(scope)}<!--/P-->`);
 }
 
 export function text(scope: Scope, anchor: number, value: unknown): void {
@@ -779,6 +805,11 @@ class ClientContext {
 
   element(scope: number, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
+  }
+
+  /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
+  portal(html: string): void {
+    this.after.push(() => insertHTML({ parent: document.body }, html));
   }
 
   /** Adds a component's stylesheet to the page, if the server did not. */

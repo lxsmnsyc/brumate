@@ -36,6 +36,8 @@ export class Context {
   private nextBoundary = 0;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
+  /** Markup of `#portal` blocks, written at the end of the page. */
+  readonly portals: string[] = [];
   private onBoundary: ((boundary: Boundary) => void) | undefined;
 
   constructor(root?: Context) {
@@ -106,6 +108,11 @@ export class Context {
     }
     this.root.styles.add(id);
     return styleElement(id, css);
+  }
+
+  /** Adds the markup of a `#portal` block, which goes after the rest of the page. */
+  portal(html: string): void {
+    this.portals.push(html);
   }
 
   /** Returns the ID of a new `#loading` boundary. */
@@ -297,7 +304,7 @@ export async function renderToString<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context();
-  const html = await Root(props, ctx);
+  const html = (await Root(props, ctx)) + ctx.portals.join('');
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
@@ -334,7 +341,7 @@ export async function renderToString<P>(
           const call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
           swap = true;
           queue.push(
-            `<template data-l="${boundary.id}">${result.html}</template>${script}${scriptTag}${call}</script>`,
+            `<template data-l="${boundary.id}">${result.html}</template>${result.ctx.portals.join('')}${script}${scriptTag}${call}</script>`,
           );
         });
         finish();

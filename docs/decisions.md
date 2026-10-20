@@ -42,7 +42,6 @@
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
-- **`#portal`.** The server renders the body in place.
 - **Styles.** `lang="scss"` and `lang="less"` are not supported, and stylesheets are inlined instead of written as CSS files.
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.

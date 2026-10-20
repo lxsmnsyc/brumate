@@ -789,8 +789,11 @@ class ClientGenerator {
       }
     }
     for (const scope of this.model.scopes) {
-      if (scope.kind === 'body' && scope.block?.kind === 'client' && scope.body) {
-        this.renders.set(scope, { body: scope.body, block: scope.block });
+      const block = scope.block;
+      const clientOnly =
+        block?.kind === 'client' || (block?.kind === 'portal' && block.target !== undefined);
+      if (scope.kind === 'body' && block && clientOnly && scope.body) {
+        this.renders.set(scope, { body: scope.body, block });
       }
     }
   }
@@ -821,6 +824,21 @@ class ClientGenerator {
       emitter.line('return $$html;');
       emitter.close();
       this.emit(emitter.lines.join('\n'));
+      if (block.kind === 'portal' && block.target) {
+        const header = this.model.sites.find(
+          (site) => site.kind === 'block' && site.block === block,
+        )!;
+        if (this.live.has(header)) {
+          this.error(
+            'A #portal target that changes on the client is not supported yet',
+            header.range,
+          );
+        }
+        const target = this.rewriter.rewrite(header, '$$s', instanceScope(this.plan, base));
+        this.emit(
+          `export function k${scope.id}($$s) {\n  $$b.portal($$s, ${target}, r${scope.id});\n}`,
+        );
+      }
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
         this.emit(

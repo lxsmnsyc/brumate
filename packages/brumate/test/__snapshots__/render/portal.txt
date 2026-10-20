@@ -1,0 +1,137 @@
+# Server module
+import * as $$b from 'brumate/server';
+
+export default async function Portal($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Portal_17ywlhi");
+  let open = (false);
+  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
+  if (open) {
+    $$html += "<!--b" + $$s1 + ":1:0-->";
+    const $$portal0 = await (async () => {
+      let $$html = '';
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+      return $$html;
+    })();
+    $$ctx.portal($$portal0);
+    $$html += "<!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  const $$portal1 = await (async () => {
+    let $$html = '';
+    const $$s4 = $$ctx.scope(4, $$s1);
+    $$html += "<!--P" + $$s4 + "--><p class=\"note\">Always here</p><!--/P-->";
+    return $$html;
+  })();
+  $$ctx.portal($$portal1);
+  $$html += "</div><section id=\"target\"></section><template data-b=\"" + $$s1 + ":2\" data-client=\"load=Portal_17ywlhi#k5\"></template>";
+  $$ctx.slots($$s1, [open]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Portal_17ywlhi";
+export const props = {  };
+export const g = { 1: { 0: [[1, "b2"]] } };
+const parts = {
+  "h1": () => import("./portal.brm?brumate-client&part=h1"),
+  "h3": () => import("./portal.brm?brumate-client&part=h3"),
+  "update": () => import("./portal.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h1
+import * as $$b from 'brumate/client';
+
+export const h1 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, !$$b.get($$s, 0))))(...$$a);
+
+# Client part: h3
+import * as $$b from 'brumate/client';
+
+export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s.p, 0, false)))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export function b2($$s) {
+  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, [r2], [2, 3]);
+}
+export function r2($$p) {
+  let $$html = '';
+  const $$portal0 = (() => {
+    let $$html = '';
+    const $$s3 = $$ctx.scope(3, $$p);
+    $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+    return $$html;
+  })();
+  $$ctx.portal($$portal0);
+  return $$html;
+}
+export function r5($$p) {
+  let $$html = '';
+  const $$s5 = $$ctx.scope(5, $$p);
+  $$html += "<span class=\"targeted\">In the target</span>";
+  return $$html;
+}
+export function k5($$s) {
+  $$b.portal($$s, '#target', r5);
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export default function Portal($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Portal_17ywlhi");
+  let open = (false);
+  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
+  if (open) {
+    $$html += "<!--b" + $$s1 + ":1:0-->";
+    const $$portal0 = (() => {
+      let $$html = '';
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+      return $$html;
+    })();
+    $$ctx.portal($$portal0);
+    $$html += "<!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  const $$portal1 = (() => {
+    let $$html = '';
+    const $$s4 = $$ctx.scope(4, $$s1);
+    $$html += "<!--P" + $$s4 + "--><p class=\"note\">Always here</p><!--/P-->";
+    return $$html;
+  })();
+  $$ctx.portal($$portal1);
+  $$html += "</div><section id=\"target\"></section><template data-b=\"" + $$s1 + ":2\" data-client=\"load=Portal_17ywlhi#k5\"></template>";
+  $$ctx.slots($$s1, [open]);
+  return $$html;
+}
+
+# HTML
+<button class="toggle" data-b="0:0" data-on="click=Portal_17ywlhi#h1">Toggle</button>
+<div class="host">
+<!--b0:1:-1-->
+<!--/b-->
+</div>
+<section id="target">
+</section>
+<template data-b="0:2" data-client="load=Portal_17ywlhi#k5">
+</template>
+<!--P1-->
+<p class="note">Always here</p>
+<!--/P-->
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Portal_17ywlhi"},{"t":9,"i":2,"a":[{"t":2,"s":3}],"o":0}]},"o":0},{"t":10,"i":3,"p":{"k":["k","p"],"v":[{"t":0,"s":4},{"t":0,"s":0}]},"o":0}]},"o":0}</script>

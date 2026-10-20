@@ -228,6 +228,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         scope.kind === 'body' &&
         block !== undefined &&
         (block.kind === 'client' ||
+          // A portal into a target renders on the client, where the target is.
+          (block.kind === 'portal' && block.target !== undefined) ||
           (headers.get(block) ?? []).some((node) => live.has(node)) ||
           (block.kind === 'try' && scope.body === block.fallback && tryChanges(block)));
       const templateUsed = scope.kind === 'template' && templateCallChanges(scope);

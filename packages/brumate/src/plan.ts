@@ -235,10 +235,17 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
   };
 
   const visitBlock = (block: Block, scope: Scope): void => {
+    const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
-      block.kind === 'client' || (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
+      block.kind === 'client' ||
+      portalTarget ||
+      (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);
+    }
+    if (block.kind === 'portal') {
+      // Portal content is marked with its scope ID, so it can be removed with its block.
+      scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
     }
     for (const body of blockBodies(block)) {
       if (live && (block.kind === 'for' || block.kind === 'repeat') && body === block.body) {

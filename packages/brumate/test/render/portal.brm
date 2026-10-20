@@ -1,0 +1,22 @@
+<script>
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<div class="host">
+  #if (open) {
+    #portal {
+      <dialog class="modal" open>
+        Hello
+        <button class="close" onClick=(() => (open = false))>Close</button>
+      </dialog>
+    }
+  }
+  #portal {
+    <p class="note">Always here</p>
+  }
+</div>
+<section id="target"></section>
+#portal ('#target') {
+  <span class="targeted">In the target</span>
+}

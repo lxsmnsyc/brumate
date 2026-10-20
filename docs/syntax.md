@@ -179,13 +179,33 @@ These blocks work as in solid-sfc:
 - `#if`, `#else if` and `#else`.
 - `#for (item, index of list by key)` and its `#else`.
 - `#repeat`, `#switch`, `#key`, `#try` with `#catch`, and `#loading`.
-- `#portal`.
+- `#portal`. See below.
 - `#template`.
 - A `<script>` at the start of a block body.
 
 The difference is that a block's create code ships only if its condition, list or key can change on the client. Otherwise the block is HTML only.
 
 Markup is static by default. Markup that never changes ships as HTML only, so there is no block to mark it static.
+
+### `#portal`
+
+Renders its body somewhere else in the page.
+
+```html
+#if (open) {
+  #portal {
+    <dialog open>Saved</dialog>
+  }
+}
+
+#portal ('#sidebar') {
+  <nav>…</nav>
+}
+```
+
+- Without a target, the body goes to the end of the page. The server writes it after the rest of the markup, and the client appends it to `<body>`.
+- With a target, an element or a selector, the client renders the body into the target when the page loads, because the target exists only in the browser. A target that changes on the client is not supported yet.
+- The content of a portal is removed with the block that contains it, such as the `#if` above.
 
 ### `#client`
 

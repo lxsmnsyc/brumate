@@ -66,6 +66,14 @@ If the body fails, the fallback stays.
 
 The server renders the body with its own values. If a value changed on the client before the body arrived, the client runs the updates of the body's scopes once, so the body shows the current values. Effects do not run.
 
+### `#portal`
+
+```html
+<!--P4--><dialog open>Saved</dialog><!--/P-->
+```
+
+The content of a portal is between `<!--P<scope>-->` and `<!--/P-->`, where the number is the scope ID of the portal's body. The server writes it after the rest of the page. When the scope is removed, the client removes the content by its markers. A portal into a target has a `<template data-client="load=…">` in place, and the client renders it into the target.
+
 ### Items
 
 ```html
