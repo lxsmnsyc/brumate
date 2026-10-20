@@ -8,6 +8,7 @@ import { blockBodies } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { Emitter } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
+import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, slotIndex } from './scopes.ts';
 
@@ -96,29 +97,6 @@ class ClientGenerator {
   // Checks
 
   private checkSupport(): void {
-    const { graph } = this.plan;
-    const visit = (nodes: Markup[]): void => {
-      for (const node of nodes) {
-        if (node.kind === 'component') {
-          this.error(
-            'Components inside blocks that change on the client are not supported yet',
-            node,
-          );
-        } else if (node.kind === 'dynamic') {
-          this.error(
-            'Dynamic tags inside blocks that change on the client are not supported yet',
-            node,
-          );
-        } else if (node.kind === 'element' || node.kind === 'fragment') {
-          visit(node.children);
-        }
-      }
-    };
-    for (const scope of graph.created) {
-      if (scope.body && scope.kind === 'body') {
-        visit(scope.body.children);
-      }
-    }
     for (const site of this.model.sites) {
       const live = this.live.has(site);
       if (live && site.kind === 'tag') {
@@ -126,25 +104,6 @@ class ClientGenerator {
       }
       if (live && site.kind === 'memo' && site.declaration?.kind === 'async-memo') {
         this.error('An async $memo that changes on the client is not supported yet', site.range);
-      }
-      if (graph.created.has(site.scope) || this.plan.clientSites.has(site)) {
-        for (const callee of site.calls) {
-          if (
-            callee.kind === 'template' &&
-            !graph.created.has(callee.scope) &&
-            site.scope !== callee.scope
-          ) {
-            const template = this.model.scopes.find(
-              (scope) => scope.template?.name === callee.name,
-            );
-            if (!template || !graph.created.has(template)) {
-              this.error(
-                'Templates used in blocks that change on the client are not supported yet',
-                site.range,
-              );
-            }
-          }
-        }
       }
     }
   }
@@ -158,7 +117,7 @@ class ClientGenerator {
         reads.add(read.declaration);
       }
     }
-    for (const scope of this.renders.keys()) {
+    for (const scope of this.renderedScopes()) {
       for (const site of this.model.sites) {
         if (isWithin(site.scope, scope)) {
           for (const read of site.reads) {
@@ -175,7 +134,16 @@ class ClientGenerator {
   }
 
   private imports(): string[] {
-    const reads = this.clientReads();
+    const names = new Set<string>();
+    for (const declaration of this.clientReads()) {
+      if (declaration.kind === 'import') {
+        names.add(declaration.name);
+      }
+    }
+    // Components rendered on the client are imported from their render modules.
+    for (const scope of this.renderedScopes()) {
+      componentNames(scope.body?.children ?? [], names);
+    }
     const includeModule = this.usesModuleScript();
     const result: string[] = [];
     const programs: oxc.Program[] = [];
@@ -193,49 +161,50 @@ class ClientGenerator {
     for (const program of programs) {
       const isModule = program === this.file.moduleScript?.program;
       for (const statement of program.body) {
-        if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type') {
+        if (statement.type !== 'ImportDeclaration') {
           continue;
         }
-        if (isModule && includeModule) {
-          result.push(this.file.source.slice(statement.start, statement.end));
+        const all = new Set(statement.specifiers.map((specifier) => specifier.local.name));
+        const code = renderImport(this.file, statement, isModule && includeModule ? all : names);
+        if (code) {
+          result.push(code);
+        }
+      }
+    }
+    return result;
+  }
+
+  /** Every scope that a render function of this module renders, including templates. */
+  private renderedScopes(): Scope[] {
+    const result = new Set<Scope>();
+    for (const scope of this.renders.keys()) {
+      for (const item of this.inside(scope)) {
+        result.add(item);
+      }
+    }
+    return [...result];
+  }
+
+  /** A body scope and the template scopes that it calls, directly or through other templates. */
+  private inside(scope: Scope): Scope[] {
+    const result: Scope[] = [scope];
+    for (let i = 0; i < result.length; i++) {
+      const current = result[i]!;
+      for (const site of this.model.sites) {
+        if (!isWithin(site.scope, current) || DEFERRED_SITES.has(site.kind)) {
           continue;
         }
-        const specifiers = statement.specifiers.filter((specifier) => {
-          if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
-            return false;
+        for (const callee of site.calls) {
+          if (callee.kind !== 'template') {
+            continue;
           }
-          return [...reads].some(
-            (declaration) =>
-              declaration.kind === 'import' &&
-              declaration.name === specifier.local.name &&
-              declaration.range.start === specifier.local.start,
+          const template = this.model.scopes.find(
+            (item) => item.template?.name === callee.name && item.parent === callee.scope,
           );
-        });
-        if (specifiers.length === 0) {
-          continue;
-        }
-        const parts: string[] = [];
-        const named: string[] = [];
-        for (const specifier of specifiers) {
-          const local = specifier.local.name;
-          if (specifier.type === 'ImportDefaultSpecifier') {
-            parts.push(local);
-          } else if (specifier.type === 'ImportNamespaceSpecifier') {
-            parts.push(`* as ${local}`);
-          } else {
-            const imported = this.file.source.slice(
-              specifier.imported.start,
-              specifier.imported.end,
-            );
-            named.push(imported === local ? local : `${imported} as ${local}`);
+          if (template && !result.some((item) => isWithin(template, item))) {
+            result.push(template);
           }
         }
-        if (named.length > 0) {
-          parts.push(`{ ${named.join(', ')} }`);
-        }
-        result.push(
-          `import ${parts.join(', ')} from ${this.file.source.slice(statement.source.start, statement.source.end)};`,
-        );
       }
     }
     return result;
@@ -243,28 +212,7 @@ class ClientGenerator {
 
   /** The module script, when client code reads its bindings. Server functions become stubs. */
   private moduleCode(): string[] {
-    if (!this.file.moduleScript || !this.usesModuleScript()) {
-      return [];
-    }
-    const result: string[] = [];
-    for (const statement of this.file.moduleScript.program.body) {
-      if (statement.type === 'ImportDeclaration') {
-        continue;
-      }
-      const declaration =
-        statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
-      if (declaration?.type === 'FunctionDeclaration' && declaration.id) {
-        const found = this.model.module.declarations.get(declaration.id.name);
-        if (found?.kind === 'server-function') {
-          result.push(
-            `const ${found.name} = (...$$a) => $$b.rpc(${JSON.stringify(`${this.plan.id}#${found.name}`)}, $$a);`,
-          );
-          continue;
-        }
-      }
-      result.push(this.file.source.slice(statement.start, statement.end));
-    }
-    return result;
+    return this.usesModuleScript() ? clientModuleScript(this.file, this.plan) : [];
   }
 
   private propsMap(): string {
@@ -656,15 +604,19 @@ class ClientGenerator {
   private emitRenders(): void {
     for (const [scope, { body, block }] of this.renders) {
       const base = scope.parent!;
+      const inside = this.inside(scope);
       const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
         mode: 'client',
-        outer: { body: scope, base, baseVar: '$$p' },
+        outer: { inside, base, baseVar: '$$p' },
       });
       const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
       emitter.line(`export function r${scope.id}($$p${isItem ? ', $$item, $$index' : ''}) {`);
       emitter.line(`let $$html = '';`);
-      for (const line of this.prologue(scope, base)) {
+      for (const line of this.prologue(inside, base)) {
         emitter.line(line);
+      }
+      for (const template of inside.slice(1)) {
+        emitter.emitTemplate(template.template!);
       }
       if (isItem) {
         emitter.emitItem(block, '$$item', '$$index');
@@ -685,14 +637,15 @@ class ClientGenerator {
   }
 
   /** Declares the outer values that a render function reads, as local variables. */
-  private prologue(scope: Scope, base: Scope): string[] {
+  private prologue(inside: Scope[], base: Scope): string[] {
+    const isInside = (scope: Scope): boolean => inside.some((item) => isWithin(scope, item));
     const declarations = new Set<Declaration>();
     for (const site of this.model.sites) {
-      if (!isWithin(site.scope, scope) || DEFERRED_SITES.has(site.kind)) {
+      if (!isInside(site.scope) || DEFERRED_SITES.has(site.kind)) {
         continue;
       }
       for (const read of site.reads) {
-        if (!isWithin(read.declaration.scope, scope)) {
+        if (!isInside(read.declaration.scope)) {
           declarations.add(read.declaration);
         }
       }
@@ -708,7 +661,8 @@ class ClientGenerator {
       }
       const value = this.rewriter.value(declaration, '$$p', base);
       if (value) {
-        lines.push(`const ${declaration.name} = ${value};`);
+        // `let`, because inline function props in the markup can assign to it. They never run here.
+        lines.push(`let ${declaration.name} = ${value};`);
       }
     }
     return lines;

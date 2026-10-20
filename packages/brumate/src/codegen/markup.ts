@@ -48,10 +48,16 @@ type Part = { static: string } | { code: string };
 export interface EmitterOptions {
   mode: 'server' | 'client';
   /**
-   * For a client render function: the body scope it renders, the scope that
-   * contains the body, and the expression for that scope's instance.
+   * Keeps local functions in client code. Render functions of a client
+   * module skip them, because the module has its own copies that read slots.
    */
-  outer?: { body: Scope; base: Scope; baseVar: string };
+  functions?: boolean;
+  /**
+   * For a client render function: the scopes it renders (a body and the
+   * templates it calls), the scope that contains the body, and the
+   * expression for that scope's instance.
+   */
+  outer?: { inside: Scope[]; base: Scope; baseVar: string };
 }
 
 /** Writes code that renders markup to an HTML string, on the server or on the client. */
@@ -155,10 +161,16 @@ export class Emitter {
   /** The expression for the instance of a scope that gets an ID. */
   scopeVar(scope: Scope): string {
     const outer = this.options.outer;
-    if (outer && !isWithin(scope, outer.body)) {
+    if (outer && !this.isInside(scope)) {
       return scopePath(this.plan, outer.baseVar, outer.base, scope);
     }
     return `$$s${scope.id}`;
+  }
+
+  /** True if a client render function renders the scope, so its variables are local. */
+  private isInside(scope: Scope): boolean {
+    const outer = this.options.outer;
+    return !outer || outer.inside.some((item) => isWithin(scope, item));
   }
 
   private anchor(scope: Scope, target: object): { scope: string; index: number } | undefined {
@@ -198,12 +210,26 @@ export class Emitter {
       if (statement.type === 'ImportDeclaration' || TYPE_DECLARATIONS.has(statement.type)) {
         continue;
       }
-      if (this.options.mode === 'client' && this.isFunctionStatement(statement)) {
-        // Client functions are module functions in the client module.
-        continue;
+      if (this.options.mode === 'client') {
+        if (this.isServerStatement(statement)) {
+          // Server functions are stubs at the top of the module.
+          continue;
+        }
+        if (!this.options.functions && this.isFunctionStatement(statement)) {
+          // Client functions are module functions in the client module.
+          continue;
+        }
       }
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
     }
+  }
+
+  private isServerStatement(statement: oxc.Node): boolean {
+    const nodes =
+      statement.type === 'VariableDeclaration'
+        ? statement.declarations.map((declarator) => declarator.init)
+        : [statement];
+    return nodes.every((node) => node && this.sitesByNode.get(node)?.kind === 'server-function');
   }
 
   private isFunctionStatement(statement: oxc.Node): boolean {
@@ -291,7 +317,7 @@ export class Emitter {
     }
   }
 
-  private emitTemplate(template: TemplateDecl): void {
+  emitTemplate(template: TemplateDecl): void {
     const first = template.params[0];
     const last = template.params.at(-1);
     const params = first && last ? this.file.source.slice(first.start, last.end) : '';
@@ -374,7 +400,7 @@ export class Emitter {
     const declaration = this.refTargets.get(attribute);
     const element = `$$ctx.element(${anchor.scope}, ${anchor.index})`;
     const outer = this.options.outer;
-    if (declaration && outer && !isWithin(declaration.scope, outer.body)) {
+    if (declaration && outer && !this.isInside(declaration.scope)) {
       // The signal belongs to a scope outside this render, so it is written after the element is in the page.
       const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
       this.line(

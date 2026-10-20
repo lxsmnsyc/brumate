@@ -5,7 +5,7 @@ import type { Plan } from '../plan.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 
-function propsType(file: SFCFile): string {
+export function propsType(file: SFCFile): string {
   for (const statement of file.instanceScript?.program.body ?? []) {
     if (statement.type !== 'VariableDeclaration') {
       continue;

@@ -570,8 +570,31 @@ export function insert(value: unknown): string {
   return insertValue(value);
 }
 
-export function component(): never {
-  throw new Error('Components cannot render on the client yet');
+/** A component's client render function, from its `?brumate-render` module. */
+// oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
+export type Component<P = any> = (props: P) => string;
+
+function resolveScope(scope: Scope | number | undefined): Scope | undefined {
+  return typeof scope === 'number' ? scopes.get(scope) : scope;
+}
+
+/**
+ * Renders a child component on the client. With `scope` and `anchor`,
+ * records the child's scope so the parent can update its props.
+ */
+export function component<P>(
+  Child: Component<P>,
+  props: P,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  anchor?: number,
+): string {
+  const parent = resolveScope(scope);
+  if (parent && anchor !== undefined) {
+    parent.c ??= {};
+    parent.c[anchor] = nextId;
+  }
+  return Child(props);
 }
 
 export function dynamic(
@@ -579,21 +602,22 @@ export function dynamic(
   attributes: Record<string, unknown>,
   children: Raw | undefined,
 ): string {
-  if (typeof tag !== 'string') {
-    throw new Error('Components cannot render on the client yet');
+  if (typeof tag === 'function') {
+    return component(tag as Component, children ? { ...attributes, children } : attributes);
   }
-  const open = `<${tag}${spreadText(attributes)}>`;
-  return VOID_ELEMENTS.has(tag) ? open : `${open}${children ? rawHTML(children) : ''}</${tag}>`;
+  const name = String(tag);
+  const open = `<${name}${spreadText(attributes)}>`;
+  return VOID_ELEMENTS.has(name) ? open : `${open}${children ? rawHTML(children) : ''}</${name}>`;
 }
 
 class ClientContext {
   /** Work that waits until rendered markup is in the page. */
   readonly after: (() => void)[] = [];
 
-  scope(kind: number, parent?: Scope | number): number {
+  scope(kind: number, parent?: Scope | number, module?: string): number {
     const id = nextId++;
-    const parentScope = typeof parent === 'number' ? scopes.get(parent) : parent;
-    const scope: Scope = { id, k: kind, p: parentScope, s: [], children: new Set() };
+    const parentScope = resolveScope(parent);
+    const scope: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
     parentScope?.children.add(scope);
     scopes.set(id, scope);
     return id;
@@ -609,6 +633,15 @@ class ClientContext {
 
   element(scope: number, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
+  }
+
+  /** A function prop rendered on the client calls the parent's exported handler. */
+  fn(value: unknown, ref: string, scope: Scope | number): unknown {
+    if (typeof value !== 'function') {
+      return value;
+    }
+    const instance = resolveScope(scope);
+    return (...args: unknown[]) => call(ref, instance, args);
   }
 }
 

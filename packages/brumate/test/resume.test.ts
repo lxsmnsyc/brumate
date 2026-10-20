@@ -20,16 +20,25 @@ beforeAll(() => {
       copyFileSync(join(input, name), join(output, name));
       continue;
     }
-    const { server, client, plan } = compile(readFileSync(join(input, name), 'utf8'), {
+    const { server, client, render, plan } = compile(readFileSync(join(input, name), 'utf8'), {
       filename: name,
     });
     writeFileSync(join(output, `${name}.ts`), server.replace(/\.brm'/g, ".brm.ts'"));
-    writeFileSync(join(output, `${name}.client.ts`), client);
+    writeFileSync(join(output, `${name}.client.ts`), toRender(client));
+    writeFileSync(join(output, `${name}.render.ts`), toRender(render));
     modules.set(plan.id, file(`${name}.client.ts`));
   }
 });
 
 let stop: (() => void) | undefined;
+
+function toRender(code: string): string {
+  return code.replace(/\.brm\?brumate-render"/g, '.brm.render.ts"');
+}
+
+function buttons(): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('li button')];
+}
 
 afterEach(() => {
   stop?.();
@@ -111,6 +120,27 @@ describe('resume', () => {
     click(first!);
     await vi.waitFor(() => expect(first!.textContent).toBe('3'));
     expect(second!.textContent).toBe('5');
+  });
+
+  it('renders components in blocks that change', async () => {
+    await resume('list', {});
+    expect(buttons().map((button) => button.textContent)).toEqual(['1', '2']);
+
+    click(buttons()[0]!);
+    await vi.waitFor(() => expect(buttons()[0]!.textContent).toBe('2'));
+
+    click(document.querySelector('.add')!);
+    await vi.waitFor(() => expect(buttons()).toHaveLength(3));
+    expect(buttons()[2]!.textContent).toBe('3');
+    expect(text('li:last-child span')).toBe('Item 3');
+
+    // The child that the client rendered resumes like the others.
+    click(buttons()[2]!);
+    await vi.waitFor(() => expect(buttons()[2]!.textContent).toBe('4'));
+
+    click(document.querySelector('.show')!);
+    await vi.waitFor(() => expect(document.querySelector('section button')?.textContent).toBe('3'));
+    expect(text('section .slot')).toBe('Item');
   });
 
   it('switches branches, lists and client blocks', async () => {

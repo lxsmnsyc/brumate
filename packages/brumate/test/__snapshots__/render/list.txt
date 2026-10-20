@@ -1,0 +1,229 @@
+# Server module
+import * as $$b from 'brumate/server';
+import Child from './Child.brm';
+
+export default async function List($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "List_12rwm68");
+  let counts = ([1, 2]);
+  let show = (false);
+  const label = 'Item';
+  function add() {
+    counts = [...counts, counts.length + 1];
+  }
+  async function row(index: number): Promise<$$b.Raw> {
+    let $$html = '';
+    const $$s2 = $$ctx.scope(2, $$s1);
+    $$html += "<span>" + await $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + await $$b.insert((index + 1)) + "<!--/t--></span>";
+    $$ctx.slots($$s2, [index]);
+    return $$b.raw($$html);
+  }
+  $$html += "<button class=\"add\" data-b=\"" + $$s1 + ":0\" data-on=\"click=List_12rwm68#h6\">Add</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=List_12rwm68#h7\">Show</button><ul>";
+  {
+    const $$list0 = Array.from(( counts ));
+    $$html += "<!--b" + $$s1 + ":2-->";
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const count = $$item1;
+      const i = $$index2;
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((row(i))) + "<!--/t-->" + await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+      $$ctx.slots($$s3, [count, i]);
+      $$ctx.item($$s3, $$item1);
+      $$html += "<!--/i-->";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  if (show) {
+    $$html += "<!--b" + $$s1 + ":3:0-->";
+    const $$s4 = $$ctx.scope(4, $$s1);
+    $$html += "<section>";
+    const $$children3 = await (async () => {
+      let $$html = '';
+      $$html += "<em>" + await $$b.insert((label)) + "</em>";
+      return $$b.raw($$html);
+    })();
+    $$html += await $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children3 }, $$ctx, $$s4, 0) + "</section><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [counts, show, label]);
+  return $$html;
+}
+
+# Client module
+import * as $$b from 'brumate/client';
+import Child from "./Child.brm?brumate-render";
+
+const $$ctx = $$b.context;
+
+export const id = "List_12rwm68";
+export const props = {  };
+export const g = { 2: { 0: [[2, "u5"]] }, 1: { 0: [[1, "b8"], [3, "u11"], [4, "u13"]], 1: [[1, "b12"]] }, 3: { 1: [[3, "u9"], [3, "u11"]], 0: [[3, "u10"]] } };
+
+function add$($$s) {
+    $$b.set($$s, 0, [...$$b.get($$s, 0), $$b.get($$s, 0).length + 1]);
+  }
+export const h6 = ($$s, ...$$a) => (add$.bind(null, $$s))(...$$a);
+export const h7 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, !$$b.get($$s, 1))))(...$$a);
+export const h11 = ($$s, ...$$a) => ((value) => ($$b.set($$s.p, 0, $$b.get($$s.p, 0).map((item, index) => (index === $$b.get($$s, 1) ? value : item)))))(...$$a);
+export const h14 = ($$s, ...$$a) => ((value) => console.log(value))(...$$a);
+export function u5($$s) {
+  $$b.text($$s, 0, $$b.get($$s, 0) + 1);
+}
+export function b8($$s) {
+  $$b.list($$s, 2, Array.from($$b.get($$s, 0)), ($$item, $$index) => $$index, r3, a3, undefined, []);
+}
+export function a3($$s, $$item, $$index) {
+  $$s.i = $$item;
+  const count = $$item;
+  $$b.set($$s, 0, count);
+  $$b.set($$s, 1, $$index);
+}
+export function u9($$s) {
+  $$b.text($$s, 0, row($$b.get($$s, 1)));
+}
+export function u10($$s) {
+  $$b.prop($$s, 1, "value", $$b.get($$s, 0));
+}
+export function u11($$s) {
+  $$b.prop($$s, 1, "onChange", (value) => ($$b.set($$s.p, 0, $$b.get($$s.p, 0).map((item, index) => (index === $$b.get($$s, 1) ? value : item)))));
+}
+export function b12($$s) {
+  $$b.branch($$s, 3, ($$b.get($$s, 1)) ? 0 : -1, [r4], [4]);
+}
+export function u13($$s) {
+  $$b.prop($$s, 0, "value", $$b.get($$s.p, 0).length);
+}
+export function r3($$p, $$item, $$index) {
+  let $$html = '';
+  let label = $$b.get($$p, 2);
+  let counts = $$b.get($$p, 0);
+  function row(index: number) {
+    let $$html = '';
+    const $$s2 = $$ctx.scope(2, $$p);
+    $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+    $$ctx.slots($$s2, [index]);
+    return $$b.raw($$html);
+  }
+  const count = $$item;
+  const i = $$index;
+  const $$s3 = $$ctx.scope(3, $$p);
+  $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+  $$ctx.slots($$s3, [count, i]);
+  $$ctx.item($$s3, $$item);
+  $$html += "<!--/i-->";
+  return $$html;
+}
+export function r4($$p) {
+  let $$html = '';
+  let counts = $$b.get($$p, 0);
+  let label = $$b.get($$p, 2);
+  const $$s4 = $$ctx.scope(4, $$p);
+  $$html += "<section>";
+  const $$children0 = (() => {
+    let $$html = '';
+    $$html += "<em>" + $$b.insert((label)) + "</em>";
+    return $$b.raw($$html);
+  })();
+  $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, $$ctx, $$s4, 0) + "</section>";
+  return $$html;
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+import Child from "./Child.brm?brumate-render";
+
+const $$ctx = $$b.context;
+
+export default function List($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "List_12rwm68");
+  let counts = ([1, 2]);
+  let show = (false);
+  const label = 'Item';
+  function add() {
+    counts = [...counts, counts.length + 1];
+  }
+  function row(index: number) {
+    let $$html = '';
+    const $$s2 = $$ctx.scope(2, $$s1);
+    $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+    $$ctx.slots($$s2, [index]);
+    return $$b.raw($$html);
+  }
+  $$html += "<button class=\"add\" data-b=\"" + $$s1 + ":0\" data-on=\"click=List_12rwm68#h6\">Add</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=List_12rwm68#h7\">Show</button><ul>";
+  {
+    const $$list0 = Array.from(( counts ));
+    $$html += "<!--b" + $$s1 + ":2-->";
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const count = $$item1;
+      const i = $$index2;
+      const $$s3 = $$ctx.scope(3, $$s1);
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+      $$ctx.slots($$s3, [count, i]);
+      $$ctx.item($$s3, $$item1);
+      $$html += "<!--/i-->";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  if (show) {
+    $$html += "<!--b" + $$s1 + ":3:0-->";
+    const $$s4 = $$ctx.scope(4, $$s1);
+    $$html += "<section>";
+    const $$children3 = (() => {
+      let $$html = '';
+      $$html += "<em>" + $$b.insert((label)) + "</em>";
+      return $$b.raw($$html);
+    })();
+    $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children3 }, $$ctx, $$s4, 0) + "</section><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [counts, show, label]);
+  return $$html;
+}
+
+# HTML
+<button class="add" data-b="0:0" data-on="click=List_12rwm68#h6">Add</button>
+<button class="show" data-b="0:1" data-on="click=List_12rwm68#h7">Show</button>
+<ul>
+<!--b0:2-->
+<!--i1-->
+<li>
+<!--t1:0-->
+<span>Item <!--t2:0-->1<!--/t-->
+</span>
+<!--/t-->
+<button data-b="3:0" data-on="click=Child_108vasc#h0">
+<!--t3:1-->1<!--/t-->
+</button>
+<div class="slot">
+<!--t3:2-->
+<!--/t-->
+</div>
+</li>
+<!--/i-->
+<!--i4-->
+<li>
+<!--t4:0-->
+<span>Item <!--t5:0-->2<!--/t-->
+</span>
+<!--/t-->
+<button data-b="6:0" data-on="click=Child_108vasc#h0">
+<!--t6:1-->2<!--/t-->
+</button>
+<div class="slot">
+<!--t6:2-->
+<!--/t-->
+</div>
+</li>
+<!--/i-->
+<!--/b-->
+</ul>
+<!--b0:3:-1-->
+<!--/b-->
+
+# State
+<script type="brumate/state">{"t":{"t":10,"i":0,"p":{"k":["0","1","2","3","4","5","6"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"List_12rwm68"},{"t":9,"i":2,"a":[{"t":9,"i":3,"a":[{"t":0,"s":1},{"t":0,"s":2}],"o":0},{"t":2,"s":3},{"t":1,"s":"Item"}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["k","p","c","s","i"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":10,"i":5,"p":{"k":["1"],"v":[{"t":0,"s":3}]},"o":0},{"t":9,"i":6,"a":[{"t":0,"s":1},{"t":0,"s":0}],"o":0},{"t":0,"s":1}]},"o":0},{"t":10,"i":7,"p":{"k":["k","p","s"],"v":[{"t":0,"s":2},{"t":0,"s":0},{"t":9,"i":8,"a":[{"t":0,"s":0}],"o":0}]},"o":0},{"t":10,"i":9,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":9,"i":10,"a":[{"t":0,"s":1},{"t":25,"i":11,"s":{"a":{"t":1,"s":"List_12rwm68#h11"},"b":{"t":0,"s":1}},"c":"brumate/function"},{"t":2,"s":1}],"o":0}]},"o":0},{"t":10,"i":12,"p":{"k":["k","p","c","s","i"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":10,"i":13,"p":{"k":["1"],"v":[{"t":0,"s":6}]},"o":0},{"t":9,"i":14,"a":[{"t":0,"s":2},{"t":0,"s":1}],"o":0},{"t":0,"s":2}]},"o":0},{"t":10,"i":15,"p":{"k":["k","p","s"],"v":[{"t":0,"s":2},{"t":0,"s":0},{"t":9,"i":16,"a":[{"t":0,"s":1}],"o":0}]},"o":0},{"t":10,"i":17,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Child_108vasc"},{"t":9,"i":18,"a":[{"t":0,"s":2},{"t":25,"i":19,"s":{"a":{"t":1,"s":"List_12rwm68#h11"},"b":{"t":0,"s":4}},"c":"brumate/function"},{"t":2,"s":1}],"o":0}]},"o":0}]},"o":0},"f":127,"m":[]}</script>

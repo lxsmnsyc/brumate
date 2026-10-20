@@ -32,6 +32,22 @@ export function u6($$s) {
   $$b.text($$s, 2, $$b.get($$s, 1));
 }
 
+# Render module
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export default function Counter($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Counter_m86gta");
+  const label = 'Clicks';
+  let count = (0);
+  const double = (count * 2);
+  $$html += "<h1>" + $$b.insert((label)) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
+  $$ctx.slots($$s1, [count, double]);
+  return $$html;
+}
+
 # HTML
 <h1>Clicks</h1>
 <button data-b="0:0" data-on="click=Counter_m86gta#h4">+</button>

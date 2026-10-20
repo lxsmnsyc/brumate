@@ -149,6 +149,87 @@ export function k11($$s) {
   $$b.fill($$s, 5, r11);
 }
 
+# Render module
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Blocks_jlmev2");
+  const { items, tab: initialTab } = $$props;
+  let tab = (initialTab);
+  let list = (items);
+  let input = undefined;
+  const tag = 'section';
+  function Broken(): Promise<string> {
+    throw new Error('Broken');
+  }
+  function row(n: number) {
+    let $$html = '';
+    $$html += "<b>" + $$b.insert((n * 10)) + "</b>";
+    return $$b.raw($$html);
+  }
+  $$html += "<template data-b=\"" + $$s1 + ":0\" data-client=\"idle=Blocks_jlmev2#c4\"></template><template data-b=\"" + $$s1 + ":1\" data-listen=\"window\" data-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
+  input = $$ctx.element($$s1, 2);
+  $$html += " value=\"x\" title=\"a &amp; b\" data-b=\"" + $$s1 + ":2\">";
+  if (tab === 'a') {
+    $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:1--><p>B</p><!--/b-->";
+  }
+  $$html += "<ul>";
+  {
+    const $$list0 = Array.from(( list));
+    $$html += "<!--b" + $$s1 + ":4-->";
+    for (const [$$index2, $$item1] of $$list0.entries()) {
+      const item = $$item1;
+      const i = $$index2;
+      const $$s5 = $$ctx.scope(5, $$s1);
+      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + $$b.insert((item)) + "<!--/t--></li>";
+      $$ctx.slots($$s5, [item, i]);
+      $$ctx.item($$s5, $$item1);
+      $$html += "<!--/i-->";
+    }
+    if ($$list0.length === 0) {
+      $$html += "<li>Empty</li>";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  {
+    const $$list3 = Array.from(( ['x', 'y']));
+    for (const [$$index5, $$item4] of $$list3.entries()) {
+      const item = $$item4;
+      $$html += "<span>" + $$b.insert((item)) + "</span>";
+    }
+  }
+  {
+    const $$list6 = Array.from({ length: ( 2) }, (_, index) => index);
+    for (const [$$index8, $$item7] of $$list6.entries()) {
+      const n = $$index8;
+      $$html += $$b.insert((row(n)));
+    }
+  }
+  const $$before9 = $$html;
+  try {
+    $$html += $$b.component(Broken, {  }, $$ctx);
+  } catch ($$error10) {
+    $$html = $$before9;
+    const error = $$error10;
+    $$html += "<p>" + $$b.insert((String(error))) + "</p>";
+  }
+  $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  const $$children11 = (() => {
+    let $$html = '';
+    $$html += "Dynamic";
+    return $$b.raw($$html);
+  })();
+  $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx) + "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
+  $$ctx.slots($$s1, [tab, list, input]);
+  return $$html;
+}
+
 # HTML
 <template data-b="0:0" data-client="idle=Blocks_jlmev2#c4">
 </template>

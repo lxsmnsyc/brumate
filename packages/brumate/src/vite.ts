@@ -22,6 +22,7 @@ const MANIFEST = 'virtual:brumate/manifest';
 const SERVER = 'virtual:brumate/server';
 
 const CLIENT_QUERY = '?brumate-client';
+const RENDER_QUERY = '?brumate-render';
 
 function defaultExclude(directory: string): boolean {
   return directory === 'node_modules' || directory === 'dist' || directory.startsWith('.');
@@ -176,14 +177,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return undefined;
       }
       // Vite can add its own parameters, such as `import`.
-      const isClient = new URLSearchParams(query).has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
+      const params = new URLSearchParams(query);
+      const isRender = params.has(RENDER_QUERY.slice(1));
+      const isClient = params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
       const source = await readFile(file, 'utf8');
       const result = compile(source, { filename: relative(file) });
       for (const warning of result.warnings) {
         const { line, column } = getLocation(source, warning.range.start);
         this.warn(`${warning.message} (${relative(file)}:${line}:${column})`);
       }
-      const code = isClient ? result.client : result.server;
+      const code = isRender ? result.render : isClient ? result.client : result.server;
       return transformWithOxc(code, `${file}.ts`, { lang: 'ts' });
     },
 

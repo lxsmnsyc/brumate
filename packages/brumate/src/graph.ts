@@ -47,7 +47,8 @@ const SOURCE_KINDS = new Set<DeclarationKind>([
 // Sources that can change without a write from client code.
 const ALWAYS_LIVE = new Set<DeclarationKind>(['prop', 'props-rest']);
 
-function isFunctionValue(site: Site): boolean {
+/** True if a site's expression is a function, such as a function passed as a prop. */
+export function isFunctionValue(site: Site): boolean {
   const node = site.node;
   if (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression') {
     return true;

@@ -49,6 +49,13 @@ describe('vite plugin', () => {
     expect(result?.code).not.toContain('interface Todo');
   });
 
+  it('compiles render modules for components rendered on the client', async () => {
+    const list = await server.transformRequest('/list.brm?brumate-client');
+    expect(list?.code).toMatch(/import Child from "\/Child\.brm\?.*brumate-render/);
+    const child = await server.transformRequest('/Child.brm?brumate-render');
+    expect(child?.code).toContain('export default function Child');
+  });
+
   it('loads client modules by component ID', async () => {
     const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
     const module = await load('Counter_m86gta');

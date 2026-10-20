@@ -1,5 +1,6 @@
 import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
+import { generateRender } from './codegen/render.ts';
 import { generateServer } from './codegen/server.ts';
 import { getLocation } from './error.ts';
 import { buildGraph } from './graph.ts';
@@ -18,6 +19,11 @@ export interface CompileResult {
   server: string;
   /** The client module, as TypeScript. The loader imports it on the first event. */
   client: string;
+  /**
+   * The render module, as TypeScript. It renders the component on the
+   * client, inside a parent's block that changes.
+   */
+  render: string;
   plan: Plan;
   warnings: Diagnostic[];
 }
@@ -56,6 +62,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   return {
     server: generateServer(file, plan),
     client: client.code,
+    render: generateRender(file, plan),
     plan,
     warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning'),
   };

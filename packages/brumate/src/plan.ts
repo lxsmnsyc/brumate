@@ -1,4 +1,5 @@
 import type { Block, Body, Markup, SFCFile } from './ast.ts';
+import { isFunctionValue } from './graph.ts';
 import type { Graph } from './graph.ts';
 import type { Declaration, DeclarationKind, Scope, Site } from './model.ts';
 
@@ -125,7 +126,7 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
 
   const symbols = new Map<Site, string>();
   for (const site of model.sites) {
-    if (site.kind === 'event' || (site.kind === 'prop' && graph.reached.has(site))) {
+    if (site.kind === 'event' || (site.kind === 'prop' && isFunctionValue(site))) {
       symbols.set(site, `h${site.id}`);
     } else if (site.kind === 'client') {
       symbols.set(site, `c${site.id}`);
