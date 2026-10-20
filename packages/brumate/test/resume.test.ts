@@ -65,14 +65,14 @@ function click(element: Element): void {
 
 describe('resume', () => {
   it('settles promises from state records that arrive later', async () => {
-    const { streamState, stateRecordScript } = await import('../src/runtime/server.ts');
+    const { streamState } = await import('../src/runtime/server.ts');
     let settle!: (value: number) => void;
     const pending = new Promise<number>((done) => {
       settle = done;
     });
     const records: string[] = [];
     const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
-      records.push(stateRecordScript(record));
+      records.push(stateScript(record));
     });
     expect(records).toHaveLength(1);
     document.body.innerHTML = records[0]!;

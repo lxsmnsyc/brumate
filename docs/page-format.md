@@ -96,7 +96,7 @@ type PageState = Record<number, {
 
 - The slot order is the declaration order of the scope's slots in the compiled plan. Client modules read slots by index.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
-- A promise is written as pending, and a later record settles it. `renderToString` waits for every record. `streamState` passes each record on as soon as it is ready.
+- A promise is written as pending, and a later record settles it. `renderToString` and `renderToStream` return as soon as the markup is rendered, and send later records as their promises settle.
 
 Two values have their own plugins:
 

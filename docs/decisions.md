@@ -46,6 +46,7 @@
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
 - **Reporting what ships.** A dev overlay or a `brumate inspect` command that shows each component's client code and the source lines that caused it.
+- **Streaming markup.** Promises in the state no longer hold up the response, but an async `$memo` is still awaited while the server renders, so slow data holds up the markup after it. `#loading` should render its fallback and stream the content later.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps

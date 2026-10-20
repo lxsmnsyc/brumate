@@ -37,25 +37,29 @@ Nothing else runs before the first event. The first event loads `brumate/client`
 
 ## Rendering a page
 
-On the server, import a component and render it with `renderToString`. Put the state script and the client entry in the page:
+On the server, render a component with `renderToStream`. It writes the markup and the page state first. Promises in the state do not hold it up: a script for each one follows when it settles.
 
 ```ts
-import { renderToString, stateScript } from 'brumate/server';
+import { renderToStream } from 'brumate/server';
 import App from './src/App.brm';
 
-const { html, state } = await renderToString(App, { initial: [] });
-
-const page = `<!doctype html>
-<html>
-  <body>
-    ${html}
-    ${stateScript(state)}
-    <script type="module" src="/src/client.ts"></script>
-  </body>
-</html>`;
+const stream = renderToStream(App, { initial: [] }, {
+  start: '<!doctype html><html><body>',
+  // `async`, so the loader starts before the pending state records arrive.
+  scripts: '<script type="module" async src="/src/client.ts"></script>',
+  end: '</body></html>',
+});
 ```
 
-`stateScript` writes one script for each state record. To write records as they are ready, use `streamState` and `stateRecordScript`.
+`renderToString` returns the same parts without a stream: the markup, the first state record, and the later records as an async iterable. Write each record with `stateScript`.
+
+```ts
+const { html, state, pending } = await renderToString(App, { initial: [] });
+write(html + stateScript(state) + clientScript);
+for await (const record of pending) {
+  write(stateScript(record));
+}
+```
 
 In development, load the component with `vite.ssrLoadModule('/src/App.brm')`. [`examples/todos`](../examples/todos) is a complete server.
 

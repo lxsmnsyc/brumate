@@ -142,28 +142,135 @@ export function streamState(
 
 export interface RenderResult {
   html: string;
-  /** The records of the page state, in order. */
-  state: SerovalNode[];
+  /** The first state record. It holds the page state. */
+  state: SerovalNode;
+  /**
+   * The records that settle promises in the state, as they are ready. Write
+   * each one with `stateScript` after the page, so the client can read it.
+   */
+  pending: AsyncIterable<SerovalNode>;
 }
 
-/** Renders a component and collects the records of its state. */
+/** An async iterable that a producer pushes into. */
+function createQueue<T>(): {
+  push: (item: T) => void;
+  close: () => void;
+  fail: (error: unknown) => void;
+  iterable: AsyncIterable<T>;
+} {
+  const items: T[] = [];
+  let wake: (() => void) | undefined;
+  let closed = false;
+  let failure: { error: unknown } | undefined;
+  const notify = (): void => {
+    wake?.();
+    wake = undefined;
+  };
+  return {
+    push(item) {
+      items.push(item);
+      notify();
+    },
+    close() {
+      closed = true;
+      notify();
+    },
+    fail(error) {
+      failure = { error };
+      notify();
+    },
+    iterable: {
+      async *[Symbol.asyncIterator]() {
+        for (;;) {
+          if (items.length > 0) {
+            yield items.shift()!;
+          } else if (failure) {
+            throw failure.error;
+          } else if (closed) {
+            return;
+          } else {
+            await new Promise<void>((resolve) => {
+              wake = resolve;
+            });
+          }
+        }
+      },
+    },
+  };
+}
+
+/**
+ * Renders a component. It returns as soon as the markup is rendered, with
+ * the first state record. Promises in the state do not hold it up: their
+ * records come later, from `pending`.
+ */
 export async function renderToString<P>(Root: Component<P>, props: P): Promise<RenderResult> {
   const ctx = new Context();
   const html = await Root(props, ctx);
-  const state: SerovalNode[] = [];
-  await streamState(ctx.state, (record) => state.push(record));
-  return { html, state };
+  const queue = createQueue<SerovalNode>();
+  let state: SerovalNode | undefined;
+  toCrossJSONStream(ctx.state, {
+    plugins,
+    onParse(record, initial) {
+      if (initial) {
+        state = record;
+      } else {
+        queue.push(record);
+      }
+    },
+    onError: queue.fail,
+    onDone: queue.close,
+  });
+  // The stream parser writes the first record before it returns.
+  return { html, state: state!, pending: queue.iterable };
+}
+
+export interface StreamOptions {
+  /** Markup before the component, such as the start of the document. */
+  start?: string;
+  /**
+   * Markup right after the first state record, such as the client entry.
+   * Make module scripts `async`, so they run before the stream ends.
+   */
+  scripts?: string;
+  /** Markup after the component and its state, such as the end of the document. */
+  end?: string;
+}
+
+/**
+ * Renders a component as a stream: the markup and the first state record,
+ * then a script for each state record as its promise settles.
+ */
+export function renderToStream<P>(
+  Root: Component<P>,
+  props: P,
+  options: StreamOptions = {},
+): ReadableStream<string> {
+  return new ReadableStream<string>({
+    async start(controller) {
+      try {
+        const { html, state, pending } = await renderToString(Root, props);
+        controller.enqueue(
+          `${options.start ?? ''}${html}${stateScript(state)}${options.scripts ?? ''}`,
+        );
+        for await (const record of pending) {
+          controller.enqueue(stateScript(record));
+        }
+        if (options.end) {
+          controller.enqueue(options.end);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
 }
 
 /** Returns the script for one state record. */
-export function stateRecordScript(record: SerovalNode): string {
+export function stateScript(record: SerovalNode): string {
   const json = JSON.stringify(record).replace(/</g, '\\u003c');
   return `<script type="brumate/state">${json}</script>`;
-}
-
-/** Returns the scripts that hold the page state, one for each record. */
-export function stateScript(state: SerovalNode[]): string {
-  return state.map(stateRecordScript).join('');
 }
 
 /**
