@@ -25,6 +25,26 @@ import type {
 import { children, getPatternNames } from './oxc.ts';
 import type { oxc } from './oxc.ts';
 
+/** Methods that change an array, a `Map` or a `Set` in place. */
+const MUTATORS = new Set([
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+  'set',
+  'add',
+  'delete',
+  'clear',
+]);
+
+/** Declarations whose value the client tracks. Changing their value in place updates nothing. */
+const REACTIVE = new Set<string>(['signal', 'memo', 'async-memo', 'prop', 'props-rest', 'item']);
+
 const COMPILE_TIME_FUNCTIONS = new Set([
   '$props',
   '$signal',
@@ -1155,10 +1175,12 @@ class Resolver {
         }
         return;
       case 'AssignmentExpression':
+        this.checkMutation(node.left, node);
         this.visitTarget(node.left, node.operator === '=' ? 'write' : 'update');
         this.visit(node.right);
         return;
       case 'UpdateExpression':
+        this.checkMutation(node.argument, node);
         if (node.argument.type === 'Identifier') {
           this.reference(node.argument, 'update');
         } else {
@@ -1179,6 +1201,14 @@ class Resolver {
         this.visit(node.argument);
         return;
       case 'CallExpression': {
+        if (
+          node.callee.type === 'MemberExpression' &&
+          !node.callee.computed &&
+          node.callee.property.type === 'Identifier' &&
+          MUTATORS.has(node.callee.property.name)
+        ) {
+          this.checkMutation(node.callee.object, node);
+        }
         const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
         if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
           if (name === '$untrack') {
@@ -1309,6 +1339,34 @@ class Resolver {
   }
 
   /** Visits the target of an assignment. */
+  /**
+   * Warns when code changes a reactive value in place, such as
+   * `todos.push(todo)` or `todo.done = true`. The value does not change, so
+   * nothing that reads it updates.
+   */
+  private checkMutation(target: oxc.Node, at: oxc.Node): void {
+    // Writing a variable itself is how values change. Only writes into the value are in place.
+    if (at.type !== 'CallExpression' && target.type !== 'MemberExpression') {
+      return;
+    }
+    let object = target;
+    while (object.type === 'MemberExpression') {
+      object = object.object;
+    }
+    if (object.type !== 'Identifier' || this.isLocal(object.name)) {
+      return;
+    }
+    const declaration = lookup(this.site.scope, object.name);
+    if (!declaration || !REACTIVE.has(declaration.kind)) {
+      return;
+    }
+    this.analyzer.report(
+      'warning',
+      `This changes the value of ${object.name} in place, so nothing that reads it updates. Write a new value, such as with $produce(${object.name}, (draft) => { … })`,
+      at,
+    );
+  }
+
   private visitTarget(target: oxc.Node, mode: 'write' | 'update'): void {
     switch (target.type) {
       case 'Identifier':

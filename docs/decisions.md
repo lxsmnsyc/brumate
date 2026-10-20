@@ -41,13 +41,13 @@
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
+- Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 
 ## Open
 
 - **File extension.** `.brm` is a placeholder.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
-- **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
 - **Styles.** `lang="scss"` and `lang="less"` are not supported, and stylesheets are inlined instead of written as CSS files.
