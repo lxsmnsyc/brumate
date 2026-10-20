@@ -64,6 +64,8 @@ On the server, `#loading` writes its fallback between `<!--l<id>-->` and `<!--/l
 
 If the body fails, the fallback stays.
 
+The server renders the body with its own values. If a value changed on the client before the body arrived, the client runs the updates of the body's scopes once, so the body shows the current values. Effects do not run.
+
 ### Items
 
 ```html

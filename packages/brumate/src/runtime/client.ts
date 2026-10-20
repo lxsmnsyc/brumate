@@ -89,11 +89,52 @@ function readRecord(script: Element): void {
   const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), { plugins, refs });
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
-    addScopes(value);
+    const added = addScopes(value);
+    if (writes > 0) {
+      refresh(added);
+    }
   }
 }
 
-function addScopes(state: PageState): void {
+/**
+ * Updates scopes that the server rendered before values changed on the
+ * client, such as the body of a `#loading` block that streams in after an
+ * event. Effects do not run: they run only when a value changes.
+ */
+function refresh(added: Scope[]): void {
+  for (const scope of added) {
+    const id = rootOf(scope).m;
+    if (!id) {
+      continue;
+    }
+    void loadModule(id).then(async (module) => {
+      const names = new Set<string>();
+      for (const slots of Object.values(module.g)) {
+        for (const entries of Object.values(slots)) {
+          for (const [kind, name] of entries) {
+            if (kind === scope.k && name[0] !== 'e') {
+              names.add(name);
+            }
+          }
+        }
+      }
+      if (names.size === 0) {
+        return;
+      }
+      const updates = await loadPart(module, 'update');
+      // Memos first, so the other updates read their new values.
+      for (const name of [...names].toSorted(
+        (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
+      )) {
+        if (scopes.has(scope.id)) {
+          (updates[name] as (scope: Scope) => void)(scope);
+        }
+      }
+    });
+  }
+}
+
+function addScopes(state: PageState): Scope[] {
   const added: Scope[] = [];
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
@@ -122,6 +163,7 @@ function addScopes(state: PageState): void {
       scope.s[i] = callable(scope.s[i], seen);
     }
   }
+  return added;
 }
 
 const STATE = 'script[type="brumate/state"]';
@@ -263,8 +305,12 @@ export function get(scope: Scope, slot: number): any {
   return value;
 }
 
+// The number of writes since the page loaded, so scopes that stream in later know to update.
+let writes = 0;
+
 export function set<T>(scope: Scope, slot: number, value: T): T {
   if (!Object.is(scope.s[slot], value)) {
+    writes++;
     scope.s[slot] = value;
     trigger(scope, slot);
   }

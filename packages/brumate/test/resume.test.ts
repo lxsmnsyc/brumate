@@ -208,6 +208,28 @@ describe('resume', () => {
     await waitFor(() => expect(text('p')).toBe('Count: 6'));
   });
 
+  it('updates #loading bodies that the server rendered before a change', async () => {
+    vi.resetModules();
+    // A fresh copy of the module, because another test released its data.
+    const fresh = await import(`${file('loading.brm.ts')}?stale`);
+    const { html, state, pending } = await renderToString(fresh.default, {});
+    document.body.innerHTML = html + state;
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+
+    // The value changes before the body arrives.
+    click(document.querySelector('.outer')!);
+    await waitFor(() => expect(text('.outer')).toBe('1'));
+
+    fresh.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    expect(text('.greeting')).toBe('Hello Ada');
+    // The server rendered 0, but the body shows the current value.
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+  });
+
   it('updates a counter', async () => {
     await resume('counter', {});
     expect(text('p')).toBe('0 / 0');
