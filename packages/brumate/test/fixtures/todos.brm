@@ -1,0 +1,49 @@
+<script>
+  import { format } from './date';
+
+  interface Todo {
+    id: string;
+    title: string;
+    done: boolean;
+    at: Date;
+  }
+
+  const { initial } = $props<{ initial: Todo[] }>();
+  let todos = $signal(initial);
+  let draft = $signal('');
+  const left = $memo(todos.filter((todo) => !todo.done).length);
+
+  async function persist(list: Todo[]) {
+    'use server';
+    await db.save(list);
+  }
+
+  async function add() {
+    todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false, at: new Date() }];
+    draft = '';
+    await persist(todos);
+  }
+</script>
+
+<h1>Todos</h1>
+<form onSubmit:prevent=add>
+  <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
+</form>
+
+<ul>
+  #for (todo of todos by todo.id) {
+    <script>
+      function toggle() {
+        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+      }
+    </script>
+    <li class={ done: todo.done } onClick=toggle>
+      {todo.title} <time>{format(todo.at)}</time>
+    </li>
+  }
+</ul>
+
+#static {
+  <footer>Built with brumate</footer>
+}
+<p>{left} left</p>

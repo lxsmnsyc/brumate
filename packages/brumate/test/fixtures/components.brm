@@ -1,0 +1,14 @@
+<script>
+  import Child from './Child.brm';
+
+  const { label, ...rest } = $props<{ label: string; id: string }>();
+  let count = $signal(0);
+  const fixed = 'fixed';
+</script>
+
+<Child value=count fixed=fixed onChange=((value) => (count = value)) />
+<p {...rest}>{label}</p>
+#template row(name: string) {
+  <li>{name}</li>
+}
+<ul>{row(fixed)}</ul>

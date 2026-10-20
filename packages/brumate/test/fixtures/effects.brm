@@ -1,0 +1,19 @@
+<script>
+  let count = $signal(0);
+  let title = $signal('Home');
+
+  $effect(() => {
+    document.title = `${count}`;
+  });
+
+  $effect(() => {
+    console.log(title);
+  });
+
+  $client(() => {
+    const id = setInterval(() => count++, 1000);
+    return () => clearInterval(id);
+  }, 'idle');
+</script>
+
+<p>{count} {$untrack(title)}</p>

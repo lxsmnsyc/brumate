@@ -1,0 +1,1278 @@
+import type {
+  Block,
+  Body,
+  ComponentNode,
+  DynamicTagNode,
+  ElementNode,
+  Expression,
+  Markup,
+  Range,
+  RefAttribute,
+  SFCFile,
+  TemplateDecl,
+} from './ast.ts';
+import { lookup } from './model.ts';
+import type {
+  Declaration,
+  DeclarationKind,
+  Diagnostic,
+  Scope,
+  ScopeKind,
+  SemanticModel,
+  Site,
+  SiteKind,
+} from './model.ts';
+import { children, getPatternNames } from './oxc.ts';
+import type { oxc } from './oxc.ts';
+
+const COMPILE_TIME_FUNCTIONS = new Set([
+  '$props',
+  '$signal',
+  '$memo',
+  '$effect',
+  '$client',
+  '$untrack',
+]);
+
+const MISPLACED: Record<string, string> = {
+  $props: 'Call $props() as the value of a const in the component script',
+  $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
+  $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $effect: 'Call $effect at the top level of a script',
+  $client: 'Call $client at the top level of a script',
+};
+
+const REMOVED: Record<string, string> = {
+  $ref: '$ref is not supported. Use a $signal with ref=name',
+  $watch: '$watch is not supported. Use $effect',
+  $settled: '$settled is not supported. Use $client',
+  $cleanup: '$cleanup is not supported. Return a cleanup function from $effect or $client',
+  $store: '$store is not supported yet',
+  $get: '$get is not supported. Signals cannot leave the file',
+  $set: '$set is not supported. Signals cannot leave the file',
+};
+
+const CLIENT_TRIGGERS = new Set(['visible', 'idle', 'load']);
+
+// Kinds that a write can target.
+const WRITABLE = new Set<DeclarationKind>(['signal', 'let']);
+
+// Sites that run in response to an event, so they can write signals.
+const WRITING_SITES = new Set<SiteKind>(['function', 'event', 'effect', 'client']);
+
+// Declarations that a server function can capture.
+const SERVER_CAPTURABLE = new Set<DeclarationKind>(['import', 'module', 'server-function']);
+
+const TYPE_KEYS = new Set([
+  'typeAnnotation',
+  'typeParameters',
+  'typeArguments',
+  'returnType',
+  'superTypeArguments',
+  'implements',
+]);
+
+const TYPE_WRAPPERS = new Set([
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+]);
+
+type Fn = oxc.Function | oxc.ArrowFunctionExpression;
+
+function isFunction(node: oxc.Node | null | undefined): node is Fn {
+  return (
+    node?.type === 'ArrowFunctionExpression' ||
+    node?.type === 'FunctionExpression' ||
+    node?.type === 'FunctionDeclaration'
+  );
+}
+
+function hasUseServer(fn: Fn): boolean {
+  const body = fn.body;
+  if (!body || body.type !== 'BlockStatement') {
+    return false;
+  }
+  for (const statement of body.body) {
+    if (statement.type !== 'ExpressionStatement' || typeof statement.directive !== 'string') {
+      return false;
+    }
+    if (statement.directive === 'use server') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Returns the name of a compile-time function that `node` calls, if any. */
+function calleeName(node: oxc.Node | null | undefined): string | undefined {
+  if (node?.type === 'CallExpression' && node.callee.type === 'Identifier') {
+    return node.callee.name;
+  }
+  return undefined;
+}
+
+function range(node: Range): Range {
+  return { start: node.start, end: node.end };
+}
+
+export function analyze(file: SFCFile): SemanticModel {
+  return new Analyzer(file).run();
+}
+
+class Analyzer {
+  private readonly file: SFCFile;
+  private readonly scopes: Scope[] = [];
+  private readonly declarations: Declaration[] = [];
+  private readonly sites: Site[] = [];
+  private readonly diagnostics: Diagnostic[] = [];
+  private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
+  private readonly module: Scope;
+  private readonly component: Scope;
+
+  constructor(file: SFCFile) {
+    this.file = file;
+    this.module = this.createScope('module', undefined);
+    this.component = this.createScope('component', this.module);
+  }
+
+  run(): SemanticModel {
+    if (this.file.moduleScript) {
+      this.declareModuleScript(this.file.moduleScript.program);
+    }
+    if (this.file.instanceScript) {
+      this.declareScript(this.file.instanceScript.program, this.component, true);
+    }
+    for (const template of this.file.templates) {
+      this.declareTemplate(template, this.component);
+    }
+    for (const style of this.file.styles) {
+      for (const variable of style.variables) {
+        this.createExpressionSite('style', this.component, variable, 'style');
+      }
+    }
+    this.visitNodes(this.file.children, this.component);
+
+    for (const site of this.sites) {
+      new Resolver(this, site).run();
+    }
+    this.resolveRefs();
+    this.check();
+
+    return {
+      module: this.module,
+      component: this.component,
+      scopes: this.scopes,
+      declarations: this.declarations,
+      sites: this.sites,
+      diagnostics: this.diagnostics,
+    };
+  }
+
+  report(severity: Diagnostic['severity'], message: string, at: Range): void {
+    this.diagnostics.push({ severity, message, range: range(at) });
+  }
+
+  // Scopes and declarations
+
+  private createScope(
+    kind: ScopeKind,
+    parent: Scope | undefined,
+    extra: Partial<Scope> = {},
+  ): Scope {
+    const scope: Scope = {
+      id: this.scopes.length,
+      kind,
+      parent,
+      children: [],
+      declarations: new Map(),
+      ...extra,
+    };
+    parent?.children.push(scope);
+    this.scopes.push(scope);
+    return scope;
+  }
+
+  private declare(
+    scope: Scope,
+    name: string,
+    kind: DeclarationKind,
+    at: Range,
+    block?: Block,
+  ): Declaration {
+    if (scope.declarations.has(name)) {
+      this.report('error', `"${name}" is already declared`, at);
+    }
+    const declaration: Declaration = {
+      id: this.declarations.length,
+      name,
+      kind,
+      scope,
+      range: range(at),
+      block,
+      reads: [],
+      writes: [],
+      refs: [],
+    };
+    scope.declarations.set(name, declaration);
+    this.declarations.push(declaration);
+    return declaration;
+  }
+
+  private createSite(
+    kind: SiteKind,
+    scope: Scope,
+    node: oxc.Node,
+    label: string,
+    extra: Partial<Site> = {},
+  ): Site {
+    const site: Site = {
+      id: this.sites.length,
+      kind,
+      scope,
+      range: range(node),
+      node,
+      label,
+      reads: [],
+      writes: [],
+      calls: new Set(),
+      awaits: false,
+      ...extra,
+    };
+    this.sites.push(site);
+    return site;
+  }
+
+  private createExpressionSite(
+    kind: SiteKind,
+    scope: Scope,
+    expression: Expression,
+    label: string,
+    extra: Partial<Site> = {},
+  ): Site {
+    const site = this.createSite(kind, scope, expression.ast, label, extra);
+    site.range = range(expression);
+    return site;
+  }
+
+  private declareFunction(name: string, fn: Fn, scope: Scope, at: Range): void {
+    const server = hasUseServer(fn);
+    const kind = server ? 'server-function' : 'function';
+    const declaration = this.declare(scope, name, kind, at);
+    const site = this.createSite(
+      kind,
+      scope,
+      fn,
+      `${server ? 'server function' : 'function'} ${name}`,
+      {
+        declaration,
+      },
+    );
+    site.range = range(at);
+    declaration.site = site;
+    if (server && !fn.async) {
+      this.report('error', `Server function "${name}" must be async`, at);
+    }
+  }
+
+  private declareModuleScript(program: oxc.Program): void {
+    for (const statement of program.body) {
+      if (statement.type === 'ImportDeclaration') {
+        this.declareImport(statement, this.module);
+      } else if (statement.type === 'ExportDefaultDeclaration') {
+        this.report('error', 'The module script cannot have a default export', statement);
+      } else if (statement.type === 'ExportNamedDeclaration') {
+        if (statement.declaration) {
+          this.declareModuleStatement(statement.declaration);
+        }
+      } else {
+        this.declareModuleStatement(statement);
+      }
+    }
+  }
+
+  private declareModuleStatement(statement: oxc.Node): void {
+    switch (statement.type) {
+      case 'FunctionDeclaration':
+        if (statement.id) {
+          const server = hasUseServer(statement);
+          this.declare(
+            this.module,
+            statement.id.name,
+            server ? 'server-function' : 'module',
+            statement.id,
+          );
+          if (server && !statement.async) {
+            this.report(
+              'error',
+              `Server function "${statement.id.name}" must be async`,
+              statement.id,
+            );
+          }
+        }
+        break;
+      case 'VariableDeclaration':
+        for (const declarator of statement.declarations) {
+          const init = declarator.init;
+          const server =
+            declarator.id.type === 'Identifier' && isFunction(init) && hasUseServer(init);
+          for (const name of getPatternNames(declarator.id)) {
+            this.declare(this.module, name.name, server ? 'server-function' : 'module', name);
+          }
+        }
+        break;
+      case 'ClassDeclaration':
+      case 'TSEnumDeclaration':
+        if (statement.id) {
+          this.declare(this.module, statement.id.name, 'module', statement.id);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  private declareImport(statement: oxc.ImportDeclaration, scope: Scope): void {
+    if (statement.importKind === 'type') {
+      return;
+    }
+    for (const specifier of statement.specifiers) {
+      if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
+        continue;
+      }
+      this.declare(scope, specifier.local.name, 'import', specifier.local);
+    }
+  }
+
+  /** Declares the statements of the component script or a block script. */
+  private declareScript(program: oxc.Program, scope: Scope, isComponent: boolean): void {
+    for (const statement of program.body) {
+      switch (statement.type) {
+        case 'ImportDeclaration':
+          // Imports move to the top of the module.
+          this.declareImport(statement, isComponent ? this.module : scope);
+          break;
+        case 'ExportNamedDeclaration':
+        case 'ExportDefaultDeclaration':
+        case 'ExportAllDeclaration':
+        case 'TSExportAssignment':
+          if (
+            !('exportKind' in statement && statement.exportKind === 'type') &&
+            !this.isTypeExport(statement)
+          ) {
+            this.report('error', 'A script cannot export values. Use <script module>', statement);
+          }
+          break;
+        case 'TSInterfaceDeclaration':
+        case 'TSTypeAliasDeclaration':
+        case 'TSDeclareFunction':
+        case 'TSModuleDeclaration':
+          break;
+        case 'FunctionDeclaration':
+          if (statement.id) {
+            this.declareFunction(statement.id.name, statement, scope, statement.id);
+          }
+          break;
+        case 'VariableDeclaration':
+          for (const declarator of statement.declarations) {
+            this.declareVariable(declarator, statement.kind, scope, isComponent);
+          }
+          break;
+        case 'ClassDeclaration':
+        case 'TSEnumDeclaration':
+          if (statement.id) {
+            this.declare(scope, statement.id.name, 'const', statement.id);
+          }
+          this.createSite('setup', scope, statement, 'setup');
+          break;
+        case 'ExpressionStatement': {
+          const name = calleeName(statement.expression);
+          if (name === '$effect' || name === '$client') {
+            this.declareEffect(statement.expression as oxc.CallExpression, name, scope);
+          } else {
+            this.createSite('setup', scope, statement, 'setup');
+          }
+          break;
+        }
+        default:
+          this.createSite('setup', scope, statement, 'setup');
+          break;
+      }
+    }
+  }
+
+  private isTypeExport(statement: oxc.Node): boolean {
+    if (statement.type !== 'ExportNamedDeclaration' || !statement.declaration) {
+      return false;
+    }
+    const type = statement.declaration.type;
+    return type === 'TSInterfaceDeclaration' || type === 'TSTypeAliasDeclaration';
+  }
+
+  private declareVariable(
+    declarator: oxc.VariableDeclarator,
+    kind: oxc.VariableDeclaration['kind'],
+    scope: Scope,
+    isComponent: boolean,
+  ): void {
+    const init = declarator.init;
+    const id = declarator.id;
+    const name = calleeName(init);
+    const call = init as oxc.CallExpression;
+
+    if (name === '$props') {
+      if (!isComponent) {
+        this.report('error', '$props() can only be called in the component script', declarator);
+      }
+      if (kind !== 'const') {
+        this.report('error', 'Assign $props() to a const', declarator);
+      }
+      if (call.arguments.length > 0) {
+        this.report('error', '$props() takes no arguments', call);
+      }
+      if (id.type === 'ObjectPattern') {
+        for (const property of id.properties) {
+          if (property.type === 'RestElement') {
+            for (const binding of getPatternNames(property.argument)) {
+              this.declare(scope, binding.name, 'props-rest', binding);
+            }
+          } else {
+            for (const binding of getPatternNames(property.value)) {
+              this.declare(scope, binding.name, 'prop', binding);
+            }
+          }
+        }
+        this.createDefaultSites(id, scope);
+      } else if (id.type === 'Identifier') {
+        this.declare(scope, id.name, 'prop', id);
+      } else {
+        this.report('error', 'Assign $props() to a name or an object pattern', id);
+      }
+      return;
+    }
+
+    if (name === '$signal' || name === '$memo') {
+      const expected = name === '$signal' ? 'let' : 'const';
+      if (kind !== expected) {
+        this.report('error', `Declare ${name} with ${expected}`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      if (call.arguments.length > 1) {
+        this.report('error', `${name} takes one argument`, call);
+      }
+      const argument = call.arguments[0];
+      if (name === '$signal') {
+        this.declare(scope, id.name, 'signal', id);
+        if (argument) {
+          this.createSite('setup', scope, argument, `signal ${id.name}`);
+        }
+        return;
+      }
+      const declaration = this.declare(scope, id.name, 'memo', id);
+      if (!argument) {
+        this.report('error', '$memo needs a value', call);
+        return;
+      }
+      declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
+        declaration,
+      });
+      return;
+    }
+
+    if (name === '$effect' || name === '$client') {
+      this.report('error', `${name} does not return a value`, call);
+      return;
+    }
+
+    if (kind === 'const' && id.type === 'Identifier' && isFunction(init)) {
+      this.declareFunction(id.name, init, scope, id);
+      return;
+    }
+
+    for (const binding of getPatternNames(id)) {
+      this.declare(scope, binding.name, kind === 'const' ? 'const' : 'let', binding);
+    }
+    this.createDefaultSites(id, scope);
+    if (init) {
+      this.createSite('setup', scope, init, 'setup');
+    }
+  }
+
+  /** Creates setup sites for the default values and computed keys of a pattern. */
+  private createDefaultSites(pattern: oxc.Node, scope: Scope): void {
+    switch (pattern.type) {
+      case 'AssignmentPattern':
+        this.createSite('setup', scope, pattern.right, 'default');
+        this.createDefaultSites(pattern.left, scope);
+        break;
+      case 'ObjectPattern':
+        for (const property of pattern.properties) {
+          if (property.type === 'RestElement') {
+            this.createDefaultSites(property.argument, scope);
+          } else {
+            if (property.computed) {
+              this.createSite('setup', scope, property.key, 'key');
+            }
+            this.createDefaultSites(property.value, scope);
+          }
+        }
+        break;
+      case 'ArrayPattern':
+        for (const element of pattern.elements) {
+          if (element) {
+            this.createDefaultSites(element, scope);
+          }
+        }
+        break;
+      case 'RestElement':
+        this.createDefaultSites(pattern.argument, scope);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private declareEffect(call: oxc.CallExpression, name: '$effect' | '$client', scope: Scope): void {
+    const callback = call.arguments[0];
+    if (!isFunction(callback)) {
+      this.report('error', `${name} needs a function`, call);
+      return;
+    }
+    if (callback.params.length > 0) {
+      this.report('error', `The callback of ${name} takes no parameters`, callback);
+    }
+    if (callback.async) {
+      this.report('error', `The callback of ${name} cannot be async`, callback);
+    }
+    if (name === '$effect') {
+      if (call.arguments.length > 1) {
+        this.report('error', '$effect takes one argument', call);
+      }
+      this.createSite('effect', scope, callback, 'effect');
+      return;
+    }
+    let trigger: Site['trigger'] = 'visible';
+    const argument = call.arguments[1];
+    if (argument) {
+      if (
+        argument.type !== 'Literal' ||
+        typeof argument.value !== 'string' ||
+        !CLIENT_TRIGGERS.has(argument.value)
+      ) {
+        this.report(
+          'error',
+          'The trigger of $client must be "visible", "idle" or "load"',
+          argument,
+        );
+      } else {
+        trigger = argument.value as Site['trigger'];
+      }
+    }
+    if (trigger === 'load') {
+      this.report('warning', '$client with "load" runs before any interaction', call);
+    }
+    this.createSite('client', scope, callback, `client ${trigger}`, { trigger });
+  }
+
+  private declareTemplate(template: TemplateDecl, scope: Scope): void {
+    this.declare(scope, template.name, 'template', template.nameRange);
+    const templateScope = this.createScope('template', scope, { template, body: template.body });
+    for (const param of template.params) {
+      for (const binding of getPatternNames(param)) {
+        this.declare(templateScope, binding.name, 'template-param', binding);
+      }
+      this.createDefaultSites(param, templateScope);
+    }
+    this.visitBodyContent(template.body, templateScope);
+  }
+
+  // Markup
+
+  private visitBody(
+    body: Body,
+    parent: Scope,
+    block: Block,
+    declare?: (scope: Scope) => void,
+  ): void {
+    const scope = this.createScope('body', parent, { block, body });
+    declare?.(scope);
+    this.visitBodyContent(body, scope);
+  }
+
+  private visitBodyContent(body: Body, scope: Scope): void {
+    if (body.script) {
+      this.declareScript(body.script.program, scope, false);
+    }
+    for (const template of body.templates) {
+      this.declareTemplate(template, scope);
+    }
+    this.visitNodes(body.children, scope);
+  }
+
+  private visitNodes(nodes: Markup[], scope: Scope): void {
+    for (const node of nodes) {
+      this.visitNode(node, scope);
+    }
+  }
+
+  private visitNode(node: Markup, scope: Scope): void {
+    switch (node.kind) {
+      case 'text':
+        break;
+      case 'insert':
+        this.createExpressionSite('insert', scope, node.expression, 'insert');
+        break;
+      case 'element':
+      case 'dynamic':
+        if (node.kind === 'dynamic') {
+          this.createExpressionSite('tag', scope, node.tag, 'tag', { owner: node });
+        }
+        this.visitAttributes(node, scope);
+        this.visitNodes(node.children, scope);
+        break;
+      case 'component':
+        this.visitAttributes(node, scope);
+        this.visitNodes(node.children, scope);
+        break;
+      case 'fragment':
+        this.visitNodes(node.children, scope);
+        break;
+      case 'listener':
+        for (const attribute of node.attributes) {
+          this.createExpressionSite(
+            'event',
+            scope,
+            attribute.handler,
+            `event ${node.target}.${attribute.event}`,
+            {
+              owner: node,
+              event: attribute,
+            },
+          );
+        }
+        break;
+      default:
+        this.visitBlock(node, scope);
+        break;
+    }
+  }
+
+  private visitAttributes(node: ElementNode | ComponentNode | DynamicTagNode, scope: Scope): void {
+    const isComponent = node.kind === 'component';
+    const tag =
+      node.kind === 'element' ? node.tag : node.kind === 'component' ? node.name : 'dynamic';
+    for (const attribute of node.attributes) {
+      switch (attribute.kind) {
+        case 'static':
+        case 'prefetch':
+          break;
+        case 'value':
+          this.createExpressionSite(
+            isComponent ? 'prop' : 'attribute',
+            scope,
+            attribute.value,
+            `${isComponent ? 'prop' : 'attribute'} ${tag}.${attribute.name}`,
+            { owner: node },
+          );
+          break;
+        case 'event':
+          this.createExpressionSite(
+            isComponent ? 'prop' : 'event',
+            scope,
+            attribute.handler,
+            isComponent ? `prop ${tag}.${attribute.name}` : `event ${tag}.${attribute.event}`,
+            { owner: node, event: isComponent ? undefined : attribute },
+          );
+          break;
+        case 'ref':
+          if (node.kind === 'element') {
+            this.refs.push({ attribute, element: node, scope });
+          }
+          break;
+        case 'spread':
+          this.createExpressionSite('spread', scope, attribute.value, `spread ${tag}`, {
+            owner: node,
+          });
+          break;
+        case 'computed':
+          this.createExpressionSite(
+            isComponent ? 'prop' : 'attribute',
+            scope,
+            attribute.name,
+            `computed ${tag}`,
+            {
+              owner: node,
+            },
+          );
+          if (attribute.value !== true) {
+            this.createExpressionSite(
+              isComponent ? 'prop' : 'attribute',
+              scope,
+              attribute.value,
+              `computed ${tag}`,
+              {
+                owner: node,
+              },
+            );
+          }
+          break;
+      }
+    }
+  }
+
+  private header(block: Block, scope: Scope, expression: Expression, label: string): void {
+    this.createExpressionSite('block', scope, expression, label, { block });
+  }
+
+  private visitBlock(block: Block, scope: Scope): void {
+    switch (block.kind) {
+      case 'if':
+        for (const branch of block.branches) {
+          this.header(block, scope, branch.condition, 'if');
+          this.visitBody(branch.body, scope, block);
+        }
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
+        break;
+      case 'for':
+        this.header(block, scope, block.list, 'for');
+        if (block.key && block.key !== 'index') {
+          // The key reads the item, so it resolves in the body scope.
+          const key = block.key;
+          this.visitBody(block.body, scope, block, (body) => {
+            this.declareLoopVariables(block, body);
+            this.createExpressionSite('block', body, key, 'for key', { block });
+          });
+        } else {
+          this.visitBody(block.body, scope, block, (body) =>
+            this.declareLoopVariables(block, body),
+          );
+        }
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
+        break;
+      case 'repeat':
+        this.header(block, scope, block.count, 'repeat');
+        this.visitBody(block.body, scope, block, (body) => {
+          if (block.index) {
+            this.declare(body, block.index.name, 'index', block.index, block);
+          }
+        });
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
+        break;
+      case 'switch':
+        for (const branch of block.cases) {
+          this.header(block, scope, branch.condition, 'case');
+          this.visitBody(branch.body, scope, block);
+        }
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
+        break;
+      case 'key':
+        this.header(block, scope, block.value, 'key');
+        this.visitBody(block.body, scope, block);
+        break;
+      case 'try':
+        this.visitBody(block.body, scope, block);
+        this.visitBody(block.fallback, scope, block, (body) => {
+          if (block.error) {
+            this.declare(body, block.error.name, 'error', block.error, block);
+          }
+          if (block.reset) {
+            this.declare(body, block.reset.name, 'reset', block.reset, block);
+          }
+        });
+        break;
+      case 'loading':
+        if (block.on) {
+          this.header(block, scope, block.on, 'loading');
+        }
+        this.visitBody(block.body, scope, block);
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
+        break;
+      case 'portal':
+        if (block.target) {
+          this.header(block, scope, block.target, 'portal');
+        }
+        this.visitBody(block.body, scope, block);
+        break;
+      case 'static':
+      case 'client':
+        this.visitBody(block.body, scope, block);
+        break;
+    }
+  }
+
+  private declareLoopVariables(block: Block & { kind: 'for' }, body: Scope): void {
+    for (const binding of getPatternNames(block.item)) {
+      this.declare(body, binding.name, 'item', binding, block);
+    }
+    this.createDefaultSites(block.item, body);
+    if (block.index) {
+      this.declare(body, block.index.name, 'index', block.index, block);
+    }
+  }
+
+  // Checks
+
+  private resolveRefs(): void {
+    for (const ref of this.refs) {
+      const declaration = lookup(ref.scope, ref.attribute.target);
+      if (!declaration) {
+        this.report(
+          'error',
+          `"${ref.attribute.target}" is not declared`,
+          ref.attribute.targetRange,
+        );
+      } else if (declaration.kind !== 'signal') {
+        this.report(
+          'error',
+          `ref must name a $signal, but "${declaration.name}" is a ${declaration.kind}`,
+          ref.attribute,
+        );
+      } else {
+        declaration.refs.push(ref);
+      }
+    }
+  }
+
+  private check(): void {
+    for (const site of this.sites) {
+      for (const write of site.writes) {
+        const declaration = write.declaration;
+        if (!WRITABLE.has(declaration.kind)) {
+          this.report(
+            'error',
+            `Cannot assign to ${declaration.kind} "${declaration.name}"`,
+            write.range,
+          );
+        } else if (
+          declaration.kind === 'signal' &&
+          !write.inFunction &&
+          !WRITING_SITES.has(site.kind)
+        ) {
+          this.report(
+            'error',
+            `Signal "${declaration.name}" can only be written in event handlers, effects, $client callbacks and functions`,
+            write.range,
+          );
+        }
+      }
+      if (site.kind === 'server-function') {
+        for (const read of site.reads) {
+          if (!SERVER_CAPTURABLE.has(read.declaration.kind)) {
+            this.report(
+              'error',
+              `Server function "${site.declaration?.name}" captures "${read.declaration.name}". Pass it as an argument`,
+              read.range,
+            );
+          }
+        }
+      }
+      if (site.kind === 'memo' && site.declaration) {
+        const callsServer = [...site.calls].some(
+          (declaration) => declaration.kind === 'server-function',
+        );
+        if (callsServer || site.awaits) {
+          site.declaration.kind = 'async-memo';
+        }
+      }
+    }
+  }
+}
+
+/** Resolves the identifiers of one site to declarations. */
+class Resolver {
+  private readonly analyzer: Analyzer;
+  private readonly site: Site;
+  private readonly locals: Set<string>[] = [];
+  private functionDepth = 0;
+  private untracked = 0;
+
+  constructor(analyzer: Analyzer, site: Site) {
+    this.analyzer = analyzer;
+    this.site = site;
+  }
+
+  run(): void {
+    const node = this.site.node;
+    if (
+      isFunction(node) &&
+      (this.site.kind === 'function' || this.site.kind === 'server-function')
+    ) {
+      // The function itself is the site, so its body is not an inner function.
+      this.visitFunction(node, true);
+    } else if (isFunction(node) && (this.site.kind === 'effect' || this.site.kind === 'client')) {
+      this.visitFunction(node, true);
+    } else {
+      this.visit(node);
+    }
+  }
+
+  private isLocal(name: string): boolean {
+    return this.locals.some((scope) => scope.has(name));
+  }
+
+  private withLocals(names: Iterable<string>, callback: () => void): void {
+    this.locals.push(new Set(names));
+    callback();
+    this.locals.pop();
+  }
+
+  private reference(
+    identifier: oxc.Node & { name: string },
+    mode: 'read' | 'write' | 'update',
+  ): void {
+    if (this.isLocal(identifier.name)) {
+      return;
+    }
+    const declaration = lookup(this.site.scope, identifier.name);
+    if (!declaration) {
+      return;
+    }
+    const reference = {
+      range: range(identifier),
+      declaration,
+      site: this.site,
+      tracked: this.untracked === 0,
+      inFunction: this.functionDepth > 0,
+    };
+    if (mode !== 'write') {
+      declaration.reads.push(reference);
+      this.site.reads.push(reference);
+    }
+    if (mode !== 'read') {
+      declaration.writes.push(reference);
+      this.site.writes.push(reference);
+    }
+    if (
+      declaration.kind === 'function' ||
+      declaration.kind === 'server-function' ||
+      declaration.kind === 'template'
+    ) {
+      this.site.calls.add(declaration);
+    }
+  }
+
+  private visitChildren(node: oxc.Node): void {
+    for (const [key, child] of children(node)) {
+      if (!TYPE_KEYS.has(key)) {
+        this.visit(child);
+      }
+    }
+  }
+
+  private visitStatements(statements: oxc.Node[]): void {
+    this.withLocals(lexicalNames(statements), () => {
+      for (const statement of statements) {
+        this.visit(statement);
+      }
+    });
+  }
+
+  private visit(node: oxc.Node): void {
+    switch (node.type) {
+      case 'Identifier':
+        this.reference(node, 'read');
+        return;
+      case 'MemberExpression':
+        this.visit(node.object);
+        if (node.computed) {
+          this.visit(node.property);
+        }
+        return;
+      case 'Property':
+      case 'MethodDefinition':
+      case 'PropertyDefinition':
+      case 'AccessorProperty':
+        if (node.computed) {
+          this.visit(node.key);
+        }
+        if (node.value) {
+          this.visit(node.value);
+        }
+        return;
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+        this.visitFunction(node, false);
+        return;
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        this.withLocals(node.type === 'ClassExpression' && node.id ? [node.id.name] : [], () => {
+          if (node.superClass) {
+            this.visit(node.superClass);
+          }
+          this.visit(node.body);
+        });
+        return;
+      case 'BlockStatement':
+      case 'StaticBlock':
+        this.visitStatements(node.body);
+        return;
+      case 'ForStatement':
+      case 'ForInStatement':
+      case 'ForOfStatement': {
+        const declaration = node.type === 'ForStatement' ? node.init : node.left;
+        const names =
+          declaration?.type === 'VariableDeclaration'
+            ? declaration.declarations.flatMap((item) =>
+                getPatternNames(item.id).map((name) => name.name),
+              )
+            : [];
+        this.withLocals(names, () => {
+          if (node.type === 'ForStatement') {
+            this.visitChildren(node);
+          } else {
+            if (node.left.type === 'VariableDeclaration') {
+              this.visit(node.left);
+            } else {
+              this.visitTarget(node.left, 'write');
+            }
+            this.visit(node.right);
+            this.visit(node.body);
+          }
+        });
+        return;
+      }
+      case 'SwitchStatement':
+        this.visit(node.discriminant);
+        this.withLocals(lexicalNames(node.cases.flatMap((item) => item.consequent)), () => {
+          for (const item of node.cases) {
+            if (item.test) {
+              this.visit(item.test);
+            }
+            for (const statement of item.consequent) {
+              this.visit(statement);
+            }
+          }
+        });
+        return;
+      case 'CatchClause':
+        this.withLocals(
+          node.param ? getPatternNames(node.param).map((name) => name.name) : [],
+          () => {
+            if (node.param) {
+              this.visitDefaults(node.param);
+            }
+            this.visit(node.body);
+          },
+        );
+        return;
+      case 'VariableDeclaration':
+        for (const declarator of node.declarations) {
+          this.visitDefaults(declarator.id);
+          if (declarator.init) {
+            this.visit(declarator.init);
+          }
+        }
+        return;
+      case 'AssignmentExpression':
+        this.visitTarget(node.left, node.operator === '=' ? 'write' : 'update');
+        this.visit(node.right);
+        return;
+      case 'UpdateExpression':
+        if (node.argument.type === 'Identifier') {
+          this.reference(node.argument, 'update');
+        } else {
+          this.visit(node.argument);
+        }
+        return;
+      case 'LabeledStatement':
+        this.visit(node.body);
+        return;
+      case 'BreakStatement':
+      case 'ContinueStatement':
+      case 'MetaProperty':
+        return;
+      case 'AwaitExpression':
+        if (this.functionDepth === 0) {
+          this.site.awaits = true;
+        }
+        this.visit(node.argument);
+        return;
+      case 'CallExpression': {
+        const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
+        if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
+          if (name === '$untrack') {
+            this.untracked++;
+            for (const argument of node.arguments) {
+              this.visit(argument);
+            }
+            this.untracked--;
+            return;
+          }
+          if (COMPILE_TIME_FUNCTIONS.has(name)) {
+            this.analyzer.report('error', MISPLACED[name] ?? `${name} cannot be used here`, node);
+          } else if (name in REMOVED) {
+            this.analyzer.report('error', REMOVED[name]!, node);
+          }
+        }
+        this.visitChildren(node);
+        return;
+      }
+      default:
+        if (TYPE_WRAPPERS.has(node.type)) {
+          this.visit((node as { expression: oxc.Node }).expression);
+        } else if (!node.type.startsWith('TS')) {
+          this.visitChildren(node);
+        }
+    }
+  }
+
+  private visitFunction(fn: Fn, isSite: boolean): void {
+    if (!isSite && hasUseServer(fn)) {
+      this.analyzer.report('error', 'Declare server functions at the top level of a script', fn);
+    }
+    const names = fn.params.flatMap((param) => getPatternNames(param).map((name) => name.name));
+    if (fn.type === 'FunctionExpression' && fn.id) {
+      names.push(fn.id.name);
+    }
+    const body = fn.body;
+    if (body?.type === 'BlockStatement') {
+      names.push(...lexicalNames(body.body), ...varNames(body));
+    }
+    if (!isSite) {
+      this.functionDepth++;
+    }
+    this.withLocals(names, () => {
+      for (const param of fn.params) {
+        this.visitDefaults(param);
+      }
+      if (body?.type === 'BlockStatement') {
+        for (const statement of body.body) {
+          this.visit(statement);
+        }
+      } else if (body) {
+        this.visit(body);
+      }
+    });
+    if (!isSite) {
+      this.functionDepth--;
+    }
+  }
+
+  /** Visits the default values and computed keys of a binding pattern. */
+  private visitDefaults(pattern: oxc.Node): void {
+    switch (pattern.type) {
+      case 'AssignmentPattern':
+        this.visitDefaults(pattern.left);
+        this.visit(pattern.right);
+        break;
+      case 'ObjectPattern':
+        for (const property of pattern.properties) {
+          if (property.type === 'RestElement') {
+            this.visitDefaults(property.argument);
+          } else {
+            if (property.computed) {
+              this.visit(property.key);
+            }
+            this.visitDefaults(property.value);
+          }
+        }
+        break;
+      case 'ArrayPattern':
+        for (const element of pattern.elements) {
+          if (element) {
+            this.visitDefaults(element);
+          }
+        }
+        break;
+      case 'RestElement':
+        this.visitDefaults(pattern.argument);
+        break;
+      case 'TSParameterProperty':
+        this.visitDefaults(pattern.parameter);
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Visits the target of an assignment. */
+  private visitTarget(target: oxc.Node, mode: 'write' | 'update'): void {
+    switch (target.type) {
+      case 'Identifier':
+        this.reference(target, mode);
+        break;
+      case 'ObjectPattern':
+        for (const property of target.properties) {
+          if (property.type === 'RestElement') {
+            this.visitTarget(property.argument, 'write');
+          } else {
+            if (property.computed) {
+              this.visit(property.key);
+            }
+            this.visitTarget(property.value, 'write');
+          }
+        }
+        break;
+      case 'ArrayPattern':
+        for (const element of target.elements) {
+          if (element) {
+            this.visitTarget(element, 'write');
+          }
+        }
+        break;
+      case 'AssignmentPattern':
+        this.visitTarget(target.left, 'write');
+        this.visit(target.right);
+        break;
+      case 'RestElement':
+        this.visitTarget(target.argument, 'write');
+        break;
+      default:
+        if (TYPE_WRAPPERS.has(target.type)) {
+          this.visitTarget((target as { expression: oxc.Node }).expression, mode);
+        } else {
+          this.visit(target);
+        }
+    }
+  }
+}
+
+/** Returns the names that statements declare in their own block. */
+function lexicalNames(statements: oxc.Node[]): string[] {
+  const names: string[] = [];
+  for (const statement of statements) {
+    if (statement.type === 'VariableDeclaration') {
+      for (const declarator of statement.declarations) {
+        names.push(...getPatternNames(declarator.id).map((name) => name.name));
+      }
+    } else if (
+      (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') &&
+      statement.id
+    ) {
+      names.push(statement.id.name);
+    }
+  }
+  return names;
+}
+
+/** Returns the names of `var` declarations in a function body, outside nested functions. */
+function varNames(node: oxc.Node, names: string[] = []): string[] {
+  for (const [, child] of children(node)) {
+    if (isFunction(child)) {
+      continue;
+    }
+    if (child.type === 'VariableDeclaration' && child.kind === 'var') {
+      for (const declarator of child.declarations) {
+        names.push(...getPatternNames(declarator.id).map((name) => name.name));
+      }
+    }
+    varNames(child, names);
+  }
+  return names;
+}

@@ -1,0 +1,17 @@
+<script>
+  let items = $signal(['a', 'b', 'c']);
+  let open = $signal(false);
+</script>
+
+<ul>
+  #for (item, i of items) {
+    <li>{i}: {item}</li>
+  }
+</ul>
+
+<button onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <p>Open</p>
+} #else {
+  <p>Closed</p>
+}

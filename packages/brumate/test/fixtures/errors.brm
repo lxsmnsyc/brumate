@@ -1,0 +1,33 @@
+<script>
+  import { db } from './db';
+
+  const { user } = $props<{ user: string }>();
+  const limit = 10;
+  let count = $signal(0);
+  const double = $memo(count * 2);
+  let ready = $signal(false);
+  ready = true;
+
+  async function save() {
+    'use server';
+    return db.save(user, count);
+  }
+
+  function sync() {
+    'use server';
+  }
+
+  function bad() {
+    double = 3;
+    limit = 2;
+    const inner = $signal(1);
+    $ref();
+  }
+</script>
+
+<p ref=limit>{count = 1}</p>
+#static {
+  <button onClick=bad>Bad</button>
+  <p>{count}</p>
+}
+<button onClick=(() => count++)>+</button>

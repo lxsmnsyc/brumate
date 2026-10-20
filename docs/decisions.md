@@ -14,7 +14,7 @@
 - Server functions may capture module-scope bindings and imports only.
 - An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
-- Scripts cannot contain markup. A `#template` is used for markup that is a value.
+- Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
 - A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
 - seroval is the serializer.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
@@ -27,12 +27,15 @@
 - **Chunk size.** One chunk per handler gives the smallest download per event, but more requests. Grouping handlers that read the same scope may be better.
 - **Streaming.** How state for scopes rendered after a `#loading` boundary is written into a streamed page.
 - **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
+- **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
+- **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
+- **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps
 
 1. Write the grammar and the intermediate representation. Done in [Grammar](./grammar.md) and [Intermediate representation](./ir.md).
-2. Build the parser and the analyzer, and test them on the graph output without a browser.
+2. Build the parser and the analyzer, and test them on the graph output without a browser. Done in [`packages/brumate`](../packages/brumate).
 3. Write the server codegen with markers and state.
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list.
 5. Add `#if` and keyed `#for`.

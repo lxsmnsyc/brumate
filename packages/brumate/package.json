@@ -1,0 +1,36 @@
+{
+  "name": "brumate",
+  "version": "0.0.0",
+  "description": "A component language and compiler for resumable web apps",
+  "license": "MIT",
+  "author": "Alexis Munsayac",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "oxc-parser": "^0.154.0"
+  },
+  "devDependencies": {
+    "@oxc-project/types": "^0.154.0",
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

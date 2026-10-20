@@ -1,0 +1,29 @@
+<script>
+  let tab = $signal<'a' | 'b'>('a');
+  let stars = $signal(3);
+</script>
+
+<window onKeyDown=((event) => (tab = event.key === 'b' ? 'b' : 'a')) />
+#switch {
+  #case (tab === 'a') {
+    <p>A</p>
+  }
+  #default {
+    <p>B</p>
+  }
+}
+#repeat (i of stars) {
+  <span>{i}</span>
+}
+#try {
+  <Chart />
+} #catch (error, reset) {
+  <p>{String(error)}</p>
+  <button onClick=reset>Retry</button>
+}
+#client ('idle') {
+  <Map />
+}
+#key (tab) {
+  <Panel />
+}

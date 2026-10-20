@@ -1,0 +1,74 @@
+# Syntax tree
+script
+listener <window onKeyDown=((event) => (tab = event.key === 'b' ? 'b' : 'a'))>
+switch
+  case (tab === 'a')
+    element <p>
+      text "A"
+  default
+    element <p>
+      text "B"
+repeat (i of stars)
+  body
+    element <span>
+      insert {i}
+try
+  body
+    component <Chart>
+  catch (error, reset)
+    element <p>
+      insert {String(error)}
+    element <button onClick=(reset)>
+      text "Retry"
+client (idle)
+  body
+    component <Map>
+key (tab)
+  body
+    component <Panel>
+
+# Semantic model
+scope 0 module
+scope 1 component
+  signal tab
+  signal stars
+scope 2 body (switch 7:1)
+scope 3 body (switch 7:1)
+scope 4 body (repeat 15:1)
+  index i
+scope 5 body (try 18:1)
+scope 6 body (try 18:1)
+  error error
+  reset reset
+scope 7 body (client 24:1)
+scope 8 body (key 27:1)
+sites
+  signal tab (2:32)
+  signal stars (3:23)
+  event window.keydown (6:20) writes tab
+  case (8:10) reads tab
+  repeat (15:14) reads stars
+  insert (16:10) reads i
+  insert (21:7) reads error
+  event button.click (22:19) reads reset
+  key (27:7) reads tab
+
+# Graph
+nodes
+  signal tab live
+  signal stars static
+  index i static <- repeat (15:14)
+  error error static
+  case (8:10) live <- signal tab
+  repeat (15:14) static <- signal stars
+  insert (16:10) static <- index i
+  insert (21:7) static <- error error
+  key (27:7) live <- signal tab
+client
+  event window.keydown (6:20)
+  event button.click (22:19)
+created
+  2 body (switch 7:1)
+  3 body (switch 7:1)
+  7 body (client 24:1)
+  8 body (key 27:1)

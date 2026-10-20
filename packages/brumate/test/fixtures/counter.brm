@@ -1,0 +1,9 @@
+<script>
+  const label = 'Clicks';
+  let count = $signal(0);
+  const double = $memo(count * 2);
+</script>
+
+<h1>{label}</h1>
+<button onClick=(() => count++)>+</button>
+<p>{count} / {double}</p>

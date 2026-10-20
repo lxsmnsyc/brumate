@@ -21,6 +21,7 @@ Code runs in the browser only if it starts from a client root:
 - `<window>` and `<document>` listeners.
 - `$effect` callbacks.
 - `$client` callbacks.
+- Functions passed as props to a component, such as `onChange=((value) => (count = value))`.
 - The create code of a block that the client must render, such as an `#if` whose condition can change.
 
 The compiler starts at each client root and follows what it reads, writes and calls. Everything it reaches ships. Everything else stays on the server.
@@ -38,15 +39,15 @@ When a client root writes a signal, the runtime marks the nodes downstream of it
 
 ## What the compiler decides for each node
 
-| Node | Ships to the client when |
-| --- | --- |
-| `$signal` | A client root writes it. Its value is serialized. |
-| `$memo` | Something upstream is writable on the client. Its value is serialized, so it is not computed again on resume. |
-| Async `$memo` | Something upstream is writable on the client. Then the fetch runs again on the client. |
-| Markup binding, such as `{count}` | Its source is writable on the client. |
-| `#if`, `#switch`, `#key` | Its condition is writable on the client. Then the branch templates ship. |
-| `#for`, `#repeat` | Its list or count is writable on the client. Then the item template ships. |
-| Static text and elements | Never. They are HTML only. |
+| Node                              | Ships to the client when                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `$signal`                         | A client root writes it. Its value is serialized.                                                             |
+| `$memo`                           | Something upstream is writable on the client. Its value is serialized, so it is not computed again on resume. |
+| Async `$memo`                     | Something upstream is writable on the client. Then the fetch runs again on the client.                        |
+| Markup binding, such as `{count}` | Its source is writable on the client.                                                                         |
+| `#if`, `#switch`, `#key`          | Its condition is writable on the client. Then the branch templates ship.                                      |
+| `#for`, `#repeat`                 | Its list or count is writable on the client. Then the item template ships.                                    |
+| Static text and elements          | Never. They are HTML only.                                                                                    |
 
 A signal that no client root writes is a constant after the server renders it. It is not serialized.
 

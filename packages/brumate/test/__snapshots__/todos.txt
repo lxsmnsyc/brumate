@@ -1,0 +1,82 @@
+# Syntax tree
+script
+element <h1>
+  text "Todos"
+element <form onSubmit:prevent=(add)>
+  element <input value=(draft) onInput=((event) => (draft = event.currentTarget.value))>
+element <ul>
+  for (todo of todos by  todo.id)
+    body
+      script
+      element <li class=({ done: todo.done }) onClick=(toggle)>
+        insert {todo.title}
+        text " "
+        element <time>
+          insert {format(todo.at)}
+static
+  body
+    element <footer>
+      text "Built with brumate"
+element <p>
+  insert {left}
+  text " left"
+
+# Semantic model
+scope 0 module
+  import format
+scope 1 component
+  prop initial
+  signal todos
+  signal draft
+  memo left
+  server-function persist
+  function add
+scope 2 body (for 34:3)
+  item todo
+  function toggle
+scope 3 body (static 46:1)
+sites
+  signal todos (12:23) reads initial
+  signal draft (13:23)
+  memo left (14:22) reads todos
+  server function persist (16:18)
+  function add (21:18) reads todos, draft, persist writes todos, draft calls persist
+  event form.submit (29:24) reads add calls add
+  attribute input.value (30:16) reads draft
+  event input.input (30:31) writes draft
+  for (34:16) reads todos
+  for key (34:25) reads todo
+  function toggle (36:16) reads todos, todo writes todos
+  attribute li.class (40:15) reads todo
+  event li.click (40:43) reads toggle calls toggle
+  insert (41:8) reads todo
+  insert (41:27) reads format, todo
+  insert (49:5) reads left
+
+# Graph
+nodes
+  prop initial live
+  signal todos live
+  signal draft live
+  item todo live <- for (34:16)
+  memo left live <- signal todos
+  attribute input.value (30:16) live <- signal draft
+  for (34:16) live <- signal todos
+  for key (34:25) live <- item todo
+  attribute li.class (40:15) live <- item todo
+  insert (41:8) live <- item todo
+  insert (41:27) live <- item todo
+  insert (49:5) live <- memo left
+client
+  server function persist (16:18) (stub)
+  function add (21:18)
+  event form.submit (29:24)
+  event input.input (30:31)
+  for key (34:25)
+  function toggle (36:16)
+  attribute li.class (40:15)
+  event li.click (40:43)
+  insert (41:8)
+  insert (41:27)
+created
+  2 body (for 34:3)

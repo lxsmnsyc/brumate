@@ -83,7 +83,7 @@ Computed        = "[" TS<Expression> "]" [ "=" Value ] ;
 
 ```ebnf
 Value           = String | Bare | Paren | ObjectValue | TemplateLiteral
-                | ArrayLiteral | RegExp | Element | Component ;
+                | ArrayLiteral | RegExp ;
 
 String          = '"' { any - '"' } '"' | "'" { any - "'" } "'" ;
 Paren           = "(" TS<Expression> ")" ;
@@ -148,7 +148,7 @@ Inside a block, `else`, `catch`, `case` and `default` are also keywords where th
 
 The scanner finds where a `TS<…>` region ends by matching brackets. It skips strings, template literals, regular expressions and comments while it counts. The region is then parsed with oxc.
 
-Inside an expression, `<` starts markup when a value is expected, as in solid-sfc. Generic type parameters such as `<T,>` and `<T extends U>` are read as types.
+Expressions cannot contain markup. Use `#for`, `#if` and `#template` instead. This keeps every expression plain TypeScript.
 
 ## Differences from solid-sfc
 
@@ -156,4 +156,4 @@ Inside an expression, `<` starts markup when a value is expected, as in solid-sf
 - Event attributes take `:` modifiers.
 - `ref` and `prefetch` are reserved on elements.
 - `#static` and `#client` are added. `#hydration`, `#no-hydration` and `#reveal` are removed.
-- Scripts cannot contain markup.
+- Scripts, expressions and attribute values cannot contain markup.

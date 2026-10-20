@@ -1,0 +1,42 @@
+# Syntax tree
+script
+element <input ref=input>
+element <button onClick=(focus)>
+  text "Focus"
+element <button onClick=(() => (shown = true))>
+  text "Show"
+if
+  branch (shown)
+    element <section ref=panel>
+      insert {panel ? 'ready' : 'waiting'}
+
+# Semantic model
+scope 0 module
+scope 1 component
+  signal input
+  signal panel
+  signal shown
+  function focus
+scope 2 body (if 14:1)
+sites
+  signal shown (4:23)
+  function focus (6:12) reads input
+  event button.click (12:17) reads focus calls focus
+  event button.click (13:18) writes shown
+  if (14:6) reads shown
+  insert (15:23) reads panel
+
+# Graph
+nodes
+  signal input static
+  signal panel live
+  signal shown live
+  if (14:6) live <- signal shown
+  insert (15:23) live <- signal panel
+client
+  function focus (6:12)
+  event button.click (12:17)
+  event button.click (13:18)
+  insert (15:23)
+created
+  2 body (if 14:1)

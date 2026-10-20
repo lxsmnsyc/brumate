@@ -229,6 +229,8 @@ A node is **live** when its value can change on the client:
 
 - A signal is live when reached code writes it, or when it is the `ref` target of an element inside a live block.
 - A prop is live. The component does not know what the parent passes, so it assumes the prop can change. See [Props](#props).
+- A template parameter is live when a call to the template is live or runs on the client.
+- An error of `#catch` is live when the `#try` body changes on the client.
 - An `item` or `index` of a `#for` is live when the list is live.
 - A memo, binding, block or effect is live when any node with an edge into it is live.
 

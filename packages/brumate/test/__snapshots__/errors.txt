@@ -1,0 +1,76 @@
+# Syntax tree
+script
+element <p ref=limit>
+  insert {count = 1}
+static
+  body
+    element <button onClick=(bad)>
+      text "Bad"
+    element <p>
+      insert {count}
+element <button onClick=(() => count++)>
+  text "+"
+
+# Semantic model
+scope 0 module
+  import db
+scope 1 component
+  prop user
+  const limit
+  signal count
+  memo double
+  signal ready
+  server-function save
+  server-function sync
+  function bad
+scope 2 body (static 29:1)
+sites
+  setup (5:17)
+  signal count (6:23)
+  memo double (7:24) reads count
+  signal ready (8:23)
+  setup (9:3) writes ready
+  server function save (11:18) reads db, user, count
+  server function sync (16:12)
+  function bad (20:12) writes double, limit
+  insert (28:15) writes count
+  event button.click (30:19) reads bad calls bad
+  insert (31:7) reads count
+  event button.click (33:18) reads count writes count
+diagnostics
+  error Server function "sync" must be async (16:12)
+  error Declare a signal with "let name = $signal(value)" at the top level of a script (23:19)
+  error $ref is not supported. Use a $signal with ref=name (24:5)
+  error ref must name a $signal, but "limit" is a const (28:4)
+  error Signal "ready" can only be written in event handlers, effects, $client callbacks and functions (9:3)
+  error Server function "save" captures "user". Pass it as an argument (13:20)
+  error Server function "save" captures "count". Pass it as an argument (13:26)
+  error Cannot assign to memo "double" (21:5)
+  error Cannot assign to const "limit" (22:5)
+  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (28:15)
+
+# Graph
+nodes
+  prop user live
+  signal count live
+  signal ready static
+  memo double live <- signal count
+  insert (28:15) static
+  insert (31:7) live <- signal count
+client
+  function bad (20:12)
+  event button.click (30:19)
+  event button.click (33:18)
+diagnostics
+  error Server function "sync" must be async (16:12)
+  error Declare a signal with "let name = $signal(value)" at the top level of a script (23:19)
+  error $ref is not supported. Use a $signal with ref=name (24:5)
+  error ref must name a $signal, but "limit" is a const (28:4)
+  error Signal "ready" can only be written in event handlers, effects, $client callbacks and functions (9:3)
+  error Server function "save" captures "user". Pass it as an argument (13:20)
+  error Server function "save" captures "count". Pass it as an argument (13:26)
+  error Cannot assign to memo "double" (21:5)
+  error Cannot assign to const "limit" (22:5)
+  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (28:15)
+  error #static cannot contain event handlers, effects or $client callbacks (30:19)
+  error #static cannot contain values that change on the client (31:7)

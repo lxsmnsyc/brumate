@@ -1,0 +1,35 @@
+# Syntax tree
+script
+element <h1>
+  insert {label}
+element <button onClick=(() => count++)>
+  text "+"
+element <p>
+  insert {count}
+  text " / "
+  insert {double}
+
+# Semantic model
+scope 0 module
+scope 1 component
+  const label
+  signal count
+  memo double
+sites
+  setup (2:17)
+  signal count (3:23)
+  memo double (4:24) reads count
+  insert (7:6) reads label
+  event button.click (8:18) reads count writes count
+  insert (9:5) reads count
+  insert (9:15) reads double
+
+# Graph
+nodes
+  signal count live
+  memo double live <- signal count
+  insert (7:6) static
+  insert (9:5) live <- signal count
+  insert (9:15) live <- memo double
+client
+  event button.click (8:18)

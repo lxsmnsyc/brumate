@@ -1,0 +1,34 @@
+# Syntax tree
+script
+element <p>
+  insert {count}
+  text " "
+  insert {$untrack(title)}
+
+# Semantic model
+scope 0 module
+scope 1 component
+  signal count
+  signal title
+sites
+  signal count (2:23)
+  signal title (3:23)
+  effect (5:11) reads count
+  effect (9:11) reads title
+  client idle (13:11) reads count writes count
+  insert (19:5) reads count
+  insert (19:13) reads ~title
+
+# Graph
+nodes
+  signal count live
+  signal title static
+  effect (5:11) live <- signal count
+  effect (9:11) static <- signal title
+  insert (19:5) live <- signal count
+  insert (19:13) static
+client
+  effect (5:11)
+  client idle (13:11)
+diagnostics
+  warning This $effect reads no value that changes on the client, so it never runs (9:11)
