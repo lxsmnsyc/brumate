@@ -189,6 +189,7 @@ function createQueue<T>(): {
           } else if (closed) {
             return;
           } else {
+            // oxlint-disable-next-line no-await-in-loop -- Each wait is for the next record.
             await new Promise<void>((resolve) => {
               wake = resolve;
             });
