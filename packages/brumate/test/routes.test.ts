@@ -91,10 +91,10 @@ describe('route files', () => {
 
   it('writes the tree as a module', () => {
     const code = routeModule(routeFiles(['index.brm', 'todos/[id].brm']), (file) => `/r/${file}`);
-    expect(code).toContain('page: () => import("/r/index.brm")');
-    expect(code).toContain(
-      'dynamic: { name: "id", node: { page: () => import("/r/todos/[id].brm") } }',
-    );
+    expect(code).toContain('import * as m0 from "/r/index.brm";');
+    expect(code).toContain('import * as m1 from "/r/todos/[id].brm";');
+    expect(code).toContain('page: () => Promise.resolve(m0)');
+    expect(code).toContain('dynamic: { name: "id", node: { page: () => Promise.resolve(m1) } }');
   });
 
   it('rejects two dynamic segments in one folder', () => {

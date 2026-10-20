@@ -25,6 +25,12 @@ export interface CompileOptions {
    * CSS file, from the `css` of the result. Defaults to `inline`.
    */
   css?: 'inline' | 'external';
+  /**
+   * When the client parts of a component are smaller than this many bytes
+   * in all, they become one module. Defaults to 0, which keeps one module
+   * per part.
+   */
+  merge?: number;
 }
 
 export interface CompileResult {
@@ -79,7 +85,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (styleErrors.length > 0) {
     throw new CompileError(source, filename, styleErrors);
   }
-  const client = generateClient(file, plan);
+  const client = generateClient(file, plan, options.merge);
   const clientErrors = client.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (clientErrors.length > 0) {
     throw new CompileError(source, filename, clientErrors);

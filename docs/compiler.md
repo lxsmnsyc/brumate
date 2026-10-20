@@ -110,6 +110,7 @@ The compiler splits each component's client code itself. It does not depend on a
 
 - A local function that only one part calls goes into that part.
 - Each part imports only what its code reads. Server function stubs are copied into each part that calls them.
+- When the parts of a component are smaller than the `merge` option in all, they become one part, `all`, and every entry in `load` imports it. The first event then loads one module instead of several. Components with a `shared` part keep their parts. `compile` does not merge by default, and the Vite plugin merges below 2048 bytes.
 - The core finds an export by its name: `h<n>` and `c<n>` are in the part of the same name, and everything else is in `update`.
 
 A bundler loads a part as `App.brm?brumate-client&part=<name>`.

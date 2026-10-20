@@ -40,7 +40,7 @@
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order. A render can start above another one with `base`, so several roots and pages that the client loads in place never share IDs.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
-- The compiler splits client roots and server functions into modules itself. It does not use another splitter.
+- The compiler splits client roots and server functions into modules itself. It does not use another splitter. A component whose parts are small in all ships them as one module, because one request costs more than the bytes it saves.
 - Stylesheets are inlined by default. `css: 'file'` in the Vite plugin builds them into one CSS file instead, which the page links in its head.
 - A dynamic tag is a `#key` block on its tag, so a new element name or component renders again. A component in the page state is written as its ID. The client code that changes the value uses the component's render module.
 - Effects run after the other updates of a write, once each, so they see the new markup and every new memo value.
@@ -51,7 +51,6 @@
 
 - **File extension.** `.brm` is a placeholder.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
-- **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 - **Type-checking `.brm` files.** `brumate/types` declares the compile-time functions and `.brm` modules, but the code in `.brm` files is not type-checked, and there is no editor support. solid-sfc does this with a Volar language plugin.

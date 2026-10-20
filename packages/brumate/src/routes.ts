@@ -73,12 +73,19 @@ export function routeModule(
   resolve: (file: string) => string,
   rpc = '/_brumate',
 ): string {
+  // Static imports, because the server registry of server functions imports every file anyway.
+  const imports: string[] = [];
+  const load = (file: string): string => {
+    const name = `m${imports.length}`;
+    imports.push(`import * as ${name} from ${JSON.stringify(resolve(file))};`);
+    return `() => Promise.resolve(${name})`;
+  };
   const write = (node: RouteFiles): string => {
     const fields: string[] = [];
     for (const key of ['layout', 'page', 'fallback'] as const) {
       const file = node[key];
       if (file) {
-        fields.push(`${key}: () => import(${JSON.stringify(resolve(file))})`);
+        fields.push(`${key}: ${load(file)}`);
       }
     }
     for (const key of ['static', 'slots'] as const) {
@@ -98,9 +105,11 @@ export function routeModule(
     }
     return `{ ${fields.join(', ')} }`;
   };
+  const routes = write(tree);
   return [
     "import { handleRoute } from 'brumate/server';",
-    `export const routes = ${write(tree)};`,
+    ...imports,
+    `export const routes = ${routes};`,
     'export function handle(request, options) {',
     `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, ...options });`,
     '}',

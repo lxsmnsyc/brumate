@@ -17,7 +17,7 @@ const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [brumate()],
+  plugins: [brumate({ merge: 0 })],
   resolve: {
     alias: {
       'brumate/server': runtime('server'),
@@ -174,6 +174,30 @@ describe('style imports', () => {
       await vi.waitFor(async () => expect(await css()).toContain('color: navy'), {
         timeout: 5000,
       });
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
+describe('merged parts', () => {
+  it('puts the parts of a small component into one module', async () => {
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate()],
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const entry = await dev.transformRequest('/counter.brm?brumate-client');
+      expect(entry?.code).toMatch(/"h\d+": \(\) => import\("[^"]*part=all"\)/);
+      expect(entry?.code).toMatch(/"update": \(\) => import\("[^"]*part=all"\)/);
+      const all = await dev.transformRequest('/counter.brm?brumate-client&part=all');
+      expect(all?.code).toMatch(/export const h\d+/);
+      expect(all?.code).toMatch(/export function u\d+/);
+      // A large component keeps one module per part.
+      const todos = await dev.transformRequest('/todos.brm?brumate-client');
+      expect(todos?.code).toContain('part=h12');
     } finally {
       await dev.close();
     }

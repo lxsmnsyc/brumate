@@ -159,6 +159,8 @@ brumate({
   navigate: true,
   // 'file' builds every stylesheet into one CSS file. See Styles.
   css: 'inline',
+  // Client parts smaller than this in all become one module. 0 keeps one module per part.
+  merge: 2048,
 });
 ```
 

@@ -26,6 +26,12 @@ export interface BrumateOptions {
    * Development always inlines. Defaults to `inline`.
    */
   css?: 'inline' | 'file';
+  /**
+   * Client parts of a component smaller than this many bytes in all become
+   * one module, so its first event loads one file. 0 keeps one module per
+   * part. Defaults to 2048.
+   */
+  merge?: number;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -101,6 +107,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           liveProps: liveProps.get(file),
           path: file,
           css: external ? 'external' : 'inline',
+          merge: options.merge ?? 2048,
         }),
       };
       compiled.set(file, cached);

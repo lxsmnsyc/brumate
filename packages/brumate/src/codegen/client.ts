@@ -40,8 +40,13 @@ export function partOf(name: string): string {
 // Sites whose code does not run while a body renders.
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
-export function generateClient(file: SFCFile, plan: Plan): ClientOutput {
-  return new ClientGenerator(file, plan).generate();
+/**
+ * Generates the client entry and its parts. When the parts are smaller than
+ * `merge` bytes in all, they become one part, `all`, so the first event loads
+ * one module instead of several.
+ */
+export function generateClient(file: SFCFile, plan: Plan, merge = 0): ClientOutput {
+  return new ClientGenerator(file, plan, merge).generate();
 }
 
 class ClientGenerator {
@@ -64,7 +69,10 @@ class ClientGenerator {
   /** Bodies that the client renders, by scope. */
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
 
-  constructor(file: SFCFile, plan: Plan) {
+  private readonly merge: number;
+
+  constructor(file: SFCFile, plan: Plan, merge: number) {
+    this.merge = merge;
     this.file = file;
     this.plan = plan;
     this.rewriter = new Rewriter(file, plan, this.diagnostics);
@@ -116,12 +124,19 @@ class ClientGenerator {
     if (this.out.has('shared') || this.usesModuleScript()) {
       parts.shared = this.assembleShared();
     }
-    const loaders = Object.keys(parts)
-      .filter((name) => name !== 'shared')
-      .map(
-        (name) =>
-          `  ${JSON.stringify(name)}: () => import(${JSON.stringify(this.partPath(name))}),`,
-      );
+    const names = Object.keys(parts).filter((name) => name !== 'shared');
+    const size = Object.values(parts).reduce((total, code) => total + code.length, 0);
+    const merged = !parts.shared && names.length > 1 && size < this.merge;
+    if (merged) {
+      for (const name of names) {
+        delete parts[name];
+      }
+      parts.all = this.assembleAll(names);
+    }
+    const loaders = names.map(
+      (name) =>
+        `  ${JSON.stringify(name)}: () => import(${JSON.stringify(this.partPath(merged ? 'all' : name))}),`,
+    );
     const entry = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
@@ -289,6 +304,29 @@ class ClientGenerator {
       lines.push('', 'const $$ctx = $$b.context;');
     }
     lines.push('', ...(this.out.get(name) ?? []), '');
+    return lines.join('\n');
+  }
+
+  /** One module with the code of every part, for a small component. */
+  private assembleAll(names: string[]): string {
+    const imports = new Set<string>();
+    for (const name of names) {
+      for (const item of this.reads(this.partSites(name))) {
+        if (item.kind === 'import') {
+          imports.add(item.name);
+        }
+      }
+    }
+    const lines = [
+      "import * as $$b from 'brumate/client';",
+      ...this.importsFor(imports, true),
+      '',
+      'const $$ctx = $$b.context;',
+    ];
+    for (const name of names) {
+      lines.push('', ...(this.out.get(name) ?? []));
+    }
+    lines.push('');
     return lines.join('\n');
   }
 
