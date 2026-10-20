@@ -58,16 +58,26 @@
     "@oxc-project/types": "^0.154.0",
     "@types/node": "^24.0.0",
     "happy-dom": "^20.14.6",
+    "less": "^4.9.1",
+    "sass": "^1.105.2",
     "tsdown": "^0.23.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },
   "peerDependencies": {
+    "less": ">=4",
+    "sass": ">=1.70",
     "vite": "^8.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {
+      "optional": true
+    },
+    "less": {
+      "optional": true
+    },
+    "sass": {
       "optional": true
     }
   },

@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
@@ -68,6 +70,62 @@ function scopeRules(root: Root, attribute: string): void {
   });
 }
 
+/**
+ * Loads a style preprocessor from the project, or from beside this package.
+ * Returns undefined when it is not installed.
+ */
+function loadPreprocessor<T>(name: string): T | undefined {
+  for (const base of [path.join(process.cwd(), 'package.json'), import.meta.url]) {
+    try {
+      return createRequire(base)(name) as T;
+    } catch {
+      // Not installed here.
+    }
+  }
+  return undefined;
+}
+
+interface Sass {
+  compileString(source: string, options: { syntax: 'scss' }): { css: string };
+}
+
+interface Less {
+  render(
+    source: string,
+    options: { syncImport: boolean },
+    callback: (error: Error | undefined, output: { css: string } | undefined) => void,
+  ): void;
+}
+
+/** Turns SCSS or Less into CSS. Throws with a message when it cannot. */
+function preprocess(lang: 'scss' | 'less', source: string): string {
+  if (lang === 'scss') {
+    const sass = loadPreprocessor<Sass>('sass');
+    if (!sass) {
+      throw new Error('<style lang="scss"> needs the sass package. Install it in the project');
+    }
+    return sass.compileString(source, { syntax: 'scss' }).css;
+  }
+  const less = loadPreprocessor<Less>('less');
+  if (!less) {
+    throw new Error('<style lang="less"> needs the less package. Install it in the project');
+  }
+  let css: string | undefined;
+  let failure: Error | undefined;
+  // Less calls back before render returns when nothing is imported.
+  less.render(source, { syncImport: true }, (error, output) => {
+    failure = error;
+    css = output?.css;
+  });
+  if (failure) {
+    throw failure;
+  }
+  if (css === undefined) {
+    throw new Error('Less did not finish. Imports that load over the network are not supported');
+  }
+  return css;
+}
+
 /** Compiles the `<style>` blocks of a file into scoped CSS. */
 export function compileStyles(file: SFCFile, scope: string): StyleOutput {
   const attribute = `s-${scope}`;
@@ -75,14 +133,6 @@ export function compileStyles(file: SFCFile, scope: string): StyleOutput {
   const variables: StyleOutput['variables'] = [];
   const parts: string[] = [];
   for (const style of file.styles) {
-    if (style.lang !== 'css') {
-      diagnostics.push({
-        severity: 'error',
-        message: `<style lang="${style.lang}"> is not supported yet. Use CSS`,
-        range: { start: style.start, end: style.end },
-      });
-      continue;
-    }
     // Interpolations become custom properties. Offsets in `content` start after `<style>`.
     const contentStart = file.source.indexOf(style.content, style.start);
     let content = '';
@@ -97,13 +147,16 @@ export function compileStyles(file: SFCFile, scope: string): StyleOutput {
     }
     content += style.content.slice(position);
     try {
-      const root = parse(content);
+      const root = parse(style.lang === 'css' ? content : preprocess(style.lang, content));
       scopeRules(root, attribute);
       parts.push(root.toString().trim());
     } catch (error) {
       diagnostics.push({
         severity: 'error',
-        message: `Invalid CSS: ${(error as Error).message}`,
+        message:
+          style.lang === 'css'
+            ? `Invalid CSS: ${(error as Error).message}`
+            : (error as Error).message,
         range: { start: style.start, end: style.end },
       });
     }

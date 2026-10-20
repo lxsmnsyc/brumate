@@ -35,6 +35,27 @@
 - The elements that markup outside the component's elements renders also count as top-level: children passed to a component, and the markup of a `#template`.
 - If a variable can change on the client, the top-level elements get `data-v="<scope>"`. A change sets the custom property on each of them. A block that the client renders later reads the current values.
 
+## SCSS and Less
+
+`lang="scss"` and `lang="less"` compile the block with Sass or Less first. Then the CSS is scoped as above.
+
+```html
+<style lang="scss">
+  $gap: 4px;
+  .card {
+    padding: $gap * 2;
+    p {
+      color: ${color};
+    }
+  }
+</style>
+```
+
+- Install `sass` or `less` in the project. They are optional peer dependencies.
+- `${expression}` works as in CSS, because it becomes `var(…)` before the preprocessor runs.
+- An error of the preprocessor is a compile error.
+- `@use` and `@import` of other files are not supported yet.
+
 ## On the page
 
 The stylesheet is inlined once per page, as `<style data-brm="<component ID>">`, before the first instance of the component. A component that the client renders first adds it to `<head>`.
@@ -43,5 +64,5 @@ The stylesheet is inlined once per page, as `<style data-brm="<component ID>">`,
 
 ## Not supported yet
 
-- `lang="scss"` and `lang="less"`.
+- `@use` and `@import` of other files in SCSS and Less.
 - Style variables on dynamic tags.
