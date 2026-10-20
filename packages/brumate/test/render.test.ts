@@ -137,4 +137,15 @@ describe('#loading', () => {
     expect(rest).toContain('<script type="brumate/state" data-scopes>');
     expect(rest).toMatch(/<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script>$/);
   });
+
+  it('puts a nonce on the swap scripts', async () => {
+    const module = await import(new URL('loading.brm.ts', output).href);
+    module.release('Ada');
+    const { pending } = await renderToString(module.default, {}, { nonce: 'a"b' });
+    let rest = '';
+    for await (const chunk of pending) {
+      rest += chunk;
+    }
+    expect(rest).toContain('<script nonce="a&quot;b">function $bS(i)');
+  });
 });

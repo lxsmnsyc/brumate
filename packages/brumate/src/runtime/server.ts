@@ -1,6 +1,6 @@
 import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
 import type { SerovalJSON, SerovalNode } from 'seroval';
-import { VOID_ELEMENTS, insertValue, isRaw, rawHTML, spread } from './html.ts';
+import { VOID_ELEMENTS, escapeAttribute, insertValue, isRaw, rawHTML, spread } from './html.ts';
 import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, functionReferences, plugins } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
@@ -263,7 +263,21 @@ function createQueue<T>(): {
  * `#loading` bodies and promises in the state do not hold it up: they come
  * later, from `pending`.
  */
-export async function renderToString<P>(Root: Component<P>, props: P): Promise<RenderResult> {
+export interface RenderOptions {
+  /**
+   * A Content Security Policy nonce for the inline scripts that swap in
+   * `#loading` bodies. State scripts need none, because they do not run.
+   */
+  nonce?: string;
+}
+
+export async function renderToString<P>(
+  Root: Component<P>,
+  props: P,
+  options: RenderOptions = {},
+): Promise<RenderResult> {
+  const scriptTag =
+    options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context();
   const html = await Root(props, ctx);
   const queue = createQueue<string>();
@@ -302,7 +316,7 @@ export async function renderToString<P>(Root: Component<P>, props: P): Promise<R
           const call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
           swap = true;
           queue.push(
-            `<template data-l="${boundary.id}">${result.html}</template>${script}<script>${call}</script>`,
+            `<template data-l="${boundary.id}">${result.html}</template>${script}${scriptTag}${call}</script>`,
           );
         });
         finish();
@@ -322,7 +336,7 @@ export async function renderToString<P>(Root: Component<P>, props: P): Promise<R
   return { html, state, pending: queue.iterable };
 }
 
-export interface StreamOptions {
+export interface StreamOptions extends RenderOptions {
   /** Markup before the component, such as the start of the document. */
   start?: string;
   /**
@@ -346,7 +360,7 @@ export function renderToStream<P>(
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        const { html, state, pending } = await renderToString(Root, props);
+        const { html, state, pending } = await renderToString(Root, props, options);
         controller.enqueue(`${options.start ?? ''}${html}${state}${options.scripts ?? ''}`);
         for await (const chunk of pending) {
           controller.enqueue(chunk);

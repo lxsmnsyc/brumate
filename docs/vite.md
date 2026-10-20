@@ -48,6 +48,8 @@ const stream = renderToStream(App, { initial: [] }, {
   // `async`, so the loader starts before the pending state records arrive.
   scripts: '<script type="module" async src="/src/client.ts"></script>',
   end: '</body></html>',
+  // For a Content Security Policy: the inline scripts that swap in #loading bodies get this nonce.
+  nonce,
 });
 ```
 

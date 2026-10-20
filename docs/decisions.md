@@ -25,6 +25,7 @@
 - A component rendered on the client comes from its render module, a third output next to the server and client modules.
 - `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
 - An async `$memo` is a promise on the server. It is awaited where it is declared only if something outside every `#loading` body reads it.
+- `renderToString` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -44,9 +45,8 @@
 - **Styles.** `<style>` blocks are parsed but not compiled yet.
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
-- **Core size.** The core is about 10 KB gzip, mostly seroval. Reading the state lazily, or a smaller reader, would cut it.
+- **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 - **Stale streamed bodies.** A `#loading` body is rendered with the values of the server. If the client changes a value before the body arrives, the body shows the old value until the value changes again.
-- **Content Security Policy.** The swap scripts are inline, so a strict policy needs a nonce option.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps

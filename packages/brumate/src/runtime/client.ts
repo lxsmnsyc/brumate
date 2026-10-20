@@ -1,4 +1,4 @@
-import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval';
+import { fromCrossJSON } from 'seroval';
 import {
   VOID_ELEMENTS,
   attributeText,
@@ -651,15 +651,8 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
 
 /** Calls a server function. */
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
-  const response = await fetch(`${options.rpc ?? '/_brumate'}/${encodeURIComponent(id)}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(await toJSONAsync(args, { plugins })),
-  });
-  if (!response.ok) {
-    throw new Error(`Server function "${id}" failed with status ${response.status}`);
-  }
-  return fromJSON(await response.json(), { plugins });
+  const { call: callServer } = await import('./rpc.ts');
+  return callServer(options.rpc ?? '/_brumate', id, args);
 }
 
 // Rendering on the client
