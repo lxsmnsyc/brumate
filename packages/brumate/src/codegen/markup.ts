@@ -52,12 +52,14 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 
 type Part = { static: string } | { code: string };
 
-function isContext(declarator: oxc.VariableDeclarator): boolean {
-  return (
-    declarator.init?.type === 'CallExpression' &&
-    declarator.init.callee.type === 'Identifier' &&
-    declarator.init.callee.name === '$context'
-  );
+/** The name of the compile-time function that a declarator calls, for `$context` and `$id`. */
+function specialCall(declarator: oxc.VariableDeclarator): '$context' | '$id' | undefined {
+  const init = declarator.init;
+  if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
+    return undefined;
+  }
+  const name = init.callee.name;
+  return name === '$context' || name === '$id' ? name : undefined;
 }
 
 export interface EmitterOptions {
@@ -282,21 +284,29 @@ export class Emitter {
   }
 
   /**
-   * Writes the declarations of a statement that reads contexts, one per line.
-   * Returns false if the statement reads no context.
+   * Writes the declarations of a statement that reads contexts or creates
+   * IDs, one per line. Returns false if the statement does neither.
    */
   private emitContexts(statement: oxc.VariableDeclaration, scope: Scope): boolean {
-    if (!statement.declarations.some(isContext)) {
+    if (!statement.declarations.some((declarator) => specialCall(declarator))) {
       return false;
     }
     const target = this.scopeVar(instanceScope(this.plan, scope));
     for (const declarator of statement.declarations) {
       const init = declarator.init as oxc.CallExpression;
-      if (!isContext(declarator) || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
+      const call = specialCall(declarator);
+      const declaration =
+        declarator.id.type === 'Identifier'
+          ? scope.declarations.get(declarator.id.name)
+          : undefined;
+      if (call === '$id' && declaration?.idIndex !== undefined) {
+        this.line(`const ${declaration.name} = $$ctx.id(${target}, ${declaration.idIndex});`);
+        continue;
+      }
+      if (call !== '$context' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
         this.line(`${statement.kind} ${this.source(declarator)};`);
         continue;
       }
-      const declaration = scope.declarations.get(declarator.id.name);
       const slot = declaration ? slotIndex(this.plan, declaration) : -1;
       // The slot is recorded, so a change to the provided value reaches it on the client.
       const record = slot === -1 ? '' : `, ${slot}`;

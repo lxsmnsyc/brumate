@@ -1,0 +1,17 @@
+<script>
+  const id = $id();
+  const hint = $id();
+  let names = $signal(['First', 'Last']);
+</script>
+
+<label for=id>Email</label>
+<input id=id aria-describedby=hint>
+<p id=hint>We never share it.</p>
+#for (name of names) {
+  <script>
+    const field = $id();
+  </script>
+  <label for=field>{name}</label>
+  <input id=field>
+}
+<button onClick=(() => (names = [...names, 'Middle']))>Add</button>

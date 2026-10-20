@@ -36,10 +36,12 @@ const COMPILE_TIME_FUNCTIONS = new Set([
   '$isPending',
   '$provide',
   '$context',
+  '$id',
 ]);
 
 const MISPLACED: Record<string, string> = {
   $provide: 'Call $provide at the top level of a script',
+  $id: 'Create an ID with "const name = $id()" at the top level of a script',
   $context: 'Read a context with "const name = $context(Context)" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
@@ -469,6 +471,21 @@ class Analyzer {
       } else {
         this.report('error', 'Assign $props() to a name or an object pattern', id);
       }
+      return;
+    }
+
+    if (name === '$id') {
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report('error', 'Create an ID with "const name = $id()"', declarator);
+        return;
+      }
+      if (call.arguments.length > 0) {
+        this.report('error', '$id takes no arguments', call);
+      }
+      const declaration = this.addDeclaration(scope, id.name, 'const', id);
+      declaration.idIndex = [...scope.declarations.values()].filter(
+        (item) => item.idIndex !== undefined,
+      ).length;
       return;
     }
 

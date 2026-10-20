@@ -941,6 +941,11 @@ class ClientContext {
     return id;
   }
 
+  /** The ID that `$id()` makes. Client scope IDs are negative, so they differ from the server's. */
+  id(scope: Scope | number, index: number): string {
+    return `b${resolveScope(scope)!.id}-${index}`;
+  }
+
   /** Sets the owner of the next component's root scope. */
   own(scope: Scope | number): void {
     this.owner = resolveScope(scope);

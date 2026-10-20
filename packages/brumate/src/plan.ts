@@ -266,6 +266,12 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
     if (plan.slots.length > 0) {
       plan.needsId = true;
     }
+    // IDs from `$id()` are made from the scope's ID, so each instance needs its own.
+    if (
+      [...plan.scope.declarations.values()].some((declaration) => declaration.idIndex !== undefined)
+    ) {
+      plan.needsId = true;
+    }
   }
 
   const styles = compileStyles(file, hash(file.filename));

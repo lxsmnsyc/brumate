@@ -27,7 +27,7 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are ten. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
+There are eleven. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
 
 ```json
 { "compilerOptions": { "types": ["brumate/types"] } }
@@ -93,6 +93,23 @@ Declares a read-only value computed from other values.
 ```
 
 On the server, it is always false.
+
+### `$id`
+
+`const name = $id()` returns an ID that is unique in the page, for attributes such as `for`, `id` and `aria-describedby`:
+
+```html
+<script>
+  const id = $id();
+</script>
+
+<label for=id>Email</label>
+<input id=id>
+```
+
+- The ID is made from the ID of the scope and the position of the call in its script, such as `b0-0`. Server and client make the same ID, and nothing is counted at runtime.
+- In the script of a block, each instance gets its own IDs, such as each item of a `#for`.
+- Scopes that the client creates have negative IDs, so IDs made on the client never match the server's.
 
 ### `$provide` and `$context`
 

@@ -87,6 +87,11 @@ export class Context {
     return id;
   }
 
+  /** The ID that `$id()` makes: the scope's ID and the position of the call. */
+  id(scope: number, index: number): string {
+    return `b${scope}-${index}`;
+  }
+
   /** Sets the owner of the next component's root scope. */
   own(scope: number): void {
     this.root.owner = scope;

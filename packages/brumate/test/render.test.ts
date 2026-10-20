@@ -29,6 +29,7 @@ const props: Record<string, unknown> = {
   doubler: {},
   themes: {},
   Themed: {},
+  fields: {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

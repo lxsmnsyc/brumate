@@ -5,7 +5,8 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are ten compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide` and `$context`.
+- There are eleven compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide`, `$context` and `$id`.
+- `$id()` makes an ID from the scope's ID and the call's position, so server and client agree without counting at runtime.
 - `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
 - `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.

@@ -26,6 +26,9 @@ declare function $untrack<T>(value: T): T;
 /** True while a new value of a memo loads on the client. Always false on the server. */
 declare function $isPending(memo: unknown): boolean;
 
+/** Returns an ID that is unique in the page and the same on the server and the client. */
+declare function $id(): string;
+
 /** Provides a value of a context to the components inside this one. */
 declare function $provide<T>(context: import('brumate/context').Context<T>, value: T): void;
 

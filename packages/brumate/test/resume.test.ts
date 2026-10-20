@@ -68,6 +68,10 @@ function appendChunk(html: string): void {
   }
 }
 
+function inputIds(): string[] {
+  return [...document.querySelectorAll('input')].map((field) => field.id);
+}
+
 function items(): string[] {
   return [...document.querySelectorAll('li')].map((li) => li.textContent!);
 }
@@ -351,6 +355,20 @@ describe('resume', () => {
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(text('.b .themed')).toBe('dark'));
     expect(text('.a .themed')).toBe('dark');
+  });
+
+  it('creates unique IDs with $id', async () => {
+    await resume('fields', {});
+    expect(inputIds()).toEqual(['b0-0', 'b1-0', 'b2-0']);
+    expect(document.querySelector('label')!.htmlFor).toBe('b0-0');
+    expect(document.querySelector('input')!.getAttribute('aria-describedby')).toBe('b0-1');
+
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(inputIds()).toHaveLength(4));
+    // The client makes IDs from its own scope IDs, so they differ from the server's.
+    expect(new Set(inputIds()).size).toBe(4);
+    const added = document.querySelectorAll('input')[3]!;
+    expect(document.querySelectorAll('label')[3]!.htmlFor).toBe(added.id);
   });
 
   it('shares functions between parts', async () => {
