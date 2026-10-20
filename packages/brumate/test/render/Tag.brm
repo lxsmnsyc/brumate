@@ -1,0 +1,5 @@
+<script>
+  const { label } = $props<{ label: string }>();
+</script>
+
+<em class="tag">{label}</em>

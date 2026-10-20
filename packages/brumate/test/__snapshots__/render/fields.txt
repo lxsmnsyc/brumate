@@ -28,6 +28,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
   $$ctx.slots($$s1, [names]);
   return $$html;
 }
+Fields.brumateId = "Fields_1cs3w3p";
 
 # Client entry
 export const id = "Fields_1cs3w3p";

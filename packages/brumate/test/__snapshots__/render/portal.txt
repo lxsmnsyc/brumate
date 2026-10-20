@@ -31,6 +31,7 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
   $$ctx.slots($$s1, [open]);
   return $$html;
 }
+Portal.brumateId = "Portal_17ywlhi";
 
 # Client entry
 export const id = "Portal_17ywlhi";

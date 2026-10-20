@@ -132,8 +132,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       case 'insert':
       case 'attribute':
       case 'prop':
-      case 'spread':
       case 'tag':
+      case 'spread':
       case 'style':
       case 'provide':
       case 'title':

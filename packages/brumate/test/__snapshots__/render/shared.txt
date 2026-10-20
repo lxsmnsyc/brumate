@@ -15,6 +15,7 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
+Shared.brumateId = "Shared_1xpln25";
 
 # Client entry
 export const id = "Shared_1xpln25";

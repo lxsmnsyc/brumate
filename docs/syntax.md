@@ -253,6 +253,8 @@ The attribute syntax is the same as solid-sfc:
 <{tag} class="title">Hello</>
 ```
 
+`<{tag}>` renders an element name or a component. When `tag` changes on the client, the element or component renders again with the new tag, as in a `#key` block.
+
 ### Event modifiers
 
 Modifiers follow the event name and apply before the handler loads:

@@ -30,6 +30,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
   $$html += "<!--/b-->";
   return $$html;
 }
+Retry.brumateId = "Retry_pyus3c";
 
 # Client entry
 export const id = "Retry_pyus3c";

@@ -31,6 +31,7 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
+Loading.brumateId = "Loading_1sx8r1u";
 
 # Client entry
 export const id = "Loading_1sx8r1u";

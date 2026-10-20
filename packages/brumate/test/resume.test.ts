@@ -599,3 +599,23 @@ describe('portal targets', () => {
     expect(document.querySelectorAll('.moved')).toHaveLength(1);
   });
 });
+
+describe('dynamic tags', () => {
+  it('renders again when the tag changes on the client', async () => {
+    await resume('switcher', {});
+    expect(document.querySelector('h1.title')?.textContent).toBe('Title');
+    click(document.querySelector('.level')!);
+    await waitFor(() => expect(document.querySelector('h2.title')?.textContent).toBe('Title'));
+    expect(document.querySelector('h1.title')).toBeNull();
+  });
+
+  it('switches between components on the client', async () => {
+    await resume('switcher', {});
+    expect(text('span.info')).toBe('Hello');
+    click(document.querySelector('.kind')!);
+    await waitFor(() => expect(text('em.tag')).toBe('Hello'));
+    expect(document.querySelector('span.info')).toBeNull();
+    click(document.querySelector('.kind')!);
+    await waitFor(() => expect(text('span.info')).toBe('Hello'));
+  });
+});

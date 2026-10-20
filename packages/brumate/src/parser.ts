@@ -4,8 +4,10 @@ import type {
   Body,
   Branch,
   ClientTrigger,
+  DynamicTagNode,
   EventAttribute,
   Expression,
+  KeyBlock,
   Markup,
   Modifier,
   PrefetchStrategy,
@@ -316,7 +318,24 @@ class Parser {
         children = this.parseNodes('element');
         this.expect('</>');
       }
-      return { kind: 'dynamic', start, end: this.pos, tag, attributes, children };
+      const node: DynamicTagNode = {
+        kind: 'dynamic',
+        start,
+        end: this.pos,
+        tag,
+        attributes,
+        children,
+        keyed: true,
+      };
+      // A new tag is a new element or component, so the tag is the key of a block around it.
+      const block: KeyBlock = {
+        kind: 'key',
+        start,
+        end: this.pos,
+        value: this.expression(inner.start, inner.end),
+        body: { start, end: this.pos, templates: [], children: [node] },
+      };
+      return block;
     }
     this.pos++;
     const match = /^[A-Za-z][\w.:-]*/.exec(this.source.slice(this.pos, this.pos + 200));

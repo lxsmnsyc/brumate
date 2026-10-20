@@ -1,0 +1,13 @@
+<script>
+  import Badge from './Badge.brm';
+  import Tag from './Tag.brm';
+
+  let level = $signal('h1');
+  let kind = $signal('badge');
+  const view = $memo(kind === 'badge' ? Badge : Tag);
+</script>
+
+<button class="level" onClick=(() => (level = level === 'h1' ? 'h2' : 'h1'))>Level</button>
+<button class="kind" onClick=(() => (kind = kind === 'badge' ? 'tag' : 'badge'))>Kind</button>
+<{level} class="title">Title</>
+<{view} label="Hello" />

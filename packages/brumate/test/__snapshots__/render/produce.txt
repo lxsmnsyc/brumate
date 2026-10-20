@@ -45,6 +45,7 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
   $$ctx.slots($$s1, [todos]);
   return $$html;
 }
+Produce.brumateId = "Produce_9t90yy";
 
 # Client entry
 export const id = "Produce_9t90yy";

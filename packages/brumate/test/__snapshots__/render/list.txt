@@ -51,6 +51,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
   $$ctx.slots($$s1, [counts, show, label]);
   return $$html;
 }
+List.brumateId = "List_12rwm68";
 
 # Client entry
 export const id = "List_12rwm68";

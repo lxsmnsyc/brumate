@@ -68,24 +68,29 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     $$html += "<p>" + await $$b.insert((String(error)), $$ctx, $$s1) + "</p>";
   }
   $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
-  const $$children11 = await (async () => {
-    let $$html = '';
-    $$html += "Dynamic";
-    return $$b.raw($$html);
-  })();
-  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx, $$s1) + "<p>" + await $$b.insert(('<escaped>'), $$ctx, $$s1) + " " + await $$b.insert((null), $$ctx, $$s1) + " " + await $$b.insert((false), $$ctx, $$s1) + " " + await $$b.insert(([1, 2]), $$ctx, $$s1) + "</p>";
+  {
+    const $$s12 = $$ctx.scope(12, $$s1);
+    const $$children11 = await (async () => {
+      let $$html = '';
+      $$html += "Dynamic";
+      return $$b.raw($$html);
+    })();
+    $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12);
+  }
+  $$html += "<p>" + await $$b.insert(('<escaped>'), $$ctx, $$s1) + " " + await $$b.insert((null), $$ctx, $$s1) + " " + await $$b.insert((false), $$ctx, $$s1) + " " + await $$b.insert(([1, 2]), $$ctx, $$s1) + "</p>";
   $$ctx.slots($$s1, [tab, list, input]);
   return $$html;
 }
+Blocks.brumateId = "Blocks_jlmev2";
 
 # Client entry
 export const id = "Blocks_jlmev2";
 export const props = {  };
-export const g = { 1: { 0: [[1, "b7"], [1, "u17"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
+export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
 const parts = {
   "c4": () => import("./blocks.brm?brumate-client&part=c4"),
   "h6": () => import("./blocks.brm?brumate-client&part=h6"),
-  "h19": () => import("./blocks.brm?brumate-client&part=h19"),
+  "h20": () => import("./blocks.brm?brumate-client&part=h20"),
   "update": () => import("./blocks.brm?brumate-client&part=update"),
 };
 /** Imports a part of this module. */
@@ -107,10 +112,10 @@ import * as $$b from 'brumate/client';
 
 export const h6 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 0, event.key === 'b' ? 'b' : 'a')))(...$$a);
 
-# Client part: h19
+# Client part: h20
 import * as $$b from 'brumate/client';
 
-export const h19 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, [])))(...$$a);
+export const h20 = ($$s, ...$$a) => (() => ($$b.set($$s.p, 1, [])))(...$$a);
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -135,8 +140,8 @@ export function u9($$s) {
 export function u10($$s) {
   $$b.text($$s, 1, $$b.get($$s, 0));
 }
-export function u17($$s) {
-  $$b.attr($$s, 6, "class", { active: $$b.get($$s, 0) === 'a' });
+export function u18($$s) {
+  $$b.attr($$s, 0, "class", { active: $$b.get($$s.p, 0) === 'a' });
 }
 export function r3($$p) {
   let $$html = '';
@@ -244,12 +249,16 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$html += "<p>" + $$b.insert((String(error))) + "</p>";
   }
   $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
-  const $$children11 = (() => {
-    let $$html = '';
-    $$html += "Dynamic";
-    return $$b.raw($$html);
-  })();
-  $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children11, $$ctx, $$s1) + "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
+  {
+    const $$s12 = $$ctx.scope(12, $$s1);
+    const $$children11 = (() => {
+      let $$html = '';
+      $$html += "Dynamic";
+      return $$b.raw($$html);
+    })();
+    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12);
+  }
+  $$html += "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
   $$ctx.slots($$s1, [tab, list, input]);
   return $$html;
 }
@@ -286,8 +295,8 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 </template>
 <!--b0:5-->
 <!--/b-->
-<section style="font-size:12px" data-b="0:6" data-on="click=Blocks_jlmev2#h19">Dynamic</section>
+<section style="font-size:12px" data-b="3:0" data-on="click=Blocks_jlmev2#h20">Dynamic</section>
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script type="brumate/state" data-scopes data-next="3">{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Blocks_jlmev2"},{"t":9,"i":2,"a":[{"t":1,"s":"b"},{"t":9,"i":3,"a":[{"t":1,"s":"one"},{"t":1,"s":"two"}],"o":0},{"t":25,"i":4,"s":{"a":{"t":0,"s":0},"b":{"t":0,"s":2}},"c":"brumate/element"}],"o":0}]},"o":0},{"t":10,"i":5,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":6,"a":[{"t":1,"s":"one"},{"t":0,"s":0}],"o":0},{"t":1,"s":"one"}]},"o":0},{"t":10,"i":7,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":8,"a":[{"t":1,"s":"two"},{"t":0,"s":1}],"o":0},{"t":1,"s":"two"}]},"o":0}]},"o":0}</script>
+<script type="brumate/state" data-scopes data-next="4">{"t":10,"i":0,"p":{"k":["0","1","2","3"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Blocks_jlmev2"},{"t":9,"i":2,"a":[{"t":1,"s":"b"},{"t":9,"i":3,"a":[{"t":1,"s":"one"},{"t":1,"s":"two"}],"o":0},{"t":25,"i":4,"s":{"a":{"t":0,"s":0},"b":{"t":0,"s":2}},"c":"brumate/element"}],"o":0}]},"o":0},{"t":10,"i":5,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":6,"a":[{"t":1,"s":"one"},{"t":0,"s":0}],"o":0},{"t":1,"s":"one"}]},"o":0},{"t":10,"i":7,"p":{"k":["k","p","s","i"],"v":[{"t":0,"s":5},{"t":0,"s":0},{"t":9,"i":8,"a":[{"t":1,"s":"two"},{"t":0,"s":1}],"o":0},{"t":1,"s":"two"}]},"o":0},{"t":10,"i":9,"p":{"k":["k","p"],"v":[{"t":0,"s":12},{"t":0,"s":0}]},"o":0}]},"o":0}</script>

@@ -11,6 +11,7 @@ export default async function Themed($$props: Record<string, never>, $$ctx: $$b.
   $$ctx.slots($$s1, [theme]);
   return $$html;
 }
+Themed.brumateId = "Themed_qy9qd3";
 
 # Client entry
 export const id = "Themed_qy9qd3";

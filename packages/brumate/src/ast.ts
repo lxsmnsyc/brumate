@@ -63,6 +63,11 @@ export interface DynamicTagNode extends Range {
   tag: Expression;
   attributes: Attribute[];
   children: Markup[];
+  /**
+   * True inside the `#key` block that the parser wraps it in. The block
+   * renders it again when the tag changes, so the tag itself needs no update.
+   */
+  keyed?: boolean;
 }
 
 export interface FragmentNode extends Range {

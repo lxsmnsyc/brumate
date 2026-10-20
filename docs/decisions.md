@@ -42,6 +42,7 @@
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
 - Stylesheets are inlined by default. `css: 'file'` in the Vite plugin builds them into one CSS file instead, which the page links in its head.
+- A dynamic tag is a `#key` block on its tag, so a new element name or component renders again. A component in the page state is written as its ID. The client code that changes the value uses the component's render module.
 - `children` ship as the HTML that the server rendered. When the client inserts them again, it runs the updates of the scopes in them, so the values are current. Updates to markup that is not in the page do nothing.
 - Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 
@@ -51,7 +52,6 @@
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
-- **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 - **Type-checking `.brm` files.** `brumate/types` declares the compile-time functions and `.brm` modules, but the code in `.brm` files is not type-checked, and there is no editor support. solid-sfc does this with a Volar language plugin.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.

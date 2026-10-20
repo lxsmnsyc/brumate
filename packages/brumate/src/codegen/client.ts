@@ -1,4 +1,12 @@
-import type { Block, Body, ForBlock, Markup, RepeatBlock, SFCFile } from '../ast.ts';
+import type {
+  Block,
+  Body,
+  DynamicTagNode,
+  ForBlock,
+  Markup,
+  RepeatBlock,
+  SFCFile,
+} from '../ast.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
@@ -326,7 +334,7 @@ class ClientGenerator {
   private checkSupport(): void {
     for (const site of this.model.sites) {
       const live = this.live.has(site);
-      if (live && site.kind === 'tag') {
+      if (live && site.kind === 'tag' && !(site.owner as DynamicTagNode | undefined)?.keyed) {
         this.error('A dynamic tag that changes on the client is not supported yet', site.range);
       }
     }
@@ -604,7 +612,8 @@ class ClientGenerator {
       }
       return;
     }
-    if (!owner || owner.kind === 'listener') {
+    // The `#key` block around a dynamic tag renders it again when the tag changes.
+    if (!owner || owner.kind === 'listener' || site.kind === 'tag') {
       return;
     }
     const anchor = this.plan.anchors.get(owner);

@@ -82,8 +82,35 @@ const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   deserialize: (node, ctx) => raw(ctx.deserialize<string>(node.h)),
 });
 
+/** A component, which the compiler marks with its ID. */
+type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
+
+/**
+ * A component in the page state, such as the value of a dynamic tag. The
+ * client gets a function with the same ID that renders nothing. The client
+ * code that changes the value uses the component's render module instead.
+ */
+const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
+  tag: 'brumate/component',
+  test: (value) =>
+    typeof value === 'function' && typeof (value as Partial<ComponentValue>).brumateId === 'string',
+  parse: {
+    sync: (value, ctx) => ({ c: ctx.parse(value.brumateId) }),
+    async: async (value, ctx) => ({ c: await ctx.parse(value.brumateId) }),
+    stream: (value, ctx) => ({ c: ctx.parse(value.brumateId) }),
+  },
+  serialize: (node, ctx) => ctx.serialize(node.c),
+  deserialize: (node, ctx) =>
+    Object.assign(() => '', { brumateId: ctx.deserialize<string>(node.c) }),
+});
+
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const plugins: Plugin<any, any>[] = [ElementPlugin, FunctionPlugin, RawPlugin];
+export const plugins: Plugin<any, any>[] = [
+  ElementPlugin,
+  FunctionPlugin,
+  RawPlugin,
+  ComponentPlugin,
+];
 
 /**
  * Errors keep their name and message only. A stack trace would show the

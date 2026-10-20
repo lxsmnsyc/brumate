@@ -13,6 +13,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   $$ctx.slots($$s1, [count, double]);
   return $$html;
 }
+Counter.brumateId = "Counter_m86gta";
 
 # Client entry
 export const id = "Counter_m86gta";

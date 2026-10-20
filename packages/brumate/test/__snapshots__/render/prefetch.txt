@@ -10,6 +10,7 @@ export default async function Prefetch($$props: Record<string, never>, $$ctx: $$
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
+Prefetch.brumateId = "Prefetch_okfwof";
 
 # Client entry
 export const id = "Prefetch_okfwof";

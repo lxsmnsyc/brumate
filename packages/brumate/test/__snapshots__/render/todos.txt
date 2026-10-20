@@ -48,6 +48,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
   $$ctx.slots($$s1, [todos, draft, left]);
   return $$html;
 }
+Todos.brumateId = "Todos_t3g9lr";
 
 # Client entry
 export const id = "Todos_t3g9lr";

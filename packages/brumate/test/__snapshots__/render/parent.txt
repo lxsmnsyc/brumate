@@ -17,6 +17,7 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
+Parent.brumateId = "Parent_4bs4t8";
 
 # Client entry
 export const id = "Parent_4bs4t8";

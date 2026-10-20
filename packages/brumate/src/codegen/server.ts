@@ -115,6 +115,8 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   emitter.emitComponentContent(setup);
   emitter.line('return $$html;');
   emitter.close();
+  // The ID lets the page state hold the component, such as the value of a dynamic tag.
+  emitter.line(`${plan.name}.brumateId = ${JSON.stringify(plan.id)};`);
 
   return [...header, ...hoisted, ...moduleBody, '', ...emitter.lines, ''].join('\n');
 }
