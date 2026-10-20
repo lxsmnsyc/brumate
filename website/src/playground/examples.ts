@@ -70,7 +70,7 @@ export const examples: Example[] = [
 
 <style>
   p {
-    font-size: \${big ? '2rem' : '1rem'};
+    font-size: \${big ? 2 : 1}rem;
   }
 </style>
 
