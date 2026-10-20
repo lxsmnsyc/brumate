@@ -76,11 +76,18 @@ export class Context {
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
 
-  constructor(root?: Context, rpc?: string) {
+  constructor(root?: Context, rpc?: string, base = 0) {
     this.root = root ?? this;
     if (rpc) {
       this.rpcPrefix = rpc;
     }
+    this.nextScope = base;
+    this.nextBoundary = base;
+  }
+
+  /** A number above every scope and boundary ID so far, so a later render can start there. */
+  next(): number {
+    return Math.max(this.root.nextScope, this.root.nextBoundary);
   }
 
   /** Returns the URL prefix of server function calls. */
@@ -360,9 +367,24 @@ export function streamState(
  * Returns the script for one state record. `scopes` marks a record that
  * holds scopes, as opposed to one that settles a promise.
  */
-export function stateScript(record: SerovalNode, scopes = false): string {
+/**
+ * Returns the script of a state record. `scopes` marks a record with scopes.
+ * `next` is above every ID so far, and `route` names the route of the page.
+ */
+export function stateScript(
+  record: SerovalNode,
+  scopes = false,
+  attributes: { next?: number; route?: string } = {},
+): string {
   const json = JSON.stringify(record).replace(/</g, '\\u003c');
-  return `<script type="brumate/state"${scopes ? ' data-scopes' : ''}>${json}</script>`;
+  let extra = scopes ? ' data-scopes' : '';
+  if (attributes.next !== undefined) {
+    extra += ` data-next="${attributes.next}"`;
+  }
+  if (attributes.route !== undefined) {
+    extra += ` data-route="${escapeAttribute(attributes.route)}"`;
+  }
+  return `<script type="brumate/state"${extra}>${json}</script>`;
 }
 
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
@@ -439,6 +461,13 @@ export interface RenderOptions {
   /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
   rpc?: string;
   /**
+   * The first scope and boundary ID. A page that the client loads in place
+   * of another starts above the IDs of the page it keeps parts of.
+   */
+  base?: number;
+  /** Names the route of the page, so the client knows which layouts it can keep. */
+  route?: string;
+  /**
    * The request of the page. Server functions that run while the page
    * renders can read it with `getRequest`, and set headers with
    * `getResponseHeaders`, which `render` returns.
@@ -465,7 +494,7 @@ export async function render<P>(
 ): Promise<RenderResult> {
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
-  const ctx = new Context(undefined, options.rpc);
+  const ctx = new Context(undefined, options.rpc, options.base);
   const response: ResponseParts = { headers: new Headers() };
   const run = (): Promise<string> => Root(props, ctx);
   const rendered = options.request
@@ -483,7 +512,11 @@ export async function render<P>(
       queue.close();
     }
   };
-  const serialize = (state: PageState, onScopes: (script: string) => void): void => {
+  const serialize = (
+    state: PageState,
+    onScopes: (script: string) => void,
+    route?: string,
+  ): void => {
     open++;
     toCrossJSONStream(state, {
       plugins,
@@ -491,7 +524,7 @@ export async function render<P>(
       refs,
       onParse(record, initial) {
         if (initial) {
-          onScopes(stateScript(record, true));
+          onScopes(stateScript(record, true, { next: ctx.next(), route }));
         } else {
           queue.push(stateScript(record));
         }
@@ -523,9 +556,13 @@ export async function render<P>(
   });
 
   let state = '';
-  serialize(ctx.state, (script) => {
-    state = script;
-  });
+  serialize(
+    ctx.state,
+    (script) => {
+      state = script;
+    },
+    options.route,
+  );
   return {
     html,
     state,
@@ -750,6 +787,7 @@ export async function handleRequest(
 }
 
 interface ResolvedView {
+  key: string;
   component: Component;
   slots: Record<string, ResolvedView>;
 }
@@ -762,6 +800,7 @@ async function resolveView(view: RouteView): Promise<ResolvedView> {
   ]);
   const names = Object.keys(view.slots);
   return {
+    key: view.key,
     component: module.default,
     slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
   };
@@ -772,7 +811,13 @@ function viewComponent(view: ResolvedView, params: Record<string, string>): Comp
   return (_props, ctx) => {
     const props: Record<string, unknown> = { params };
     for (const [name, slot] of Object.entries(view.slots)) {
-      props[name] = lazy((at, scope) => component(viewComponent(slot, params), {}, at, scope));
+      // Comments mark the slot, its layout's scope, the scope of its route and the route's key,
+      // so the client can replace only the routes that change.
+      props[name] = lazy(async (at, scope) => {
+        const root = at.peek();
+        const html = await component(viewComponent(slot, params), {}, at, scope);
+        return `<!--R${scope ?? -1}:${name}:${root}:${encodeURIComponent(slot.key)}-->${html}<!--/R-->`;
+      });
     }
     return view.component(props, ctx);
   };
@@ -795,7 +840,18 @@ export async function handleRoute(
   }
   const view = await resolveView(match.view);
   try {
-    const parts = await render(viewComponent(view, match.params), {}, { ...options, request });
+    // A page that the client loads in place of another starts above its IDs.
+    const base = Number(request.headers.get('x-brumate-base'));
+    const parts = await render(
+      viewComponent(view, match.params),
+      {},
+      {
+        ...options,
+        request,
+        route: view.key,
+        base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
+      },
+    );
     const headers = new Headers(parts.headers);
     headers.set('content-type', 'text/html; charset=utf-8');
     const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());

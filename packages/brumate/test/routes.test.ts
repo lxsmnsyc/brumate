@@ -51,11 +51,20 @@ beforeAll(async () => {
   tree = loaders(routeFiles(paths));
 });
 
-async function page(path: string, status = 200): Promise<string> {
-  const response = await handleRoute(tree, new Request(`http://localhost${path}`));
+async function raw(
+  path: string,
+  status = 200,
+  headers: Record<string, string> = {},
+): Promise<string> {
+  const response = await handleRoute(tree, new Request(`http://localhost${path}`, { headers }));
   expect(response?.status).toBe(status);
   expect(response?.headers.get('content-type')).toBe('text/html; charset=utf-8');
   return response!.text();
+}
+
+/** The page without the comments that mark route slots. */
+async function page(path: string, status = 200): Promise<string> {
+  return (await raw(path, status)).replace(/<!--\/?R[^>]*-->/g, '');
 }
 
 describe('route files', () => {
@@ -131,6 +140,25 @@ describe('rendering', () => {
     const response = await handleRoute(tree, new Request('http://localhost/old'));
     expect(response?.status).toBe(303);
     expect(response?.headers.get('location')).toBe('http://localhost/todos/1');
+  });
+
+  it('marks each slot with its layout scope, its route scope and its route key', async () => {
+    const html = await raw('/todos/3');
+    const key = encodeURIComponent;
+    // The root layout is scope 0, so its slots name it.
+    expect(html).toContain(
+      `<nav><!--R0:sidebar:1:${key('/@sidebar/todos/[id]/index {"id":"3"}')}--><p>`,
+    );
+    expect(html).toMatch(
+      new RegExp(`<main><!--R0:children:\\d+:${key('/todos/_layout {}')}--><section`),
+    );
+    // The route of the page is on the state, so the client can compare it with the next page.
+    expect(html).toContain(`data-route="/_layout {}"`);
+  });
+
+  it('starts IDs above the base that the client sends', async () => {
+    const html = await raw('/todos/3', 200, { 'x-brumate-base': '40' });
+    expect(html).toContain('<!--R40:sidebar:41:');
   });
 
   it('returns undefined when no route matches', async () => {

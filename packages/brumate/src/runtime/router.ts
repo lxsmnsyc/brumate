@@ -24,6 +24,12 @@ export interface RouteNode {
 /** A matched route: the component to render, and what renders in its slots. */
 export interface RouteView {
   load: Loader;
+  /**
+   * The file and the params that the view depends on, such as
+   * `/todos/[id]/_layout {"id":"3"}`. Two pages with the same key for a
+   * layout render the same layout, so the client can keep it.
+   */
+  key: string;
   /** `children` and the named slots of a layout. */
   slots: Record<string, RouteView>;
 }
@@ -33,25 +39,38 @@ export interface RouteMatch {
   params: Record<string, string>;
 }
 
+function key(path: string, file: string, params: Record<string, string>): string {
+  return `${path}/${file} ${JSON.stringify(params)}`;
+}
+
+/** `path` is the folders of `node` in the route files, such as `/todos/[id]`. */
 function matchNode(
   node: RouteNode,
   segments: string[],
   params: Record<string, string>,
+  path = '',
 ): RouteMatch | undefined {
   let inner: RouteMatch | undefined;
   if (segments.length === 0) {
     if (node.page) {
-      inner = { view: { load: node.page, slots: {} }, params };
+      inner = { view: { load: node.page, key: key(path, 'index', params), slots: {} }, params };
     }
   } else {
     const [first, ...rest] = segments as [string, ...string[]];
     const fixed = node.static?.[first];
-    inner = fixed && matchNode(fixed, rest, params);
+    inner = fixed && matchNode(fixed, rest, params, `${path}/${first}`);
     if (!inner && node.dynamic) {
-      inner = matchNode(node.dynamic.node, rest, { ...params, [node.dynamic.name]: first });
+      const { name } = node.dynamic;
+      inner = matchNode(node.dynamic.node, rest, { ...params, [name]: first }, `${path}/[${name}]`);
     }
     if (!inner && node.rest) {
-      inner = matchNode(node.rest.node, [], { ...params, [node.rest.name]: segments.join('/') });
+      const { name } = node.rest;
+      inner = matchNode(
+        node.rest.node,
+        [],
+        { ...params, [name]: segments.join('/') },
+        `${path}/[...${name}]`,
+      );
     }
   }
   if (!inner || !node.layout) {
@@ -60,14 +79,21 @@ function matchNode(
   // A layout renders the matched route as `children`, and each slot matched against the same path.
   const slots: Record<string, RouteView> = { children: inner.view };
   for (const [name, slot] of Object.entries(node.slots ?? {})) {
-    const match = matchNode(slot, segments, params);
+    const match = matchNode(slot, segments, params, `${path}/@${name}`);
     if (match) {
       slots[name] = match.view;
     } else if (slot.fallback) {
-      slots[name] = { load: slot.fallback, slots: {} };
+      slots[name] = {
+        load: slot.fallback,
+        key: key(`${path}/@${name}`, '_default', params),
+        slots: {},
+      };
     }
   }
-  return { view: { load: node.layout, slots }, params: inner.params };
+  return {
+    view: { load: node.layout, key: key(path, '_layout', params), slots },
+    params: inner.params,
+  };
 }
 
 /** Finds the route for a path. */

@@ -10,7 +10,7 @@ import {
 } from './html.ts';
 import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, plugins } from './shared.ts';
-import type { PageState } from './shared.ts';
+import type { PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { attribute, escape, raw, spread, vars } from './html.ts';
@@ -95,11 +95,19 @@ function readRecord(script: Element): void {
     return;
   }
   read.add(script);
-  refs ??= new Map();
+  // The first record of a page starts its own references. Later records of the page share them.
+  if (script.hasAttribute('data-route') || !refs) {
+    refs = new Map();
+  }
   const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), { plugins, refs });
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
-    const added = addScopes(value);
+    // A page that replaced only some routes of the one before it: see `navigate`.
+    const drop = script.getAttribute('data-drop');
+    if (drop) {
+      dropScopes(new Set(drop.split(',').map(Number)));
+    }
+    const added = addScopes(value, routeOptions(script));
     if (writes > 0) {
       refresh(added);
     }
@@ -144,10 +152,66 @@ function refresh(added: Scope[]): void {
   }
 }
 
-function addScopes(state: PageState): Scope[] {
+interface RouteOptions {
+  /** Scopes of the new page that stand for scopes of the kept layouts. */
+  alias: Map<number, number>;
+  /** The scopes of the routes that replaced old ones. Only they and the scopes inside them are added. */
+  roots: Set<number>;
+}
+
+function routeOptions(script: Element): RouteOptions | undefined {
+  const roots = script.getAttribute('data-roots');
+  if (roots === null) {
+    return undefined;
+  }
+  const alias = new Map<number, number>();
+  for (const pair of (script.getAttribute('data-alias') ?? '').split(',').filter(Boolean)) {
+    const [from, to] = pair.split(':').map(Number) as [number, number];
+    alias.set(from, to);
+  }
+  return { alias, roots: new Set(roots.split(',').filter(Boolean).map(Number)) };
+}
+
+/** Removes scopes and the scopes inside them, and runs their cleanups. */
+function dropScopes(roots: Set<number>): void {
+  const inside = (scope: Scope): boolean => {
+    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+      if (roots.has(current.id)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Deleting from a map while iterating it is safe.
+  for (const scope of scopes.values()) {
+    if (inside(scope)) {
+      for (const cleanup of scope.cleanups?.values() ?? []) {
+        cleanup();
+      }
+      scope.p?.children.delete(scope);
+      scopes.delete(scope.id);
+    }
+  }
+}
+
+function addScopes(state: PageState, route?: RouteOptions): Scope[] {
   const added: Scope[] = [];
+  const kept = (id: number): boolean => {
+    for (let current: number | undefined = id; current !== undefined;) {
+      if (route!.roots.has(current)) {
+        return true;
+      }
+      const record: ScopeState | undefined = state[current];
+      current = record?.p ?? record?.o;
+    }
+    return false;
+  };
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
+    // The new page renders the kept layouts again. Their scopes are not added.
+    if (route && !kept(id)) {
+      continue;
+    }
     const scope: Scope = {
       id,
       k: record.k ?? 0,
@@ -162,14 +226,15 @@ function addScopes(state: PageState): Scope[] {
     scopes.set(id, scope);
     added.push(scope);
   }
-  for (const [key, record] of Object.entries(state)) {
-    const scope = scopes.get(Number(key))!;
+  const resolveId = (id: number): number => route?.alias.get(id) ?? id;
+  for (const scope of added) {
+    const record = state[scope.id]!;
     if (record.p !== undefined) {
-      scope.p = scopes.get(record.p);
+      scope.p = scopes.get(resolveId(record.p));
       scope.p?.children.add(scope);
     }
     if (record.o !== undefined) {
-      scope.o = scopes.get(record.o);
+      scope.o = scopes.get(resolveId(record.o));
     }
   }
   const seen = new Set<object>();

@@ -29,6 +29,15 @@ function respond(
   return { response, next };
 }
 
+/** A page with a layout scope, one route in its children slot, and its state. */
+function page(layout: number, route: string, next: number): string {
+  return (
+    `<nav data-b="${layout}:0">Menu</nav>` +
+    `<main><!--R${layout}:children:${layout + 1}:${encodeURIComponent(route)}--><p>${route}</p><!--/R--></main>` +
+    `<script type="brumate/state" data-scopes data-next="${next}" data-route="root">{}</script>`
+  );
+}
+
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
 
 afterEach(() => {
@@ -103,5 +112,42 @@ describe('navigate', () => {
       enter: () => {},
     });
     expect(document.body.innerHTML).toBe('<pre>Enter a &lt;name&gt;</pre>');
+  });
+
+  it('keeps the layouts that stay, and replaces only the routes that change', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = page(0, '/a', 2);
+    const nav = document.querySelector('nav');
+    const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => {
+      const { response, next } = respond([
+        `<!doctype html><html><head><title>B</title></head><body>${page(2, '/b', 4)}</body></html>`,
+      ]);
+      next();
+      next();
+      return response;
+    });
+    vi.stubGlobal('fetch', fetch);
+    let partial: boolean | undefined;
+    await navigate({
+      url: '/b',
+      push: true,
+      leave: async (value) => {
+        partial = value;
+      },
+      enter: () => {},
+    });
+    // The server starts the new page above the IDs of this one.
+    expect(new Headers(fetch.mock.calls[0]![1].headers).get('x-brumate-base')).toBe('2');
+    expect(partial).toBe(true);
+    expect(document.querySelector('nav')).toBe(nav);
+    expect(document.querySelector('main')!.innerHTML).toBe(
+      `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
+    );
+    // The core drops the old route, adds the new one, and reads the new layout scope as the old one.
+    const state = document.querySelectorAll('script[type="brumate/state"]')[1]!;
+    expect(state.getAttribute('data-drop')).toBe('1');
+    expect(state.getAttribute('data-roots')).toBe('3');
+    expect(state.getAttribute('data-alias')).toBe('2:0');
+    expect(document.title).toBe('B');
   });
 });

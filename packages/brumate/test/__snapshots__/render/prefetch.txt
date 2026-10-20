@@ -65,4 +65,4 @@ export default function Prefetch($$props: Record<string, never>): string {
 <button class="none" data-b="0:2" data-on="click=Prefetch_okfwof#h3" data-prefetch="none">-</button>
 
 # State
-<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Prefetch_okfwof"},{"t":9,"i":2,"a":[{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>
+<script type="brumate/state" data-scopes data-next="1">{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Prefetch_okfwof"},{"t":9,"i":2,"a":[{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>

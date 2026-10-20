@@ -96,10 +96,19 @@ Links are plain `<a>` elements. Without scripts, each one loads a full page. Onc
 - The core forgets the state of the old page and reads the state of the new one. Modules that are already loaded are not loaded again.
 - A form that posts to a server function is sent with `fetch`. The page that the server redirects to replaces the current one, and the place on the page is kept when it is the same page.
 
-The code for this is a separate module of about 1 KB. The loader imports it on the first navigation.
+The code for this is a separate module of about 2 KB. The loader imports it on the first navigation.
 
 A link is left to the browser when it has `target`, `download` or `data-reload`, when a key such as Ctrl is held, or when it only changes the hash. `navigate: false` in the plugin options turns navigation off.
 
-Each navigation renders the whole page, layouts included, and state on the client resets. Keeping the layouts and their state while only the route changes is not supported yet.
+### Layouts stay
+
+A link keeps the layouts that are the same on both pages, with their markup and their state on the client. Only the routes inside them are replaced.
+
+- A layout is the same when it is the same file with the same params. A layout of `todos/[id]` changes when `id` changes. The root layout never changes.
+- The server renders the whole page, and the client takes only the routes that changed. Comments in the page mark each slot: `<!--R…-->` and `<!--/R-->`.
+- The new routes read contexts from the kept layouts on the client. Their first render shows the values that the server rendered.
+- The server starts the IDs of the new page above the IDs of the page in the browser, so the two never mix.
+- A form replaces the whole page, because what it changed can show anywhere on it.
+- Portals of the new routes are not added yet.
 
 [`examples/todos`](../examples/todos) has a layout, three routes, an `@aside` slot and a 404 page. The guestbook route has a form that posts to a server function.

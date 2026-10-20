@@ -1,6 +1,8 @@
 <script>
   // Wraps every page. `children` is the page, and `aside` is the @aside route for the same path.
   const { children, aside } = $props();
+  // Client state in a layout stays when a link changes only the route inside it.
+  let wide = $signal(false);
 </script>
 
 <style>
@@ -14,6 +16,9 @@
     display: flex;
     gap: 2rem;
   }
+  .wide {
+    gap: 6rem;
+  }
 </style>
 
 <html lang="en">
@@ -21,8 +26,10 @@
     <meta charset="utf-8">
   </head>
   <body>
-    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a> | <a href="/guestbook">Guestbook</a></nav>
-    <div class="page">
+    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a> | <a href="/guestbook">Guestbook</a>
+      <button class="toggle" onClick=(() => (wide = !wide))>{wide ? 'Narrow' : 'Wide'}</button>
+    </nav>
+    <div class=(wide ? 'page wide' : 'page')>
       <main>{children}</main>
       <aside>{aside}</aside>
     </div>

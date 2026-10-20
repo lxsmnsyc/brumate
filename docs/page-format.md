@@ -134,6 +134,8 @@ type PageState = Record<number, {
 - The slot order is the declaration order of the scope's slots in the compiled plan. Client modules read slots by index.
 - Errors keep their name and message only. Their stack traces would show the server's files.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
+- The first record of a page has `data-next`, a number above every scope and boundary ID. A page rendered by routes also has `data-route`, the key of its root route.
+- Route slots are marked with `<!--R<layout scope>:<name>:<route scope>:<route key>-->` and `<!--/R-->`. The client uses them to keep layouts when it loads another page.
 - A promise is written as pending, and a later record settles it. `render` and `renderToStream` return as soon as the markup is rendered, and send later records as their promises settle.
 
 Two values have their own plugins:

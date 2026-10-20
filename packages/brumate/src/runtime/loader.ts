@@ -216,8 +216,15 @@ export function start(options: LoaderOptions): () => void {
           url,
           init,
           push,
-          // The core forgets the old page, and reads the new one.
-          leave: async () => (await core)?.leavePage(),
+          // The core forgets the old page, or only stops reading, when layouts stay.
+          leave: async (partial) => {
+            const client = await core;
+            if (partial) {
+              client?.dispose();
+            } else {
+              client?.leavePage();
+            }
+          },
           enter: () => {
             void core?.then((client) => client.init({ ...options, listen: scan }));
             page = location.href.split('#')[0]!;

@@ -71,4 +71,4 @@ export default function Counter($$props: Record<string, never>): string {
 </p>
 
 # State
-<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Counter_m86gta"},{"t":9,"i":2,"a":[{"t":0,"s":0},{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>
+<script type="brumate/state" data-scopes data-next="1">{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Counter_m86gta"},{"t":9,"i":2,"a":[{"t":0,"s":0},{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>

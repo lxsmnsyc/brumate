@@ -105,7 +105,7 @@ describe('streaming', () => {
 
     const first = await reader.read();
     expect(first.value).toMatch(
-      /^<body><p>Hi<\/p><script type="brumate\/state" data-scopes>.*<\/script>/,
+      /^<body><p>Hi<\/p><script type="brumate\/state" data-scopes data-next="1">.*<\/script>/,
     );
     // `end` is part of the first render too.
     expect(first.value!.endsWith(`${scripts}</body>`)).toBe(true);
@@ -155,7 +155,7 @@ describe('documents', () => {
     expect(head).toContain('<title>Count 0</title>');
     // The state, the scripts and the portal are part of the first render, before </body>.
     const body = page.slice(page.indexOf('<body'), page.indexOf('</body>'));
-    expect(body).toContain('<script type="brumate/state" data-scopes>');
+    expect(body).toMatch(/<script type="brumate\/state" data-scopes data-next="\d+">/);
     expect(body).toContain(scripts);
     expect(body).toMatch(/<p [^>]*class="note">Portal<\/p>/);
     // The #loading body resolves later, so it follows the document.
@@ -212,7 +212,7 @@ describe('#loading', () => {
       rest += chunk.value;
     }
     expect(rest).toMatch(/^<template data-l="0"><p class="greeting">Hello Ada<\/p>/);
-    expect(rest).toContain('<script type="brumate/state" data-scopes>');
+    expect(rest).toMatch(/<script type="brumate\/state" data-scopes data-next="\d+">/);
     expect(rest).toMatch(/<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script>$/);
   });
 

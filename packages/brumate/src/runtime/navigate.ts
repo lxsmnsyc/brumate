@@ -7,13 +7,164 @@ export interface Visit {
   init?: RequestInit;
   /** False for the back and forward buttons, which already changed the history. */
   push: boolean;
-  /** Runs before the new page replaces the old one. */
-  leave: () => Promise<void>;
+  /**
+   * Runs before the new page replaces the old one. `partial` is true when
+   * the page keeps its layouts and replaces only some routes.
+   */
+  leave: (partial: boolean) => Promise<void>;
   /** Runs after the first render of the new page is in the document. */
   enter: () => void;
 }
 
 let controller: AbortController | undefined;
+
+const STATE = 'script[type="brumate/state"]';
+
+/** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
+interface Region {
+  /** The scope of the layout that renders the slot. */
+  layout: number;
+  name: string;
+  /** The scope of the route in the slot. */
+  root: number;
+  key: string;
+  start: Comment;
+  end: Comment;
+  children: Region[];
+}
+
+/** Finds the route slots in a document, nested as the routes are. */
+function regions(root: Node): Region[] {
+  const top: Region[] = [];
+  const stack: Region[] = [];
+  const walker = (root.ownerDocument ?? (root as Document)).createTreeWalker(root, 128);
+  for (
+    let node = walker.nextNode() as Comment | null;
+    node;
+    node = walker.nextNode() as Comment | null
+  ) {
+    const match = /^R(-?\d+):([^:]+):(\d+):(.*)$/.exec(node.data);
+    if (match) {
+      const region: Region = {
+        layout: Number(match[1]),
+        name: match[2]!,
+        root: Number(match[3]),
+        key: decodeURIComponent(match[4]!),
+        start: node,
+        end: node,
+        children: [],
+      };
+      (stack.at(-1)?.children ?? top).push(region);
+      stack.push(region);
+    } else if (node.data === '/R' && stack.length > 0) {
+      stack.pop()!.end = node;
+    }
+  }
+  return top;
+}
+
+interface Plan {
+  /** Old slots and the new slots that replace them. */
+  replace: [Region, Region][];
+  alias: Map<number, number>;
+}
+
+/**
+ * Pairs the slots of the old and the new page by name. A layout with the
+ * same key stays, and its slots are compared in turn. Any other route is
+ * replaced. Returns undefined when the pages do not line up.
+ */
+function plan(old: Region[], next: Region[], result: Plan): Plan | undefined {
+  for (const region of next) {
+    const before = old.find((item) => item.name === region.name);
+    if (!before) {
+      return undefined;
+    }
+    result.alias.set(region.layout, before.layout);
+    if (before.key === region.key && region.children.length > 0) {
+      // The layout stays, so its new scope stands for the old one.
+      result.alias.set(region.root, before.root);
+      if (!plan(before.children, region.children, result)) {
+        return undefined;
+      }
+    } else {
+      result.replace.push([before, region]);
+    }
+  }
+  return result;
+}
+
+function between(start: Node, end: Node): Node[] {
+  const nodes = [start];
+  for (let node = start.nextSibling; node && nodes.at(-1) !== end; node = node.nextSibling) {
+    nodes.push(node);
+  }
+  return nodes;
+}
+
+/** True when a slot's end comment is a sibling of its start comment. */
+function complete(region: Region): boolean {
+  return between(region.start, region.end).at(-1) === region.end;
+}
+
+/**
+ * Plans to replace only the routes that change, when the new page has the
+ * same root route as the current one. Returns undefined when it cannot.
+ */
+function planRoutes(next: Document): Plan | undefined {
+  const scripts = document.querySelectorAll(`${STATE}[data-route]`);
+  const route = scripts[scripts.length - 1]?.getAttribute('data-route');
+  const state = next.body.querySelector(`${STATE}[data-route]`);
+  if (!route || state?.getAttribute('data-route') !== route) {
+    return undefined;
+  }
+  const result = plan(regions(document.body), regions(next.body), {
+    replace: [],
+    alias: new Map(),
+  });
+  if (
+    !result ||
+    result.replace.length === 0 ||
+    !result.replace.every(([before, region]) => complete(before) && complete(region))
+  ) {
+    return undefined;
+  }
+  return result;
+}
+
+/** Replaces the routes that change, and keeps the rest of the page. */
+function replaceRoutes(next: Document, result: Plan): void {
+  const state = next.body.querySelector(`${STATE}[data-route]`)!;
+  for (const [before, region] of result.replace) {
+    const nodes = between(before.start, before.end);
+    const parent = before.start.parentNode!;
+    for (const node of between(region.start, region.end)) {
+      parent.insertBefore(document.adoptNode(node), before.start);
+    }
+    for (const node of nodes) {
+      node.parentNode?.removeChild(node);
+    }
+  }
+  // The core drops the scopes of the old routes, and adds only the scopes of the new ones.
+  state.setAttribute('data-drop', result.replace.map(([before]) => before.root).join(','));
+  state.setAttribute('data-roots', result.replace.map(([, region]) => region.root).join(','));
+  state.setAttribute(
+    'data-alias',
+    [...result.alias].map(([from, to]) => `${from}:${to}`).join(','),
+  );
+  for (const script of next.body.querySelectorAll(STATE)) {
+    document.body.append(document.adoptNode(script));
+  }
+}
+
+/** A number above every scope and boundary ID in the page, for the server to start the next page at. */
+function base(): number {
+  let value = 0;
+  for (const script of document.querySelectorAll(`${STATE}[data-next]`)) {
+    value = Math.max(value, Number(script.getAttribute('data-next')));
+  }
+  return value;
+}
 
 /** Copies a script, so the browser runs it. Scripts from a parser that has no window do not run. */
 function runnable(script: HTMLScriptElement): HTMLScriptElement {
@@ -99,7 +250,9 @@ export async function navigate(visit: Visit): Promise<void> {
   history.replaceState({ ...history.state, scroll: window.scrollY }, '');
   let response: Response;
   try {
-    response = await fetch(visit.url, { ...visit.init, signal: current.signal });
+    const headers = new Headers(visit.init?.headers);
+    headers.set('x-brumate-base', String(base()));
+    response = await fetch(visit.url, { ...visit.init, headers, signal: current.signal });
   } catch (error) {
     if (!current.signal.aborted) {
       location.assign(visit.url);
@@ -143,7 +296,10 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
-  await visit.leave();
+  // A link keeps the layouts that stay the same. A form replaces the whole page,
+  // because what it changed can show anywhere on it.
+  const routes = visit.init ? undefined : planRoutes(next);
+  await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     return;
   }
@@ -161,7 +317,11 @@ export async function navigate(visit: Visit): Promise<void> {
   document.title = title;
   const same = url.href === location.href;
   const top = window.scrollY;
-  document.body.replaceWith(document.adoptNode(next.body));
+  if (routes) {
+    replaceRoutes(next, routes);
+  } else {
+    document.body.replaceWith(document.adoptNode(next.body));
+  }
   // A link to the page itself, or a form that comes back to it, does not add to the history.
   if (visit.push && !same) {
     history.pushState({}, '', url);

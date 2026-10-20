@@ -131,4 +131,4 @@ export default function Retry($$props: Record<string, never>): string {
 <!--/b-->
 
 # State
-<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0","1"],"v":[{"t":10,"i":1,"p":{"k":["k","m"],"v":[{"t":0,"s":1},{"t":1,"s":"Retry_pyus3c"}]},"o":0},{"t":10,"i":2,"p":{"k":["k","p","s"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":9,"i":3,"a":[{"t":13,"i":4,"s":0,"m":"Not ready","p":{"k":[],"v":[]}}],"o":0}]},"o":0}]},"o":0}</script>
+<script type="brumate/state" data-scopes data-next="2">{"t":10,"i":0,"p":{"k":["0","1"],"v":[{"t":10,"i":1,"p":{"k":["k","m"],"v":[{"t":0,"s":1},{"t":1,"s":"Retry_pyus3c"}]},"o":0},{"t":10,"i":2,"p":{"k":["k","p","s"],"v":[{"t":0,"s":3},{"t":0,"s":0},{"t":9,"i":3,"a":[{"t":13,"i":4,"s":0,"m":"Not ready","p":{"k":[],"v":[]}}],"o":0}]},"o":0}]},"o":0}</script>
