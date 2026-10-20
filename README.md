@@ -60,6 +60,7 @@ pnpm --filter example-todos dev
 - [Execution model](./docs/model.md) explains what runs where and how the compiler decides what ships.
 - [Syntax](./docs/syntax.md) describes the file format, the compile-time functions, markup and control flow.
 - [Server functions](./docs/server-functions.md) describes the `'use server'` directive.
+- [Styles](./docs/styles.md) describes scoped CSS and style variables.
 - [Grammar](./docs/grammar.md) defines the file format in EBNF.
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.

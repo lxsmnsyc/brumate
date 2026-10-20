@@ -32,6 +32,8 @@ export interface CompileResult {
    * client, inside a parent's block that changes.
    */
   render: string;
+  /** The scoped CSS of the component. Server and render modules add it to the page. */
+  css: string;
   /** The parsed file. */
   file: SFCFile;
   plan: Plan;
@@ -64,6 +66,12 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     throw new CompileError(source, filename, errors);
   }
   const plan = createPlan(file, graph);
+  const styleErrors = plan.styles.diagnostics.filter(
+    (diagnostic) => diagnostic.severity === 'error',
+  );
+  if (styleErrors.length > 0) {
+    throw new CompileError(source, filename, styleErrors);
+  }
   const client = generateClient(file, plan);
   const clientErrors = client.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (clientErrors.length > 0) {
@@ -74,6 +82,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     client: client.code,
     parts: client.parts,
     render: generateRender(file, plan),
+    css: plan.styles.css,
     file,
     plan,
     warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning'),

@@ -1,0 +1,98 @@
+# Server module
+import * as $$b from 'brumate/server';
+const $$css = "p[s-9wx0az] {\n    color: var(--s-9wx0az-0);\n    font-size: var(--s-9wx0az-1);\n  }\n  .note[s-9wx0az]::before {\n    content: '*';\n  }\n  body .note[s-9wx0az] {\n    margin: 0;\n  }";
+
+export default async function Styled($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Styled_9wx0az");
+  $$html += $$ctx.style("Styled_9wx0az", $$css);
+  let big = (false);
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " data-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
+  if (big) {
+    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [big]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Styled_9wx0az";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u1"], [1, "u2"], [1, "b4"]] } };
+const parts = {
+  "h3": () => import("./styled.brm?brumate-client&part=h3"),
+  "update": () => import("./styled.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h3
+import * as $$b from 'brumate/client';
+
+export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, !$$b.get($$s, 0))))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export function u1($$s) {
+  $$b.setVar($$s, "--s-9wx0az-0", $$b.get($$s, 0) ? 'red' : 'blue');
+}
+export function u2($$s) {
+  $$b.setVar($$s, "--s-9wx0az-1", $$b.get($$s, 0) ? '20px' : '12px');
+}
+export function b4($$s) {
+  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, [r2], [2]);
+}
+export function r2($$p) {
+  let $$html = '';
+  let big = $$b.get($$p, 0);
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$p + "\" class=\"big\">Big</p>";
+  return $$html;
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+const $$css = "p[s-9wx0az] {\n    color: var(--s-9wx0az-0);\n    font-size: var(--s-9wx0az-1);\n  }\n  .note[s-9wx0az]::before {\n    content: '*';\n  }\n  body .note[s-9wx0az] {\n    margin: 0;\n  }";
+
+const $$ctx = $$b.context;
+
+export default function Styled($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Styled_9wx0az");
+  $$html += $$ctx.style("Styled_9wx0az", $$css);
+  let big = (false);
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " data-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
+  if (big) {
+    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
+  }
+  $$ctx.slots($$s1, [big]);
+  return $$html;
+}
+
+# HTML
+<style data-brm="Styled_9wx0az">p[s-9wx0az] {
+    color: var(--s-9wx0az-0);
+    font-size: var(--s-9wx0az-1);
+  }
+  .note[s-9wx0az]::before {
+    content: '*';
+  }
+  body .note[s-9wx0az] {
+    margin: 0;
+  }</style>
+<p s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px;padding: 1px" data-v="0" class="note">Hello <b s-9wx0az>there</b>
+</p>
+<button s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px" data-v="0" data-b="0:0" data-on="click=Styled_9wx0az#h3">Toggle</button>
+<!--b0:1:-1-->
+<!--/b-->
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Styled_9wx0az"},{"t":9,"i":2,"a":[{"t":2,"s":3}],"o":0}]},"o":0}]},"o":0}</script>

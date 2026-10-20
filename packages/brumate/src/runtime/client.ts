@@ -11,7 +11,7 @@ import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, plugins } from './shared.ts';
 import type { PageState } from './shared.ts';
 
-export { attribute, escape, raw, spread } from './html.ts';
+export { attribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 
 type Update = [kind: number, name: string];
@@ -611,6 +611,14 @@ export function list(
   }
 }
 
+/** Sets a style variable on the top-level elements of a component instance. */
+export function setVar(scope: Scope, name: string, value: unknown): void {
+  const content = value === null || value === undefined || value === false ? '' : String(value);
+  for (const element of document.querySelectorAll<HTMLElement>(`[data-v="${scope.id}"]`)) {
+    element.style.setProperty(name, content);
+  }
+}
+
 /** Writes a prop of a child component. */
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   const id = scope.c?.[anchor];
@@ -725,6 +733,17 @@ class ClientContext {
 
   element(scope: number, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
+  }
+
+  /** Adds a component's stylesheet to the page, if the server did not. */
+  style(id: string, css: string): string {
+    if (!document.querySelector(`style[data-brm="${id}"]`)) {
+      const style = document.createElement('style');
+      style.dataset.brm = id;
+      style.textContent = css;
+      document.head.append(style);
+    }
+    return '';
   }
 
   /** A function prop rendered on the client calls the parent's exported handler. */

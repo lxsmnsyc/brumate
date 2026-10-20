@@ -26,6 +26,7 @@
 - `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
 - An async `$memo` is a promise on the server. It is awaited where it is declared only if something outside every `#loading` body reads it.
 - `renderToString` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
+- Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -42,7 +43,7 @@
 - **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
 - **`#portal`.** The server renders the body in place.
-- **Styles.** `<style>` blocks are parsed but not compiled yet.
+- **Styles.** `lang="scss"` and `lang="less"` are not supported, and stylesheets are inlined instead of written as CSS files.
 - **Dynamic components on the client.** A dynamic tag whose value changes on the client is an error. A component value cannot be serialized, so a dynamic tag can only render a component on the client when the value is known there.
 - **Async on the client.** An async `$memo` that changes on the client is an error for now.
 - **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.

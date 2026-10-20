@@ -17,11 +17,13 @@ The file extension is `.brm` for now.
 </script>
 
 <style>
-  /* Scoped CSS. ${expression} interpolation works as in solid-sfc. */
+  /* Scoped CSS. ${expression} reads a value of the component. See Styles. */
 </style>
 
 <!-- Everything else is markup. -->
 ```
+
+[Styles](./styles.md) describes `<style>` blocks.
 
 ## Compile-time functions
 

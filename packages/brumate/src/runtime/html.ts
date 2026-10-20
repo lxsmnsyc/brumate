@@ -97,6 +97,26 @@ export function attribute(name: string, value: unknown): string {
   return value === true ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
 }
 
+/** Returns a style with custom properties before an element's own style. */
+export function vars(variables: Record<string, unknown>, own: unknown): string {
+  const parts: string[] = [];
+  for (const [name, value] of Object.entries(variables)) {
+    if (value !== null && value !== undefined && value !== false) {
+      parts.push(`${name}:${String(value)}`);
+    }
+  }
+  const rest = own === null || own === undefined || own === false ? '' : styleValue(own);
+  if (rest) {
+    parts.push(rest);
+  }
+  return parts.join(';');
+}
+
+/** Returns a `<style>` element for a component's stylesheet. */
+export function styleElement(id: string, css: string): string {
+  return `<style data-brm="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
+}
+
 /** Renders an object of attributes. */
 export function spread(attributes: Record<string, unknown>): string {
   let result = '';

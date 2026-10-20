@@ -1,0 +1,22 @@
+<script>
+  let big = $signal(false);
+</script>
+
+<style>
+  p {
+    color: ${big ? 'red' : 'blue'};
+    font-size: ${big ? '20px' : '12px'};
+  }
+  .note::before {
+    content: '*';
+  }
+  :global(body) .note {
+    margin: 0;
+  }
+</style>
+
+<p class="note" style="padding: 1px">Hello <b>there</b></p>
+<button onClick=(() => (big = !big))>Toggle</button>
+#if (big) {
+  <p class="big">Big</p>
+}

@@ -586,7 +586,12 @@ class ClientGenerator {
       return;
     }
     if (site.kind === 'style') {
-      // TODO: update style variables when styles are compiled.
+      const variable = this.plan.styles.variables.find((item) => item.expression.ast === site.node);
+      if (variable) {
+        this.emit(
+          `export function ${name('u')}($$s) {\n  $$b.setVar($$s, ${JSON.stringify(variable.name)}, ${expression()});\n}`,
+        );
+      }
       return;
     }
     if (!owner || owner.kind === 'listener') {
@@ -830,7 +835,9 @@ class ClientGenerator {
     const isInside = (scope: Scope): boolean => inside.some((item) => isWithin(scope, item));
     const declarations = new Set<Declaration>();
     for (const site of this.model.sites) {
-      if (!isInside(site.scope) || DEFERRED_SITES.has(site.kind)) {
+      // Top-level elements of a body render the style variables of the component.
+      const rendered = isInside(site.scope) || site.kind === 'style';
+      if (!rendered || DEFERRED_SITES.has(site.kind)) {
         continue;
       }
       for (const read of site.reads) {

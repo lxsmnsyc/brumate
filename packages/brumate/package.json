@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "oxc-parser": "^0.154.0",
+    "postcss": "^8.5.31",
+    "postcss-selector-parser": "^7.1.6",
     "seroval": "^1.6.11"
   },
   "devDependencies": {

@@ -1,6 +1,8 @@
 import type { Block, Body, Markup, SFCFile } from './ast.ts';
 import { isFunctionValue } from './graph.ts';
 import type { Graph } from './graph.ts';
+import { compileStyles } from './css.ts';
+import type { StyleOutput } from './css.ts';
 import type { Declaration, DeclarationKind, Scope, Site } from './model.ts';
 
 export interface ScopePlan {
@@ -31,6 +33,10 @@ export interface Plan {
   symbols: Map<Site, string>;
   /** Sites whose code runs on the client, including update code for live nodes. */
   clientSites: Set<Site>;
+  /** The compiled `<style>` blocks. */
+  styles: StyleOutput;
+  /** True if a style variable can change on the client. */
+  liveStyles: boolean;
 }
 
 // Declarations that are code or come from imports, so they never need a slot.
@@ -254,10 +260,15 @@ export function createPlan(file: SFCFile, graph: Graph): Plan {
     }
   }
 
+  const styles = compileStyles(file, hash(file.filename));
+  const liveStyles = model.sites.some((site) => site.kind === 'style' && isLiveSite(site));
+
   return {
     graph,
     name,
     id: `${name}_${hash(file.filename)}`,
+    styles,
+    liveStyles,
     scopes,
     bodyScopes,
     anchors,

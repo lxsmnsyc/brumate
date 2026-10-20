@@ -20,6 +20,7 @@ const props: Record<string, unknown> = {
   list: {},
   loading: {},
   shared: {},
+  styled: {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

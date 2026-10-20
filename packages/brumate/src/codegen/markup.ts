@@ -75,6 +75,8 @@ export class Emitter {
   private readonly blocking: Set<Declaration>;
   private parts: Part[] = [];
   private depth = 0;
+  /** How many of this component's elements contain the current node. */
+  private nesting = 0;
   private counter = 0;
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
@@ -292,6 +294,10 @@ export class Emitter {
   /** Emits the content of the component, without creating its scope. */
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
+    if (this.plan.styles.css) {
+      // The stylesheet is written once per page, before the first instance.
+      this.code(`$$ctx.style(${JSON.stringify(this.plan.id)}, $$css)`);
+    }
     this.emitStatements(setup);
     for (const template of this.file.templates) {
       this.emitTemplate(template);
@@ -353,7 +359,8 @@ export class Emitter {
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
     this.line(`${this.async}function ${template.name}(${params})${type} {`);
     this.line(`let $$html = '';`);
-    this.emitBody(template.body);
+    // A template can render anywhere, so its elements get the style variables.
+    this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
     this.line('return $$b.raw($$html);');
     this.close();
@@ -440,12 +447,55 @@ export class Emitter {
     }
   }
 
+  /**
+   * The style attribute of a top-level element, with the style variables of
+   * the component, so the elements inside inherit them.
+   */
+  private emitVariables(node: ElementNode): boolean {
+    const { variables } = this.plan.styles;
+    if (variables.length === 0 || this.nesting > 0) {
+      return false;
+    }
+    const values = variables.map(
+      (variable) => `${JSON.stringify(variable.name)}: ${this.expression(variable.expression)}`,
+    );
+    const own = node.attributes.find(
+      (attribute) =>
+        (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style',
+    );
+    let existing = 'undefined';
+    if (own?.kind === 'static') {
+      existing = own.value === true ? 'undefined' : JSON.stringify(own.value);
+    } else if (own?.kind === 'value') {
+      existing = this.expression(own.value);
+    }
+    this.code(`$$b.attribute("style", $$b.vars({ ${values.join(', ')} }, ${existing}))`);
+    if (this.plan.liveStyles) {
+      // Marks the element, so changes to the variables reach it.
+      this.html(' data-v="');
+      this.code(this.scopeVar(this.plan.graph.model.component));
+      this.html('"');
+    }
+    return true;
+  }
+
   private emitElement(node: ElementNode, scope: Scope): void {
     this.html(`<${node.tag}`);
+    if (this.plan.styles.css) {
+      this.html(` ${this.plan.styles.attribute}`);
+    }
+    const ownStyle = this.emitVariables(node);
     const events: string[] = [];
     let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
     for (const attribute of node.attributes) {
+      if (
+        ownStyle &&
+        (attribute.kind === 'static' || attribute.kind === 'value') &&
+        attribute.name === 'style'
+      ) {
+        continue;
+      }
       switch (attribute.kind) {
         case 'static':
           this.html(
@@ -495,8 +545,18 @@ export class Emitter {
     if (VOID_ELEMENTS.has(node.tag)) {
       return;
     }
+    this.nesting++;
     this.emitNodes(node.children, scope);
+    this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /** Runs a callback for markup that renders outside this component's elements, such as children. */
+  private atTopLevel(callback: () => void): void {
+    const nesting = this.nesting;
+    this.nesting = 0;
+    callback();
+    this.nesting = nesting;
   }
 
   /** Renders children into a variable, for a component or a dynamic tag. */
@@ -507,7 +567,7 @@ export class Emitter {
     const name = this.unique('children');
     this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
     this.line(`let $$html = '';`);
-    this.emitNodes(nodes, scope);
+    this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
     this.line('return $$b.raw($$html);');
     this.close('})();');
@@ -575,6 +635,9 @@ export class Emitter {
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
     const childrenName = this.emitChildren(node.children, scope);
     const extra: string[] = [];
+    if (this.plan.styles.css) {
+      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: true`);
+    }
     const anchor = this.anchor(scope, node);
     if (anchor) {
       extra.push(`"data-b": \`\${${anchor.scope}}:${anchor.index}\``);

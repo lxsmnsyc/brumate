@@ -101,6 +101,9 @@ export function generateServer(file: SFCFile, plan: Plan): string {
     moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
   }
 
+  if (plan.styles.css) {
+    moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);
+  }
   const emitter = new Emitter(file, plan, patch, { mode: 'server' });
   const generics = file.generics ? `<${file.generics}>` : '';
   emitter.line(

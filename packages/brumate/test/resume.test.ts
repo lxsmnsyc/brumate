@@ -174,6 +174,32 @@ describe('resume', () => {
     expect(text('.outer')).toBe('1');
   });
 
+  it('scopes styles and updates style variables', async () => {
+    await resume('styled', {});
+    expect(document.querySelectorAll('style[data-brm]')).toHaveLength(1);
+    const first = document.querySelector<HTMLElement>('.note')!;
+    expect(first.style.getPropertyValue('--s-9wx0az-0')).toBe('blue');
+    expect(first.style.getPropertyValue('padding')).toBe('1px');
+    expect(first.querySelector('b')!.getAttribute('style')).toBeNull();
+
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(first.style.getPropertyValue('--s-9wx0az-0')).toBe('red'));
+    expect(first.style.getPropertyValue('--s-9wx0az-1')).toBe('20px');
+    // The block that the client renders gets the current values.
+    const big = document.querySelector<HTMLElement>('.big')!;
+    expect(big.style.getPropertyValue('--s-9wx0az-0')).toBe('red');
+    expect(big.hasAttribute('s-9wx0az')).toBe(true);
+  });
+
+  it('adds the stylesheet when the client renders a component first', async () => {
+    vi.resetModules();
+    const render = await import(file('styled.brm.render.ts'));
+    document.head.innerHTML = '';
+    render.default({});
+    render.default({});
+    expect(document.head.querySelectorAll('style[data-brm="Styled_9wx0az"]')).toHaveLength(1);
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

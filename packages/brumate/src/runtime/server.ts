@@ -1,11 +1,19 @@
 import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
 import type { SerovalJSON, SerovalNode } from 'seroval';
-import { VOID_ELEMENTS, escapeAttribute, insertValue, isRaw, rawHTML, spread } from './html.ts';
+import {
+  VOID_ELEMENTS,
+  escapeAttribute,
+  insertValue,
+  isRaw,
+  rawHTML,
+  spread,
+  styleElement,
+} from './html.ts';
 import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, functionReferences, plugins } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 
-export { attribute, escape, escapeAttribute, raw, spread } from './html.ts';
+export { attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
@@ -27,6 +35,7 @@ export class Context {
   private nextScope = 0;
   private nextBoundary = 0;
   private readonly boundaries: Boundary[] = [];
+  private readonly styles = new Set<string>();
   private onBoundary: ((boundary: Boundary) => void) | undefined;
 
   constructor(root?: Context) {
@@ -88,6 +97,15 @@ export class Context {
       functionReferences.set(value, new FunctionReference(ref, scope));
     }
     return value;
+  }
+
+  /** Returns a component's stylesheet the first time the page renders the component. */
+  style(id: string, css: string): string {
+    if (this.root.styles.has(id)) {
+      return '';
+    }
+    this.root.styles.add(id);
+    return styleElement(id, css);
   }
 
   /** Returns the ID of a new `#loading` boundary. */
