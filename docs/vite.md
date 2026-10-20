@@ -55,6 +55,8 @@ const page = `<!doctype html>
 </html>`;
 ```
 
+`stateScript` writes one script for each state record. To write records as they are ready, use `streamState` and `stateRecordScript`.
+
 In development, load the component with `vite.ssrLoadModule('/src/App.brm')`. [`examples/todos`](../examples/todos) is a complete server.
 
 ## Server functions

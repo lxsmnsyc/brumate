@@ -1,4 +1,4 @@
-import { fromJSON, toJSONAsync } from 'seroval';
+import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval';
 import {
   VOID_ELEMENTS,
   attributeText,
@@ -59,11 +59,28 @@ const comments = new Map<string, Comment>();
 const elements = new Map<string, Element>();
 let nextId = 0;
 
-/** Reads the page state. The loader calls it once, before the first handler. */
-export function init(value: CoreOptions): void {
-  options = value;
-  const script = document.querySelector('script[type="brumate/state"]');
-  const state = script ? fromJSON<PageState>(JSON.parse(script.textContent!), { plugins }) : {};
+// Records share references through this map, so a later record can settle a promise of an earlier one.
+let refs: Map<number, unknown> | undefined;
+const read = new WeakSet<Element>();
+
+/**
+ * Reads a state record. The first record holds the page state, and later
+ * records settle the promises in it.
+ */
+function readRecord(script: Element): void {
+  if (read.has(script)) {
+    return;
+  }
+  read.add(script);
+  const initial = refs === undefined;
+  refs ??= new Map();
+  const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), { plugins, refs });
+  if (initial) {
+    addScopes(value);
+  }
+}
+
+function addScopes(state: PageState): void {
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
     scopes.set(id, {
@@ -90,6 +107,34 @@ export function init(value: CoreOptions): void {
       scope.s[i] = callable(scope.s[i], seen);
     }
   }
+}
+
+const STATE = 'script[type="brumate/state"]';
+let observer: MutationObserver | undefined;
+
+/** Stops reading state records that arrive later. */
+export function dispose(): void {
+  observer?.disconnect();
+  observer = undefined;
+}
+
+/** Reads the page state. The loader calls it once, before the first handler. */
+export function init(value: CoreOptions): void {
+  options = value;
+  for (const script of document.querySelectorAll(STATE)) {
+    readRecord(script);
+  }
+  // Records that are still streaming settle their promises when they arrive.
+  observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType === 1 && (node as Element).matches(STATE)) {
+          readRecord(node as Element);
+        }
+      }
+    }
+  });
+  observer.observe(document, { childList: true, subtree: true });
   indexMarkers(document.body);
 }
 
@@ -153,6 +198,11 @@ export function handle(element: Element, ref: string, event?: Event): Promise<un
   const anchor = element.getAttribute('data-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
   return call(ref, scope, event ? [withTarget(event, element)] : []);
+}
+
+/** Returns the instance of a scope by its ID. */
+export function scopeOf(id: number): Scope | undefined {
+  return scopes.get(id);
 }
 
 // Slots

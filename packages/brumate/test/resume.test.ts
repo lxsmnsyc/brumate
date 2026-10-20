@@ -64,6 +64,35 @@ function click(element: Element): void {
 }
 
 describe('resume', () => {
+  it('settles promises from state records that arrive later', async () => {
+    const { streamState, stateRecordScript } = await import('../src/runtime/server.ts');
+    let resolve!: (value: number) => void;
+    const pending = new Promise<number>((done) => {
+      resolve = done;
+    });
+    const records: string[] = [];
+    const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
+      records.push(stateRecordScript(record));
+    });
+    expect(records).toHaveLength(1);
+    document.body.innerHTML = records[0]!;
+
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    client.init({ load: async () => ({ id: 'Test', props: {}, g: {} }), listen: () => {} });
+    const value = client.get(client.scopeOf(0)!, 0);
+    expect(value).toBeInstanceOf(Promise);
+
+    resolve(42);
+    await done;
+    expect(records).toHaveLength(2);
+    const holder = document.createElement('div');
+    holder.innerHTML = records[1]!;
+    document.body.append(holder.firstChild!);
+    await expect(value).resolves.toBe(42);
+    client.dispose();
+  });
+
   it('updates a counter', async () => {
     await resume('counter', {});
     expect(text('p')).toBe('0 / 0');

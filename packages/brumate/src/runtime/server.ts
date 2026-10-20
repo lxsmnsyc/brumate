@@ -1,5 +1,5 @@
-import { fromJSON, toJSONAsync } from 'seroval';
-import type { SerovalJSON } from 'seroval';
+import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
+import type { SerovalJSON, SerovalNode } from 'seroval';
 import { VOID_ELEMENTS, insertValue, isRaw, rawHTML, spread } from './html.ts';
 import type { Raw } from './html.ts';
 import { ElementReference, FunctionReference, functionReferences, plugins } from './shared.ts';
@@ -120,23 +120,50 @@ export async function dynamic(
   return `${open}${children && isRaw(children) ? rawHTML(children) : ''}</${tag}>`;
 }
 
-export interface RenderResult {
-  html: string;
-  state: SerovalJSON;
+/**
+ * Serializes the page state as seroval cross-reference JSON records. The
+ * first record holds the state, and each later record settles a promise in
+ * it. `onRecord` receives each record as soon as it is ready. The promise
+ * resolves when every promise in the state has settled.
+ */
+export function streamState(
+  state: PageState,
+  onRecord: (record: SerovalNode) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    toCrossJSONStream(state, {
+      plugins,
+      onParse: (record) => onRecord(record),
+      onError: reject,
+      onDone: resolve,
+    });
+  });
 }
 
-/** Renders a component and collects the state of its scopes. */
+export interface RenderResult {
+  html: string;
+  /** The records of the page state, in order. */
+  state: SerovalNode[];
+}
+
+/** Renders a component and collects the records of its state. */
 export async function renderToString<P>(Root: Component<P>, props: P): Promise<RenderResult> {
   const ctx = new Context();
   const html = await Root(props, ctx);
-  const state = await toJSONAsync(ctx.state, { plugins });
+  const state: SerovalNode[] = [];
+  await streamState(ctx.state, (record) => state.push(record));
   return { html, state };
 }
 
-/** Returns the script that holds the page state. */
-export function stateScript(state: SerovalJSON): string {
-  const json = JSON.stringify(state).replace(/</g, '\\u003c');
+/** Returns the script for one state record. */
+export function stateRecordScript(record: SerovalNode): string {
+  const json = JSON.stringify(record).replace(/</g, '\\u003c');
   return `<script type="brumate/state">${json}</script>`;
+}
+
+/** Returns the scripts that hold the page state, one for each record. */
+export function stateScript(state: SerovalNode[]): string {
+  return state.map(stateRecordScript).join('');
 }
 
 /**

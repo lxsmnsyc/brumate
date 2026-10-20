@@ -29,7 +29,7 @@ function entries(element: Element): Entry[] {
 /**
  * Starts resuming the page. Listens to the events in `data-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
- * Returns a function that removes the listeners.
+ * Returns a function that removes the listeners and stops the core.
  */
 export function start(options: LoaderOptions): () => void {
   let core: Promise<typeof Client> | undefined;
@@ -145,5 +145,6 @@ export function start(options: LoaderOptions): () => void {
     for (const remove of removers.splice(0)) {
       remove();
     }
+    void core?.then((client) => client.dispose());
   };
 }

@@ -66,10 +66,16 @@ Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i
 ## State
 
 ```html
-<script type="brumate/state">{"t":{…},"f":127,"m":[]}</script>
+<script type="brumate/state">{"t":10,"i":0,"p":{…}}</script>
+<script type="brumate/state">{"t":…}</script>
 ```
 
-The script holds a [seroval](https://github.com/lxsmnsyc/seroval) JSON tree. `fromJSON` with the brumate plugins turns it into an object keyed by scope ID:
+The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-reference JSON records, one script each. The server writes them with `toCrossJSONStream`, and the client reads them with `fromCrossJSON` and one `refs` map, so later records can refer to values of earlier ones.
+
+- The first record holds the page state.
+- Each later record settles a promise in the state. It can come after the client has started. The client reads it when the script is added to the page.
+
+The first record turns into an object keyed by scope ID:
 
 ```ts
 type PageState = Record<number, {
@@ -90,7 +96,7 @@ type PageState = Record<number, {
 
 - The slot order is the declaration order of the scope's slots in the compiled plan. Client modules read slots by index.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
-- Promises are awaited before the state is written.
+- A promise is written as pending, and a later record settles it. `renderToString` waits for every record. `streamState` passes each record on as soon as it is ready.
 
 Two values have their own plugins:
 

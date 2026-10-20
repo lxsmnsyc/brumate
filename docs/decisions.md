@@ -23,7 +23,7 @@
 - The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
 - A change to a `.brm` file reloads the page instead of replacing modules.
 - A component rendered on the client comes from its render module, a third output next to the server and client modules.
-- seroval is the serializer. The state is seroval JSON, so the client reads it without `eval`.
+- seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
