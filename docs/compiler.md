@@ -21,18 +21,28 @@ solid-sfc compiles markup to TSX as text. This compiler needs a tree for the mar
 
 ## Output sketch
 
-For the todo example in the [README](../README.md), the server writes:
+The server module is TypeScript. For the counter example in [Intermediate representation](./ir.md#example), it is:
 
-```html
-<form data-on="submit:prevent:c/Todos_add.js#h0" data-s="0">
-  <input value="" data-on="input:c/Todos_input.js#h1" data-s="0">
-</form>
-<ul><!--b0-->
-  <li>Write the docs</li>
-<!--/b0--></ul>
-<p><!--b1-->1<!--/b1--> left</p>
-<script type="brumate/state">{"0":{"todos":[...],"draft":"","left":1}}</script>
+```ts
+import * as $$b from 'brumate/server';
+
+export default async function Counter($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope();
+  const label = 'Clicks';
+  let count = (0);
+  const double = (count * 2);
+  $$html += "<h1>" + await $$b.insert((label)) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double)) + "<!--/t--></p>";
+  $$ctx.slots($$s1, [count, double]);
+  return $$html;
+}
 ```
+
+- Compile-time functions become plain values. `$signal(0)` is `(0)`, and `$effect` and `$client` calls are removed.
+- Static markup becomes string literals. Only live values get markers.
+- The slots of a scope are recorded after its markup, so `ref` signals hold their elements.
+
+`renderToString` from `brumate/server` runs the module and serializes the state. [Page format](./page-format.md) describes the markers and the state.
 
 The client chunk for `add`:
 

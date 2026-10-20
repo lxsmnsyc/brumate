@@ -16,7 +16,9 @@
 - There is no `'use client'` directive.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
 - A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
-- seroval is the serializer.
+- seroval is the serializer. The state is seroval JSON, so the client reads it without `eval`.
+- Scope IDs are integers given in render order.
+- A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
 
 ## Open
@@ -30,13 +32,16 @@
 - **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
+- **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
+- **`#portal`.** The server renders the body in place.
+- **Styles.** `<style>` blocks are parsed but not compiled yet.
 - **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps
 
 1. Write the grammar and the intermediate representation. Done in [Grammar](./grammar.md) and [Intermediate representation](./ir.md).
 2. Build the parser and the analyzer, and test them on the graph output without a browser. Done in [`packages/brumate`](../packages/brumate).
-3. Write the server codegen with markers and state.
+3. Write the server codegen with markers and state. Done. See [Page format](./page-format.md).
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list.
 5. Add `#if` and keyed `#for`.
 6. Add components and summaries.

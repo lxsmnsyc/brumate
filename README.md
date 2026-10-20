@@ -4,7 +4,7 @@
 
 `brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
 
-This repository holds the design and the compiler. The compiler parses and analyzes `.brm` files. It does not generate code yet.
+This repository holds the design and the compiler. The compiler parses and analyzes `.brm` files and generates the server module. It does not generate client code yet.
 
 ## Goals
 
@@ -53,6 +53,7 @@ The `<h1>` produces no client code. The `#for` item template ships because `add`
 - [Grammar](./docs/grammar.md) defines the file format in EBNF.
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
+- [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.
 
@@ -66,7 +67,7 @@ pnpm lint
 pnpm format
 ```
 
-The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`.
+The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the module, the HTML and the state with a snapshot.
 
 ## Name
 

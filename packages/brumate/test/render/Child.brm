@@ -1,0 +1,6 @@
+<script>
+  const { value, onChange, children } = $props<{ value: number; onChange: (value: number) => void; children?: unknown }>();
+</script>
+
+<button onClick=(() => onChange(value + 1))>{value}</button>
+<div class="slot">{children}</div>

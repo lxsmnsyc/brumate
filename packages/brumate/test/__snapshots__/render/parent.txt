@@ -1,0 +1,38 @@
+# Server module
+import * as $$b from 'brumate/server';
+import Child from './Child.brm';
+
+export default async function Parent($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope();
+  let count = (1);
+  const label = 'Count';
+  const $$children0 = await (async () => {
+    let $$html = '';
+    $$html += "<em>" + await $$b.insert((label)) + "</em>";
+    return $$b.raw($$html);
+  })();
+  $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx);
+  $$ctx.slots($$s1, [count]);
+  return $$html;
+}
+
+# HTML
+<button data-b="1:0" data-on="click=Child_108vasc#h0">
+<!--t1:1-->1<!--/t-->
+</button>
+<div class="slot">
+<!--t1:2-->
+<em>Count</em>
+<!--/t-->
+</div>
+<button data-b="2:0" data-on="click=Child_108vasc#h0">
+<!--t2:1-->5<!--/t-->
+</button>
+<div class="slot">
+<!--t2:2-->
+<!--/t-->
+</div>
+
+# State
+<script type="brumate/state">{"t":{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["c","s"],"v":[{"t":10,"i":2,"p":{"k":["0"],"v":[{"t":0,"s":1}]},"o":0},{"t":9,"i":3,"a":[{"t":0,"s":1}],"o":0}]},"o":0},{"t":10,"i":4,"p":{"k":["s"],"v":[{"t":9,"i":5,"a":[{"t":0,"s":1},{"t":25,"i":6,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h3"},"b":{"t":0,"s":0}},"c":"brumate/function"},{"t":10,"i":7,"p":{"k":[],"v":[]},"o":0}],"o":0}]},"o":0},{"t":10,"i":8,"p":{"k":["s"],"v":[{"t":9,"i":9,"a":[{"t":0,"s":5},{"t":25,"i":10,"s":{"a":{"t":1,"s":"Parent_4bs4t8#h6"},"b":{"t":0,"s":0}},"c":"brumate/function"},{"t":2,"s":1}],"o":0}]},"o":0}]},"o":0},"f":127,"m":[]}</script>

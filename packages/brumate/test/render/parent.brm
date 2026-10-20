@@ -1,0 +1,11 @@
+<script>
+  import Child from './Child.brm';
+
+  let count = $signal(1);
+  const label = 'Count';
+</script>
+
+<Child value=count onChange=((value) => (count = value))>
+  <em>{label}</em>
+</Child>
+<Child value=5 onChange=((value) => console.log(value)) />

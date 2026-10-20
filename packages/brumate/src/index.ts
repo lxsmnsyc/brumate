@@ -9,3 +9,8 @@ export { isWithin, lookup } from './model.ts';
 export { parse } from './parser.ts';
 export type { ParseOptions } from './parser.ts';
 export { printAST, printGraph, printModel } from './print.ts';
+export { CompileError, compile } from './compile.ts';
+export type { CompileOptions, CompileResult } from './compile.ts';
+export { generateServer } from './codegen/server.ts';
+export { createPlan, getComponentName } from './plan.ts';
+export type { AnchorTarget, Plan, ScopePlan } from './plan.ts';

@@ -1,0 +1,52 @@
+<script>
+  const { items, tab: initialTab } = $props<{ items: string[]; tab: 'a' | 'b' }>();
+  let tab = $signal(initialTab);
+  let list = $signal(items);
+  let input = $signal<HTMLInputElement>();
+  const tag = 'section';
+
+  function Broken(): Promise<string> {
+    throw new Error('Broken');
+  }
+
+  $client(() => {
+    input.focus();
+  }, 'idle');
+</script>
+
+<window onKeyDown=((event) => (tab = event.key === 'b' ? 'b' : 'a')) />
+<input ref=input value="x" title="a &amp; b">
+#switch {
+  #case (tab === 'a') {
+    <p>A</p>
+  }
+  #default {
+    <p>B</p>
+  }
+}
+<ul>
+  #for (item, i of list) {
+    <li>{i}. {item}</li>
+  } #else {
+    <li>Empty</li>
+  }
+</ul>
+#for (item of ['x', 'y']) {
+  <span>{item}</span>
+}
+#repeat (n of 2) {
+  {row(n)}
+}
+#try {
+  <Broken />
+} #catch (error) {
+  <p>{String(error)}</p>
+}
+#client ('idle') {
+  <p>Client only</p>
+}
+<{tag} class={ active: tab === 'a' } style={ fontSize: '12px' } onClick=(() => (list = []))>Dynamic</>
+#template row(n: number) {
+  <b>{n * 10}</b>
+}
+<p>{'<escaped>'} {null} {false} {[1, 2]}</p>

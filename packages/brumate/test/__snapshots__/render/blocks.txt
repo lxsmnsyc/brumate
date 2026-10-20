@@ -1,0 +1,113 @@
+# Server module
+import * as $$b from 'brumate/server';
+
+export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' }, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope();
+  const { items, tab: initialTab } = $$props;
+  let tab = (initialTab);
+  let list = (items);
+  let input = undefined;
+  const tag = 'section';
+  function Broken(): Promise<string> {
+    throw new Error('Broken');
+  }
+  async function row(n: number): Promise<$$b.Raw> {
+    let $$html = '';
+    $$html += "<b>" + await $$b.insert((n * 10)) + "</b>";
+    return $$b.raw($$html);
+  }
+  $$html += "<template data-b=\"" + $$s1 + ":0\" data-client=\"idle=Blocks_jlmev2#c4\"></template><template data-b=\"" + $$s1 + ":1\" data-listen=\"window\" data-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
+  input = $$ctx.element($$s1, 2);
+  $$html += " value=\"x\" title=\"a &amp; b\" data-b=\"" + $$s1 + ":2\">";
+  if (tab === 'a') {
+    $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
+  } else {
+    $$html += "<!--b" + $$s1 + ":3:1--><p>B</p><!--/b-->";
+  }
+  $$html += "<ul>";
+  {
+    const $$list0 = Array.from(( list));
+    let $$index1 = 0;
+    $$html += "<!--b" + $$s1 + ":4-->";
+    for (const item of $$list0) {
+      const i = $$index1++;
+      const $$s5 = $$ctx.scope();
+      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + await $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + await $$b.insert((item)) + "<!--/t--></li>";
+      $$ctx.slots($$s5, [item, i]);
+      $$html += "<!--/i-->";
+    }
+    if ($$list0.length === 0) {
+      $$html += "<li>Empty</li>";
+    }
+    $$html += "<!--/b-->";
+  }
+  $$html += "</ul>";
+  {
+    const $$list2 = Array.from(( ['x', 'y']));
+    for (const item of $$list2) {
+      $$html += "<span>" + await $$b.insert((item)) + "</span>";
+    }
+  }
+  {
+    const $$list4 = Array.from({ length: ( 2) }, (_, index) => index);
+    let $$index5 = 0;
+    for (const $$item6 of $$list4) {
+      const n = $$index5++;
+      $$html += await $$b.insert((row(n)));
+    }
+  }
+  const $$before7 = $$html;
+  try {
+    $$html += await $$b.component(Broken, {  }, $$ctx);
+  } catch ($$error8) {
+    $$html = $$before7;
+    const error = $$error8;
+    $$html += "<p>" + await $$b.insert((String(error))) + "</p>";
+  }
+  $$html += "<!--b" + $$s1 + ":5--><!--/b-->";
+  const $$children9 = await (async () => {
+    let $$html = '';
+    $$html += "Dynamic";
+    return $$b.raw($$html);
+  })();
+  $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s1}:6`, "data-on": "click=Blocks_jlmev2#h19" }, $$children9, $$ctx) + "<p>" + await $$b.insert(('<escaped>')) + " " + await $$b.insert((null)) + " " + await $$b.insert((false)) + " " + await $$b.insert(([1, 2])) + "</p>";
+  $$ctx.slots($$s1, [tab, list, input]);
+  return $$html;
+}
+
+# HTML
+<template data-b="0:0" data-client="idle=Blocks_jlmev2#c4">
+</template>
+<template data-b="0:1" data-listen="window" data-on="keydown=Blocks_jlmev2#h6">
+</template>
+<input value="x" title="a &amp; b" data-b="0:2">
+<!--b0:3:1-->
+<p>B</p>
+<!--/b-->
+<ul>
+<!--b0:4-->
+<!--i1-->
+<li>
+<!--t1:0-->0<!--/t-->. <!--t1:1-->one<!--/t-->
+</li>
+<!--/i-->
+<!--i2-->
+<li>
+<!--t2:0-->1<!--/t-->. <!--t2:1-->two<!--/t-->
+</li>
+<!--/i-->
+<!--/b-->
+</ul>
+<span>x</span>
+<span>y</span>
+<b>0</b>
+<b>10</b>
+<p>Error: Broken</p>
+<!--b0:5-->
+<!--/b-->
+<section style="font-size:12px" data-b="0:6" data-on="click=Blocks_jlmev2#h19">Dynamic</section>
+<p>&lt;escaped&gt;   12</p>
+
+# State
+<script type="brumate/state">{"t":{"t":10,"i":0,"p":{"k":["0","1","2"],"v":[{"t":10,"i":1,"p":{"k":["s"],"v":[{"t":9,"i":2,"a":[{"t":1,"s":"b"},{"t":9,"i":3,"a":[{"t":1,"s":"one"},{"t":1,"s":"two"}],"o":0},{"t":25,"i":4,"s":{"a":{"t":0,"s":0},"b":{"t":0,"s":2}},"c":"brumate/element"}],"o":0}]},"o":0},{"t":10,"i":5,"p":{"k":["s"],"v":[{"t":9,"i":6,"a":[{"t":1,"s":"one"},{"t":0,"s":0}],"o":0}]},"o":0},{"t":10,"i":7,"p":{"k":["s"],"v":[{"t":9,"i":8,"a":[{"t":1,"s":"two"},{"t":0,"s":1}],"o":0}]},"o":0}]},"o":0},"f":127,"m":[]}</script>

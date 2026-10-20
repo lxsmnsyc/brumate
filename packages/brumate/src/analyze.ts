@@ -195,7 +195,7 @@ class Analyzer {
     return scope;
   }
 
-  private declare(
+  private addDeclaration(
     scope: Scope,
     name: string,
     kind: DeclarationKind,
@@ -260,7 +260,7 @@ class Analyzer {
   private declareFunction(name: string, fn: Fn, scope: Scope, at: Range): void {
     const server = hasUseServer(fn);
     const kind = server ? 'server-function' : 'function';
-    const declaration = this.declare(scope, name, kind, at);
+    const declaration = this.addDeclaration(scope, name, kind, at);
     const site = this.createSite(
       kind,
       scope,
@@ -298,7 +298,7 @@ class Analyzer {
       case 'FunctionDeclaration':
         if (statement.id) {
           const server = hasUseServer(statement);
-          this.declare(
+          this.addDeclaration(
             this.module,
             statement.id.name,
             server ? 'server-function' : 'module',
@@ -319,14 +319,19 @@ class Analyzer {
           const server =
             declarator.id.type === 'Identifier' && isFunction(init) && hasUseServer(init);
           for (const name of getPatternNames(declarator.id)) {
-            this.declare(this.module, name.name, server ? 'server-function' : 'module', name);
+            this.addDeclaration(
+              this.module,
+              name.name,
+              server ? 'server-function' : 'module',
+              name,
+            );
           }
         }
         break;
       case 'ClassDeclaration':
       case 'TSEnumDeclaration':
         if (statement.id) {
-          this.declare(this.module, statement.id.name, 'module', statement.id);
+          this.addDeclaration(this.module, statement.id.name, 'module', statement.id);
         }
         break;
       default:
@@ -342,7 +347,7 @@ class Analyzer {
       if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
         continue;
       }
-      this.declare(scope, specifier.local.name, 'import', specifier.local);
+      this.addDeclaration(scope, specifier.local.name, 'import', specifier.local);
     }
   }
 
@@ -383,7 +388,7 @@ class Analyzer {
         case 'ClassDeclaration':
         case 'TSEnumDeclaration':
           if (statement.id) {
-            this.declare(scope, statement.id.name, 'const', statement.id);
+            this.addDeclaration(scope, statement.id.name, 'const', statement.id);
           }
           this.createSite('setup', scope, statement, 'setup');
           break;
@@ -436,17 +441,17 @@ class Analyzer {
         for (const property of id.properties) {
           if (property.type === 'RestElement') {
             for (const binding of getPatternNames(property.argument)) {
-              this.declare(scope, binding.name, 'props-rest', binding);
+              this.addDeclaration(scope, binding.name, 'props-rest', binding);
             }
           } else {
             for (const binding of getPatternNames(property.value)) {
-              this.declare(scope, binding.name, 'prop', binding);
+              this.addDeclaration(scope, binding.name, 'prop', binding);
             }
           }
         }
         this.createDefaultSites(id, scope);
       } else if (id.type === 'Identifier') {
-        this.declare(scope, id.name, 'prop', id);
+        this.addDeclaration(scope, id.name, 'prop', id);
       } else {
         this.report('error', 'Assign $props() to a name or an object pattern', id);
       }
@@ -467,13 +472,13 @@ class Analyzer {
       }
       const argument = call.arguments[0];
       if (name === '$signal') {
-        this.declare(scope, id.name, 'signal', id);
+        this.addDeclaration(scope, id.name, 'signal', id);
         if (argument) {
           this.createSite('setup', scope, argument, `signal ${id.name}`);
         }
         return;
       }
-      const declaration = this.declare(scope, id.name, 'memo', id);
+      const declaration = this.addDeclaration(scope, id.name, 'memo', id);
       if (!argument) {
         this.report('error', '$memo needs a value', call);
         return;
@@ -495,7 +500,7 @@ class Analyzer {
     }
 
     for (const binding of getPatternNames(id)) {
-      this.declare(scope, binding.name, kind === 'const' ? 'const' : 'let', binding);
+      this.addDeclaration(scope, binding.name, kind === 'const' ? 'const' : 'let', binding);
     }
     this.createDefaultSites(id, scope);
     if (init) {
@@ -580,11 +585,11 @@ class Analyzer {
   }
 
   private declareTemplate(template: TemplateDecl, scope: Scope): void {
-    this.declare(scope, template.name, 'template', template.nameRange);
+    this.addDeclaration(scope, template.name, 'template', template.nameRange);
     const templateScope = this.createScope('template', scope, { template, body: template.body });
     for (const param of template.params) {
       for (const binding of getPatternNames(param)) {
-        this.declare(templateScope, binding.name, 'template-param', binding);
+        this.addDeclaration(templateScope, binding.name, 'template-param', binding);
       }
       this.createDefaultSites(param, templateScope);
     }
@@ -762,7 +767,7 @@ class Analyzer {
         this.header(block, scope, block.count, 'repeat');
         this.visitBody(block.body, scope, block, (body) => {
           if (block.index) {
-            this.declare(body, block.index.name, 'index', block.index, block);
+            this.addDeclaration(body, block.index.name, 'index', block.index, block);
           }
         });
         if (block.fallback) {
@@ -786,10 +791,10 @@ class Analyzer {
         this.visitBody(block.body, scope, block);
         this.visitBody(block.fallback, scope, block, (body) => {
           if (block.error) {
-            this.declare(body, block.error.name, 'error', block.error, block);
+            this.addDeclaration(body, block.error.name, 'error', block.error, block);
           }
           if (block.reset) {
-            this.declare(body, block.reset.name, 'reset', block.reset, block);
+            this.addDeclaration(body, block.reset.name, 'reset', block.reset, block);
           }
         });
         break;
@@ -817,11 +822,11 @@ class Analyzer {
 
   private declareLoopVariables(block: Block & { kind: 'for' }, body: Scope): void {
     for (const binding of getPatternNames(block.item)) {
-      this.declare(body, binding.name, 'item', binding, block);
+      this.addDeclaration(body, binding.name, 'item', binding, block);
     }
     this.createDefaultSites(block.item, body);
     if (block.index) {
-      this.declare(body, block.index.name, 'index', block.index, block);
+      this.addDeclaration(body, block.index.name, 'index', block.index, block);
     }
   }
 
