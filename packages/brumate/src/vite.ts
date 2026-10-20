@@ -21,12 +21,6 @@ export interface BrumateOptions {
   /** Loads pages without a full page load when a link is clicked or a form posts. Defaults to true. */
   navigate?: boolean;
   /**
-   * `inline` writes each component's stylesheet into the page. `file` builds
-   * every stylesheet into one CSS file that the client entry imports.
-   * Development always inlines. Defaults to `inline`.
-   */
-  css?: 'inline' | 'file';
-  /**
    * Client parts of a component smaller than this many bytes in all become
    * one module, so its first event loads one file. 0 keeps one module per
    * part. Defaults to 2048.
@@ -40,8 +34,6 @@ const START = 'virtual:brumate/start';
 const MANIFEST = 'virtual:brumate/manifest';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
-/** The stylesheets of every component, for `css: 'file'`. */
-const STYLES = 'virtual:brumate/styles.css';
 /** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
 const ROUTES = 'virtual:brumate/routes';
 
@@ -62,7 +54,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
-  let external = false;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -106,7 +97,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           filename: relative(file),
           liveProps: liveProps.get(file),
           path: file,
-          css: external ? 'external' : 'inline',
           merge: options.merge ?? 2048,
         }),
       };
@@ -199,8 +189,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     configResolved(config) {
       root = config.root;
-      // Development inlines styles, so a page has them before any script runs.
-      external = options.css === 'file' && config.command === 'build';
     },
 
     async buildStart() {
@@ -211,17 +199,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (id === START || id === MANIFEST || id === SERVER || id === ROUTES) {
         return `\0${id}`;
       }
-      if (id === STYLES) {
-        // Without the leading null character, so Vite's CSS plugin handles it.
-        return `/@brumate/styles.css`;
-      }
       return undefined;
     },
 
     async load(id, loadOptions) {
       if (id === `\0${START}`) {
         return [
-          ...(external ? [`import ${JSON.stringify(STYLES)};`] : []),
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${options.navigate !== false} });`,
@@ -235,13 +218,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${ROUTES}`) {
         return routeTree();
-      }
-      if (id === '/@brumate/styles.css') {
-        const results = await Promise.all([...files.values()].map(compileFile));
-        return results
-          .map(({ result }) => result.css)
-          .filter(Boolean)
-          .join('\n');
       }
       const [file, query] = id.split('?');
       if (!file?.endsWith('.brm')) {

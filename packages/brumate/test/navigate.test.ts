@@ -38,6 +38,16 @@ function page(layout: number, route: string, next: number): string {
   );
 }
 
+/** A `<main>` with one route in the children slot of a layout. */
+function region(layout: number, route: string, content: string): string {
+  return `<main><!--R${layout}:children:${layout + 1}:${encodeURIComponent(route)}-->${content}<!--/R--></main>`;
+}
+
+/** The first state record of a page with a root route. */
+function pageState(next: number): string {
+  return `<script type="brumate/state" data-scopes data-next="${next}" data-route="root">{}</script>`;
+}
+
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
 
 afterEach(() => {
@@ -149,5 +159,30 @@ describe('navigate', () => {
     expect(state.getAttribute('data-roots')).toBe('3');
     expect(state.getAttribute('data-alias')).toBe('2:0');
     expect(document.title).toBe('B');
+  });
+
+  it('keeps the stylesheets of components that kept layouts still show', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    // The old route holds the stylesheets of Badge, which the layout also shows, and of Card.
+    document.body.innerHTML =
+      region(
+        0,
+        '/a',
+        '<style data-brm="Badge_b1">b{}</style><style data-brm="Card_c1">c{}</style><p>a</p>',
+      ) + `<aside><b s-b1>Badge</b></aside>${pageState(2)}`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const { response, next } = respond([
+          `<!doctype html><html><head><title>B</title></head><body>${region(2, '/b', '<p>b</p>')}<aside><b s-b1>Badge</b></aside>${pageState(4)}</body></html>`,
+        ]);
+        next();
+        next();
+        return response;
+      }),
+    );
+    await navigate({ url: '/b', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.head.querySelector('style[data-brm="Badge_b1"]')).not.toBeNull();
+    expect(document.querySelector('style[data-brm="Card_c1"]')).toBeNull();
   });
 });

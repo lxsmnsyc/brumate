@@ -21,11 +21,6 @@ export interface CompileOptions {
   /** The absolute path of the file, so SCSS and Less can import files next to it. */
   path?: string;
   /**
-   * `inline` writes the stylesheet into the page. `external` leaves it to a
-   * CSS file, from the `css` of the result. Defaults to `inline`.
-   */
-  css?: 'inline' | 'external';
-  /**
    * When the client parts of a component are smaller than this many bytes
    * in all, they become one module. Defaults to 0, which keeps one module
    * per part.
@@ -78,7 +73,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     throw new CompileError(source, filename, errors);
   }
-  const plan = createPlan(file, graph, options.path, options.css !== 'external');
+  const plan = createPlan(file, graph, options.path);
   const styleErrors = plan.styles.diagnostics.filter(
     (diagnostic) => diagnostic.severity === 'error',
   );

@@ -102,6 +102,24 @@ function between(start: Node, end: Node): Node[] {
   return nodes;
 }
 
+/**
+ * The server writes a component's stylesheet before its first instance, so
+ * an old route can hold the stylesheet of a component that a kept layout
+ * still shows. Such a stylesheet moves to the head. The others go with the
+ * route, so the page keeps only the CSS of the components that it shows.
+ */
+function keepStyles(removed: HTMLStyleElement[]): void {
+  for (const style of removed) {
+    const id = style.getAttribute('data-brm')!;
+    // The component ID ends with the hash that scopes its elements, as `s-<hash>`.
+    const attribute = `s-${id.slice(id.lastIndexOf('_') + 1)}`;
+    const present = document.querySelector(`style[data-brm="${CSS.escape(id)}"]`);
+    if (!present && document.querySelector(`[${attribute}]`)) {
+      document.head.append(style);
+    }
+  }
+}
+
 /** True when a slot's end comment is a sibling of its start comment. */
 function complete(region: Region): boolean {
   return between(region.start, region.end).at(-1) === region.end;
@@ -135,8 +153,18 @@ function planRoutes(next: Document): Plan | undefined {
 /** Replaces the routes that change, and keeps the rest of the page. */
 function replaceRoutes(next: Document, result: Plan): void {
   const state = next.body.querySelector(`${STATE}[data-route]`)!;
+  const removed: HTMLStyleElement[] = [];
   for (const [before, region] of result.replace) {
     const nodes = between(before.start, before.end);
+    for (const node of nodes) {
+      if (node.nodeType === 1) {
+        const element = node as Element;
+        removed.push(
+          ...(element.matches('style[data-brm]') ? [element as HTMLStyleElement] : []),
+          ...element.querySelectorAll<HTMLStyleElement>('style[data-brm]'),
+        );
+      }
+    }
     const parent = before.start.parentNode!;
     for (const node of between(region.start, region.end)) {
       parent.insertBefore(document.adoptNode(node), before.start);
@@ -145,6 +173,7 @@ function replaceRoutes(next: Document, result: Plan): void {
       node.parentNode?.removeChild(node);
     }
   }
+  keepStyles(removed);
   // The core drops the scopes of the old routes, and adds only the scopes of the new ones.
   state.setAttribute('data-drop', result.replace.map(([before]) => before.root).join(','));
   state.setAttribute('data-roots', result.replace.map(([, region]) => region.root).join(','));

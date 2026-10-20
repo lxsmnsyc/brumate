@@ -124,28 +124,6 @@ describe('vite plugin', () => {
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
   });
-
-  it('builds every stylesheet into one CSS file with css: file', async () => {
-    const result = (await build({
-      ...config,
-      plugins: [brumate({ css: 'file' })],
-      build: {
-        write: false,
-        manifest: true,
-        rolldownOptions: { input: 'virtual:brumate/start' },
-      },
-    })) as Rolldown.RolldownOutput;
-    const assets = result.output.filter(
-      (item): item is Rolldown.OutputAsset => item.type === 'asset',
-    );
-    const css = assets.find((asset) => asset.fileName.endsWith('.css'));
-    expect(String(css?.source)).toMatch(/p\[s-\w+\]\{color:teal\}/);
-    // The stylesheets are not inlined in the client modules.
-    const chunks = result.output.filter(
-      (item): item is Rolldown.OutputChunk => item.type === 'chunk',
-    );
-    expect(chunks.some((chunk) => chunk.code.includes('$$css'))).toBe(false);
-  });
 });
 
 describe('style imports', () => {

@@ -360,7 +360,7 @@ export class Emitter {
   /** Emits the content of the component, without creating its scope. */
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
-    if (this.plan.styles.css && this.plan.inlineStyles) {
+    if (this.plan.styles.css) {
       // The stylesheet is written once per page, before the first instance.
       this.code(`$$ctx.style(${JSON.stringify(this.plan.id)}, $$css)`);
     }
