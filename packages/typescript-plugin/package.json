@@ -1,7 +1,6 @@
 {
   "name": "@brumate/typescript-plugin",
   "version": "0.0.0",
-  "private": true,
   "description": "TypeScript server plugin for .brm files",
   "license": "MIT",
   "files": [
@@ -15,6 +14,9 @@
       "default": "./dist/index.cjs"
     },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",

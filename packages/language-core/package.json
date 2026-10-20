@@ -1,7 +1,6 @@
 {
   "name": "@brumate/language-core",
   "version": "0.0.0",
-  "private": true,
   "description": "Volar language plugin for .brm files",
   "license": "MIT",
   "files": [
@@ -14,6 +13,9 @@
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",

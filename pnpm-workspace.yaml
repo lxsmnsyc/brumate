@@ -2,3 +2,7 @@ packages:
   - packages/*
   - examples/*
   - website
+
+# Sass brings an optional file watcher with a native build. The tests do not need it.
+allowBuilds:
+  '@parcel/watcher': false

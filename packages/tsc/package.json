@@ -1,7 +1,6 @@
 {
   "name": "@brumate/tsc",
   "version": "0.0.0",
-  "private": true,
   "description": "Type-checks brumate projects, including .brm files",
   "license": "MIT",
   "bin": {
@@ -18,6 +17,9 @@
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",
