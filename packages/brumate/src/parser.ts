@@ -56,6 +56,7 @@ const BLOCK_KEYWORDS = new Set([
   'try',
   'loading',
   'portal',
+  'head',
   'client',
   'template',
 ]);
@@ -834,6 +835,8 @@ class Parser {
         const fallback = this.parseBranch('else') ? this.parseBody('else') : undefined;
         return { kind: 'loading', start, end: this.pos, on, body, fallback };
       }
+      case 'head':
+        return { kind: 'head', start, end: this.pos, body: this.parseBody('head') };
       case 'portal': {
         const header = this.parseHeader('portal', false);
         const target = header ? this.expression(header.start, header.end) : undefined;

@@ -215,7 +215,8 @@ export function init(value: CoreOptions): void {
     }
   });
   observer.observe(document, { childList: true, subtree: true });
-  indexMarkers(document.body);
+  // The whole document, because `#head` content is in the head.
+  indexMarkers(document.documentElement);
 }
 
 /** Replaces function references with functions that call them. */
@@ -497,7 +498,7 @@ function indexMarkers(root: Node): void {
 function findComment(key: string): Comment {
   let comment = comments.get(key);
   if (!comment?.isConnected) {
-    indexMarkers(document.body);
+    indexMarkers(document.documentElement);
     comment = comments.get(key);
   }
   if (!comment) {
@@ -820,6 +821,11 @@ export function provide(scope: Scope, context: ContextValue<unknown>, value: unk
   }
 }
 
+/** Sets the title of the page. */
+export function title(value: unknown): void {
+  document.title = value === null || value === undefined ? '' : String(value);
+}
+
 /** Writes a prop of a child component. */
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   const id = scope.c?.[anchor];
@@ -979,6 +985,16 @@ class ClientContext {
 
   element(scope: number, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
+  }
+
+  /** Adds the markup of a `#head` block to the document's head. */
+  head(html: string): void {
+    this.after.push(() => insertHTML({ parent: document.head }, html));
+  }
+
+  /** Sets the title of the page, for a component that the client renders. */
+  title(value: unknown): void {
+    title(value);
   }
 
   /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */

@@ -61,6 +61,7 @@ export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): voi
         break;
       case 'key':
       case 'portal':
+      case 'head':
       case 'client':
         forEachNode(node.body.children, visit);
         break;

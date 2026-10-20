@@ -1,0 +1,16 @@
+<script>
+  let count = $signal(0);
+  let open = $signal(false);
+  $title(`Count ${count} <`);
+</script>
+
+#head {
+  <meta name="description" content=(`Clicked ${count} times`)>
+}
+<button class="add" onClick=(() => count++)>+</button>
+<button class="open" onClick=(() => (open = !open))>Open</button>
+#if (open) {
+  #head {
+    <link rel="canonical" href="/open">
+  }
+}

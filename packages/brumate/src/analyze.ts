@@ -37,10 +37,12 @@ const COMPILE_TIME_FUNCTIONS = new Set([
   '$provide',
   '$context',
   '$id',
+  '$title',
 ]);
 
 const MISPLACED: Record<string, string> = {
   $provide: 'Call $provide at the top level of a script',
+  $title: 'Call $title at the top level of a script',
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
   $context: 'Read a context with "const name = $context(Context)" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
@@ -402,7 +404,14 @@ class Analyzer {
           break;
         case 'ExpressionStatement': {
           const name = calleeName(statement.expression);
-          if (name === '$provide') {
+          if (name === '$title') {
+            const call = statement.expression as oxc.CallExpression;
+            if (call.arguments.length !== 1) {
+              this.report('error', '$title takes one argument, the title', call);
+            } else {
+              this.createSite('title', scope, call.arguments[0]!, 'title');
+            }
+          } else if (name === '$provide') {
             this.declareProvide(statement.expression as oxc.CallExpression, scope);
           } else if (name === '$effect' || name === '$client') {
             this.declareEffect(statement.expression as oxc.CallExpression, name, scope);
@@ -862,6 +871,9 @@ class Analyzer {
         if (block.fallback) {
           this.visitBody(block.fallback, scope, block);
         }
+        break;
+      case 'head':
+        this.visitBody(block.body, scope, block);
         break;
       case 'portal':
         if (block.target) {

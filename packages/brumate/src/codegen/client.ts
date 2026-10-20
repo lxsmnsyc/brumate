@@ -584,6 +584,10 @@ class ClientGenerator {
       }
       return;
     }
+    if (site.kind === 'title') {
+      this.emit(`export function ${name('u')}($$s) {\n  $$b.title(${expression()});\n}`);
+      return;
+    }
     if (site.kind === 'provide') {
       const context = site.extra![0]!;
       this.emit(

@@ -2,6 +2,7 @@ import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
 import type { SerovalJSON, SerovalNode } from 'seroval';
 import {
   VOID_ELEMENTS,
+  escape,
   escapeAttribute,
   insertValue,
   isRaw,
@@ -50,6 +51,9 @@ export class Context {
   private readonly styles = new Set<string>();
   /** Markup of `#portal` blocks, written at the end of the page. */
   readonly portals: string[] = [];
+  /** Markup of `#head` blocks. */
+  private readonly heads: string[] = [];
+  private pageTitle: string | undefined;
   private onBoundary: ((boundary: Boundary) => void) | undefined;
   /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
   private readonly tree = new Map<number, { parent?: number; values?: Map<string, unknown> }>();
@@ -174,6 +178,23 @@ export class Context {
     }
     this.root.styles.add(id);
     return styleElement(id, css);
+  }
+
+  /** Adds the markup of a `#head` block. */
+  head(html: string): void {
+    this.root.heads.push(html);
+  }
+
+  /** Sets the title of the page. The last call wins. */
+  title(value: unknown): void {
+    this.root.pageTitle = value === null || value === undefined ? '' : String(value);
+  }
+
+  /** The markup for the document's head: the title and the `#head` blocks. */
+  headHTML(): string {
+    const title =
+      this.root.pageTitle === undefined ? '' : `<title>${escape(this.root.pageTitle)}</title>`;
+    return title + this.root.heads.join('');
   }
 
   /** Adds the markup of a `#portal` block, which goes after the rest of the page. */
@@ -305,6 +326,8 @@ export interface RenderResult {
   pending: AsyncIterable<string>;
   /** Headers that server functions set while the page rendered, with `getResponseHeaders`. */
   headers: Headers;
+  /** Markup for the document's head: the `$title` and the `#head` blocks. */
+  head: string;
 }
 
 /** An async iterable that a producer pushes into. */
@@ -443,12 +466,16 @@ export async function renderToString<P>(
   serialize(ctx.state, (script) => {
     state = script;
   });
-  return { html, state, pending: queue.iterable, headers };
+  return { html, state, pending: queue.iterable, headers, head: ctx.headHTML() };
 }
 
 export interface StreamOptions extends RenderOptions {
-  /** Markup before the component, such as the start of the document. */
-  start?: string;
+  /**
+   * Markup before the component, such as the start of the document. A
+   * function receives the markup for the document's head, which is only known
+   * after the component renders.
+   */
+  start?: string | ((head: string) => string);
   /**
    * Markup right after the page state, such as the client entry. Make
    * module scripts `async`, so they run before the stream ends.
@@ -470,8 +497,10 @@ export function renderToStream<P>(
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        const { html, state, pending } = await renderToString(Root, props, options);
-        controller.enqueue(`${options.start ?? ''}${html}${state}${options.scripts ?? ''}`);
+        const { html, state, pending, head } = await renderToString(Root, props, options);
+        const start =
+          typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
+        controller.enqueue(`${start}${html}${state}${options.scripts ?? ''}`);
         for await (const chunk of pending) {
           controller.enqueue(chunk);
         }

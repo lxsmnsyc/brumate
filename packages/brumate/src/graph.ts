@@ -136,6 +136,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       case 'tag':
       case 'style':
       case 'provide':
+      case 'title':
         node = addNode({ kind: 'binding', site });
         break;
       case 'block':

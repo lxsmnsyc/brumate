@@ -11,6 +11,7 @@
   let todos = $signal(initial);
   let draft = $signal('');
   const left = $memo(todos.filter((todo) => !todo.done).length);
+  $title(`${left} left`);
 
   async function save(list: Todo[]) {
     'use server';

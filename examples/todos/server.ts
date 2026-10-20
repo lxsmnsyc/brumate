@@ -6,11 +6,12 @@ import { createServer } from 'vite';
 // and answers server function calls.
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 
-const start = `<!doctype html>
+// The head comes from the components, such as their `$title`.
+const start = (head: string): string => `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8">
-    <title>brumate todos</title>
+    ${head}
     <style>.done { text-decoration: line-through; } li { cursor: pointer; }</style>
     <script type="module" src="/@vite/client"></script>
   </head>

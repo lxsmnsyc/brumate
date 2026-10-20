@@ -95,7 +95,8 @@ export type SiteKind =
   | 'tag'
   | 'block'
   | 'style'
-  | 'provide';
+  | 'provide'
+  | 'title';
 
 /** A place where code runs: a function, a statement or a markup expression. */
 export interface Site {

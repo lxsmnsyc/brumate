@@ -249,6 +249,10 @@ export class Emitter {
         if (name === '$effect' || name === '$client') {
           continue;
         }
+        if (name === '$title' && expression.type === 'CallExpression' && expression.arguments[0]) {
+          this.line(`$$ctx.title(${this.source(expression.arguments[0])});`);
+          continue;
+        }
         if (name === '$provide' && expression.type === 'CallExpression') {
           const [context, value] = expression.arguments;
           if (context && value) {
@@ -727,9 +731,9 @@ export class Emitter {
    * between markers with its scope ID. With a target, the client renders it
    * into the target when the page loads.
    */
-  private emitPortal(block: Block & { kind: 'portal' }, scope: Scope): void {
+  private emitPortal(block: Block & { kind: 'portal' | 'head' }, scope: Scope): void {
     const body = this.plan.bodyScopes.get(block.body)!;
-    if (block.target) {
+    if (block.kind === 'portal' && block.target) {
       const anchor = this.anchor(scope, block)!;
       this.html('<template data-b="');
       this.code(anchor.scope);
@@ -748,7 +752,8 @@ export class Emitter {
     this.flush();
     this.line('return $$html;');
     this.close('})();');
-    this.line(`$$ctx.portal(${name});`);
+    // `#head` content goes to the document's head, and portal content to the end of the page.
+    this.line(`$$ctx.${block.kind === 'head' ? 'head' : 'portal'}(${name});`);
   }
 
   /**
@@ -892,6 +897,7 @@ export class Emitter {
         this.end(block);
         return;
       case 'portal':
+      case 'head':
         this.emitPortal(block, scope);
         return;
       default:

@@ -44,7 +44,8 @@ import { renderToStream } from 'brumate/server';
 import App from './src/App.brm';
 
 const stream = renderToStream(App, { initial: [] }, {
-  start: '<!doctype html><html><body>',
+  // The head holds the $title and the #head blocks of the components.
+  start: (head) => `<!doctype html><html><head>${head}</head><body>`,
   // `async`, so the loader starts before the pending state records arrive.
   scripts: '<script type="module" async src="/src/client.ts"></script>',
   end: '</body></html>',
@@ -53,7 +54,7 @@ const stream = renderToStream(App, { initial: [] }, {
 });
 ```
 
-`renderToString` returns the same parts without a stream: the markup, the state script, and the rest as an async iterable of markup: `#loading` bodies and state records, in the order they are ready.
+`renderToString` returns the same parts without a stream: the markup, the head, the state script, and the rest as an async iterable of markup: `#loading` bodies and state records, in the order they are ready.
 
 ```ts
 const { html, state, pending } = await renderToString(App, { initial: [] });

@@ -27,7 +27,7 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are eleven. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
+There are twelve. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
 
 ```json
 { "compilerOptions": { "types": ["brumate/types"] } }
@@ -110,6 +110,17 @@ On the server, it is always false.
 - The ID is made from the ID of the scope and the position of the call in its script, such as `b0-0`. Server and client make the same ID, and nothing is counted at runtime.
 - In the script of a block, each instance gets its own IDs, such as each item of a `#for`.
 - Scopes that the client creates have negative IDs, so IDs made on the client never match the server's.
+
+### `$title`
+
+`$title(value)` sets the title of the page. It is a statement at the top level of a script.
+
+```ts
+let count = $signal(0);
+$title(`Clicked ${count} times`);
+```
+
+The server writes `<title>` into the head that `renderToString` returns. When the value changes on the client, the title changes too. If several components set a title, the last one that renders wins.
 
 ### `$provide` and `$context`
 
@@ -309,6 +320,21 @@ Renders its body somewhere else in the page.
 - Without a target, the body goes to the end of the page. The server writes it after the rest of the markup, and the client appends it to `<body>`.
 - With a target, an element or a selector, the client renders the body into the target when the page loads, because the target exists only in the browser. A target that changes on the client is not supported yet.
 - The content of a portal is removed with the block that contains it, such as the `#if` above.
+
+### `#head`
+
+Renders its body into the document's `<head>`, for tags such as `<meta>` and `<link>`:
+
+```html
+#head {
+  <meta name="description" content=(`${count} items`)>
+}
+```
+
+- The server collects it into the head that `renderToString` returns, after the `$title`.
+- Attributes can change on the client.
+- Inside a block that the client renders, the content is added to `<head>`, and removed with the block.
+- Use `$title` for the title. Text in `<title>` cannot hold the markers that updates need.
 
 ### `#client`
 

@@ -16,11 +16,12 @@ const TYPES: Record<string, string> = {
   '.css': 'text/css',
 };
 
-const start = `<!doctype html>
+// The head comes from the components, such as their `$title`.
+const start = (head: string): string => `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8">
-    <title>brumate todos</title>
+    ${head}
     <style>.done { text-decoration: line-through; } li { cursor: pointer; }</style>
   </head>
   <body>

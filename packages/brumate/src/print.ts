@@ -110,6 +110,10 @@ export function printAST(file: SFCFile): string {
           body(item.fallback, depth + 1, 'else');
         }
         break;
+      case 'head':
+        write(depth, 'head');
+        body(item.body, depth + 1, 'body');
+        break;
       case 'portal':
         write(depth, item.target ? `portal (${item.target.code})` : 'portal');
         body(item.body, depth + 1, 'body');

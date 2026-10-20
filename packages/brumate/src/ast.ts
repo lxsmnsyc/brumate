@@ -208,6 +208,12 @@ export interface LoadingBlock extends Range {
   fallback?: Body;
 }
 
+/** `#head { … }`: markup for the document's `<head>`. */
+export interface HeadBlock extends Range {
+  kind: 'head';
+  body: Body;
+}
+
 export interface PortalBlock extends Range {
   kind: 'portal';
   target?: Expression;
@@ -231,6 +237,7 @@ export type Block =
   | TryBlock
   | LoadingBlock
   | PortalBlock
+  | HeadBlock
   | ClientBlock;
 
 export interface TemplateDecl extends Range {

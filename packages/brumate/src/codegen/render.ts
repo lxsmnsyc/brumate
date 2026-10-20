@@ -45,6 +45,7 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
         break;
       case 'key':
       case 'portal':
+      case 'head':
       case 'client':
         componentNames(node.body.children, names);
         break;

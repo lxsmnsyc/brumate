@@ -128,6 +128,24 @@ describe('streaming', () => {
   });
 });
 
+describe('head', () => {
+  it('collects the title and #head blocks', async () => {
+    const module = await import(new URL('page.brm.ts', output).href);
+    const { head, html } = await renderToString(module.default, {});
+    expect(head).toMatch(
+      /^<title>Count 0 &lt;<\/title><!--P\d+--><meta name="description" content="Clicked 0 times"/,
+    );
+    expect(html).not.toContain('<meta');
+
+    const reader = renderToStream(
+      module.default,
+      {},
+      { start: (markup) => `<head>${markup}</head><body>` },
+    ).getReader();
+    expect((await reader.read()).value).toMatch(/^<head><title>Count 0 &lt;<\/title>/);
+  });
+});
+
 describe('#loading', () => {
   it('streams the body after the fallback', async () => {
     const module = await import(new URL('loading.brm.ts', output).href);

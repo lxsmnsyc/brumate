@@ -5,7 +5,7 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are eleven compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide`, `$context` and `$id`.
+- There are twelve compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$provide`, `$context`, `$id` and `$title`.
 - `$id()` makes an ID from the scope's ID and the call's position, so server and client agree without counting at runtime.
 - `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
@@ -32,6 +32,7 @@
 - Server functions read the request with `getRequest`, set response headers with `getResponseHeaders`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
+- The head is `$title` and `#head` blocks. `renderToString` returns it, and `renderToStream` passes it to `start`. A `$title` or `#head` inside a `#loading` body is not supported yet, because the head has been sent by then.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.

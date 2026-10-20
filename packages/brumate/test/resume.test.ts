@@ -371,6 +371,31 @@ describe('resume', () => {
     expect(document.querySelectorAll('label')[3]!.htmlFor).toBe(added.id);
   });
 
+  it('updates the title and #head blocks', async () => {
+    vi.resetModules();
+    const server = await import(file('page.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const { html, state, head } = await runtime.renderToString(server.default, {});
+    document.head.innerHTML = head;
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(document.title).toBe('Count 0 <');
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.title).toBe('Count 1 <'));
+    expect(document.head.querySelector('meta')!.getAttribute('content')).toBe('Clicked 1 times');
+
+    click(document.querySelector('.open')!);
+    await waitFor(() =>
+      expect(document.head.querySelector('link[rel="canonical"]')).not.toBeNull(),
+    );
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.head.querySelector('link')).toBeNull());
+    document.head.innerHTML = '';
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);
