@@ -1,8 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
-import { Readable } from 'node:stream';
+import { send, toRequest } from './node.ts';
 
 // Serves the production build: `pnpm build` writes dist/client and dist/server.
 const root = path.dirname(new URL(import.meta.url).pathname);
@@ -16,19 +15,6 @@ const TYPES: Record<string, string> = {
   '.css': 'text/css',
 };
 
-/** Turns a Node request into a web Request, for server function calls. */
-async function toRequest(request: IncomingMessage): Promise<Request> {
-  let body = '';
-  for await (const chunk of request) {
-    body += chunk;
-  }
-  return new Request(`http://localhost${request.url}`, {
-    method: request.method,
-    headers: request.headers as Record<string, string>,
-    body: request.method === 'POST' ? body : undefined,
-  });
-}
-
 const http = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   try {
@@ -36,8 +22,7 @@ const http = createServer(async (request, response) => {
     if (request.method === 'POST') {
       const answer = await server.handle(await toRequest(request));
       if (answer) {
-        response.writeHead(answer.status, Object.fromEntries(answer.headers));
-        response.end(await answer.text());
+        send(answer, response);
         return;
       }
     }
@@ -53,18 +38,11 @@ const http = createServer(async (request, response) => {
       response.end(await readFile(file));
       return;
     }
-    const stream = server.renderToStream(
-      server.Root,
-      {
-        initial: [
-          { id: '1', title: 'Write the docs', done: true },
-          { id: '2', title: 'Build the compiler', done: false },
-        ],
-      },
-      { scripts: `<script type="module" async src="${entry}"></script>` },
-    );
-    response.setHeader('content-type', 'text/html');
-    Readable.fromWeb(stream).pipe(response);
+    // The route files under src/routes render the page.
+    const answer = await server.route(await toRequest(request), {
+      scripts: `<script type="module" async src="${entry}"></script>`,
+    });
+    send(answer, response);
   } catch (error) {
     response.statusCode = 500;
     response.end(String((error as Error).stack));

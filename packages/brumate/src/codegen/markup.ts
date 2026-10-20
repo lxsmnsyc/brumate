@@ -447,7 +447,12 @@ export class Emitter {
         return;
       case 'insert': {
         const anchor = this.anchor(scope, node);
-        const value = `${this.wait}$$b.insert(${this.expression(node.expression)})`;
+        // On the server, the insert knows where it is, for markup that renders there, such as children.
+        const at =
+          this.options.mode === 'server'
+            ? `, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))}`
+            : '';
+        const value = `${this.wait}$$b.insert(${this.expression(node.expression)}${at})`;
         if (anchor) {
           this.html('<!--t');
           this.code(anchor.scope);

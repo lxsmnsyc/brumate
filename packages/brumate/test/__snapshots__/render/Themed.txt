@@ -7,7 +7,7 @@ export default async function Themed($$props: Record<string, never>, $$ctx: $$b.
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Themed_qy9qd3");
   const theme = $$ctx.consume(Theme, $$s1, 0);
-  $$html += "<span class=\"themed\"><!--t" + $$s1 + ":0-->" + await $$b.insert((theme)) + "<!--/t--></span>";
+  $$html += "<span class=\"themed\"><!--t" + $$s1 + ":0-->" + await $$b.insert((theme), $$ctx, $$s1) + "<!--/t--></span>";
   $$ctx.slots($$s1, [theme]);
   return $$html;
 }

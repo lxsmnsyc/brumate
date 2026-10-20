@@ -34,14 +34,14 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
     for (const [$$index2, $$item1] of $$list0.entries()) {
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\"><!--t" + $$s2 + ":1-->" + await $$b.insert((todo.title)) + "<!--/t--></li>";
+      $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\"><!--t" + $$s2 + ":1-->" + await $$b.insert((todo.title), $$ctx, $$s2) + "<!--/t--></li>";
       $$ctx.slots($$s2, [todo]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
-  $$html += "</ul><p><!--t" + $$s1 + ":2-->" + await $$b.insert((todos.filter((todo) => todo.done).length)) + "<!--/t--> done</p>";
+  $$html += "</ul><p><!--t" + $$s1 + ":2-->" + await $$b.insert((todos.filter((todo) => todo.done).length), $$ctx, $$s1) + "<!--/t--> done</p>";
   $$ctx.slots($$s1, [todos]);
   return $$html;
 }

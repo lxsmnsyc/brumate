@@ -9,12 +9,15 @@ import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
+import { routeFiles, routeModule } from './routes.ts';
 
 export interface BrumateOptions {
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
   /** Directories that are not searched for `.brm` files. Defaults to `node_modules`, `dist` and hidden directories. */
   exclude?: (directory: string) => boolean;
+  /** The directory of route files, relative to the root. Defaults to `src/routes`. */
+  routes?: string;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -23,6 +26,8 @@ const START = 'virtual:brumate/start';
 const MANIFEST = 'virtual:brumate/manifest';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
+/** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
+const ROUTES = 'virtual:brumate/routes';
 
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
@@ -106,6 +111,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     ].join('\n');
   };
 
+  const routeTree = (): string => {
+    const directory = normalizePath(path.resolve(root, options.routes ?? 'src/routes'));
+    const paths = [...files.values()]
+      .filter((file) => file.startsWith(`${directory}/`))
+      .map((file) => file.slice(directory.length + 1));
+    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`);
+  };
+
   const handleDevRPC = async (
     server: ViteDevServer,
     request: IncomingMessage,
@@ -153,7 +166,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     resolveId(id) {
-      if (id === START || id === MANIFEST || id === SERVER) {
+      if (id === START || id === MANIFEST || id === SERVER || id === ROUTES) {
         return `\0${id}`;
       }
       return undefined;
@@ -172,6 +185,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${SERVER}`) {
         return serverRegistry();
+      }
+      if (id === `\0${ROUTES}`) {
+        return routeTree();
       }
       const [file, query] = id.split('?');
       if (!file?.endsWith('.brm')) {
@@ -217,7 +233,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         void update.then(() => {
           for (const module of server.moduleGraph.idToModuleMap.values()) {
             const id = module.id ?? '';
-            if (id.includes('.brm') || id === `\0${MANIFEST}` || id === `\0${SERVER}`) {
+            if (
+              id.includes('.brm') ||
+              id === `\0${MANIFEST}` ||
+              id === `\0${SERVER}` ||
+              id === `\0${ROUTES}`
+            ) {
               server.moduleGraph.invalidateModule(module);
             }
           }

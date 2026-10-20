@@ -19,13 +19,17 @@ import {
   plugins,
 } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
-import { Redirect, ServerError, withRequest } from './request.ts';
+import { Redirect, ServerError, isRedirect, withRequest } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext } from './context.ts';
+import { matchRoute } from './router.ts';
+import type { RouteNode, RouteView } from './router.ts';
+export { matchRoute } from './router.ts';
+export type { Loader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { ServerError, getRequest, getResponseHeaders, isRedirect, redirect } from './request.ts';
 export type { Redirect } from './request.ts';
 export { ElementReference, FunctionReference };
@@ -233,11 +237,33 @@ export class Context {
   }
 }
 
-/** Renders a value inserted in markup. */
-export async function insert(value: unknown): Promise<string> {
+const LAZY: unique symbol = Symbol.for('brumate.lazy');
+
+/** Markup that renders where it is inserted, so it can read the contexts there. */
+export interface Lazy {
+  [LAZY]: (ctx: Context, scope: number | undefined) => Promise<string>;
+}
+
+/** Makes markup that renders where it is inserted, such as the children of a layout. */
+export function lazy(renderAt: (ctx: Context, scope: number | undefined) => Promise<string>): Lazy {
+  return { [LAZY]: renderAt };
+}
+
+function isLazy(value: unknown): value is Lazy {
+  return typeof value === 'object' && value !== null && LAZY in value;
+}
+
+/**
+ * Renders a value inserted in markup. `ctx` and `scope` are where it is
+ * inserted, for markup that renders there.
+ */
+export async function insert(value: unknown, ctx?: Context, scope?: number): Promise<string> {
   const resolved = await value;
+  if (isLazy(resolved) && ctx) {
+    return resolved[LAZY](ctx, scope);
+  }
   if (Array.isArray(resolved)) {
-    const parts = await Promise.all(resolved.map(insert));
+    const parts = await Promise.all(resolved.map((item) => insert(item, ctx, scope)));
     return parts.join('');
   }
   return insertValue(resolved);
@@ -542,18 +568,40 @@ export function renderToStream<P>(
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        const { html, state, pending, head } = await render(Root, props, options);
-        // The first render goes out whole, and what resolves later follows it.
-        controller.enqueue(firstRender(html, head, state, options));
-        for await (const chunk of pending) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
+        await writeParts(await render(Root, props, options), options, controller);
       } catch (error) {
         controller.error(error);
       }
     },
   });
+}
+
+/** Streams the parts of a page from `render`: the first render whole, then what resolves later. */
+export function streamParts(
+  parts: RenderResult,
+  options: DocumentOptions = {},
+): ReadableStream<string> {
+  return new ReadableStream<string>({
+    async start(controller) {
+      try {
+        await writeParts(parts, options, controller);
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
+}
+
+async function writeParts(
+  parts: RenderResult,
+  options: DocumentOptions,
+  controller: ReadableStreamDefaultController<string>,
+): Promise<void> {
+  controller.enqueue(firstRender(parts.html, parts.head, parts.state, options));
+  for await (const chunk of parts.pending) {
+    controller.enqueue(chunk);
+  }
+  controller.close();
 }
 
 /**
@@ -618,4 +666,66 @@ export async function handleRequest(
       });
     }
   });
+}
+
+interface ResolvedView {
+  component: Component;
+  slots: Record<string, ResolvedView>;
+}
+
+/** Imports every module of a matched route before it renders. */
+async function resolveView(view: RouteView): Promise<ResolvedView> {
+  const [module, ...slots] = await Promise.all([
+    view.load(),
+    ...Object.values(view.slots).map(resolveView),
+  ]);
+  const names = Object.keys(view.slots);
+  return {
+    component: module.default,
+    slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
+  };
+}
+
+/** A component that renders a route, with its slots rendering where the layout inserts them. */
+function viewComponent(view: ResolvedView, params: Record<string, string>): Component {
+  return (_props, ctx) => {
+    const props: Record<string, unknown> = { params };
+    for (const [name, slot] of Object.entries(view.slots)) {
+      props[name] = lazy((at, scope) => component(viewComponent(slot, params), {}, at, scope));
+    }
+    return view.component(props, ctx);
+  };
+}
+
+/**
+ * Answers a request with the route that matches its path, streamed. Returns
+ * undefined when no route matches. A `redirect` while the page renders
+ * answers with a redirect.
+ */
+export async function handleRoute(
+  tree: RouteNode,
+  request: Request,
+  options: DocumentOptions = {},
+): Promise<Response | undefined> {
+  const url = new URL(request.url);
+  const match = matchRoute(tree, url.pathname);
+  if (!match) {
+    return undefined;
+  }
+  const view = await resolveView(match.view);
+  try {
+    const parts = await render(viewComponent(view, match.params), {}, { ...options, request });
+    const headers = new Headers(parts.headers);
+    headers.set('content-type', 'text/html; charset=utf-8');
+    const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
+    return new Response(body, { headers });
+  } catch (error) {
+    if (isRedirect(error)) {
+      return new Response(null, {
+        status: error.status,
+        headers: { location: new URL(error.location, url).href },
+      });
+    }
+    throw error;
+  }
 }

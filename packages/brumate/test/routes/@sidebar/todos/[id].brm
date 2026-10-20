@@ -1,0 +1,5 @@
+<script>
+  const { params } = $props();
+</script>
+
+<p>Editing {params.id}</p>

@@ -1,0 +1,8 @@
+<script>
+  import Counter from '../../Counter.brm';
+
+  const { params } = $props<{ params: { start: string } }>();
+  $title('Counter');
+</script>
+
+<Counter start=(Number(params.start)) />

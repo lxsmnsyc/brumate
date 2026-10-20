@@ -1,0 +1,9 @@
+<script>
+  import { Theme } from '../theme';
+
+  const { params } = $props();
+  const theme = $context(Theme);
+  $title(`Todo ${params.id}`);
+</script>
+
+<h1 class=theme>Todo {params.id}</h1>

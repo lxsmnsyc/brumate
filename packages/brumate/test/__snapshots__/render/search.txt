@@ -28,7 +28,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
     for (const [$$index2, $$item1] of $$list0.entries()) {
       const result = $$item1;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((result)) + "<!--/t--></li>";
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((result), $$ctx, $$s3) + "<!--/t--></li>";
       $$ctx.slots($$s3, [result]);
       $$ctx.item($$s3, $$item1);
       $$html += "<!--/i-->";

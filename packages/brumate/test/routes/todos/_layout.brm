@@ -1,0 +1,5 @@
+<script>
+  const { children } = $props();
+</script>
+
+<section class="todos">{children}</section>

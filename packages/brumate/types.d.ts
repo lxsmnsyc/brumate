@@ -17,3 +17,11 @@ declare module 'virtual:brumate/server' {
   export const functions: Record<string, (...args: any[]) => unknown>;
   export function handle(request: Request): Promise<Response | undefined>;
 }
+
+declare module 'virtual:brumate/routes' {
+  export const routes: import('brumate/server').RouteNode;
+  export function handle(
+    request: Request,
+    options?: import('brumate/server').DocumentOptions,
+  ): Promise<Response | undefined>;
+}

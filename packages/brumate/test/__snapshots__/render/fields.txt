@@ -17,7 +17,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";
       const field = $$ctx.id($$s2, 0);
-      $$html += "<label" + $$b.attribute("for", (field)) + "><!--t" + $$s2 + ":0-->" + await $$b.insert((name)) + "<!--/t--></label><input" + $$b.attribute("id", (field)) + ">";
+      $$html += "<label" + $$b.attribute("for", (field)) + "><!--t" + $$s2 + ":0-->" + await $$b.insert((name), $$ctx, $$s2) + "<!--/t--></label><input" + $$b.attribute("id", (field)) + ">";
       $$ctx.slots($$s2, [name, field]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";

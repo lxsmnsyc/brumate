@@ -15,7 +15,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
   async function row(index: number): Promise<$$b.Raw> {
     let $$html = '';
     const $$s2 = $$ctx.scope(2, $$s1);
-    $$html += "<span>" + await $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + await $$b.insert((index + 1)) + "<!--/t--></span>";
+    $$html += "<span>" + await $$b.insert((label), $$ctx, $$s2) + " <!--t" + $$s2 + ":0-->" + await $$b.insert((index + 1), $$ctx, $$s2) + "<!--/t--></span>";
     $$ctx.slots($$s2, [index]);
     return $$b.raw($$html);
   }
@@ -27,7 +27,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
       const count = $$item1;
       const i = $$index2;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((row(i))) + "<!--/t-->" + await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + await $$b.insert((row(i)), $$ctx, $$s3) + "<!--/t-->" + await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
       $$ctx.slots($$s3, [count, i]);
       $$ctx.item($$s3, $$item1);
       $$html += "<!--/i-->";
@@ -41,7 +41,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
     $$html += "<section>";
     const $$children3 = await (async () => {
       let $$html = '';
-      $$html += "<em>" + await $$b.insert((label)) + "</em>";
+      $$html += "<em>" + await $$b.insert((label), $$ctx, $$s4) + "</em>";
       return $$b.raw($$html);
     })();
     $$html += await $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children3 }, $$ctx, $$s4, 0) + "</section><!--/b-->";

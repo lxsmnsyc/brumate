@@ -1,0 +1,5 @@
+<script>
+  const { params } = $props();
+</script>
+
+<h1>No page at {params.rest}</h1>

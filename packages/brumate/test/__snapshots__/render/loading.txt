@@ -14,7 +14,7 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
   const $$s1 = $$ctx.scope(1, undefined, "Loading_1sx8r1u");
   let count = (0);
   const $$p_greeting = (async () => (`Hello ${await ready}`))();
-  $$html += "<button class=\"outer\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Loading_1sx8r1u#h2\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--></button>";
+  $$html += "<button class=\"outer\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Loading_1sx8r1u#h2\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--></button>";
   const $$boundary0 = $$ctx.boundary();
   $$html += "<!--l" + $$boundary0 + "-->";
   {
@@ -25,7 +25,7 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
     let $$html = '';
     const greeting = await $$p_greeting;
     const $$s2 = $$ctx.scope(2, $$s1);
-    $$html += "<p class=\"greeting\">" + await $$b.insert((greeting)) + "</p><button class=\"inner\" data-b=\"" + $$s2 + ":0\" data-on=\"click=Loading_1sx8r1u#h5\"><!--t" + $$s2 + ":1-->" + await $$b.insert((count)) + "<!--/t--></button>";
+    $$html += "<p class=\"greeting\">" + await $$b.insert((greeting), $$ctx, $$s2) + "</p><button class=\"inner\" data-b=\"" + $$s2 + ":0\" data-on=\"click=Loading_1sx8r1u#h5\"><!--t" + $$s2 + ":1-->" + await $$b.insert((count), $$ctx, $$s2) + "<!--/t--></button>";
     return $$html;
   });
   $$ctx.slots($$s1, [count]);

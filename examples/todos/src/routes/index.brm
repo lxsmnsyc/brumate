@@ -1,0 +1,10 @@
+<script>
+  import App from '../App.brm';
+</script>
+
+<App
+  initial=([
+    { id: '1', title: 'Write the docs', done: true },
+    { id: '2', title: 'Build the compiler', done: false },
+  ])
+/>

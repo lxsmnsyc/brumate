@@ -1,0 +1,5 @@
+<script>
+  const { params } = $props<{ params: { start: string } }>();
+</script>
+
+<p>The counter started at {params.start}.</p>

@@ -11,7 +11,7 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + await $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + await $$b.insert((count)) + "<!--/t--></p>";
+  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + await $$b.insert((label), $$ctx, $$s1) + ": <!--t" + $$s1 + ":2-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count]);
   return $$html;
 }

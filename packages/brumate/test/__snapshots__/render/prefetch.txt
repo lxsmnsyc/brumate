@@ -6,7 +6,7 @@ export default async function Prefetch($$props: Record<string, never>, $$ctx: $$
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Prefetch_okfwof");
   let count = (0);
-  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
+  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
   $$ctx.slots($$s1, [count]);
   return $$html;
 }

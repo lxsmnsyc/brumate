@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "types": ["node", "vite/client", "brumate/types"],
     "strict": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true
   }
 }

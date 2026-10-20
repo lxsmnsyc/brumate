@@ -117,15 +117,16 @@ export async function fetch(request: Request): Promise<Response> {
 
 ## Modules
 
-| Import                                 | What it is                                                           |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| `./App.brm` on the server              | The server module. Its default export renders the component.         |
-| `./App.brm` in the browser             | The client module.                                                   |
-| `./App.brm?brumate-client&part=<name>` | A part of the client module. The entry imports it when it is needed. |
-| `./App.brm?brumate-render`             | The render module, for a component rendered on the client.           |
-| `virtual:brumate/start`                | Starts the loader with the manifest.                                 |
-| `virtual:brumate/manifest`             | Exports `load(id)`, which imports the client module of a component.  |
-| `virtual:brumate/server`               | Exports `functions` and `handle(request)`.                           |
+| Import                                 | What it is                                                                    |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `./App.brm` on the server              | The server module. Its default export renders the component.                  |
+| `./App.brm` in the browser             | The client module.                                                            |
+| `./App.brm?brumate-client&part=<name>` | A part of the client module. The entry imports it when it is needed.          |
+| `./App.brm?brumate-render`             | The render module, for a component rendered on the client.                    |
+| `virtual:brumate/start`                | Starts the loader with the manifest.                                          |
+| `virtual:brumate/manifest`             | Exports `load(id)`, which imports the client module of a component.           |
+| `virtual:brumate/server`               | Exports `functions` and `handle(request)`.                                    |
+| `virtual:brumate/routes`               | Exports `routes` and `handle(request, options)`. See [Routing](./routing.md). |
 
 The plugin finds `.brm` files under the root when the build starts, and again when files are added or removed. It skips `node_modules`, `dist` and hidden directories. Component IDs come from the path relative to the root, so they are the same on every machine.
 
@@ -139,6 +140,8 @@ brumate({
   rpc: '/_brumate',
   // Directories to skip when looking for .brm files.
   exclude: (directory) => directory === 'node_modules',
+  // The directory of route files.
+  routes: 'src/routes',
 });
 ```
 

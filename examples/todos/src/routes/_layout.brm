@@ -1,0 +1,30 @@
+<script>
+  // Wraps every page. `children` is the page, and `aside` is the @aside route for the same path.
+  const { children, aside } = $props();
+</script>
+
+<style>
+  :global(.done) {
+    text-decoration: line-through;
+  }
+  :global(li) {
+    cursor: pointer;
+  }
+  .page {
+    display: flex;
+    gap: 2rem;
+  }
+</style>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a></nav>
+    <div class="page">
+      <main>{children}</main>
+      <aside>{aside}</aside>
+    </div>
+  </body>
+</html>
