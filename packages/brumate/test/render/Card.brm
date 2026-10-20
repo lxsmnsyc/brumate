@@ -1,0 +1,11 @@
+<script>
+  const { title, children } = $props();
+  let open = $signal(false);
+</script>
+
+<section class="card">
+  <button class="open" onClick=(() => (open = !open))>{title}</button>
+  #if (open) {
+    <div class="body">{children}</div>
+  }
+</section>

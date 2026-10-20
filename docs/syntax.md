@@ -372,3 +372,4 @@ Skips the body on the server. The client renders it when its trigger fires. The 
 - A prop can change on the client only if a parent passes it a value that can change. The compiler finds these props across the project. See [Props across files](./compiler.md#props-across-files).
 - A function passed as a prop must be a client function. The compiler moves it out of the parent and gives it a reference to the parent's scope.
 - `children` and `#template` values passed as props are rendered on the server. They ship only if the client must create them again.
+- `children` ship as the HTML that the server rendered. When a component inserts them again on the client, such as in an `#if` that opens, the client updates the values in them to the current ones. Their handlers work.

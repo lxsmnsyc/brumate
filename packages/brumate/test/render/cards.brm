@@ -1,0 +1,10 @@
+<script>
+  import Card from './Card.brm';
+
+  let count = $signal(0);
+</script>
+
+<Card title="One"><b class="inner">Hello</b></Card>
+<Card title="Two"><button class="inc" onClick=(() => count++)>{count}</button></Card>
+<Card title="Three"><i class="seen">{count}</i></Card>
+<button class="outside" onClick=(() => count++)>More</button>

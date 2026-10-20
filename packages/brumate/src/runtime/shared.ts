@@ -1,5 +1,7 @@
 import { Feature, createPlugin } from 'seroval';
 import type { Plugin, SerovalNode } from 'seroval';
+import { isRaw, raw, rawHTML } from './html.ts';
+import type { Raw } from './html.ts';
 
 /** An element that the server rendered. The client finds it by its anchor. */
 export class ElementReference {
@@ -67,8 +69,21 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
     new FunctionReference(ctx.deserialize<string>(node.a), ctx.deserialize<number>(node.b)),
 });
 
+/** HTML, such as the `children` of a component, so the client can insert it again. */
+const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
+  tag: 'brumate/raw',
+  test: isRaw,
+  parse: {
+    sync: (value, ctx) => ({ h: ctx.parse(rawHTML(value)) }),
+    async: async (value, ctx) => ({ h: await ctx.parse(rawHTML(value)) }),
+    stream: (value, ctx) => ({ h: ctx.parse(rawHTML(value)) }),
+  },
+  serialize: (node, ctx) => ctx.serialize(node.h),
+  deserialize: (node, ctx) => raw(ctx.deserialize<string>(node.h)),
+});
+
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const plugins: Plugin<any, any>[] = [ElementPlugin, FunctionPlugin];
+export const plugins: Plugin<any, any>[] = [ElementPlugin, FunctionPlugin, RawPlugin];
 
 /**
  * Errors keep their name and message only. A stack trace would show the

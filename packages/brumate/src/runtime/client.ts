@@ -583,16 +583,18 @@ function indexMarkers(root: Node): void {
   }
 }
 
-function findComment(key: string): Comment {
+/**
+ * Finds a marker in the page. Returns undefined when the markup is not in
+ * the page, such as `children` inside a block that is closed. Updates to it
+ * do nothing, and it updates when the client inserts it again.
+ */
+function findComment(key: string): Comment | undefined {
   let comment = comments.get(key);
   if (!comment?.isConnected) {
     indexMarkers(document.documentElement);
     comment = comments.get(key);
   }
-  if (!comment) {
-    throw new Error(`Missing marker <!--${key}-->`);
-  }
-  return comment;
+  return comment?.isConnected ? comment : undefined;
 }
 
 function findElement(scope: number, anchor: number): Element | null {
@@ -642,6 +644,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const fragment = template.content;
   indexMarkers(fragment);
   options.listen(fragment);
+  const server = serverScopes(fragment);
   if ('parent' in before) {
     before.parent.append(fragment);
   } else {
@@ -650,6 +653,33 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   for (const fn of context.after.splice(0)) {
     fn();
   }
+  // HTML from the server, such as `children`, can be older than the values on the client.
+  if (server.length > 0) {
+    refresh(server);
+  }
+}
+
+/**
+ * Returns the scopes from the server that markup refers to. Markup that the
+ * client renders has client scopes, so these come from HTML that the server
+ * rendered, such as the `children` of a component.
+ */
+function serverScopes(root: ParentNode): Scope[] {
+  const ids = new Set<number>();
+  for (const element of root.querySelectorAll('[data-b]')) {
+    ids.add(Number(element.getAttribute('data-b')!.split(':')[0]));
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const match = /^[tb](\d+):/.exec((node as Comment).data);
+    if (match) {
+      ids.add(Number(match[1]));
+    }
+  }
+  return [...ids].flatMap((id) => {
+    const scope = scopes.get(id);
+    return scope ? [scope] : [];
+  });
 }
 
 /** Renders a `#portal` body into its target, between markers with its scope ID. */
@@ -665,6 +695,9 @@ export function portal(scope: Scope, target: unknown, render: Render): void {
 
 export function text(scope: Scope, anchor: number, value: unknown): void {
   const start = findComment(`t${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   const end = rangeEnd(start);
   const node = start.nextSibling;
   if (
@@ -727,6 +760,9 @@ export function branch(
   kinds: number[],
 ): void {
   const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   if (Number(start.data.split(':')[2]) === index) {
     return;
   }
@@ -754,6 +790,9 @@ export function rekey(
   }
   scope.keys.set(anchor, value);
   const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   const end = rangeEnd(start);
   disposeKinds(scope, kinds);
   clear(start, end);
@@ -774,6 +813,9 @@ export async function reset(
 ): Promise<void> {
   const updates = await loadPart(await loadModule(id), 'update');
   const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   const end = rangeEnd(start);
   disposeKinds(scope, kinds);
   clear(start, end);
@@ -792,6 +834,9 @@ export async function reset(
 /** Renders the body of a `#client` block once. */
 export function fill(scope: Scope, anchor: number, render: Render): void {
   const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   const end = rangeEnd(start);
   if (start.nextSibling === end) {
     insertHTML(end, render(scope));
@@ -815,6 +860,9 @@ export function list(
   fallbackKinds: number[],
 ): void {
   const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
   const end = rangeEnd(start);
   const previous = new Map<unknown, Item>();
   const others: Node[] = [];

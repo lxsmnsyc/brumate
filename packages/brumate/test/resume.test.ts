@@ -537,3 +537,34 @@ describe('resume', () => {
     await waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
   });
 });
+
+describe('children', () => {
+  it('renders children again on the client', async () => {
+    await resume('cards', {});
+    expect(document.querySelector('.inner')).toBeNull();
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(text('.inner')).toBe('Hello'));
+    // Closing and opening again renders them once more.
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(document.querySelector('.inner')).toBeNull());
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(text('.inner')).toBe('Hello'));
+  });
+
+  it('keeps the handlers and updates of children that the client renders', async () => {
+    await resume('cards', {});
+    click(document.querySelectorAll('.open')[1]!);
+    await waitFor(() => expect(text('.inc')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.inc')).toBe('1'));
+  });
+
+  it('updates children that the server rendered before values changed', async () => {
+    await resume('cards', {});
+    click(document.querySelector('.outside')!);
+    click(document.querySelector('.outside')!);
+    await waitFor(() => expect(document.querySelector('.outside')).not.toBeNull());
+    click(document.querySelectorAll('.open')[2]!);
+    await waitFor(() => expect(text('.seen')).toBe('2'));
+  });
+});
