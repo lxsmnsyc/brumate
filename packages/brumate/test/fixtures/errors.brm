@@ -22,6 +22,8 @@
     limit = 2;
     const inner = $signal(1);
     $ref();
+    $produce(double, () => {});
+    $produce(user.name, (draft) => draft);
   }
 </script>
 

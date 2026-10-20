@@ -69,6 +69,15 @@ export function addValueEdits(
         patch.replace(node.start, node.end, '$$props');
         return;
       }
+      if (name === '$produce' && argument?.type === 'Identifier') {
+        // `$produce(todos, recipe)` becomes `(todos = $$b.produce(todos, recipe))`.
+        patch.replace(node.start, argument.start, `(${argument.name} = $$b.produce(`);
+        patch.insert(node.end, ')');
+        for (const rest of node.arguments.slice(1)) {
+          visit(rest);
+        }
+        return;
+      }
       if (name === '$signal' || name === '$memo' || name === '$untrack') {
         if (!argument) {
           patch.replace(node.start, node.end, 'undefined');

@@ -1,0 +1,35 @@
+<script>
+  interface Todo {
+    id: string;
+    title: string;
+    done: boolean;
+  }
+
+  let todos = $signal<Todo[]>([
+    { id: '1', title: 'Docs', done: false },
+    { id: '2', title: 'Ship', done: false },
+  ]);
+
+  function toggle(id: string) {
+    $produce(todos, (draft) => {
+      const todo = draft.find((item) => item.id === id);
+      if (todo) {
+        todo.done = !todo.done;
+      }
+    });
+  }
+
+  function add() {
+    $produce(todos, (draft) => {
+      draft.push({ id: String(draft.length + 1), title: 'New', done: false });
+    });
+  }
+</script>
+
+<button class="add" onClick=add>Add</button>
+<ul>
+  #for (todo of todos by todo.id) {
+    <li class={ done: todo.done } onClick=(() => toggle(todo.id))>{todo.title}</li>
+  }
+</ul>
+<p>{todos.filter((todo) => todo.done).length} done</p>

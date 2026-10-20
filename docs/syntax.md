@@ -27,7 +27,7 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are six. They need no import.
+There are seven. They need no import.
 
 ```ts
 const { initial } = $props<{ initial: number }>();
@@ -115,6 +115,29 @@ The callback can return a cleanup function.
 
 Reads a value without adding an edge to the graph.
 
+### `$produce`
+
+Changes an object or an array in a signal by changing a draft of it:
+
+```ts
+let todos = $signal<Todo[]>([]);
+
+function toggle(id: string) {
+  $produce(todos, (draft) => {
+    const todo = draft.find((item) => item.id === id);
+    if (todo) {
+      todo.done = !todo.done;
+    }
+  });
+}
+```
+
+- It writes the signal with a new value, as `todos = produce(todos, recipe)` would. It is allowed where writes are.
+- The new value shares every object that the recipe did not change. A keyed `#for` keeps the elements of those items, and their markup does not update.
+- If the recipe changes nothing, the signal keeps its value and nothing updates.
+- The recipe can return a new value instead of changing the draft.
+- Only plain objects and arrays are drafted. A `Map`, a `Set` or a class instance inside the value is used as it is, so changing it does not make a new value.
+
 ### Where writes are allowed
 
 Signals can be written in event handlers, `$effect` callbacks, `$client` callbacks and functions called from them. A write anywhere else is a compile error, such as a write inside a `$memo` or at setup after the declaration.
@@ -127,7 +150,7 @@ These solid-sfc functions are not supported:
 - `$renderEffect` and `$trackedEffect` are replaced by `$effect`.
 - `$settled` and `$cleanup` are replaced by `$client` and the cleanup return value.
 - `$derefSignal`, `$derefMemo`, `$get`, `$set`, `$refSignal` and `$property` pass signals out of the file. Signals never leave the file, so the compiler can see every read and write.
-- `$store` and its helpers are not supported. An object or array in a signal changes by assigning a new value, such as `todos = todos.map(…)`. A keyed `#for` keeps the elements of items that stay, so only changed items update.
+- `$store` and its helpers are not supported. An object or array in a signal changes by assigning a new value, such as `todos = todos.map(…)`, or with `$produce`. A keyed `#for` keeps the elements of items that stay, so only changed items update.
 
 Scripts, expressions and attribute values cannot contain markup, as they can in solid-sfc. Use `#for` for lists and a [`#template`](#control-flow) for markup that is used as a value.
 

@@ -13,6 +13,7 @@ import type { PageState } from './shared.ts';
 
 export { attribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
+export { produce } from './produce.ts';
 
 type Update = [kind: number, name: string];
 

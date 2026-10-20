@@ -66,6 +66,40 @@ export class Rewriter {
     }
   }
 
+  /** `$produce(todos, recipe)` writes the slot of `todos` with the result of the recipe. */
+  private rewriteProduce(
+    node: oxc.CallExpression,
+    target: oxc.IdentifierReference,
+    patch: Patch,
+    references: Map<number, Reference>,
+    locals: Set<Declaration>,
+    scopeVar: string,
+    base: Scope,
+    visit: (node: oxc.Node) => void,
+  ): void {
+    const reference = references.get(target.start);
+    const declaration = reference?.declaration;
+    const slot = declaration && !locals.has(declaration) ? slotIndex(this.plan, declaration) : -1;
+    if (declaration && slot !== -1) {
+      const path = scopePath(this.plan, scopeVar, base, declaration.scope);
+      patch.replace(
+        node.start,
+        target.end,
+        `$$b.set(${path}, ${slot}, $$b.produce($$b.get(${path}, ${slot})`,
+      );
+    } else if (declaration && !locals.has(declaration)) {
+      // Nothing on the client reads the value, so there is nothing to change.
+      patch.replace(node.start, node.end, 'undefined');
+      return;
+    } else {
+      patch.replace(node.start, target.end, `(${target.name} = $$b.produce(${target.name}`);
+    }
+    patch.insert(node.end, ')');
+    for (const argument of node.arguments.slice(1)) {
+      visit(argument);
+    }
+  }
+
   rewrite(site: Site, scopeVar: string, base: Scope, options: RewriteOptions = {}): string {
     const patch = new Patch(this.file.source);
     const locals = options.locals ?? new Set();
@@ -162,6 +196,24 @@ export class Rewriter {
           break;
         }
         case 'CallExpression':
+          if (
+            node.callee.type === 'Identifier' &&
+            node.callee.name === '$produce' &&
+            !references.has(node.callee.start) &&
+            node.arguments[0]?.type === 'Identifier'
+          ) {
+            this.rewriteProduce(
+              node,
+              node.arguments[0],
+              patch,
+              references,
+              locals,
+              scopeVar,
+              base,
+              visit,
+            );
+            return;
+          }
           if (
             node.callee.type === 'Identifier' &&
             node.callee.name === '$untrack' &&

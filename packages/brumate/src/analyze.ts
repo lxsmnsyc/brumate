@@ -1124,6 +1124,26 @@ class Resolver {
             this.untracked--;
             return;
           }
+          if (name === '$produce') {
+            // `$produce(todos, recipe)` reads and writes `todos`.
+            const [target, recipe, ...rest] = node.arguments;
+            if (target?.type === 'Identifier') {
+              this.reference(target, 'update');
+            } else {
+              this.analyzer.report('error', '$produce needs a signal as its first argument', node);
+            }
+            if (!isFunction(recipe)) {
+              this.analyzer.report(
+                'error',
+                '$produce needs a recipe function as its second argument',
+                node,
+              );
+            }
+            for (const argument of recipe ? [recipe, ...rest] : rest) {
+              this.visit(argument);
+            }
+            return;
+          }
           if (COMPILE_TIME_FUNCTIONS.has(name)) {
             this.analyzer.report('error', MISPLACED[name] ?? `${name} cannot be used here`, node);
           } else if (name in REMOVED) {

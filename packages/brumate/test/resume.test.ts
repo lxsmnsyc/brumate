@@ -218,6 +218,22 @@ describe('resume', () => {
     await waitFor(() => expect(document.querySelector('dialog')).toBeNull());
   });
 
+  it('changes lists with $produce', async () => {
+    await resume('produce', {});
+    const [first, second] = document.querySelectorAll('li');
+    click(second!);
+    await waitFor(() => expect(second!.className).toBe('done'));
+    expect(text('p')).toBe('1 done');
+    expect(first!.getAttribute('class')).toBeNull();
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(3));
+    // Items that stay keep their elements.
+    expect(document.querySelectorAll('li')[0]).toBe(first);
+    expect(document.querySelectorAll('li')[1]).toBe(second);
+    expect(text('li:last-child')).toBe('New');
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

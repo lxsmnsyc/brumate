@@ -5,7 +5,7 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are six compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client` and `$untrack`.
+- There are seven compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack` and `$produce`.
 - `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
 - `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.
@@ -27,7 +27,7 @@
 - An async `$memo` is a promise on the server. It is awaited where it is declared only if something outside every `#loading` body reads it.
 - `renderToString` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
-- There is no `$store`. Objects and arrays in signals change by assigning a new value. A keyed `#for` compares the old and new lists and updates only the items that changed.
+- There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
 - seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -38,7 +38,7 @@
 - **File extension.** `.brm` is a placeholder.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
-- **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
+- **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
 - **Async `$memo`.** A memo is async when it awaits or calls a server function in the same file. A call to an imported function that returns a promise is not detected.
 - **Children.** `children` is rendered on the server and passed as HTML. It serializes as an empty value, so the client cannot render it again.
