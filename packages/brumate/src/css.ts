@@ -10,8 +10,12 @@ export interface StyleOutput {
   css: string;
   /** The attribute that marks the component's elements, such as `s-1abc`. */
   attribute: string;
-  /** The custom property for each `${…}` interpolation, in source order. */
-  variables: { name: string; expression: Expression }[];
+  /**
+   * The custom property for each `${…}` interpolation, in source order. Text
+   * right before or after it, such as a unit in `${size}px`, is part of the
+   * value, because `var(--x)px` is not valid CSS.
+   */
+  variables: { name: string; expression: Expression; prefix: string; suffix: string }[];
   diagnostics: Diagnostic[];
   /** Absolute paths of the files that SCSS or Less imported. */
   dependencies: string[];
@@ -172,9 +176,20 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
     let position = 0;
     for (const expression of style.variables) {
       const name = `--${attribute}-${variables.length}`;
-      variables.push({ name, expression });
-      const start = expression.start - 2 - contentStart;
-      const end = expression.end + 1 - contentStart;
+      let start = expression.start - 2 - contentStart;
+      let end = expression.end + 1 - contentStart;
+      // Text that touches the interpolation, such as `px` or `#`, goes into the value.
+      const prefixStart = start;
+      while (start > position && /[#\w.%-]/.test(style.content[start - 1]!)) {
+        start--;
+      }
+      const prefix = style.content.slice(start, prefixStart);
+      const suffixStart = end;
+      while (end < style.content.length && /[\w.%-]/.test(style.content[end]!)) {
+        end++;
+      }
+      const suffix = style.content.slice(suffixStart, end);
+      variables.push({ name, expression, prefix, suffix });
       content += `${style.content.slice(position, start)}var(${name})`;
       position = end;
     }

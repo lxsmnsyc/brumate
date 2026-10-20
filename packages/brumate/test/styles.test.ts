@@ -67,4 +67,25 @@ describe('style languages', () => {
     );
     expect(less.plan.styles.css).toMatch(/color: teal/);
   });
+
+  it('puts text that touches an interpolation into the variable, such as a unit', () => {
+    const result = compile(
+      source(
+        '<style>\n  p { margin: -${size}px; color: #${hex}; width: calc(${size}px + 1rem); content: "${label} items"; }\n</style>',
+      ).replace("const color = 'red';", 'const size = 2; const hex = "fff"; const label = "a";'),
+      { filename: 'Card.brm' },
+    );
+    expect(result.plan.styles.css).toMatch(
+      /margin: var\(--s-\w+-0\); color: var\(--s-\w+-1\); width: calc\(var\(--s-\w+-2\) \+ 1rem\); content: "var\(--s-\w+-3\) items"/,
+    );
+    expect(
+      result.plan.styles.variables.map((variable) => [variable.prefix, variable.suffix]),
+    ).toEqual([
+      ['-', 'px'],
+      ['#', ''],
+      ['', 'px'],
+      ['', ''],
+    ]);
+    expect(result.server).toContain('$$b.affix("-", (size), "px")');
+  });
 });

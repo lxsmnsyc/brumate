@@ -31,6 +31,9 @@
 
 `${expression}` in CSS reads a value of the component. It becomes a custom property, `var(--s-<hash>-<n>)`.
 
+- Text that touches the interpolation is part of the value, so units work: `font-size: ${size}px` sets the property to `12px`, and `color: #${hex}` to `#fff`. The CSS reads `var(--s-<hash>-<n>)` alone, because `var(--x)px` is not valid CSS.
+- `null`, `undefined` and `false` set no property.
+
 - The top-level elements of the component set the custom properties in their `style` attribute, so the elements inside inherit them. An element's own `style` comes after them.
 - The elements that markup outside the component's elements renders also count as top-level: children passed to a component, and the markup of a `#template`.
 - A top-level dynamic tag sets them too. A component in a dynamic tag gets them as its `style` prop.

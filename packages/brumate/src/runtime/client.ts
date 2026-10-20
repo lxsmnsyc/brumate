@@ -13,7 +13,7 @@ import { ElementReference, FunctionReference, plugins } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export { attribute, escape, raw, spread, vars } from './html.ts';
+export { affix, attribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext } from './context.ts';

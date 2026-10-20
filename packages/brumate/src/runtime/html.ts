@@ -97,6 +97,16 @@ export function attribute(name: string, value: unknown): string {
   return value === true ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
 }
 
+/**
+ * Returns the value of a style variable with text around it, such as `12px`
+ * for `${size}px`. A value that sets no variable stays as it is.
+ */
+export function affix(prefix: string, value: unknown, suffix: string): unknown {
+  return value === null || value === undefined || value === false
+    ? value
+    : `${prefix}${String(value)}${suffix}`;
+}
+
 /** Returns a style with custom properties before an element's own style. */
 export function vars(variables: Record<string, unknown>, own: unknown): string {
   const parts: string[] = [];

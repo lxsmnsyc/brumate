@@ -14,7 +14,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies } from '../plan.ts';
 import type { Plan } from '../plan.ts';
-import { Emitter } from './markup.ts';
+import { Emitter, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import { Rewriter } from './rewrite.ts';
@@ -645,7 +645,7 @@ class ClientGenerator {
       const variable = this.plan.styles.variables.find((item) => item.expression.ast === site.node);
       if (variable) {
         this.emit(
-          `export function ${name('u')}($$s) {\n  $$b.setVar($$s, ${JSON.stringify(variable.name)}, ${expression()});\n}`,
+          `export function ${name('u')}($$s) {\n  $$b.setVar($$s, ${JSON.stringify(variable.name)}, ${variableValue(variable, expression())});\n}`,
         );
       }
       return;

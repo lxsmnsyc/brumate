@@ -528,7 +528,8 @@ export class Emitter {
       return false;
     }
     const values = variables.map(
-      (variable) => `${JSON.stringify(variable.name)}: ${this.expression(variable.expression)}`,
+      (variable) =>
+        `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
     );
     const own = node.attributes.find(
       (attribute) =>
@@ -775,7 +776,8 @@ export class Emitter {
       }
       attributes = attributes.filter((attribute) => attribute !== own);
       const values = variables.map(
-        (variable) => `${JSON.stringify(variable.name)}: ${this.expression(variable.expression)}`,
+        (variable) =>
+          `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
       );
       extra.push(`"style": $$b.vars({ ${values.join(', ')} }, ${existing})`);
       if (this.plan.liveStyles) {
@@ -972,4 +974,14 @@ export class Emitter {
         this.end(block);
     }
   }
+}
+
+/** The value of a style variable, with the text around its interpolation, such as a unit. */
+export function variableValue(
+  variable: { prefix: string; suffix: string },
+  expression: string,
+): string {
+  return variable.prefix || variable.suffix
+    ? `$$b.affix(${JSON.stringify(variable.prefix)}, ${expression}, ${JSON.stringify(variable.suffix)})`
+    : expression;
 }

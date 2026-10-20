@@ -5,7 +5,7 @@
 
 <style>
   section {
-    font-size: ${`${size}px`};
+    font-size: ${size}px;
   }
 </style>
 
