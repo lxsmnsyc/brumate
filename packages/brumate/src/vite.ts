@@ -86,10 +86,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   // Props are analyzed across the project, so a change to one file can change the output of others.
   const analyze = async (): Promise<void> => {
-    const sources = new Map<string, string>();
-    for (const file of files.values()) {
-      sources.set(file, await readFile(file, 'utf8'));
-    }
+    const list = [...files.values()];
+    const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+    const sources = new Map(list.map((file, index) => [file, contents[index]!]));
     liveProps = analyzeProject(sources);
     compiled.clear();
   };
@@ -200,8 +199,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // The entry, the parts and the render module of a file come from one compile.
       let cached = compiled.get(file);
       if (cached?.source !== source) {
-        const options = { filename: relative(file), liveProps: liveProps.get(file) };
-        cached = { source, result: compile(source, options) };
+        cached = {
+          source,
+          result: compile(source, { filename: relative(file), liveProps: liveProps.get(file) }),
+        };
         compiled.set(file, cached);
       }
       const result = cached.result;
