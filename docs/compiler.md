@@ -86,7 +86,7 @@ Planned. The compiler now writes one client module per component. It will split 
 
 The output is plain ES modules with static imports. A bundler can bundle them, but does not need to know how they were split.
 
-A bundler plugin connects the compiler to the dev server and the build. It serves the split modules as virtual modules and maps server function IDs to their modules.
+The [Vite plugin](./vite.md) connects the compiler to the dev server and the build. It serves the modules and maps server function IDs to their modules.
 
 ## Runtime
 

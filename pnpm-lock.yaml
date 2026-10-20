@@ -176,6 +176,16 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  examples/todos:
+    dependencies:
+      brumate:
+        specifier: workspace:*
+        version: link:../../packages/brumate
+    devDependencies:
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)
+
   packages/brumate:
     dependencies:
       oxc-parser:
@@ -200,6 +210,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)
       vitest:
         specifier: ^5.0.4
         version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2))

@@ -4,7 +4,7 @@
 
 `brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
 
-This repository holds the design and the compiler. The compiler generates a server module that renders HTML with the state, and a client module that resumes it. There is no bundler plugin yet.
+This repository holds the design and the compiler. The compiler generates a server module that renders HTML with the state, and a client module that resumes it. A Vite plugin compiles `.brm` files in an app.
 
 ## Goals
 
@@ -45,6 +45,16 @@ This repository holds the design and the compiler. The compiler generates a serv
 
 The `<h1>` produces no client code. The `#for` item template ships because `add` can change `todos`. `persist` is a server function, so the client only gets a call stub.
 
+## Try it
+
+```bash
+pnpm install
+pnpm build
+pnpm --filter example-todos dev
+```
+
+[`examples/todos`](./examples/todos) renders a todo list and a counter on the server. In the browser, only the loader runs before the first click.
+
 ## Documents
 
 - [Execution model](./docs/model.md) explains what runs where and how the compiler decides what ships.
@@ -53,6 +63,7 @@ The `<h1>` produces no client code. The `#for` item template ships because `add`
 - [Grammar](./docs/grammar.md) defines the file format in EBNF.
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
+- [Vite](./docs/vite.md) describes the Vite plugin.
 - [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.

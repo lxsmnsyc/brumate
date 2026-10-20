@@ -1,0 +1,14 @@
+{
+  "name": "example-todos",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.ts"
+  },
+  "dependencies": {
+    "brumate": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}

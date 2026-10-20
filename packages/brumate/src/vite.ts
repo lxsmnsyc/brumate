@@ -1,0 +1,222 @@
+import { readFile, readdir } from 'node:fs/promises';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import path from 'node:path';
+import { normalizePath, transformWithOxc } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
+import { compile } from './compile.ts';
+import { getLocation } from './error.ts';
+import { getComponentName, hash } from './plan.ts';
+
+export interface BrumateOptions {
+  /** The URL prefix of server function calls. Defaults to `/_brumate`. */
+  rpc?: string;
+  /** Directories that are not searched for `.brm` files. Defaults to `node_modules`, `dist` and hidden directories. */
+  exclude?: (directory: string) => boolean;
+}
+
+/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+const START = 'virtual:brumate/start';
+/** Exports `load(id)`, which imports the client module of a component. */
+const MANIFEST = 'virtual:brumate/manifest';
+/** Exports `functions` and `handle(request)` for server function calls. */
+const SERVER = 'virtual:brumate/server';
+
+const CLIENT_QUERY = '?brumate-client';
+
+function defaultExclude(directory: string): boolean {
+  return directory === 'node_modules' || directory === 'dist' || directory.startsWith('.');
+}
+
+async function findFiles(root: string, exclude: (directory: string) => boolean): Promise<string[]> {
+  const result: string[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    const directories: Promise<void>[] = [];
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!exclude(entry.name)) {
+          directories.push(visit(file));
+        }
+      } else if (entry.name.endsWith('.brm')) {
+        result.push(normalizePath(file));
+      }
+    }
+    await Promise.all(directories);
+  };
+  await visit(root);
+  return result.toSorted();
+}
+
+async function readBody(request: IncomingMessage): Promise<string> {
+  let body = '';
+  for await (const chunk of request) {
+    body += chunk;
+  }
+  return body;
+}
+
+/** The Vite plugin for `.brm` files. */
+export default function brumate(options: BrumateOptions = {}): Plugin {
+  const rpc = options.rpc ?? '/_brumate';
+  const exclude = options.exclude ?? defaultExclude;
+  let root = process.cwd();
+  /** Component IDs to absolute file paths. */
+  const files = new Map<string, string>();
+
+  // The ID is computed from the path relative to the root, so it is the same on every machine.
+  const relative = (file: string): string => normalizePath(path.relative(root, file));
+  const componentId = (file: string): string => {
+    const filename = relative(file);
+    return `${getComponentName(filename)}_${hash(filename)}`;
+  };
+
+  const scan = async (): Promise<void> => {
+    files.clear();
+    for (const file of await findFiles(root, exclude)) {
+      files.set(componentId(file), file);
+    }
+  };
+
+  const manifest = (): string => {
+    const entries = [...files].map(
+      ([id, file]) =>
+        `  ${JSON.stringify(id)}: () => import(${JSON.stringify(`${file}${CLIENT_QUERY}`)}),`,
+    );
+    return [
+      'const modules = {',
+      ...entries,
+      '};',
+      'export function load(id) {',
+      '  const module = modules[id];',
+      '  if (!module) {',
+      '    throw new Error(`Unknown component "${id}"`);',
+      '  }',
+      '  return module();',
+      '}',
+    ].join('\n');
+  };
+
+  const serverRegistry = (): string => {
+    const imports = [...files.values()].map(
+      (file, index) => `import * as m${index} from ${JSON.stringify(file)};`,
+    );
+    const spreads = [...files.values()].map((_, index) => `  ...m${index}.rpc,`);
+    return [
+      "import { handleRequest } from 'brumate/server';",
+      ...imports,
+      'export const functions = {',
+      ...spreads,
+      '};',
+      'export function handle(request) {',
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)});`,
+      '}',
+    ].join('\n');
+  };
+
+  const handleDevRPC = async (
+    server: ViteDevServer,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
+    const id = decodeURIComponent((request.url ?? '').slice(rpc.length + 1).split('?')[0]!);
+    const file = files.get(id.split('#')[0]!);
+    if (!file) {
+      response.statusCode = 404;
+      response.end(`Unknown server function "${id}"`);
+      return;
+    }
+    try {
+      const module = await server.ssrLoadModule(file);
+      const { handleRPC } = await server.ssrLoadModule('brumate/server');
+      const result = await handleRPC(module.rpc ?? {}, id, JSON.parse(await readBody(request)));
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify(result));
+    } catch (error) {
+      server.config.logger.error(String((error as Error).stack ?? error));
+      response.statusCode = 500;
+      response.end(String(error));
+    }
+  };
+
+  return {
+    name: 'brumate',
+    enforce: 'pre',
+
+    configResolved(config) {
+      root = config.root;
+    },
+
+    async buildStart() {
+      await scan();
+    },
+
+    resolveId(id) {
+      if (id === START || id === MANIFEST || id === SERVER) {
+        return `\0${id}`;
+      }
+      return undefined;
+    },
+
+    async load(id, loadOptions) {
+      if (id === `\0${START}`) {
+        return [
+          "import { start } from 'brumate/loader';",
+          `import { load } from ${JSON.stringify(MANIFEST)};`,
+          `start({ load, rpc: ${JSON.stringify(rpc)} });`,
+        ].join('\n');
+      }
+      if (id === `\0${MANIFEST}`) {
+        return manifest();
+      }
+      if (id === `\0${SERVER}`) {
+        return serverRegistry();
+      }
+      const [file, query] = id.split('?');
+      if (!file?.endsWith('.brm')) {
+        return undefined;
+      }
+      // Vite can add its own parameters, such as `import`.
+      const isClient = new URLSearchParams(query).has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
+      const source = await readFile(file, 'utf8');
+      const result = compile(source, { filename: relative(file) });
+      for (const warning of result.warnings) {
+        const { line, column } = getLocation(source, warning.range.start);
+        this.warn(`${warning.message} (${relative(file)}:${line}:${column})`);
+      }
+      const code = isClient ? result.client : result.server;
+      return transformWithOxc(code, `${file}.ts`, { lang: 'ts' });
+    },
+
+    configureServer(server) {
+      server.watcher.on('all', (event, file) => {
+        if (!file.endsWith('.brm') || (event !== 'add' && event !== 'unlink')) {
+          return;
+        }
+        void scan().then(() => {
+          for (const name of [MANIFEST, SERVER]) {
+            const module = server.moduleGraph.getModuleById(`\0${name}`);
+            if (module) {
+              server.moduleGraph.invalidateModule(module);
+            }
+          }
+        });
+      });
+      server.middlewares.use((request, response, next) => {
+        if (request.method === 'POST' && request.url?.startsWith(`${rpc}/`)) {
+          void handleDevRPC(server, request, response);
+          return;
+        }
+        next();
+      });
+    },
+
+    handleHotUpdate({ file, server }) {
+      // A resumed page cannot swap a component's code, so the page reloads.
+      if (file.endsWith('.brm')) {
+        server.ws.send({ type: 'full-reload' });
+        return [];
+      }
+      return undefined;
+    },
+  };
+}

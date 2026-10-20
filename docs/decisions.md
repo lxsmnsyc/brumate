@@ -19,6 +19,8 @@
 - The client module of a component is one module for now. The loader imports it on the first event for that component.
 - Scope instances link to their parent with `p`, so client code reads outer values by walking up.
 - Lists keep the raw item of each item scope in the state, so keys can be computed again on the client.
+- The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
+- A change to a `.brm` file reloads the page instead of replacing modules.
 - seroval is the serializer. The state is seroval JSON, so the client reads it without `eval`.
 - Scope IDs are integers given in render order.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
@@ -51,5 +53,5 @@
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list. Done. See [Compiler](./compiler.md#size).
 5. Split client modules per handler and per update, as described in [Code splitting](./compiler.md#code-splitting).
 6. Render components on the client, inside blocks that change.
-7. Add a Vite plugin that serves the modules and answers server function calls.
+7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](./vite.md).
 8. Add component summaries.

@@ -1,0 +1,52 @@
+<script>
+  import Counter from './Counter.brm';
+
+  interface Todo {
+    id: string;
+    title: string;
+    done: boolean;
+  }
+
+  const { initial } = $props<{ initial: Todo[] }>();
+  let todos = $signal(initial);
+  let draft = $signal('');
+  const left = $memo(todos.filter((todo) => !todo.done).length);
+
+  async function save(list: Todo[]) {
+    'use server';
+    console.log('Saved', list.length, 'todos');
+  }
+
+  async function add() {
+    if (draft.trim() === '') {
+      return;
+    }
+    todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false }];
+    draft = '';
+    await save(todos);
+  }
+</script>
+
+<h1>Todos</h1>
+<form onSubmit:prevent=add>
+  <input value=draft placeholder="What needs doing?" onInput=((event) => (draft = event.currentTarget.value))>
+  <button>Add</button>
+</form>
+<ul>
+  #for (todo of todos by todo.id) {
+    <script>
+      function toggle() {
+        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+      }
+    </script>
+    <li class={ done: todo.done } onClick=toggle>{todo.title}</li>
+  } #else {
+    <li>Nothing to do.</li>
+  }
+</ul>
+<p>{left} left</p>
+
+#static {
+  <h2>Counter</h2>
+}
+<Counter start=3 />

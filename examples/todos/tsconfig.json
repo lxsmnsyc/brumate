@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["es2023", "dom"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node", "vite/client", "brumate/client"],
+    "strict": true,
+    "noEmit": true
+  }
+}

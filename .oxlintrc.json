@@ -12,7 +12,7 @@
     "import/no-unassigned-import": [
       "warn",
       {
-        "allow": ["**/*.css"]
+        "allow": ["**/*.css", "virtual:brumate/start"]
       }
     ]
   },

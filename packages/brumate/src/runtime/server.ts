@@ -157,3 +157,25 @@ export async function handleRPC(
   const args = fromJSON<unknown[]>(body, { plugins });
   return toJSONAsync(await fn(...args), { plugins });
 }
+
+/**
+ * Answers a server function call from `brumate/client`. Returns undefined
+ * when the request is not a call, so other handlers can answer it.
+ */
+export async function handleRequest(
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  functions: Record<string, (...args: any[]) => unknown>,
+  request: Request,
+  prefix = '/_brumate',
+): Promise<Response | undefined> {
+  const url = new URL(request.url);
+  if (request.method !== 'POST' || !url.pathname.startsWith(`${prefix}/`)) {
+    return undefined;
+  }
+  const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
+  if (!functions[id]) {
+    return new Response(`Unknown server function "${id}"`, { status: 404 });
+  }
+  const result = await handleRPC(functions, id, await request.json());
+  return new Response(JSON.stringify(result), { headers: { 'content-type': 'application/json' } });
+}
