@@ -127,7 +127,7 @@ These solid-sfc functions are not supported:
 - `$renderEffect` and `$trackedEffect` are replaced by `$effect`.
 - `$settled` and `$cleanup` are replaced by `$client` and the cleanup return value.
 - `$derefSignal`, `$derefMemo`, `$get`, `$set`, `$refSignal` and `$property` pass signals out of the file. Signals never leave the file, so the compiler can see every read and write.
-- `$store` and its helpers are deferred. In v1, an object in a signal is replaced as a whole.
+- `$store` and its helpers are not supported. An object or array in a signal changes by assigning a new value, such as `todos = todos.map(…)`. A keyed `#for` keeps the elements of items that stay, so only changed items update.
 
 Scripts, expressions and attribute values cannot contain markup, as they can in solid-sfc. Use `#for` for lists and a [`#template`](#control-flow) for markup that is used as a value.
 
