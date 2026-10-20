@@ -100,7 +100,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   // Every server module has it, so the server function registry can read it from any file.
   moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
 
-  if (plan.styles.css) {
+  if (plan.styles.css && plan.inlineStyles) {
     moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);
   }
   const emitter = new Emitter(file, plan, patch, { mode: 'server' });

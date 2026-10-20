@@ -20,6 +20,12 @@ export interface BrumateOptions {
   routes?: string;
   /** Loads pages without a full page load when a link is clicked or a form posts. Defaults to true. */
   navigate?: boolean;
+  /**
+   * `inline` writes each component's stylesheet into the page. `file` builds
+   * every stylesheet into one CSS file that the client entry imports.
+   * Development always inlines. Defaults to `inline`.
+   */
+  css?: 'inline' | 'file';
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -28,6 +34,8 @@ const START = 'virtual:brumate/start';
 const MANIFEST = 'virtual:brumate/manifest';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
+/** The stylesheets of every component, for `css: 'file'`. */
+const STYLES = 'virtual:brumate/styles.css';
 /** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
 const ROUTES = 'virtual:brumate/routes';
 
@@ -48,6 +56,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
+  let external = false;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -78,6 +87,25 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const sources = new Map(list.map((file, index) => [file, contents[index]!]));
     liveProps = analyzeProject(sources);
     compiled.clear();
+  };
+
+  // The entry, the parts and the render module of a file come from one compile.
+  const compileFile = async (file: string): Promise<{ source: string; result: CompileResult }> => {
+    const source = await readFile(file, 'utf8');
+    let cached = compiled.get(file);
+    if (cached?.source !== source) {
+      cached = {
+        source,
+        result: compile(source, {
+          filename: relative(file),
+          liveProps: liveProps.get(file),
+          path: file,
+          css: external ? 'external' : 'inline',
+        }),
+      };
+      compiled.set(file, cached);
+    }
+    return cached;
   };
 
   const manifest = (): string => {
@@ -164,6 +192,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     configResolved(config) {
       root = config.root;
+      // Development inlines styles, so a page has them before any script runs.
+      external = options.css === 'file' && config.command === 'build';
     },
 
     async buildStart() {
@@ -174,12 +204,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (id === START || id === MANIFEST || id === SERVER || id === ROUTES) {
         return `\0${id}`;
       }
+      if (id === STYLES) {
+        // Without the leading null character, so Vite's CSS plugin handles it.
+        return `/@brumate/styles.css`;
+      }
       return undefined;
     },
 
     async load(id, loadOptions) {
       if (id === `\0${START}`) {
         return [
+          ...(external ? [`import ${JSON.stringify(STYLES)};`] : []),
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${options.navigate !== false} });`,
@@ -194,6 +229,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (id === `\0${ROUTES}`) {
         return routeTree();
       }
+      if (id === '/@brumate/styles.css') {
+        const results = await Promise.all([...files.values()].map(compileFile));
+        return results
+          .map(({ result }) => result.css)
+          .filter(Boolean)
+          .join('\n');
+      }
       const [file, query] = id.split('?');
       if (!file?.endsWith('.brm')) {
         return undefined;
@@ -202,21 +244,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const params = new URLSearchParams(query);
       const isRender = params.has(RENDER_QUERY.slice(1));
       const isClient = params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
-      const source = await readFile(file, 'utf8');
-      // The entry, the parts and the render module of a file come from one compile.
-      let cached = compiled.get(file);
-      if (cached?.source !== source) {
-        cached = {
-          source,
-          result: compile(source, {
-            filename: relative(file),
-            liveProps: liveProps.get(file),
-            path: file,
-          }),
-        };
-        compiled.set(file, cached);
-      }
-      const result = cached.result;
+      const { source, result } = await compileFile(file);
       for (const dependency of result.plan.styles.dependencies) {
         const normalized = normalizePath(dependency);
         this.addWatchFile(normalized);

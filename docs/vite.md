@@ -144,6 +144,8 @@ brumate({
   routes: 'src/routes',
   // Loads pages without a full page load. See Routing.
   navigate: true,
+  // 'file' builds every stylesheet into one CSS file. See Styles.
+  css: 'inline',
 });
 ```
 

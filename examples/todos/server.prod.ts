@@ -9,6 +9,10 @@ const client = path.join(root, 'dist/client');
 const server = await import(path.join(root, 'dist/server/server.js'));
 const manifest = JSON.parse(await readFile(path.join(client, '.vite/manifest.json'), 'utf8'));
 const entry = `/${manifest['src/client.ts'].file}`;
+// The CSS file of the components, which the head links to.
+const styles = (manifest['src/client.ts'].css ?? [])
+  .map((file: string) => `<link rel="stylesheet" href="/${file}">`)
+  .join('');
 
 const TYPES: Record<string, string> = {
   '.js': 'text/javascript',
@@ -40,6 +44,7 @@ const http = createServer(async (request, response) => {
     }
     // The route files under src/routes render the page.
     const answer = await server.route(await toRequest(request), {
+      head: styles,
       scripts: `<script type="module" async src="${entry}"></script>`,
     });
     send(answer, response);

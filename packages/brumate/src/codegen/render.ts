@@ -189,7 +189,7 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   const setup = (file.instanceScript?.program.body ?? []).filter(
     (statement) => statement.type !== 'ImportDeclaration' && !TYPE_DECLARATIONS.has(statement.type),
   );
-  if (plan.styles.css) {
+  if (plan.styles.css && plan.inlineStyles) {
     moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);
   }
   const emitter = new Emitter(file, plan, patch, { mode: 'client', functions: true });

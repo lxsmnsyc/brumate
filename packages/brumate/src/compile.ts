@@ -20,6 +20,11 @@ export interface CompileOptions {
   liveProps?: Set<string>;
   /** The absolute path of the file, so SCSS and Less can import files next to it. */
   path?: string;
+  /**
+   * `inline` writes the stylesheet into the page. `external` leaves it to a
+   * CSS file, from the `css` of the result. Defaults to `inline`.
+   */
+  css?: 'inline' | 'external';
 }
 
 export interface CompileResult {
@@ -67,7 +72,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     throw new CompileError(source, filename, errors);
   }
-  const plan = createPlan(file, graph, options.path);
+  const plan = createPlan(file, graph, options.path, options.css !== 'external');
   const styleErrors = plan.styles.diagnostics.filter(
     (diagnostic) => diagnostic.severity === 'error',
   );

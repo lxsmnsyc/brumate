@@ -37,6 +37,8 @@ export interface Plan {
   styles: StyleOutput;
   /** True if a style variable can change on the client. */
   liveStyles: boolean;
+  /** True when the page inlines the stylesheet. False when a CSS file holds it. */
+  inlineStyles: boolean;
 }
 
 // Declarations that are code or come from imports, so they never need a slot.
@@ -73,7 +75,7 @@ export function hash(value: string): string {
   return (result >>> 0).toString(36);
 }
 
-export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
+export function createPlan(file: SFCFile, graph: Graph, path?: string, inlineStyles = true): Plan {
   const model = graph.model;
   const name = getComponentName(file.filename);
   const bodyScopes = new Map<Body, Scope>();
@@ -283,6 +285,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
     id: `${name}_${hash(file.filename)}`,
     styles,
     liveStyles,
+    inlineStyles,
     scopes,
     bodyScopes,
     anchors,

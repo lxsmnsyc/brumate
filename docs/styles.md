@@ -60,7 +60,19 @@
 
 The stylesheet is inlined once per page, as `<style data-brm="<component ID>">`, before the first instance of the component. A component that the client renders first adds it to `<head>`.
 
-`compile` also returns the stylesheet as `css`, for a bundler that writes CSS files.
+`compile` also returns the stylesheet as `css`. With `css: 'external'`, the server and client code leave the stylesheet out, so a CSS file can hold it.
+
+### One CSS file
+
+`brumate({ css: 'file' })` builds the stylesheets of every component into one CSS file. Development still inlines them, so a page has its styles before any script runs.
+
+- The client entry imports the stylesheets, so Vite writes the CSS file and lists it under `css` in the manifest entry of the client.
+- The server links it in the head with the `head` option of `renderToStream` or of `handle`:
+
+```ts
+const css = manifest['src/client.ts'].css.map((file) => `<link rel="stylesheet" href="/${file}">`);
+const response = await handle(request, { head: css.join(''), scripts });
+```
 
 ## Not supported yet
 

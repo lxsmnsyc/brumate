@@ -613,6 +613,8 @@ export interface DocumentOptions extends RenderOptions {
    * `<html>`. A function receives the markup for the document's head.
    */
   start?: string | ((head: string) => string);
+  /** Markup for the head, before the head of the components, such as the `<link>` of a CSS file. */
+  head?: string;
   /**
    * Markup right after the page state, such as the client entry. Make
    * module scripts `async`, so they run before the stream ends.
@@ -641,7 +643,13 @@ function beforeBodyEnd(html: string, content: string): string {
  * doctype, its head before `</head>`, and the state and scripts before
  * `</body>`. Markup that resolves later is written after it.
  */
-function firstRender(html: string, head: string, state: string, options: DocumentOptions): string {
+function firstRender(
+  html: string,
+  componentHead: string,
+  state: string,
+  options: DocumentOptions,
+): string {
+  const head = (options.head ?? '') + componentHead;
   const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
