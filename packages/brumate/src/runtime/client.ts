@@ -376,11 +376,11 @@ function destroy(scope: Scope): void {
     destroy(child);
   }
   // The content of a `#portal` is elsewhere in the page, so it is removed by its markers.
-  const portal = comments.get(`P${scope.id}`);
-  if (portal?.isConnected) {
-    const end = rangeEnd(portal);
-    clear(portal, end);
-    portal.remove();
+  const start = comments.get(`P${scope.id}`);
+  if (start?.isConnected) {
+    const end = rangeEnd(start);
+    clear(start, end);
+    start.remove();
     end.remove();
   }
   for (const cleanup of scope.cleanups?.values() ?? []) {
