@@ -5,9 +5,10 @@
 - The syntax follows solid-sfc. The semantics do not need to match Solid.
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are seven compile-time functions: `$props`, `$signal`, `$memo`, `$ref`, `$watch`, `$client` and `$untrack`.
+- There are six compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client` and `$untrack`.
+- `ref=name` writes an element into a `$signal`. There is no separate ref function.
 - `$signal` does not track the values in its initial value.
-- `$watch` never runs on page load. `$client` is the way to run code without a change.
+- `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.
 - Signals never leave the file. Imported code receives values.
 - Server functions use the `'use server'` directive, on a function or on a file.
 - Server functions may capture module-scope bindings and imports only.
@@ -26,7 +27,7 @@
 - **Chunk size.** One chunk per handler gives the smallest download per event, but more requests. Grouping handlers that read the same scope may be better.
 - **Streaming.** How state for scopes rendered after a `#loading` boundary is written into a streamed page.
 - **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
-- **Effect order.** The order in which `$watch` callbacks run when one write changes several of them.
+- **Effect order.** The order in which `$effect` callbacks run when one write changes several of them.
 
 ## Next steps
 

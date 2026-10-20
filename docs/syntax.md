@@ -25,16 +25,16 @@ The file extension is `.brm` for now.
 
 ## Compile-time functions
 
-There are seven. They need no import.
+There are six. They need no import.
 
 ```ts
 const { initial } = $props<{ initial: number }>();
 
 let count = $signal(initial);
 const double = $memo(count * 2);
-let input = $ref<HTMLInputElement>();
+let input = $signal<HTMLInputElement>();
 
-$watch(() => {
+$effect(() => {
   document.title = `${count}`;
   return () => {};
 });
@@ -55,9 +55,9 @@ Returns the props of the component. Destructuring the call keeps each prop react
 
 Declares writable state. Reading the variable reads the value. Assigning to it writes the value.
 
-- The initial value is computed once, on the server.
+- The initial value is computed once, on the server. Without an argument, it is `undefined`.
 - It does not track the values it reads. `$signal(price * 2)` does not change when `price` changes.
-- To reset a signal when a source changes, write it in a `$watch`.
+- To reset a signal when a source changes, write it in an `$effect`.
 
 ### `$memo`
 
@@ -67,11 +67,29 @@ Declares a read-only value computed from other values.
 - It can hold a promise. The server awaits it. Reading it suspends the nearest `#loading` block on the client.
 - An async `$memo` may only call server functions. See [Server functions](./server-functions.md).
 
-### `$ref`
+### Element references
 
-Declares a reference to a DOM element. Set it with `ref=input` on the element. It exists only on the client. The runtime finds the element by its marker on first access.
+`ref=name` on an element writes the element into the signal `name`:
 
-### `$watch`
+```html
+<script>
+  let input = $signal<HTMLInputElement>();
+
+  function focus() {
+    input.focus();
+  }
+</script>
+
+<input ref=input>
+<button onClick=focus>Focus</button>
+```
+
+- The target must be a `$signal` declared in the same file.
+- On the server, the signal stays `undefined`. Setup code cannot read the element.
+- For an element that the server rendered, the signal is serialized as a reference to the element's marker. The runtime finds the element when client code first reads the signal.
+- For an element that the client creates, such as in a new `#for` item, the runtime writes the signal when it creates the element. Nodes that read the signal update.
+
+### `$effect`
 
 Runs a callback when the values it reads change, after the page resumes.
 
@@ -97,14 +115,14 @@ Reads a value without adding an edge to the graph.
 
 ### Where writes are allowed
 
-Signals can be written in event handlers, `$watch` callbacks, `$client` callbacks and functions called from them. A write anywhere else is a compile error, such as a write inside a `$memo` or at setup after the declaration.
+Signals can be written in event handlers, `$effect` callbacks, `$client` callbacks and functions called from them. A write anywhere else is a compile error, such as a write inside a `$memo` or at setup after the declaration.
 
 ### Not supported
 
 These solid-sfc functions are not supported:
 
 - `$root`, `$owner`, `$runWithOwner` and `$reaction` need a runtime owner tree.
-- `$renderEffect`, `$trackedEffect` and `$effect` are replaced by `$watch`.
+- `$renderEffect` and `$trackedEffect` are replaced by `$effect`.
 - `$settled` and `$cleanup` are replaced by `$client` and the cleanup return value.
 - `$derefSignal`, `$derefMemo`, `$get`, `$set`, `$refSignal` and `$property` pass signals out of the file. Signals never leave the file, so the compiler can see every read and write.
 - `$store` and its helpers are deferred. In v1, an object in a signal is replaced as a whole.
@@ -167,7 +185,7 @@ The difference is that a block's create code ships only if its condition, list o
 
 ### `#static`
 
-Asserts that the body has no client roots. An event handler, `$watch` or `$client` inside it is a compile error.
+Asserts that the body has no client roots. An event handler, `$effect` or `$client` inside it is a compile error.
 
 ```html
 #static {

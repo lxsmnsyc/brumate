@@ -75,7 +75,7 @@ type Attribute =
   | { kind: 'static'; range: Range; name: string; value: string | true }
   | { kind: 'value'; range: Range; name: string; value: Expression }
   | { kind: 'event'; range: Range; event: string; modifiers: Modifier[]; handler: Expression }
-  | { kind: 'ref'; range: Range; target: string }
+  | { kind: 'ref'; range: Range; target: string } // Names a signal.
   | { kind: 'prefetch'; range: Range; strategy: 'hover' | 'visible' | 'idle' | 'none' }
   | { kind: 'spread'; range: Range; value: Expression }
   | { kind: 'computed'; range: Range; name: Expression; value: Expression | true };
@@ -142,7 +142,6 @@ type DeclarationKind =
   | 'signal'
   | 'memo'
   | 'async-memo'
-  | 'ref'
   | 'function'
   | 'server-function'
   | 'const'           // A plain const in a component or body script.
@@ -178,6 +177,7 @@ A `Site` is a place where code runs: a function declaration, an arrow function, 
 The analyzer also reports these errors:
 
 - An assignment to a `memo`, `async-memo`, `prop` or `const`.
+- A `ref` whose target is not a `signal`.
 - A server function that captures a declaration outside `module` and `import`.
 - A server function that is not `async`.
 
@@ -189,7 +189,7 @@ type GraphNode =
   | { kind: 'memo'; declaration: Declaration }
   | { kind: 'binding'; target: BindingTarget; expression: Expression }
   | { kind: 'block'; block: Block; expression: Expression }
-  | { kind: 'watch'; callback: Site };
+  | { kind: 'effect'; callback: Site };
 
 type BindingTarget =
   | { kind: 'text'; node: InsertNode }
@@ -206,7 +206,7 @@ interface Edge {
 type ClientRoot =
   | { kind: 'handler'; element: ElementNode; event: string; modifiers: Modifier[]; site: Site }
   | { kind: 'listener'; target: 'window' | 'document'; event: string; site: Site }
-  | { kind: 'watch'; site: Site }
+  | { kind: 'effect'; site: Site }
   | { kind: 'client'; trigger: 'visible' | 'idle' | 'load'; site: Site }
   | { kind: 'client-block'; block: Block & { kind: 'client' } };
 ```
@@ -227,10 +227,10 @@ The compiler walks from each client root. It follows calls to local functions an
 
 A node is **live** when its value can change on the client:
 
-- A signal is live when reached code writes it.
+- A signal is live when reached code writes it, or when it is the `ref` target of an element inside a live block.
 - A prop is live. The component does not know what the parent passes, so it assumes the prop can change. See [Props](#props).
 - An `item` or `index` of a `#for` is live when the list is live.
-- A memo, binding, block or watch is live when any node with an edge into it is live.
+- A memo, binding, block or effect is live when any node with an edge into it is live.
 
 A node that is not live is rendered on the server and has no client code.
 
@@ -293,7 +293,7 @@ Rules:
 
 - A declaration gets a slot when client code reads it. `module` and `import` declarations never get a slot, because client modules import them.
 - A plain `let` that client code writes gets a slot. Writing it updates the slot and triggers nothing.
-- An element gets an anchor when it has a handler, a ref, or a live attribute binding.
+- An element gets an anchor when it has a handler, a live attribute binding, or a `ref` to a signal that client code reads.
 - An insert gets an anchor when its binding is live.
 - A block gets an anchor when its header is live.
 

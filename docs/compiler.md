@@ -9,7 +9,7 @@ The compiler reads a `.brm` file and writes three things:
 ## Pipeline
 
 1. **Parse.** Read the file into its scripts, styles and a markup tree with blocks. The scanner and the template and control flow parsers of solid-sfc can be reused here.
-2. **Scope analysis.** Find the declarations in each scope: props, signals, memos, refs, functions and block variables.
+2. **Scope analysis.** Find the declarations in each scope: props, signals, memos, functions and block variables.
 3. **Graph.** Build the dependency graph from the reads of each node. Follow local functions. Add edges through child component summaries.
 4. **Reachability.** Start at each client root. Mark every node, function and template that it reaches.
 5. **Checks.** Report captures that cannot be serialized, writes outside client roots, server function captures and client roots inside `#static`.
@@ -80,7 +80,7 @@ The core loads on the first handler call:
 - Writes signals and updates the nodes downstream, in order.
 - Finds DOM nodes by their markers.
 - Creates and removes block bodies.
-- Runs `$watch` and `$client` callbacks and their cleanups.
+- Runs `$effect` and `$client` callbacks and their cleanups.
 - Calls server functions.
 
 ## Dependencies

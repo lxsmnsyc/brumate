@@ -19,7 +19,7 @@ Code runs in the browser only if it starts from a client root:
 
 - Event handlers on elements, such as `onClick`.
 - `<window>` and `<document>` listeners.
-- `$watch` callbacks.
+- `$effect` callbacks.
 - `$client` callbacks.
 - The create code of a block that the client must render, such as an `#if` whose condition can change.
 
@@ -29,7 +29,7 @@ The compiler starts at each client root and follows what it reads, writes and ca
 
 The compiler builds the dependency graph at compile time. It does not record subscriptions at runtime.
 
-- A node is a `$signal`, a `$memo`, a prop, a binding in the markup, a block condition or list, or a `$watch`.
+- A node is a `$signal`, a `$memo`, a prop, a binding in the markup, a block condition or list, or a `$effect`.
 - An edge exists when a node reads another node by name.
 - Reads through local functions are followed within the file.
 - `$untrack(expression)` reads without adding an edge.
@@ -57,7 +57,8 @@ Anything that client code reads must be serialized. The supported types are:
 - Primitives, including `bigint`, `undefined`, `NaN` and `Infinity`.
 - Plain objects and arrays. Shared and cyclic references are kept.
 - `Date`, `RegExp`, `Map`, `Set`, `URL`, `URLSearchParams` and typed arrays.
-- Signals, memos and refs, as references to a scope slot.
+- Signals and memos, as references to a scope slot.
+- Elements, as references to their marker.
 - Client functions, such as handlers, server function stubs and module exports, as references to a chunk and an export name.
 - Promises. The server awaits them, or streams the value later.
 
