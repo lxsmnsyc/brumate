@@ -1,0 +1,89 @@
+# Server module
+import * as $$b from 'brumate/server';
+export const STEP = 2;
+const label = 'Count';
+
+export default async function Shared($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Shared_1xpln25");
+  let count = (0);
+  function bump(by: number) {
+    count += by * STEP;
+  }
+  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + await $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + await $$b.insert((count)) + "<!--/t--></p>";
+  $$ctx.slots($$s1, [count]);
+  return $$html;
+}
+
+# Client entry
+export const id = "Shared_1xpln25";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u5"]] } };
+const parts = {
+  "h2": () => import("./shared.brm?brumate-client&part=h2"),
+  "h3": () => import("./shared.brm?brumate-client&part=h3"),
+  "update": () => import("./shared.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h2
+import * as $$b from 'brumate/client';
+import { bump$ } from "./shared.brm?brumate-client&part=shared";
+
+export const h2 = ($$s, ...$$a) => (() => bump$.bind(null, $$s)(1))(...$$a);
+
+# Client part: h3
+import * as $$b from 'brumate/client';
+import { bump$ } from "./shared.brm?brumate-client&part=shared";
+
+export const h3 = ($$s, ...$$a) => (() => bump$.bind(null, $$s)(2))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
+export function u5($$s) {
+  $$b.text($$s, 2, $$b.get($$s, 0));
+}
+
+# Client part: shared
+import * as $$b from 'brumate/client';
+export const STEP = 2;
+const label = 'Count';
+export { label };
+
+export function bump$($$s, by: number) {
+    $$b.set($$s, 0, $$b.get($$s, 0) + (by * STEP));
+  }
+
+# Render module
+import * as $$b from 'brumate/client';
+export const STEP = 2;
+const label = 'Count';
+
+const $$ctx = $$b.context;
+
+export default function Shared($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "Shared_1xpln25");
+  let count = (0);
+  function bump(by: number) {
+    count += by * STEP;
+  }
+  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
+  $$ctx.slots($$s1, [count]);
+  return $$html;
+}
+
+# HTML
+<button class="one" data-b="0:0" data-on="click=Shared_1xpln25#h2">One</button>
+<button class="two" data-b="0:1" data-on="click=Shared_1xpln25#h3">Two</button>
+<p>Count: <!--t0:2-->0<!--/t-->
+</p>
+
+# State
+<script type="brumate/state" data-scopes>{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Shared_1xpln25"},{"t":9,"i":2,"a":[{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>

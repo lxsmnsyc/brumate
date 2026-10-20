@@ -16,14 +16,23 @@ export type { Raw } from './html.ts';
 
 type Update = [kind: number, name: string];
 
-/** A compiled client module. */
+/** The entry of a compiled client module. */
 export interface ClientModule {
   id: string;
   /** Prop names to slot indices. `*` is the slot of a props object. */
   props: Record<string, number>;
   /** Scope kind, then slot, to the updates that read it. */
   g: Record<number, Record<number, Update[]>>;
-  [name: string]: unknown;
+  /** Imports a part of the module. */
+  load: (part: string) => Promise<Part>;
+}
+
+/** A part of a client module: one client root, or the updates. */
+export type Part = Record<string, unknown>;
+
+/** The part that holds an export: `h<n>` and `c<n>` have their own, the rest are in `update`. */
+function partOf(name: string): string {
+  return /^[hc]\d/.test(name) ? name : 'update';
 }
 
 /** The instance of a scope in the page. */
@@ -55,6 +64,8 @@ let options: CoreOptions;
 const scopes = new Map<number, Scope>();
 const modules = new Map<string, ClientModule>();
 const loading = new Map<string, Promise<ClientModule>>();
+const parts = new Map<string, Promise<Part>>();
+const loadedParts = new Map<string, Part>();
 const comments = new Map<string, Comment>();
 const elements = new Map<string, Element>();
 // Scopes that the client creates get negative IDs, so they never match IDs
@@ -172,13 +183,24 @@ export function loadModule(id: string): Promise<ClientModule> {
   return promise;
 }
 
+function loadPart(module: ClientModule, name: string): Promise<Part> {
+  const key = `${module.id}:${name}`;
+  let promise = parts.get(key);
+  if (!promise) {
+    promise = module.load(name).then((part) => {
+      loadedParts.set(key, part);
+      return part;
+    });
+    parts.set(key, promise);
+  }
+  return promise;
+}
+
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
   const [id, name] = ref.split('#') as [string, string];
   const module = await loadModule(id);
-  return (module[name] as (scope: Scope | undefined, ...args: unknown[]) => unknown)(
-    scope,
-    ...args,
-  );
+  const part = await loadPart(module, partOf(name));
+  return (part[name] as (scope: Scope | undefined, ...args: unknown[]) => unknown)(scope, ...args);
 }
 
 /**
@@ -250,16 +272,22 @@ function rootOf(scope: Scope): Scope {
 function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
   const module = modules.get(id);
-  if (module) {
-    run(module, scope, slot);
-  } else {
-    void loadModule(id).then((loaded) => run(loaded, scope, slot));
+  const updates = loadedParts.get(`${id}:update`);
+  if (module && updates) {
+    run(module, updates, scope, slot);
+    return;
   }
+  // The first write to a component loads its update code. Later writes wait in order.
+  void loadModule(id).then(async (loaded) => {
+    if (loaded.g[scope.k]?.[slot]) {
+      run(loaded, await loadPart(loaded, 'update'), scope, slot);
+    }
+  });
 }
 
-function run(module: ClientModule, scope: Scope, slot: number): void {
+function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
   for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
-    const fn = module[name] as (scope: Scope) => void;
+    const fn = updates[name] as (scope: Scope) => void;
     if (kind === scope.k) {
       fn(scope);
     } else {

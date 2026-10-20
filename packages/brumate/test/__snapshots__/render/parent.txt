@@ -17,17 +17,35 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
   return $$html;
 }
 
-# Client module
+# Client entry
+export const id = "Parent_4bs4t8";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u2"]] } };
+const parts = {
+  "h3": () => import("./parent.brm?brumate-client&part=h3"),
+  "h6": () => import("./parent.brm?brumate-client&part=h6"),
+  "update": () => import("./parent.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h3
+import * as $$b from 'brumate/client';
+
+export const h3 = ($$s, ...$$a) => ((value) => ($$b.set($$s, 0, value)))(...$$a);
+
+# Client part: h6
+import * as $$b from 'brumate/client';
+
+export const h6 = ($$s, ...$$a) => ((value) => console.log(value))(...$$a);
+
+# Client part: update
 import * as $$b from 'brumate/client';
 
 const $$ctx = $$b.context;
 
-export const id = "Parent_4bs4t8";
-export const props = {  };
-export const g = { 1: { 0: [[1, "u2"]] } };
-
-export const h3 = ($$s, ...$$a) => ((value) => ($$b.set($$s, 0, value)))(...$$a);
-export const h6 = ($$s, ...$$a) => ((value) => console.log(value))(...$$a);
 export function u2($$s) {
   $$b.prop($$s, 0, "value", $$b.get($$s, 0));
 }

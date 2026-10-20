@@ -4,6 +4,7 @@ import path from 'node:path';
 import { normalizePath, transformWithOxc } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
+import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
 
@@ -63,6 +64,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let root = process.cwd();
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
+  const compiled = new Map<string, { source: string; result: CompileResult }>();
 
   // The ID is computed from the path relative to the root, so it is the same on every machine.
   const relative = (file: string): string => normalizePath(path.relative(root, file));
@@ -181,12 +183,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const isRender = params.has(RENDER_QUERY.slice(1));
       const isClient = params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
       const source = await readFile(file, 'utf8');
-      const result = compile(source, { filename: relative(file) });
-      for (const warning of result.warnings) {
+      // The entry, the parts and the render module of a file come from one compile.
+      let cached = compiled.get(file);
+      if (cached?.source !== source) {
+        cached = { source, result: compile(source, { filename: relative(file) }) };
+        compiled.set(file, cached);
+      }
+      const result = cached.result;
+      for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
         this.warn(`${warning.message} (${relative(file)}:${line}:${column})`);
       }
-      const code = isRender ? result.render : isClient ? result.client : result.server;
+      const part = params.get('part');
+      let code: string;
+      if (isRender) {
+        code = result.render;
+      } else if (part) {
+        code = result.parts[part] ?? '';
+      } else {
+        code = isClient ? result.client : result.server;
+      }
       return transformWithOxc(code, `${file}.ts`, { lang: 'ts' });
     },
 

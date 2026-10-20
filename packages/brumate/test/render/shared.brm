@@ -1,0 +1,16 @@
+<script module>
+  export const STEP = 2;
+  const label = 'Count';
+</script>
+
+<script>
+  let count = $signal(0);
+
+  function bump(by: number) {
+    count += by * STEP;
+  }
+</script>
+
+<button class="one" onClick=(() => bump(1))>One</button>
+<button class="two" onClick=(() => bump(2))>Two</button>
+<p>{label}: {count}</p>

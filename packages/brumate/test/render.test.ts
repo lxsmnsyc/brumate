@@ -19,6 +19,7 @@ const props: Record<string, unknown> = {
   blocks: { items: ['one', 'two'], tab: 'b' },
   list: {},
   loading: {},
+  shared: {},
 };
 
 beforeAll(() => {
@@ -38,14 +39,15 @@ beforeAll(() => {
 describe('server render', () => {
   it.each(Object.keys(props))('%s', async (name) => {
     const source = readFileSync(new URL(`${name}.brm`, input), 'utf8');
-    const { server, client, render } = compile(source, { filename: `${name}.brm` });
+    const { server, client, parts, render } = compile(source, { filename: `${name}.brm` });
     const module = await import(new URL(`${name}.brm.ts`, output).href);
     const { html, state } = await renderToString(module.default, props[name]);
     const text = [
       '# Server module',
       server,
-      '# Client module',
+      '# Client entry',
       client,
+      ...Object.entries(parts).flatMap(([part, code]) => [`# Client part: ${part}`, code]),
       '# Render module',
       render,
       '# HTML',

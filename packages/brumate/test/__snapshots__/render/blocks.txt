@@ -77,22 +77,45 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   return $$html;
 }
 
-# Client module
-import * as $$b from 'brumate/client';
-
-const $$ctx = $$b.context;
-
+# Client entry
 export const id = "Blocks_jlmev2";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [1, "u17"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
+const parts = {
+  "c4": () => import("./blocks.brm?brumate-client&part=c4"),
+  "h6": () => import("./blocks.brm?brumate-client&part=h6"),
+  "h19": () => import("./blocks.brm?brumate-client&part=h19"),
+  "update": () => import("./blocks.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: c4
+import * as $$b from 'brumate/client';
 
 export function c4($$s) {
   $$b.effect($$s, "c4", () => {
     $$b.get($$s, 2).focus();
   });
 }
+
+# Client part: h6
+import * as $$b from 'brumate/client';
+
 export const h6 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 0, event.key === 'b' ? 'b' : 'a')))(...$$a);
+
+# Client part: h19
+import * as $$b from 'brumate/client';
+
 export const h19 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, [])))(...$$a);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+const $$ctx = $$b.context;
+
 export function b7($$s) {
   $$b.branch($$s, 3, ($$b.get($$s, 0) === 'a') ? 0 : 1, [r3, r4], [3, 4]);
 }

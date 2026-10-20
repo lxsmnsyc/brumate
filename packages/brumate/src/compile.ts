@@ -17,8 +17,10 @@ export interface CompileOptions {
 export interface CompileResult {
   /** The server module, as TypeScript. Its default export renders the component. */
   server: string;
-  /** The client module, as TypeScript. The loader imports it on the first event. */
+  /** The client entry module, as TypeScript. The loader imports it on the first event. */
   client: string;
+  /** The parts of the client module, by name. The entry imports them when they are needed. */
+  parts: Record<string, string>;
   /**
    * The render module, as TypeScript. It renders the component on the
    * client, inside a parent's block that changes.
@@ -62,6 +64,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   return {
     server: generateServer(file, plan),
     client: client.code,
+    parts: client.parts,
     render: generateRender(file, plan),
     plan,
     warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning'),

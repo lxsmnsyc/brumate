@@ -20,9 +20,15 @@ beforeAll(() => {
       copyFileSync(join(input, name), join(output, name));
       continue;
     }
-    const { server, client, render, plan } = compile(readFileSync(join(input, name), 'utf8'), {
-      filename: name,
-    });
+    const { server, client, parts, render, plan } = compile(
+      readFileSync(join(input, name), 'utf8'),
+      {
+        filename: name,
+      },
+    );
+    for (const [part, code] of Object.entries(parts)) {
+      writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
+    }
     writeFileSync(join(output, `${name}.ts`), server.replace(/\.brm'/g, ".brm.ts'"));
     writeFileSync(join(output, `${name}.client.ts`), toRender(client));
     writeFileSync(join(output, `${name}.render.ts`), toRender(render));
@@ -32,8 +38,11 @@ beforeAll(() => {
 
 let stop: (() => void) | undefined;
 
+/** Points imports of render modules and client parts at the files that the tests write. */
 function toRender(code: string): string {
-  return code.replace(/\.brm\?brumate-render"/g, '.brm.render.ts"');
+  return code
+    .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
+    .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"');
 }
 
 /**
@@ -97,7 +106,10 @@ describe('resume', () => {
 
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
-    client.init({ load: async () => ({ id: 'Test', props: {}, g: {} }), listen: () => {} });
+    client.init({
+      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
     const value = client.get(client.scopeOf(0)!, 0);
     expect(value).toBeInstanceOf(Promise);
 
@@ -132,6 +144,14 @@ describe('resume', () => {
     click(document.querySelector('.inner')!);
     await vi.waitFor(() => expect(text('.inner')).toBe('1'));
     expect(text('.outer')).toBe('1');
+  });
+
+  it('shares functions between parts', async () => {
+    await resume('shared', {});
+    click(document.querySelector('.one')!);
+    await vi.waitFor(() => expect(text('p')).toBe('Count: 2'));
+    click(document.querySelector('.two')!);
+    await vi.waitFor(() => expect(text('p')).toBe('Count: 6'));
   });
 
   it('updates a counter', async () => {

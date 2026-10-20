@@ -17,7 +17,7 @@
 - There is no `#static` block. Markup is static by default, so marking it changes nothing. A tool that reports what ships is better than an assertion in the markup.
 - Scripts, expressions and attribute values cannot contain markup. `#for` and `#template` are used instead.
 - A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
-- The client module of a component is one module for now. The loader imports it on the first event for that component.
+- The client code of a component is split into an entry, one part per client root, an update part and a shared part.
 - Scope instances link to their parent with `p`, so client code reads outer values by walking up.
 - Lists keep the raw item of each item scope in the state, so keys can be computed again on the client.
 - The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
@@ -35,7 +35,7 @@
 - **File extension.** `.brm` is a placeholder.
 - **Lists.** Without `$store`, changing one item replaces the whole array, and keyed `#for` compares the lists. Large lists will need item-level updates.
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
-- **Chunk size.** One chunk per handler gives the smallest download per event, but more requests. Grouping handlers that read the same scope may be better.
+- **Chunk size.** One part per handler gives the smallest download per event, but more requests. On small components, one module is smaller overall. A size threshold below which a component keeps one module may be better.
 - **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
 - **Mutation.** `todos.push(todo)` changes a signal's value without writing the signal, so nothing updates. The analyzer does not report it yet.
 - **Serializable captures.** Checking that client code only captures serializable values needs type information. The analyzer does not check it yet.
@@ -57,7 +57,7 @@
 2. Build the parser and the analyzer, and test them on the graph output without a browser. Done in [`packages/brumate`](../packages/brumate).
 3. Write the server codegen with markers and state. Done. See [Page format](./page-format.md).
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list. Done. See [Compiler](./compiler.md#size).
-5. Split client modules per handler and per update, as described in [Code splitting](./compiler.md#code-splitting).
+5. Split client modules per handler and per update. Done. See [Code splitting](./compiler.md#code-splitting).
 6. Render components on the client, inside blocks that change. Done. See [Render modules](./compiler.md#render-modules).
 7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](./vite.md).
 8. Add component summaries.

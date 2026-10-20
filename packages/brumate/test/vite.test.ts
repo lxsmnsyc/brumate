@@ -44,13 +44,15 @@ describe('vite plugin', () => {
   });
 
   it('compiles .brm files for the client, without types', async () => {
-    const result = await server.transformRequest('/todos.brm?brumate-client');
-    expect(result?.code).toContain('export const h12');
-    expect(result?.code).not.toContain('interface Todo');
+    const entry = await server.transformRequest('/todos.brm?brumate-client');
+    expect(entry?.code).toContain('part=h12');
+    const part = await server.transformRequest('/todos.brm?brumate-client&part=h12');
+    expect(part?.code).toContain('export const h12');
+    expect(part?.code).not.toContain('interface Todo');
   });
 
   it('compiles render modules for components rendered on the client', async () => {
-    const list = await server.transformRequest('/list.brm?brumate-client');
+    const list = await server.transformRequest('/list.brm?brumate-client&part=update');
     expect(list?.code).toMatch(/import Child from "\/Child\.brm\?.*brumate-render/);
     const child = await server.transformRequest('/Child.brm?brumate-render');
     expect(child?.code).toContain('export default function Child');
@@ -60,7 +62,8 @@ describe('vite plugin', () => {
     const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
     const module = await load('Counter_m86gta');
     expect(module.id).toBe('Counter_m86gta');
-    expect(typeof module.h4).toBe('function');
+    const part = await module.load('h4');
+    expect(typeof part.h4).toBe('function');
   });
 
   it('answers server function calls in development', async () => {
@@ -91,7 +94,7 @@ describe('vite plugin', () => {
     expect(response.status).toBe(200);
   });
 
-  it('builds a client entry with one chunk per component', async () => {
+  it('builds a client entry with chunks for each component and part', async () => {
     const result = (await build({
       ...config,
       build: { write: false, minify: true, rolldownOptions: { input: 'virtual:brumate/start' } },
@@ -102,6 +105,7 @@ describe('vite plugin', () => {
     const names = chunks.map((chunk) => chunk.facadeModuleId ?? '');
     expect(names.some((name) => name.endsWith('counter.brm?brumate-client'))).toBe(true);
     expect(names.some((name) => name.endsWith('todos.brm?brumate-client'))).toBe(true);
+    expect(names.some((name) => name.endsWith('todos.brm?brumate-client&part=h12'))).toBe(true);
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
   });

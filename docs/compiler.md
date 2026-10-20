@@ -87,14 +87,20 @@ A component that a parent renders inside a block that changes needs its render f
 
 ## Code splitting
 
-Planned. The compiler now writes one client module per component. It will split code itself. It does not depend on another splitter or on the bundler.
+The compiler splits each component's client code itself. It does not depend on another splitter or on the bundler.
 
-- Each client root becomes its own module. The compiler moves the function out of the component and replaces its captured variables with reads from the scope.
-- Each server function becomes its own server module. The client module gets a stub that calls it by ID.
-- Code that more than one chunk reaches, such as a local helper function, moves to a shared module that those chunks import.
-- Imports are copied into each module that uses them, and removed where they are no longer used.
+| Part             | Holds                                                                      | Loads                                         |
+| ---------------- | -------------------------------------------------------------------------- | --------------------------------------------- |
+| Entry, `App.brm` | The component ID, the props map, the update table `g`, and `load(part)`    | On the first use of the component             |
+| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback | On its event or trigger                       |
+| `update`         | Memos, bindings, block updates, effects, list helpers and render functions | On the first write that reaches the component |
+| `shared`         | Functions that more than one part calls, and the module script             | With the parts that import it                 |
 
-The output is plain ES modules with static imports. A bundler can bundle them, but does not need to know how they were split.
+- A local function that only one part calls goes into that part.
+- Each part imports only what its code reads. Server function stubs are copied into each part that calls them.
+- The core finds an export by its name: `h<n>` and `c<n>` are in the part of the same name, and everything else is in `update`.
+
+A bundler loads a part as `App.brm?brumate-client&part=<name>`.
 
 The [Vite plugin](./vite.md) connects the compiler to the dev server and the build. It serves the modules and maps server function IDs to their modules.
 
@@ -132,16 +138,18 @@ Handlers run after the event has finished dispatching, so the core passes them a
 
 Minified, measured on the test components:
 
-| Code                                    | Size    | Gzip    |
-| --------------------------------------- | ------- | ------- |
-| Loader                                  | 1783 B  | 892 B   |
-| Core, with seroval                      | 33065 B | 10413 B |
-| Counter module                          | 327 B   | 229 B   |
-| Todo list module                        | 1479 B  | 772 B   |
-| List of child components, client module | 2105 B  | 954 B   |
-| Child render module                     | 368 B   | 266 B   |
+| Code                                    | Size    | Gzip                |
+| --------------------------------------- | ------- | ------------------- |
+| Loader                                  | 1783 B  | 892 B               |
+| Core, with seroval                      | 33065 B | 10413 B             |
+| Counter: entry, `h4`, `update`          |         | 185 B, 110 B, 132 B |
+| Todo list: entry, `h12`, `update`       |         | 219 B, 157 B, 483 B |
+| List of child components, client module | 2105 B  | 954 B               |
+| Child render module                     | 368 B   | 266 B               |
 
 The loader is the only code that loads before an interaction. The core loads once, on the first event. Most of its size is seroval's deserializer and serializer.
+
+Splitting costs a little on small components. Toggling a todo loads 859 B in three requests, where one module was 772 B. It pays off on components with many handlers, because an event loads only its own handler.
 
 ## Dependencies
 

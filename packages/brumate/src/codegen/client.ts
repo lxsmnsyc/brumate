@@ -13,8 +13,20 @@ import { Rewriter } from './rewrite.ts';
 import { instanceScope, slotIndex } from './scopes.ts';
 
 export interface ClientOutput {
+  /** The entry module: the component ID, its props, its update table and its part loaders. */
   code: string;
+  /**
+   * The parts, by name. `h<n>` and `c<n>` parts hold one client root each,
+   * `update` holds the code that updates the page, and `shared` holds the
+   * functions that more than one part calls.
+   */
+  parts: Record<string, string>;
   diagnostics: Diagnostic[];
+}
+
+/** The part that holds an export of a client module. */
+export function partOf(name: string): string {
+  return /^[hc]\d/.test(name) ? name : 'update';
 }
 
 // Sites whose code does not run while a body renders.
@@ -30,13 +42,19 @@ class ClientGenerator {
   private readonly diagnostics: Diagnostic[] = [];
   private readonly rewriter: Rewriter;
   private readonly valuePatch: Patch;
-  private readonly out: string[] = [];
+  /** Code by part. */
+  private readonly out = new Map<string, string[]>();
+  /** The part that `emit` writes to. */
+  private part = 'update';
+  /** The sites whose code each part holds, before functions are placed. */
+  private readonly reach = new Map<string, Set<Site>>();
+  /** The part of each client function. */
+  private readonly placement = new Map<Declaration, string>();
   private readonly live = new Map<Site, GraphNode>();
   /** The export that updates each live node. */
   private readonly updates = new Map<GraphNode, string>();
   /** Bodies that the client renders, by scope. */
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
-  private readonly usedServer = new Set<Declaration>();
 
   constructor(file: SFCFile, plan: Plan) {
     this.file = file;
@@ -64,34 +82,243 @@ class ClientGenerator {
   }
 
   private emit(code: string): void {
-    this.out.push(code);
+    const lines = this.out.get(this.part) ?? [];
+    this.out.set(this.part, lines);
+    lines.push(code);
   }
 
   generate(): ClientOutput {
     this.checkSupport();
     this.collectRenders();
+    this.placeCode();
 
     this.emitServerStubs();
     this.emitFunctions();
     this.emitRoots();
+    this.part = 'update';
     this.emitUpdates();
     this.emitRenders();
 
-    const header = ["import * as $$b from 'brumate/client';", ...this.imports()];
-    const lines = [
-      ...header,
-      ...this.moduleCode(),
-      '',
-      'const $$ctx = $$b.context;',
-      '',
+    const parts: Record<string, string> = {};
+    for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
+      if (name !== 'shared') {
+        parts[name] = this.assemble(name);
+      }
+    }
+    if (this.out.has('shared') || this.usesModuleScript()) {
+      parts.shared = this.assembleShared();
+    }
+    const loaders = Object.keys(parts)
+      .filter((name) => name !== 'shared')
+      .map(
+        (name) =>
+          `  ${JSON.stringify(name)}: () => import(${JSON.stringify(this.partPath(name))}),`,
+      );
+    const entry = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
-      '',
-      ...this.out,
+      'const parts = {',
+      ...loaders,
+      '};',
+      '/** Imports a part of this module. */',
+      'export function load(part) {',
+      '  return parts[part]();',
+      '}',
       '',
     ];
-    return { code: lines.join('\n'), diagnostics: this.diagnostics };
+    return { code: entry.join('\n'), parts, diagnostics: this.diagnostics };
+  }
+
+  /** The import path of a part, relative to the component's file. */
+  private partPath(name: string): string {
+    const base = this.file.filename.split(/[\\/]/).pop()!;
+    return `./${base}?brumate-client&part=${name}`;
+  }
+
+  /** Follows the client functions that sites call. */
+  private closure(seed: Iterable<Site>): Set<Site> {
+    const result = new Set<Site>();
+    const visit = (site: Site): void => {
+      if (result.has(site)) {
+        return;
+      }
+      result.add(site);
+      for (const callee of site.calls) {
+        if (callee.kind === 'function' && callee.site) {
+          visit(callee.site);
+        }
+      }
+    };
+    for (const site of seed) {
+      visit(site);
+    }
+    return result;
+  }
+
+  /** Decides which part holds each client root, update and function. */
+  private placeCode(): void {
+    for (const [site, symbol] of this.plan.symbols) {
+      this.reach.set(symbol, this.closure([site]));
+    }
+    const updates = [...this.plan.clientSites].filter(
+      (site) =>
+        !this.plan.symbols.has(site) && site.kind !== 'function' && site.kind !== 'server-function',
+    );
+    for (const scope of this.renderedScopes()) {
+      for (const site of this.model.sites) {
+        if (isWithin(site.scope, scope) && !DEFERRED_SITES.has(site.kind)) {
+          updates.push(site);
+        }
+      }
+    }
+    this.reach.set('update', this.closure(updates));
+    for (const declaration of this.model.declarations) {
+      const site = declaration.site;
+      if (declaration.kind !== 'function' || !site || !this.plan.clientSites.has(site)) {
+        continue;
+      }
+      const users = [...this.reach].filter(([, sites]) => sites.has(site)).map(([name]) => name);
+      this.placement.set(declaration, users.length === 1 ? users[0]! : 'shared');
+    }
+  }
+
+  /** The sites whose code a part holds: its own sites and the functions placed in it. */
+  private partSites(name: string): Site[] {
+    const result: Site[] = [];
+    for (const site of this.reach.get(name) ?? []) {
+      const declaration = site.declaration;
+      if (site.kind === 'function' && declaration) {
+        if (this.placement.get(declaration) === name) {
+          result.push(site);
+        }
+      } else {
+        result.push(site);
+      }
+    }
+    if (name === 'shared') {
+      for (const [declaration, part] of this.placement) {
+        if (part === 'shared') {
+          result.push(declaration.site!);
+        }
+      }
+    }
+    return result;
+  }
+
+  private reads(sites: Site[]): Set<Declaration> {
+    const result = new Set<Declaration>();
+    for (const site of sites) {
+      for (const read of site.reads) {
+        result.add(read.declaration);
+      }
+    }
+    return result;
+  }
+
+  /** The import statements for the names that some code reads. */
+  private importsFor(names: Set<string>, components: boolean): string[] {
+    if (components) {
+      for (const scope of this.renderedScopes()) {
+        componentNames(scope.body?.children ?? [], names);
+      }
+    }
+    const result: string[] = [];
+    for (const program of this.programs()) {
+      if (program === this.file.moduleScript?.program) {
+        continue;
+      }
+      for (const statement of program.body) {
+        if (statement.type === 'ImportDeclaration') {
+          const code = renderImport(this.file, statement, names);
+          if (code) {
+            result.push(code);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  private programs(): oxc.Program[] {
+    const result: oxc.Program[] = [];
+    if (this.file.moduleScript) {
+      result.push(this.file.moduleScript.program);
+    }
+    if (this.file.instanceScript) {
+      result.push(this.file.instanceScript.program);
+    }
+    for (const scope of this.model.scopes) {
+      if (scope.body?.script && !result.includes(scope.body.script.program)) {
+        result.push(scope.body.script.program);
+      }
+    }
+    return result;
+  }
+
+  private assemble(name: string): string {
+    const reads = this.reads(this.partSites(name));
+    const names = new Set(
+      [...reads].filter((item) => item.kind === 'import').map((item) => item.name),
+    );
+    const shared = [...reads]
+      .filter(
+        (item) =>
+          (item.kind === 'function' && this.placement.get(item) === 'shared') ||
+          (item.kind === 'module' && item.scope === this.model.module),
+      )
+      .map((item) => (item.kind === 'function' ? `${item.name}$` : item.name));
+    const lines = [
+      "import * as $$b from 'brumate/client';",
+      ...this.importsFor(names, name === 'update'),
+    ];
+    if (shared.length > 0) {
+      lines.push(
+        `import { ${[...new Set(shared)].join(', ')} } from ${JSON.stringify(this.partPath('shared'))};`,
+      );
+    }
+    if (name === 'update') {
+      lines.push('', 'const $$ctx = $$b.context;');
+    }
+    lines.push('', ...(this.out.get(name) ?? []), '');
+    return lines.join('\n');
+  }
+
+  private assembleShared(): string {
+    const reads = this.reads(this.partSites('shared'));
+    const names = new Set(
+      [...reads].filter((item) => item.kind === 'import').map((item) => item.name),
+    );
+    const lines = ["import * as $$b from 'brumate/client';", ...this.importsFor(names, false)];
+    if (this.usesModuleScript()) {
+      for (const statement of this.file.moduleScript!.program.body) {
+        if (statement.type === 'ImportDeclaration') {
+          lines.push(this.file.source.slice(statement.start, statement.end));
+        }
+      }
+      lines.push(...clientModuleScript(this.file, this.plan));
+      const exported = new Set<string>();
+      for (const statement of this.file.moduleScript!.program.body) {
+        if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
+          for (const declaration of this.model.module.declarations.values()) {
+            if (
+              declaration.range.start >= statement.start &&
+              declaration.range.end <= statement.end
+            ) {
+              exported.add(declaration.name);
+            }
+          }
+        }
+      }
+      const rest = [...this.model.module.declarations.values()]
+        .filter((declaration) => declaration.kind === 'module' && !exported.has(declaration.name))
+        .map((declaration) => declaration.name);
+      if (rest.length > 0) {
+        lines.push(`export { ${rest.join(', ')} };`);
+      }
+    }
+    lines.push('', ...(this.out.get('shared') ?? []), '');
+    return lines.join('\n');
   }
 
   // Checks
@@ -133,47 +360,6 @@ class ClientGenerator {
     return [...this.clientReads()].some((declaration) => declaration.kind === 'module');
   }
 
-  private imports(): string[] {
-    const names = new Set<string>();
-    for (const declaration of this.clientReads()) {
-      if (declaration.kind === 'import') {
-        names.add(declaration.name);
-      }
-    }
-    // Components rendered on the client are imported from their render modules.
-    for (const scope of this.renderedScopes()) {
-      componentNames(scope.body?.children ?? [], names);
-    }
-    const includeModule = this.usesModuleScript();
-    const result: string[] = [];
-    const programs: oxc.Program[] = [];
-    if (this.file.moduleScript) {
-      programs.push(this.file.moduleScript.program);
-    }
-    if (this.file.instanceScript) {
-      programs.push(this.file.instanceScript.program);
-    }
-    for (const scope of this.model.scopes) {
-      if (scope.body?.script && !programs.includes(scope.body.script.program)) {
-        programs.push(scope.body.script.program);
-      }
-    }
-    for (const program of programs) {
-      const isModule = program === this.file.moduleScript?.program;
-      for (const statement of program.body) {
-        if (statement.type !== 'ImportDeclaration') {
-          continue;
-        }
-        const all = new Set(statement.specifiers.map((specifier) => specifier.local.name));
-        const code = renderImport(this.file, statement, isModule && includeModule ? all : names);
-        if (code) {
-          result.push(code);
-        }
-      }
-    }
-    return result;
-  }
-
   /** Every scope that a render function of this module renders, including templates. */
   private renderedScopes(): Scope[] {
     const result = new Set<Scope>();
@@ -208,11 +394,6 @@ class ClientGenerator {
       }
     }
     return result;
-  }
-
-  /** The module script, when client code reads its bindings. Server functions become stubs. */
-  private moduleCode(): string[] {
-    return this.usesModuleScript() ? clientModuleScript(this.file, this.plan) : [];
   }
 
   private propsMap(): string {
@@ -262,16 +443,17 @@ class ClientGenerator {
 
   // Functions
 
+  /** Writes a stub for each server function into each part that calls it. */
   private emitServerStubs(): void {
-    for (const declaration of this.model.declarations) {
-      if (declaration.kind !== 'server-function' || declaration.scope === this.model.module) {
-        continue;
-      }
-      const used = [...this.clientReads()].includes(declaration);
-      if (used) {
-        this.usedServer.add(declaration);
-        const ref = `${this.plan.id}#${declaration.name}`;
-        this.emit(`const ${declaration.name}$ = (...$$a) => $$b.rpc(${JSON.stringify(ref)}, $$a);`);
+    for (const name of [...this.reach.keys(), 'shared']) {
+      this.part = name;
+      for (const declaration of this.reads(this.partSites(name))) {
+        if (declaration.kind === 'server-function' && declaration.scope !== this.model.module) {
+          const ref = `${this.plan.id}#${declaration.name}`;
+          this.emit(
+            `const ${declaration.name}$ = (...$$a) => $$b.rpc(${JSON.stringify(ref)}, $$a);`,
+          );
+        }
       }
     }
   }
@@ -305,7 +487,13 @@ class ClientGenerator {
           }
         },
       });
-      this.emit(fn.type === 'FunctionDeclaration' ? code : `const ${declaration.name}$ = ${code};`);
+      this.part = this.placement.get(declaration)!;
+      const prefix = this.part === 'shared' ? 'export ' : '';
+      this.emit(
+        fn.type === 'FunctionDeclaration'
+          ? `${prefix}${code}`
+          : `${prefix}const ${declaration.name}$ = ${code};`,
+      );
     }
   }
 
@@ -317,6 +505,7 @@ class ClientGenerator {
       }
       const base = instanceScope(this.plan, site.scope);
       const code = this.rewriter.rewrite(site, '$$s', base);
+      this.part = symbol;
       if (site.kind === 'client') {
         this.emit(
           `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,

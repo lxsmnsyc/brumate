@@ -31,17 +31,35 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
   return $$html;
 }
 
-# Client module
+# Client entry
+export const id = "Loading_1sx8r1u";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u3"], [2, "u6"]] } };
+const parts = {
+  "h2": () => import("./loading.brm?brumate-client&part=h2"),
+  "h5": () => import("./loading.brm?brumate-client&part=h5"),
+  "update": () => import("./loading.brm?brumate-client&part=update"),
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+
+# Client part: h5
+import * as $$b from 'brumate/client';
+
+export const h5 = ($$s, ...$$a) => (() => $$b.update($$s.p, 0, 1, false))(...$$a);
+
+# Client part: update
 import * as $$b from 'brumate/client';
 
 const $$ctx = $$b.context;
 
-export const id = "Loading_1sx8r1u";
-export const props = {  };
-export const g = { 1: { 0: [[1, "u3"], [2, "u6"]] } };
-
-export const h2 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
-export const h5 = ($$s, ...$$a) => (() => $$b.update($$s.p, 0, 1, false))(...$$a);
 export function u3($$s) {
   $$b.text($$s, 1, $$b.get($$s, 0));
 }
