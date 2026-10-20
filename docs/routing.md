@@ -70,7 +70,19 @@ if (!response) {
 }
 ```
 
-The response has the headers that server functions set while the page rendered. A `redirect` while it renders answers with a redirect.
+The response has the headers and the status that were set while the page rendered. A `redirect` while it renders answers with a redirect. A catch-all page can answer with a 404:
+
+```html
+<!-- src/routes/[...rest].brm -->
+<script>
+  import { setStatus } from 'brumate/server';
+
+  const { params } = $props();
+  setStatus(404);
+</script>
+
+<h1>No page at /{params.rest}</h1>
+```
 
 `handleRoute(tree, request, options)` and `matchRoute(tree, pathname)` from `brumate/server` do the same with a tree built by hand.
 
@@ -78,4 +90,4 @@ The response has the headers that server functions set while the page rendered. 
 
 Links are plain `<a>` elements, and each one loads a full page. Each page resumes with only the loader, so no router code ships to the browser. Navigation on the client is not supported yet.
 
-[`examples/todos`](../examples/todos) has a layout, two routes and an `@aside` slot.
+[`examples/todos`](../examples/todos) has a layout, two routes, an `@aside` slot and a 404 page.

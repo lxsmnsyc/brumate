@@ -51,8 +51,9 @@ beforeAll(async () => {
   tree = loaders(routeFiles(paths));
 });
 
-async function page(path: string): Promise<string> {
+async function page(path: string, status = 200): Promise<string> {
   const response = await handleRoute(tree, new Request(`http://localhost${path}`));
+  expect(response?.status).toBe(status);
   expect(response?.headers.get('content-type')).toBe('text/html; charset=utf-8');
   return response!.text();
 }
@@ -64,6 +65,7 @@ describe('route files', () => {
       page: 'index.brm',
       rest: { name: 'rest', node: { page: '[...rest].brm' } },
       static: {
+        old: { page: 'old.brm' },
         todos: {
           layout: 'todos/_layout.brm',
           dynamic: { name: 'id', node: { page: 'todos/[id].brm' } },
@@ -121,8 +123,14 @@ describe('rendering', () => {
     expect(html).toContain('<nav><p>Menu</p></nav><main><h1>Home</h1></main>');
   });
 
-  it('matches the rest of the path', async () => {
-    expect(await page('/a/b')).toContain('<h1>No page at a/b</h1>');
+  it('matches the rest of the path, with the status that the page sets', async () => {
+    expect(await page('/a/b', 404)).toContain('<h1>No page at a/b</h1>');
+  });
+
+  it('answers with a redirect that a page throws', async () => {
+    const response = await handleRoute(tree, new Request('http://localhost/old'));
+    expect(response?.status).toBe(303);
+    expect(response?.headers.get('location')).toBe('http://localhost/todos/1');
   });
 
   it('returns undefined when no route matches', async () => {

@@ -1,0 +1,9 @@
+<script>
+  import { setStatus } from 'brumate/server';
+
+  const { params } = $props<{ params: { rest: string } }>();
+  setStatus(404);
+  $title('Not found');
+</script>
+
+<h1>No page at /{params.rest}</h1>

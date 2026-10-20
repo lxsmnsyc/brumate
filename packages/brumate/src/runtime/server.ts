@@ -20,6 +20,7 @@ import {
 } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import { Redirect, ServerError, isRedirect, withRequest } from './request.ts';
+import type { ResponseParts } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
@@ -30,7 +31,14 @@ import { matchRoute } from './router.ts';
 import type { RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
 export type { Loader, RouteMatch, RouteNode, RouteView } from './router.ts';
-export { ServerError, getRequest, getResponseHeaders, isRedirect, redirect } from './request.ts';
+export {
+  ServerError,
+  getRequest,
+  getResponseHeaders,
+  isRedirect,
+  redirect,
+  setStatus,
+} from './request.ts';
 export type { Redirect } from './request.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
@@ -355,6 +363,8 @@ export interface RenderResult {
   pending: AsyncIterable<string>;
   /** Headers that server functions set while the page rendered, with `getResponseHeaders`. */
   headers: Headers;
+  /** The status that `setStatus` set while the page rendered, or 200. */
+  status: number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
 }
@@ -437,9 +447,11 @@ export async function render<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context();
-  const headers = new Headers();
+  const response: ResponseParts = { headers: new Headers() };
   const run = (): Promise<string> => Root(props, ctx);
-  const rendered = options.request ? await withRequest(options.request, headers, run) : await run();
+  const rendered = options.request
+    ? await withRequest(options.request, response, run)
+    : await run();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
@@ -495,7 +507,14 @@ export async function render<P>(
   serialize(ctx.state, (script) => {
     state = script;
   });
-  return { html, state, pending: queue.iterable, headers, head: ctx.headHTML() };
+  return {
+    html,
+    state,
+    pending: queue.iterable,
+    headers: response.headers,
+    status: response.status ?? 200,
+    head: ctx.headHTML(),
+  };
 }
 
 export interface DocumentOptions extends RenderOptions {
@@ -644,7 +663,7 @@ export async function handleRequest(
   }
   const body = await request.json();
   const headers = new Headers();
-  return withRequest(request, headers, async () => {
+  return withRequest(request, { headers }, async () => {
     try {
       const result = await handleRPC(functions, id, body);
       headers.set('content-type', 'application/json');
@@ -718,7 +737,7 @@ export async function handleRoute(
     const headers = new Headers(parts.headers);
     headers.set('content-type', 'text/html; charset=utf-8');
     const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
-    return new Response(body, { headers });
+    return new Response(body, { status: parts.status, headers });
   } catch (error) {
     if (isRedirect(error)) {
       return new Response(null, {

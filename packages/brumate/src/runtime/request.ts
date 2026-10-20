@@ -1,16 +1,23 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-interface RequestContext {
-  request: Request;
+/** What the server sets on the response while it handles a request. */
+export interface ResponseParts {
   /** Headers to add to the response, such as `set-cookie`. */
   headers: Headers;
+  /** The status that `setStatus` set. */
+  status?: number;
+}
+
+interface RequestContext {
+  request: Request;
+  response: ResponseParts;
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
 
 /** Runs a callback with a request, so `getRequest` can read it. */
-export function withRequest<T>(request: Request, headers: Headers, callback: () => T): T {
-  return storage.run({ request, headers }, callback);
+export function withRequest<T>(request: Request, response: ResponseParts, callback: () => T): T {
+  return storage.run({ request, response }, callback);
 }
 
 function current(name: string): RequestContext {
@@ -30,7 +37,17 @@ export function getRequest(): Request {
 
 /** Returns the headers to add to the response, such as `set-cookie`. */
 export function getResponseHeaders(): Headers {
-  return current('getResponseHeaders').headers;
+  return current('getResponseHeaders').response.headers;
+}
+
+/**
+ * Sets the status of the page response, such as 404 for a page that shows
+ * that nothing was found. It works while the first render of a page runs.
+ * Markup that streams later, such as a `#loading` body, cannot change it,
+ * because the response has started by then.
+ */
+export function setStatus(status: number): void {
+  current('setStatus').response.status = status;
 }
 
 /**

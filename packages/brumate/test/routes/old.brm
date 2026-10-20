@@ -1,0 +1,7 @@
+<script>
+  import { redirect } from 'brumate/server';
+
+  redirect('/todos/1');
+</script>
+
+<h1>Old</h1>

@@ -1,5 +1,8 @@
 <script>
+  import { setStatus } from 'brumate/server';
+
   const { params } = $props();
+  setStatus(404);
 </script>
 
 <h1>No page at {params.rest}</h1>
