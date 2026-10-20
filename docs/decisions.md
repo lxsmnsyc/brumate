@@ -13,6 +13,8 @@
 - Server functions may capture module-scope bindings and imports only.
 - An async `$memo` may only call server functions.
 - There is no `'use client'` directive.
+- Scripts cannot contain markup. A `#template` is used for markup that is a value.
+- A component treats every prop as live. Update code for props loads only when a parent writes one. Component summaries are an optional optimization.
 - seroval is the serializer.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter.
 
@@ -23,12 +25,12 @@
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
 - **Chunk size.** One chunk per handler gives the smallest download per event, but more requests. Grouping handlers that read the same scope may be better.
 - **Streaming.** How state for scopes rendered after a `#loading` boundary is written into a streamed page.
-- **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph.
+- **Component summaries.** Whether they are written to files for the bundler, or computed by the bundler plugin across the module graph. They are not needed for correct output.
 - **Effect order.** The order in which `$watch` callbacks run when one write changes several of them.
 
 ## Next steps
 
-1. Write the grammar and the intermediate representation.
+1. Write the grammar and the intermediate representation. Done in [Grammar](./grammar.md) and [Intermediate representation](./ir.md).
 2. Build the parser and the analyzer, and test them on the graph output without a browser.
 3. Write the server codegen with markers and state.
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list.

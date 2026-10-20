@@ -50,6 +50,8 @@ The `<h1>` produces no client code. The `#for` item template ships because `add`
 - [Execution model](./docs/model.md) explains what runs where and how the compiler decides what ships.
 - [Syntax](./docs/syntax.md) describes the file format, the compile-time functions, markup and control flow.
 - [Server functions](./docs/server-functions.md) describes the `'use server'` directive.
+- [Grammar](./docs/grammar.md) defines the file format in EBNF.
+- [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.

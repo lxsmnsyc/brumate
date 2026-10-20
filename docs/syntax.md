@@ -109,6 +109,8 @@ These solid-sfc functions are not supported:
 - `$derefSignal`, `$derefMemo`, `$get`, `$set`, `$refSignal` and `$property` pass signals out of the file. Signals never leave the file, so the compiler can see every read and write.
 - `$store` and its helpers are deferred. In v1, an object in a signal is replaced as a whole.
 
+Scripts cannot contain markup, as they can in solid-sfc. Use a [`#template`](#control-flow) for markup that is used as a value.
+
 Functions imported from other modules receive values, not signals. They run on the server at setup, or on the client inside a client root.
 
 ## Markup
