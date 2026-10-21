@@ -167,6 +167,40 @@ describe('resume', () => {
     client.dispose();
   });
 
+  it('moves the IDs of a page whose records start elsewhere, and settles its promises', async () => {
+    const { streamState } = await import('../src/runtime/server.ts');
+    let settle!: (value: number) => void;
+    const pending = new Promise<number>((done) => {
+      settle = done;
+    });
+    const records: string[] = [];
+    const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
+      records.push(stateScript(record, records.length === 0));
+    });
+    // Navigation marks every record of a moved page, also the ones that only settle promises.
+    const moved = (record: string): string =>
+      record.replace('<script ', '<script data-offset="5" data-root="5" ');
+    document.body.innerHTML = moved(records[0]!);
+
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    client.init({
+      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    expect(client.scopeOf(0)).toBeUndefined();
+    expect(client.get(client.scopeOf(5)!, 0)).toBeInstanceOf(Promise);
+
+    settle(42);
+    await done;
+    const holder = document.createElement('div');
+    holder.innerHTML = moved(records[1]!);
+    // Reading this record threw before, as an uncaught error that fails the run.
+    document.body.append(holder.firstChild!);
+    await waitFor(() => expect(client.get(client.scopeOf(5)!, 0)).toBe(42));
+    client.dispose();
+  });
+
   it('swaps in #loading bodies that stream after the page', async () => {
     const server = await import(file('loading.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});

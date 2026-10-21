@@ -114,8 +114,10 @@ function readRecord(script: Element): void {
     refs: refs.get(root)!,
   });
   // A page that started its IDs at another number, such as a prerendered file, moves them here.
+  // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
   const offset = Number(script.getAttribute('data-offset') ?? 0);
-  const value = offset ? shiftState(decoded, offset) : decoded;
+  const value =
+    offset && script.hasAttribute('data-scopes') ? shiftState(decoded, offset) : decoded;
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
     // A page that replaced only some routes of the one before it: see `navigate`.
@@ -178,6 +180,10 @@ function shiftState(state: PageState, by: number): PageState {
     }
     if (value instanceof FunctionReference) {
       return new FunctionReference(value.ref, value.scope + by);
+    }
+    // A later record settles it, with a value whose IDs move too.
+    if (value instanceof Promise) {
+      return value.then(shiftValue);
     }
     if (typeof value === 'object' && value !== null && !seen.has(value)) {
       seen.add(value);
