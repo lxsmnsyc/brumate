@@ -167,6 +167,8 @@ Links are plain `<a>` elements. Without scripts, each one loads a full page. Onc
 
 The code for this is a separate module of about 2 KB. The loader imports it on the first navigation.
 
+A page starts to load when the pointer rests on its link for 80 ms, or when the link gets focus. A click within 10 seconds uses that response, so the page arrives sooner. `data-prefetch="none"` on a link turns it off.
+
 A link is left to the browser when it has `target`, `download` or `data-reload`, when a key such as Ctrl is held, or when it only changes the hash. `navigate: false` in the plugin options turns navigation off.
 
 ### Layouts stay

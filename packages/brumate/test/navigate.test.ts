@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { navigate } from '../src/runtime/navigate.ts';
+import { navigate, prefetch } from '../src/runtime/navigate.ts';
 
 /** A response that sends its body in the given pieces, one at a time. */
 function respond(
@@ -215,5 +215,36 @@ describe('navigate', () => {
     expect(partial).toBe(false);
     expect(document.querySelector('nav')).not.toBe(nav);
     expect(document.querySelectorAll('script[type="brumate/state"]')).toHaveLength(1);
+  });
+
+  it('uses a page that its link started to load', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = '<p>a</p>';
+    const fetch = vi.fn<() => Promise<Response>>(async () => {
+      const { response, next } = respond([
+        '<!doctype html><html><head><title>Early</title></head><body><p>early</p></body></html>',
+      ]);
+      next();
+      next();
+      return response;
+    });
+    vi.stubGlobal('fetch', fetch);
+    prefetch('http://localhost:3000/early#top');
+    await navigate({
+      url: 'http://localhost:3000/early',
+      push: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(document.title).toBe('Early');
+    // The page was used, so the next visit loads it again.
+    await navigate({
+      url: 'http://localhost:3000/early',
+      push: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

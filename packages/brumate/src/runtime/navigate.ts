@@ -276,6 +276,39 @@ function scroll(url: URL, saved: number | undefined): void {
  * page replaces the document as soon as it arrives. Markup that the server
  * streams after it, such as `#loading` bodies, follows as it arrives.
  */
+// Pages that a link started to load before its click, by URL without the hash.
+const prefetched = new Map<string, { at: number; base: number; response: Promise<Response> }>();
+
+/** How long a page that loaded early is used, in milliseconds. */
+const FRESH = 10_000;
+
+/**
+ * Starts loading a page before its link is clicked. A click within a few
+ * seconds uses the response, so the page arrives sooner.
+ */
+export function prefetch(url: string): void {
+  const key = url.split('#')[0]!;
+  const entry = prefetched.get(key);
+  if (entry && performance.now() - entry.at < FRESH) {
+    return;
+  }
+  const requested = base();
+  const response = fetch(key, { headers: { 'x-brumate-base': String(requested) } });
+  // A failed load is not used. The click loads the page again.
+  response.catch(() => prefetched.delete(key));
+  prefetched.set(key, { at: performance.now(), base: requested, response });
+}
+
+/** The response of a page that loaded early for these IDs, if it is still fresh. */
+function takePrefetched(url: string, requested: number): Promise<Response> | undefined {
+  const key = url.split('#')[0]!;
+  const entry = prefetched.get(key);
+  prefetched.delete(key);
+  return entry && entry.base === requested && performance.now() - entry.at < FRESH
+    ? entry.response
+    : undefined;
+}
+
 export async function navigate(visit: Visit): Promise<void> {
   controller?.abort();
   const requested = base();
@@ -285,9 +318,13 @@ export async function navigate(visit: Visit): Promise<void> {
   history.replaceState({ ...history.state, scroll: window.scrollY }, '');
   let response: Response;
   try {
+    const early = visit.init ? undefined : takePrefetched(visit.url, requested);
     const headers = new Headers(visit.init?.headers);
     headers.set('x-brumate-base', String(requested));
-    response = await fetch(visit.url, { ...visit.init, headers, signal: current.signal });
+    response = await (early ??
+      fetch(visit.url, { ...visit.init, headers, signal: current.signal }));
+    // Other pages loaded for this page, whose IDs no longer fit the next one.
+    prefetched.clear();
   } catch (error) {
     if (!current.signal.aborted) {
       location.assign(visit.url);

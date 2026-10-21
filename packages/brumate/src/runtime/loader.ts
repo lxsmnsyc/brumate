@@ -35,6 +35,13 @@ function strategy(element: Element): string {
   return element.getAttribute('data-prefetch') ?? 'hover';
 }
 
+/** Starts loading the page of a link, unless the link asks not to. */
+function prefetch(link: HTMLAnchorElement | undefined): void {
+  if (link && link.getAttribute('data-prefetch') !== 'none') {
+    void import('./navigate.ts').then((module) => module.prefetch(link.href));
+  }
+}
+
 /**
  * Starts resuming the page. Listens to the events in `data-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
@@ -245,9 +252,22 @@ export function start(options: LoaderOptions): () => void {
         }),
       );
     };
+    // A link to another page of this site, which the loader loads itself.
+    const pageLink = (target: EventTarget | null): HTMLAnchorElement | undefined => {
+      const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      return link &&
+        !link.target &&
+        !link.hasAttribute('download') &&
+        !link.hasAttribute('data-reload') &&
+        link.origin === location.origin &&
+        // A link to a place in the same page scrolls there.
+        !(link.hash && link.href.split('#')[0] === page)
+        ? link
+        : undefined;
+    };
     listen(document, 'click', (event) => {
       const mouse = event as MouseEvent;
-      const link = (event.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
+      const link = pageLink(event.target);
       if (
         !link ||
         event.defaultPrevented ||
@@ -255,19 +275,29 @@ export function start(options: LoaderOptions): () => void {
         mouse.metaKey ||
         mouse.ctrlKey ||
         mouse.shiftKey ||
-        mouse.altKey ||
-        link.target ||
-        link.hasAttribute('download') ||
-        link.hasAttribute('data-reload') ||
-        link.origin !== location.origin ||
-        // A link to a place in the same page scrolls there.
-        (link.hash && link.href.split('#')[0] === page)
+        mouse.altKey
       ) {
         return;
       }
       event.preventDefault();
       go(link.href);
     });
+    // A page loads when the pointer rests on its link, or the link gets focus, so a click finds it loading.
+    let resting: ReturnType<typeof setTimeout> | undefined;
+    listen(
+      document,
+      'pointerover',
+      (event) => {
+        const link = pageLink(event.target);
+        if (link) {
+          clearTimeout(resting);
+          resting = setTimeout(() => prefetch(link), 80);
+        }
+      },
+      { passive: true },
+    );
+    listen(document, 'pointerout', () => clearTimeout(resting), { passive: true });
+    listen(document, 'focusin', (event) => prefetch(pageLink(event.target)));
     listen(document, 'submit', (event) => {
       const form = event.target as HTMLFormElement;
       const submitter = (event as SubmitEvent).submitter;

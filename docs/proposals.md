@@ -52,14 +52,6 @@ href('/todos/[id]', {}); // Type error: `id` is missing.
 
 ## Navigation
 
-### Link prefetching
-
-Navigation loads a page when its link is clicked. Loading it when the pointer is over the link hides most of the delay.
-
-- A link to the same origin loads its page when the pointer rests on it for 80 ms, or when it gets focus. A click uses the response that is already loading.
-- `data-prefetch="visible"` loads when the link scrolls into view, and `data-prefetch="none"` turns it off, as for handlers.
-- The code that the page needs loads with it, from the manifest, so its first event does not wait either.
-
 ### View transitions
 
 ```ts
