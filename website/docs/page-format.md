@@ -59,6 +59,7 @@ A `<textarea>` or a `<title>` has no comments, because their content is text, wh
 ```
 
 - The third number is the index of the branch that rendered, for `#if` and `#switch`. It is `-1` when no branch rendered.
+- For `#offscreen`, the third number is `1` when the body shows, `0` when it is hidden, and `-1` when it has not rendered yet. The server writes only `1` and `-1`, because it renders a hidden body the first time it shows.
 - `#for`, `#repeat`, `#key`, `#try`, `#loading` and `#client` blocks have no third number.
 - A `#client` block is empty. The client renders it when its trigger fires.
 

@@ -57,6 +57,7 @@ export function childrenOf(node: Markup): Markup[] {
     case 'portal':
     case 'head':
     case 'client':
+    case 'offscreen':
       return node.body.children;
     default:
       return [];

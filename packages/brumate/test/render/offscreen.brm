@@ -1,0 +1,78 @@
+<script>
+  import { $client, $effect, $props, $signal } from 'brumate/signals';
+  import OffscreenChild from './OffscreenChild.brm';
+
+  const { first = 'a' }: { first?: 'a' | 'b' } = $props();
+
+  let tab = $signal<'a' | 'b'>(first);
+  let count = $signal(0);
+  let inner = $signal(true);
+  let exists = $signal(true);
+  let look = $signal('color: red');
+
+  function log(entry: string): void {
+    ((globalThis as { offscreenLog?: string[] }).offscreenLog ??= []).push(entry);
+  }
+</script>
+
+<style>
+  .flex {
+    display: flex;
+  }
+</style>
+
+<button class="tab-a" onClick=(() => (tab = 'a'))>A</button>
+<button class="tab-b" onClick=(() => (tab = 'b'))>B</button>
+<button class="bump" onClick=(() => count++)>Bump</button>
+<button class="toggle-inner" onClick=(() => (inner = !inner))>Inner</button>
+<button class="remove" onClick=(() => (exists = !exists))>Remove</button>
+<button class="restyle" onClick=(() => (look = 'color: blue; display: block'))>Restyle</button>
+<main>
+  #offscreen (tab === 'a') {
+    <script>
+      let draft = $signal('');
+
+      $effect(() => {
+        log(`a effect ${count}`);
+        return () => log('a cleanup');
+      });
+
+      $client(() => {
+        log('a client');
+        return () => log('a client cleanup');
+      }, 'idle');
+    </script>
+    <window onKeyDown=((event) => event.key === 'x' && log('a key'))/>
+    <section class="panel-a flex">
+      <input class="draft" value=draft onInput=((event) => (draft = event.currentTarget.value))>
+      <p class="draft-text">{draft}</p>
+      #offscreen (inner) {
+        <p class="inner">Inner {count}</p>
+      }
+    </section>
+    <p class="inline" style="display: grid">Inline</p>
+    <p class="styled" style=look>Styled</p>
+    Count {count}
+    #if (count > 1) {
+      <p class="late">Late {count}</p>
+    }
+    #portal {
+      <aside class="portal-a">Portal {count}</aside>
+    }
+    <OffscreenChild value=count/>
+  }
+  #offscreen (tab === 'b') {
+    <section class="panel-b">B {count}</section>
+  }
+  #if (exists) {
+    #offscreen (tab === 'a') {
+      <script>
+        $effect(() => {
+          log(`removable effect ${count}`);
+          return () => log('removable cleanup');
+        });
+      </script>
+      <p class="removable">Removable</p>
+    }
+  }
+</main>

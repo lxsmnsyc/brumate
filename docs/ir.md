@@ -105,7 +105,8 @@ type Block =
   | { kind: 'try'; range: Range; body: Body; error?: string; reset?: string; fallback: Body }
   | { kind: 'loading'; range: Range; on?: Expression; body: Body; fallback?: Body }
   | { kind: 'portal'; range: Range; target?: Expression; body: Body }
-  | { kind: 'client'; range: Range; trigger: 'visible' | 'idle' | 'load'; body: Body };
+  | { kind: 'client'; range: Range; trigger: 'visible' | 'idle' | 'load'; body: Body }
+  | { kind: 'offscreen'; range: Range; visible: Expression; body: Body };
 
 interface TemplateDecl {
   range: Range;

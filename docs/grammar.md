@@ -104,7 +104,8 @@ Access          = "." Ident | "?." Ident | "(" TS<Arguments> ")"
 
 ```ebnf
 Block           = IfBlock | ForBlock | RepeatBlock | SwitchBlock | KeyBlock
-                | TryBlock | LoadingBlock | PortalBlock | HeadBlock | ClientBlock ;
+                | TryBlock | LoadingBlock | PortalBlock | HeadBlock | ClientBlock
+                | OffscreenBlock ;
 
 Body            = "{" [ BlockScript ] { TemplateDecl } { Markup } "}" ;
 BlockScript     = "<script>" TS<Module> "</script>" ;
@@ -125,6 +126,7 @@ HeadBlock       = "#head" Body ;
 ClientBlock     = "#client" [ "(" Trigger ")" ] Body ;
 Trigger         = '"visible"' | '"idle"' | '"load"'
                 | "'visible'" | "'idle'" | "'load'" ;
+OffscreenBlock  = "#offscreen" "(" TS<Expression> ")" Body ;
 
 TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 ```
@@ -134,13 +136,14 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 - Only `#case`, `#default`, whitespace and comments are allowed directly inside `#switch`. `#default` is last.
 - A `BlockScript` cannot export and cannot call `$props()`.
 - A `TemplateDecl` at the top level can be used anywhere in the file. In a body, it can be used in that body.
+- `#defer` is reserved for a future block. `#defer` followed by `(` or `{` is a syntax error.
 
 ## `#` in text
 
 `#` starts a block only when all of these are true:
 
 - It does not come right after a letter, a digit, `_` or `$`.
-- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `head`, `client` or `template`.
+- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `head`, `client`, `offscreen`, `defer` or `template`.
 - The keyword is followed by `(` or `{`. `#template` is followed by a name.
 
 Inside a block, `else`, `catch`, `case` and `default` are also keywords where the grammar expects them. Any other `#` is text.

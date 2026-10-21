@@ -1197,6 +1197,18 @@ export class Emitter {
       case 'head':
         this.emitPortal(block, scope);
         return;
+      case 'offscreen':
+        // A hidden body renders the first time it shows. The marker says which of the two
+        // it is: 1 for a body that renders, and -1 for one that has not rendered yet.
+        this.line(`if ${this.expression(block.visible)} {`);
+        this.open(scope, block, '1');
+        this.emitBody(block.body);
+        this.end(block);
+        this.close('} else {');
+        this.open(scope, block, '-1');
+        this.end(block);
+        this.close();
+        return;
       default:
         // `#key` renders its body in place.
         this.open(scope, block);

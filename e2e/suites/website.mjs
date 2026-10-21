@@ -269,6 +269,47 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
+  // The `#offscreen` sample of the control flow page keeps a hidden draft.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    const flow = runner.flow('website', { page, errors });
+    let result;
+    await flow('/docs/control-flow: the #offscreen sample renders its note', async () => {
+      await page.goto(`${url}/docs/control-flow`, { waitUntil: 'load' });
+      await page.locator('h2', { hasText: '#offscreen' }).scrollIntoViewIfNeeded();
+      result = page.locator('.live-result:has(.note)').first();
+      await result.locator('.note textarea').waitFor({ timeout: TIMEOUT });
+    });
+    await flow('/docs/control-flow: a hidden tab keeps its draft', async () => {
+      await result.locator('.note textarea').fill('Hello');
+      await result.locator('.count', { hasText: '5 characters' }).waitFor({ timeout: 5000 });
+      await result.locator('button', { hasText: 'Reply' }).click();
+      await result.locator('.reply').waitFor({ timeout: 5000 });
+      // The class sets `display: grid`, and the hidden note stays hidden.
+      await page.waitForFunction(
+        () => getComputedStyle(document.querySelector('.live-result .note')).display === 'none',
+        null,
+        { timeout: 5000 },
+      );
+      await result.locator('button', { hasText: 'Note' }).click();
+      await page.waitForFunction(
+        () => getComputedStyle(document.querySelector('.live-result .note')).display === 'grid',
+        null,
+        { timeout: 5000 },
+      );
+      const draft = await result.locator('.note textarea').inputValue();
+      assert(draft === 'Hello', `the note reads "${draft}" after switching tabs`);
+      assert(
+        (await result
+          .locator('.reply')
+          .evaluate((element) => getComputedStyle(element).display)) === 'none',
+        'the reply shows next to the note',
+      );
+    });
+    await page.close();
+  }
+
   // The home page, and client navigation between docs pages.
   {
     const page = await browser.newPage();

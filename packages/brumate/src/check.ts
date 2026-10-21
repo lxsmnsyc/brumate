@@ -513,6 +513,13 @@ class Generator {
         this.body(block.body);
         out.text('}\n');
         return;
+      case 'offscreen':
+        out.text('$$use(');
+        out.expression(block.visible);
+        out.text(');\n{\n');
+        this.body(block.body);
+        out.text('}\n');
+        return;
       case 'try':
         out.text('try {\n');
         this.body(block.body);

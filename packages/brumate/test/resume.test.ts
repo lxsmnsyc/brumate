@@ -1987,3 +1987,208 @@ describe('unmount', () => {
     second.unmount();
   });
 });
+
+/** What the effects of `offscreen.brm` logged. */
+function offscreenLog(): string[] {
+  return ((globalThis as { offscreenLog?: string[] }).offscreenLog ??= []);
+}
+
+function offscreenElement(selector: string): HTMLElement {
+  return document.querySelector<HTMLElement>(selector)!;
+}
+
+/** True for an element that `#offscreen` hides with an inline `display: none !important`. */
+function isOffscreenHidden(selector: string): boolean {
+  const style = offscreenElement(selector).style;
+  return (
+    style.getPropertyValue('display') === 'none' &&
+    style.getPropertyPriority('display') === 'important'
+  );
+}
+
+function pressKey(name: string): void {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: name }));
+}
+
+function pause(): Promise<void> {
+  return new Promise((done) => setTimeout(done, 50));
+}
+
+describe('#offscreen', () => {
+  afterEach(() => {
+    offscreenLog().length = 0;
+  });
+
+  it('keeps a hidden body with its state, and renders a body that was hidden at first when it shows', async () => {
+    await resume('offscreen', {});
+    // The body that is hidden at first is not rendered.
+    expect(document.querySelector('.panel-b')).toBeNull();
+    await waitFor(() => expect(offscreenLog()).toContain('a client'));
+
+    const draft = offscreenElement('.draft') as HTMLInputElement;
+    draft.value = 'hello';
+    draft.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.draft-text')).toBe('hello'));
+    pressKey('x');
+    await waitFor(() => expect(offscreenLog()).toContain('a key'));
+    click(offscreenElement('.bump'));
+    await waitFor(() =>
+      expect(offscreenLog()).toEqual(expect.arrayContaining(['a effect 1', 'child 1'])),
+    );
+
+    offscreenLog().length = 0;
+    click(offscreenElement('.tab-b'));
+    await waitFor(() => expect(text('.panel-b')).toBe('B 1'));
+    // The elements stay in the page, hidden with an inline style that a class does not override.
+    expect(isOffscreenHidden('.panel-a')).toBe(true);
+    expect(getComputedStyle(offscreenElement('.panel-a')).display).toBe('none');
+    expect(isOffscreenHidden('.inline')).toBe(true);
+    expect(isOffscreenHidden('.portal-a')).toBe(true);
+    expect(isOffscreenHidden('.child')).toBe(true);
+    // Text at the top level is emptied.
+    expect(text('main')).not.toContain('Count');
+    // Effects and `$client` callbacks stop.
+    expect(offscreenLog()).toEqual(
+      expect.arrayContaining(['a cleanup', 'a client cleanup', 'removable cleanup']),
+    );
+
+    offscreenLog().length = 0;
+    click(offscreenElement('.bump'));
+    click(offscreenElement('.bump'));
+    click(offscreenElement('.restyle'));
+    await waitFor(() => expect(text('.panel-b')).toBe('B 3'));
+    // The hidden markup updates, but its effects do not run.
+    expect(text('.inner')).toBe('Inner 3');
+    expect(text('.portal-a')).toBe('Portal 3');
+    expect(text('.child')).toBe('Child 3');
+    expect(text('.late')).toBe('Late 3');
+    expect(isOffscreenHidden('.late')).toBe(true);
+    expect(isOffscreenHidden('.styled')).toBe(true);
+    expect(text('main')).not.toContain('Count');
+    pressKey('x');
+    await pause();
+    expect(offscreenLog()).toEqual([]);
+
+    click(offscreenElement('.tab-a'));
+    await waitFor(() =>
+      expect(offscreenLog()).toEqual(
+        expect.arrayContaining(['a effect 3', 'a client', 'child 3', 'removable effect 3']),
+      ),
+    );
+    expect(isOffscreenHidden('.panel-b')).toBe(true);
+    for (const selector of ['.panel-a', '.portal-a', '.child', '.late']) {
+      expect(offscreenElement(selector).getAttribute('style')).toBeNull();
+    }
+    // Inline styles come back as they were, or as they changed while hidden.
+    expect(offscreenElement('.inline').style.display).toBe('grid');
+    expect(offscreenElement('.styled').style.display).toBe('block');
+    expect(offscreenElement('.styled').style.color).toBe('blue');
+    expect(text('main')).toContain('Count 3');
+    // The same field, with what the user typed.
+    expect(offscreenElement('.draft')).toBe(draft);
+    expect(draft.value).toBe('hello');
+    expect(text('.draft-text')).toBe('hello');
+
+    offscreenLog().length = 0;
+    pressKey('x');
+    await waitFor(() => expect(offscreenLog()).toEqual(['a key']));
+  });
+
+  it('hides a nested body while any body around it is hidden', async () => {
+    await resume('offscreen', {});
+    click(offscreenElement('.toggle-inner'));
+    await waitFor(() => expect(isOffscreenHidden('.inner')).toBe(true));
+    click(offscreenElement('.tab-b'));
+    await waitFor(() => expect(isOffscreenHidden('.panel-a')).toBe(true));
+    click(offscreenElement('.toggle-inner'));
+    await waitFor(() => expect(isOffscreenHidden('.inner')).toBe(false));
+    expect(isOffscreenHidden('.panel-a')).toBe(true);
+    click(offscreenElement('.toggle-inner'));
+    await waitFor(() => expect(isOffscreenHidden('.inner')).toBe(true));
+    click(offscreenElement('.tab-a'));
+    await waitFor(() => expect(isOffscreenHidden('.panel-a')).toBe(false));
+    expect(isOffscreenHidden('.inner')).toBe(true);
+    click(offscreenElement('.toggle-inner'));
+    await waitFor(() => expect(isOffscreenHidden('.inner')).toBe(false));
+  });
+
+  it('removes the scopes of a body whose block is removed, shown or hidden', async () => {
+    await resume('offscreen', {});
+    click(offscreenElement('.bump'));
+    await waitFor(() => expect(offscreenLog()).toContain('removable effect 1'));
+    click(offscreenElement('.remove'));
+    await waitFor(() => expect(document.querySelector('.removable')).toBeNull());
+    expect(offscreenLog()).toContain('removable cleanup');
+
+    click(offscreenElement('.remove'));
+    await waitFor(() => expect(document.querySelector('.removable')).not.toBeNull());
+    click(offscreenElement('.tab-b'));
+    await waitFor(() => expect(isOffscreenHidden('.removable')).toBe(true));
+    click(offscreenElement('.remove'));
+    await waitFor(() => expect(document.querySelector('.removable')).toBeNull());
+    offscreenLog().length = 0;
+    click(offscreenElement('.tab-a'));
+    click(offscreenElement('.bump'));
+    await waitFor(() => expect(offscreenLog()).toContain('a effect 2'));
+    await pause();
+    expect(offscreenLog().filter((entry) => entry.startsWith('removable'))).toEqual([]);
+  });
+
+  it('renders a body that is hidden at first on the client, the first time it shows', async () => {
+    await resume('offscreen', { first: 'b' });
+    expect(document.querySelector('.panel-a')).toBeNull();
+    expect(document.querySelector('.portal-a')).toBeNull();
+    expect(text('.panel-b')).toBe('B 0');
+    pressKey('x');
+    await pause();
+    expect(offscreenLog()).toEqual([]);
+
+    click(offscreenElement('.bump'));
+    click(offscreenElement('.tab-a'));
+    await waitFor(() => expect(text('.panel-a .inner')).toBe('Inner 1'));
+    expect(text('main')).toContain('Count 1');
+    expect(text('.portal-a')).toBe('Portal 1');
+    expect(isOffscreenHidden('.panel-b')).toBe(true);
+    // A body that renders runs its `$client` callbacks, and its effects wait for a change.
+    await waitFor(() => expect(offscreenLog()).toContain('a client'));
+    expect(offscreenLog().filter((entry) => entry.startsWith('a effect'))).toEqual([]);
+
+    click(offscreenElement('.tab-b'));
+    await waitFor(() => expect(isOffscreenHidden('.panel-a')).toBe(true));
+    expect(isOffscreenHidden('.portal-a')).toBe(true);
+    expect(text('main')).not.toContain('Count');
+    click(offscreenElement('.tab-a'));
+    await waitFor(() => expect(isOffscreenHidden('.panel-a')).toBe(false));
+    expect(text('main')).toContain('Count 1');
+  });
+
+  it('works after navigation moves the IDs of the page', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('offscreen.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/offscreen', push: true, leave: async () => {}, enter: () => {} });
+    // The markers of the blocks moved by 5, and keep what the body is.
+    expect(document.querySelector('main')!.innerHTML).toContain('<!--b5:6:1-->');
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    click(offscreenElement('.tab-b'));
+    await waitFor(() => expect(text('.panel-b')).toBe('B 0'));
+    expect(isOffscreenHidden('.panel-a')).toBe(true);
+    click(offscreenElement('.bump'));
+    click(offscreenElement('.tab-a'));
+    await waitFor(() => expect(isOffscreenHidden('.panel-a')).toBe(false));
+    expect(text('.inner')).toBe('Inner 1');
+    await waitFor(() =>
+      expect(offscreenLog()).toEqual(expect.arrayContaining(['a effect 1', 'child 1'])),
+    );
+  });
+});

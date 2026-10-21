@@ -147,6 +147,7 @@ The core, `brumate/client`, loads on the first event:
 - Finds elements by `b-b`, and text, blocks and list items by their comment markers. A text that is the whole content of an element, and a list item that is one element, are found by the element's `b-b`. A handler on an element without `b-b` runs with the scope of the nearest element around it that has one.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
+- Hides and shows `#offscreen` bodies. The code that does it is set up when the first body hides, so the core of a page without one only checks that it is not there.
 - Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRequest` from `brumate/server` answers them. The code for these calls is a separate chunk that loads on the first call.
 
 Each helper that compiled code calls is an export of the core of its own, and compiled modules read them as `$$b.<name>` from a namespace import, which a bundler tree-shakes as it does named imports. The loader reads the one export that it needs, `loader`, so a build keeps only what its components call. The helpers of markup that the client renders, such as `createScope` and `addPortal`, are exports too, not methods of a context object.

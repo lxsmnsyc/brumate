@@ -420,6 +420,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     if (live) {
       anchor(scope, block);
     }
+    if (live && block.kind === 'offscreen') {
+      // The client hides and shows the body's instance, and pauses the effects inside it.
+      scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
+    }
     if (block.kind === 'portal' || block.kind === 'head') {
       // Portal content is marked with its scope ID, so it can be removed with its block.
       scopes.get(bodyScopes.get(block.body)!)!.needsId = true;

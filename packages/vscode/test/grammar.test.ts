@@ -69,6 +69,12 @@ describe('grammar', () => {
     expect(scopeOf(source, 'else')).toBe('keyword.control.block.brumate');
   });
 
+  it('marks #offscreen and its expression', () => {
+    const source = "#offscreen (tab === 'a') {\n  <p>A</p>\n}";
+    expect(scopeOf(source, 'offscreen')).toBe('keyword.control.block.brumate');
+    expect(scopeOf(source, "tab === 'a'")).toBe('meta.embedded.expression.ts');
+  });
+
   it('marks components, events and attribute values without quotes', () => {
     const source = '<Foo value=fetchUser(id) onClick:prevent=add class={ done: x } label="hi" />';
     expect(scopeOf(source, 'Foo')).toBe('meta.tag.brumate support.class.component.brumate');

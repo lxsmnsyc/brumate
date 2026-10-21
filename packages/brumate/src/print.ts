@@ -96,6 +96,10 @@ export function printAST(file: SFCFile): string {
         write(depth, `key (${item.value.code})`);
         body(item.body, depth + 1, 'body');
         break;
+      case 'offscreen':
+        write(depth, `offscreen (${item.visible.code})`);
+        body(item.body, depth + 1, 'body');
+        break;
       case 'try': {
         write(depth, 'try');
         body(item.body, depth + 1, 'body');

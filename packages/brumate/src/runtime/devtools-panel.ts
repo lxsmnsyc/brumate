@@ -308,7 +308,8 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     const label = element(
       'div',
       { class: 'scope-label' },
-      `scope ${scope.id}${plan ? ` · ${plan.label}` : ''}`,
+      // A hidden `#offscreen` body keeps its scope and its slots.
+      `scope ${scope.id}${plan ? ` · ${plan.label}` : ''}${scope.h ? ' · hidden' : ''}`,
     );
     label.addEventListener('mouseenter', () => outline(scope.id));
     label.addEventListener('mouseleave', () => outline());

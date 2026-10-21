@@ -34,6 +34,10 @@ describe('syntax errors', () => {
       '#client (soon) { x }',
       'The trigger of #client must be "visible", "idle" or "load" (Test.brm:1:10)',
     ],
+    ['#offscreen { x }', 'Expected "(" after #offscreen (Test.brm:1:12)'],
+    ['#offscreen () { x }', 'Expected an expression after #offscreen (Test.brm:1:13)'],
+    ['#defer { x }', '#defer is reserved for a future block (Test.brm:1:1)'],
+    ['<p>#defer (later) { x }</p>', '#defer is reserved for a future block (Test.brm:1:4)'],
     ['<button onClick:later=go>x</button>', 'Unknown event modifier ":later" (Test.brm:1:9)'],
     [
       '<button onClick="go()">x</button>',
@@ -61,6 +65,31 @@ describe('syntax errors', () => {
     ['<p>{}</p>', 'Expected an expression (Test.brm:1:5)'],
   ])('%s', (source, message) => {
     expect(error(source)).toBe(message);
+  });
+});
+
+describe('#offscreen', () => {
+  it('parses the expression and the body', () => {
+    const file = parse('#offscreen (tab === 1) {\n  <p>One</p>\n  Text\n}', {
+      filename: 'Test.brm',
+    });
+    const [block] = file.children;
+    expect(block?.kind).toBe('offscreen');
+    if (block?.kind !== 'offscreen') {
+      return;
+    }
+    expect(block.visible.code).toBe('tab === 1');
+    expect(block.body.children.map((child) => child.kind)).toEqual(['element', 'text']);
+    expect(block.end).toBe(file.source.length);
+  });
+
+  it('keeps #offscreen and #defer as text without a header or a body', () => {
+    const file = parse('<p>#offscreen and #defer</p>', { filename: 'Test.brm' });
+    const [paragraph] = file.children;
+    expect(paragraph?.kind === 'element' && paragraph.children[0]).toMatchObject({
+      kind: 'text',
+      value: '#offscreen and #defer',
+    });
   });
 });
 

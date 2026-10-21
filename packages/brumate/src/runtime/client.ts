@@ -79,6 +79,10 @@ export interface Scope {
   r?: string;
   cleanups?: Map<string, () => void>;
   keys?: Map<number, unknown>;
+  /** Set while the scope is the body of an `#offscreen` block that is hidden. */
+  h?: HiddenBody;
+  /** Effects and `$client` callbacks to run when the `#offscreen` body around the scope shows. */
+  w?: Set<string>;
 }
 
 export interface CoreOptions {
@@ -500,6 +504,7 @@ export function leavePage(): void {
   comments.clear();
   elements.clear();
   pendingEffects.clear();
+  hiding = undefined;
   loads.clear();
   loadingSlots.clear();
   for (const memoController of memoControllers.values()) {
@@ -626,6 +631,10 @@ function withTarget(event: Event, element: Element): Event {
 export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
   const anchor = element.closest('[b-b]')?.getAttribute('b-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
+  // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
+  if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
+    return Promise.resolve();
+  }
   const args = event ? [withTarget(event, element)] : [];
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
@@ -1089,6 +1098,9 @@ export function removeScope(scope: Scope): void {
     loadingSlots.delete(key);
     guesses?.map.delete(key);
   }
+  if (scope.h) {
+    hiding?.bodies.delete(scope.h);
+  }
   scopes.delete(scope.id);
   scope.p?.children.delete(scope);
   treeChanges++;
@@ -1205,10 +1217,15 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   indexMarkers(fragment);
   options.listen(fragment);
   const server = serverScopes(fragment);
+  // The nodes of the insert, when hidden `#offscreen` markup can contain them.
+  const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
   if ('parent' in before) {
     before.parent.append(fragment);
   } else {
     before.parentNode!.insertBefore(fragment, before);
+  }
+  if (added) {
+    hiding!.added(added);
   }
   // The records of this insert, whose markers are indexed already.
   markerObserver?.takeRecords();
@@ -1311,7 +1328,13 @@ function write(
     first?.nodeType === 3 &&
     first.nextSibling === end
   ) {
-    (first as Text).data = String(value);
+    // Hidden text keeps its new value for when it shows.
+    const saved = hiding?.nodes.get(first);
+    if (saved) {
+      saved.v = String(value);
+    } else {
+      (first as Text).data = String(value);
+    }
     return;
   }
   while (first && first !== end) {
@@ -1332,6 +1355,9 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     element.removeAttribute(name);
   } else {
     element.setAttribute(name, written);
+  }
+  if (name === 'style') {
+    hiding?.styled(element);
   }
 }
 
@@ -1445,6 +1471,264 @@ export function fill(scope: Scope, anchor: number, render: Render): void {
   if (start.nextSibling === end) {
     insertHTML(end, render(scope));
   }
+}
+
+/**
+ * Shows or hides the body of an `#offscreen` block. A body that the page
+ * does not have yet renders the first time it shows. `kind` is the body's
+ * scope ID in the compiled component.
+ */
+export function offscreen(
+  scope: Scope,
+  anchor: number,
+  value: unknown,
+  render: Render,
+  kind: number,
+): void {
+  const start = findComment(`b${scope.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
+  const visible = Boolean(value);
+  // 1 for a body that shows, 0 for one that is hidden, and -1 for one that has not rendered.
+  const state = start.data.split(':')[2];
+  if (visible ? state === '1' : state !== '1') {
+    return;
+  }
+  start.data = `b${scope.id}:${anchor}:${visible ? 1 : 0}`;
+  const end = rangeEnd(start);
+  if (state === '-1') {
+    insertHTML(end, render(scope));
+    return;
+  }
+  let body: Scope | undefined;
+  for (const child of scope.children) {
+    if (child.k === kind) {
+      body = child;
+    }
+  }
+  if (body) {
+    hiding ??= createHiding();
+    if (visible) {
+      hiding.show(body);
+    } else {
+      hiding.hide(body, start, end);
+    }
+  }
+}
+
+/** A hidden `#offscreen` body: its scope, and the ranges of its markup and of its portals. */
+export interface HiddenBody {
+  scope: Scope;
+  ranges: [start: Comment, end: Comment][];
+}
+
+/**
+ * What a hidden node had before it was hidden: `n` hidden bodies that hide
+ * it, and the text of a text node, or the inline `display` of an element
+ * with its priority and whether it had a `style` attribute.
+ */
+interface Saved {
+  n: number;
+  v: string;
+  p?: string;
+  a?: boolean;
+}
+
+interface Hiding {
+  bodies: Set<HiddenBody>;
+  nodes: WeakMap<Node, Saved>;
+  hide: (body: Scope, start: Comment, end: Comment) => void;
+  show: (body: Scope) => void;
+  /** True for a scope in a hidden body. */
+  hidden: (scope: Scope) => boolean;
+  /** Keeps an effect for when its body shows, and returns true, if its scope is hidden. */
+  paused: (scope: Scope, name: string) => boolean;
+  /** Hides the nodes that an insert added to hidden markup. */
+  added: (nodes: Node[]) => void;
+  /** Keeps an element hidden after its `style` attribute changed. */
+  styled: (element: Element) => void;
+}
+
+/**
+ * The code of hidden `#offscreen` bodies. The first body that hides sets it
+ * up, so the core of a page without one only checks that it is not there.
+ * A body is hidden with an inline `display: none !important` on each element
+ * at its top level, which no stylesheet overrides, and empty text for each
+ * text node. The nodes stay in the page, so form fields, focus and media
+ * keep their state.
+ */
+let hiding: Hiding | undefined;
+
+/** True for a scope that is `ancestor` or inside it, also through the owner of a component. */
+function within(scope: Scope, ancestor: Scope): boolean {
+  for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+    if (current === ancestor) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True for a scope in a hidden `#offscreen` body. */
+function hidden(scope: Scope): boolean {
+  for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+    if (current.h) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The nodes between two markers. */
+function between([start, end]: [Comment, Comment]): Node[] {
+  const result: Node[] = [];
+  for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
+    result.push(node);
+  }
+  return result;
+}
+
+/** The inline style of an element, which an element that is not HTML or SVG may not have. */
+function display(element: Element): CSSStyleDeclaration | undefined {
+  return (element as HTMLElement).style;
+}
+
+function createHiding(): Hiding {
+  const bodies = new Set<HiddenBody>();
+  const nodes = new WeakMap<Node, Saved>();
+  const hideNode = (node: Node): void => {
+    const saved = nodes.get(node);
+    if (saved) {
+      saved.n++;
+      return;
+    }
+    if (node.nodeType === 3) {
+      nodes.set(node, { n: 1, v: (node as Text).data });
+      (node as Text).data = '';
+      return;
+    }
+    const style = node.nodeType === 1 ? display(node as Element) : undefined;
+    if (style) {
+      nodes.set(node, {
+        n: 1,
+        v: style.getPropertyValue('display'),
+        p: style.getPropertyPriority('display'),
+        a: (node as Element).hasAttribute('style'),
+      });
+      style.setProperty('display', 'none', 'important');
+    }
+  };
+  const showNode = (node: Node): void => {
+    const saved = nodes.get(node);
+    if (!saved || --saved.n > 0) {
+      return;
+    }
+    nodes.delete(node);
+    if (node.nodeType === 3) {
+      (node as Text).data = saved.v;
+      return;
+    }
+    const element = node as Element;
+    const style = display(element)!;
+    if (saved.v) {
+      style.setProperty('display', saved.v, saved.p);
+    } else {
+      style.removeProperty('display');
+    }
+    if (!saved.a && element.getAttribute('style') === '') {
+      element.removeAttribute('style');
+    }
+  };
+  return {
+    bodies,
+    nodes,
+    hidden,
+    hide(body, start, end) {
+      const record: HiddenBody = { scope: body, ranges: [[start, end]] };
+      body.h = record;
+      bodies.add(record);
+      const inside = [...scopes.values()].filter((scope) => within(scope, body));
+      for (const scope of inside) {
+        // The content of a `#portal` in the body, elsewhere in the page.
+        const portal = comments.get(`P${scope.id}`);
+        if (portal?.isConnected) {
+          record.ranges.push([portal, rangeEnd(portal)]);
+        }
+      }
+      for (const range of record.ranges) {
+        between(range).forEach(hideNode);
+      }
+      // Effects and `$client` callbacks that ran stop, and run again when the body shows.
+      for (const scope of inside) {
+        for (const [name, cleanup] of scope.cleanups ?? []) {
+          cleanup();
+          (scope.w ??= new Set()).add(name);
+        }
+        scope.cleanups?.clear();
+      }
+    },
+    show(body) {
+      const record = body.h;
+      if (!record) {
+        return;
+      }
+      body.h = undefined;
+      bodies.delete(record);
+      for (const range of record.ranges) {
+        if (range[0].isConnected) {
+          between(range).forEach(showNode);
+        }
+      }
+      for (const scope of scopes.values()) {
+        if (scope.w && within(scope, body) && !hidden(scope)) {
+          const ref = `${rootOf(scope).m}#`;
+          for (const name of scope.w) {
+            void call(ref + name, scope, []);
+          }
+          scope.w = undefined;
+        }
+      }
+    },
+    paused(scope, name) {
+      if (bodies.size === 0 || !hidden(scope)) {
+        return false;
+      }
+      (scope.w ??= new Set()).add(name);
+      return true;
+    },
+    added(added) {
+      for (const node of added) {
+        for (const record of bodies) {
+          for (const [start, end] of record.ranges) {
+            if (
+              node.parentNode === start.parentNode &&
+              start.compareDocumentPosition(node) & 4 &&
+              node.compareDocumentPosition(end) & 4
+            ) {
+              hideNode(node);
+            }
+          }
+          // A `#portal` that renders in a hidden body, whose nodes follow its marker.
+          const data = node.nodeType === 8 ? (node as Comment).data : '';
+          const scope = /^P-?\d+$/.test(data) ? scopes.get(Number(data.slice(1))) : undefined;
+          if (scope && within(scope, record.scope)) {
+            record.ranges.push([node as Comment, rangeEnd(node as Comment)]);
+          }
+        }
+      }
+    },
+    styled(element) {
+      const saved = nodes.get(element);
+      const style = display(element);
+      if (saved && style) {
+        saved.v = style.getPropertyValue('display');
+        saved.p = style.getPropertyPriority('display');
+        saved.a = element.hasAttribute('style');
+        style.setProperty('display', 'none', 'important');
+      }
+    },
+  };
 }
 
 interface Item {
@@ -1622,15 +1906,18 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
 
 /** Runs an effect or a `$client` callback, after the cleanup of its previous run. */
 export function effect(scope: Scope, name: string, callback: () => unknown): void {
+  // In a hidden `#offscreen` body, it runs when the body shows.
+  if (hiding?.paused(scope, name)) {
+    return;
+  }
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   const cleanup = callback();
-  if (typeof cleanup === 'function') {
-    scope.cleanups.set(name, cleanup as () => void);
-  } else {
-    scope.cleanups.delete(name);
-  }
+  // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
+  scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
 }
+
+function noop(): void {}
 
 /** Renders the attributes of a form or button that posts to a server function. */
 export function action(name: string, id: string, method?: string, result?: string): string {

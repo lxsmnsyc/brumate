@@ -18,11 +18,16 @@ describe('devtools', () => {
 
     const root: Scope = { id: 0, k: 0, m: 'Counter_1', s: [1], children: new Set() };
     const item: Scope = { id: 1, k: 1, p: root, s: ['a'], children: new Set() };
+    // The body of a hidden `#offscreen` block.
+    const hidden: Scope = { id: 2, k: 2, p: root, s: [], children: new Set() };
+    hidden.h = { scope: hidden, ranges: [] } as unknown as Scope['h'];
     root.children.add(item);
+    root.children.add(hidden);
     hooks().attach!({
       scopes: new Map([
         [0, root],
         [1, item],
+        [2, hidden],
       ]),
       set: () => {},
     });
@@ -43,6 +48,7 @@ describe('devtools', () => {
         scopes: {
           0: { label: 'component', slots: ['count'] },
           1: { label: 'body of #for', slots: ['item'] },
+          2: { label: 'body of #offscreen', slots: [] },
         },
         text: 'Counter report',
       })) as typeof fetch;
@@ -52,6 +58,7 @@ describe('devtools', () => {
     expect(body()).toContain('count = 2');
     expect(body()).toContain('scope 1 · body of #for');
     expect(body()).toContain('item = "a"');
+    expect(body()).toContain('scope 2 · body of #offscreen · hidden');
     togglePanel(host.shadowRoot!, state);
     expect(host.shadowRoot!.querySelector('.panel')).toBeNull();
   });

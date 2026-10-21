@@ -985,6 +985,11 @@ class ClientGenerator {
         );
         return;
       }
+      case 'offscreen':
+        this.emit(
+          `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id});\n}`,
+        );
+        return;
       case 'key':
         this.emit(
           `export function ${fn}($$s) {\n  $$b.rekey($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
@@ -1047,7 +1052,7 @@ class ClientGenerator {
       ) {
         continue;
       }
-      if (!['if', 'switch', 'for', 'repeat', 'key'].includes(node.block.kind)) {
+      if (!['if', 'switch', 'for', 'repeat', 'key', 'offscreen'].includes(node.block.kind)) {
         continue;
       }
       for (const body of blockBodies(node.block)) {

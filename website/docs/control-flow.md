@@ -137,6 +137,59 @@ Pick a key that stays the same for an item, such as an ID from a database. A key
 
 Type a note, then switch: the field empties, because the body renders again for the new contact.
 
+## `#offscreen`
+
+`#offscreen (visible)` shows its body while `visible` is true. When it turns false, the body is hidden but stays in the page, with its elements and its state:
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let tab = $signal<'note' | 'reply'>('note');
+</script>
+
+<style>
+  .panel {
+    display: grid;
+    gap: 4px;
+  }
+</style>
+
+<nav>
+  <button onClick=(() => (tab = 'note'))>Note</button>
+  <button onClick=(() => (tab = 'reply'))>Reply</button>
+</nav>
+#offscreen (tab === 'note') {
+  <script>
+    let draft = $signal('');
+  </script>
+  <label class="panel note">
+    Note
+    <textarea onInput=((event) => (draft = event.currentTarget.value))></textarea>
+  </label>
+  <p class="count">{draft.length} characters</p>
+}
+#offscreen (tab === 'reply') {
+  <label class="panel reply">
+    Reply
+    <textarea></textarea>
+  </label>
+}
+```
+
+Type a note, open the reply and come back: the note is still there.
+
+- A body that is hidden when the page renders is not rendered. The browser renders it the first time it shows, and keeps it after.
+- Each element at the top level of a hidden body gets an inline `display: none !important`, which a class such as `.panel` does not override. Text at the top level is emptied. The elements keep their own inline `display` for when the body shows.
+- The markup still updates while it is hidden, so it is current when it shows.
+- The `$effect` and `$client` callbacks of the body run their cleanups when it hides, and do not run while it is hidden. When it shows, the ones that ran before, or whose values changed, run once with the current values.
+- `<window>` and `<document>` listeners in the body do not run while it is hidden.
+- The content of a `#portal` in the body hides with it.
+- A nested `#offscreen` is hidden while any `#offscreen` around it is hidden.
+- When the block itself is removed, such as by an `#if` around it, its body is removed as other blocks are.
+
+Use it for tabs, steps of a form, or panels that the user switches between. Use `#if` when the body should start over each time it shows.
+
 ## `#try` and `#catch`
 
 `#try` renders its body, and `#catch` renders instead if the body throws. `#catch (error, reset)` names the error and a function that renders the body again:

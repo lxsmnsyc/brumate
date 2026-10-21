@@ -101,6 +101,7 @@ describe('features of the core', () => {
       'rekey',
       'reset',
       'fill',
+      'offscreen',
       // `$optimistic`, `$produce`, context and props of child components.
       'guess',
       'produce',
@@ -117,6 +118,8 @@ describe('features of the core', () => {
     expect(chunk.code).not.toContain('brumate.devtools');
     // `$optimistic` sets its code up on the first guess.
     expect(chunk.code).not.toContain('same:');
+    // The code of hidden `#offscreen` bodies is only in the bundle of a page that has one.
+    expect(chunk.code).not.toContain('important');
     // The code that reads the pages that navigation adds is not in the bundle.
     expect(chunks.some((item) => item.moduleIds.includes(runtime('client-routes')))).toBe(false);
   });

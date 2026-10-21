@@ -77,6 +77,16 @@
   - `parse` throws a `ServerError` with status 400 and the first issue as the message. The issues are not sent with the error, so the protocol of errors and the client do not change. A function that wants to show field errors uses `safeParse` or `parseForm` and returns the issues as a value.
   - Issues are copied as plain data, a message and a path of strings and numbers, so seroval can send them and fields that a library adds, such as the input, stay on the server.
   - `parseForm` nests dotted names into objects, and makes arrays of repeated names and names that end with `[]`. A part named `__proto__`, `constructor` or `prototype` is an issue, so a form cannot change a prototype.
+- `#offscreen (visible) { … }` hides its body and keeps it in the page, as React's `<Activity mode="hidden">` does.
+  - A body that is hidden when the page renders is not rendered. The client renders it the first time it shows, as it renders an `#if` body. Hidden content costs nothing until it is needed.
+  - The client hides each node at the top level of the body. An element gets an inline `display: none !important`, and a text node gets empty text. The element's own inline `display` comes back when the body shows.
+  - The nodes stay in the page. Removing them would reload iframes, stop videos, and lose focus, the selection and the scroll inside them.
+  - It is not the `hidden` attribute. A stylesheet such as `.panel { display: flex }` overrides the `[hidden]` rule of the browser, and the body would show. An inline `!important` declaration wins over every stylesheet.
+  - Updates of the markup still apply while it is hidden, so it is current when it shows. A changed inline style or text is kept for when it shows, and new nodes at the top level are hidden too.
+  - Effects and `$client` callbacks of the body run their cleanups when it hides, and wait while it is hidden. When it shows, the ones that ran before or that would have run run once with the current values. `<window>` and `<document>` listeners in the body do not run while it is hidden.
+  - Nothing goes to the server when a body hides or shows.
+  - The portals of the body are hidden with it, so a dialog of a hidden tab does not stay on the page.
+  - `#defer` is reserved for a block that renders on the server later, so the name stays free.
 
 ## Open
 

@@ -51,6 +51,18 @@ describe('toTypeScript', () => {
     expect(code).toContain('} catch (error) {\nconst reset = (): void => {};');
   });
 
+  it('checks the expression and the body of #offscreen', () => {
+    const code = body(`<script>
+  import { $signal } from 'brumate/signals';
+  let tab = $signal(1);
+</script>
+
+#offscreen (tab === 1) {
+  <p>{tab}</p>
+}`);
+    expect(code).toContain('$$use((tab === 1));\n{\n$$use((tab));\n}');
+  });
+
   it('maps copied code to the file', () => {
     const source =
       "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n\n<p>{count + 1}</p>";

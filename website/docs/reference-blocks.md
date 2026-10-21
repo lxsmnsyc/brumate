@@ -16,6 +16,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `#repeat (index of count) { … }`                     | The same, with the index of each copy, from 0.                                                                            |
 | `#switch { #case (condition) { … } #default { … } }` | The body of the first `#case` whose condition is true, or else `#default`.                                                |
 | `#key (value) { … }`                                 | Its body, and renders it again when `value` changes.                                                                      |
+| `#offscreen (visible) { … }`                         | Its body while `visible` is true. When it turns false, the body stays in the page, hidden, with its state.                |
 | `#try { … } #catch { … }`                            | Its body, or the `#catch` body when the body throws.                                                                      |
 | `#try { … } #catch (error, reset) { … }`             | The same. `error` is the error, and `reset()` renders the `#try` body again in the browser.                               |
 | `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body.                                         |
@@ -31,6 +32,8 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 - A body can start with a `<script>`. It runs for each instance of the body, such as each item of a `#for`. It cannot export and cannot call `$props()`.
 - A `#template` at the top level of a file can be used anywhere in the file. One inside a body can be used in that body.
 - `#` starts a block only before one of these keywords followed by `(` or `{`, and not right after a letter or a digit. Any other `#` is text.
+- `#defer` is reserved for a future block. Using it is a compile error.
+- A hidden `#offscreen` body gets `display: none !important` on each element at its top level, and its text at the top level is emptied. Its effects, `$client` callbacks and `<window>` and `<document>` listeners do not run. See [`#offscreen`](./control-flow.md#offscreen).
 
 ## Inserts
 

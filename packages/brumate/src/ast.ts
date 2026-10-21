@@ -233,6 +233,16 @@ export interface ClientBlock extends Range {
   body: Body;
 }
 
+/**
+ * `#offscreen (visible) { … }`: a body that stays in the page while it is
+ * hidden, with its markup and state, but does not run its effects.
+ */
+export interface OffscreenBlock extends Range {
+  kind: 'offscreen';
+  visible: Expression;
+  body: Body;
+}
+
 export type Block =
   | IfBlock
   | ForBlock
@@ -243,7 +253,8 @@ export type Block =
   | LoadingBlock
   | PortalBlock
   | HeadBlock
-  | ClientBlock;
+  | ClientBlock
+  | OffscreenBlock;
 
 export interface TemplateDecl extends Range {
   kind: 'template';

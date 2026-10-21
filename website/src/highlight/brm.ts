@@ -91,6 +91,7 @@ const BLOCK_KEYWORDS = [
   'portal',
   'head',
   'client',
+  'offscreen',
   'key',
   'template',
 ];

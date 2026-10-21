@@ -25,6 +25,7 @@ A component renders on the server, so its script never runs in the browser. To r
 - An effect never runs when the page loads. Its first run is after the first change of a value it reads. The server already rendered the page with the current values, so there is nothing to catch up on.
 - It never runs on the server.
 - It can write signals. After a change, effects run after the page has updated, once each.
+- In a hidden [`#offscreen`](./control-flow.md#offscreen) body, it does not run. Its cleanup runs when the body hides, and it runs again when the body shows.
 
 For code that must run when the page loads, use [`$client`](#client).
 

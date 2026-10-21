@@ -50,6 +50,7 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
       case 'portal':
       case 'head':
       case 'client':
+      case 'offscreen':
         componentNames(node.body.children, names);
         break;
       default:

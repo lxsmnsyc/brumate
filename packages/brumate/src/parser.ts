@@ -60,6 +60,9 @@ const BLOCK_KEYWORDS = new Set([
   'portal',
   'head',
   'client',
+  'offscreen',
+  // Reserved for a future block, so it is an error and not text.
+  'defer',
   'template',
 ]);
 
@@ -874,6 +877,14 @@ class Parser {
         }
         return { kind: 'client', start, end: this.pos, trigger, body: this.parseBody('client') };
       }
+      case 'offscreen': {
+        const header = this.parseHeader('offscreen', true)!;
+        const visible = this.expression(header.start, header.end);
+        const body = this.parseBody('offscreen');
+        return { kind: 'offscreen', start, end: this.pos, visible, body };
+      }
+      case 'defer':
+        return this.fail('#defer is reserved for a future block', start);
       default:
         return this.fail(`Unknown block #${keyword}`, start);
     }

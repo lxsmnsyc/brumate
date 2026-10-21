@@ -1,0 +1,11 @@
+<script>
+  import { $effect, $props } from 'brumate/signals';
+
+  const { value }: { value: number } = $props();
+
+  $effect(() => {
+    ((globalThis as { offscreenLog?: string[] }).offscreenLog ??= []).push(`child ${value}`);
+  });
+</script>
+
+<span class="child">Child {value}</span>
