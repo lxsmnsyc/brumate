@@ -183,7 +183,9 @@ export function routePaths(tree: RouteFiles): RoutePathInfo[] {
 export function routeTypes(tree: RouteFiles): string {
   const lines = routePaths(tree).map(({ path, params }) => {
     const fields = params.map((name) => `${name}: string`).join('; ');
-    return `    ${JSON.stringify(path)}: {${fields ? ` ${fields} ` : ''}};`;
+    // Single quotes, as formatters write them, so a formatted project leaves the file as it is.
+    const key = `'${path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+    return `    ${key}: {${fields ? ` ${fields} ` : ''}};`;
   });
   return [
     '// Written by the brumate Vite plugin from the route files. Do not edit.',

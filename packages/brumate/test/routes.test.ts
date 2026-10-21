@@ -295,9 +295,9 @@ describe('typed routes', () => {
 
   it('writes them into Routes of brumate/routes', () => {
     expect(routeTypes(files)).toContain(
-      'declare module \'brumate/routes\' {\n  interface Routes {\n    "/": {};',
+      "declare module 'brumate/routes' {\n  interface Routes {\n    '/': {};",
     );
-    expect(routeTypes(files)).toContain('    "/todos/[id]/edit": { id: string };');
+    expect(routeTypes(files)).toContain("    '/todos/[id]/edit': { id: string };");
   });
 
   it('puts params into a path, and keeps the slashes of a rest param', () => {
