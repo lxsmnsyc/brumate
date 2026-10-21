@@ -191,6 +191,91 @@ function replaceRoutes(next: Document, result: Plan): void {
   }
 }
 
+/** Moves the IDs of a page above the IDs of the page in the browser. */
+interface Shift {
+  /** The number to add to each scope and boundary ID. */
+  by: number;
+  /** The `data-root` of its state records, which keeps their references apart. */
+  root: string;
+}
+
+/**
+ * A page whose IDs do not start where this page asked, such as a prerendered
+ * file on a static host, has its IDs moved before it is read. Returns
+ * undefined when the server started them there.
+ */
+function shiftFor(next: Document, requested: number): Shift | undefined {
+  const state = next.body.querySelector(`${STATE}[data-route]`);
+  if (!state) {
+    return undefined;
+  }
+  const root = Number(state.getAttribute('data-root') ?? 0);
+  return root === requested ? undefined : { by: requested - root, root: String(requested) };
+}
+
+const COMMENT_IDS = /^([tb])(\d+)(:.*)$|^([ilP])(\d+)$/;
+const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
+
+/**
+ * Adds a number to every scope and boundary ID in markup that the server
+ * rendered: anchors, markers, swap scripts and state records. The core moves
+ * the IDs inside a state record when it reads one with `data-offset`.
+ */
+function shiftIds(root: Node, shift: Shift): void {
+  const add = (value: string): string => String(Number(value) + shift.by);
+  const visit = (node: Node): void => {
+    if (node.nodeType === 8) {
+      const comment = node as Comment;
+      const region = REGION.exec(comment.data);
+      if (region) {
+        const layout = Number(region[1]) < 0 ? region[1]! : add(region[1]!);
+        comment.data = `R${layout}:${region[2]}:${add(region[3]!)}:${region[4]}`;
+        return;
+      }
+      const match = COMMENT_IDS.exec(comment.data);
+      if (match) {
+        comment.data = match[1]
+          ? `${match[1]}${add(match[2]!)}${match[3]}`
+          : `${match[4]}${add(match[5]!)}`;
+      }
+      return;
+    }
+    if (node.nodeType !== 1) {
+      return;
+    }
+    const element = node as Element;
+    for (const name of ['data-b', 'data-result']) {
+      const value = element.getAttribute(name);
+      if (value) {
+        const [scope, rest] = value.split(':') as [string, string];
+        element.setAttribute(name, `${add(scope)}:${rest}`);
+      }
+    }
+    for (const name of ['data-v', 'data-l', 'data-h', 'data-next']) {
+      const value = element.getAttribute(name);
+      if (value) {
+        element.setAttribute(name, add(value));
+      }
+    }
+    if (element.matches(STATE)) {
+      element.setAttribute('data-offset', String(shift.by));
+      element.setAttribute('data-root', shift.root);
+    } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
+      // The scripts that swap in `#loading` bodies and their head name the boundary.
+      element.textContent = element.textContent!.replace(
+        /\$b([SH])\((\d+)/g,
+        (_, kind: string, id: string) => `$b${kind}(${add(id)}`,
+      );
+    }
+    for (const child of element.tagName === 'TEMPLATE'
+      ? (element as HTMLTemplateElement).content.childNodes
+      : element.childNodes) {
+      visit(child);
+    }
+  };
+  visit(root);
+}
+
 /** A number above every scope and boundary ID in the page, for the server to start the next page at. */
 function base(): number {
   let value = 0;
@@ -212,8 +297,11 @@ function runnable(script: HTMLScriptElement): HTMLScriptElement {
 }
 
 /** Moves nodes into the body. Inline scripts, such as the ones that swap in `#loading` bodies, run. */
-function append(nodes: Node[]): void {
+function append(nodes: Node[], shift: Shift | undefined): void {
   for (const node of nodes) {
+    if (shift) {
+      shiftIds(node, shift);
+    }
     const adopted = document.adoptNode(node);
     const scripts =
       adopted.nodeType === 1
@@ -368,6 +456,10 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
+  const shift = visit.init ? undefined : shiftFor(next, requested);
+  if (shift) {
+    shiftIds(next.body, shift);
+  }
   // A link keeps the layouts that stay the same. A form replaces the whole page,
   // because what it changed can show anywhere on it.
   const routes = visit.init ? undefined : planRoutes(next, requested);
@@ -417,7 +509,7 @@ export async function navigate(visit: Visit): Promise<void> {
   for (;;) {
     if (rest) {
       sink.write(rest);
-      append([...sink.body.childNodes].slice(0, -1));
+      append([...sink.body.childNodes].slice(0, -1), shift);
     }
     // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
     const chunk = await reader.read();
@@ -430,5 +522,5 @@ export async function navigate(visit: Visit): Promise<void> {
     rest = chunk.value;
   }
   sink.close();
-  append([...sink.body.childNodes]);
+  append([...sink.body.childNodes], shift);
 }

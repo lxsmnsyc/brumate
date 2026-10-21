@@ -61,15 +61,6 @@ brumate({ navigate: { transition: true } });
 - Navigation swaps the page inside `document.startViewTransition` where the browser has it, so pages can animate between each other with CSS.
 - Layouts that stay are not part of the transition, unless they ask with `view-transition-name`.
 
-### Layouts on static hosts
-
-A prerendered page cannot start its IDs above the page in the browser, so navigation on a static host replaces the whole page and the layouts lose their state.
-
-- The client could renumber the scopes of the new page as it reads them. The IDs are in the state, in `data-b` attributes and in marker comments, so renumbering touches only the new routes, which the client inserts anyway.
-- Or the prerender step could write each page twice: once whole, and once with only its routes, starting at a fixed high base. The client asks for the second with a query.
-
-The first needs no change to hosting, so it is the better fit.
-
 ## Syntax
 
 ### Two-way binding

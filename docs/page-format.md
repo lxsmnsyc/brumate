@@ -136,6 +136,7 @@ type PageState = Record<number, {
 - Errors keep their name and message only. Their stack traces would show the server's files.
 - Regular expressions are not written or read, in the page state or in server function calls.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
+- A record with `data-offset` comes from a page whose IDs the client moved, such as a prerendered page that it loaded in place of another. The client adds the offset to the scope IDs in it.
 - The records of a render that starts above 0, with the `base` option, have `data-root`, the base. The client keeps the references of each root apart.
 - The first record of a page has `data-next`, a number above every scope and boundary ID. A page rendered by routes also has `data-route`, the key of its root route.
 - Route slots are marked with `<!--R<layout scope>:<name>:<route scope>:<route key>-->` and `<!--/R-->`. The client uses them to keep layouts when it loads another page.

@@ -187,7 +187,7 @@ describe('navigate', () => {
     expect(document.querySelector('style[data-brm="Card_c1"]')).toBeNull();
   });
 
-  it('replaces the whole page when the server did not start its IDs above this page', async () => {
+  it('keeps the layouts of a page that starts its IDs at 0, by moving its IDs', async () => {
     document.head.innerHTML = '<title>A</title>';
     document.body.innerHTML = page(0, '/a', 2);
     const nav = document.querySelector('nav');
@@ -197,7 +197,9 @@ describe('navigate', () => {
       vi.fn(async () => {
         const { response, next } = respond([
           `<!doctype html><html><head><title>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
+          '<template data-l="1"><p data-b="1:0">later</p></template><script>$bS(1)</script>',
         ]);
+        next();
         next();
         next();
         return response;
@@ -212,9 +214,22 @@ describe('navigate', () => {
       },
       enter: () => {},
     });
-    expect(partial).toBe(false);
-    expect(document.querySelector('nav')).not.toBe(nav);
-    expect(document.querySelectorAll('script[type="brumate/state"]')).toHaveLength(1);
+    expect(partial).toBe(true);
+    expect(document.querySelector('nav')).toBe(nav);
+    // The IDs of the new route start above the IDs of the page: 2.
+    expect(document.querySelector('main')!.innerHTML).toBe(
+      `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
+    );
+    const state = document.querySelectorAll('script[type="brumate/state"]')[1]!;
+    expect(state.getAttribute('data-offset')).toBe('2');
+    expect(state.getAttribute('data-root')).toBe('2');
+    expect(state.getAttribute('data-next')).toBe('4');
+    // Markup that streams in later moves too.
+    expect(document.querySelector('template')?.getAttribute('data-l')).toBe('3');
+    expect(
+      document.querySelector('template')!.content.querySelector('p')?.getAttribute('data-b'),
+    ).toBe('3:0');
+    expect(document.body.querySelector('script:not([type])')?.textContent).toBe('$bS(3)');
   });
 
   it('uses a page that its link started to load', async () => {

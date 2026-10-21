@@ -102,11 +102,14 @@ function readRecord(script: Element): void {
   if (!refs.has(root)) {
     refs.set(root, new Map());
   }
-  const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), {
+  const decoded = fromCrossJSON<PageState>(JSON.parse(script.textContent!), {
     plugins,
     disabledFeatures,
     refs: refs.get(root)!,
   });
+  // A page that started its IDs at another number, such as a prerendered file, moves them here.
+  const offset = Number(script.getAttribute('data-offset') ?? 0);
+  const value = offset ? shiftState(decoded, offset) : decoded;
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
     // A page that replaced only some routes of the one before it: see `navigate`.
@@ -157,6 +160,46 @@ function refresh(added: Scope[]): void {
       }
     });
   }
+}
+
+/** Adds a number to the scope IDs of a state record. */
+function shiftState(state: PageState, by: number): PageState {
+  const seen = new Set<object>();
+  // References to elements and client functions name the scope of their markup.
+  const shiftValue = (value: unknown): unknown => {
+    if (value instanceof ElementReference) {
+      return new ElementReference(value.scope + by, value.anchor);
+    }
+    if (value instanceof FunctionReference) {
+      return new FunctionReference(value.ref, value.scope + by);
+    }
+    if (typeof value === 'object' && value !== null && !seen.has(value)) {
+      seen.add(value);
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          value[index] = shiftValue(item);
+        });
+      } else if (Object.getPrototypeOf(value) === Object.prototype) {
+        for (const [key, item] of Object.entries(value)) {
+          (value as Record<string, unknown>)[key] = shiftValue(item);
+        }
+      }
+    }
+    return value;
+  };
+  const result: PageState = {};
+  for (const [key, record] of Object.entries(state)) {
+    result[Number(key) + by] = {
+      ...record,
+      p: record.p === undefined ? undefined : record.p + by,
+      o: record.o === undefined ? undefined : record.o + by,
+      c:
+        record.c &&
+        Object.fromEntries(Object.entries(record.c).map(([anchor, id]) => [anchor, id + by])),
+      s: record.s?.map(shiftValue),
+    };
+  }
+  return result;
 }
 
 interface RouteOptions {
