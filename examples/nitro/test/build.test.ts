@@ -50,6 +50,6 @@ it('serves the client entry, and answers a form post with the page', async () =>
     body: new URLSearchParams({ text: 'From the test' }),
     headers: { origin: `http://localhost:${port}` },
   });
-  // The page renders again with the new note, between the markers of its text.
-  expect(await answer.text()).toMatch(/<li><!--t[\d:]+-->From the test<!--\/t--><\/li>/);
+  // The page renders again with the new note, in the element that marks its item.
+  expect(await answer.text()).toMatch(/<li data-b="[\d:]+">From the test<\/li>/);
 });

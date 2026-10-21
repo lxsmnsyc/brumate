@@ -37,14 +37,12 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
       const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "-->";
       function toggle() {
         todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
       }
-      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + (typeof ($$t = $$b.insert((format(todo.at)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></time></li>";
+      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--> <time data-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((format(todo.at)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</time></li>";
       $$ctx.slots($$s2, [todo], ["todo"]);
       $$ctx.item($$s2, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -121,7 +119,7 @@ export function u13($$s) {
   $$b.text($$s, 1, $$b.get($$s, 0).title);
 }
 export function u14($$s) {
-  $$b.text($$s, 2, format($$b.get($$s, 0).at));
+  $$b.content($$s, 2, format($$b.get($$s, 0).at));
 }
 export function u15($$s) {
   $$b.text($$s, 3, $$b.get($$s, 2));
@@ -130,10 +128,9 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
   const $$s2 = $$ctx.scope(2, $$p);
-  $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + $$b.insert((format(todo.at))) + "<!--/t--></time></li>";
+  $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time data-b=\"" + $$s2 + ":2\">" + $$b.insert((format(todo.at))) + "</time></li>";
   $$ctx.slots($$s2, [todo]);
   $$ctx.item($$s2, $$item);
-  $$html += "<!--/i-->";
   return $$html;
 }
 
@@ -171,14 +168,12 @@ export default function Todos($$props: { initial: Todo[] }): string {
       const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "-->";
       function toggle() {
         todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
       }
-      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + $$b.insert((format(todo.at))) + "<!--/t--></time></li>";
+      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time data-b=\"" + $$s2 + ":2\">" + $$b.insert((format(todo.at))) + "</time></li>";
       $$ctx.slots($$s2, [todo]);
       $$ctx.item($$s2, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -194,20 +189,12 @@ export default function Todos($$props: { initial: Todo[] }): string {
 </form>
 <ul>
 <!--b0:2-->
-<!--i1-->
 <li class="done" data-b="1:0" data-on="click=Todos_t3g9lr#h12">
-<!--t1:1-->Write the docs<!--/t--> <time>
-<!--t1:2-->2026-10-01<!--/t-->
-</time>
+<!--t1:1-->Write the docs<!--/t--> <time data-b="1:2">2026-10-01</time>
 </li>
-<!--/i-->
-<!--i2-->
 <li data-b="2:0" data-on="click=Todos_t3g9lr#h12">
-<!--t2:1-->Build &lt;the&gt; compiler<!--/t--> <time>
-<!--t2:2-->2026-10-20<!--/t-->
-</time>
+<!--t2:1-->Build &lt;the&gt; compiler<!--/t--> <time data-b="2:2">2026-10-20</time>
 </li>
-<!--/i-->
 <!--/b-->
 </ul>
 <footer>Built with brumate</footer>

@@ -23,6 +23,7 @@ An anchor is a node that client code must find. Each anchor has an index within 
 ```
 
 - `data-b` is the anchor.
+- An element whose only client code is its handlers has no `data-b` when an element around it in the same scope has one. The core finds the scope of its handlers with `closest('[data-b]')`. The compiler does this only when that element is one the browser keeps whole, so not a `<p>`, a heading, a table section or a `<select>`.
 - `data-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`.
 - `data-prefetch` is the `prefetch` strategy, when it is set.
 - `data-v="<scope>"` marks a top-level element of a component whose style variables can change.
@@ -36,6 +37,14 @@ A reference is `<component ID>#<export name>`. The component ID is the component
 ```
 
 The value of a live insert is between the two comments.
+
+When the insert is the whole content of an element, the element gets the anchor instead, and the value is its children:
+
+```html
+<span data-b="1:1">One</span>
+```
+
+Elements whose content is text, such as `<textarea>` and `<title>`, keep the comments.
 
 ### Blocks
 
@@ -54,6 +63,14 @@ The value of a live insert is between the two comments.
 ```
 
 Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i-->`. The number is the item's scope ID.
+
+When the body of the item is one element and nothing else, the element's `data-b` marks the item instead. The element always gets an anchor, and its scope is the item's scope:
+
+```html
+<!--b0:2--><li data-b="1:0">…</li><li data-b="2:0">…</li><!--/b-->
+```
+
+The core tells these elements from the elements of the fallback by their scopes. An item scope's parent is the scope of the list, and its kind is not one of the fallback's. A `<p>`, a heading, a table section, or a `<tr>` with content other than cells keeps the comments, because the browser can end it early and split the item.
 
 ### `#loading`
 

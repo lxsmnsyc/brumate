@@ -28,10 +28,10 @@ describe('analyzeProject', () => {
     const inProject = compile(source, { filename: 'Badge.brm', liveProps: live.get('Badge.brm') });
     // Alone, both props can change: `class` and the text both update.
     expect(alone.parts.update).toContain('$$b.attr($$s, 0, "class"');
-    expect(alone.parts.update).toContain('$$b.text(');
+    expect(alone.parts.update).toContain('$$b.content(');
     // In the project, only `label` changes, so `tone` has no update and no slot.
     expect(inProject.parts.update).not.toContain('"class"');
-    expect(inProject.parts.update).toContain('$$b.text(');
+    expect(inProject.parts.update).toContain('$$b.content(');
     expect(inProject.server).toContain('$$ctx.slots($$s1, [label], ["label"]);');
   });
 

@@ -420,7 +420,8 @@ export class Emitter {
   /** Emits one item of `#for` or `#repeat`, given expressions for the item and its index. */
   emitItem(block: ForBlock | RepeatBlock, item: string, index: string): void {
     const scope = this.plan.bodyScopes.get(block.body)!;
-    const anchored = this.plan.anchors.has(block);
+    // An item whose markup is one element is marked by the element's `data-b`.
+    const anchored = this.plan.anchors.has(block) && !this.plan.elementItems.has(block);
     if (block.kind === 'for') {
       this.line(`const ${copy(this.file.source, block.item.start, block.item.end)} = ${item};`);
     }
@@ -437,8 +438,10 @@ export class Emitter {
       this.html('-->');
     }
     this.emitBody(block.body, false);
-    if (anchored) {
+    if (this.plan.anchors.has(block)) {
       this.line(`$$ctx.item(${this.scopeVar(scope)}, ${item});`);
+    }
+    if (anchored) {
       this.html('<!--/i-->');
     }
   }
@@ -478,7 +481,8 @@ export class Emitter {
             ? `, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))}`
             : '';
         const value = this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
-        if (anchor) {
+        // An insert that is the whole content of its element updates through the element's anchor.
+        if (anchor && !this.plan.contents.has(node)) {
           this.html('<!--t');
           this.code(anchor.scope);
           this.html(`:${anchor.index}-->`);

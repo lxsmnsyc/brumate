@@ -118,10 +118,15 @@ type PartDelays = Record<string, number>;
 const loadedParts: string[] = [];
 
 async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
-  loadedParts.length = 0;
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderParts(server.default, props);
   show(html + state);
+  await startLoader(delays);
+}
+
+/** Starts the loader on the page that is shown, with the compiled client modules. */
+async function startLoader(delays: PartDelays = {}): Promise<void> {
+  loadedParts.length = 0;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({
@@ -968,7 +973,7 @@ describe('$action', () => {
         actions: new Map([[signUp, { error: 'Enter an email address', email: '' }]]),
       },
     );
-    expect(posted.html).toContain('<p class="error">');
+    expect(posted.html).toContain('<p class="error" data-b="1:0">Enter an email address</p>');
     expect(posted.html).toContain('Enter an email address');
   });
 
@@ -1349,5 +1354,133 @@ describe('scopes in groups', () => {
         '2',
       ]),
     );
+  });
+});
+
+function texts(selector: string): string[] {
+  return [...document.querySelectorAll(selector)].map((node) => node.textContent!);
+}
+
+/** The labels of the items of `compact.brm`. */
+function rowLabels(): string[] {
+  return texts('ul .label');
+}
+
+function renameAt(index: number): void {
+  click(document.querySelectorAll('ul .rename')[index]!);
+}
+
+/** Renames, moves, removes, empties and fills the list, which has one element per item. */
+async function exercise(): Promise<void> {
+  // The button has no anchor: its handler runs with the scope of the `<li>` around it.
+  expect(document.querySelector('ul .rename')!.hasAttribute('data-b')).toBe(false);
+  // A text that is the whole content of its element. An empty one has no text node.
+  expect(document.querySelector('ul .note')!.childNodes).toHaveLength(0);
+  renameAt(1);
+  await waitFor(() => expect(rowLabels()).toEqual(['One', 'Two!', 'Three']));
+  expect(texts('ul .note')).toEqual(['', '', 'x']);
+  expect(document.querySelectorAll('ul li')[1]!.classList.contains('marked')).toBe(true);
+  renameAt(0);
+  await waitFor(() => expect(texts('ul .note')).toEqual(['1', '', 'x']));
+
+  const first = document.querySelector('ul li');
+  click(document.querySelector('.reverse')!);
+  await waitFor(() => expect(rowLabels()).toEqual(['Three', 'Two!', 'One!']));
+  // Items move: the element stays the same.
+  expect(document.querySelectorAll('ul li')[2]).toBe(first);
+  // A list whose items have two elements keeps its item markers.
+  expect(texts('dd')).toEqual(['Three', 'Two!', 'One!']);
+  // After the move, the handler still runs for its own item.
+  renameAt(0);
+  await waitFor(() => expect(rowLabels()).toEqual(['Three!', 'Two!', 'One!']));
+
+  click(document.querySelector('.drop')!);
+  await waitFor(() => expect(rowLabels()).toEqual(['Two!', 'One!']));
+  expect(texts('dt')).toEqual(['2', '1']);
+
+  // The fallback has an element with an anchor of its own. It is not an item.
+  click(document.querySelector('.clear')!);
+  await waitFor(() => expect(texts('ul li')).toEqual(['Nothing']));
+  click(document.querySelector('.pick')!);
+  await waitFor(() =>
+    expect(document.querySelector('ul li')!.classList.contains('odd')).toBe(true),
+  );
+  click(document.querySelector('.add')!);
+  await waitFor(() => expect(rowLabels()).toEqual(['New']));
+  expect(texts('ul li')).toEqual(['NewRename']);
+  click(document.querySelector('.add')!);
+  await waitFor(() => expect(rowLabels()).toEqual(['New', 'New']));
+  // Items that the client renders work the same way.
+  renameAt(1);
+  await waitFor(() => expect(rowLabels()).toEqual(['New', 'New!']));
+  expect(texts('ul .note')).toEqual(['', '1']);
+  expect(texts('dd')).toEqual(['New', 'New!']);
+}
+
+describe('compact markup', () => {
+  const initial = [
+    { id: '1', label: 'One', note: '' },
+    { id: '2', label: 'Two', note: 2 },
+    { id: '3', label: 'Three', note: 'x' },
+  ];
+
+  it('updates, moves and removes items, and finds the scope of handlers', async () => {
+    await resume('compact', { initial });
+    expect(document.querySelector('ul li')!.getAttribute('data-b')).toBe('1:0');
+    await exercise();
+  }, 20_000);
+
+  it('works after navigation moves the IDs of the page', async () => {
+    document.body.innerHTML =
+      '<script data-state data-scopes data-next="5" data-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('compact.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial });
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script data-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/compact', push: true, leave: async () => {}, enter: () => {} });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    // The anchors of items and of texts in elements moved by 5, as the state does.
+    expect(document.querySelector('ul li')!.getAttribute('data-b')).toBe('6:0');
+    expect(document.querySelector('ul .label')!.getAttribute('data-b')).toBe('6:1');
+    for (const script of document.querySelectorAll('script[data-state]')) {
+      run(script);
+    }
+    await startLoader();
+    await exercise();
+  }, 20_000);
+
+  it('keeps working after a hot update renders the page again', async () => {
+    await resume('compact', { initial });
+    renameAt(0);
+    await waitFor(() => expect(rowLabels()).toEqual(['One!', 'Two', 'Three']));
+    const { plan } = compile(readFileSync(join(input, 'compact.brm'), 'utf8'), {
+      filename: 'compact.brm',
+    });
+    const names = Object.fromEntries(
+      [...plan.scopes.values()].map((layout) => [
+        layout.scope.id,
+        layout.slots.map((slot) => slot.name),
+      ]),
+    );
+    document.dispatchEvent(
+      new CustomEvent('brumate:remount', {
+        detail: [{ id: plan.id, before: names, after: names, signals: ['rows'] }],
+      }),
+    );
+    const core = await import('../src/runtime/client.ts');
+    core.leavePage();
+    const server = await import(file('compact.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial });
+    show(html + state);
+    core.init({ load: (name: string) => import(modules.get(name)!), listen: () => {} } as never);
+    await waitFor(() => expect(rowLabels()).toEqual(['One!', 'Two', 'Three']));
+    renameAt(2);
+    await waitFor(() => expect(rowLabels()).toEqual(['One!', 'Two', 'Three!']));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(rowLabels()).toEqual(['Three!', 'Two', 'One!']));
   });
 });

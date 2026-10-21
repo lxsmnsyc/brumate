@@ -33,6 +33,12 @@ const props: Record<string, unknown> = {
   fields: {},
   'uses-counter': {},
   'template-update': {},
+  compact: {
+    initial: [
+      { id: '1', label: 'One', note: '' },
+      { id: '2', label: 'Two', note: 2 },
+    ],
+  },
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.

@@ -76,15 +76,11 @@ export default function Parent($$props: Record<string, never>): string {
 }
 
 # HTML
-<button data-b="1:0" data-on="click=Child_108vasc#h0">
-<!--t1:1-->1<!--/t-->
-</button>
+<button data-b="1:0" data-on="click=Child_108vasc#h0">1</button>
 <div class="slot">
 <em>Count</em>
 </div>
-<button data-b="2:0" data-on="click=Child_108vasc#h0">
-<!--t2:1-->5<!--/t-->
-</button>
+<button data-b="2:0" data-on="click=Child_108vasc#h0">5</button>
 <div class="slot">
 </div>
 

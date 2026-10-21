@@ -171,3 +171,94 @@ describe('client entries and handlers', () => {
     expect(client).not.toContain('export function load');
   });
 });
+
+describe('compact markup', () => {
+  const { server } = compile(
+    [
+      '<script>',
+      "  import { $signal } from 'brumate/signals';",
+      "  import Card from './Card.brm';",
+      '  let on = $signal(false);',
+      "  let tag = $signal('section');",
+      '</script>',
+      '<div class={ active: on }>',
+      '  <span><button class="nested" onClick=(() => (on = !on))>A</button></span>',
+      '  <Card><button class="child" onClick=(() => (on = !on))>B</button></Card>',
+      '  #if (on) {',
+      '    <button class="block" onClick=(() => (on = !on))>C</button>',
+      '  }',
+      '  #portal {',
+      '    <button class="portal" onClick=(() => (on = !on))>D</button>',
+      '  }',
+      '  <{tag}><button class="dynamic" onClick=(() => (on = !on))>E</button></>',
+      '  <textarea>{String(on)}</textarea>',
+      '  <p class="spaced"> {String(on)} </p>',
+      '  <p class="only">{String(on)}</p>',
+      '</div>',
+      '<button class="top" onClick=(() => (on = !on))>F</button>',
+      '<p class={ active: on }><button class="paragraph" onClick=(() => (on = !on))>G</button></p>',
+    ].join('\n'),
+    { filename: 'T.brm' },
+  );
+  /** The markup that the server writes after an element's static attributes. */
+  const after = (name: string): string => server.split(`class=\\"${name}\\"`)[1]!.slice(0, 8);
+
+  it('leaves out the anchor of an element whose handlers find their scope from an element around it', () => {
+    expect(after('nested')).toBe(' data-on');
+  });
+
+  it('keeps the anchor where the element around it can be in another scope or place', () => {
+    // Children render inside the component, a block body has its own scope, a portal renders
+    // elsewhere, and the children of a dynamic tag can render inside a component.
+    // The browser ends a `<p>` at a `<div>`, which a component inside it can render.
+    for (const name of ['child', 'block', 'portal', 'dynamic', 'top', 'paragraph']) {
+      expect(after(name)).toBe(' data-b=');
+    }
+  });
+
+  it('updates a text that is the whole content of its element through the element', () => {
+    expect(after('only')).toBe(' data-b=');
+    expect(server).toMatch(/class=\\"only\\" data-b=[^]*?\\">" \+ \(typeof/);
+    // Whitespace around the text, or an element whose content is text, keeps the markers.
+    expect(server).toContain('<p class=\\"spaced\\"> <!--t');
+    expect(server).toContain('<textarea><!--t');
+  });
+});
+
+/** The server module of a component with a live list whose item body is `body`. */
+function listServer(body: string): string {
+  return compile(
+    [
+      '<script>',
+      "  import { $signal } from 'brumate/signals';",
+      '  let rows = $signal([1, 2]);',
+      '</script>',
+      '<button onClick=(() => (rows = [...rows, rows.length + 1]))>Add</button>',
+      '#for (row of rows) {',
+      `  ${body}`,
+      '}',
+    ].join('\n'),
+    { filename: 'T.brm' },
+  ).server;
+}
+
+describe('list items of one element', () => {
+  it('marks the item with the anchor of its element', () => {
+    for (const body of ['<li>{row}</li>', '<tr><td>{row}</td></tr>', '<div><b>{row}</b></div>']) {
+      const code = listServer(body);
+      expect(code).not.toContain('<!--i');
+      expect(code).toMatch(/"<(li|tr|div) data-b=\\"" \+ \$\$s2 \+ ":0\\">/);
+    }
+  });
+
+  it('keeps the markers when the browser can split the element, or there are more nodes', () => {
+    for (const body of [
+      '<p>{row}</p>',
+      '<tr><b>{row}</b></tr>',
+      '<li>{row}</li> <li>again</li>',
+      '<li>{row}</li> text',
+    ]) {
+      expect(listServer(body)).toContain('<!--i');
+    }
+  });
+});

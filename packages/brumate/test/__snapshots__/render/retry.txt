@@ -25,7 +25,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
-    $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+    $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
     $$ctx.slots($$s3, [error], ["error"]);
   }
   $$html += "<!--/b-->";
@@ -59,7 +59,7 @@ import { check } from "./retry.brm?brumate-client&part=shared";
 const $$ctx = $$b.context;
 
 export function u1($$s) {
-  $$b.text($$s, 0, String($$b.get($$s, 0)));
+  $$b.content($$s, 0, String($$b.get($$s, 0)));
 }
 export function r2($$p) {
   let $$html = '';
@@ -71,7 +71,7 @@ export function r3($$p, $$error) {
   const error = $$error;
   const reset = undefined;
   const $$s3 = $$ctx.scope(3, $$p);
-  $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + $$b.insert((String(error))) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+  $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
   $$ctx.slots($$s3, [error]);
   return $$html;
 }
@@ -118,7 +118,7 @@ export default function Retry($$props: Record<string, never>): string {
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
-    $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + $$b.insert((String(error))) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+    $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
     $$ctx.slots($$s3, [error]);
   }
   $$html += "<!--/b-->";
@@ -127,9 +127,7 @@ export default function Retry($$props: Record<string, never>): string {
 
 # HTML
 <!--b0:0-->
-<p class="error">
-<!--t1:0-->Error: Not ready<!--/t-->
-</p>
+<p class="error" data-b="1:0">Error: Not ready</p>
 <button class="retry" data-b="1:1" data-on="click=Retry_pyus3c#h2">Try again</button>
 <!--/b-->
 

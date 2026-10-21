@@ -37,10 +37,9 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$ctx.scope(5, $$s1);
-      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + (typeof ($$t = $$b.insert((i), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + (typeof ($$t = $$b.insert((item), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
+      $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + (typeof ($$t = $$b.insert((i), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + (typeof ($$t = $$b.insert((item), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
       $$ctx.slots($$s5, [item, i], ["item","i"]);
       $$ctx.item($$s5, $$item1);
-      $$html += "<!--/i-->";
     }
     if ($$list0.length === 0) {
       $$html += "<li>Empty</li>";
@@ -142,10 +141,10 @@ export function a5($$s, $$item, $$index) {
   $$b.set($$s, 1, $$index);
 }
 export function u9($$s) {
-  $$b.text($$s, 0, $$b.get($$s, 1));
+  $$b.text($$s, 1, $$b.get($$s, 1));
 }
 export function u10($$s) {
-  $$b.text($$s, 1, $$b.get($$s, 0));
+  $$b.text($$s, 2, $$b.get($$s, 0));
 }
 export function u18($$s) {
   $$b.attr($$s, 0, "class", { active: $$b.get($$s.p, 0) === 'a' });
@@ -165,10 +164,9 @@ export function r5($$p, $$item, $$index) {
   const item = $$item;
   const i = $$index;
   const $$s5 = $$ctx.scope(5, $$p);
-  $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + $$b.insert((item)) + "<!--/t--></li>";
+  $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
   $$ctx.slots($$s5, [item, i]);
   $$ctx.item($$s5, $$item);
-  $$html += "<!--/i-->";
   return $$html;
 }
 export function r6($$p) {
@@ -224,10 +222,9 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$ctx.scope(5, $$s1);
-      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + $$b.insert((item)) + "<!--/t--></li>";
+      $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
       $$ctx.slots($$s5, [item, i]);
       $$ctx.item($$s5, $$item1);
-      $$html += "<!--/i-->";
     }
     if ($$list0.length === 0) {
       $$html += "<li>Empty</li>";
@@ -286,16 +283,12 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 <!--/b-->
 <ul>
 <!--b0:4-->
-<!--i1-->
-<li>
-<!--t1:0-->0<!--/t-->. <!--t1:1-->one<!--/t-->
+<li data-b="1:0">
+<!--t1:1-->0<!--/t-->. <!--t1:2-->one<!--/t-->
 </li>
-<!--/i-->
-<!--i2-->
-<li>
-<!--t2:0-->1<!--/t-->. <!--t2:1-->two<!--/t-->
+<li data-b="2:0">
+<!--t2:1-->1<!--/t-->. <!--t2:2-->two<!--/t-->
 </li>
-<!--/i-->
 <!--/b-->
 </ul>
 <span>x</span>

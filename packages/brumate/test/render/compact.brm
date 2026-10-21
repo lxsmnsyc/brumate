@@ -1,0 +1,38 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  interface Row { id: string; label: string; note: string | number }
+  const { initial } = $props<{ initial: Row[] }>();
+  let rows = $signal(initial);
+  let picks = $signal(0);
+</script>
+
+<button class="reverse" onClick=(() => (rows = [...rows].reverse()))>Reverse</button>
+<button class="drop" onClick=(() => (rows = rows.slice(1)))>Drop</button>
+<button class="clear" onClick=(() => (rows = []))>Clear</button>
+<button class="add" onClick=(() => (rows = [...rows, { id: String(rows.length + 10), label: 'New', note: '' }]))>Add</button>
+<button class="pick" onClick=(() => picks++)>Pick</button>
+<ul>
+  #for (row of rows by row.id) {
+    <script>
+      function rename() {
+        rows = rows.map((item) =>
+          item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
+        );
+      }
+    </script>
+    <li class={ marked: row.label.endsWith('!') }>
+      <span class="label">{row.label}</span>
+      <i class="note">{row.note}</i>
+      <button class="rename" onClick=rename>Rename</button>
+    </li>
+  } #else {
+    <li class={ empty: true, odd: picks % 2 === 1 }>Nothing</li>
+  }
+</ul>
+<ol>
+  #for (row of rows by row.id) {
+    <dt>{row.id}</dt>
+    <dd>{row.label}</dd>
+  }
+</ol>

@@ -93,9 +93,7 @@ export default function Themes($$props: Record<string, never>): string {
 <button class="toggle" data-b="0:0" data-on="click=Themes_945372#h3">Toggle</button>
 <button class="show" data-b="0:1" data-on="click=Themes_945372#h4">Show</button>
 <div class="a">
-<span class="themed">
-<!--t1:0-->dark<!--/t-->
-</span>
+<span class="themed" data-b="1:0">dark</span>
 </div>
 <!--b0:2:-1-->
 <!--/b-->

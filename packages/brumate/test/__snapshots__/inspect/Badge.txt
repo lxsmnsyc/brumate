@@ -13,8 +13,8 @@ State
   component: label
 
 HTML only
-  1 element and 0 inserted values ship no client code
+  0 elements and 0 inserted values ship no client code
 
 Client modules, before minifying (bytes, gzip)
   entry: 296 B, 220 B
-  update: 133 B, 125 B
+  update: 136 B, 125 B

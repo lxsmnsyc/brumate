@@ -143,7 +143,7 @@ The core, `brumate/client`, loads on the first event:
 
 - Reads the state records that the page's scripts handed over, and links scope instances to their parents. It does not include seroval.
 - Writes slots and calls the updates in `g`.
-- Finds elements by `data-b` and text and blocks by their comment markers.
+- Finds elements by `data-b`, and text, blocks and list items by their comment markers. A text that is the whole content of an element, and a list item that is one element, are found by the element's `data-b`. A handler on an element without `data-b` runs with the scope of the nearest element around it that has one.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
 - Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRequest` from `brumate/server` answers them. The code for these calls is a separate chunk that loads on the first call.
@@ -162,11 +162,11 @@ Minified, from the production build of `examples/todos`, with `gzip -9`:
 | Of that, Vite's preload helper                         | 1502 B  | 785 B  |
 | Loader with its registry and client navigation         | 6502 B  | 2756 B |
 | Navigation module, on the first link                   | 7489 B  | 3045 B |
-| Core                                                   | 20492 B | 7761 B |
+| Core                                                   | 20646 B | 7838 B |
 | Server function calls, with seroval, on the first call | 28831 B | 8861 B |
-| `App.brm`: one module with 3 handlers and the updates  | 1398 B  | 817 B  |
+| `App.brm`: one module with 3 handlers and the updates  | 1359 B  | 796 B  |
 | `Counter.brm`: one module                              | 324 B   | 267 B  |
-| `_layout.brm`: one module                              | 310 B   | 265 B  |
+| `_layout.brm`: one module                              | 313 B   | 267 B  |
 
 The loader is the only code that loads before an interaction. The core loads once, on the first event. The page state is code that the page's scripts run, so the core needs no reader for it. seroval loads with the server function code, on the first call, which reads and writes seroval JSON.
 

@@ -37,11 +37,11 @@ State
   body of #for (35:3): todo
 
 HTML only
-  5 elements and 0 inserted values ship no client code
+  4 elements and 0 inserted values ship no client code
 
 Client modules, before minifying (bytes, gzip)
   entry: 666 B, 303 B
   h5: 348 B, 245 B
   h12: 232 B, 172 B
   h7: 120 B, 121 B
-  update: 1387 B, 566 B
+  update: 1340 B, 558 B

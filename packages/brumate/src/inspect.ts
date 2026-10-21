@@ -133,7 +133,12 @@ export function report(
   let elements = 0;
   let inserts = 0;
   const count = (node: Markup): void => {
-    if (node.kind === 'element' && !plan.anchors.has(node)) {
+    // An element with handlers ships client code, even when it finds its scope from an element around it.
+    if (
+      node.kind === 'element' &&
+      !plan.anchors.has(node) &&
+      !node.attributes.some((attribute) => attribute.kind === 'event')
+    ) {
       elements++;
     } else if (node.kind === 'insert' && !plan.anchors.has(node)) {
       inserts++;

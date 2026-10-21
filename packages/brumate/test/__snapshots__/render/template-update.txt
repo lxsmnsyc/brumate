@@ -14,7 +14,7 @@ export default async function TemplateUpdate($$props: Record<string, never>, $$c
     $$ctx.slots($$s2, [label, amount], ["label","amount"]);
     return $$b.raw($$html);
   }
-  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((price('Subtotal', total)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p data-b=\"" + $$s1 + ":1\">" + (typeof ($$t = $$b.insert((price('Subtotal', total)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.slots($$s1, [total], ["total"]);
   return $$html;
 }
@@ -51,7 +51,7 @@ export function u2($$s) {
   $$b.text($$s, 1, $$b.get($$s, 1));
 }
 export function u4($$s) {
-  $$b.text($$s, 1, (($$p) => {
+  $$b.content($$s, 1, (($$p) => {
 function price(label: string, amount: number) {
   let $$html = '';
   const $$s2 = $$ctx.scope(2, $$p);
@@ -79,19 +79,17 @@ export default function TemplateUpdate($$props: Record<string, never>): string {
     $$ctx.slots($$s2, [label, amount]);
     return $$b.raw($$html);
   }
-  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((price('Subtotal', total))) + "<!--/t--></p>";
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p data-b=\"" + $$s1 + ":1\">" + $$b.insert((price('Subtotal', total))) + "</p>";
   $$ctx.slots($$s1, [total]);
   return $$html;
 }
 
 # HTML
 <button data-b="0:0" data-on="click=TemplateUpdate_kx4ubq#h3">Add</button>
-<p>
-<!--t0:1-->
+<p data-b="0:1">
 <span class="price">
 <!--t1:0-->Subtotal<!--/t-->: <!--t1:1-->1<!--/t-->
 </span>
-<!--/t-->
 </p>
 
 # State

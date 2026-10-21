@@ -30,10 +30,9 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
       const count = $$item1;
       const i = $$index2;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + (typeof ($$t = $$b.insert((row(i)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t-->" + await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+      $$html += "<li data-b=\"" + $$s3 + ":0\"><!--t" + $$s3 + ":1-->" + (typeof ($$t = $$b.insert((row(i)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t-->" + await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 2) + "</li>";
       $$ctx.slots($$s3, [count, i], ["count","i"]);
       $$ctx.item($$s3, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -115,7 +114,7 @@ export function a3($$s, $$item, $$index) {
   $$b.set($$s, 1, $$index);
 }
 export function u9($$s) {
-  $$b.text($$s, 0, (($$p) => {
+  $$b.text($$s, 1, (($$p) => {
 let label = $$b.get($$p, 2);
 function row(index: number) {
   let $$html = '';
@@ -128,7 +127,7 @@ return row($$b.get($$s, 1));
 })($$s.p));
 }
 export function u10($$s) {
-  $$b.prop($$s, 1, "value", $$b.get($$s, 0));
+  $$b.prop($$s, 2, "value", $$b.get($$s, 0));
 }
 export function b12($$s) {
   $$b.branch($$s, 3, ($$b.get($$s, 1)) ? 0 : -1, [r4], [4]);
@@ -150,10 +149,9 @@ export function r3($$p, $$item, $$index) {
   const count = $$item;
   const i = $$index;
   const $$s3 = $$ctx.scope(3, $$p);
-  $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+  $$html += "<li data-b=\"" + $$s3 + ":0\"><!--t" + $$s3 + ":1-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 2) + "</li>";
   $$ctx.slots($$s3, [count, i]);
   $$ctx.item($$s3, $$item);
-  $$html += "<!--/i-->";
   return $$html;
 }
 export function r4($$p) {
@@ -203,10 +201,9 @@ export default function List($$props: Record<string, never>): string {
       const count = $$item1;
       const i = $$index2;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 1) + "</li>";
+      $$html += "<li data-b=\"" + $$s3 + ":0\"><!--t" + $$s3 + ":1-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, $$ctx, $$s3, 2) + "</li>";
       $$ctx.slots($$s3, [count, i]);
       $$ctx.item($$s3, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -233,36 +230,28 @@ export default function List($$props: Record<string, never>): string {
 <button class="show" data-b="0:1" data-on="click=List_12rwm68#h7">Show</button>
 <ul>
 <!--b0:2-->
-<!--i1-->
-<li>
-<!--t1:0-->
+<li data-b="1:0">
+<!--t1:1-->
 <span>Item <!--t2:0-->1<!--/t-->
 </span>
 <!--/t-->
-<button data-b="3:0" data-on="click=Child_108vasc#h0">
-<!--t3:1-->1<!--/t-->
-</button>
+<button data-b="3:0" data-on="click=Child_108vasc#h0">1</button>
 <div class="slot">
 </div>
 </li>
-<!--/i-->
-<!--i4-->
-<li>
-<!--t4:0-->
+<li data-b="4:0">
+<!--t4:1-->
 <span>Item <!--t5:0-->2<!--/t-->
 </span>
 <!--/t-->
-<button data-b="6:0" data-on="click=Child_108vasc#h0">
-<!--t6:1-->2<!--/t-->
-</button>
+<button data-b="6:0" data-on="click=Child_108vasc#h0">2</button>
 <div class="slot">
 </div>
 </li>
-<!--/i-->
 <!--/b-->
 </ul>
 <!--b0:3:-1-->
 <!--/b-->
 
 # State
-<script data-state data-scopes data-next="7">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"List_12rwm68",s:$R[2]=[$R[3]=[1,2],!1,"Item"]},g:$R[4]=[$R[5]=[3,0,5,2,1,1,0,$R[6]={1:3},3,2,1,$R[7]={1:6}],$R[8]=[2,0,0,1,2,0,3,1],$R[9]=[1,2,24,2,"Child_108vasc",3,1,$R[10]=$b.f("List_12rwm68#h11",1),3,2,$R[11]=$b.f("List_12rwm68#h11",4)]]})))</script>
+<script data-state data-scopes data-next="7">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"List_12rwm68",s:$R[2]=[$R[3]=[1,2],!1,"Item"]},g:$R[4]=[$R[5]=[3,0,5,2,1,1,0,$R[6]={2:3},3,2,1,$R[7]={2:6}],$R[8]=[2,0,0,1,2,0,3,1],$R[9]=[1,2,24,2,"Child_108vasc",3,1,$R[10]=$b.f("List_12rwm68#h11",1),3,2,$R[11]=$b.f("List_12rwm68#h11",4)]]})))</script>

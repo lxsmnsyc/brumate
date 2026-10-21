@@ -12,11 +12,11 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
   let count = (1);
   const $$p_doubled = $$b.memo(() => (double(count)), $$ctx);
   const doubled = (($$t = $$b.ready($$p_doubled)) instanceof Promise ? await $$t : $$t);
-  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><p><!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((doubled), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\">" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><p data-b=\"" + $$s1 + ":1\">" + (typeof ($$t = $$b.insert((doubled), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   if (false) {
-    $$html += "<!--b" + $$s1 + ":3:0--><span class=\"pending\">Loading</span><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":2:0--><span class=\"pending\">Loading</span><!--/b-->";
   } else {
-    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
   $$ctx.slots($$s1, [count, doubled], ["count","doubled"]);
   return $$html;
@@ -52,13 +52,13 @@ export function m1($$s) {
   $$b.memo($$s, 1, () => double($$b.get($$s, 0)));
 }
 export function u3($$s) {
-  $$b.text($$s, 1, $$b.get($$s, 0));
+  $$b.content($$s, 0, $$b.get($$s, 0));
 }
 export function u4($$s) {
-  $$b.text($$s, 2, $$b.get($$s, 1));
+  $$b.content($$s, 1, $$b.get($$s, 1));
 }
 export function b5($$s) {
-  $$b.branch($$s, 3, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
 }
 export function r2($$p) {
   let $$html = '';
@@ -86,24 +86,20 @@ export default function Doubler($$props: Record<string, never>): string {
   const $$s1 = $$ctx.scope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
   const doubled = (double(count));
-  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--></button><p><!--t" + $$s1 + ":2-->" + $$b.insert((doubled)) + "<!--/t--></p>";
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\">" + $$b.insert((count)) + "</button><p data-b=\"" + $$s1 + ":1\">" + $$b.insert((doubled)) + "</p>";
   if (false) {
-    $$html += "<!--b" + $$s1 + ":3:0--><span class=\"pending\">Loading</span><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":2:0--><span class=\"pending\">Loading</span><!--/b-->";
   } else {
-    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
   $$ctx.slots($$s1, [count, doubled]);
   return $$html;
 }
 
 # HTML
-<button data-b="0:0" data-on="click=Doubler_1bxsryb#h2">
-<!--t0:1-->1<!--/t-->
-</button>
-<p>
-<!--t0:2-->2<!--/t-->
-</p>
-<!--b0:3:-1-->
+<button data-b="0:0" data-on="click=Doubler_1bxsryb#h2">1</button>
+<p data-b="0:1">2</p>
+<!--b0:2:-1-->
 <!--/b-->
 
 # State

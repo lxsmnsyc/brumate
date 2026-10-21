@@ -7,7 +7,7 @@ export default async function Prefetch($$props: Record<string, never>, $$ctx: $$
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Prefetch_okfwof");
   let count = (0);
-  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
+  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\">" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><button class=\"none\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
@@ -44,7 +44,7 @@ import * as $$b from 'brumate/client';
 const $$ctx = $$b.context;
 
 export function u2($$s) {
-  $$b.text($$s, 1, $$b.get($$s, 0));
+  $$b.content($$s, 0, $$b.get($$s, 0));
 }
 
 # Render module
@@ -56,16 +56,14 @@ export default function Prefetch($$props: Record<string, never>): string {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Prefetch_okfwof");
   let count = (0);
-  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
+  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\">" + $$b.insert((count)) + "</button><button class=\"none\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
   $$ctx.slots($$s1, [count]);
   return $$html;
 }
 
 # HTML
-<button class="idle" data-b="0:0" data-on="click=Prefetch_okfwof#h1" data-prefetch="idle">
-<!--t0:1-->0<!--/t-->
-</button>
-<button class="none" data-b="0:2" data-on="click=Prefetch_okfwof#h3" data-prefetch="none">-</button>
+<button class="idle" data-b="0:0" data-on="click=Prefetch_okfwof#h1" data-prefetch="idle">0</button>
+<button class="none" data-b="0:1" data-on="click=Prefetch_okfwof#h3" data-prefetch="none">-</button>
 
 # State
 <script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Prefetch_okfwof",s:$R[2]=[0]}})))</script>

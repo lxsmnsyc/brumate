@@ -3,7 +3,6 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
-  isRaw,
   rawHTML,
   spread as spreadText,
 } from './html.ts';
@@ -671,9 +670,13 @@ function withTarget(event: Event, element: Element): Event {
   });
 }
 
-/** Runs the handler `ref` for an element with a `data-b` anchor. */
+/**
+ * Runs the handler `ref` for an element. The scope comes from the element's
+ * `data-b` anchor, or from the nearest element around it that has one, which
+ * the compiler checks is in the same scope.
+ */
 export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
-  const anchor = element.getAttribute('data-b');
+  const anchor = element.closest('[data-b]')?.getAttribute('data-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
   const args = event ? [withTarget(event, element)] : [];
   devtools()?.handler?.(ref, element, event);
@@ -1290,29 +1293,46 @@ export function portal(scope: Scope, target: unknown, render: Render, kinds: num
   insertHTML({ parent: element }, `<!--P${id}-->${render(scope)}<!--/P-->`);
 }
 
+/** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */
 export function text(scope: Scope, anchor: number, value: unknown): void {
   const start = findComment(`t${scope.id}:${anchor}`);
-  if (!start) {
-    return;
+  if (start) {
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value);
   }
-  const end = rangeEnd(start);
-  const node = start.nextSibling;
+}
+
+/** Writes an inserted value that is the whole content of the element with the anchor. */
+export function content(scope: Scope, anchor: number, value: unknown): void {
+  const element = findElement(scope.id, anchor);
+  if (element) {
+    write(element, element.firstChild, null, value);
+  }
+}
+
+/**
+ * Replaces the nodes of `parent` from `first` up to `end`, or to its last
+ * child, with a value. A text node that stays a text node keeps its node.
+ */
+function write(
+  parent: Node & ParentNode,
+  first: ChildNode | null,
+  end: Node | null,
+  value: unknown,
+): void {
   if (
     (typeof value === 'string' || typeof value === 'number') &&
-    node?.nodeType === 3 &&
-    node.nextSibling === end
+    first?.nodeType === 3 &&
+    first.nextSibling === end
   ) {
-    (node as Text).data = String(value);
+    (first as Text).data = String(value);
     return;
   }
-  clear(start, end);
-  if (isRaw(value)) {
-    insertHTML(end, rawHTML(value));
-  } else if (typeof value === 'string' || typeof value === 'number') {
-    end.parentNode!.insertBefore(document.createTextNode(String(value)), end);
-  } else {
-    insertHTML(end, insertValue(value));
+  while (first && first !== end) {
+    const next = first.nextSibling;
+    first.remove();
+    first = next;
   }
+  insertHTML(end ?? { parent }, insertValue(value));
 }
 
 function setAttribute(element: Element, name: string, value: unknown): void {
@@ -1320,11 +1340,11 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     (element as unknown as Record<string, unknown>)[name] =
       name === 'checked' ? Boolean(value) : (value ?? '');
   }
-  const content = attributeText(name, value);
-  if (content === undefined) {
+  const written = attributeText(name, value);
+  if (written === undefined) {
     element.removeAttribute(name);
   } else {
-    element.setAttribute(name, content);
+    element.setAttribute(name, written);
   }
 }
 
@@ -1465,22 +1485,27 @@ export function list(
   const others: Node[] = [];
   let position = 0;
   for (let node = start.nextSibling; node && node !== end;) {
-    if (node.nodeType === 8 && /^i-?\d+$/.test((node as Comment).data)) {
-      const itemEnd = rangeEnd(node as Comment);
-      const nodes: Node[] = [];
-      for (let current: Node | null = node; current; current = current.nextSibling) {
-        nodes.push(current);
-        if (current === itemEnd) {
-          break;
-        }
+    const data = node.nodeType === 8 ? (node as Comment).data : undefined;
+    // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `data-b` names the scope.
+    const id = data
+      ? /^i(-?\d+)$/.exec(data)?.[1]
+      : (node as Element).getAttribute?.('data-b')?.split(':')[0];
+    const item = id === undefined ? undefined : scopes.get(Number(id));
+    let last: Node = node;
+    // The elements of the fallback have scopes of its kinds.
+    if (item && (data || (item.p === scope && !fallbackKinds.includes(item.k)))) {
+      if (data) {
+        last = rangeEnd(node as Comment);
       }
-      const item = scopes.get(Number((node as Comment).data.slice(1)))!;
+      const nodes = [node];
+      for (let current = node; current !== last;) {
+        nodes.push((current = current.nextSibling!));
+      }
       previous.set(key(item.i, position++), { scope: item, nodes });
-      node = itemEnd.nextSibling;
     } else {
       others.push(node);
-      node = node.nextSibling;
     }
+    node = last.nextSibling;
   }
 
   if (items.length === 0) {
@@ -1544,9 +1569,9 @@ export function list(
 
 /** Sets a style variable on the top-level elements of a component instance. */
 export function setVar(scope: Scope, name: string, value: unknown): void {
-  const content = value === null || value === undefined || value === false ? '' : String(value);
+  const css = value === null || value === undefined || value === false ? '' : String(value);
   for (const element of document.querySelectorAll<HTMLElement>(`[data-v="${scope.id}"]`)) {
-    element.style.setProperty(name, content);
+    element.style.setProperty(name, css);
   }
 }
 

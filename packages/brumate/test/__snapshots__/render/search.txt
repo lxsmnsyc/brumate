@@ -32,10 +32,9 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
       const $$item1 = $$list0[$$index2];
       const result = $$item1;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + (typeof ($$t = $$b.insert((result), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
+      $$html += "<li data-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((result), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</li>";
       $$ctx.slots($$s3, [result], ["result"]);
       $$ctx.item($$s3, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -88,7 +87,7 @@ export function a3($$s, $$item, $$index) {
   $$b.set($$s, 0, result);
 }
 export function u7($$s) {
-  $$b.text($$s, 0, $$b.get($$s, 0));
+  $$b.content($$s, 0, $$b.get($$s, 0));
 }
 export function r2($$p) {
   let $$html = '';
@@ -99,10 +98,9 @@ export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
   const $$s3 = $$ctx.scope(3, $$p);
-  $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((result)) + "<!--/t--></li>";
+  $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
   $$ctx.slots($$s3, [result]);
   $$ctx.item($$s3, $$item);
-  $$html += "<!--/i-->";
   return $$html;
 }
 
@@ -132,10 +130,9 @@ export default function Search($$props: Record<string, never>): string {
       const $$item1 = $$list0[$$index2];
       const result = $$item1;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--i" + $$s3 + "--><li><!--t" + $$s3 + ":0-->" + $$b.insert((result)) + "<!--/t--></li>";
+      $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
       $$ctx.slots($$s3, [result]);
       $$ctx.item($$s3, $$item1);
-      $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
@@ -150,21 +147,9 @@ export default function Search($$props: Record<string, never>): string {
 <!--/b-->
 <ul>
 <!--b0:2-->
-<!--i1-->
-<li>
-<!--t1:0-->apple<!--/t-->
-</li>
-<!--/i-->
-<!--i2-->
-<li>
-<!--t2:0-->apricot<!--/t-->
-</li>
-<!--/i-->
-<!--i3-->
-<li>
-<!--t3:0-->banana<!--/t-->
-</li>
-<!--/i-->
+<li data-b="1:0">apple</li>
+<li data-b="2:0">apricot</li>
+<li data-b="3:0">banana</li>
 <!--/b-->
 </ul>
 

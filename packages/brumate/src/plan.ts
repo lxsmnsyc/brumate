@@ -1,4 +1,5 @@
-import type { Block, Body, Markup, SFCFile } from './ast.ts';
+import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
+import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, resetUsed } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
@@ -29,6 +30,16 @@ export interface Plan {
   bodyScopes: Map<Body, Scope>;
   /** The anchor index of a node within its scope. */
   anchors: Map<AnchorTarget, number>;
+  /**
+   * Inserts that are the only content of their element. They share the
+   * element's anchor and update its children, so they have no markers.
+   */
+  contents: Set<Markup>;
+  /**
+   * Lists whose item bodies are one element. The element's `data-b` marks
+   * the item, in place of `<!--i…-->` and `<!--/i-->`.
+   */
+  elementItems: Set<Block>;
   /** The export name of each client root, such as `h3`. */
   symbols: Map<Site, string>;
   /** Sites whose code runs on the client, including update code for live nodes. */
@@ -40,6 +51,57 @@ export interface Plan {
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
 }
+
+/**
+ * Elements that the HTML parser can end before their end tag, or whose
+ * content it moves out, when they hold some other elements: a `<p>` ends at
+ * a `<div>`, and a `<table>` moves out content that is not part of a table.
+ */
+const UNSTABLE = new Set([
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'dt',
+  'dd',
+  'option',
+  'optgroup',
+  'select',
+  'rb',
+  'rp',
+  'rt',
+  'rtc',
+  'table',
+  'caption',
+  'colgroup',
+  'thead',
+  'tbody',
+  'tfoot',
+  'template',
+]);
+
+/**
+ * True if the browser keeps the element's content inside it, whatever that
+ * content renders. Then an element inside it can find it with `closest`, and
+ * it can stand for a list item. A `<tr>` is one when it holds only cells.
+ */
+function isStable(node: ElementNode): boolean {
+  const tag = node.tag.toLowerCase();
+  if (tag === 'tr') {
+    return node.children.every((child) =>
+      child.kind === 'text'
+        ? cleanText(child.value).trim() === ''
+        : child.kind === 'element' && ['td', 'th'].includes(child.tag.toLowerCase()),
+    );
+  }
+  return !UNSTABLE.has(tag);
+}
+
+/** Elements whose content is text, where a comment would be text too. */
+const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
 
 // Declarations that are code or come from imports, so they never need a slot.
 const NO_SLOT = new Set<DeclarationKind>([
@@ -211,21 +273,28 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     }
   }
 
-  const visitBody = (body: Body): void => {
+  const contents = new Set<Markup>();
+  const elementItems = new Set<Block>();
+  // Root elements of list items, which get an anchor so they mark their item.
+  const itemRoots = new Set<Markup>();
+
+  // `outer` is the scope of the nearest element around the nodes that has an anchor, in the same
+  // markup. An element inside it in the same scope finds its handlers' scope from that anchor.
+  const visitBody = (body: Body, outer?: Scope): void => {
     const scope = bodyScopes.get(body)!;
     for (const template of body.templates) {
       visitBody(template.body);
     }
-    visitNodes(body.children, scope);
+    visitNodes(body.children, scope, outer);
   };
 
-  const visitNodes = (nodes: Markup[], scope: Scope): void => {
+  const visitNodes = (nodes: Markup[], scope: Scope, outer?: Scope): void => {
     for (const node of nodes) {
-      visitNode(node, scope);
+      visitNode(node, scope, outer);
     }
   };
 
-  const visitNode = (node: Markup, scope: Scope): void => {
+  const visitNode = (node: Markup, scope: Scope, outer?: Scope): void => {
     switch (node.kind) {
       case 'text':
         return;
@@ -245,10 +314,34 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
             const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
             return target !== undefined && slotted.has(target);
           });
-        if (hasRef || sites.some((site) => site.kind === 'event' || isLiveSite(site))) {
+        const content = node.kind === 'element' ? liveContent(node) : undefined;
+        const events = sites.some((site) => site.kind === 'event');
+        // An element whose only anchor would be for its handlers finds their scope from
+        // the anchor of an element around it, with `closest`.
+        const implied = node.kind === 'element' && outer === scope;
+        if (
+          hasRef ||
+          content ||
+          itemRoots.has(node) ||
+          sites.some((site) => isLiveSite(site)) ||
+          (events && !implied)
+        ) {
           anchor(scope, node);
         }
-        visitNodes(node.children, scope);
+        if (content) {
+          anchors.set(content, anchors.get(node)!);
+          contents.add(content);
+          return;
+        }
+        // The children of a dynamic tag can render inside a component. An element that the
+        // browser can end early, before its children, is not one that they can find.
+        let inner = outer;
+        if (node.kind === 'dynamic') {
+          inner = undefined;
+        } else if (anchors.has(node)) {
+          inner = isStable(node) ? scope : undefined;
+        }
+        visitNodes(node.children, scope, inner);
         return;
       }
       case 'component': {
@@ -256,21 +349,38 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         if (sites.some((site) => isLiveSite(site))) {
           anchor(scope, node);
         }
+        // Children render inside the component's elements.
         visitNodes(node.children, scope);
         return;
       }
       case 'fragment':
-        visitNodes(node.children, scope);
+        visitNodes(node.children, scope, outer);
         return;
       case 'listener':
         anchor(scope, node);
         return;
       default:
-        visitBlock(node, scope);
+        visitBlock(node, scope, outer);
     }
   };
 
-  const visitBlock = (block: Block, scope: Scope): void => {
+  /** The live insert that is the whole content of an element, if any. */
+  const liveContent = (node: ElementNode): InsertNode | undefined => {
+    // Comments in these would be text, and `textarea` keeps its first value.
+    if (RAW_TEXT.has(node.tag.toLowerCase())) {
+      return undefined;
+    }
+    const [only, ...rest] = node.children.filter(
+      (child) => child.kind !== 'text' || cleanText(child.value) !== '',
+    );
+    if (rest.length > 0 || only?.kind !== 'insert') {
+      return undefined;
+    }
+    const site = insertSites.get(only.expression.ast);
+    return site && isLiveSite(site) ? only : undefined;
+  };
+
+  const visitBlock = (block: Block, scope: Scope, outer?: Scope): void => {
     const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
       block.kind === 'client' ||
@@ -284,13 +394,36 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       // Portal content is marked with its scope ID, so it can be removed with its block.
       scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
     }
+    // Portal and head content renders elsewhere in the page.
+    const inner = block.kind === 'portal' || block.kind === 'head' ? undefined : outer;
     for (const body of blockBodies(block)) {
       if (live && (block.kind === 'for' || block.kind === 'repeat') && body === block.body) {
         // Each item gets an ID for its marker.
         scopes.get(bodyScopes.get(body)!)!.needsId = true;
+        const root = singleRoot(body);
+        if (root) {
+          itemRoots.add(root);
+          elementItems.add(block);
+        }
       }
-      visitBody(body);
+      visitBody(body, inner);
     }
+  };
+
+  /** The element that is the whole markup of a body, when nothing else renders next to it. */
+  const singleRoot = (body: Body): Markup | undefined => {
+    const scope = bodyScopes.get(body)!;
+    // `$client` callbacks render `<template>` markers next to the markup.
+    if (
+      body.templates.length > 0 ||
+      model.sites.some((site) => site.kind === 'client' && site.scope === scope)
+    ) {
+      return undefined;
+    }
+    const [only, ...rest] = body.children.filter(
+      (child) => child.kind !== 'text' || cleanText(child.value) !== '',
+    );
+    return rest.length === 0 && only?.kind === 'element' && isStable(only) ? only : undefined;
   };
 
   for (const template of file.templates) {
@@ -323,6 +456,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     scopes,
     bodyScopes,
     anchors,
+    contents,
+    elementItems,
     symbols,
     clientSites,
   };
