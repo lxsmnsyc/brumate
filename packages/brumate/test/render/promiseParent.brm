@@ -1,0 +1,15 @@
+<script module>
+  export function fetchUser(id: number): Promise<{ name: string }> {
+    return new Promise((done) => setTimeout(() => done({ name: `User ${id}` }), 50));
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+  import PromiseChild from './PromiseChild.brm';
+
+  let id = $signal(1);
+</script>
+
+<button class="next" onClick=(() => id++)>Next</button>
+<PromiseChild value=(fetchUser(id)) />

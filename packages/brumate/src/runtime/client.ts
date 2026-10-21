@@ -1102,7 +1102,16 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   const apply = (module: ClientModule): void => {
     const slot = module.props[name];
     if (slot !== undefined) {
-      set(child, slot, value);
+      // A promise loads as an async memo does: the prop keeps its value, and is pending until it settles.
+      if (
+        value !== null &&
+        typeof value === 'object' &&
+        typeof (value as PromiseLike<unknown>).then === 'function'
+      ) {
+        asyncMemo(child, slot, Promise.resolve(value));
+      } else {
+        set(child, slot, value);
+      }
       return;
     }
     const all = module.props['*'];

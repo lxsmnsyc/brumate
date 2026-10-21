@@ -64,6 +64,8 @@ $untrack(count);
 
 Returns the props of the component. Destructuring the call keeps each prop reactive.
 
+A prop can be a promise, as in `<User data=fetchUser(id) />`. A memo of it loads the value, as a memo of a server function does: `const user = $memo(data)`. When the parent passes a new promise, the prop keeps its old value until the promise settles, and `$isPending(user)` is true meanwhile.
+
 ### `$signal`
 
 Declares writable state. Reading the variable reads the value. Assigning to it writes the value.

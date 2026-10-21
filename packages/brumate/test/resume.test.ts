@@ -763,3 +763,41 @@ describe('refresh', () => {
     );
   });
 });
+
+describe('a promise passed as a prop', () => {
+  it('loads a memo of the prop again when the parent passes a new promise', async () => {
+    const server = await import(file('promiseParent.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    document.body.innerHTML = html + state;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(text('.name')).toBe('User 1');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    expect(text('.name')).toBe('User 1');
+    await waitFor(() => expect(text('.name')).toBe('User 2'));
+    expect(document.querySelector('.pending')).toBeNull();
+  });
+
+  it('does the same for a destructured prop', async () => {
+    const server = await import(file('promiseParentDestructured.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    document.body.innerHTML = html + state;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(text('.name')).toBe('User 1');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    expect(text('.name')).toBe('User 1');
+    await waitFor(() => expect(text('.name')).toBe('User 2'));
+    expect(document.querySelector('.pending')).toBeNull();
+  });
+});

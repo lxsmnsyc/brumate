@@ -159,21 +159,23 @@ export function isWithin(scope: Scope, ancestor: Scope): boolean {
 }
 
 /**
- * Returns the memos that a memo reads, directly or through other memos. A
- * memo is pending while any of them loads.
+ * Returns the memos and props that a memo reads, directly or through other
+ * memos. A memo is pending while any of them loads. A prop loads when a
+ * parent passes it a promise.
  */
 export function upstreamMemos(declaration: Declaration): Declaration[] {
   const result = new Set<Declaration>();
   const visit = (current: Declaration): void => {
     for (const read of current.site?.reads ?? []) {
       const next = read.declaration;
-      if (
-        (next.kind === 'memo' || next.kind === 'async-memo') &&
-        next !== declaration &&
-        !result.has(next)
-      ) {
+      if (next === declaration || result.has(next)) {
+        continue;
+      }
+      if (next.kind === 'memo' || next.kind === 'async-memo') {
         result.add(next);
         visit(next);
+      } else if (next.kind === 'prop') {
+        result.add(next);
       }
     }
   };

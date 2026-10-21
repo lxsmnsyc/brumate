@@ -1,0 +1,11 @@
+<script>
+  import { $isPending, $memo, $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: Promise<{ name: string }> }>();
+  const example = $memo(value);
+</script>
+
+<p class="name">{example.name}</p>
+#if ($isPending(example)) {
+  <span class="pending">Loading</span>
+}
