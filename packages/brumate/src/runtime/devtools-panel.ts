@@ -60,7 +60,13 @@ pre { margin: 0; white-space: pre-wrap; }
 .empty { color: #888; }
 svg text { fill: #eee; font: 11px ui-monospace, monospace; }
 svg rect { fill: #222; stroke: #8886; }
+svg .kind-signal rect, svg .kind-prop rect { stroke: #9cf; }
+svg .kind-memo rect { stroke: #c9f; }
+svg .kind-effect rect { stroke: #9e9; }
 svg .hot rect { fill: #fd03; stroke: #fd0; }
+.legend { color: #aaa; margin: 6px 0; }
+.legend b { font-weight: normal; }
+.legend .signal { color: #9cf; } .legend .memo { color: #c9f; } .legend .effect { color: #9e9; } .legend .hot { color: #fd0; }
 svg line { stroke: #8886; }
 svg .hot-edge { stroke: #fd0; }
 .outline { position: fixed; pointer-events: none; border: 2px solid #9cf; background: #9cf2; border-radius: 3px; z-index: 2147483646; }
@@ -208,6 +214,10 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
   bar.append(pick);
   panel = element('div', { class: 'panel' }, element('style', {}, STYLE), bar, body);
   root.append(panel);
+  // Without an event, the core has not loaded yet, and nothing knows the components of the page.
+  if (!state.scopes) {
+    document.dispatchEvent(new Event('brumate:core'));
+  }
 
   // Outlines the elements of a scope on the page.
   const outlines: HTMLElement[] = [];
@@ -378,7 +388,35 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
       body.replaceChildren(element('div', { class: 'empty' }, 'No component yet.'));
       return;
     }
-    const { nodes, edges } = info.graph ?? { nodes: [], edges: [] };
+    if (!info.graph) {
+      body.replaceChildren(
+        chooser(id),
+        element(
+          'div',
+          { class: 'empty' },
+          'The dev server sent no graph. It runs an older brumate than this panel: restart it.',
+        ),
+      );
+      return;
+    }
+    const { nodes, edges } = info.graph;
+    // The current value of each value node, from the first instance of the component.
+    const instance = roots().find((scope) => scope.m === id);
+    const scopeOfNode = (k: number): Scope | undefined => {
+      const visit = (scope: Scope): Scope | undefined => {
+        if (scope.k === k) {
+          return scope;
+        }
+        for (const child of scope.children) {
+          const found = child.m === undefined ? visit(child) : undefined;
+          if (found) {
+            return found;
+          }
+        }
+        return undefined;
+      };
+      return instance && visit(instance);
+    };
     // Nodes that a recent write reached: the written value, and what reads it.
     const now = performance.now();
     const hot = new Set<number>();
@@ -433,24 +471,41 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     nodes.forEach((node, index) => {
       const { x, y } = position[index]!;
       const text = svg('text', { x: x + 6, y: y + 16 });
-      text.textContent = `${node.kind} ${node.label}`.slice(0, 20);
+      const owner = node.slot === undefined ? undefined : scopeOfNode(node.scope);
+      const value = owner && node.slot !== undefined ? ` = ${preview(owner.s[node.slot])}` : '';
+      text.textContent = `${node.label}${value}`.slice(0, 22);
       const title = svg('title', {});
-      title.textContent = `${node.kind} ${node.label}`;
+      title.textContent = `${node.kind} ${node.label}${value}`;
       graph.append(
         svg(
           'g',
-          { class: hot.has(index) ? 'hot' : '' },
+          { class: `kind-${node.kind}${hot.has(index) ? ' hot' : ''}` },
           svg('rect', { x, y, width: 132, height: 24, rx: 4 }),
           text,
           title,
         ),
       );
     });
+    const legend = element(
+      'div',
+      { class: 'legend' },
+      'What reads what, left to right: ',
+      element('b', { class: 'signal' }, 'signals and props'),
+      ', ',
+      element('b', { class: 'memo' }, 'memos'),
+      ', markup and ',
+      element('b', { class: 'effect' }, 'effects'),
+      '. A change lights up in ',
+      element('b', { class: 'hot' }, 'yellow'),
+      ' what it reaches.',
+    );
     body.replaceChildren(
       chooser(id),
-      nodes.length > 0
-        ? graph
-        : element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.'),
+      ...(nodes.length > 0
+        ? [legend, graph]
+        : [
+            element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.'),
+          ]),
     );
     // Draws again when the marks of the last write expire.
     if (hot.size > 0) {

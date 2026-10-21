@@ -76,6 +76,9 @@ export function start(options: LoaderOptions): () => void {
       return client;
     }));
 
+  // The devtools panel asks for the core when it opens, so it can show the page before any event.
+  listen(document, 'brumate:core', () => void loadCore());
+
   const run = (element: Element, ref: string, event?: Event): void => {
     void loadCore().then((client) => client.handle(element, ref, event));
   };
