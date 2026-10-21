@@ -60,8 +60,17 @@ export interface CompileResult {
   server: string;
   /** The client entry module, as TypeScript. The loader imports it on the first event. */
   client: string;
-  /** The parts of the client module, by name. The entry imports them when they are needed. */
+  /**
+   * The parts of the client module, by name. The entry imports them when
+   * they are needed. A small component has none: its entry holds the code.
+   */
   parts: Record<string, string>;
+  /** The parts that the entry loads for each part name, its own first. See `ClientOutput`. */
+  loaders: Record<string, string[]>;
+  /** The ID, the props map and the update tables of the client entry, without code. */
+  table: string;
+  /** False when nothing of the component runs in the browser, so it needs no client module. */
+  clientCode: boolean;
   /**
    * The render module, as TypeScript. It renders the component on the
    * client, inside a parent's block that changes.
@@ -361,6 +370,9 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     server: server.code,
     client: entry.code,
     parts: Object.fromEntries(Object.entries(parts).map(([name, part]) => [name, part.code])),
+    loaders: client.loaders,
+    table: client.table,
+    clientCode: client.clientCode,
     render: render.code,
     maps: {
       server: server.map,

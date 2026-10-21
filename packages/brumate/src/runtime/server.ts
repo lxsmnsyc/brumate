@@ -437,6 +437,21 @@ export async function wait(node: Memo): Promise<unknown> {
   }
 }
 
+/**
+ * The value of a memo when it is ready, or a promise of it while it loads.
+ * The render then awaits only a memo that is loading.
+ */
+export function ready(node: Memo): unknown {
+  try {
+    return read(node);
+  } catch (error) {
+    if (error instanceof NotReady) {
+      return wait(node);
+    }
+    throw error;
+  }
+}
+
 const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
 /** Markup that renders where it is inserted, so it can read the contexts there. */

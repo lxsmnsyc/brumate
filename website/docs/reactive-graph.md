@@ -129,7 +129,7 @@ The handler part and the update part:
 
 ```ts
 // h4
-export const h4 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
 
 // update
 export function m2($$s) {

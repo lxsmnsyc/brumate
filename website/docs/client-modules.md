@@ -49,7 +49,9 @@ The compiler splits the client code of each component into parts. The bundler lo
 
 ### `merge`
 
-When the parts of a component are smaller than the `merge` option in all, they become one part, `all`, and every entry of `load` imports it. The first event then loads one module instead of several. Components with a `shared` part keep their parts. The plugin merges below 2048 bytes by default. `compile` does not merge unless asked.
+When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The first event then loads one module instead of several. Components with a `shared` part keep their parts. The plugin merges below 2048 bytes by default. `compile` does not merge unless asked.
+
+A component with no client code has no parts, and a build leaves it out of the client.
 
 ### Render modules
 

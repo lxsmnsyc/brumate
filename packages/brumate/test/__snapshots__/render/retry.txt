@@ -11,6 +11,7 @@ export function check(): string {
     return 'Ready';
   }
 export const rpc = {  };
+let $$t: any;
 
 export default async function Retry($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -18,13 +19,13 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
   $$html += "<!--b" + $$s1 + ":0-->";
   const $$before0 = $$html;
   try {
-    $$html += "<p class=\"ok\">" + await $$b.insert((check()), $$ctx, $$s1) + "</p>";
+    $$html += "<p class=\"ok\">" + (typeof ($$t = $$b.insert((check()), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   } catch ($$error1) {
     $$html = $$before0;
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
-    $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + await $$b.insert((String(error)), $$ctx, $$s3) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+    $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
     $$ctx.slots($$s3, [error], ["error"]);
   }
   $$html += "<!--/b-->";
@@ -36,9 +37,10 @@ Retry.brumateId = "Retry_pyus3c";
 export const id = "Retry_pyus3c";
 export const props = {  };
 export const g = { 3: { 0: [[3, "u1"]] } };
+const update = () => import("./retry.brm?brumate-client&part=update");
 const parts = {
-  "h2": () => import("./retry.brm?brumate-client&part=h2"),
-  "update": () => import("./retry.brm?brumate-client&part=update"),
+  "h2": () => (update().catch(() => {}), import("./retry.brm?brumate-client&part=h2")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {

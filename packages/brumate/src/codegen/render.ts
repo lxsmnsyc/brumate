@@ -2,6 +2,7 @@ import type { Markup, SFCFile } from '../ast.ts';
 import type { oxc } from '../oxc.ts';
 import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
+import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { propsType } from './server.ts';
@@ -192,7 +193,9 @@ export function generateRender(file: SFCFile, plan: Plan): string {
     (statement) => statement.type !== 'ImportDeclaration' && !TYPE_DECLARATIONS.has(statement.type),
   );
   if (plan.styles.css) {
-    moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);
+    // A build (`hideNames`) sends the stylesheet without comments and whitespace.
+    const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
+    moduleBody.push(`const $$css = ${JSON.stringify(css)};`);
   }
   const emitter = new Emitter(file, plan, patch, { mode: 'client', functions: true });
   const generics = file.generics ? `<${file.generics}>` : '';

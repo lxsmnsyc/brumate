@@ -3,6 +3,7 @@ import * as $$b from 'brumate/server';
 export const STEP = 2;
 const label = 'Count';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Shared($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -11,7 +12,7 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + await $$b.insert((label), $$ctx, $$s1) + ": <!--t" + $$s1 + ":2-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--></p>";
+  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + ": <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
@@ -21,10 +22,11 @@ Shared.brumateId = "Shared_1xpln25";
 export const id = "Shared_1xpln25";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u5"]] } };
+const update = () => import("./shared.brm?brumate-client&part=update");
 const parts = {
-  "h2": () => import("./shared.brm?brumate-client&part=h2"),
-  "h3": () => import("./shared.brm?brumate-client&part=h3"),
-  "update": () => import("./shared.brm?brumate-client&part=update"),
+  "h2": () => (update().catch(() => {}), import("./shared.brm?brumate-client&part=h2")),
+  "h3": () => (update().catch(() => {}), import("./shared.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -35,13 +37,13 @@ export function load(part) {
 import * as $$b from 'brumate/client';
 import { bump$ } from "./shared.brm?brumate-client&part=shared";
 
-export const h2 = ($$s, ...$$a) => (() => bump$.bind(null, $$s)(1))(...$$a);
+export const h2 = ($$s) => bump$($$s, 1);
 
 # Client part: h3
 import * as $$b from 'brumate/client';
 import { bump$ } from "./shared.brm?brumate-client&part=shared";
 
-export const h3 = ($$s, ...$$a) => (() => bump$.bind(null, $$s)(2))(...$$a);
+export const h3 = ($$s) => bump$($$s, 2);
 
 # Client part: update
 import * as $$b from 'brumate/client';

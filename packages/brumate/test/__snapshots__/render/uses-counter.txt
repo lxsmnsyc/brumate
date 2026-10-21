@@ -3,6 +3,7 @@ import * as $$b from 'brumate/server';
 import { STEP } from './counting.brm.ts';
 import { counter } from './counting.brm.ts';
 export const rpc = {  };
+let $$t: any;
 
 export default async function UsesCounter($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -10,7 +11,7 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
   let base = (10);
   let count = (1);
   const $$p_double = $$b.memo(() => (count * 2), $$ctx);
-  const double = await $$b.wait($$p_double);
+  const double = (($$t = $$b.ready($$p_double)) instanceof Promise ? await $$t : $$t);
   function increment() {
       count += STEP;
     }
@@ -20,7 +21,7 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
       other += STEP;
     }
   const reset = () => (other = base);
-  $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\"><!--t" + $$s1 + ":4-->" + await $$b.insert((other), $$ctx, $$s1) + "<!--/t--></button><button class=\"base\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h13\"><!--t" + $$s1 + ":6-->" + await $$b.insert((base), $$ctx, $$s1) + "<!--/t--></button><button class=\"reset\" data-b=\"" + $$s1 + ":7\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
+  $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\"><!--t" + $$s1 + ":4-->" + (typeof ($$t = $$b.insert((other), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"base\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h13\"><!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert((base), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"reset\" data-b=\"" + $$s1 + ":7\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
   $$ctx.slots($$s1, [base, count, double, other], ["base","count","double","other"]);
   return $$html;
 }
@@ -30,12 +31,13 @@ UsesCounter.brumateId = "UsesCounter_1euyiut";
 export const id = "UsesCounter_1euyiut";
 export const props = {  };
 export const g = { 1: { 1: [[1, "m2"], [1, "u9"]], 2: [[1, "u10"]], 3: [[1, "u12"]], 0: [[1, "u14"]] } };
+const update = () => import("./uses-counter.brm?brumate-client&part=update");
 const parts = {
-  "h8": () => import("./uses-counter.brm?brumate-client&part=h8"),
-  "h11": () => import("./uses-counter.brm?brumate-client&part=h11"),
-  "h15": () => import("./uses-counter.brm?brumate-client&part=h15"),
-  "h13": () => import("./uses-counter.brm?brumate-client&part=h13"),
-  "update": () => import("./uses-counter.brm?brumate-client&part=update"),
+  "h8": () => (update().catch(() => {}), import("./uses-counter.brm?brumate-client&part=h8")),
+  "h11": () => (update().catch(() => {}), import("./uses-counter.brm?brumate-client&part=h11")),
+  "h15": () => (update().catch(() => {}), import("./uses-counter.brm?brumate-client&part=h15")),
+  "h13": () => (update().catch(() => {}), import("./uses-counter.brm?brumate-client&part=h13")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -47,26 +49,26 @@ import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
 const increment$ = ($$s, ...$$a) => $$m0.s328($$s, [1], ...$$a);
-export const h8 = ($$s, ...$$a) => (increment$.bind(null, $$s))(...$$a);
+export { increment$ as h8 };
 
 # Client part: h11
 import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
 const bump$ = ($$s, ...$$a) => $$m0.s328($$s, [3], ...$$a);
-export const h11 = ($$s, ...$$a) => (bump$.bind(null, $$s))(...$$a);
+export { bump$ as h11 };
 
 # Client part: h15
 import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
 const reset$ = ($$s, ...$$a) => $$m0.s419($$s, [3, 0], ...$$a);
-export const h15 = ($$s, ...$$a) => (reset$.bind(null, $$s))(...$$a);
+export { reset$ as h15 };
 
 # Client part: h13
 import * as $$b from 'brumate/client';
 
-export const h13 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export const h13 = ($$s) => $$b.update($$s, 0, 1, false);
 
 # Client part: update
 import * as $$m0 from "./counting.brm.ts?brumate-shared";

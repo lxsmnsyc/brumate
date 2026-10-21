@@ -2,6 +2,7 @@
 import * as $$b from 'brumate/server';
 export const rpc = {  };
 const $$css = "p[s-9wx0az] {\n    color: var(--s-9wx0az-0);\n    font-size: var(--s-9wx0az-1);\n  }\n  .note[s-9wx0az]::before {\n    content: '*';\n  }\n  body .note[s-9wx0az] {\n    margin: 0;\n  }";
+let $$t: any;
 
 export default async function Styled($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -23,9 +24,10 @@ Styled.brumateId = "Styled_9wx0az";
 export const id = "Styled_9wx0az";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u1"], [1, "u2"], [1, "b4"]] } };
+const update = () => import("./styled.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => import("./styled.brm?brumate-client&part=h3"),
-  "update": () => import("./styled.brm?brumate-client&part=update"),
+  "h3": () => (update().catch(() => {}), import("./styled.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -35,7 +37,7 @@ export function load(part) {
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, !$$b.get($$s, 0))))(...$$a);
+export const h3 = ($$s) => ($$b.set($$s, 0, !$$b.get($$s, 0)));
 
 # Client part: update
 import * as $$b from 'brumate/client';

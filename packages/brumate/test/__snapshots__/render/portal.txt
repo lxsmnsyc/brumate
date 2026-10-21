@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Portal($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -37,10 +38,11 @@ Portal.brumateId = "Portal_17ywlhi";
 export const id = "Portal_17ywlhi";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b2"]] } };
+const update = () => import("./portal.brm?brumate-client&part=update");
 const parts = {
-  "h1": () => import("./portal.brm?brumate-client&part=h1"),
-  "h3": () => import("./portal.brm?brumate-client&part=h3"),
-  "update": () => import("./portal.brm?brumate-client&part=update"),
+  "h1": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h1")),
+  "h3": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -50,12 +52,12 @@ export function load(part) {
 # Client part: h1
 import * as $$b from 'brumate/client';
 
-export const h1 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, !$$b.get($$s, 0))))(...$$a);
+export const h1 = ($$s) => ($$b.set($$s, 0, !$$b.get($$s, 0)));
 
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s.p, 0, false)))(...$$a);
+export const h3 = ($$s) => ($$b.set($$s.p, 0, false));
 
 # Client part: update
 import * as $$b from 'brumate/client';

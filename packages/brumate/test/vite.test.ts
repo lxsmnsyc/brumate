@@ -51,7 +51,7 @@ describe('vite plugin', () => {
     const entry = await server.transformRequest('/todos.brm?brumate-client');
     expect(entry?.code).toContain('part=h12');
     const part = await server.transformRequest('/todos.brm?brumate-client&part=h12');
-    expect(part?.code).toContain('export const h12');
+    expect(part?.code).toContain('export { toggle$ as h12 }');
     expect(part?.code).not.toContain('interface Todo');
   });
 
@@ -253,15 +253,15 @@ describe('merged parts', () => {
       server: { middlewareMode: true },
     });
     try {
+      // The entry holds the code, so the first event loads one module.
       const entry = await dev.transformRequest('/counter.brm?brumate-client');
-      expect(entry?.code).toMatch(/"h\d+": \(\) => import\("[^"]*part=all"\)/);
-      expect(entry?.code).toMatch(/"update": \(\) => import\("[^"]*part=all"\)/);
-      const all = await dev.transformRequest('/counter.brm?brumate-client&part=all');
-      expect(all?.code).toMatch(/export const h\d+/);
-      expect(all?.code).toMatch(/export function u\d+/);
+      expect(entry?.code).toMatch(/export const h\d+/);
+      expect(entry?.code).toMatch(/export function u\d+/);
+      expect(entry?.code).toContain('export const g = ');
+      expect(entry?.code).not.toContain('part=');
       // A large component keeps one module per part.
-      const todos = await dev.transformRequest('/todos.brm?brumate-client');
-      expect(todos?.code).toContain('part=h12');
+      const list = await dev.transformRequest('/list.brm?brumate-client');
+      expect(list?.code).toContain('part=h6');
     } finally {
       await dev.close();
     }

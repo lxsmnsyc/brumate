@@ -4,6 +4,7 @@ import type { Declaration } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
+import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addEventEdits, addValueEdits } from './patch.ts';
 
@@ -118,8 +119,12 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   }
 
   if (plan.styles.css) {
-    moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);
+    // A build (`hideNames`) sends the stylesheet without comments and whitespace.
+    const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
+    moduleBody.push(`const $$css = ${JSON.stringify(css)};`);
   }
+  // Holds a value that the render may await. See `Emitter.ready`.
+  moduleBody.push('let $$t: any;');
   const emitter = new Emitter(file, plan, patch, { mode: 'server' });
   const generics = file.generics ? `<${file.generics}>` : '';
   emitter.line(

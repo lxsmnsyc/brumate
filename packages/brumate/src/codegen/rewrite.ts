@@ -301,7 +301,20 @@ export class Rewriter {
           }
           break;
         }
-        case 'CallExpression':
+        case 'CallExpression': {
+          // A call of a local function passes the scope itself. `.bind` is only for a function
+          // value that escapes, such as one passed as an argument.
+          const fn = target(node.callee)?.declaration;
+          if (fn?.kind === 'function' && slotIndex(this.plan, fn) === -1) {
+            const owner = scopePath(this.plan, scopeVar, base, instanceScope(this.plan, fn.scope));
+            const open = this.file.source.indexOf('(', node.typeArguments?.end ?? node.callee.end);
+            patch.replace(node.callee.start, node.callee.end, `${fn.name}$`);
+            patch.insert(open + 1, node.arguments.length > 0 ? `${owner}, ` : owner);
+            for (const argument of node.arguments) {
+              visit(argument);
+            }
+            return;
+          }
           if (
             node.callee.type === 'Identifier' &&
             node.callee.name === '$isPending' &&
@@ -356,6 +369,7 @@ export class Rewriter {
             return;
           }
           break;
+        }
         case 'MemberExpression':
           visit(node.object);
           if (node.computed) {

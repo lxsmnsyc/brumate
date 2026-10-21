@@ -13,6 +13,7 @@ async function persist(list: Todo[]) {
   }
 export const rpc = { "Todos_t3g9lr#persist": persist };
 persist = $$b.dedupe(persist, "Todos_t3g9lr#persist");
+let $$t: any;
 
 export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -21,7 +22,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
   let todos = (initial);
   let draft = ('');
   const $$p_left = $$b.memo(() => (todos.filter((todo) => !todo.done).length), $$ctx);
-  const left = await $$b.wait($$p_left);
+  const left = (($$t = $$b.ready($$p_left)) instanceof Promise ? await $$t : $$t);
   async function add() {
     todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false, at: new Date() }];
     draft = '';
@@ -29,23 +30,25 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
   }
   $$html += "<h1>Todos</h1><form data-b=\"" + $$s1 + ":0\" data-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + $$b.attribute("value", (draft)) + " data-b=\"" + $$s1 + ":1\" data-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
   {
-    const $$list0 = Array.from(( todos ));
+    const $$list0v = ( todos );
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":2-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";
       function toggle() {
         todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
       }
-      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + await $$b.insert((todo.title), $$ctx, $$s2) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + await $$b.insert((format(todo.at)), $$ctx, $$s2) + "<!--/t--></time></li>";
+      $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + (typeof ($$t = $$b.insert((format(todo.at)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></time></li>";
       $$ctx.slots($$s2, [todo], ["todo"]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
-  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + await $$b.insert((left), $$ctx, $$s1) + "<!--/t--> left</p>";
+  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + (typeof ($$t = $$b.insert((left), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> left</p>";
   $$ctx.slots($$s1, [todos, draft, left], ["todos","draft","left"]);
   return $$html;
 }
@@ -55,11 +58,12 @@ Todos.brumateId = "Todos_t3g9lr";
 export const id = "Todos_t3g9lr";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "b8"]], 1: [[1, "u6"]], 2: [[1, "u15"]] }, 2: { 0: [[2, "u11"], [2, "u13"], [2, "u14"]] } };
+const update = () => import("./todos.brm?brumate-client&part=update");
 const parts = {
-  "h5": () => import("./todos.brm?brumate-client&part=h5"),
-  "h12": () => import("./todos.brm?brumate-client&part=h12"),
-  "h7": () => import("./todos.brm?brumate-client&part=h7"),
-  "update": () => import("./todos.brm?brumate-client&part=update"),
+  "h5": () => (update().catch(() => {}), import("./todos.brm?brumate-client&part=h5")),
+  "h12": () => (update().catch(() => {}), import("./todos.brm?brumate-client&part=h12")),
+  "h7": () => (update().catch(() => {}), import("./todos.brm?brumate-client&part=h7")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -75,7 +79,7 @@ async function add$($$s) {
     $$b.set($$s, 1, '');
     await persist$($$b.get($$s, 0));
   }
-export const h5 = ($$s, ...$$a) => (add$.bind(null, $$s))(...$$a);
+export { add$ as h5 };
 
 # Client part: h12
 import * as $$b from 'brumate/client';
@@ -83,12 +87,12 @@ import * as $$b from 'brumate/client';
 function toggle$($$s) {
         $$b.set($$s.p, 0, $$b.get($$s.p, 0).map((item) => (item.id === $$b.get($$s, 0).id ? { ...item, done: !item.done } : item)));
       }
-export const h12 = ($$s, ...$$a) => (toggle$.bind(null, $$s))(...$$a);
+export { toggle$ as h12 };
 
 # Client part: h7
 import * as $$b from 'brumate/client';
 
-export const h7 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 1, event.currentTarget.value)))(...$$a);
+export const h7 = ($$s, event) => ($$b.set($$s, 1, event.currentTarget.value));
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -160,9 +164,11 @@ export default function Todos($$props: { initial: Todo[] }): string {
   }
   $$html += "<h1>Todos</h1><form data-b=\"" + $$s1 + ":0\" data-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + $$b.attribute("value", (draft)) + " data-b=\"" + $$s1 + ":1\" data-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
   {
-    const $$list0 = Array.from(( todos ));
+    const $$list0v = ( todos );
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":2-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";

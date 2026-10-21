@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Fields($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -10,14 +11,16 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
   let names = (['First', 'Last']);
   $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
   {
-    const $$list0 = Array.from(( names));
+    const $$list0v = ( names);
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":0-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const name = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";
       const field = $$ctx.id($$s2, 0);
-      $$html += "<label" + $$b.attribute("for", (field)) + "><!--t" + $$s2 + ":0-->" + await $$b.insert((name), $$ctx, $$s2) + "<!--/t--></label><input" + $$b.attribute("id", (field)) + ">";
+      $$html += "<label" + $$b.attribute("for", (field)) + "><!--t" + $$s2 + ":0-->" + (typeof ($$t = $$b.insert((name), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></label><input" + $$b.attribute("id", (field)) + ">";
       $$ctx.slots($$s2, [name, field], ["name","field"]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
@@ -34,9 +37,10 @@ Fields.brumateId = "Fields_1cs3w3p";
 export const id = "Fields_1cs3w3p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b5"]] }, 2: { 0: [[2, "u7"]] } };
+const update = () => import("./fields.brm?brumate-client&part=update");
 const parts = {
-  "h9": () => import("./fields.brm?brumate-client&part=h9"),
-  "update": () => import("./fields.brm?brumate-client&part=update"),
+  "h9": () => (update().catch(() => {}), import("./fields.brm?brumate-client&part=h9")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -46,7 +50,7 @@ export function load(part) {
 # Client part: h9
 import * as $$b from 'brumate/client';
 
-export const h9 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, [...$$b.get($$s, 0), 'Middle'])))(...$$a);
+export const h9 = ($$s) => ($$b.set($$s, 0, [...$$b.get($$s, 0), 'Middle']));
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -90,9 +94,11 @@ export default function Fields($$props: Record<string, never>): string {
   let names = (['First', 'Last']);
   $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
   {
-    const $$list0 = Array.from(( names));
+    const $$list0v = ( names);
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":0-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const name = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";

@@ -127,3 +127,47 @@ describe('functions of a use server file', () => {
     expect(client).toMatch(/export const refresh = \{ "notes_1#listNotes": \[\[1, "m\d+"\]\] \};/);
   });
 });
+
+/** A component with a signal that an update reads, one that none reads, and a local function. */
+const counterSource = (handlers: string): string =>
+  `<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n  let hidden = $signal(0);\n  function bump(by: number) {\n    count += by;\n  }\n</script>\n${handlers}\n<p>{count}</p>`;
+
+describe('client entries and handlers', () => {
+  it('passes the scope to calls of local functions, and exports a named handler as it is', () => {
+    const { parts: modules } = compile(
+      counterSource('<button onClick=bump>A</button><button onClick=(() => bump(2))>B</button>'),
+      { filename: 'T.brm' },
+    );
+    const code = Object.values(modules).join('\n');
+    expect(code).toMatch(/export \{ bump\$ as h\d+ \};/);
+    expect(code).toContain('bump$($$s, 2)');
+    expect(code).not.toContain('.bind(');
+  });
+
+  it('starts loading the updates with a handler that writes a slot that they read', () => {
+    const { client } = compile(
+      counterSource(
+        '<button onClick=(() => bump(1))>A</button><button onClick=(() => hidden++)>B</button>',
+      ),
+      { filename: 'T.brm' },
+    );
+    expect(client).toMatch(/"h\d+": \(\) => \(update\(\)\.catch\(\(\) => \{\}\), import\(/);
+    // `hidden` has no update, so its handler loads its own part only.
+    expect(client).toMatch(/"h\d+": \(\) => import\("\.\/T\.brm\?brumate-client&part=h\d+"\),/);
+  });
+
+  it('puts the code of a small component into its entry', () => {
+    const {
+      client,
+      parts: modules,
+      clientCode,
+    } = compile(counterSource('<button onClick=bump>A</button>'), {
+      filename: 'T.brm',
+      merge: 2048,
+    });
+    expect(modules).toEqual({});
+    expect(clientCode).toBe(true);
+    expect(client).toMatch(/export \{ bump\$ as h\d+ \};/);
+    expect(client).not.toContain('export function load');
+  });
+});

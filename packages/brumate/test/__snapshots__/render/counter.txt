@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Counter($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -8,8 +9,8 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   const label = 'Clicks';
   let count = (0);
   const $$p_double = $$b.memo(() => (count * 2), $$ctx);
-  const double = await $$b.wait($$p_double);
-  $$html += "<h1>" + await $$b.insert((label), $$ctx, $$s1) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></p>";
+  const double = (($$t = $$b.ready($$p_double)) instanceof Promise ? await $$t : $$t);
+  $$html += "<h1>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count, double], ["count","double"]);
   return $$html;
 }
@@ -19,9 +20,10 @@ Counter.brumateId = "Counter_m86gta";
 export const id = "Counter_m86gta";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
+const update = () => import("./counter.brm?brumate-client&part=update");
 const parts = {
-  "h4": () => import("./counter.brm?brumate-client&part=h4"),
-  "update": () => import("./counter.brm?brumate-client&part=update"),
+  "h4": () => (update().catch(() => {}), import("./counter.brm?brumate-client&part=h4")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -31,7 +33,7 @@ export function load(part) {
 # Client part: h4
 import * as $$b from 'brumate/client';
 
-export const h4 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
 
 # Client part: update
 import * as $$b from 'brumate/client';

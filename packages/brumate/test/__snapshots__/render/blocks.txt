@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -15,7 +16,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   async function row(n: number): Promise<$$b.Raw> {
     let $$html = '';
-    $$html += "<b>" + await $$b.insert((n * 10), $$ctx, $$s1) + "</b>";
+    $$html += "<b>" + (typeof ($$t = $$b.insert((n * 10), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</b>";
     return $$b.raw($$html);
   }
   $$html += "<template data-b=\"" + $$s1 + ":0\" data-client=\"idle=Blocks_jlmev2#c4\"></template><template data-b=\"" + $$s1 + ":1\" data-listen=\"window\" data-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
@@ -28,13 +29,15 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   $$html += "<ul>";
   {
-    const $$list0 = Array.from(( list));
+    const $$list0v = ( list);
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":4-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$ctx.scope(5, $$s1);
-      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + await $$b.insert((i), $$ctx, $$s5) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + await $$b.insert((item), $$ctx, $$s5) + "<!--/t--></li>";
+      $$html += "<!--i" + $$s5 + "--><li><!--t" + $$s5 + ":0-->" + (typeof ($$t = $$b.insert((i), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t-->. <!--t" + $$s5 + ":1-->" + (typeof ($$t = $$b.insert((item), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
       $$ctx.slots($$s5, [item, i], ["item","i"]);
       $$ctx.item($$s5, $$item1);
       $$html += "<!--/i-->";
@@ -46,17 +49,20 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   $$html += "</ul>";
   {
-    const $$list3 = Array.from(( ['x', 'y']));
-    for (const [$$index5, $$item4] of $$list3.entries()) {
+    const $$list3v = ( ['x', 'y']);
+    const $$list3 = Array.isArray($$list3v) ? $$list3v : Array.from($$list3v);
+    for (let $$index5 = 0; $$index5 < $$list3.length; $$index5++) {
+      const $$item4 = $$list3[$$index5];
       const item = $$item4;
-      $$html += "<span>" + await $$b.insert((item), $$ctx, $$s1) + "</span>";
+      $$html += "<span>" + (typeof ($$t = $$b.insert((item), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</span>";
     }
   }
   {
     const $$list6 = Array.from({ length: ( 2) }, (_, index) => index);
-    for (const [$$index8, $$item7] of $$list6.entries()) {
+    for (let $$index8 = 0; $$index8 < $$list6.length; $$index8++) {
+      const $$item7 = $$list6[$$index8];
       const n = $$index8;
-      $$html += await $$b.insert((row(n)), $$ctx, $$s1);
+      $$html += (typeof ($$t = $$b.insert((row(n)), $$ctx, $$s1)) === 'string' ? $$t : await $$t);
     }
   }
   const $$before9 = $$html;
@@ -65,7 +71,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   } catch ($$error10) {
     $$html = $$before9;
     const error = $$error10;
-    $$html += "<p>" + await $$b.insert((String(error)), $$ctx, $$s1) + "</p>";
+    $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   }
   $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
@@ -75,9 +81,9 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       $$html += "Dynamic";
       return $$b.raw($$html);
     })();
-    $$html += await $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12);
+    $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
   }
-  $$html += "<p>" + await $$b.insert(('<escaped>'), $$ctx, $$s1) + " " + await $$b.insert((null), $$ctx, $$s1) + " " + await $$b.insert((false), $$ctx, $$s1) + " " + await $$b.insert(([1, 2]), $$ctx, $$s1) + "</p>";
+  $$html += "<p>" + (typeof ($$t = $$b.insert(('<escaped>'), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert((null), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert((false), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert(([1, 2]), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.slots($$s1, [tab, list, input], ["tab","list","input"]);
   return $$html;
 }
@@ -87,11 +93,12 @@ Blocks.brumateId = "Blocks_jlmev2";
 export const id = "Blocks_jlmev2";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
+const update = () => import("./blocks.brm?brumate-client&part=update");
 const parts = {
   "c4": () => import("./blocks.brm?brumate-client&part=c4"),
-  "h6": () => import("./blocks.brm?brumate-client&part=h6"),
-  "h20": () => import("./blocks.brm?brumate-client&part=h20"),
-  "update": () => import("./blocks.brm?brumate-client&part=update"),
+  "h6": () => (update().catch(() => {}), import("./blocks.brm?brumate-client&part=h6")),
+  "h20": () => (update().catch(() => {}), import("./blocks.brm?brumate-client&part=h20")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -110,12 +117,12 @@ export function c4($$s) {
 # Client part: h6
 import * as $$b from 'brumate/client';
 
-export const h6 = ($$s, ...$$a) => ((event) => ($$b.set($$s, 0, event.key === 'b' ? 'b' : 'a')))(...$$a);
+export const h6 = ($$s, event) => ($$b.set($$s, 0, event.key === 'b' ? 'b' : 'a'));
 
 # Client part: h20
 import * as $$b from 'brumate/client';
 
-export const h20 = ($$s, ...$$a) => (() => ($$b.set($$s.p, 1, [])))(...$$a);
+export const h20 = ($$s) => ($$b.set($$s.p, 1, []));
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -209,9 +216,11 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   }
   $$html += "<ul>";
   {
-    const $$list0 = Array.from(( list));
+    const $$list0v = ( list);
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":4-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$ctx.scope(5, $$s1);
@@ -227,15 +236,18 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   }
   $$html += "</ul>";
   {
-    const $$list3 = Array.from(( ['x', 'y']));
-    for (const [$$index5, $$item4] of $$list3.entries()) {
+    const $$list3v = ( ['x', 'y']);
+    const $$list3 = Array.isArray($$list3v) ? $$list3v : Array.from($$list3v);
+    for (let $$index5 = 0; $$index5 < $$list3.length; $$index5++) {
+      const $$item4 = $$list3[$$index5];
       const item = $$item4;
       $$html += "<span>" + $$b.insert((item)) + "</span>";
     }
   }
   {
     const $$list6 = Array.from({ length: ( 2) }, (_, index) => index);
-    for (const [$$index8, $$item7] of $$list6.entries()) {
+    for (let $$index8 = 0; $$index8 < $$list6.length; $$index8++) {
+      const $$item7 = $$list6[$$index8];
       const n = $$index8;
       $$html += $$b.insert((row(n)));
     }

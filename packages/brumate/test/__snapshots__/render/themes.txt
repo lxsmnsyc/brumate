@@ -3,6 +3,7 @@ import * as $$b from 'brumate/server';
 import Themed from './Themed.brm';
 import { Theme } from './theme';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Themes($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -25,10 +26,11 @@ Themes.brumateId = "Themes_945372";
 export const id = "Themes_945372";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
+const update = () => import("./themes.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => import("./themes.brm?brumate-client&part=h3"),
-  "h4": () => import("./themes.brm?brumate-client&part=h4"),
-  "update": () => import("./themes.brm?brumate-client&part=update"),
+  "h3": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h3")),
+  "h4": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h4")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -38,12 +40,12 @@ export function load(part) {
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => (() => ($$b.set($$s, 0, $$b.get($$s, 0) === 'dark' ? 'light' : 'dark')))(...$$a);
+export const h3 = ($$s) => ($$b.set($$s, 0, $$b.get($$s, 0) === 'dark' ? 'light' : 'dark'));
 
 # Client part: h4
 import * as $$b from 'brumate/client';
 
-export const h4 = ($$s, ...$$a) => (() => ($$b.set($$s, 1, true)))(...$$a);
+export const h4 = ($$s) => ($$b.set($$s, 1, true));
 
 # Client part: update
 import * as $$b from 'brumate/client';

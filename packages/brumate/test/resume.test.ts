@@ -1023,6 +1023,26 @@ describe('refresh', () => {
   });
 });
 
+describe('server functions of the module script', () => {
+  it('calls them from client parts', async () => {
+    vi.resetModules();
+    const server = await import(file('moduleServer.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const { html, state } = await runtime.render(server.default, {});
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    click(document.querySelector('.one')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    click(document.querySelector('.two')!);
+    await waitFor(() => expect(text('.count')).toBe('2'));
+  });
+});
+
 describe('hot updates of markup', () => {
   it('keeps the values of signals by name when the page renders again', async () => {
     await resume('counter', {});

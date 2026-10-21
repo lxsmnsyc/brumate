@@ -1,0 +1,23 @@
+<script module>
+  const saved: string[] = [];
+
+  async function save(name: string) {
+    'use server';
+    saved.push(name);
+    return saved.length;
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+
+  async function first() {
+    count = await save('first');
+  }
+</script>
+
+<button class="one" onClick=first>One</button>
+<button class="two" onClick=(async () => (count = await save('second')))>Two</button>
+<p class="count">{count}</p>

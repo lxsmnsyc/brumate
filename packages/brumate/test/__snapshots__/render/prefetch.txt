@@ -1,12 +1,13 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Prefetch($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Prefetch_okfwof");
   let count = (0);
-  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
+  $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"none\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
@@ -16,10 +17,11 @@ Prefetch.brumateId = "Prefetch_okfwof";
 export const id = "Prefetch_okfwof";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]] } };
+const update = () => import("./prefetch.brm?brumate-client&part=update");
 const parts = {
-  "h1": () => import("./prefetch.brm?brumate-client&part=h1"),
-  "h3": () => import("./prefetch.brm?brumate-client&part=h3"),
-  "update": () => import("./prefetch.brm?brumate-client&part=update"),
+  "h1": () => (update().catch(() => {}), import("./prefetch.brm?brumate-client&part=h1")),
+  "h3": () => (update().catch(() => {}), import("./prefetch.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -29,12 +31,12 @@ export function load(part) {
 # Client part: h1
 import * as $$b from 'brumate/client';
 
-export const h1 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export const h1 = ($$s) => $$b.update($$s, 0, 1, false);
 
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => (() => $$b.update($$s, 0, -1, false))(...$$a);
+export const h3 = ($$s) => $$b.update($$s, 0, -1, false);
 
 # Client part: update
 import * as $$b from 'brumate/client';

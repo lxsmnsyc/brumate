@@ -169,9 +169,10 @@ function shapeOf(result: CompileResult): Shape {
   );
   const layouts = [...result.plan.scopes.values()];
   return {
-    layout: JSON.stringify([result.client, slots, markupOf(result)]),
+    layout: JSON.stringify([result.table, slots, markupOf(result)]),
     css: result.css,
-    code: JSON.stringify(result.parts),
+    // The entry of a small component holds its code too.
+    code: JSON.stringify([result.client, result.parts]),
     slots: Object.fromEntries(
       layouts.map((layout) => [layout.scope.id, layout.slots.map((slot) => slot.name)]),
     ),
@@ -287,8 +288,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return cached;
   };
 
-  const manifest = (): string => {
-    const entries = [...files].map(
+  const manifest = async (): Promise<string> => {
+    const list = [...files];
+    // A build leaves out the components that have no client code. The core treats a
+    // component that `load` does not know as one with nothing to update. The dev server
+    // keeps every component, because an edit can give one client code.
+    const needed = await Promise.all(
+      list.map(async ([, file]) => isServe || (await compileFile(file)).result.clientCode),
+    );
+    const kept = list.filter((_, index) => needed[index]);
+    const entries = kept.map(
       ([id, file]) =>
         `  ${JSON.stringify(id)}: () => import(${JSON.stringify(`${file}${CLIENT_QUERY}`)}),`,
     );
@@ -297,11 +306,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...entries,
       '};',
       'export function load(id) {',
-      '  const module = modules[id];',
-      '  if (!module) {',
-      '    throw new Error(`Unknown component "${id}"`);',
-      '  }',
-      '  return module();',
+      ...(isServe
+        ? [
+            '  const module = modules[id];',
+            '  if (!module) {',
+            '    throw new Error(`Unknown component "${id}"`);',
+            '  }',
+            '  return module();',
+          ]
+        : ['  return modules[id]?.();']),
       '}',
     ].join('\n');
   };
@@ -554,13 +567,41 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [];
   }
 
+  /** The module ID of `brumate/client`, and the chunks of the loader and the core in a client build. */
+  let coreModule: string | undefined;
+  let loaderChunk: string | undefined;
+  let coreChunk: string | undefined;
+
   return {
     name: 'brumate',
     enforce: 'pre',
 
     config(config, env) {
+      if (!env.isSsrBuild) {
+        const preload = config.build?.modulePreload;
+        if (preload === false) {
+          return undefined;
+        }
+        const resolve = typeof preload === 'object' ? preload.resolveDependencies : undefined;
+        return {
+          build: {
+            modulePreload: {
+              // The loader imports the core itself when it imports a component's module, so
+              // it needs no list of the chunks to preload with it, which it would ship.
+              resolveDependencies(filename, deps, context) {
+                const list = resolve ? resolve(filename, deps, context) : deps;
+                if (context.hostId !== loaderChunk || !coreChunk) {
+                  return list;
+                }
+                const rest = list.filter((dep) => dep !== coreChunk);
+                return rest.length === 1 && rest[0] === filename ? [] : rest;
+              },
+            },
+          },
+        };
+      }
       // The server build gets the route handler as an entry of its own, to render the pages with.
-      if (!options.prerender || !env.isSsrBuild) {
+      if (!options.prerender) {
         return undefined;
       }
       // `--ssr <file>` names the entry, and wins over the input of the config, which can be the client's.
@@ -588,7 +629,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async generateBundle(_output, bundle) {
-      if (isSsrBuild || (!options.report && !options.budget)) {
+      if (isSsrBuild) {
+        return;
+      }
+      // Vite lists the chunks to preload after this hook, with `resolveDependencies` above.
+      loaderChunk = undefined;
+      coreChunk = undefined;
+      for (const item of Object.values(bundle)) {
+        if (item.type !== 'chunk') {
+          continue;
+        }
+        if (item.moduleIds.includes(`\0${MANIFEST}`)) {
+          loaderChunk = item.fileName;
+        }
+        if (coreModule && item.moduleIds.includes(coreModule)) {
+          coreChunk = item.fileName;
+        }
+      }
+      if (!options.report && !options.budget) {
         return;
       }
       const chunks: ReportChunk[] = [];
@@ -637,6 +695,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async buildStart() {
+      coreModule = isServe
+        ? undefined
+        : (await this.resolve('brumate/client', path.join(root, 'index.html')))?.id;
       await scan();
       writeRouteTypes();
     },
@@ -661,7 +722,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${START}`) {
         return [
-          "import { start } from 'brumate/loader';",
+          // Without client navigation, the bundle leaves its code out.
+          options.navigate === false
+            ? "import { startWithoutNavigation as start } from 'brumate/loader';"
+            : "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe
@@ -681,7 +745,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ].join('\n');
       }
       if (id === `\0${MANIFEST}`) {
-        return manifest();
+        return await manifest();
       }
       if (id === `\0${SERVER}`) {
         return serverRegistry();

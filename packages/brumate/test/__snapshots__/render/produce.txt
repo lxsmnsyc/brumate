@@ -6,6 +6,7 @@ interface Todo {
     done: boolean;
   }
 export const rpc = {  };
+let $$t: any;
 
 export default async function Produce($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -29,19 +30,21 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
   }
   $$html += "<button class=\"add\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Produce_9t90yy#h3\">Add</button><ul>";
   {
-    const $$list0 = Array.from(( todos ));
+    const $$list0v = ( todos );
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":1-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\"><!--t" + $$s2 + ":1-->" + await $$b.insert((todo.title), $$ctx, $$s2) + "<!--/t--></li>";
+      $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\"><!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
       $$ctx.slots($$s2, [todo], ["todo"]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
-  $$html += "</ul><p><!--t" + $$s1 + ":2-->" + await $$b.insert((todos.filter((todo) => todo.done).length), $$ctx, $$s1) + "<!--/t--> done</p>";
+  $$html += "</ul><p><!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((todos.filter((todo) => todo.done).length), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> done</p>";
   $$ctx.slots($$s1, [todos], ["todos"]);
   return $$html;
 }
@@ -51,10 +54,11 @@ Produce.brumateId = "Produce_9t90yy";
 export const id = "Produce_9t90yy";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b4"], [1, "u9"]] }, 2: { 0: [[2, "u6"], [2, "u8"]] } };
+const update = () => import("./produce.brm?brumate-client&part=update");
 const parts = {
-  "h7": () => import("./produce.brm?brumate-client&part=h7"),
-  "h3": () => import("./produce.brm?brumate-client&part=h3"),
-  "update": () => import("./produce.brm?brumate-client&part=update"),
+  "h7": () => (update().catch(() => {}), import("./produce.brm?brumate-client&part=h7")),
+  "h3": () => (update().catch(() => {}), import("./produce.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -72,7 +76,7 @@ function toggle$($$s, id: string) {
       }
     }));
   }
-export const h7 = ($$s, ...$$a) => (() => toggle$.bind(null, $$s.p)($$b.get($$s, 0).id))(...$$a);
+export const h7 = ($$s) => toggle$($$s.p, $$b.get($$s, 0).id);
 
 # Client part: h3
 import * as $$b from 'brumate/client';
@@ -82,7 +86,7 @@ function add$($$s) {
       draft.push({ id: String(draft.length + 1), title: 'New', done: false });
     }));
   }
-export const h3 = ($$s, ...$$a) => (add$.bind(null, $$s))(...$$a);
+export { add$ as h3 };
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -149,9 +153,11 @@ export default function Produce($$props: Record<string, never>): string {
   }
   $$html += "<button class=\"add\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Produce_9t90yy#h3\">Add</button><ul>";
   {
-    const $$list0 = Array.from(( todos ));
+    const $$list0v = ( todos );
+    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":1-->";
-    for (const [$$index2, $$item1] of $$list0.entries()) {
+    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
+      const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "--><li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--></li>";

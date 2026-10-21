@@ -2,6 +2,7 @@
 import * as $$b from 'brumate/server';
 import Child from './Child.brm';
 export const rpc = {  };
+let $$t: any;
 
 export default async function Parent($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -10,7 +11,7 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
   const label = 'Count';
   const $$children0 = await (async () => {
     let $$html = '';
-    $$html += "<em>" + await $$b.insert((label), $$ctx, $$s1) + "</em>";
+    $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</em>";
     return $$b.raw($$html);
   })();
   $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
@@ -23,10 +24,11 @@ Parent.brumateId = "Parent_4bs4t8";
 export const id = "Parent_4bs4t8";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]] } };
+const update = () => import("./parent.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => import("./parent.brm?brumate-client&part=h3"),
+  "h3": () => (update().catch(() => {}), import("./parent.brm?brumate-client&part=h3")),
   "h6": () => import("./parent.brm?brumate-client&part=h6"),
-  "update": () => import("./parent.brm?brumate-client&part=update"),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -36,12 +38,12 @@ export function load(part) {
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => ((value) => ($$b.set($$s, 0, value)))(...$$a);
+export const h3 = ($$s, value) => ($$b.set($$s, 0, value));
 
 # Client part: h6
 import * as $$b from 'brumate/client';
 
-export const h6 = ($$s, ...$$a) => ((value) => console.log(value))(...$$a);
+export const h6 = ($$s, value) => console.log(value);
 
 # Client part: update
 import * as $$b from 'brumate/client';

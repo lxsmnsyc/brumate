@@ -32,7 +32,28 @@ export interface ClientOutput {
    * functions that more than one part calls.
    */
   parts: Record<string, string>;
+  /** The ID, the props map, the update table and the refresh table: what the page depends on. */
+  table: string;
+  /**
+   * The parts that each export part loads, by name: its own first, then the
+   * ones it starts loading with it. Empty when the entry holds the code.
+   */
+  loaders: Record<string, string[]>;
+  /** False when nothing of the component runs in the browser. */
+  clientCode: boolean;
   diagnostics: Diagnostic[];
+}
+
+/**
+ * About the size of code after a minifier: without comments, extra
+ * whitespace and long generated names. Merging parts compares it.
+ */
+export function minifiedSize(code: string): number {
+  return code
+    .replace(/\/\*[\s\S]*?\*\/|^\s*\/\/[^\n]*/gm, '')
+    .replace(/\$\$\w+/g, 'e')
+    .replace(/\s+/g, ' ')
+    .replace(/ ?([{}()[\];,:=+\-*/<>!?&|.]) ?/g, '$1').length;
 }
 
 /** The part that holds an export of a client module. */
@@ -45,8 +66,8 @@ const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect'
 
 /**
  * Generates the client entry and its parts. When the parts are smaller than
- * `merge` bytes in all, they become one part, `all`, so the first event loads
- * one module instead of several.
+ * `merge` bytes in all, after minifying, the entry holds their code itself,
+ * so the first event loads one module instead of several.
  */
 export function generateClient(
   file: SFCFile,
@@ -118,7 +139,6 @@ class ClientGenerator {
     this.collectRenders();
     this.placeCode();
 
-    this.emitServerStubs();
     this.emitFunctions();
     this.emitRoots();
     this.part = 'update';
@@ -127,7 +147,8 @@ class ClientGenerator {
 
     const parts: Record<string, string> = {};
     for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
-      if (name !== 'shared') {
+      // A component whose updates are all on the server has no `update` part.
+      if (name !== 'shared' && (this.out.get(name)?.length ?? 0) > 0) {
         parts[name] = this.assemble(name);
       }
     }
@@ -135,8 +156,9 @@ class ClientGenerator {
       parts.shared = this.assembleShared();
     }
     const names = Object.keys(parts).filter((name) => name !== 'shared');
-    const size = Object.values(parts).reduce((total, code) => total + code.length, 0);
-    const merged = !parts.shared && names.length > 1 && size < this.merge;
+    // The minified size decides, because that is what the browser loads.
+    const size = Object.values(parts).reduce((total, code) => total + minifiedSize(code), 0);
+    const merged = !parts.shared && names.length > 0 && size < this.merge;
     if (merged) {
       for (const name of names) {
         delete parts[name];
@@ -154,18 +176,51 @@ class ClientGenerator {
         parts[name] = `${imports.join('\n')}\n${code}`;
       }
     }
-    const loaders = names.map(
-      (name) =>
-        `  ${JSON.stringify(name)}: () => import(${JSON.stringify(this.partPath(merged ? 'all' : name))}),`,
-    );
     const refresh = this.refreshTable();
-    const entry = [
+    const table = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
+    ];
+    const clientCode = names.length > 0;
+    if (merged || !clientCode) {
+      // The entry holds the code itself, so the first event loads one module. An entry
+      // without `load` is its own only part.
+      const code = parts.all ?? '';
+      delete parts.all;
+      return {
+        code: [code, ...table, ''].join('\n'),
+        table: table.join('\n'),
+        parts,
+        loaders: Object.fromEntries(names.map((name) => [name, []])),
+        clientCode,
+        diagnostics: this.diagnostics,
+      };
+    }
+    // A handler that writes a slot that the page shows loads the updates with its own part,
+    // so the write does not wait for another request.
+    const writers = this.liveWrites();
+    const loaders: Record<string, string[]> = {};
+    for (const name of names) {
+      loaders[name] =
+        name !== 'update' && parts.update && writers.has(name) ? [name, 'update'] : [name];
+    }
+    const withUpdate = Object.values(loaders).some((list) => list.length > 1);
+    const lines = Object.entries(loaders).map(([name, [own, extra]]) => {
+      if (name === 'update' && withUpdate) {
+        return '  "update": update,';
+      }
+      const load = `import(${JSON.stringify(this.partPath(own!))})`;
+      return `  ${JSON.stringify(name)}: () => ${extra ? `(update().catch(() => {}), ${load})` : load},`;
+    });
+    const entry = [
+      ...table,
+      ...(withUpdate
+        ? [`const update = () => import(${JSON.stringify(this.partPath('update'))});`]
+        : []),
       'const parts = {',
-      ...loaders,
+      ...lines,
       '};',
       '/** Imports a part of this module. */',
       'export function load(part) {',
@@ -173,7 +228,42 @@ class ClientGenerator {
       '}',
       '',
     ];
-    return { code: entry.join('\n'), parts, diagnostics: this.diagnostics };
+    return {
+      code: entry.join('\n'),
+      table: table.join('\n'),
+      parts,
+      loaders,
+      clientCode,
+      diagnostics: this.diagnostics,
+    };
+  }
+
+  /**
+   * The parts whose code can write a slot that an update reads, or that call
+   * shared code of a module function, which can write one.
+   */
+  private liveWrites(): Set<string> {
+    const live = new Set<Declaration>();
+    for (const edge of this.plan.graph.edges) {
+      const from = edge.from;
+      if ((from.kind === 'source' || from.kind === 'memo') && this.updates.has(edge.to)) {
+        live.add(from.declaration);
+      }
+    }
+    const result = new Set<string>();
+    for (const [name, sites] of this.reach) {
+      for (const site of sites) {
+        if (
+          site.writes.some((write) => live.has(write.declaration)) ||
+          site.reads.some((read) => read.declaration.kind === 'reset') ||
+          this.shared?.find(site.node) !== undefined
+        ) {
+          result.add(name);
+          break;
+        }
+      }
+    }
+    return result;
   }
 
   /** The import path of a part, relative to the component's file. */
@@ -331,7 +421,7 @@ class ClientGenerator {
     if (name === 'update') {
       lines.push('', 'const $$ctx = $$b.context;');
     }
-    lines.push('', ...(this.out.get(name) ?? []), '');
+    lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []), '');
     return lines.join('\n');
   }
 
@@ -350,6 +440,8 @@ class ClientGenerator {
       ...this.importsFor(imports, true),
       '',
       'const $$ctx = $$b.context;',
+      '',
+      ...this.serverStubs(names),
     ];
     for (const name of names) {
       lines.push('', ...(this.out.get(name) ?? []));
@@ -391,7 +483,7 @@ class ClientGenerator {
         lines.push(`export { ${rest.join(', ')} };`);
       }
     }
-    lines.push('', ...(this.out.get('shared') ?? []), '');
+    lines.push('', ...this.serverStubs(['shared']), ...(this.out.get('shared') ?? []), '');
     return lines.join('\n');
   }
 
@@ -514,19 +606,23 @@ class ClientGenerator {
 
   // Functions
 
-  /** Writes a stub for each server function into each part that calls it. */
-  private emitServerStubs(): void {
-    for (const name of [...this.reach.keys(), 'shared']) {
-      this.part = name;
+  /**
+   * A stub for each server function that some parts call, also one of the
+   * module script. A merged module gets each stub once.
+   */
+  private serverStubs(names: string[]): string[] {
+    const result = new Set<string>();
+    for (const name of names) {
       for (const declaration of this.reads(this.partSites(name))) {
-        if (declaration.kind === 'server-function' && declaration.scope !== this.model.module) {
+        if (declaration.kind === 'server-function') {
           const ref = serverFunctionId(this.plan, declaration.name);
-          this.emit(
+          result.add(
             `const ${declaration.name}$ = (...$$a) => $$b.rpc(${JSON.stringify(ref)}, $$a);`,
           );
         }
       }
     }
+    return [...result];
   }
 
   private emitFunctions(): void {
@@ -596,9 +692,48 @@ class ClientGenerator {
           `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,
         );
       } else {
-        this.emit(`export const ${symbol} = ($$s, ...$$a) => (${code})(...$$a);`);
+        this.emit(this.handlerExport(site, symbol, code, base));
       }
     }
+  }
+
+  /**
+   * The export of a handler, which the core calls with the scope and the
+   * arguments. A local function already takes them, so it is exported as it
+   * is. An arrow function gets the scope as its first parameter.
+   */
+  private handlerExport(site: Site, symbol: string, code: string, base: Scope): string {
+    const node = site.node;
+    const fn =
+      node.type === 'Identifier'
+        ? site.reads.find((read) => read.range.start === node.start)?.declaration
+        : undefined;
+    if (fn?.kind === 'function' && slotIndex(this.plan, fn) === -1) {
+      const owner = scopePath(this.plan, '$$s', base, instanceScope(this.plan, fn.scope));
+      if (owner === '$$s') {
+        return `export { ${fn.name}$ as ${symbol} };`;
+      }
+      return `export const ${symbol} = ($$s, ...$$a) => ${fn.name}$(${owner}, ...$$a);`;
+    }
+    if (node.type === 'ArrowFunctionExpression' && !this.rewriter.sharedCall(site, '$$s', base)) {
+      const arrow = this.rewriter.rewrite(site, '$$s', base, {
+        edit: (patch) => {
+          const first = node.params[0];
+          if (first) {
+            // An arrow such as `(n) => n` starts at its parenthesis, after `async` if it has it.
+            const parenthesized = this.file.source.lastIndexOf('(', first.start) >= node.start;
+            patch.insert(first.start, parenthesized ? '$$s, ' : '($$s, ');
+            if (!parenthesized) {
+              patch.insert(first.end, ')');
+            }
+          } else {
+            patch.insert(this.file.source.indexOf('(', node.start) + 1, '$$s');
+          }
+        },
+      });
+      return `export const ${symbol} = ${arrow};`;
+    }
+    return `export const ${symbol} = ($$s, ...$$a) => (${code})(...$$a);`;
   }
 
   // Updates

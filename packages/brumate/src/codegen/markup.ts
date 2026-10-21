@@ -27,6 +27,7 @@ import {
   scopePath,
   slotIndex,
 } from './scopes.ts';
+import { needsScope } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 const VOID_ELEMENTS = new Set([
@@ -172,6 +173,23 @@ export class Emitter {
     this.lines.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
   }
 
+  /**
+   * The value of a runtime call that returns a string, or a promise when it
+   * is not ready. The server awaits only a promise, because most values are
+   * ready and each await pauses the render. `$$t` is a variable of the
+   * module. Nothing runs between its write and its read.
+   */
+  private ready(call: string): string {
+    return this.options.mode === 'server'
+      ? `(typeof ($$t = ${call}) === 'string' ? $$t : await $$t)`
+      : call;
+  }
+
+  /** The value of a memo, which the server awaits only when it is still loading. */
+  private memoValue(name: string): string {
+    return `(($$t = $$b.ready(${promiseName(name)})) instanceof Promise ? await $$t : $$t)`;
+  }
+
   private unique(prefix: string): string {
     return `$$${prefix}${this.counter++}`;
   }
@@ -238,7 +256,7 @@ export class Emitter {
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
       if (declaration && isMemo(declaration) && this.blocking.has(declaration)) {
-        this.line(`const ${declaration.name} = await $$b.wait(${promiseName(declaration.name)});`);
+        this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
       }
     }
   }
@@ -459,7 +477,7 @@ export class Emitter {
           this.options.mode === 'server'
             ? `, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))}`
             : '';
-        const value = `${this.wait}$$b.insert(${this.expression(node.expression)}${at})`;
+        const value = this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
         if (anchor) {
           this.html('<!--t');
           this.code(anchor.scope);
@@ -605,7 +623,7 @@ export class Emitter {
 
   private emitElement(node: ElementNode, scope: Scope): void {
     this.html(`<${node.tag}`);
-    if (this.plan.styles.css) {
+    if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
     }
     const ownStyle = this.emitVariables(node);
@@ -679,6 +697,20 @@ export class Emitter {
     this.emitNodes(node.children, scope);
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /**
+   * True if an element gets the scope attribute. In a build, only elements
+   * that a scoped selector could match get it. In development, every
+   * element of a component with styles gets it, so a change to the styles
+   * applies without rendering the page again.
+   */
+  private hasScope(tag: string | undefined, classes: string[] | undefined): boolean {
+    const { css, targets } = this.plan.styles;
+    if (!css) {
+      return false;
+    }
+    return !this.plan.hideNames || needsScope(targets, tag, classes);
   }
 
   /** Runs a callback for markup that renders outside this component's elements, such as children. */
@@ -803,7 +835,7 @@ export class Emitter {
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
     const childrenName = this.emitChildren(node.children, scope);
     const extra: string[] = [];
-    if (this.plan.styles.css) {
+    if (this.hasScope(undefined, staticClasses(node.attributes))) {
       extra.push(`${JSON.stringify(this.plan.styles.attribute)}: true`);
     }
     const anchor = this.anchor(scope, node);
@@ -843,7 +875,9 @@ export class Emitter {
       }
     }
     this.code(
-      `${this.wait}$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+      this.ready(
+        `$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+      ),
     );
   }
 
@@ -901,7 +935,7 @@ export class Emitter {
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
-      this.line(`const ${declaration.name} = await $$b.wait(${promiseName(declaration.name)});`);
+      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
     }
     this.emitBody(block.body);
     this.flush();
@@ -956,14 +990,19 @@ export class Emitter {
         const index = this.unique('index');
         this.line('{');
         if (block.kind === 'for') {
-          this.line(`const ${list} = Array.from(${this.expression(block.list)});`);
+          // An array is read in place. Other iterables become one.
+          const value = `${list}v`;
+          this.line(`const ${value} = ${this.expression(block.list)};`);
+          this.line(`const ${list} = Array.isArray(${value}) ? ${value} : Array.from(${value});`);
         } else {
           this.line(
             `const ${list} = Array.from({ length: ${this.expression(block.count)} }, (_, index) => index);`,
           );
         }
         this.open(scope, block);
-        this.line(`for (const [${index}, ${item}] of ${list}.entries()) {`);
+        // An indexed loop, without an iterator and an `[index, item]` pair for each item.
+        this.line(`for (let ${index} = 0; ${index} < ${list}.length; ${index}++) {`);
+        this.line(`const ${item} = ${list}[${index}];`);
         this.emitItem(block, item, index);
         this.close();
         if (block.fallback) {
@@ -1032,6 +1071,37 @@ export class Emitter {
         this.end(block);
     }
   }
+}
+
+/**
+ * The classes of an element, or undefined when it can have classes that are
+ * not known. Code can add classes to an element that it has a ref to or that
+ * it handles events of, such as `event.currentTarget.classList`.
+ */
+function staticClasses(attributes: Attribute[]): string[] | undefined {
+  const classes: string[] = [];
+  for (const attribute of attributes) {
+    if (
+      attribute.kind === 'spread' ||
+      attribute.kind === 'computed' ||
+      attribute.kind === 'ref' ||
+      attribute.kind === 'event'
+    ) {
+      return undefined;
+    }
+    if (
+      (attribute.kind === 'static' || attribute.kind === 'value') &&
+      attribute.name.toLowerCase() === 'class'
+    ) {
+      if (attribute.kind === 'value') {
+        return undefined;
+      }
+      if (attribute.value !== true) {
+        classes.push(...attribute.value.split(/\s+/).filter(Boolean));
+      }
+    }
+  }
+  return classes;
 }
 
 /** The value of a style variable, with the text around its interpolation, such as a unit. */

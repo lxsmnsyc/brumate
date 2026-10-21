@@ -40,6 +40,9 @@ describe('analyzeProject', () => {
     const result = compile(source, { filename: 'Badge.brm', liveProps: new Set() });
     expect(result.server).not.toContain('$$ctx.slots');
     expect(result.server).not.toContain('<!--t');
-    expect(result.parts.update).not.toContain('export function');
+    // Nothing runs in the browser, so the build leaves the component out of the client.
+    expect(result.parts).toEqual({});
+    expect(result.clientCode).toBe(false);
+    expect(result.client).not.toContain('export function');
   });
 });

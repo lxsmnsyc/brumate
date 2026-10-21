@@ -19,12 +19,61 @@ export interface StyleOutput {
   diagnostics: Diagnostic[];
   /** Absolute paths of the files that SCSS or Less imported. */
   dependencies: string[];
+  /**
+   * The compound selectors that got the scope attribute, by what an element
+   * needs to match one. See `needsScope`.
+   */
+  targets: ScopeTarget[];
+}
+
+/**
+ * What a scoped compound selector needs of an element: its tag, in lower
+ * case, and its classes. A compound without either can match any element.
+ */
+export interface ScopeTarget {
+  tag?: string;
+  classes: string[];
+}
+
+/**
+ * True if a scoped selector could match an element, so the element needs the
+ * scope attribute. `tag` is undefined when it is not known at compile time,
+ * and `classes` is undefined when the element can have classes that are not
+ * known.
+ */
+export function needsScope(
+  targets: ScopeTarget[],
+  tag: string | undefined,
+  classes: string[] | undefined,
+): boolean {
+  const lower = tag?.toLowerCase();
+  return targets.some(
+    (target) =>
+      (target.tag === undefined || lower === undefined || target.tag === lower) &&
+      (classes === undefined || target.classes.every((name) => classes.includes(name))),
+  );
+}
+
+/** What an element needs to match a compound. Selectors inside pseudo-classes are not read. */
+function scopeTarget(compound: SelectorPart[]): ScopeTarget {
+  const target: ScopeTarget = { classes: [] };
+  for (const node of compound) {
+    if (node.type === 'tag') {
+      target.tag = node.value.toLowerCase();
+    } else if (node.type === 'class') {
+      target.classes.push(node.value);
+    }
+  }
+  return target;
 }
 
 type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0];
 
-/** Adds the scope attribute to every compound selector, except inside `:global(…)`. */
-const scopeSelector = (attribute: string) =>
+/**
+ * Adds the scope attribute to every compound selector, except inside
+ * `:global(…)`. Each scoped compound goes into `targets`.
+ */
+const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
   selectorParser((selectors) => {
     selectors.each((selector) => {
       // Split the selector into compounds at combinators.
@@ -50,6 +99,7 @@ const scopeSelector = (attribute: string) =>
         if (compound.length === 0) {
           continue;
         }
+        targets.push(scopeTarget(compound));
         // The attribute goes before pseudo-elements such as `::before`.
         const last = compound.findLast(
           (node) => !(node.type === 'pseudo' && node.value.startsWith('::')),
@@ -64,8 +114,8 @@ const scopeSelector = (attribute: string) =>
     });
   });
 
-function scopeRules(root: Root, attribute: string): void {
-  const processor = scopeSelector(attribute);
+function scopeRules(root: Root, attribute: string, targets: ScopeTarget[]): void {
+  const processor = scopeSelector(attribute, targets);
   root.walkRules((rule) => {
     // Keyframe steps such as `from` and `50%` are not selectors.
     if (rule.parent?.type === 'atrule' && /keyframes$/i.test((rule.parent as AtRule).name)) {
@@ -73,6 +123,59 @@ function scopeRules(root: Root, attribute: string): void {
     }
     rule.selector = processor.processSync(rule.selector);
   });
+}
+
+/** Line breaks in a selector, value or at-rule are whitespace, because strings cannot hold them. */
+function collapse(text: string): string {
+  return text.replace(/\s*\n\s*/g, ' ').trim();
+}
+
+/**
+ * Removes the comments and the whitespace that CSS does not need, for a
+ * build. Comments that start with `/*!`, such as licenses, stay.
+ */
+export function minifyCSS(css: string): string {
+  if (!css) {
+    return css;
+  }
+  const root = parse(css);
+  root.raws.after = '';
+  root.raws.semicolon = false;
+  root.walk((node) => {
+    node.raws.before = '';
+    switch (node.type) {
+      case 'comment':
+        if (!node.text.startsWith('!')) {
+          node.remove();
+        }
+        break;
+      case 'decl':
+        node.raws.between = ':';
+        // The raw value holds comments.
+        delete node.raws.value;
+        node.value = collapse(node.value);
+        if (node.important) {
+          node.raws.important = '!important';
+        }
+        break;
+      case 'rule':
+        delete node.raws.selector;
+        node.selector = collapse(node.selector);
+        node.raws.between = '';
+        node.raws.after = '';
+        node.raws.semicolon = false;
+        break;
+      case 'atrule':
+        delete node.raws.params;
+        node.params = collapse(node.params);
+        node.raws.afterName = node.params ? ' ' : '';
+        node.raws.between = '';
+        node.raws.after = '';
+        node.raws.semicolon = false;
+        break;
+    }
+  });
+  return root.toString();
 }
 
 /**
@@ -169,6 +272,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
   const variables: StyleOutput['variables'] = [];
   const dependencies: string[] = [];
   const parts: string[] = [];
+  const targets: ScopeTarget[] = [];
   for (const style of file.styles) {
     // Interpolations become custom properties. Offsets in `content` start after `<style>`.
     const contentStart = file.source.indexOf(style.content, style.start);
@@ -198,7 +302,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
       const root = parse(
         style.lang === 'css' ? content : preprocess(style.lang, content, filePath, dependencies),
       );
-      scopeRules(root, attribute);
+      scopeRules(root, attribute, targets);
       parts.push(root.toString().trim());
     } catch (error) {
       diagnostics.push({
@@ -211,5 +315,5 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
       });
     }
   }
-  return { css: parts.join('\n'), attribute, variables, diagnostics, dependencies };
+  return { css: parts.join('\n'), attribute, variables, diagnostics, dependencies, targets };
 }

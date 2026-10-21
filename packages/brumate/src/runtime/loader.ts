@@ -2,8 +2,11 @@ import type * as Client from './client.ts';
 import type { ClientModule } from './client.ts';
 
 export interface LoaderOptions {
-  /** Imports the client module of a component, by component ID. */
-  load: (id: string) => Promise<ClientModule>;
+  /**
+   * Imports the client module of a component, by component ID. Undefined for
+   * a component that has no client code.
+   */
+  load: (id: string) => Promise<ClientModule> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
   /**
@@ -61,12 +64,38 @@ function prefetch(link: HTMLAnchorElement | undefined): void {
   }
 }
 
+/** What the loader gives the code that loads pages without a full page load. */
+interface Navigation {
+  options: LoaderOptions;
+  listen: (
+    target: EventTarget,
+    type: string,
+    listener: (event: Event) => void,
+    flags?: AddEventListenerOptions | boolean,
+  ) => void;
+  core: () => Promise<typeof Client> | undefined;
+  scan: (root: ParentNode) => void;
+}
+
 /**
  * Starts resuming the page. Listens to the events in `data-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
  * Returns a function that removes the listeners and stops the core.
  */
 export function start(options: LoaderOptions): () => void {
+  return boot(options, options.navigate === false ? undefined : navigation);
+}
+
+/**
+ * `start` for a site that loads every page with a full page load, as with
+ * `navigate: false`. A bundle that only calls it leaves out the code of
+ * client navigation.
+ */
+export function startWithoutNavigation(options: LoaderOptions): () => void {
+  return boot(options);
+}
+
+function boot(options: LoaderOptions, navigate?: (navigation: Navigation) => void): () => void {
   let core: Promise<typeof Client> | undefined;
   const types = new Set<string>();
   const removers: (() => void)[] = [];
@@ -89,7 +118,15 @@ export function start(options: LoaderOptions): () => void {
   // The devtools panel asks for the core when it opens, so it can show the page before any event.
   listen(document, 'brumate:core', () => void loadCore());
 
+  // Starts loading the module of a handler and its part, as one step when the module holds them.
+  const warm = (ref: string): void => {
+    const [id, name] = ref.split('#') as [string, string];
+    void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
+  };
+
   const run = (element: Element, ref: string, event?: Event): void => {
+    // The module loads while the core does, not after it.
+    warm(ref);
     void loadCore().then((client) => client.handle(element, ref, event));
   };
 
@@ -213,8 +250,7 @@ export function start(options: LoaderOptions): () => void {
     preloaded.add(element);
     void import('./client.ts');
     for (const entry of entries(element)) {
-      const [id, name] = entry.ref.split('#') as [string, string];
-      void options.load(id).then((module) => module.load(/^[hc]\d/.test(name) ? name : 'update'));
+      warm(entry.ref);
     }
   };
 
@@ -238,103 +274,11 @@ export function start(options: LoaderOptions): () => void {
     void loadCore().then((client) => client.submitAction(form, submitter));
   });
 
-  if (options.navigate === false) {
+  if (navigate) {
+    navigate({ options, listen, core: () => core, scan });
+  } else {
     // A hot update whose markup changed loads the page again.
     listen(document, 'brumate:reload', () => location.reload());
-  } else {
-    const rpc = `${options.rpc ?? '/_brumate'}/`;
-    // The page without its hash, to tell a change of the hash from a change of the page.
-    let page = String(location.href).split('#')[0];
-    const go = (url: string, init?: RequestInit, push = true): void => {
-      page = url.split('#')[0]!;
-      void import('./navigate.ts').then(({ navigate }) =>
-        navigate({
-          url,
-          init,
-          push,
-          transition: typeof options.navigate === 'object' && options.navigate.transition === true,
-          // The core forgets the old page, or only stops reading, when layouts stay.
-          leave: async (partial) => {
-            const client = await core;
-            if (partial) {
-              client?.dispose();
-            } else {
-              client?.leavePage();
-            }
-          },
-          enter: () => {
-            void core?.then((client) => client.init({ ...options, listen: scan }));
-            page = location.href.split('#')[0]!;
-          },
-        }),
-      );
-    };
-    // A link to another page of this site, which the loader loads itself.
-    const pageLink = (target: EventTarget | null): HTMLAnchorElement | undefined => {
-      const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
-      return link &&
-        !link.target &&
-        !link.hasAttribute('download') &&
-        !link.hasAttribute('data-reload') &&
-        link.origin === location.origin &&
-        // A link to a place in the same page scrolls there.
-        !(link.hash && link.href.split('#')[0] === page)
-        ? link
-        : undefined;
-    };
-    listen(document, 'click', (event) => {
-      const mouse = event as MouseEvent;
-      const link = pageLink(event.target);
-      if (
-        !link ||
-        event.defaultPrevented ||
-        mouse.button ||
-        mouse.metaKey ||
-        mouse.ctrlKey ||
-        mouse.shiftKey ||
-        mouse.altKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      go(link.href);
-    });
-    // A page loads when the pointer rests on its link, or the link gets focus, so a click finds it loading.
-    let resting: ReturnType<typeof setTimeout> | undefined;
-    listen(
-      document,
-      'pointerover',
-      (event) => {
-        const link = pageLink(event.target);
-        if (link) {
-          clearTimeout(resting);
-          resting = setTimeout(() => prefetch(link), 80);
-        }
-      },
-      { passive: true },
-    );
-    listen(document, 'pointerout', () => clearTimeout(resting), { passive: true });
-    listen(document, 'focusin', (event) => prefetch(pageLink(event.target)));
-    listen(document, 'submit', (event) => {
-      const form = event.target as HTMLFormElement;
-      const submitter = (event as SubmitEvent).submitter;
-      const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
-      const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
-      if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
-        return;
-      }
-      event.preventDefault();
-      go(action, { method: 'POST', body: new FormData(form, submitter) });
-    });
-    // A hot update whose markup changed loads the page again, in place. With `init`, the whole
-    // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.
-    listen(document, 'brumate:reload', () => go(location.href, { method: 'GET' }, false));
-    listen(window, 'popstate', () => {
-      // A change of the hash only stays on the page.
-      if (location.href.split('#')[0] !== page) {
-        go(location.href, undefined, false);
-      }
-    });
   }
 
   scan(document);
@@ -356,4 +300,104 @@ export function start(options: LoaderOptions): () => void {
     }
     void core?.then((client) => client.dispose());
   };
+}
+
+/**
+ * Loads pages without a full page load: links to the same origin, the back
+ * and forward buttons, and forms that post to a server function.
+ */
+function navigation({ options, listen, core, scan }: Navigation): void {
+  const rpc = `${options.rpc ?? '/_brumate'}/`;
+  // The page without its hash, to tell a change of the hash from a change of the page.
+  let page = String(location.href).split('#')[0];
+  const go = (url: string, init?: RequestInit, push = true): void => {
+    page = url.split('#')[0]!;
+    void import('./navigate.ts').then(({ navigate }) =>
+      navigate({
+        url,
+        init,
+        push,
+        transition: typeof options.navigate === 'object' && options.navigate.transition === true,
+        // The core forgets the old page, or only stops reading, when layouts stay.
+        leave: async (partial) => {
+          const client = await core();
+          if (partial) {
+            client?.dispose();
+          } else {
+            client?.leavePage();
+          }
+        },
+        enter: () => {
+          void core()?.then((client) => client.init({ ...options, listen: scan }));
+          page = location.href.split('#')[0]!;
+        },
+      }),
+    );
+  };
+  // A link to another page of this site, which the loader loads itself.
+  const pageLink = (target: EventTarget | null): HTMLAnchorElement | undefined => {
+    const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+    return link &&
+      !link.target &&
+      !link.hasAttribute('download') &&
+      !link.hasAttribute('data-reload') &&
+      link.origin === location.origin &&
+      // A link to a place in the same page scrolls there.
+      !(link.hash && link.href.split('#')[0] === page)
+      ? link
+      : undefined;
+  };
+  listen(document, 'click', (event) => {
+    const mouse = event as MouseEvent;
+    const link = pageLink(event.target);
+    if (
+      !link ||
+      event.defaultPrevented ||
+      mouse.button ||
+      mouse.metaKey ||
+      mouse.ctrlKey ||
+      mouse.shiftKey ||
+      mouse.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    go(link.href);
+  });
+  // A page loads when the pointer rests on its link, or the link gets focus, so a click finds it loading.
+  let resting: ReturnType<typeof setTimeout> | undefined;
+  listen(
+    document,
+    'pointerover',
+    (event) => {
+      const link = pageLink(event.target);
+      if (link) {
+        clearTimeout(resting);
+        resting = setTimeout(() => prefetch(link), 80);
+      }
+    },
+    { passive: true },
+  );
+  listen(document, 'pointerout', () => clearTimeout(resting), { passive: true });
+  listen(document, 'focusin', (event) => prefetch(pageLink(event.target)));
+  listen(document, 'submit', (event) => {
+    const form = event.target as HTMLFormElement;
+    const submitter = (event as SubmitEvent).submitter;
+    const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
+    const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
+    if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
+      return;
+    }
+    event.preventDefault();
+    go(action, { method: 'POST', body: new FormData(form, submitter) });
+  });
+  // A hot update whose markup changed loads the page again, in place. With `init`, the whole
+  // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.
+  listen(document, 'brumate:reload', () => go(location.href, { method: 'GET' }, false));
+  listen(window, 'popstate', () => {
+    // A change of the hash only stays on the page.
+    if (location.href.split('#')[0] !== page) {
+      go(location.href, undefined, false);
+    }
+  });
 }

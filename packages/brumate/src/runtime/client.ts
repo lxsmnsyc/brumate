@@ -33,8 +33,11 @@ export interface ClientModule {
   props: Record<string, number>;
   /** Scope kind, then slot, to the updates that read it. */
   g: Record<number, Record<number, Update[]>>;
-  /** Imports a part of the module. */
-  load: (part: string) => Promise<Part>;
+  /**
+   * Imports a part of the module. A module without it holds every part
+   * itself, as a small component's module does.
+   */
+  load?: (part: string) => Promise<Part>;
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
 }
@@ -71,7 +74,11 @@ export interface Scope {
 }
 
 export interface CoreOptions {
-  load: (id: string) => Promise<ClientModule>;
+  /**
+   * Imports the client module of a component. Undefined for a component that
+   * has no client code, which a build leaves out.
+   */
+  load: (id: string) => Promise<ClientModule> | undefined;
   /** Adds event listeners for the `data-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
@@ -563,7 +570,9 @@ function callable(value: unknown, seen: Set<object>): unknown {
 export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
-    promise = options.load(id).then((module) => {
+    // A component without client code has nothing to update.
+    promise = Promise.resolve(options.load(id)).then((loaded) => {
+      const module = loaded ?? { id, props: {}, g: {} };
       modules.set(id, module);
       return module;
     });
@@ -576,11 +585,13 @@ function loadPart(module: ClientModule, name: string): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
-    promise = module.load(name).then((part) => {
-      loadedParts.set(key, part);
-      devtools()?.part?.(module.id, name);
-      return part;
-    });
+    promise = (module.load ? module.load(name) : Promise.resolve(module as unknown as Part)).then(
+      (part) => {
+        loadedParts.set(key, part);
+        devtools()?.part?.(module.id, name);
+        return part;
+      },
+    );
     parts.set(key, promise);
   }
   return promise;

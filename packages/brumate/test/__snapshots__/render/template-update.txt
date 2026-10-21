@@ -1,6 +1,7 @@
 # Server module
 import * as $$b from 'brumate/server';
 export const rpc = {  };
+let $$t: any;
 
 export default async function TemplateUpdate($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
@@ -9,11 +10,11 @@ export default async function TemplateUpdate($$props: Record<string, never>, $$c
   async function price(label: string, amount: number): Promise<$$b.Raw> {
     let $$html = '';
     const $$s2 = $$ctx.scope(2, $$s1);
-    $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + await $$b.insert((label), $$ctx, $$s2) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + await $$b.insert((amount), $$ctx, $$s2) + "<!--/t--></span>";
+    $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + (typeof ($$t = $$b.insert((label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((amount), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></span>";
     $$ctx.slots($$s2, [label, amount], ["label","amount"]);
     return $$b.raw($$html);
   }
-  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((price('Subtotal', total)), $$ctx, $$s1) + "<!--/t--></p>";
+  $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((price('Subtotal', total)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
   $$ctx.slots($$s1, [total], ["total"]);
   return $$html;
 }
@@ -23,9 +24,10 @@ TemplateUpdate.brumateId = "TemplateUpdate_kx4ubq";
 export const id = "TemplateUpdate_kx4ubq";
 export const props = {  };
 export const g = { 2: { 0: [[2, "u1"]], 1: [[2, "u2"]] }, 1: { 0: [[1, "u4"]] } };
+const update = () => import("./template-update.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => import("./template-update.brm?brumate-client&part=h3"),
-  "update": () => import("./template-update.brm?brumate-client&part=update"),
+  "h3": () => (update().catch(() => {}), import("./template-update.brm?brumate-client&part=h3")),
+  "update": update,
 };
 /** Imports a part of this module. */
 export function load(part) {
@@ -35,7 +37,7 @@ export function load(part) {
 # Client part: h3
 import * as $$b from 'brumate/client';
 
-export const h3 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
+export const h3 = ($$s) => $$b.update($$s, 0, 1, false);
 
 # Client part: update
 import * as $$b from 'brumate/client';

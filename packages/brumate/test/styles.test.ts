@@ -89,3 +89,71 @@ describe('style languages', () => {
     expect(result.server).toContain('$$b.affix("-", (size), "px")');
   });
 });
+
+/** The opening tags in the server module of a build. */
+function tags(markup: string, style: string, hideNames = true): string[] {
+  const { server, plan } = compile(`${markup}\n\n<style>\n${style}\n</style>`, {
+    filename: 'Scoped.brm',
+    hideNames,
+  });
+  const attribute = plan.styles.attribute;
+  return [...server.matchAll(/(?<=[">])<(\w+)( s-\w+)?/g)].map(
+    ([, tag, scoped]) => `${tag}${scoped === ` ${attribute}` ? '+' : ''}`,
+  );
+}
+
+describe('scope attribute', () => {
+  it('marks only the elements that a scoped selector can match', () => {
+    expect(
+      tags(
+        '<div class="card"><p>Hi</p><span class="x">a</span><i>b</i></div><meta charset="utf-8">',
+        '  .card p { color: red; }\n  span.x { color: blue; }',
+      ),
+    ).toEqual(['div+', 'p+', 'span+', 'i', 'meta']);
+  });
+
+  it('marks elements whose classes are not known', () => {
+    const markup = [
+      '<script>',
+      '  let active = $signal(true);',
+      "  import { $signal } from 'brumate/signals';",
+      '</script>',
+      '<b class={ on: active }>a</b><i {...{}}>b</i><u onClick=(() => {})>c</u><s>d</s><p class="on">e</p>',
+    ].join('\n');
+    expect(tags(markup, '  .on { color: red; }')).toEqual(['b+', 'i+', 'u+', 's', 'p+']);
+  });
+
+  it('marks no element when every rule is global', () => {
+    expect(
+      tags('<div class="a"><p>Hi</p></div>', '  :global(.a) :global(p) { margin: 0; }'),
+    ).toEqual(['div', 'p']);
+  });
+
+  it('marks every element when a selector can match any element', () => {
+    expect(tags('<div><p>Hi</p></div>', '  [hidden] { display: none; }')).toEqual(['div+', 'p+']);
+  });
+
+  it('marks every element in development, so changes to the styles apply', () => {
+    expect(tags('<div><p>Hi</p></div>', '  p { margin: 0; }', false)).toEqual(['div+', 'p+']);
+  });
+});
+
+describe('minified styles', () => {
+  const style =
+    '<style>\n  /* note */\n  .card,\n  p {\n    color: red;\n    margin: 0 auto !important;\n  }\n</style>';
+
+  it('leaves out comments and whitespace in a build', () => {
+    const { server, render } = compile(source(style), { filename: 'Card.brm', hideNames: true });
+    for (const code of [server, render]) {
+      expect(code).toMatch(
+        /const \$\$css = "\.card\[s-\w+\], p\[s-\w+\]\{color:red;margin:0 auto!important\}";/,
+      );
+    }
+  });
+
+  it('keeps the styles readable in development', () => {
+    const result = compile(source(style), { filename: 'Card.brm' });
+    expect(result.server).toContain(`const $$css = ${JSON.stringify(result.css)};`);
+    expect(result.css).toContain('/* note */');
+  });
+});
