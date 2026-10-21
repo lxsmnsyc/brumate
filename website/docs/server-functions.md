@@ -96,13 +96,84 @@ const user = $memo(getUser(id));
 - The function must be `async`.
 - Its arguments and its result must be serializable: plain data, `Date`, `Map`, `Set`, `URL`, typed arrays, and more. See [Serializable values](./reference-serialization.md).
 - It can use imports and values of `<script module>`. It cannot use a variable of the instance script. Pass the value as an argument instead.
-- Its arguments come from the browser, so treat them as untrusted input. Check them before you use them.
+- Its arguments come from the browser, so treat them as untrusted input. Check them before you use them. See [Validating arguments](#validating-arguments).
 
 Capturing an instance variable is a compile error that names the variable:
 
 ```
 Server function "save" captures "user" (Todos.brm:6:3). Pass it as an argument.
 ```
+
+## Validating arguments
+
+The types of a server function do not check what the browser sends. `parse` from `brumate/server` checks a value with a schema, and returns the value that the schema gives back:
+
+```ts
+import { parse } from 'brumate/server';
+import * as v from 'valibot';
+
+const Todo = v.object({ title: v.pipe(v.string(), v.minLength(1)), done: v.boolean() });
+
+async function save(input: unknown) {
+  'use server';
+  const todo = await parse(Todo, input);
+  await db.todos.save(todo);
+}
+```
+
+- Any schema that follows [Standard Schema](https://standardschema.dev) works, such as one of Zod, Valibot or ArkType. brumate does not depend on a library.
+- A value that does not match throws a `ValidationError`, which is a `ServerError` with status 400. Its message is the first issue with its path, such as `title: Invalid length (1 more issue)`. The call in the browser rejects with that message, and a form posted without scripts gets it as text.
+- The message has at most 300 characters of the issue. Only the message reaches the browser. The issues stay on the server, in `error.issues`.
+- Call `getEvent()` before `parse`, because `parse` awaits the schema.
+- The schema and the helpers stay on the server when only server functions use them.
+
+`safeParse(schema, value)` does not throw. It returns `{ value }` or `{ issues }`, so the function can return the issues for the page to show:
+
+```brm live
+<script module>
+  import type { StandardSchemaV1 } from 'brumate/server';
+
+  // A schema written by hand. A schema library makes the same object.
+  const Name: StandardSchemaV1<unknown, string> = {
+    '~standard': {
+      version: 1,
+      vendor: 'sample',
+      validate: (value) =>
+        typeof value === 'string' && value.trim().length >= 2
+          ? { value: value.trim() }
+          : { issues: [{ message: 'Use at least 2 letters' }] },
+    },
+  };
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+  import { safeParse } from 'brumate/server';
+
+  async function rename(input: unknown) {
+    'use server';
+    const result = await safeParse(Name, input);
+    if (result.issues) {
+      return { error: result.issues[0]!.message, name: '' };
+    }
+    return { error: '', name: result.value };
+  }
+
+  let draft = $signal('');
+  let answer = $signal({ error: '', name: '' });
+</script>
+
+<input aria-label="Name" value=draft onInput=((event) => (draft = event.currentTarget.value))>
+<button onClick=(async () => (answer = await rename(draft)))>Save</button>
+#if (answer.error) {
+  <p role="alert">{answer.error}</p>
+} #else if (answer.name) {
+  <p>Saved as {answer.name}</p>
+}
+```
+
+- Each issue is plain data: a `message`, and a `path` of strings and numbers. A `{ key }` segment becomes its key, and a symbol becomes its text, such as `Symbol(id)`. Other fields that a library adds to an issue are left out, so they cannot send the input back.
+- `fieldErrors(issues)` groups the messages by field. See [Validating a form](./forms.md#validating-a-form).
 
 ## Errors
 

@@ -68,6 +68,14 @@
 - Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
 - The core is one module whose helpers are exports of their own, and the loader reads only its `loader` export, so a build keeps the helpers that its components call and leaves out the rest. Features that change how the core reads the page, such as the pages that client navigation adds and hot updates, are modules that set hooks of the core when they load, and they read the core with `import()`. The cost is a few bytes in the loader to load them, and a small chunk after the first client navigation. A core per page would need a chunk per set of features, and more requests.
 - After `load`, when the browser is idle, the loader preloads the core and the handlers' code of elements in or near the viewport, so a first click needs no request. It costs 97 B gzip in the loader, and the bytes of the core and the modules on every page that has handlers, even when nobody clicks. `prefetch="none"`, Save-Data, 2G connections and the `preload: false` option turn it off.
+- Server functions validate their arguments with helpers of `brumate/server` that take any Standard Schema: `parse`, `safeParse`, `parseForm` and `fieldErrors`. The function calls them in its body.
+  - A helper needs no compiler change, and works the same in a component and in a `'use server'` file. The schema and the helper stay on the server, because only the body of the server function reads them.
+  - A wrapper, such as `validated(schema, fn)`, would hide the server function from the compiler, which finds server functions by their `'use server'` directive.
+  - Validators that the compiler generates from the TypeScript types would need the type checker in every build, and could not express rules such as an email or a minimum.
+  - The Standard Schema interface is copied into the package, as its authors ask, so brumate has no dependency for it and works with Zod, Valibot, ArkType and others.
+  - `parse` throws a `ServerError` with status 400 and the first issue as the message. The issues are not sent with the error, so the protocol of errors and the client do not change. A function that wants to show field errors uses `safeParse` or `parseForm` and returns the issues as a value.
+  - Issues are copied as plain data, a message and a path of strings and numbers, so seroval can send them and fields that a library adds, such as the input, stay on the server.
+  - `parseForm` nests dotted names into objects, and makes arrays of repeated names and names that end with `[]`. A part named `__proto__`, `constructor` or `prototype` is an issue, so a form cannot change a prototype.
 
 ## Open
 

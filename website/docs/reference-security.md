@@ -46,6 +46,16 @@ export async function POST(request: Request): Promise<Response> {
 - Errors that are sent as values, such as in a memo, keep their name and message only. Stack traces are never sent.
 - A route error renders `_error.brm` with the same rules.
 
+## Untrusted arguments
+
+The arguments of a server function and the fields of a form come from the browser. Their types are not checked when they arrive. A user can send any value that seroval reads.
+
+- Check them with `parse`, `safeParse` or `parseForm` from `brumate/server` and a [Standard Schema](https://standardschema.dev). See [Validating arguments](./server-functions.md#validating-arguments).
+- `parse` answers with status 400 and the message of the first issue, cut at 300 characters. The issues stay on the server.
+- Issues that `safeParse` and `parseForm` return keep only the message and the path, so fields that a library adds, such as the input, are not sent back.
+- `parseForm` refuses names with a part named `__proto__`, `constructor` or `prototype`, so a form cannot change the prototype of an object. Its work grows with the size of the form only.
+- The schema runs on the input, so its own checks decide how long it takes. Prefer limits on the length of strings and arrays.
+
 ## Regular expressions
 
 Regular expressions are not read or written, in the page or in server function calls. A call that sends one fails with status 500. A pattern from a client could take the server a long time to match.

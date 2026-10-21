@@ -156,6 +156,25 @@ describe('vite plugin', () => {
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
   });
+
+  it('keeps validation helpers and schemas of server functions out of the client build', async () => {
+    const result = (await build({
+      ...config,
+      build: { write: false, minify: true, rolldownOptions: { input: 'virtual:brumate/start' } },
+    })) as Rolldown.RolldownOutput;
+    const chunks = result.output.filter(
+      (item): item is Rolldown.OutputChunk => item.type === 'chunk',
+    );
+    const names = chunks.map((chunk) => chunk.facadeModuleId ?? '');
+    expect(names.some((name) => name.endsWith('validated.brm?brumate-client'))).toBe(true);
+    const code = chunks.map((chunk) => chunk.code).join('\n');
+    // The markup that the client renders ships.
+    expect(code).toContain('<p class="welcome">Welcome');
+    // A message of the helpers, the schema of the component and its message do not.
+    expect(code).not.toContain('conflicts with another field');
+    expect(code).not.toContain('~standard');
+    expect(code).not.toContain('Enter an email address');
+  });
 });
 
 describe('style imports', () => {

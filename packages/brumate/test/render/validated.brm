@@ -1,0 +1,44 @@
+<script module>
+  import type { StandardSchemaV1 } from 'brumate/server';
+
+  // A schema written by hand, as a schema library would make it.
+  const Email: StandardSchemaV1<unknown, { email: string }> = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      validate(value) {
+        const email = (value as { email?: unknown }).email;
+        return typeof email === 'string' && email.includes('@')
+          ? { value: { email } }
+          : { issues: [{ message: 'Enter an email address', path: ['email'] }] };
+      },
+    },
+  };
+</script>
+
+<script>
+  import { $action } from 'brumate/signals';
+  import { fieldErrors, parseForm } from 'brumate/server';
+
+  async function join(form: FormData) {
+    'use server';
+    const result = await parseForm(Email, form);
+    if (result.issues) {
+      return { errors: fieldErrors(result.issues), email: '' };
+    }
+    return { errors: {} as Record<string, string[]>, email: result.value.email };
+  }
+
+  const result = $action(join);
+</script>
+
+<form class="join" action=join>
+  <input name="email">
+  <button>Join</button>
+</form>
+#if (result?.errors.email) {
+  <p class="error">{result.errors.email[0]}</p>
+}
+#if (result?.email) {
+  <p class="welcome">Welcome {result.email}</p>
+}

@@ -77,6 +77,94 @@ A form often needs the answer of its function, such as an error to show next to 
 - With the loader, the result arrives without loading a page, and the fields keep what was typed. `$isPending(result)` is true while the form is sent. Only the answer to the latest send is kept.
 - Without scripts, the page renders again with the result. The fields are new, so return the values that they should show.
 
+## Validating a form
+
+`parseForm(schema, form)` from `brumate/server` turns the fields of a form into an object, and checks it with a [Standard Schema](https://standardschema.dev). It returns `{ value }` or `{ issues }`, and does not throw. `fieldErrors(issues)` groups the messages by field, for `$action` to show:
+
+```brm live
+<script module>
+  import type { StandardSchemaV1 } from 'brumate/server';
+
+  type SignUp = { email: string; age: number };
+
+  // A schema written by hand. A schema library, such as Zod or Valibot, makes the same object.
+  const SignUp: StandardSchemaV1<unknown, SignUp> = {
+    '~standard': {
+      version: 1,
+      vendor: 'sample',
+      validate(input) {
+        const { email, age } = input as Record<string, unknown>;
+        const issues: StandardSchemaV1.Issue[] = [];
+        if (typeof email !== 'string' || !email.includes('@')) {
+          issues.push({ message: 'Enter an email address', path: ['email'] });
+        }
+        if (!(Number(age) >= 18)) {
+          issues.push({ message: 'You must be 18 or older', path: ['age'] });
+        }
+        return issues.length > 0
+          ? { issues }
+          : { value: { email: email as string, age: Number(age) } };
+      },
+    },
+  };
+</script>
+
+<script>
+  import { $action } from 'brumate/signals';
+  import { fieldErrors, parseForm } from 'brumate/server';
+
+  async function signUp(form: FormData) {
+    'use server';
+    const result = await parseForm(SignUp, form);
+    if (result.issues) {
+      return { errors: fieldErrors(result.issues), email: '' };
+    }
+    return { errors: {} as Record<string, string[]>, email: result.value.email };
+  }
+
+  const result = $action(signUp);
+</script>
+
+<form action=signUp>
+  <label>
+    Email
+    <input name="email">
+  </label>
+  #if (result?.errors.email) {
+    <p role="alert">{result.errors.email[0]}</p>
+  }
+  <label>
+    Age
+    <input name="age" inputmode="numeric">
+  </label>
+  #if (result?.errors.age) {
+    <p role="alert">{result.errors.age[0]}</p>
+  }
+  <button>Sign up</button>
+</form>
+#if (result?.email) {
+  <p>Signed up as {result.email}.</p>
+}
+```
+
+How the fields become an object:
+
+- A name that appears once holds its value.
+- A name that appears more than once holds an array of its values, in the order of the form.
+- A name that ends with `[]`, such as `tags[]`, always holds an array, under the name without `[]`. Use it for a list that can have one item, such as checkboxes.
+- Dots nest objects: `address.city` and `address.zip` make `{ address: { city, zip } }`. A number between dots is a key of an object, not an index of an array.
+- Values stay strings, and files stay `File` values. The schema turns a string into a number or a date.
+- A name with an empty part, such as `a..b`, or a part named `__proto__`, `constructor` or `prototype`, is an issue, and the schema does not run. So a form cannot change the prototype of an object.
+- A name that needs an object where another field holds a value, such as `a` and `a.b`, is an issue too.
+
+What `fieldErrors` returns:
+
+- The key is the path of the issue joined with dots, such as `address.city`, and the value is the list of its messages.
+- Issues without a path, such as a check across two fields, are under the key `''`.
+- The result is plain data, so the function can return it to the page.
+
+`parse(schema, value)` throws instead, with status 400. Use it for values that a correct page always sends right. Without scripts, the browser shows its message as text. See [Validating arguments](./server-functions.md#validating-arguments).
+
 ## Redirects after a post
 
 `redirect(location)` from `brumate/server` sends the browser to another page, with or without scripts:

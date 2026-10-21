@@ -1015,6 +1015,32 @@ describe('$action', () => {
   });
 });
 
+describe('validation with $action', () => {
+  it('shows the field errors of parseForm, then the result', async () => {
+    vi.resetModules();
+    const server = await import(file('validated.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const { html, state } = await runtime.render(server.default, {});
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+
+    const form = document.querySelector<HTMLFormElement>('.join')!;
+    form.querySelector('input')!.value = 'nope';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.error')).toBe('Enter an email address'));
+
+    form.querySelector('input')!.value = 'ada@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.welcome')).toBe('Welcome ada@example.com'));
+    expect(document.querySelector('.error')).toBeNull();
+  });
+});
+
 describe('refresh', () => {
   it('loads again the memos that call a server function that another one refreshed', async () => {
     vi.resetModules();
