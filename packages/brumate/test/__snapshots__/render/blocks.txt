@@ -145,7 +145,7 @@ export function u10($$s) {
   $$b.text($$s, 2, $$b.get($$s, 0));
 }
 export function u18($$s) {
-  $$b.attr($$s, 0, "class", { active: $$b.get($$s.p, 0) === 'a' });
+  $$b.attr($$s, 0, "class", (($$b.get($$s.p, 0) === 'a') ? "active" : ""));
 }
 export function r3($$p) {
   let $$html = '';

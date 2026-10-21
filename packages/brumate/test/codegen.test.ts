@@ -1,6 +1,9 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
+import { classText, literalClasses } from '../src/codegen/markup.ts';
 import { compile, inspect } from '../src/index.ts';
+import { parseExpression } from '../src/oxc.ts';
+import { classValue } from '../src/runtime/html.ts';
 
 /** The client parts of a component whose handler calls `f`, declared as given. */
 function parts(declaration: string): string {
@@ -260,5 +263,61 @@ describe('list items of one element', () => {
     ]) {
       expect(listServer(body)).toContain('<!--i');
     }
+  });
+});
+
+function failParse(message: string): never {
+  throw new Error(message);
+}
+
+/** The classes of a literal class value, from its source. */
+function classes(source: string): ReturnType<typeof literalClasses> {
+  return literalClasses(parseExpression(source, 0, failParse), (start, end) =>
+    source.slice(start, end),
+  );
+}
+
+describe('literal class values', () => {
+  const values = [true, false, 0, '', 'x', null, undefined, 1];
+
+  it.each([
+    '{ one: a }',
+    "{ one: a, 'two-x': b, three: c }",
+    "{ '&<\"x>': a, y: b }",
+    "['base', { on: a, off: !a }, 'tail']",
+    "[{ on: a }, 'a&b', [{ deep: b }, ''], , 'x  y']",
+    '{}',
+    '[]',
+    '{ a, b }',
+    '{ x: true, y: 0, z: c, w: null }',
+  ])('sets the text that the runtime makes of %s', (source) => {
+    const found = classes(source);
+    expect(found).toBeDefined();
+    // oxlint-disable-next-line typescript/no-implied-eval -- The compiled code runs as the client runs it.
+    const text = new Function('a', 'b', 'c', `return ${classText(found!)};`);
+    // oxlint-disable-next-line typescript/no-implied-eval -- The value that the runtime reads.
+    const value = new Function('a', 'b', 'c', `return (${source});`);
+    for (const a of values) {
+      for (const b of values) {
+        for (const c of values) {
+          expect(text(a, b, c)).toBe(classValue(value(a, b, c)));
+        }
+      }
+    }
+  });
+
+  it.each([
+    '{ 1: a, z: b }',
+    '{ ...x }',
+    '{ [a]: b }',
+    '{ a: 1, a: b }',
+    '{ __proto__: a }',
+    "{ '': a }",
+    '{ m() {} }',
+    "['a', x]",
+    'x',
+    "'a b'",
+  ])('leaves %s to the runtime', (source) => {
+    expect(classes(source)).toBeUndefined();
   });
 });

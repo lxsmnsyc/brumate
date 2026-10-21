@@ -2,6 +2,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
+import { attribute } from '../src/runtime/html.ts';
 import { insert, render as renderParts, renderToStream } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
 
@@ -124,6 +125,15 @@ describe('streaming', () => {
     settle('later');
     const second = await reader.read();
     expect(second.value).toMatch(/^<script b-state>\$bR\([^]*later/);
+    expect((await reader.read()).done).toBe(true);
+  });
+
+  it('has nothing pending for a page without promises or #loading bodies, and closes the stream', async () => {
+    const module = await import(new URL('counter.brm.ts', output).href);
+    const { pending } = await renderParts(module.default, {});
+    expect(await pending[Symbol.asyncIterator]().next()).toEqual({ done: true, value: undefined });
+    const reader = renderToStream(module.default, {}).getReader();
+    expect((await reader.read()).value).toContain('b-state');
     expect((await reader.read()).done).toBe(true);
   });
 
@@ -267,5 +277,38 @@ describe('memos that read memos', () => {
       rest += chunk;
     }
     expect(rest).toMatch(/<p class="label">(<!--t\d+:0-->)?ADA(<!--\/t-->)?<\/p>/);
+  });
+});
+
+// The values of the elements in classes.brm, in order, as the runtime gets them.
+function classValues(a: unknown, b: unknown, c: unknown): unknown[] {
+  return [
+    { one: a },
+    { one: a, 'two-x': b, three: c },
+    { '&<"x>': a, y: b },
+    ['base', { on: a, off: !a }, 'tail'],
+    // oxlint-disable-next-line no-sparse-arrays -- A hole renders nothing.
+    [{ on: a }, 'a&b', [{ deep: b }, ''], , 'x  y'],
+    {},
+    { on: a, off: !a },
+    { on: a, off: !a, c },
+    { 1: a, z: b },
+    { z: b },
+  ];
+}
+
+describe('literal class values', () => {
+  it.each([
+    [true, true, true],
+    [false, 0, ''],
+    ['yes', null, 1],
+    [0, 'b', undefined],
+  ])('renders as the runtime renders the value, for %j %j %j', async (a, b, c) => {
+    const module = await import(new URL('classes.brm.ts', output).href);
+    const { html } = await renderParts(module.default, { a, b, c });
+    const classes = [...html.matchAll(/<(?:i|button)( class="[^"]*")?/g)].map(
+      (match) => match[1] ?? '',
+    );
+    expect(classes).toEqual(classValues(a, b, c).map((value) => attribute('class', value)));
   });
 });

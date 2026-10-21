@@ -24,13 +24,13 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
           item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
         );
       }
-      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((row.note), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+      $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((row.note), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
       $$ctx.slots($$s2, [row], ["row"]);
       $$ctx.item($$s2, $$item1);
     }
     if ($$list0.length === 0) {
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
+      $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
     }
     $$html += "<!--/b-->";
   }
@@ -122,7 +122,7 @@ export function a2($$s, $$item, $$index) {
   $$b.set($$s, 0, row);
 }
 export function u10($$s) {
-  $$b.attr($$s, 0, "class", { marked: $$b.get($$s, 0).label.endsWith('!') });
+  $$b.attr($$s, 0, "class", (($$b.get($$s, 0).label.endsWith('!')) ? "marked" : ""));
 }
 export function u11($$s) {
   $$b.content($$s, 1, $$b.get($$s, 0).label);
@@ -131,7 +131,7 @@ export function u12($$s) {
   $$b.content($$s, 2, $$b.get($$s, 0).note);
 }
 export function u14($$s) {
-  $$b.attr($$s, 0, "class", { empty: true, odd: $$b.get($$s.p, 1) % 2 === 1 });
+  $$b.attr($$s, 0, "class", (" empty" + (($$b.get($$s.p, 1) % 2 === 1) ? " odd" : "")).slice(1));
 }
 export function b15($$s) {
   $$b.list($$s, 6, Array.from($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r4, a4, undefined, []);
@@ -151,7 +151,7 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+  $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
   $$b.setSlots($$s2, [row]);
   $$b.setItem($$s2, $$item);
   return $$html;
@@ -160,7 +160,7 @@ export function r3($$p) {
   let $$html = '';
   let picks = $$b.get($$p, 1);
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
+  $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
   return $$html;
 }
 export function r4($$p, $$item, $$index) {
@@ -198,13 +198,13 @@ export default function Compact($$props: { initial: Row[] }): string {
           item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
         );
       }
-      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+      $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
       $$b.setSlots($$s2, [row]);
       $$b.setItem($$s2, $$item1);
     }
     if ($$list0.length === 0) {
       const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
+      $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
     }
     $$html += "<!--/b-->";
   }

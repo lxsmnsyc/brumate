@@ -690,6 +690,14 @@ export class Emitter {
             this.code(action);
             break;
           }
+          const classes =
+            attribute.name === 'class'
+              ? literalClasses(attribute.value.ast, (start, end) => this.patch.slice(start, end))
+              : undefined;
+          if (classes) {
+            this.emitClasses(classes);
+            break;
+          }
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
           );
@@ -735,6 +743,38 @@ export class Emitter {
     this.emitNodes(node.children, scope);
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /**
+   * Renders a literal `class` value as the runtime renders it, without
+   * building the value. A class with a condition is added when the condition
+   * is truthy. No class leaves the attribute out.
+   */
+  private emitClasses(classes: ClassPart[]): void {
+    const [first, ...rest] = classes;
+    if (!first) {
+      return;
+    }
+    const piece = (part: ClassPart): string => {
+      const text = JSON.stringify(` ${escapeClass(part.name)}`);
+      return part.condition === undefined ? text : `((${part.condition}) ? ${text} : "")`;
+    };
+    if (first.condition === undefined) {
+      this.html(` class="${escapeClass(first.name)}`);
+      for (const part of rest) {
+        if (part.condition === undefined) {
+          this.html(` ${escapeClass(part.name)}`);
+        } else {
+          this.code(piece(part));
+        }
+      }
+      this.html('"');
+    } else if (rest.length === 0) {
+      const text = JSON.stringify(` class="${escapeClass(first.name)}"`);
+      this.code(`((${first.condition}) ? ${text} : "")`);
+    } else {
+      this.code(`$$b.classAttribute(${classes.map(piece).join(' + ')})`);
+    }
   }
 
   /**
@@ -1142,6 +1182,121 @@ function staticClasses(attributes: Attribute[]): string[] | undefined {
     }
   }
   return classes;
+}
+
+/** A class of a literal `class` value, with the code of its condition if it has one. */
+export interface ClassPart {
+  name: string;
+  condition?: string;
+}
+
+/** Escapes a class for an attribute, as the runtime does. */
+function escapeClass(name: string): string {
+  return name.replace(/[&<"]/g, (char) =>
+    char === '&' ? '&amp;' : char === '<' ? '&lt;' : '&quot;',
+  );
+}
+
+/**
+ * The classes of a literal `class` value, such as `{ done: todo.done }` or
+ * `['todo', { done: todo.done }]`, in the order that the runtime joins them.
+ * `slice` returns the compiled code of a range of the source. Returns
+ * undefined for a value that only the runtime can read, such as one with a
+ * spread or a computed key.
+ */
+export function literalClasses(
+  value: oxc.Node,
+  slice: (start: number, end: number) => string,
+): ClassPart[] | undefined {
+  if (value.type !== 'ObjectExpression' && value.type !== 'ArrayExpression') {
+    return undefined;
+  }
+  const parts: ClassPart[] = [];
+  const visit = (node: oxc.Node | null): boolean => {
+    // A hole in an array renders nothing.
+    if (node === null) {
+      return true;
+    }
+    if (node.type === 'Literal' && typeof node.value === 'string') {
+      if (node.value !== '') {
+        parts.push({ name: node.value });
+      }
+      return true;
+    }
+    if (node.type === 'ArrayExpression') {
+      return node.elements.every(visit);
+    }
+    if (node.type !== 'ObjectExpression') {
+      return false;
+    }
+    const names = new Set<string>();
+    for (const property of node.properties) {
+      if (
+        property.type !== 'Property' ||
+        property.kind !== 'init' ||
+        property.method ||
+        property.computed
+      ) {
+        return false;
+      }
+      const { key } = property;
+      const name =
+        key.type === 'Identifier'
+          ? key.name
+          : key.type === 'Literal' && typeof key.value === 'string'
+            ? key.value
+            : undefined;
+      // The runtime puts keys like `1` first, `__proto__` sets the prototype, a key that
+      // comes again keeps its first place, and an empty key adds a space.
+      if (!name || /^\d+$/.test(name) || name === '__proto__' || names.has(name)) {
+        return false;
+      }
+      names.add(name);
+      const constant = property.value;
+      if (
+        constant.type === 'Literal' &&
+        (constant.value === null || ['boolean', 'number', 'string'].includes(typeof constant.value))
+      ) {
+        // A literal condition such as `true` is known now.
+        if (constant.value) {
+          parts.push({ name });
+        }
+        continue;
+      }
+      let condition = slice(property.value.start, property.value.end);
+      if (property.shorthand) {
+        // A shorthand property that the compiler rewrites becomes `name: value`.
+        const whole = slice(property.start, property.end);
+        if (whole.startsWith(`${name}: `)) {
+          condition = whole.slice(name.length + 2);
+        } else if (unmarked(whole) !== name) {
+          return false;
+        }
+      }
+      parts.push({ name, condition });
+    }
+    return true;
+  };
+  return visit(value) ? parts : undefined;
+}
+
+/**
+ * The code of the text that the runtime makes of a literal class value,
+ * for the client to set. An empty text removes the attribute.
+ */
+export function classText(classes: ClassPart[]): string {
+  if (classes.every((part) => part.condition === undefined)) {
+    return JSON.stringify(classes.map((part) => part.name).join(' '));
+  }
+  const [first] = classes;
+  if (classes.length === 1 && first) {
+    return `((${first.condition}) ? ${JSON.stringify(first.name)} : "")`;
+  }
+  const pieces = classes.map((part) => {
+    const text = JSON.stringify(` ${part.name}`);
+    return part.condition === undefined ? text : `((${part.condition}) ? ${text} : "")`;
+  });
+  return `(${pieces.join(' + ')}).slice(1)`;
 }
 
 /** The value of a style variable, with the text around its interpolation, such as a unit. */

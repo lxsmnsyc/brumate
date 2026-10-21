@@ -15,7 +15,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
-import { Emitter, variableValue } from './markup.ts';
+import { Emitter, classText, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
@@ -743,6 +743,16 @@ class ClientGenerator {
       const base = instanceScope(this.plan, site.scope);
       const expression = (): string =>
         this.withTemplates(site, this.rewriter.rewrite(site, '$$s', base));
+      // A literal class value, as the code of its text. A template call needs the code around it.
+      const classes = (value: oxc.Node): string | undefined => {
+        if ([...site.calls].some((callee) => callee.kind === 'template')) {
+          return undefined;
+        }
+        const parts = this.rewriter.rewriteRanges(site, '$$s', base, (slice) =>
+          literalClasses(value, slice),
+        );
+        return parts && classText(parts);
+      };
       const name = (prefix: string): string => {
         const value = `${prefix}${site.id}`;
         this.updates.set(node, value);
@@ -766,7 +776,7 @@ class ClientGenerator {
           );
           break;
         case 'binding':
-          this.emitBinding(node, site, expression, name);
+          this.emitBinding(node, site, expression, name, classes);
           break;
         case 'block': {
           if (site.label === 'for key') {
@@ -791,6 +801,7 @@ class ClientGenerator {
     site: Site,
     expression: () => string,
     name: (prefix: string) => string,
+    classes: (node: oxc.Node) => string | undefined,
   ): void {
     const owner = site.owner;
     if (site.kind === 'insert') {
@@ -863,8 +874,10 @@ class ClientGenerator {
         `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${expression()});\n}`,
       );
     } else if (attribute.kind === 'value') {
+      const value =
+        (attribute.name === 'class' ? classes(attribute.value.ast) : undefined) ?? expression();
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value});\n}`,
       );
     }
     void node;

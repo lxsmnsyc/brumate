@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  const { a, b, c } = $props<{ a: unknown; b: unknown; c: unknown }>();
+  let on = $signal(a);
+  const off = $memo(!on);
+</script>
+<i class={ one: a }></i>
+<i class={ one: a, 'two-x': b, three: c }></i>
+<i class={ '&<"x>': a, y: b }></i>
+<i class=['base', { on: a, off: !a }, 'tail']></i>
+<i class=[{ on: a }, 'a&b', [{ deep: b }, ''], , 'x  y']></i>
+<i class={}></i>
+<i class={ on, off }></i>
+<button class={ on, off, c } onClick=(() => (on = !on))>t</button>
+<i class={ 1: a, z: b }></i>
+<i class={ ...{ z: b } }></i>

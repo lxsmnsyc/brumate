@@ -183,6 +183,31 @@ export class Rewriter {
           : `${shared.fn}(${scopeVar}, ${shared.refs})`;
       }
     }
+    const patch = this.edits(site, scopeVar, base, options);
+    const range = options.range ?? site.node;
+    return patch.slice(range.start, range.end);
+  }
+
+  /**
+   * Rewrites the code of a site, and passes `read` a function that returns
+   * the rewritten code of a range in it. Returns undefined for a site that
+   * calls the shared module, because its code is not in the component.
+   */
+  rewriteRanges<T>(
+    site: Site,
+    scopeVar: string,
+    base: Scope,
+    read: (slice: (start: number, end: number) => string) => T,
+  ): T | undefined {
+    if (this.sharedCall(site, scopeVar, base)) {
+      return undefined;
+    }
+    const patch = this.edits(site, scopeVar, base, {});
+    return read((start, end) => patch.slice(start, end));
+  }
+
+  /** The edits that rewrite the code of a site. */
+  private edits(site: Site, scopeVar: string, base: Scope, options: RewriteOptions): Patch {
     const patch = new Patch(this.file.source);
     const locals = options.locals ?? new Set();
     const references = new Map<number, Reference>();
@@ -397,7 +422,6 @@ export class Rewriter {
 
     visit(site.node);
     options.edit?.(patch);
-    const range = options.range ?? site.node;
-    return patch.slice(range.start, range.end);
+    return patch;
   }
 }

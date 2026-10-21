@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { getCookies } from '../src/runtime/cookies.ts';
-import { escape, escapeAttribute } from '../src/runtime/html.ts';
+import {
+  attribute,
+  classAttribute,
+  classValue,
+  escape,
+  escapeAttribute,
+} from '../src/runtime/html.ts';
 import { RequestEvent } from '../src/runtime/request.ts';
 import { renderToStream } from '../src/runtime/server.ts';
 import type { Component } from '../src/runtime/server.ts';
@@ -22,6 +28,43 @@ describe('escape', () => {
     expect(escapeAttribute('plain "text"')).toBe('plain &quot;text&quot;');
     expect(escape('a < b & c > d "e"')).toBe('a &lt; b &amp; c &gt; d "e"');
     expect(escapeAttribute('a < b & c > d')).toBe('a &lt; b &amp; c > d');
+  });
+});
+
+// The joins that classValue made before it was a loop.
+function joined(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(joined).filter(Boolean).join(' ');
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.entries(value)
+      .filter(([, enabled]) => enabled)
+      .map(([name]) => name)
+      .join(' ');
+  }
+  return value ? String(value) : '';
+}
+
+describe('classValue', () => {
+  it.each([
+    [{ a: true, b: 0, c: 'x' }],
+    [{ '': true, b: true }],
+    [{ b: true, '': true }],
+    [{ 2: true, a: true, 1: true }],
+    [Object.create({ inherited: true }, { own: { value: true, enumerable: true } })],
+    // oxlint-disable-next-line no-sparse-arrays -- A hole renders nothing.
+    [['a', , '', { b: true, c: false }, [['d'], {}], 0, 'e  f']],
+    [[]],
+    ['a b'],
+    [0],
+    [new Map([['a', true]])],
+  ])('joins %j as before', (value) => {
+    expect(classValue(value)).toBe(joined(value));
+  });
+
+  it('renders the attribute that the compiler builds, with a space before each class', () => {
+    expect(classAttribute('')).toBe('');
+    expect(classAttribute(' a b')).toBe(attribute('class', ['a', 'b']));
   });
 });
 

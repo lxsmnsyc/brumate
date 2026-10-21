@@ -21,7 +21,7 @@ import {
 import type { PackedState, PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export { affix, attribute, escape, raw, spread, vars } from './html.ts';
+export { affix, attribute, classAttribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.

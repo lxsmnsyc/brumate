@@ -29,7 +29,16 @@ import type { PackedState, PageState, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export { affix, attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
+export {
+  affix,
+  attribute,
+  classAttribute,
+  escape,
+  escapeAttribute,
+  raw,
+  spread,
+  vars,
+} from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext } from './context.ts';
@@ -801,13 +810,22 @@ export interface RenderResult {
   head: string;
 }
 
-/** An async iterable that a producer pushes into. */
-function createQueue<T>(): {
+/** The `pending` of a render that has nothing left to send. */
+const NOTHING_PENDING: AsyncIterable<string> = {
+  [Symbol.asyncIterator]: () => ({
+    next: () => Promise.resolve({ done: true, value: undefined }),
+  }),
+};
+
+interface Queue<T> {
   push: (item: T) => void;
   close: () => void;
   fail: (error: unknown) => void;
   iterable: AsyncIterable<T>;
-} {
+}
+
+/** An async iterable that a producer pushes into. */
+function createQueue<T>(): Queue<T> {
   const items: T[] = [];
   let wake: (() => void) | undefined;
   let closed = false;
@@ -901,7 +919,9 @@ export async function render<P>(
   const rendered = await ctx.run(() => Root(props, ctx));
   ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
-  const queue = createQueue<string>();
+  // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.
+  let queue: Queue<string> | undefined;
+  const pending = (): Queue<string> => (queue ??= createQueue<string>());
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
   const { nonce, base: root } = options;
@@ -913,14 +933,14 @@ export async function render<P>(
   const finish = (): void => {
     open--;
     if (open === 0) {
-      queue.close();
+      queue?.close();
     }
   };
   const serialize = (
     state: PageState,
     onScopes: (script: string) => void,
     route?: string,
-    onError: (error: unknown) => void = queue.fail,
+    onError: (error: unknown) => void = (error) => pending().fail(error),
   ): void => {
     open++;
     serializeState(
@@ -933,7 +953,7 @@ export async function render<P>(
           );
           first = false;
         } else {
-          queue.push(stateScript(code, false, { root, nonce }));
+          pending().push(stateScript(code, false, { root, nonce }));
         }
       },
       onError,
@@ -956,7 +976,7 @@ export async function render<P>(
             call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
             headSwap = true;
           }
-          queue.push(
+          pending().push(
             // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
             `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
           );
@@ -991,7 +1011,8 @@ export async function render<P>(
   return {
     html,
     state,
-    pending: queue.iterable,
+    // Nothing is open when the page has no `#loading` body that is not ready and no promise in its state.
+    pending: queue === undefined && open === 0 ? NOTHING_PENDING : pending().iterable,
     headers: event?.headers ?? new Headers(),
     status: event?.status ?? 200,
     next: () => ctx.next(),
@@ -1125,8 +1146,10 @@ async function writeParts(
   controller: ReadableStreamDefaultController<string>,
 ): Promise<void> {
   controller.enqueue(firstRender(parts.html, parts.head, parts.state, options));
-  for await (const chunk of parts.pending) {
-    controller.enqueue(chunk);
+  if (parts.pending !== NOTHING_PENDING) {
+    for await (const chunk of parts.pending) {
+      controller.enqueue(chunk);
+    }
   }
   controller.close();
 }

@@ -50,17 +50,38 @@ function toKebabCase(name: string): string {
   return name.startsWith('--') ? name : name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
 }
 
-function classValue(value: unknown): string {
+export function classValue(value: unknown): string {
+  if (typeof value !== 'object' || value === null) {
+    return value ? String(value) : '';
+  }
+  let text = '';
   if (Array.isArray(value)) {
-    return value.map(classValue).filter(Boolean).join(' ');
+    for (const item of value) {
+      const part = classValue(item);
+      if (part !== '') {
+        text = text === '' ? part : `${text} ${part}`;
+      }
+    }
+    return text;
   }
-  if (typeof value === 'object' && value !== null) {
-    return Object.entries(value)
-      .filter(([, enabled]) => enabled)
-      .map(([name]) => name)
-      .join(' ');
+  // An empty name still adds a space between its neighbours, as in a join.
+  let first = true;
+  for (const name in value) {
+    if (Object.hasOwn(value, name) && (value as Record<string, unknown>)[name]) {
+      text = first ? name : `${text} ${name}`;
+      first = false;
+    }
   }
-  return value ? String(value) : '';
+  return text;
+}
+
+/**
+ * Renders a `class` attribute from classes that each have a space before
+ * them, which the compiler builds from a literal class value. The classes
+ * are escaped already. No class renders nothing.
+ */
+export function classAttribute(classes: string): string {
+  return classes === '' ? '' : ` class="${classes.slice(1)}"`;
 }
 
 function styleValue(value: unknown): string {
