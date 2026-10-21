@@ -110,14 +110,14 @@ describe('streaming', () => {
 
     const first = await reader.read();
     expect(first.value).toMatch(
-      /^<body><p>Hi<\/p><script type="brumate\/state" data-scopes data-next="1">.*<\/script>/,
+      /^<body><p>Hi<\/p><script data-state data-scopes data-next="1">function \$bR[^]*<\/script>/,
     );
     // `end` is part of the first render too.
     expect(first.value!.endsWith(`${scripts}</body>`)).toBe(true);
 
     settle('later');
     const second = await reader.read();
-    expect(second.value).toMatch(/^<script type="brumate\/state">.*later/);
+    expect(second.value).toMatch(/^<script data-state>\$bR\([^]*later/);
     expect((await reader.read()).done).toBe(true);
   });
 
@@ -166,7 +166,7 @@ describe('documents', () => {
     expect(head).toContain('<title>Count 0</title>');
     // The state, the scripts and the portal are part of the first render, before </body>.
     const body = page.slice(page.indexOf('<body'), page.indexOf('</body>'));
-    expect(body).toMatch(/<script type="brumate\/state" data-scopes data-next="\d+">/);
+    expect(body).toMatch(/<script data-state data-scopes data-next="\d+">/);
     expect(body).toContain(scripts);
     expect(body).toMatch(/<p [^>]*class="note">Portal<\/p>/);
     // The #loading body resolves later, so it follows the document.
@@ -223,11 +223,13 @@ describe('#loading', () => {
       rest += chunk.value;
     }
     expect(rest).toMatch(/^<template data-l="0"><p class="greeting">Hello Ada<\/p>/);
-    expect(rest).toMatch(/<script type="brumate\/state" data-scopes data-next="\d+">/);
-    expect(rest).toMatch(/<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script>$/);
+    // The body moves in first, then its record runs, and the core reads its scopes.
+    expect(rest).toMatch(
+      /<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script><script data-state data-scopes data-next="\d+">\$bR\([^]*<\/script>$/,
+    );
   });
 
-  it('puts a nonce on the swap scripts', async () => {
+  it('puts a nonce on the swap scripts and the state records', async () => {
     const module = await import(new URL('loading.brm.ts', output).href);
     module.release('Ada');
     const { pending } = await renderParts(module.default, {}, { nonce: 'a"b' });
@@ -236,6 +238,15 @@ describe('#loading', () => {
       rest += chunk;
     }
     expect(rest).toContain('<script nonce="a&quot;b">function $bS(i)');
+    expect(rest).toContain('<script nonce="a&quot;b" data-state data-scopes');
+  });
+
+  it('puts the nonce on the page state', async () => {
+    const module = await import(new URL('loading.brm.ts', output).href);
+    const { state } = await renderParts(module.default, {}, { nonce: 'n1' });
+    expect(state).toMatch(
+      /^<script nonce="n1" data-state data-scopes data-next="\d+">function \$bR/,
+    );
   });
 });
 

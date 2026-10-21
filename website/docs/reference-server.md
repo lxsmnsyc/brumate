@@ -66,14 +66,14 @@ These work anywhere:
 
 The options of `render`, and of every function that renders.
 
-| Option    | Type                    | Meaning                                                                                  |
-| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
-| `request` | `Request`               | The request of the page, so `getEvent()` works while it renders.                         |
-| `rpc`     | `string`                | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.             |
-| `nonce`   | `string`                | A Content Security Policy nonce for the inline scripts that swap in `#loading` bodies.   |
-| `base`    | `number`                | The first ID of the render, for a second root on the same page.                          |
-| `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`. |
-| `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                      |
+| Option    | Type                    | Meaning                                                                                                              |
+| --------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `request` | `Request`               | The request of the page, so `getEvent()` works while it renders.                                                     |
+| `rpc`     | `string`                | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.                                         |
+| `nonce`   | `string`                | A Content Security Policy nonce for the inline scripts: the state records and the swap scripts of `#loading` bodies. |
+| `base`    | `number`                | The first ID of the render, for a second root on the same page.                                                      |
+| `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`.                             |
+| `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                                                  |
 
 ### `DocumentOptions`
 

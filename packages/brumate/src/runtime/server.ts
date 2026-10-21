@@ -1,5 +1,5 @@
-import { fromJSON, toCrossJSONStream } from 'seroval';
-import type { SerovalJSON, SerovalNode } from 'seroval';
+import { crossSerializeStream, fromJSON } from 'seroval';
+import type { SerovalJSON } from 'seroval';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -12,14 +12,13 @@ import {
   styleElement,
 } from './html.ts';
 import type { Raw } from './html.ts';
+import { disabledFeatures, plugins } from './serial.ts';
 import {
   ElementReference,
   FunctionReference,
-  disabledFeatures,
   Upload,
   functionReferences,
   isAsyncIterable,
-  plugins,
   replaceDeep,
 } from './shared.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
@@ -553,12 +552,6 @@ export function dynamic(
   return `${open}${children && isRaw(children) ? rawHTML(children) : ''}</${tag}>`;
 }
 
-/**
- * Serializes the page state as seroval cross-reference JSON records. The
- * first record holds the state, and each later record settles a promise in
- * it. `onRecord` receives each record as soon as it is ready. The promise
- * resolves when every promise in the state has settled.
- */
 /** True when `value` is `target`, or holds it in plain objects, arrays, maps or sets. */
 function holds(value: unknown, target: unknown, seen = new Set<unknown>()): boolean {
   if (value === target) {
@@ -612,36 +605,83 @@ function scriptJSON(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-export function streamState(
+/**
+ * Serializes the page state as seroval cross-reference code, one record at
+ * a time. The first record holds the state, and each later record settles a
+ * promise in it. Records that share `refs` can refer to each other's values.
+ */
+function serializeState(
   state: PageState,
-  onRecord: (record: SerovalNode) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    toCrossJSONStream(state, {
-      plugins,
-      disabledFeatures,
-      onParse: (record) => onRecord(record),
-      onError: reject,
-      onDone: resolve,
-    });
+  refs: Map<unknown, number>,
+  onRecord: (code: string, initial: boolean) => void,
+  onError: (error: unknown) => void,
+  onDone: () => void,
+): void {
+  crossSerializeStream(state, {
+    plugins,
+    disabledFeatures,
+    refs,
+    onSerialize: onRecord,
+    onError,
+    onDone,
   });
 }
 
 /**
- * Returns the script for one state record. `scopes` marks a record that
- * holds scopes, as opposed to one that settles a promise.
+ * Serializes the page state as the code of state records. `onRecord`
+ * receives each record as soon as it is ready. The promise resolves when
+ * every promise in the state has settled.
  */
+export function streamState(
+  state: PageState,
+  onRecord: (code: string, initial: boolean) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    serializeState(state, new Map(), onRecord, reject, resolve);
+  });
+}
+
 /**
- * Returns the script of a state record. `scopes` marks a record with scopes.
- * `next` is above every ID so far, and `route` names the route of the page.
+ * Defines `$bR`, which hands the code of a state record and its script to
+ * the core, through `self.$brm`. The core runs the code when it starts, or
+ * at once when it has started. The first record of each render defines it.
+ */
+const RECORD = 'function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}';
+
+export interface StateAttributes {
+  /** A number above every ID so far, on each record with scopes. */
+  next?: number;
+  /** The first record of a render defines `$bR`. Later ones call it. */
+  define?: boolean;
+  /** The route of the page. */
+  route?: string;
+  /** The base of the render, when it is above 0. */
+  root?: number;
+  /** The Content Security Policy nonce of the script. */
+  nonce?: string;
+}
+
+/**
+ * Returns the script of a state record. `scopes` marks a record with scopes,
+ * as opposed to one that settles a promise. The record is code that seroval
+ * wrote, as a function of the references of its render, `$R`, and of the
+ * functions that make brumate's values, `$b`. seroval escapes every `<` in
+ * the strings in it.
  */
 export function stateScript(
-  record: SerovalNode,
+  code: string,
   scopes = false,
-  attributes: { next?: number; route?: string; root?: number } = {},
+  attributes: StateAttributes = {},
 ): string {
-  const json = scriptJSON(record);
-  let extra = scopes ? ' data-scopes' : '';
+  // seroval writes `<` in strings as `\\x3C`, so these never appear. A change there must not open the script.
+  if (code.includes('</') || code.includes('<!')) {
+    throw new Error('A state record would end its script');
+  }
+  let extra = attributes.nonce === undefined ? '' : ` nonce="${escapeAttribute(attributes.nonce)}"`;
+  extra += ' data-state';
+  if (scopes) {
+    extra += ' data-scopes';
+  }
   if (attributes.next !== undefined) {
     extra += ` data-next="${attributes.next}"`;
   }
@@ -652,7 +692,7 @@ export function stateScript(
   if (attributes.route !== undefined) {
     extra += ` data-route="${escapeAttribute(attributes.route)}"`;
   }
-  return `<script type="brumate/state"${extra}>${json}</script>`;
+  return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
 
 // Moves the head markup of a `#loading` body into the head, and sets the title.
@@ -754,8 +794,8 @@ export interface RenderOptions {
   /** The event of the request, in place of `request`, such as one that middleware already set cookies on. */
   event?: RequestEvent;
   /**
-   * A Content Security Policy nonce for the inline scripts that swap in
-   * `#loading` bodies. State scripts need none, because they do not run.
+   * A Content Security Policy nonce for the inline scripts: the state
+   * records, and the scripts that swap in `#loading` bodies.
    */
   nonce?: string;
 }
@@ -787,6 +827,9 @@ export async function render<P>(
   const queue = createQueue<string>();
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
+  const { nonce, base: root } = options;
+  // The first record, the page state, defines `$bR` for the others.
+  let first = true;
   let open = 0;
   let swap = false;
   let headSwap = false;
@@ -803,20 +846,22 @@ export async function render<P>(
     onError: (error: unknown) => void = queue.fail,
   ): void => {
     open++;
-    toCrossJSONStream(state, {
-      plugins,
-      disabledFeatures,
+    serializeState(
+      state,
       refs,
-      onParse(record, initial) {
+      (code, initial) => {
         if (initial) {
-          onScopes(stateScript(record, true, { next: ctx.next(), route, root: options.base }));
+          onScopes(
+            stateScript(code, true, { next: ctx.next(), route, root, nonce, define: first }),
+          );
+          first = false;
         } else {
-          queue.push(stateScript(record, false, { root: options.base }));
+          queue.push(stateScript(code, false, { root, nonce }));
         }
       },
       onError,
-      onDone: finish,
-    });
+      finish,
+    );
   };
 
   ctx.watch((boundary) => {
@@ -835,7 +880,8 @@ export async function render<P>(
             headSwap = true;
           }
           queue.push(
-            `<template data-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${script}${scriptTag}${call}</script>`,
+            // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
+            `<template data-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
           );
         });
         finish();

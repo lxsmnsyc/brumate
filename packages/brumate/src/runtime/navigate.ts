@@ -39,7 +39,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 
 let controller: AbortController | undefined;
 
-const STATE = 'script[type="brumate/state"]';
+const STATE = 'script[data-state]';
 const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
 
 /** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
@@ -209,8 +209,9 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
     'data-alias',
     [...result.alias].map(([from, to]) => `${from}:${to}`).join(','),
   );
-  for (const script of next.body.querySelectorAll(STATE)) {
-    document.body.append(document.adoptNode(script));
+  // The records run as they are added, after the IDs and these attributes are set.
+  for (const script of next.body.querySelectorAll<HTMLScriptElement>(STATE)) {
+    document.body.append(runnable(script));
   }
 }
 
@@ -282,7 +283,8 @@ function shiftIds(root: Node, shift: Shift): void {
         element.setAttribute(name, add(value));
       }
     }
-    // Only a script can match the state selector, so other elements skip it.
+    // Only a script can match the state selector, so other elements skip it. The text of a
+    // record is not changed: the core moves the IDs in its value when it reads it.
     if (element.localName === 'script' && element.matches(STATE)) {
       element.setAttribute('data-offset', String(shift.by));
       element.setAttribute('data-root', shift.root);
@@ -600,6 +602,10 @@ export async function navigate(visit: Visit): Promise<void> {
       replaceRoutes(next, state!, routes);
     } else {
       document.body.replaceWith(document.adoptNode(next.body));
+      // The state records of the page run in order, so the core reads them when it starts again.
+      for (const script of document.body.querySelectorAll<HTMLScriptElement>(STATE)) {
+        script.replaceWith(runnable(script));
+      }
     }
     // A link to the page itself, or a form that comes back to it, does not add to the history.
     if (visit.push && !same) {

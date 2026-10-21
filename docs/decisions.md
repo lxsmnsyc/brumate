@@ -34,7 +34,7 @@
 - Compile-time functions such as `$signal` are imported from `brumate/signals`, not global. The compiler finds them through the import, so a renamed import works and their types reach only the files that import them. The compiler removes the import.
 - Server rendering streams only. `renderToStream` sends the whole first render at once, closing tags included, and streams what resolves later after it, as Solid does. `render` returns the parts for custom servers. There is no `renderToString`, because waiting for every `#loading` body defeats streaming.
 - A component can render the whole document. The runtime adds the doctype, and puts the head before `</head>` and the state, scripts and portals before `</body>`.
-- `render` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
+- `render` and `renderToStream` take a `nonce` for the inline scripts: the state records and the swap scripts.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
 - Server functions read the request with `getEvent()`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
@@ -42,7 +42,11 @@
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
 - The head is `$title` and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A `$title` or `#head` in a `#loading` body that resolves after the first render streams with the body. A script moves it into the head and sets the title.
-- seroval is the serializer. The page state is a stream of cross-reference JSON records, so promises do not hold up the state, and the client reads it without `eval`. Server function calls use plain seroval JSON.
+- seroval is the serializer. The page state is a stream of seroval cross-reference code records, one inline script each, so promises do not hold up the state. Server function calls use seroval JSON.
+  - Each record hands a function of its values to `self.$brm`. The core calls it when it starts, so a page that never gets an event never builds its state.
+  - The browser runs the scripts, which is not `eval`. Under a Content Security Policy they need the `nonce` of the render.
+  - The code is smaller than the JSON nodes and faster to write. On the `/` page of `examples/todos`, the state is 673 B instead of 1485 B, and the benchmark renders about 1.5 times as many pages per second.
+  - The core does not need seroval's reader for the page, so seroval loads with the first server function call. The core is 7.6 KB gzip instead of 15 KB.
 - Scope IDs are integers given in render order. A render can start above another one with `base`, so several roots and pages that the client loads in place never share IDs.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter. A component whose parts are small in all ships them as one module, because one request costs more than the bytes it saves.
@@ -57,7 +61,6 @@
 ## Open
 
 - **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
-- **Core size.** The core is about 10.8 KB gzip. seroval's state reader alone is about 4 KB, and its serializer about 7 KB, but seroval is one module, so a bundler puts everything that any chunk uses into one shared chunk. Separate entry points in seroval for reading and writing would let the core load only the reader, about 7.5 KB in all. The server function code is already a separate chunk for this.
 
 ## Next steps
 

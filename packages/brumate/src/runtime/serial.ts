@@ -1,0 +1,139 @@
+// The seroval plugins of brumate's values. The server writes the page state
+// with them as code, and server function calls as JSON, which both sides
+// read with them. The core does not import this module: a state record
+// is code that makes its values with `stateValues`, so seroval loads in the
+// browser only with the first server function call.
+
+import { Feature, createPlugin } from 'seroval';
+import type {
+  Plugin,
+  SerovalNode,
+  StreamParsePluginContext,
+  SyncParsePluginContext,
+} from 'seroval';
+import { isRaw, rawHTML } from './html.ts';
+import type { Raw } from './html.ts';
+import { ElementReference, Upload, functionReferences, stateValues } from './shared.ts';
+import type { ComponentValue } from './shared.ts';
+
+type ReferenceNode = { a: SerovalNode; b: SerovalNode };
+
+/**
+ * Returns the parse functions of a plugin. `read` returns the values of the
+ * node by key, and each mode parses them in that order, so the nodes match.
+ */
+function parsers<T, K extends string>(
+  read: (value: T) => Record<K, unknown>,
+): Plugin<T, Record<K, SerovalNode>>['parse'] {
+  type N = Record<K, SerovalNode>;
+  const parse = (value: T, ctx: SyncParsePluginContext | StreamParsePluginContext): N => {
+    const node = read(value) as Record<string, unknown>;
+    for (const key in node) {
+      node[key] = ctx.parse(node[key]);
+    }
+    return node as N;
+  };
+  return {
+    sync: parse,
+    stream: parse,
+    async: async (value, ctx) => {
+      const node = read(value) as Record<string, unknown>;
+      for (const key in node) {
+        // oxlint-disable-next-line no-await-in-loop -- In order, as the other modes parse, so the IDs match.
+        node[key] = await ctx.parse(node[key]);
+      }
+      return node as N;
+    },
+  };
+}
+
+// In the page state, each value is a call of `stateValues`, which the code of a record gets as `$b`.
+
+const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
+  tag: 'brumate/element',
+  test: (value) => value instanceof ElementReference,
+  parse: parsers((value) => ({ a: value.scope, b: value.anchor })),
+  serialize: (node, ctx) => `$b.e(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  deserialize: (node, ctx) =>
+    stateValues.e(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
+});
+
+const FunctionPlugin = createPlugin<object, ReferenceNode>({
+  tag: 'brumate/function',
+  test: (value) => typeof value === 'function' && functionReferences.has(value),
+  parse: parsers((value) => {
+    const reference = functionReferences.get(value)!;
+    return { a: reference.ref, b: reference.scope };
+  }),
+  serialize: (node, ctx) => `$b.f(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  deserialize: (node, ctx) =>
+    stateValues.f(ctx.deserialize<string>(node.a), ctx.deserialize<number>(node.b)),
+});
+
+/** HTML, such as the `children` of a component, so the client can insert it again. */
+const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
+  tag: 'brumate/raw',
+  test: isRaw,
+  parse: parsers((value) => ({ h: rawHTML(value) })),
+  serialize: (node, ctx) => `$b.r(${ctx.serialize(node.h)})`,
+  deserialize: (node, ctx) => stateValues.r(ctx.deserialize<string>(node.h)),
+});
+
+/** A component in the page state, such as the value of a dynamic tag. See `stateValues.c`. */
+const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
+  tag: 'brumate/component',
+  test: (value) =>
+    typeof value === 'function' && typeof (value as Partial<ComponentValue>).brumateId === 'string',
+  parse: parsers((value) => ({ c: value.brumateId })),
+  serialize: (node, ctx) => `$b.c(${ctx.serialize(node.c)})`,
+  deserialize: (node, ctx) => stateValues.c(ctx.deserialize<string>(node.c)),
+});
+
+/** A value that its string makes again, such as a `URL` from its `href`. */
+function stringPlugin<T extends { toString(): string }>(
+  tag: string,
+  type: new (text: string) => T,
+): Plugin<T, { v: SerovalNode }> {
+  return createPlugin<T, { v: SerovalNode }>({
+    tag,
+    test: (value) => value instanceof type,
+    parse: parsers((value) => ({ v: value.toString() })),
+    serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
+    deserialize: (node, ctx) => new type(ctx.deserialize<string>(node.v)),
+  });
+}
+
+const URLPlugin = stringPlugin('brumate/url', URL);
+const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams);
+
+/** A file in the arguments of a server function call. It is never in the page state. */
+const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
+  tag: 'brumate/upload',
+  test: (value) => value instanceof Upload,
+  parse: parsers((value) => ({ i: value.index })),
+  serialize: () => {
+    throw new Error('A file cannot be sent in the page');
+  },
+  deserialize: (node, ctx) => new Upload(ctx.deserialize<number>(node.i)),
+});
+
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export const plugins: Plugin<any, any>[] = [
+  ElementPlugin,
+  FunctionPlugin,
+  RawPlugin,
+  ComponentPlugin,
+  UploadPlugin,
+  URLPlugin,
+  SearchParamsPlugin,
+];
+
+/**
+ * Features that are off in both directions:
+ *
+ * - Errors keep their name and message only. A stack trace would show the
+ *   server's files and code to the browser.
+ * - Regular expressions are not sent. A pattern from a client could take
+ *   the server a long time to match, and reading one is refused as well.
+ */
+export const disabledFeatures: number = Feature.ErrorPrototypeStack | Feature.RegExp;

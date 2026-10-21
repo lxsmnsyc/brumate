@@ -106,4 +106,4 @@ export default function Loading($$props: Record<string, never>): string {
 <!--/l-->
 
 # State
-<script type="brumate/state" data-scopes data-next="1">{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Loading_1sx8r1u"},{"t":9,"i":2,"a":[{"t":0,"s":0}],"o":0}]},"o":0}]},"o":0}</script>
+<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Loading_1sx8r1u",s:$R[2]=[0]}})))</script>

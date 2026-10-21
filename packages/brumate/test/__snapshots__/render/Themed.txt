@@ -56,4 +56,4 @@ export default function Themed($$props: Record<string, never>): string {
 </span>
 
 # State
-<script type="brumate/state" data-scopes data-next="1">{"t":10,"i":0,"p":{"k":["0"],"v":[{"t":10,"i":1,"p":{"k":["k","m","x","s"],"v":[{"t":0,"s":1},{"t":1,"s":"Themed_qy9qd3"},{"t":10,"i":2,"p":{"k":["theme"],"v":[{"t":0,"s":0}]},"o":0},{"t":9,"i":3,"a":[{"t":1,"s":"light"}],"o":0}]},"o":0}]},"o":0}</script>
+<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Themed_qy9qd3",x:$R[2]={theme:0},s:$R[3]=["light"]}})))</script>

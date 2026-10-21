@@ -1,7 +1,7 @@
 import { toJSON } from 'seroval';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
-import { disabledFeatures, plugins } from './shared.ts';
+import { disabledFeatures, plugins } from './serial.ts';
 
 /**
  * A request that the server handles: a server function call, a form post,

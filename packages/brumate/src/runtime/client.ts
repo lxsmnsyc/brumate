@@ -1,4 +1,3 @@
-import { fromCrossJSON } from 'seroval';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -9,13 +8,7 @@ import {
   spread as spreadText,
 } from './html.ts';
 import type { Raw } from './html.ts';
-import {
-  ElementReference,
-  FunctionReference,
-  disabledFeatures,
-  isAsyncIterable,
-  plugins,
-} from './shared.ts';
+import { ElementReference, FunctionReference, isAsyncIterable, stateValues } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -121,29 +114,52 @@ const elements = new Map<string, Element>();
 // from state records that the server streams later.
 let nextId = -1;
 
-// Records of one render share references through a map, so a later record can settle a promise
-// of an earlier one. Each render on the page has its own map, by its `data-root`.
-const refs = new Map<string, Map<number, unknown>>();
-const read = new WeakSet<Element>();
+// Records of one render share references through an array, so a later record can settle a
+// promise of an earlier one. Each render on the page has its own array, by its `data-root`.
+const refs = new Map<string, unknown[]>();
+
+/**
+ * A state record: its script, and its code, which seroval wrote. The code
+ * takes the references of its render and the functions that make brumate's
+ * values, and returns the value of the record.
+ */
+type StateRecord = [
+  script: HTMLScriptElement | null,
+  code: (refs: unknown[], values: typeof stateValues) => unknown,
+];
+
+/**
+ * The records that ran before the core started, or while it stopped. Each
+ * state script hands its record to `push`, which the core replaces while it
+ * runs, so it reads later records at once.
+ */
+function stateQueue(): StateRecord[] {
+  const global = globalThis as { $brm?: StateRecord[] };
+  return (global.$brm ??= []);
+}
+
+/** Reads the records that later state scripts hand over. Set while the core runs. */
+function pushRecords(...added: StateRecord[]): number {
+  for (const record of added) {
+    readRecord(record);
+  }
+  return 0;
+}
 
 /**
  * Reads a state record. The first record holds the page state, and later
  * records settle the promises in it.
  */
-function readRecord(script: Element): void {
-  if (read.has(script)) {
+function readRecord([script, code]: StateRecord): void {
+  // A record of a page that navigation replaced before the core started.
+  if (!script?.isConnected) {
     return;
   }
-  read.add(script);
   const root = script.getAttribute('data-root') ?? '0';
   if (!refs.has(root)) {
-    refs.set(root, new Map());
+    refs.set(root, []);
   }
-  const decoded = fromCrossJSON<PageState>(JSON.parse(script.textContent!), {
-    plugins,
-    disabledFeatures,
-    refs: refs.get(root)!,
-  });
+  const decoded = code(refs.get(root)!, stateValues) as PageState;
   // A page that started its IDs at another number, such as a prerendered file, moves them here.
   // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
   const offset = Number(script.getAttribute('data-offset') ?? 0);
@@ -358,19 +374,20 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
   return added;
 }
 
-const STATE = 'script[type="brumate/state"]';
-let observer: MutationObserver | undefined;
 /**
  * Indexes the markers of markup that others insert, such as streamed
- * `#loading` bodies and the pages that navigation adds. It is separate from
- * `observer`, so `findComment` can take its records at once.
+ * `#loading` bodies and the pages that navigation adds, so `findComment` can
+ * take its records at once.
  */
 let markerObserver: MutationObserver | undefined;
 
-/** Stops reading state records and markers that arrive later. */
+/** Stops reading state records and markers that arrive later. Later records wait for `init`. */
 export function dispose(): void {
-  observer?.disconnect();
-  observer = undefined;
+  const queue = stateQueue();
+  if (queue.push === pushRecords) {
+    // The array's own `push` again, so records wait in it.
+    delete (queue as { push?: unknown }).push;
+  }
   markerObserver?.disconnect();
   markerObserver = undefined;
   document.removeEventListener('brumate:refresh', onRefresh);
@@ -518,27 +535,12 @@ export function leavePage(): void {
 export function init(value: CoreOptions): void {
   options = value;
   rpcPrefix = value.rpc ?? '/_brumate';
-  for (const script of document.querySelectorAll(STATE)) {
-    readRecord(script);
+  const queue = stateQueue();
+  // Records that are still streaming settle their promises when their scripts run.
+  queue.push = pushRecords;
+  for (const record of queue.splice(0)) {
+    readRecord(record);
   }
-  // Records that are still streaming settle their promises when they arrive.
-  observer = new MutationObserver((records) => {
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (node.nodeType !== 1) {
-          continue;
-        }
-        // A record can be inside the added node, such as in markup that a script inserts.
-        const element = node as Element;
-        if (element.matches(STATE)) {
-          readRecord(element);
-        } else {
-          element.querySelectorAll(STATE).forEach(readRecord);
-        }
-      }
-    }
-  });
-  observer.observe(document, { childList: true, subtree: true });
   markerObserver = new MutationObserver(indexAdded);
   markerObserver.observe(document, { childList: true, subtree: true });
   document.addEventListener('brumate:refresh', onRefresh);

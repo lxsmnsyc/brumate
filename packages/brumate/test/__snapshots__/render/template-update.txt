@@ -95,4 +95,4 @@ export default function TemplateUpdate($$props: Record<string, never>): string {
 </p>
 
 # State
-<script type="brumate/state" data-scopes data-next="2">{"t":10,"i":0,"p":{"k":["0","1"],"v":[{"t":10,"i":1,"p":{"k":["k","m","s"],"v":[{"t":0,"s":1},{"t":1,"s":"TemplateUpdate_kx4ubq"},{"t":9,"i":2,"a":[{"t":0,"s":1}],"o":0}]},"o":0},{"t":10,"i":3,"p":{"k":["k","p","s"],"v":[{"t":0,"s":2},{"t":0,"s":0},{"t":9,"i":4,"a":[{"t":1,"s":"Subtotal"},{"t":0,"s":1}],"o":0}]},"o":0}]},"o":0}</script>
+<script data-state data-scopes data-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"TemplateUpdate_kx4ubq",s:$R[2]=[1]},1:$R[3]={k:2,p:0,s:$R[4]=["Subtotal",1]}})))</script>

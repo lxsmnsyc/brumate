@@ -141,7 +141,7 @@ start({ load: (id) => import(`/assets/${id}.js`) });
 
 The core, `brumate/client`, loads on the first event:
 
-- Reads the state script and links scope instances to their parents.
+- Reads the state records that the page's scripts handed over, and links scope instances to their parents. It does not include seroval.
 - Writes slots and calls the updates in `g`.
 - Finds elements by `data-b` and text and blocks by their comment markers.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
@@ -156,19 +156,21 @@ Parts load in parallel, but handlers start in the order of their events. Typing 
 
 Minified, from the production build of `examples/todos`, with `gzip -9`:
 
-| Code                                                  | Size    | Gzip    |
-| ----------------------------------------------------- | ------- | ------- |
-| Loader with its registry, `navigate: false`           | 4810 B  | 2174 B  |
-| Of that, Vite's preload helper                        | 1502 B  | 785 B   |
-| Loader with its registry and client navigation        | 6502 B  | 2755 B  |
-| Navigation module, on the first link                  | 7441 B  | 3036 B  |
-| Core, with seroval                                    | 46339 B | 14971 B |
-| Server function calls, on the first call              | 3017 B  | 1466 B  |
-| `App.brm`: one module with 3 handlers and the updates | 1398 B  | 817 B   |
-| `Counter.brm`: one module                             | 324 B   | 266 B   |
-| `_layout.brm`: one module                             | 310 B   | 262 B   |
+| Code                                                   | Size    | Gzip   |
+| ------------------------------------------------------ | ------- | ------ |
+| Loader with its registry, `navigate: false`            | 4810 B  | 2174 B |
+| Of that, Vite's preload helper                         | 1502 B  | 785 B  |
+| Loader with its registry and client navigation         | 6502 B  | 2756 B |
+| Navigation module, on the first link                   | 7489 B  | 3045 B |
+| Core                                                   | 20227 B | 7613 B |
+| Server function calls, with seroval, on the first call | 28831 B | 8861 B |
+| `App.brm`: one module with 3 handlers and the updates  | 1398 B  | 817 B  |
+| `Counter.brm`: one module                              | 324 B   | 267 B  |
+| `_layout.brm`: one module                              | 310 B   | 265 B  |
 
-The loader is the only code that loads before an interaction. The core loads once, on the first event. Most of its size is seroval's deserializer and serializer.
+The loader is the only code that loads before an interaction. The core loads once, on the first event. The page state is code that the page's scripts run, so the core needs no reader for it. seroval loads with the server function code, on the first call, which reads and writes seroval JSON.
+
+Before the state was code, it was seroval JSON, and the core held seroval: 46339 B, 14971 B gzip.
 
 Vite wraps every dynamic import of a client build in its preload helper, which lands in the loader's chunk. The plugin keeps the list of chunks to preload out of the loader, because the loader imports the core itself.
 

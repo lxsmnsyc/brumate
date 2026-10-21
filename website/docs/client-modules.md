@@ -23,7 +23,7 @@ The loader:
 
 On the first event, the loader imports the core, `brumate/client`, and the client entry of the component that handles the event. The core:
 
-- Reads the state scripts, and links each scope to its parent.
+- Reads the state records that the page's scripts handed over, and links each scope to its parent.
 - Calls the handler with the scope of its element.
 - Writes slots, and runs the updates that read them.
 - Finds elements by `data-b`, and text and blocks by their comment markers.
@@ -99,7 +99,7 @@ These load as their own small modules, on first use:
 1. The first chunk is the whole first render, from `<!doctype html>` to `</html>`, with the fallbacks of `#loading` blocks. The head of the components goes before `</head>`. The page state, the `scripts` option and portal content go before `</body>`.
 2. The client entry should be an `async` module script, so the loader starts before the stream ends.
 3. Each `#loading` body, and each state record that settles a promise, follows as it is ready. These chunks come after `</html>`, and the parser of the browser moves them into `<body>`.
-4. The swap script of a `#loading` body moves it into place. The core reads its state record when it is added, or when the core starts.
+4. The swap script of a `#loading` body moves it into place. The core reads its state record when the record runs, or when the core starts.
 
 ## Modules of the plugin
 

@@ -55,14 +55,16 @@ Regular expressions are not read or written, in the page or in server function c
 - Inserted values and attribute values are escaped.
 - `raw(html)` from `brumate/html` inserts HTML without escaping. Insert only HTML you trust, such as Markdown that you rendered from your own files.
 - URLs in attributes are not checked. A link to a `javascript:` URL from user input runs code when it is clicked. Check the scheme of a URL from a user before it goes into `href` or `src`.
-- The page state is a JSON script that does not run. Every `<` in it is escaped, so a value cannot end the script.
+- The page state is code in inline scripts. seroval escapes every `<` in its strings, and U+2028 and U+2029, so a value cannot end the script or run as code. The server refuses a record that would end its script.
 
 ## Content Security Policy
 
 A page runs two kinds of inline scripts:
 
-- State scripts have the type `brumate/state`. They never run, so they need no nonce.
-- The scripts that swap in `#loading` bodies run. Give them a nonce with the `nonce` option of `render`, `renderToStream` or the `handle` of `virtual:brumate/routes`:
+- The state records, one or more per render.
+- The scripts that swap in `#loading` bodies.
+
+Give them a nonce with the `nonce` option of `render`, `renderToStream` or the `handle` of `virtual:brumate/routes`:
 
 ```ts
 const nonce = crypto.randomUUID();
@@ -75,4 +77,6 @@ response?.headers.set('content-security-policy', `script-src 'self' 'nonce-${non
 
 The client code loads as modules from your origin, which `'self'` allows.
 
-A policy from a header stays for the whole visit, so the client router gives the swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.
+A policy from a header stays for the whole visit, so the client router gives the state records and swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.
+
+A policy with hashes instead of a nonce does not work for the state records. Their code holds the values of the page, so each page has other hashes, and the records that stream later are not known when the headers are sent. Use a nonce, or `'unsafe-inline'`.

@@ -60,19 +60,35 @@ function toRender(code: string): string {
 }
 
 /**
- * Appends streamed markup and runs its inline scripts, as a browser does.
- * The test DOM does not run scripts, so they run with a global eval.
+ * Runs an inline script, as a browser does. The test DOM does not run
+ * scripts, so it runs with a global eval, with the script as
+ * `document.currentScript`, which a state record reads.
  */
-function appendChunk(html: string): void {
+function run(script: Element): void {
+  Object.defineProperty(document, 'currentScript', { configurable: true, value: script });
+  try {
+    // oxlint-disable-next-line no-eval -- The script is a state record or the swap code from the server.
+    (0, eval)(script.textContent!);
+  } finally {
+    delete (document as { currentScript?: unknown }).currentScript;
+  }
+}
+
+/** Shows a page and runs its state records, as a browser does while it parses the page. */
+function show(html: string): void {
+  document.body.innerHTML = html;
+  document.body.querySelectorAll('script[data-state]').forEach(run);
+}
+
+/** Appends streamed markup and runs its inline scripts in order, as a browser does. */
+function appendChunk(html: string, parent: Element = document.body): void {
   const template = document.createElement('template');
   template.innerHTML = html;
   // A copy, because appending moves nodes out of the live list.
   for (const node of Array.from(template.content.childNodes)) {
+    parent.append(node);
     if (node.nodeName === 'SCRIPT' && !(node as Element).hasAttribute('type')) {
-      // oxlint-disable-next-line no-eval -- The script is the swap code from the server.
-      (0, eval)(node.textContent!);
-    } else {
-      document.body.append(node);
+      run(node as Element);
     }
   }
 }
@@ -105,7 +121,7 @@ async function resume(name: string, props: unknown, delays: PartDelays = {}): Pr
   loadedParts.length = 0;
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderParts(server.default, props);
-  document.body.innerHTML = html + state;
+  show(html + state);
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({
@@ -149,11 +165,11 @@ function click(element: Element): void {
 }
 
 describe('resume', () => {
-  it('reads state records inside markup that a script inserts after the core starts', async () => {
+  it('reads state records that run after the core starts, also inside other markup', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
     const records: string[] = [];
     await streamState({ 0: { k: 1, m: 'Test', s: [7] } }, (record) => {
-      records.push(stateScript(record, records.length === 0));
+      records.push(stateScript(record, records.length === 0, { define: true }));
     });
     document.body.innerHTML = '';
     vi.resetModules();
@@ -163,9 +179,9 @@ describe('resume', () => {
       listen: () => {},
     });
     const holder = document.createElement('div');
-    holder.innerHTML = `<p>Inserted</p>${records[0]!}`;
     document.body.append(holder);
-    await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
+    appendChunk(`<p>Inserted</p>${records[0]!}`, holder);
+    // The core reads a record as soon as its script runs.
     expect(client.get(client.scopeOf(0)!, 0)).toBe(7);
     client.dispose();
   });
@@ -178,10 +194,10 @@ describe('resume', () => {
     });
     const records: string[] = [];
     const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
-      records.push(stateScript(record, records.length === 0));
+      records.push(stateScript(record, records.length === 0, { define: records.length === 0 }));
     });
     expect(records).toHaveLength(1);
-    document.body.innerHTML = records[0]!;
+    show(records[0]!);
 
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
@@ -195,9 +211,7 @@ describe('resume', () => {
     settle(42);
     await done;
     expect(records).toHaveLength(2);
-    const holder = document.createElement('div');
-    holder.innerHTML = records[1]!;
-    document.body.append(holder.firstChild!);
+    appendChunk(records[1]!);
     await expect(value).resolves.toBe(42);
     // The slot holds the value once it arrives.
     await waitFor(() => expect(client.get(client.scopeOf(0)!, 0)).toBe(42));
@@ -212,9 +226,9 @@ describe('resume', () => {
     });
     const records: string[] = [];
     const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
-      records.push(stateScript(record, records.length === 0));
+      records.push(stateScript(record, records.length === 0, { define: records.length === 0 }));
     });
-    document.body.innerHTML = moved(records[0]!);
+    show(moved(records[0]!));
 
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
@@ -227,10 +241,8 @@ describe('resume', () => {
 
     settle(42);
     await done;
-    const holder = document.createElement('div');
-    holder.innerHTML = moved(records[1]!);
     // Reading this record threw before, as an uncaught error that fails the run.
-    document.body.append(holder.firstChild!);
+    appendChunk(moved(records[1]!));
     await waitFor(() => expect(client.get(client.scopeOf(5)!, 0)).toBe(42));
     client.dispose();
   });
@@ -238,7 +250,7 @@ describe('resume', () => {
   it('swaps in #loading bodies that stream after the page', async () => {
     const server = await import(file('loading.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -354,7 +366,7 @@ describe('resume', () => {
     vi.stubGlobal('location', { ...window.location, assign });
     const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
     const { html, state } = await runtime.render(server.default, {}, { request });
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -378,7 +390,7 @@ describe('resume', () => {
       runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
     );
     const { html, state } = await runtime.render(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -414,7 +426,7 @@ describe('resume', () => {
       {},
       { request: new Request('http://localhost/') },
     );
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -535,7 +547,7 @@ describe('resume', () => {
     const runtime = await import('../src/runtime/server.ts');
     const { html, state, head } = await runtime.render(server.default, {});
     document.head.innerHTML = head;
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -567,7 +579,7 @@ describe('resume', () => {
     // A fresh copy of the module, because another test released its data.
     const fresh = await import(`${file('loading.brm.ts')}?stale`);
     const { html, state, pending } = await renderParts(fresh.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
 
@@ -588,7 +600,7 @@ describe('resume', () => {
     vi.resetModules();
     const fresh = await import(`${file('loading.brm.ts')}?markers`);
     const { html, state, pending } = await renderParts(fresh.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
     const walkers = vi.spyOn(document, 'createTreeWalker');
@@ -834,7 +846,7 @@ describe('head in #loading', () => {
     const { html, state, head, pending } = await renderParts(server.default, {});
     expect(head).toBe('<title>Loading</title>');
     document.head.innerHTML = head;
-    document.body.innerHTML = html + state;
+    show(html + state);
     server.release('Ada');
     for await (const chunk of pending) {
       appendChunk(chunk);
@@ -908,7 +920,9 @@ describe('several roots', () => {
     const counter = await import(file('counter.brm.ts'));
     const first = await renderParts(counter.default, { label: 'One' });
     const second = await renderParts(counter.default, { label: 'Two' }, { base: first.next() });
-    document.body.innerHTML = `<div class="one">${first.html}</div><div class="two">${second.html}</div>${first.state}${second.state}`;
+    show(
+      `<div class="one">${first.html}</div><div class="two">${second.html}</div>${first.state}${second.state}`,
+    );
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: async (id) => import(modules.get(id)!) });
@@ -970,7 +984,7 @@ describe('$action', () => {
       return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
     });
     const { html, state } = await runtime.render(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -1001,7 +1015,7 @@ describe('refresh', () => {
       runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
     );
     const { html, state, pending } = await runtime.render(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     for await (const chunk of pending) {
       appendChunk(chunk);
     }
@@ -1032,7 +1046,7 @@ describe('server functions of the module script', () => {
       runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
     );
     const { html, state } = await runtime.render(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({ load: (id) => import(modules.get(id)!) });
@@ -1070,7 +1084,7 @@ describe('hot updates of markup', () => {
     core.leavePage();
     const server = await import(file('counter.brm.ts'));
     const { html, state } = await renderParts(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     core.init({ load: (name: string) => import(modules.get(name)!) } as never);
     await waitFor(() => expect(text('p')).toBe('2 / 4'));
     click(document.querySelector('button')!);
@@ -1094,7 +1108,7 @@ describe('$optimistic', () => {
       return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
     });
     const { html, state, pending } = await runtime.render(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     for await (const chunk of pending) {
       appendChunk(chunk);
     }
@@ -1127,7 +1141,7 @@ describe('a promise passed as a prop', () => {
   it('loads a memo of the prop again when the parent passes a new promise', async () => {
     const server = await import(file('promiseParent.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     for await (const chunk of pending) {
       appendChunk(chunk);
     }
@@ -1145,7 +1159,7 @@ describe('a promise passed as a prop', () => {
   it('does the same for a destructured prop', async () => {
     const server = await import(file('promiseParentDestructured.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});
-    document.body.innerHTML = html + state;
+    show(html + state);
     for await (const chunk of pending) {
       appendChunk(chunk);
     }

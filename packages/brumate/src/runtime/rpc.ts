@@ -1,5 +1,6 @@
 import { toJSONAsync } from 'seroval';
-import { Upload, disabledFeatures, plugins, replaceDeep } from './shared.ts';
+import { disabledFeatures, plugins } from './serial.ts';
+import { Upload, replaceDeep } from './shared.ts';
 import { fromChunkStream } from './stream.ts';
 
 /**

@@ -2,6 +2,9 @@
 
 Values cross from the server to the browser in two ways: in the page, for the state that client code reads, and through server function calls. Both use [seroval](https://github.com/lxsmnsyc/seroval), so they accept the same values.
 
+- The page state is code in inline scripts, which the core runs when it starts. See [Page format](./page-format.md#state).
+- Server function calls and their answers are seroval JSON. See [Server function protocol](./server-protocol.md).
+
 ## Sent
 
 | Value                                              | Notes                                                                                              |

@@ -1,11 +1,8 @@
-import { Feature, createPlugin } from 'seroval';
-import type {
-  Plugin,
-  SerovalNode,
-  StreamParsePluginContext,
-  SyncParsePluginContext,
-} from 'seroval';
-import { isRaw, raw, rawHTML } from './html.ts';
+// Values and types that the server and the browser share. It does not import
+// seroval, so the core, which reads the page state without it, stays small.
+// The plugins that write and read these values are in `serial.ts`.
+
+import { raw } from './html.ts';
 import type { Raw } from './html.ts';
 
 /** An element that the server rendered. The client finds it by its anchor. */
@@ -34,102 +31,6 @@ export class FunctionReference {
 /** Server functions that are passed to the client, with their references. */
 export const functionReferences: WeakMap<object, FunctionReference> = new WeakMap();
 
-type ReferenceNode = { a: SerovalNode; b: SerovalNode };
-
-/**
- * Returns the parse functions of a plugin. `read` returns the values of the
- * node by key, and each mode parses them in that order, so the nodes match.
- */
-function parsers<T, K extends string>(
-  read: (value: T) => Record<K, unknown>,
-): Plugin<T, Record<K, SerovalNode>>['parse'] {
-  type N = Record<K, SerovalNode>;
-  const parse = (value: T, ctx: SyncParsePluginContext | StreamParsePluginContext): N => {
-    const node = read(value) as Record<string, unknown>;
-    for (const key in node) {
-      node[key] = ctx.parse(node[key]);
-    }
-    return node as N;
-  };
-  return {
-    sync: parse,
-    stream: parse,
-    async: async (value, ctx) => {
-      const node = read(value) as Record<string, unknown>;
-      for (const key in node) {
-        // oxlint-disable-next-line no-await-in-loop -- In order, as the other modes parse, so the IDs match.
-        node[key] = await ctx.parse(node[key]);
-      }
-      return node as N;
-    },
-  };
-}
-
-const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
-  tag: 'brumate/element',
-  test: (value) => value instanceof ElementReference,
-  parse: parsers((value) => ({ a: value.scope, b: value.anchor })),
-  serialize: (node, ctx) => `{s:${ctx.serialize(node.a)},a:${ctx.serialize(node.b)}}`,
-  deserialize: (node, ctx) =>
-    new ElementReference(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
-});
-
-const FunctionPlugin = createPlugin<object, ReferenceNode>({
-  tag: 'brumate/function',
-  test: (value) => typeof value === 'function' && functionReferences.has(value),
-  parse: parsers((value) => {
-    const reference = functionReferences.get(value)!;
-    return { a: reference.ref, b: reference.scope };
-  }),
-  serialize: (node, ctx) => `{r:${ctx.serialize(node.a)},s:${ctx.serialize(node.b)}}`,
-  deserialize: (node, ctx) =>
-    new FunctionReference(ctx.deserialize<string>(node.a), ctx.deserialize<number>(node.b)),
-});
-
-/** HTML, such as the `children` of a component, so the client can insert it again. */
-const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
-  tag: 'brumate/raw',
-  test: isRaw,
-  parse: parsers((value) => ({ h: rawHTML(value) })),
-  serialize: (node, ctx) => ctx.serialize(node.h),
-  deserialize: (node, ctx) => raw(ctx.deserialize<string>(node.h)),
-});
-
-/** A component, which the compiler marks with its ID. */
-type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
-
-/**
- * A component in the page state, such as the value of a dynamic tag. The
- * client gets a function with the same ID that renders nothing. The client
- * code that changes the value uses the component's render module instead.
- */
-const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
-  tag: 'brumate/component',
-  test: (value) =>
-    typeof value === 'function' && typeof (value as Partial<ComponentValue>).brumateId === 'string',
-  parse: parsers((value) => ({ c: value.brumateId })),
-  serialize: (node, ctx) => ctx.serialize(node.c),
-  deserialize: (node, ctx) =>
-    Object.assign(() => '', { brumateId: ctx.deserialize<string>(node.c) }),
-});
-
-/** A value that its string makes again, such as a `URL` from its `href`. */
-function stringPlugin<T extends { toString(): string }>(
-  tag: string,
-  type: new (text: string) => T,
-): Plugin<T, { v: SerovalNode }> {
-  return createPlugin<T, { v: SerovalNode }>({
-    tag,
-    test: (value) => value instanceof type,
-    parse: parsers((value) => ({ v: value.toString() })),
-    serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
-    deserialize: (node, ctx) => new type(ctx.deserialize<string>(node.v)),
-  });
-}
-
-const URLPlugin = stringPlugin('brumate/url', URL);
-const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams);
-
 /**
  * A file or a blob in the arguments of a server function call. The call
  * sends it as a part of multipart form data, named `file<index>`, instead
@@ -143,13 +44,33 @@ export class Upload {
   }
 }
 
-const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
-  tag: 'brumate/upload',
-  test: (value) => value instanceof Upload,
-  parse: parsers((value) => ({ i: value.index })),
-  serialize: (node, ctx) => `{u:${ctx.serialize(node.i)}}`,
-  deserialize: (node, ctx) => new Upload(ctx.deserialize<number>(node.i)),
-});
+/** A component, which the compiler marks with its ID. */
+export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
+
+/**
+ * Makes the values of brumate's plugins. A state record calls them as `$b`,
+ * with one letter each, and the plugins read nodes of server function calls
+ * with them too, so both give the same values.
+ */
+export const stateValues: {
+  /** An element that the server rendered, by its scope and anchor. */
+  e: (scope: number, anchor: number) => ElementReference;
+  /** A client function, by its reference and scope. */
+  f: (ref: string, scope: number) => FunctionReference;
+  /** HTML that the client may insert again. */
+  r: (html: string) => Raw;
+  /**
+   * A component, such as the value of a dynamic tag. The client gets a
+   * function with the same ID that renders nothing. The client code that
+   * changes the value uses the component's render module instead.
+   */
+  c: (id: string) => ComponentValue;
+} = {
+  e: (scope, anchor) => new ElementReference(scope, anchor),
+  f: (ref, scope) => new FunctionReference(ref, scope),
+  r: raw,
+  c: (id) => Object.assign(() => '', { brumateId: id }),
+};
 
 /**
  * Replaces each value in arrays and plain objects that `replace` returns a
@@ -183,27 +104,6 @@ export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown>
     typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
   );
 }
-
-// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const plugins: Plugin<any, any>[] = [
-  ElementPlugin,
-  FunctionPlugin,
-  RawPlugin,
-  ComponentPlugin,
-  UploadPlugin,
-  URLPlugin,
-  SearchParamsPlugin,
-];
-
-/**
- * Features that are off in both directions:
- *
- * - Errors keep their name and message only. A stack trace would show the
- *   server's files and code to the browser.
- * - Regular expressions are not sent. A pattern from a client could take
- *   the server a long time to match, and reading one is refused as well.
- */
-export const disabledFeatures: number = Feature.ErrorPrototypeStack | Feature.RegExp;
 
 /** The state of one scope in the page. */
 export interface ScopeState {

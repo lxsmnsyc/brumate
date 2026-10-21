@@ -37,8 +37,23 @@ export interface Mounted {
 }
 
 /**
+ * Runs an inline script, as a browser does when it adds one. The DOM of a
+ * test does not run scripts. The script is `document.currentScript` while it
+ * runs, so a state record hands its script to the core.
+ */
+function run(script: Element): void {
+  Object.defineProperty(document, 'currentScript', { configurable: true, value: script });
+  try {
+    // oxlint-disable-next-line no-eval -- The script is a state record or the swap code from the server.
+    (0, eval)(script.textContent!);
+  } finally {
+    delete (document as { currentScript?: unknown }).currentScript;
+  }
+}
+
+/**
  * Appends markup that streams in later, such as a `#loading` body, and runs
- * its inline scripts. The DOM of a test does not run them.
+ * its inline scripts in order.
  */
 function append(container: HTMLElement, html: string): void {
   const template = document.createElement('template');
@@ -46,11 +61,9 @@ function append(container: HTMLElement, html: string): void {
   // A copy, because appending moves nodes out of the live list.
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const node of [...template.content.childNodes]) {
+    container.append(node);
     if (node.nodeName === 'SCRIPT' && !(node as Element).hasAttribute('type')) {
-      // oxlint-disable-next-line no-eval -- The script is the swap code from the server.
-      (0, eval)(node.textContent!);
-    } else {
-      container.append(node);
+      run(node as Element);
     }
   }
 }
@@ -85,6 +98,8 @@ export function createMount(options: TestingOptions): Mount {
     const container = document.createElement('div');
     container.innerHTML = html + state;
     document.body.append(container);
+    // The page state, which waits for the core.
+    container.querySelectorAll('script[data-state]').forEach(run);
     // One loader for the document, as a page has, however many mounts are in it.
     loader ??= {
       stop: start({ load: options.load, rpc: options.rpc, navigate: false }),

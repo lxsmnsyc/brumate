@@ -44,9 +44,10 @@ function region(layout: number, route: string, content: string): string {
 }
 
 /** The first state record of a page with a root route. `base` is where its IDs start. */
-function pageState(next: number, base = 0): string {
+function pageState(next: number, base = 0, nonce = ''): string {
   const root = base > 0 ? ` data-root="${base}"` : '';
-  return `<script type="brumate/state" data-scopes data-next="${next}" data-route="root"${root}>{}</script>`;
+  const attribute = nonce ? ` nonce="${nonce}"` : '';
+  return `<script${attribute} data-state data-scopes data-next="${next}" data-route="root"${root}>$bR(($R,$b)=>({}))</script>`;
 }
 
 /** Navigates to a page whose body is its URL. */
@@ -150,6 +151,37 @@ describe('navigate', () => {
     expect(script.nonce).toBe('loaded-nonce');
   });
 
+  it('runs the state records of a later page with the nonce of the loaded page', async () => {
+    vi.resetModules();
+    const fresh = await import('../src/runtime/navigate.ts');
+    document.head.innerHTML = '<script nonce="loaded-nonce">/* the loaded page */</script>';
+    document.body.innerHTML = '<p>old page</p>';
+    const { response, next } = respond([
+      `<!doctype html><html><head></head><body><p>New</p>${pageState(3, 0, 'new-nonce')}</body></html>`,
+      '<script nonce="new-nonce" data-state>$bR(($R,$b)=>(1))</script>',
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const done = fresh.navigate({
+      url: '/next',
+      push: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    next();
+    await tick();
+    next();
+    next();
+    await done;
+    // Both records are scripts that this document made, so the browser runs them, in order.
+    const scripts = [...document.body.querySelectorAll<HTMLScriptElement>('script[data-state]')];
+    expect(scripts.map((script) => script.nonce)).toEqual(['loaded-nonce', 'loaded-nonce']);
+    expect(scripts[0]!.getAttribute('data-next')).toBe('3');
+    expect(scripts[1]!.textContent).toBe('$bR(($R,$b)=>(1))');
+  });
+
   it('shows the error of a form post as text', async () => {
     const response = new Response('Enter a <name>', {
       status: 422,
@@ -199,10 +231,13 @@ describe('navigate', () => {
       `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
     );
     // The core drops the old route, adds the new one, and reads the new layout scope as the old one.
-    const state = document.querySelectorAll('script[type="brumate/state"]')[1]!;
+    const state = document.querySelectorAll('script[data-state]')[1]!;
     expect(state.getAttribute('data-drop')).toBe('1');
     expect(state.getAttribute('data-roots')).toBe('3');
     expect(state.getAttribute('data-alias')).toBe('2:0');
+    // A copy, which the browser runs, so the core reads it.
+    expect(state.ownerDocument).toBe(document);
+    expect(state.textContent).toBe('$bR(($R,$b)=>({}))');
     expect(document.title).toBe('B');
   });
 
@@ -264,7 +299,7 @@ describe('navigate', () => {
     expect(document.querySelector('main')!.innerHTML).toBe(
       `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
     );
-    const state = document.querySelectorAll('script[type="brumate/state"]')[1]!;
+    const state = document.querySelectorAll('script[data-state]')[1]!;
     expect(state.getAttribute('data-offset')).toBe('2');
     expect(state.getAttribute('data-root')).toBe('2');
     expect(state.getAttribute('data-next')).toBe('4');
@@ -273,7 +308,7 @@ describe('navigate', () => {
     expect(
       document.querySelector('template')!.content.querySelector('p')?.getAttribute('data-b'),
     ).toBe('3:0');
-    expect(document.body.querySelector('script:not([type])')?.textContent).toBe('$bS(3)');
+    expect(document.body.querySelector('script:not([data-state])')?.textContent).toBe('$bS(3)');
   });
 
   it('uses a page that its link started to load', async () => {

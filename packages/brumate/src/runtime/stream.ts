@@ -7,7 +7,7 @@
 
 import { fromCrossJSON, isStream, toCrossJSONStream } from 'seroval';
 import type { SerovalNode } from 'seroval';
-import { disabledFeatures, plugins } from './shared.ts';
+import { disabledFeatures, plugins } from './serial.ts';
 
 const HEADER_SIZE = 12;
 const encoder = new TextEncoder();

@@ -65,13 +65,13 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 
 ```html
 <template data-l="0"><blockquote>…</blockquote></template>
-<script type="brumate/state" data-scopes>…</script>
 <script>$bS(0)</script>
+<script data-state data-scopes data-next="5">$bR(($R,$b)=>(…))</script>
 ```
 
 - The `<template>` holds the body.
-- The state record holds the scopes of the body.
 - The script moves the body in, in place of the fallback and the markers. The first swap script of a page also defines `$bS`.
+- The state record holds the scopes of the body. It comes after the swap, so the markup of its scopes is in the page when the core reads it.
 
 If the body fails, the fallback stays.
 
@@ -116,15 +116,20 @@ The stylesheet of a component is `<style data-brm="<component ID>">`, once per p
 ## State
 
 ```html
-<script type="brumate/state" data-scopes data-next="5" data-route="…">{"t":10,"i":0,"p":{…}}</script>
-<script type="brumate/state">{"t":…}</script>
+<script data-state data-scopes data-next="5" data-route="…">function $bR(f){…}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"App_x1",s:$R[2]=[1]}})))</script>
+<script data-state>$bR(($R,$b)=>(…))</script>
 ```
 
-The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-reference JSON records, one script each. The server writes them with `toCrossJSONStream`, and the client reads them with `fromCrossJSON` and one `refs` map per render, so later records can refer to values of earlier ones. Every `<` in a record is escaped as `<`.
+The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-reference records, one inline script each. The server writes them with `crossSerializeStream`. Each record is a function of `$R`, the references of its render, and `$b`, the functions that make brumate's values.
 
+- The first record of a render defines `$bR`. `$bR` pushes the script and the function to the array `self.$brm`.
+- The core calls the functions in order when it starts, with one `$R` array per render, so later records can refer to values of earlier ones. Records that run after the core started are read at once.
+- A page that never gets an event never builds its state. The records wait in `self.$brm`.
+- A record whose script is no longer in the page when the core starts is skipped, such as a record of a page that navigation replaced.
 - A record with `data-scopes` holds scopes: the page state, or the state of a `#loading` body.
 - Any other record settles a promise of an earlier record.
-- Records can come after the core has started. The core reads them when they are added to the page, also inside other added elements.
+- seroval writes every `<` in a string as `\x3C`, and U+2028 and U+2029 as escapes, so a value cannot end the script or open a comment. The server refuses a record that holds `</` or `<!`.
+- A script added with `innerHTML` does not run, so its record is not read. Markup that streams in through the parser, or that the client router adds, runs its records.
 
 The first record turns into an object keyed by scope ID:
 
@@ -157,22 +162,26 @@ type PageState = Record<number, {
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
 - A promise is written as pending, and a later record settles it.
 
-Values with plugins of their own:
+Values with plugins of their own, and the call of `$b` that makes each one in a record:
 
-| Tag                 | Value                                                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `brumate/element`   | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
-| `brumate/function`  | `FunctionReference`: a client function passed as a prop. It holds its reference and the scope it reads.        |
-| `brumate/raw`       | HTML that the client may insert again, such as `children`.                                                     |
-| `brumate/component` | A component, as its component ID, for dynamic tags.                                                            |
-| `brumate/upload`    | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
+| Tag                     | In a record                 | Value                                                                                                          |
+| ----------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `brumate/element`       | `$b.e(scope, anchor)`       | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
+| `brumate/function`      | `$b.f(reference, scope)`    | `FunctionReference`: a client function passed as a prop. It holds its reference and the scope it reads.        |
+| `brumate/raw`           | `$b.r(html)`                | HTML that the client may insert again, such as `children`.                                                     |
+| `brumate/component`     | `$b.c(id)`                  | A component, as its component ID, for dynamic tags.                                                            |
+| `brumate/url`           | `new URL(href)`             | A `URL`.                                                                                                       |
+| `brumate/search-params` | `new URLSearchParams(text)` | `URLSearchParams`.                                                                                             |
+| `brumate/upload`        | Not in the page             | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
 
 ### Attributes of records
 
 | Attribute     | On                                             | Meaning                                                                                                |
 | ------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `nonce`       | Every record, with the `nonce` option          | The Content Security Policy nonce of the render.                                                       |
+| `data-state`  | Every record                                   | The script is a state record.                                                                          |
 | `data-scopes` | Records with scopes                            | The record adds scopes.                                                                                |
-| `data-next`   | The first record of a render                   | A number above every scope and boundary ID of the render.                                              |
+| `data-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                              |
 | `data-route`  | The first record of a page from routes         | The key of the root route.                                                                             |
 | `data-root`   | Every record of a render with a `base` above 0 | The base. The core keeps a `refs` map for each root.                                                   |
 | `data-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record. |
@@ -192,6 +201,7 @@ When the loader loads another page, it keeps the layouts that are the same on bo
 2. The server renders the page with that base, so its IDs never mix with the current page's. Its records carry `data-root` with the base.
 3. The client compares the route slots of the two pages. A slot whose route key is the same keeps its content. A slot whose key changed is replaced with the new content.
 4. The client marks the state record with `data-drop`, `data-roots` and `data-alias`, and the core adds only the new routes' scopes. New routes read contexts from the kept layouts through the aliases.
+5. The client makes a copy of each state script with the nonce of the loaded page, so the browser runs it. A page parsed with `DOMParser` does not run its scripts. The core reads the records when it starts again.
 
 The client keeps the layouts only when the root route of both pages is the same, and the new page started its IDs at the requested base.
 
@@ -202,6 +212,6 @@ A prerendered file on a static host starts its IDs at 0, whatever the request as
 - In the markup: `data-b`, `data-v`, `data-result`, `data-l`, `data-h`, and the `t`, `b`, `i`, `l`, `P` and `R` comments.
 - In the swap scripts: the numbers of `$bS(…)` and `$bH(…)`.
 - In `data-next` and `data-root`.
-- In the state: each record with scopes gets `data-offset`, and the core moves the scope IDs, the parent and child IDs, and the element and function references in it. Promises in it are moved when they settle.
+- In the state: each record with scopes gets `data-offset`, and the core moves the scope IDs, the parent and child IDs, and the element and function references in its value. The code of the record does not change. Promises in it are moved when they settle.
 
 Markup that streams in later is moved the same way. IDs that `$id()` made are text, and are not moved.

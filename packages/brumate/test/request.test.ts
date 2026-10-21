@@ -126,7 +126,7 @@ describe('regular expressions', () => {
 describe('values in the page and in calls', () => {
   it('sends URL and URLSearchParams', async () => {
     const { fromJSON } = await import('seroval');
-    const { disabledFeatures, plugins } = await import('../src/runtime/shared.ts');
+    const { disabledFeatures, plugins } = await import('../src/runtime/serial.ts');
     const value = {
       url: new URL('https://example.com/a?b=1#c'),
       query: new URLSearchParams('x=1&x=2'),
