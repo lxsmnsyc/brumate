@@ -65,6 +65,8 @@ const MISPLACED: Record<string, string> = {
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $optimistic:
+    'Declare an optimistic value with "let name = $optimistic(source)" at the top level of a script',
   $action:
     'Declare the result of a form with "const name = $action(serverFunction)" at the top level of a script',
   $effect: 'Call $effect at the top level of a script',
@@ -584,8 +586,8 @@ class Analyzer {
       return;
     }
 
-    if (name === '$signal' || name === '$memo') {
-      const expected = name === '$signal' ? 'let' : 'const';
+    if (name === '$signal' || name === '$memo' || name === '$optimistic') {
+      const expected = name === '$memo' ? 'const' : 'let';
       if (kind !== expected) {
         this.report('error', `Declare ${name} with ${expected}`, declarator);
       }
@@ -606,8 +608,15 @@ class Analyzer {
       }
       const declaration = this.addDeclaration(scope, id.name, 'memo', id);
       if (!argument) {
-        this.report('error', '$memo needs a value', call);
+        this.report('error', `${name} needs a value`, call);
         return;
+      }
+      if (name === '$optimistic') {
+        // A memo of its source, which handlers can write.
+        declaration.writable = true;
+        if (argument.type !== 'Identifier') {
+          this.report('error', '$optimistic needs the name of a value, such as a memo', argument);
+        }
       }
       declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
         declaration,
@@ -1033,14 +1042,14 @@ class Analyzer {
     for (const site of this.sites) {
       for (const write of site.writes) {
         const declaration = write.declaration;
-        if (!WRITABLE.has(declaration.kind)) {
+        if (!WRITABLE.has(declaration.kind) && !declaration.writable) {
           this.report(
             'error',
             `Cannot assign to ${declaration.kind} "${declaration.name}"`,
             write.range,
           );
         } else if (
-          declaration.kind === 'signal' &&
+          (declaration.kind === 'signal' || declaration.writable) &&
           !write.inFunction &&
           !WRITING_SITES.has(site.kind)
         ) {
@@ -1062,6 +1071,9 @@ class Analyzer {
           }
         }
       }
+      if (site.kind === 'memo' && site.declaration?.writable) {
+        this.linkOptimistic(site.declaration);
+      }
       if (site.kind === 'memo' && site.declaration) {
         const callsServer = [...site.calls].some(
           (declaration) => declaration.kind === 'server-function',
@@ -1070,6 +1082,32 @@ class Analyzer {
           site.declaration.kind = 'async-memo';
         }
       }
+    }
+  }
+
+  /**
+   * Finds the source of `$optimistic(source)`. A write reads the source too,
+   * so the source has a slot that the browser can reset the guess from.
+   */
+  private linkOptimistic(declaration: Declaration): void {
+    const site = declaration.site!;
+    const source = site.reads.find((read) => read.range.start === site.range.start)?.declaration;
+    if (!source) {
+      return;
+    }
+    declaration.optimistic = source;
+    if (source.kind === 'signal' || source.kind === 'let') {
+      // A value that handlers write can be written directly, without a guess.
+      this.report(
+        'error',
+        '$optimistic follows a memo, an action or a prop, not a signal',
+        site.range,
+      );
+    }
+    for (const write of declaration.writes) {
+      const read = { ...write, declaration: source, range: source.range };
+      source.reads.push(read);
+      write.site.reads.push(read);
     }
   }
 }

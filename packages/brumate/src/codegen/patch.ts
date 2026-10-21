@@ -95,12 +95,13 @@ export function addValueEdits(
         }
         return;
       }
-      if (name === '$signal' || name === '$memo' || name === '$untrack') {
+      if (name === '$signal' || name === '$memo' || name === '$optimistic' || name === '$untrack') {
         if (!argument) {
           patch.replace(node.start, node.end, 'undefined');
           return;
         }
-        const site = name === '$memo' ? sitesByNode.get(argument) : undefined;
+        const site =
+          name === '$memo' || name === '$optimistic' ? sitesByNode.get(argument) : undefined;
         const declaration = site?.declaration;
         if (declaration && mode === 'server') {
           // Any memo can be a promise, so the server holds it as one and awaits it where it is read.

@@ -227,6 +227,22 @@ export class Rewriter {
             if (slot === -1) {
               // Nothing on the client reads it, so only the value is kept.
               patch.replace(node.start, node.right.start, '(');
+            } else if (declaration.optimistic) {
+              // A guess, which goes back to the source when the server calls of the page finish.
+              const source = declaration.optimistic;
+              const sourceSlot = slotIndex(this.plan, source);
+              const reset = sourceSlot === -1 ? '' : `, ${path(source)}, ${sourceSlot}`;
+              const read = `$$b.get(${path(declaration)}, ${slot})`;
+              patch.replace(
+                node.start,
+                node.right.start,
+                node.operator === '='
+                  ? `$$b.guess(${path(declaration)}, ${slot}${reset}, `
+                  : `$$b.guess(${path(declaration)}, ${slot}${reset}, ${read} ${COMPOUND[node.operator]} (`,
+              );
+              if (node.operator !== '=') {
+                patch.insert(node.end, ')');
+              }
             } else if (node.operator === '=') {
               patch.replace(
                 node.start,
@@ -262,6 +278,14 @@ export class Rewriter {
         }
         case 'UpdateExpression': {
           const reference = target(node.argument);
+          if (reference?.declaration.optimistic) {
+            this.diagnostics.push({
+              severity: 'error',
+              message: `Assign to "${reference.declaration.name}" with = instead of ${node.operator}`,
+              range: { start: node.start, end: node.end },
+            });
+            return;
+          }
           if (reference) {
             const declaration = reference.declaration;
             const slot = slotIndex(this.plan, declaration);

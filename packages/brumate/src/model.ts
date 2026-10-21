@@ -69,6 +69,13 @@ export interface Declaration {
   action?: string;
   /** True for a server function that a server function refreshes with `refresh(fn)`. */
   refreshed?: boolean;
+  /**
+   * For `let shown = $optimistic(source)`, the value it follows. A write sets
+   * a guess, until the source changes or the server calls of the page finish.
+   */
+  optimistic?: Declaration;
+  /** True for a memo declared with `$optimistic`, before its source is known. */
+  writable?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** Elements whose `ref` targets this declaration. */

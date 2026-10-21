@@ -333,6 +333,7 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
       // A value that a later state record settles replaces its promise.
       if (value instanceof Promise) {
         void value.then((result) => {
+          settled.set(value, result);
           if (scope.s[i] === value) {
             set(scope, i, result);
           }
@@ -698,6 +699,10 @@ let memoSignal: AbortSignal | undefined;
  */
 export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
+  // A guess stays while its source has not changed, such as when a value the server streamed arrives.
+  if (sameSource(key)) {
+    return;
+  }
   let value: unknown;
   // Server function calls of the last compute are aborted, because their answers are out of date.
   memoControllers.get(key)?.abort();
@@ -732,10 +737,80 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   // The values it read have arrived, so it is no longer pending.
   const waited = loadingSlots.delete(key);
   loads.delete(key);
+  // An optimistic value that computes again follows its source, and drops its guess.
+  guesses.delete(key);
   if (!Object.is(scope.s[slot], value)) {
     set(scope, slot, value);
   } else if (waited) {
     trigger(scope, slot);
+  }
+}
+
+/** Optimistic values that hold a guess, with the slot that each goes back to. */
+const guesses = new Map<
+  string,
+  { scope: Scope; slot: number; source?: [Scope, number]; base?: unknown }
+>();
+/** The values of promises that the server streamed, so a guess knows its source did not change. */
+const settled = new WeakMap<Promise<unknown>, unknown>();
+
+/** True while the source of a guess holds the value it had when the guess was made. */
+function sameSource(key: string): boolean {
+  const entry = guesses.get(key);
+  if (!entry?.source) {
+    return false;
+  }
+  const current = entry.source[0].s[entry.source[1]];
+  return (
+    Object.is(current, entry.base) ||
+    (entry.base instanceof Promise && settled.get(entry.base) === current)
+  );
+}
+/** Server calls that have not finished, from forms and from `rpc`. */
+let calling = 0;
+
+/**
+ * Writes a guess into an optimistic value. It goes back to its source when
+ * the source changes, which computes it again, or when every server call of
+ * the page finishes, such as after a post failed.
+ */
+export function guess<T>(
+  scope: Scope,
+  slot: number,
+  ...rest: [value: T] | [sourceScope: Scope, sourceSlot: number, value: T]
+): T {
+  const value = rest.at(-1) as T;
+  const source = rest.length === 3 ? ([rest[0], rest[1]] as [Scope, number]) : undefined;
+  const base = source && source[0].s[source[1]];
+  guesses.set(`${scope.id}:${slot}`, { scope, slot, source, base });
+  return set(scope, slot, value);
+}
+
+/** Counts a server call, and puts guesses back when the last one finishes. */
+function track<T>(request: Promise<T>): Promise<T> {
+  calling++;
+  const done = (): void => {
+    calling--;
+    // Waits a task, so memos that the answer refreshed start to load first.
+    setTimeout(resetGuesses, 0);
+  };
+  request.then(done, done);
+  return request;
+}
+
+function resetGuesses(): void {
+  if (calling > 0) {
+    return;
+  }
+  for (const [key, { scope, slot, source }] of guesses) {
+    // A source that loads again, such as a refreshed list, resets the guess when it arrives.
+    if (source && pending(source[0], source[1])) {
+      continue;
+    }
+    guesses.delete(key);
+    if (source && scopes.has(scope.id) && !Object.is(scope.s[slot], source[0].s[source[1]])) {
+      set(scope, slot, source[0].s[source[1]]);
+    }
   }
 }
 
@@ -1333,8 +1408,10 @@ export function submitAction(form: HTMLFormElement, submitter: HTMLElement | nul
     return;
   }
   const data = new FormData(form, submitter);
-  const sent = import('./rpc.ts').then(({ submit }) =>
-    submit(options.rpc ?? '/_brumate', form.getAttribute('data-action')!, data),
+  const sent = track(
+    import('./rpc.ts').then(({ submit }) =>
+      submit(options.rpc ?? '/_brumate', form.getAttribute('data-action')!, data),
+    ),
   );
   asyncMemo(scope, slot, sent);
 }
@@ -1343,8 +1420,11 @@ export function submitAction(form: HTMLFormElement, submitter: HTMLElement | nul
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
   // Read before the import, while the memo that calls it computes.
   const signal = memoSignal;
-  const { call: callServer } = await import('./rpc.ts');
-  return callServer(options.rpc ?? '/_brumate', id, args, signal);
+  return track(
+    import('./rpc.ts').then(({ call: callServer }) =>
+      callServer(options.rpc ?? '/_brumate', id, args, signal),
+    ),
+  );
 }
 
 // Rendering on the client

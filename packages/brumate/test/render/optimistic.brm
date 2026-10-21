@@ -1,0 +1,46 @@
+<script module>
+  const names: string[] = ['Ada'];
+</script>
+
+<script>
+  import { $action, $memo, $optimistic } from 'brumate/signals';
+  import { refresh } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    return [...names];
+  }
+
+  async function sign(form: FormData) {
+    'use server';
+    const name = String(form.get('name'));
+    if (name === 'nobody') {
+      return { error: 'Enter a name' };
+    }
+    names.push(name);
+    refresh(list);
+    return { error: '' };
+  }
+
+  const signed = $action(sign);
+  const all = $memo(list());
+  let shown = $optimistic(all);
+
+  function guess(event: SubmitEvent) {
+    const form = new FormData(event.currentTarget as HTMLFormElement);
+    shown = [...shown, String(form.get('name'))];
+  }
+</script>
+
+<form class="sign" action=sign onSubmit=guess>
+  <input name="name" aria-label="Name" />
+  <button>Sign</button>
+</form>
+<ul class="names">
+  #for (name of shown by name) {
+    <li>{name}</li>
+  }
+</ul>
+#if (signed?.error) {
+  <p class="error">{signed.error}</p>
+}

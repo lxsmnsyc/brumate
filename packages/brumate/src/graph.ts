@@ -288,6 +288,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         // A server function can ask the client to load the memo again.
         (isMemoKind(declaration.kind) &&
           [...(declaration.site?.calls ?? [])].some((callee) => callee.refreshed)) ||
+        // Handlers write an optimistic value.
+        (declaration.optimistic !== undefined &&
+          declaration.writes.some((write) => reached.has(write.site))) ||
         (declaration.kind === 'signal' &&
           (declaration.writes.some((write) => reached.has(write.site)) ||
             declaration.refs.some((ref) => created.has(ref.scope)))) ||

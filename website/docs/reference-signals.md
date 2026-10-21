@@ -28,6 +28,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$id()`                       | `string`                   | `const` at the top level of a script   | [Page metadata](./page-metadata.md)                |
 | `$title(value)`               | `void`                     | Statement at the top level of a script | [Page metadata](./page-metadata.md)                |
 | `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script   | [Forms](./forms.md)                                |
+| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script     | [Forms](./forms.md#showing-a-guess-while-it-posts) |
 
 ## `$props`
 
@@ -182,6 +183,17 @@ The latest result of a server function that a form of this component posts to.
 - Assign it to a `const` at the top level of a script. The argument is a server function of the same file.
 - It is `undefined` before the first post. `$isPending(result)` is true while the form sends.
 - Without scripts, the page renders again with the result.
+
+## `$optimistic`
+
+```ts
+let shown = $optimistic(names);
+```
+
+- It follows `source`, a memo, an action or a prop, and handlers can write it.
+- A write shows a guess. The guess stays until `source` changes, or until every server call of the page finishes.
+- Write it with `=`. `++` and `--` are compile errors.
+- `source` is a name. A signal is a compile error, because a handler can write a signal directly.
 
 ## Not supported
 

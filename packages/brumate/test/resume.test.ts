@@ -919,6 +919,51 @@ describe('refresh', () => {
   });
 });
 
+describe('$optimistic', () => {
+  it('shows a guess while a form posts, and goes back to the source after', async () => {
+    vi.resetModules();
+    const server = await import(file('optimistic.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    let release: (() => void) | undefined;
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      // Posts of the form wait, and loads of the list answer at once.
+      if (url.includes('sign')) {
+        await new Promise<void>((done) => {
+          release = done;
+        });
+      }
+      return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { html, state, pending } = await runtime.render(server.default, {});
+    document.body.innerHTML = html + state;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(items()).toEqual(['Ada']);
+
+    const form = document.querySelector<HTMLFormElement>('.sign')!;
+    const post = (name: string): void => {
+      form.querySelector('input')!.value = name;
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    };
+    post('Grace');
+    await waitFor(() => expect(items()).toEqual(['Ada', 'Grace']));
+    release!();
+    // The refreshed list replaces the guess, with the same names.
+    await new Promise((done) => setTimeout(done, 50));
+    expect(items()).toEqual(['Ada', 'Grace']);
+
+    // A post that fails puts the list back.
+    post('nobody');
+    await waitFor(() => expect(items()).toEqual(['Ada', 'Grace', 'nobody']));
+    release!();
+    await waitFor(() => expect(items()).toEqual(['Ada', 'Grace']));
+  });
+});
+
 describe('a promise passed as a prop', () => {
   it('loads a memo of the prop again when the parent passes a new promise', async () => {
     const server = await import(file('promiseParent.brm.ts'));

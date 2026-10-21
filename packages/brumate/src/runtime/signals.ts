@@ -32,6 +32,16 @@ export function $memo<T>(_value: T): MemoValue<T> {
   return compileTimeOnly('$memo');
 }
 
+/**
+ * Declares a value that follows a memo, and that handlers can write. A write
+ * shows a guess, such as a new item while the form that adds it posts. The
+ * value goes back to the memo when the memo changes, or when the server
+ * calls of the page finish, such as after a failed post.
+ */
+export function $optimistic<T>(_source: T): T {
+  return compileTimeOnly('$optimistic');
+}
+
 /** Runs a callback when the values it reads change, after the page resumes. Never on load. */
 export function $effect(_callback: () => void | (() => void)): void {
   compileTimeOnly('$effect');

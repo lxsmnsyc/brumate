@@ -120,3 +120,57 @@ Set `enctype="multipart/form-data"`, so the browser sends the files when scripts
 ## Refreshing other data
 
 After a form changes data, call `refresh(fn)` in its function with the server function that reads the data. Memos that call it load again. See [Refreshing data](./server-functions.md#refreshing-data). Without scripts, the page renders again, so its memos are new anyway.
+
+## Showing a guess while it posts
+
+`$optimistic(source)` follows a memo, and handlers can write it. The page shows the new value at once, and the server sends the real one after:
+
+```brm
+<script>
+  import { $action, $memo, $optimistic } from 'brumate/signals';
+  import { refresh } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    return db.names();
+  }
+
+  async function sign(form: FormData) {
+    'use server';
+    const name = String(form.get('name') ?? '');
+    if (!name) {
+      return { error: 'Enter a name' };
+    }
+    await db.add(name);
+    refresh(list);
+    return { error: '' };
+  }
+
+  const signed = $action(sign);
+  const names = $memo(list());
+  let shown = $optimistic(names);
+
+  function guess(event: SubmitEvent) {
+    const name = new FormData(event.currentTarget as HTMLFormElement).get('name');
+    shown = [...shown, String(name)];
+  }
+</script>
+
+<form action=sign onSubmit=guess>
+  <input name="name" aria-label="Name">
+  <button>Sign</button>
+</form>
+#if (signed?.error) {
+  <p>{signed.error}</p>
+}
+<ul>
+  #for (name of shown by name) {
+    <li>{name}</li>
+  }
+</ul>
+```
+
+- The handler runs as the form posts, so the new name shows at once.
+- When `names` changes, `shown` takes its value. Here `refresh(list)` loads the new list after the post.
+- When the post fails, or returns without changing `names`, `shown` goes back to `names` once every server call of the page finishes.
+- Write `$optimistic` in a component. Writes from a reactive module function set the value, but do not go back after a failed post.

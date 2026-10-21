@@ -14,6 +14,7 @@ export const MACROS: Set<string> = new Set([
   '$props',
   '$signal',
   '$memo',
+  '$optimistic',
   '$effect',
   '$client',
   '$untrack',
