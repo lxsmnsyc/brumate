@@ -319,6 +319,17 @@ Sets when the loader preloads the core and the parts of an element's handlers, s
 
 They are client roots. Their listeners are added when the page resumes, and removed with their scope.
 
+### Accessibility warnings
+
+The compiler warns about common accessibility mistakes in markup. The warnings show in the build, the editor and `brumate-tsc`.
+
+- An `<img>` without `alt`. Use `alt=""` for an image that only decorates.
+- A click handler on an element that a keyboard cannot use, such as a `<div>` or an `<li>`, without a `role` and a key handler. A `<button>` is often the better element.
+- An `<input>`, `<select>` or `<textarea>` without a label: a `<label>` around it, a `<label for>` that names its `id`, or `aria-label`. A placeholder is not a label.
+- A link or a button without text or `aria-label`. An image with `alt` text counts as text.
+
+An element with a spread or computed attribute is skipped, because any attribute can be in it. `a11y: false` in the plugin options turns the warnings off.
+
 ## Control flow
 
 The blocks:

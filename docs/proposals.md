@@ -20,7 +20,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Layouts on static hosts](#layouts-on-static-hosts)                               | Navigation | Medium | Medium |
 | [Request forgery protection](#request-forgery-protection)                         | Security   | High   | Small  |
 | [Deployment adapters](#deployment-adapters)                                       | Build      | Medium | Medium |
-| [Accessibility warnings](#accessibility-warnings)                                 | Compiler   | Medium | Medium |
 
 ## Syntax
 
@@ -98,16 +97,3 @@ The server runtime keeps the request with `AsyncLocalStorage`, and the example s
 
 - Adapters for Node, Deno, Bun and Cloudflare Workers, each one a request handler that serves the client files and answers routes and server function calls.
 - Cloudflare Workers have `AsyncLocalStorage` with the Node compatibility flag. A runtime without it could pass the request down the render instead.
-
-## Compiler
-
-### Accessibility warnings
-
-The compiler sees every element and attribute, so it can warn about common mistakes:
-
-- An image without `alt`.
-- A click handler on an element that cannot get focus, such as a `<div>`, without a role and a key handler.
-- A form field without a label.
-- A link without text.
-
-The warnings go through the same diagnostics as the rest, so the editor and `brumate-tsc` show them.

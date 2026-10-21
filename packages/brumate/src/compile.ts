@@ -1,3 +1,4 @@
+import { checkAccessibility } from './a11y.ts';
 import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
 import { generateRender } from './codegen/render.ts';
@@ -26,6 +27,8 @@ export interface CompileOptions {
    * per part.
    */
   merge?: number;
+  /** Warns about common accessibility mistakes in the markup. Defaults to true. */
+  a11y?: boolean;
 }
 
 export interface CompileResult {
@@ -68,7 +71,11 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   const file = parse(source, { filename });
   const model = analyze(file);
   const graph = buildGraph(model, { liveProps: options.liveProps });
-  const diagnostics = [...model.diagnostics, ...graph.diagnostics];
+  const diagnostics = [
+    ...model.diagnostics,
+    ...graph.diagnostics,
+    ...(options.a11y === false ? [] : checkAccessibility(file)),
+  ];
   const errors = diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (errors.length > 0) {
     throw new CompileError(source, filename, errors);

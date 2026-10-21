@@ -9,11 +9,16 @@
 </script>
 
 <style>
-  :global(.done) {
-    text-decoration: line-through;
-  }
-  :global(li) {
+  /* A todo is a button, so a keyboard can toggle it too. */
+  :global(.todo) {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
     cursor: pointer;
+  }
+  :global(.done .todo) {
+    text-decoration: line-through;
   }
   .page {
     display: flex;

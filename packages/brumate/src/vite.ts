@@ -62,6 +62,8 @@ export interface BrumateOptions {
   report?: boolean;
   /** Fails the client build when a size goes over it, in bytes after gzip. */
   budget?: Budget;
+  /** Warns about common accessibility mistakes in markup. Defaults to true. */
+  a11y?: boolean;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -142,6 +144,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           liveProps: liveProps.get(file),
           path: file,
           merge: options.merge ?? 2048,
+          a11y: options.a11y,
         }),
       };
       compiled.set(file, cached);

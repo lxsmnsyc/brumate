@@ -29,44 +29,45 @@ function importSource(file: SFCFile, name: string): string | undefined {
   return undefined;
 }
 
+/** The markup inside a node: the children of an element, or the bodies of a block. */
+export function childrenOf(node: Markup): Markup[] {
+  switch (node.kind) {
+    case 'element':
+    case 'component':
+    case 'dynamic':
+    case 'fragment':
+      return node.children;
+    case 'if':
+      return [
+        ...node.branches.flatMap((branch) => branch.body.children),
+        ...(node.fallback?.children ?? []),
+      ];
+    case 'switch':
+      return [
+        ...node.cases.flatMap((branch) => branch.body.children),
+        ...(node.fallback?.children ?? []),
+      ];
+    case 'for':
+    case 'repeat':
+    case 'loading':
+      return [...node.body.children, ...(node.fallback?.children ?? [])];
+    case 'try':
+      return [...node.body.children, ...node.fallback.children];
+    case 'key':
+    case 'portal':
+    case 'head':
+    case 'client':
+      return node.body.children;
+    default:
+      return [];
+  }
+}
+
 /** Visits every markup node of a file, including blocks and templates. */
 export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): void {
   for (const node of nodes) {
     visit(node);
-    switch (node.kind) {
-      case 'element':
-      case 'component':
-      case 'dynamic':
-      case 'fragment':
-        forEachNode(node.children, visit);
-        break;
-      case 'if':
-        node.branches.forEach((branch) => forEachNode(branch.body.children, visit));
-        forEachNode(node.fallback?.children ?? [], visit);
-        break;
-      case 'switch':
-        node.cases.forEach((branch) => forEachNode(branch.body.children, visit));
-        forEachNode(node.fallback?.children ?? [], visit);
-        break;
-      case 'for':
-      case 'repeat':
-      case 'loading':
-        forEachNode(node.body.children, visit);
-        forEachNode(node.fallback?.children ?? [], visit);
-        break;
-      case 'try':
-        forEachNode(node.body.children, visit);
-        forEachNode(node.fallback.children, visit);
-        break;
-      case 'key':
-      case 'portal':
-      case 'head':
-      case 'client':
-        forEachNode(node.body.children, visit);
-        break;
-      default:
-        break;
-    }
+    forEachNode(childrenOf(node), visit);
   }
 }
 

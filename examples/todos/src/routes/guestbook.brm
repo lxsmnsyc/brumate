@@ -34,7 +34,7 @@
 
 <h1>Guestbook</h1>
 <form action=sign>
-  <input name="name" placeholder="Your name">
+  <input name="name" placeholder="Your name" aria-label="Your name">
   <button disabled=($isPending(result))>Sign</button>
 </form>
 #if (result?.error) {

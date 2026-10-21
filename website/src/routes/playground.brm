@@ -47,6 +47,7 @@
     <section class="editor" aria-label="Source">
       <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
       <textarea
+        aria-label="Component source"
         spellcheck="false"
         value=source
         onInput=((event) => (source = event.currentTarget.value))

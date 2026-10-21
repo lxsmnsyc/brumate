@@ -40,7 +40,7 @@
 
 <h1>Todos</h1>
 <form onSubmit:prevent=add>
-  <input value=draft placeholder="What needs doing?" onInput=((event) => (draft = event.currentTarget.value))>
+  <input value=draft placeholder="What needs doing?" aria-label="New todo" onInput=((event) => (draft = event.currentTarget.value))>
   <button>Add</button>
 </form>
 <ul>
@@ -50,7 +50,7 @@
         todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
       }
     </script>
-    <li class={ done: todo.done } onClick=toggle>{todo.title}</li>
+    <li class={ done: todo.done }><button class="todo" onClick=toggle>{todo.title}</button></li>
   } #else {
     <li>Nothing to do.</li>
   }

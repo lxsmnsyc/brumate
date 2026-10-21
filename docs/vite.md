@@ -185,6 +185,8 @@ brumate({
   prerender: false,
   // Prints what the client build ships. See Inspect.
   report: false,
+  // Warns about common accessibility mistakes. See Syntax.
+  a11y: true,
   // Fails the client build when a size goes over it, in bytes after gzip.
   budget: { loader: 3072, route: 20480 },
 });

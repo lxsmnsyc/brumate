@@ -128,6 +128,14 @@ function text(selector: string): string {
   return document.querySelector(selector)!.textContent!;
 }
 
+/**
+ * Marks a state record as navigation does for a page whose IDs it moved by 5.
+ * It marks every record, also the ones that only settle promises.
+ */
+function moved(record: string): string {
+  return record.replace('<script ', '<script data-offset="5" data-root="5" ');
+}
+
 function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
@@ -177,9 +185,6 @@ describe('resume', () => {
     const done = streamState({ 0: { k: 1, m: 'Test', s: [pending] } }, (record) => {
       records.push(stateScript(record, records.length === 0));
     });
-    // Navigation marks every record of a moved page, also the ones that only settle promises.
-    const moved = (record: string): string =>
-      record.replace('<script ', '<script data-offset="5" data-root="5" ');
     document.body.innerHTML = moved(records[0]!);
 
     vi.resetModules();

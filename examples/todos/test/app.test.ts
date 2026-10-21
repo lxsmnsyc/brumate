@@ -10,7 +10,7 @@ it('toggles a todo, streams the quote, and resumes the counter inside it', async
     ],
   });
   expect(page.text('ul + p')).toBe('2 left');
-  page.click('li');
+  page.click('li button');
   await page.waitFor(() => expect(page.text('ul + p')).toBe('1 left'));
   expect(page.get('li').className).toBe('done');
 
