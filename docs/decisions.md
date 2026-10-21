@@ -80,7 +80,8 @@
 
 ## Open
 
-- **Reusable logic.** Reactive logic shared between files, such as a `.brm.ts` module compiled with the same rules, is deferred.
+- **Reusable logic.** Done as `.brm.ts` modules, compiled with the same rules as components. See [Reactive logic in modules](../website/docs/reactive-modules.md).
+- **Performance.** Measured ideas that are not done yet are in [Performance notes](./performance.md).
 
 ## Next steps
 
