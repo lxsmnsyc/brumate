@@ -89,6 +89,8 @@ export class Context {
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
+  /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
+  readonly slotNames: Map<number, string[]> = new Map();
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -195,8 +197,11 @@ export class Context {
     return this.state[scope];
   }
 
-  slots(scope: number, values: unknown[]): void {
+  slots(scope: number, values: unknown[], names?: string[]): void {
     this.record(scope).s = values;
+    if (names) {
+      this.root.slotNames.set(scope, names);
+    }
   }
 
   /** Records the item of a list that can change on the client. */
@@ -508,6 +513,54 @@ export async function dynamic(
  * it. `onRecord` receives each record as soon as it is ready. The promise
  * resolves when every promise in the state has settled.
  */
+/** True when `value` is `target`, or holds it in plain objects, arrays, maps or sets. */
+function holds(value: unknown, target: unknown, seen = new Set<unknown>()): boolean {
+  if (value === target) {
+    return true;
+  }
+  if (typeof value !== 'object' || value === null || seen.has(value)) {
+    return false;
+  }
+  seen.add(value);
+  const items =
+    value instanceof Map
+      ? [...value.keys(), ...value.values()]
+      : value instanceof Set
+        ? [...value]
+        : Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype
+          ? Object.values(value)
+          : [];
+  return items.some((item) => holds(item, target, seen));
+}
+
+/**
+ * The error of a value in the state of a page that cannot be sent to the
+ * browser, which names the value and its component.
+ */
+function unsendable(error: unknown, ctx: Context): Error {
+  const target = (error as { value?: unknown }).value;
+  if (target === undefined) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+  for (const [id, record] of Object.entries(ctx.state)) {
+    const index = (record.s ?? []).findIndex((value) => holds(value, target));
+    if (index === -1) {
+      continue;
+    }
+    let owner: ScopeState | undefined = record;
+    while (owner && owner.m === undefined && owner.p !== undefined) {
+      owner = ctx.state[owner.p];
+    }
+    const name = ctx.slotNames.get(Number(id))?.[index] ?? `slot ${index}`;
+    const kind = (target as object)?.constructor?.name ?? typeof target;
+    return new Error(
+      `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
+      { cause: error },
+    );
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 export function streamState(
   state: PageState,
   onRecord: (record: SerovalNode) => void,
@@ -695,6 +748,7 @@ export async function render<P>(
     state: PageState,
     onScopes: (script: string) => void,
     route?: string,
+    onError: (error: unknown) => void = queue.fail,
   ): void => {
     open++;
     toCrossJSONStream(state, {
@@ -708,7 +762,7 @@ export async function render<P>(
           queue.push(stateScript(record, false, { root: options.base }));
         }
       },
-      onError: queue.fail,
+      onError,
       onDone: finish,
     });
   };
@@ -746,13 +800,22 @@ export async function render<P>(
   });
 
   let state = '';
+  // The state of the page is serialized before this returns, so a value that cannot be sent
+  // fails the render here, with its name, instead of leaving the page without its state.
+  let failure: unknown;
   serialize(
     ctx.state,
     (script) => {
       state = script;
     },
     options.route,
+    (error) => {
+      failure = error;
+    },
   );
+  if (failure !== undefined) {
+    throw unsendable(failure, ctx);
+  }
   return {
     html,
     state,

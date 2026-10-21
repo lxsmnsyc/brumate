@@ -21,7 +21,7 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
     }
   const reset = () => (other = base);
   $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\"><!--t" + $$s1 + ":4-->" + await $$b.insert((other), $$ctx, $$s1) + "<!--/t--></button><button class=\"base\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h13\"><!--t" + $$s1 + ":6-->" + await $$b.insert((base), $$ctx, $$s1) + "<!--/t--></button><button class=\"reset\" data-b=\"" + $$s1 + ":7\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
-  $$ctx.slots($$s1, [base, count, double, other]);
+  $$ctx.slots($$s1, [base, count, double, other], ["base","count","double","other"]);
   return $$html;
 }
 UsesCounter.brumateId = "UsesCounter_1euyiut";

@@ -18,14 +18,14 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
       $$html += "<!--i" + $$s2 + "-->";
       const field = $$ctx.id($$s2, 0);
       $$html += "<label" + $$b.attribute("for", (field)) + "><!--t" + $$s2 + ":0-->" + await $$b.insert((name), $$ctx, $$s2) + "<!--/t--></label><input" + $$b.attribute("id", (field)) + ">";
-      $$ctx.slots($$s2, [name, field]);
+      $$ctx.slots($$s2, [name, field], ["name","field"]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
   $$html += "<button data-b=\"" + $$s1 + ":1\" data-on=\"click=Fields_1cs3w3p#h9\">Add</button>";
-  $$ctx.slots($$s1, [names]);
+  $$ctx.slots($$s1, [names], ["names"]);
   return $$html;
 }
 Fields.brumateId = "Fields_1cs3w3p";

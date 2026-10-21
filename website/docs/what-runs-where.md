@@ -68,11 +68,11 @@ Code also loads in small pieces. Each handler loads when its event first fires, 
 
 Browser code can read values of the script, such as a constant that a handler uses. Those values are sent with the page, so they must be values that brumate can send:
 
-- Primitives, plain objects and arrays, `Date`, `Map`, `Set`, `URL` and typed arrays. Shared and cyclic references are kept.
+- Primitives, plain objects and arrays, `Date`, `Map`, `Set` and typed arrays. Shared and cyclic references are kept.
 - Promises, which can settle after the page arrives.
 - Elements of the page, such as a `ref`, and browser functions, such as handlers and functions passed as props.
 
-[Serializable values](./reference-serialization.md) has the full list. Functions, class instances and regular expressions cannot be sent.
+[Serializable values](./reference-serialization.md) has the full list. Functions, class instances, `URL` and regular expressions cannot be sent. Send `url.href` for a URL.
 
 `brumate-tsc` checks the signals and memos that are sent, and reports a value that cannot be:
 
@@ -80,7 +80,17 @@ Browser code can read values of the script, such as a constant that a handler us
 Argument of type '(value: number) => string' is not assignable to parameter of type '… & { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }'.
 ```
 
-Other values, such as a constant that a handler reads, are not checked yet. One that cannot be sent makes the page fail when it renders, with a serialization error.
+The compiler reports a value made with `new` that browser code reads, unless it is a type that can be sent, such as a `Map`:
+
+```
+"db" holds a new Database, which cannot be sent to the browser, and code that runs in the browser reads it (function save). Use it in a server function, or create it in the browser, such as in $client (Saver.brm:6:14)
+```
+
+A value that neither check sees, such as one that a function returns, fails the render with its name:
+
+```
+The value of "db" in Saver_1x2y3z holds a Database, which cannot be sent to the browser, and code that runs in the browser reads it.
+```
 
 ## Keeping code on the server
 

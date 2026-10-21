@@ -25,7 +25,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
     $$html += "<p class=\"error\"><!--t" + $$s3 + ":0-->" + await $$b.insert((String(error)), $$ctx, $$s3) + "<!--/t--></p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
-    $$ctx.slots($$s3, [error]);
+    $$ctx.slots($$s3, [error], ["error"]);
   }
   $$html += "<!--/b-->";
   return $$html;

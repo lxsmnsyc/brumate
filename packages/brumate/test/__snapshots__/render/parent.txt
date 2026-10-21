@@ -14,7 +14,7 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
     return $$b.raw($$html);
   })();
   $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
-  $$ctx.slots($$s1, [count]);
+  $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
 Parent.brumateId = "Parent_4bs4t8";

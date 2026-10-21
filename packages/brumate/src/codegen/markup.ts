@@ -215,7 +215,10 @@ export class Emitter {
       const values = slots.map((slot) =>
         this.isPromise(slot) ? `$$b.wait(${promiseName(slot.name)})` : slot.name,
       );
-      this.line(`$$ctx.slots(${this.scopeVar(scope)}, [${values.join(', ')}]);`);
+      // The server also passes the names, so an error can say which value cannot be sent.
+      const names =
+        this.options.mode === 'server' ? `, ${JSON.stringify(slots.map((slot) => slot.name))}` : '';
+      this.line(`$$ctx.slots(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`);
     }
   }
 

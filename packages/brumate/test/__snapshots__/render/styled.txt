@@ -14,7 +14,7 @@ export default async function Styled($$props: Record<string, never>, $$ctx: $$b.
   } else {
     $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
   }
-  $$ctx.slots($$s1, [big]);
+  $$ctx.slots($$s1, [big], ["big"]);
   return $$html;
 }
 Styled.brumateId = "Styled_9wx0az";

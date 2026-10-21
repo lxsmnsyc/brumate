@@ -28,7 +28,7 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
   })();
   $$ctx.portal($$portal1);
   $$html += "</div><section id=\"target\"></section><template data-b=\"" + $$s1 + ":2\" data-client=\"load=Portal_17ywlhi#k5\"></template>";
-  $$ctx.slots($$s1, [open]);
+  $$ctx.slots($$s1, [open], ["open"]);
   return $$html;
 }
 Portal.brumateId = "Portal_17ywlhi";

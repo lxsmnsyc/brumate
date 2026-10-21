@@ -32,7 +32,7 @@ describe('analyzeProject', () => {
     // In the project, only `label` changes, so `tone` has no update and no slot.
     expect(inProject.parts.update).not.toContain('"class"');
     expect(inProject.parts.update).toContain('$$b.text(');
-    expect(inProject.server).toContain('$$ctx.slots($$s1, [label]);');
+    expect(inProject.server).toContain('$$ctx.slots($$s1, [label], ["label"]);');
   });
 
   it('removes all client code from a component whose props never change', () => {

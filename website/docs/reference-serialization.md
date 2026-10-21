@@ -40,6 +40,7 @@ Values cross from the server to the browser in two ways: in the page, for the st
 
 - The type checker reports a signal or memo whose type cannot be sent, at its declaration. See [TypeScript](./typescript.md#what-is-checked).
 - A server function that reads a value of the component, other than imports, the module script and other server functions, is a compile error. Pass the value as an argument.
-- Any other value that cannot be sent fails the render, or the call, with an error of seroval. This includes a value that client code reads but the type checker cannot see, such as one typed `any`.
+- The compiler reports a value made with `new` that client code reads, when its class cannot be sent.
+- Any other value in the page that cannot be sent fails the render with an error that names the value and its component. A value in a server function call that cannot be sent fails the call.
 
 Only values that client code reads are sent. A value that only the server reads can be anything. See [What runs where](./what-runs-where.md).

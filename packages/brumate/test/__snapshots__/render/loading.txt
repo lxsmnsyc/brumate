@@ -28,7 +28,7 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
     $$html += "<p class=\"greeting\">" + await $$b.insert((greeting), $$ctx, $$s2) + "</p><button class=\"inner\" data-b=\"" + $$s2 + ":0\" data-on=\"click=Loading_1sx8r1u#h5\"><!--t" + $$s2 + ":1-->" + await $$b.insert((count), $$ctx, $$s2) + "<!--/t--></button>";
     return $$html;
   });
-  $$ctx.slots($$s1, [count]);
+  $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
 Loading.brumateId = "Loading_1sx8r1u";

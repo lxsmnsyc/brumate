@@ -17,7 +17,7 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
   } else {
     $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
   }
-  $$ctx.slots($$s1, [count, doubled]);
+  $$ctx.slots($$s1, [count, doubled], ["count","doubled"]);
   return $$html;
 }
 Doubler.brumateId = "Doubler_1bxsryb";

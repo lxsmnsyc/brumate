@@ -16,7 +16,7 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
   } else {
     $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
-  $$ctx.slots($$s1, [theme, show]);
+  $$ctx.slots($$s1, [theme, show], ["theme","show"]);
   return $$html;
 }
 Themes.brumateId = "Themes_945372";

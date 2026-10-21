@@ -1,4 +1,5 @@
 import { checkAccessibility } from './a11y.ts';
+import { checkCaptures } from './captures.ts';
 import { finish } from './sourcemap.ts';
 import { ModuleError, expandModules, relocate, resolveFromDisk } from './modules.ts';
 import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './modules.ts';
@@ -289,6 +290,10 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   );
   if (styleErrors.length > 0) {
     fail(styleErrors);
+  }
+  const captures = checkCaptures(file, plan);
+  if (captures.length > 0) {
+    fail(captures);
   }
   const shared = sharedContext(origin, modules, calls, options.path ?? filename);
   const client = generateClient(file, plan, options.merge, shared);

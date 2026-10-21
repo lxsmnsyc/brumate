@@ -38,14 +38,14 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
         todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
       }
       $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + await $$b.insert((todo.title), $$ctx, $$s2) + "<!--/t--> <time><!--t" + $$s2 + ":2-->" + await $$b.insert((format(todo.at)), $$ctx, $$s2) + "<!--/t--></time></li>";
-      $$ctx.slots($$s2, [todo]);
+      $$ctx.slots($$s2, [todo], ["todo"]);
       $$ctx.item($$s2, $$item1);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
   }
   $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + await $$b.insert((left), $$ctx, $$s1) + "<!--/t--> left</p>";
-  $$ctx.slots($$s1, [todos, draft, left]);
+  $$ctx.slots($$s1, [todos, draft, left], ["todos","draft","left"]);
   return $$html;
 }
 Todos.brumateId = "Todos_t3g9lr";
