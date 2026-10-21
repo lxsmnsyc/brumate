@@ -253,15 +253,6 @@ expect(page.text('p')).toBe('Double: 4');
 brumate({ budget: { loader: 2048, route: 10240 } });
 ```
 
-## Security
-
-### Request forgery protection
-
-Server function calls and form posts are `POST` requests that use the cookies of the page. Another site can send a form to them.
-
-- The server checks that the `Origin` header of a call matches the host, and answers 403 if it does not. A setting allows other origins.
-- Forms post the same way, so they get the same check without a token in the form.
-
 ## Build
 
 ### Prerendering in the plugin

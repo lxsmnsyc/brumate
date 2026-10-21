@@ -151,6 +151,8 @@ The plugin also finds which props each component's parents can change, so props 
 brumate({
   // The URL prefix of server function calls.
   rpc: '/_brumate',
+  // Other origins that may call server functions. Calls from other sites answer 403.
+  origins: [],
   // Directories to skip when looking for .brm files.
   exclude: (directory) => directory === 'node_modules',
   // The directory of route files.

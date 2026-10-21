@@ -14,6 +14,11 @@ import { routeFiles, routeModule } from './routes.ts';
 export interface BrumateOptions {
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
+  /**
+   * Other origins that may call server functions, such as
+   * `https://app.example.com`. Calls from other sites answer 403.
+   */
+  origins?: string[];
   /** Directories that are not searched for `.brm` files. Defaults to `node_modules`, `dist` and hidden directories. */
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
@@ -136,7 +141,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...spreads,
       '};',
       'export function handle(request) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)});`,
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])} });`,
       '}',
     ].join('\n');
   };
@@ -172,7 +177,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const answer: Response = await handleRequest(module.rpc ?? {}, webRequest, rpc);
+      const answer: Response = await handleRequest(module.rpc ?? {}, webRequest, rpc, {
+        origins: options.origins,
+      });
       response.statusCode = answer.status;
       answer.headers.forEach((value, name) => response.setHeader(name, value));
       response.end(await answer.text());

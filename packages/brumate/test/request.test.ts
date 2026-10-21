@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { toJSON } from 'seroval';
 import { compile } from '../src/index.ts';
-import { handleRequest, render } from '../src/runtime/server.ts';
+import { handleRequest, isCrossSite, render } from '../src/runtime/server.ts';
 
 const source = readFileSync(new URL('./render/session.brm', import.meta.url), 'utf8');
 const output = new URL('./.output/request/', import.meta.url);
@@ -68,5 +68,47 @@ describe('server functions and the request', () => {
     const response = await call('login', ['admin']);
     expect(response!.status).toBe(204);
     expect(response!.headers.get('x-brumate-redirect')).toBe('/admin');
+  });
+});
+
+/** A server function call with these headers. */
+function post(headers: Record<string, string>): Request {
+  return new Request('http://localhost:3000/_brumate/x', { method: 'POST', headers });
+}
+
+describe('calls from other sites', () => {
+  it('answers 403 to a call from a page of another site', async () => {
+    const response = await call('whoami', [], { origin: 'https://evil.example' });
+    expect(response?.status).toBe(403);
+  });
+
+  it('answers a call from the same origin', async () => {
+    const response = await call('whoami', [], { origin: 'http://localhost', 'x-user': 'Ada' });
+    expect(response?.status).toBe(200);
+  });
+
+  it('allows the host that the server sees under another name, such as behind a proxy', () => {
+    expect(isCrossSite(post({ origin: 'https://app.example', host: 'app.example' }))).toBe(false);
+    expect(
+      isCrossSite(post({ origin: 'https://app.example', 'x-forwarded-host': 'app.example' })),
+    ).toBe(false);
+    expect(isCrossSite(post({ origin: 'http://localhost:3000' }))).toBe(false);
+  });
+
+  it('allows the origins that the options list', () => {
+    const request = post({ origin: 'https://admin.example' });
+    expect(isCrossSite(request)).toBe(true);
+    expect(isCrossSite(request, { origins: ['https://admin.example'] })).toBe(false);
+  });
+
+  it('decides with Sec-Fetch-Site when there is no Origin', () => {
+    expect(isCrossSite(post({ 'sec-fetch-site': 'cross-site' }))).toBe(true);
+    expect(isCrossSite(post({ 'sec-fetch-site': 'same-origin' }))).toBe(false);
+    // A request with neither does not come from a page in a browser.
+    expect(isCrossSite(post({}))).toBe(false);
+  });
+
+  it('rejects an opaque origin, such as from a sandboxed frame', () => {
+    expect(isCrossSite(post({ origin: 'null' }))).toBe(true);
   });
 });

@@ -74,4 +74,18 @@ describe('forms', () => {
     expect(response?.status).toBe(422);
     expect(await response?.text()).toBe('A name is needed');
   });
+
+  it('answers 403 to a form that a page of another site posts', async () => {
+    const fn = Object.keys(guestbook.rpc).find((key) => key.endsWith('#sign'))!;
+    const response = await handleRequest(
+      guestbook.rpc,
+      new Request(`http://localhost/_brumate/${encodeURIComponent(fn)}`, {
+        method: 'POST',
+        headers: { origin: 'https://evil.example' },
+        body: new URLSearchParams({ name: 'Mallory' }),
+      }),
+    );
+    expect(response?.status).toBe(403);
+    expect(guestbook.entries).not.toContain('Mallory');
+  });
 });

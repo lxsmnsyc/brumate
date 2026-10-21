@@ -116,6 +116,23 @@ A form can post to a server function. It works without client code, so it works 
 
 The form uses the `rpc` prefix of the render, which defaults to `/_brumate`. `virtual:brumate/routes` passes the prefix of the plugin.
 
+## Calls from other sites
+
+Server function calls and form posts carry the cookies of the user, so a page of another site must not be able to make them. The server answers 403 to a call from another site:
+
+- The browser sends `Origin` with every call and post. The call is allowed when it names the host of the request, as the request URL, `Host` or `X-Forwarded-Host` give it.
+- An older browser without `Origin` sends `Sec-Fetch-Site`. `cross-site` and `same-site` are rejected.
+- A request with neither does not come from a page in a browser, such as a call from a script on a server, so it is allowed. Cookies are what an attack would use, and such a request has no session of the user.
+
+Other origins, such as an admin app on another domain, can be allowed:
+
+```ts
+brumate({ origins: ['https://admin.example.com'] });
+handleRequest(functions, request, '/_brumate', { origins: ['https://admin.example.com'] });
+```
+
+`isCrossSite(request, options)` from `brumate/server` makes the same check, for other handlers.
+
 ## In a `$memo`
 
 A `$memo` that calls a server function loads its value on the server, and again on the client when the values it reads change:

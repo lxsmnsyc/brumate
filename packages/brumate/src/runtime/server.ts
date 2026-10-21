@@ -879,20 +879,70 @@ export async function handleRPC(
   return toJSONAsync(await fn(...args), { plugins, disabledFeatures });
 }
 
+export interface RequestOptions {
+  /**
+   * Other origins that may call server functions and post forms to them,
+   * such as `https://app.example.com`. The origin of the request is always
+   * allowed.
+   */
+  origins?: string[];
+}
+
+/**
+ * True when a request comes from a page of another site. Server function
+ * calls and form posts send the cookies of the user, so another site must
+ * not be able to make them.
+ *
+ * The browser sends `Origin` with every call and post. Without it, an older
+ * browser's `Sec-Fetch-Site` decides. A request with neither does not come
+ * from a page in a browser, so it is allowed.
+ */
+export function isCrossSite(request: Request, options: RequestOptions = {}): boolean {
+  const origin = request.headers.get('origin');
+  if (origin === null) {
+    const site = request.headers.get('sec-fetch-site');
+    return site === 'cross-site' || site === 'same-site';
+  }
+  if (origin === 'null') {
+    return true;
+  }
+  if (options.origins?.includes(origin)) {
+    return false;
+  }
+  let host: string;
+  try {
+    host = new URL(origin).host;
+  } catch {
+    return true;
+  }
+  // The server can see itself under another name than the page, such as
+  // `localhost` behind a proxy, so the host headers count too.
+  return ![
+    new URL(request.url).host,
+    request.headers.get('host'),
+    request.headers.get('x-forwarded-host'),
+  ].includes(host);
+}
+
 /**
  * Answers a server function call from `brumate/client`. Returns undefined
  * when the request is not a call, so other handlers can answer it. Server
- * functions can read the request with `getRequest`.
+ * functions can read the request with `getRequest`. A call from a page of
+ * another site answers 403. See `isCrossSite`.
  */
 export async function handleRequest(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   functions: Record<string, (...args: any[]) => unknown>,
   request: Request,
   prefix = '/_brumate',
+  options: RequestOptions = {},
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
   if (request.method !== 'POST' || !url.pathname.startsWith(`${prefix}/`)) {
     return undefined;
+  }
+  if (isCrossSite(request, options)) {
+    return new Response('Calls from other sites are not allowed', { status: 403 });
   }
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
   if (!functions[id]) {
