@@ -1,4 +1,6 @@
 import { checkAccessibility } from './a11y.ts';
+import { finish } from './sourcemap.ts';
+import type { SourceMap } from './sourcemap.ts';
 import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
 import { generateRender } from './codegen/render.ts';
@@ -49,6 +51,13 @@ export interface CompileResult {
   file: SFCFile;
   plan: Plan;
   warnings: Diagnostic[];
+  /** Source maps from each module back to the `.brm` file. */
+  maps: {
+    server: SourceMap;
+    client: SourceMap;
+    parts: Record<string, SourceMap>;
+    render: SourceMap;
+  };
 }
 
 /** Thrown when a file has errors. Every error is in `diagnostics`. */
@@ -92,11 +101,25 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (clientErrors.length > 0) {
     throw new CompileError(source, filename, clientErrors);
   }
+  // The generated code marks what it copied from the file. `finish` turns the marks into source maps.
+  const done = (code: string) => finish(code, source, filename);
+  const server = done(generateServer(file, plan));
+  const entry = done(client.code);
+  const parts = Object.fromEntries(
+    Object.entries(client.parts).map(([name, code]) => [name, done(code)]),
+  );
+  const render = done(generateRender(file, plan));
   return {
-    server: generateServer(file, plan),
-    client: client.code,
-    parts: client.parts,
-    render: generateRender(file, plan),
+    server: server.code,
+    client: entry.code,
+    parts: Object.fromEntries(Object.entries(parts).map(([name, part]) => [name, part.code])),
+    render: render.code,
+    maps: {
+      server: server.map,
+      client: entry.map,
+      parts: Object.fromEntries(Object.entries(parts).map(([name, part]) => [name, part.map])),
+      render: render.map,
+    },
     css: plan.styles.css,
     file,
     plan,

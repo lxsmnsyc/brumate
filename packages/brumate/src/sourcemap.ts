@@ -1,0 +1,159 @@
+// Source maps from generated modules back to the `.brm` file.
+//
+// Code generation builds modules from strings, and copies code of the file
+// into them in many places. Instead of tracking positions through every
+// string, each copy carries markers: a character of the private use area,
+// the offset in the file in base 36, and another such character. A marker
+// goes before each copied piece and after each line break in it. When the
+// module is done, `finish` removes the markers and writes where each one
+// was as a mapping.
+
+const OPEN = '';
+const CLOSE = '';
+const MARKER = /([0-9a-z]+)/g;
+
+/** The marker of an offset in the file. */
+function marker(offset: number): string {
+  return `${OPEN}${offset.toString(36)}${CLOSE}`;
+}
+
+/**
+ * Copies a range of the file, with a marker before it and before the first
+ * character of each line after it, so the source map points each line at its
+ * place in the file. The marker of a line goes after its indentation, so
+ * code that changes indentation still finds it, and blank lines get none.
+ */
+export function copy(source: string, start: number, end: number): string {
+  if (end <= start) {
+    return '';
+  }
+  let result = marker(start);
+  let position = start;
+  for (;;) {
+    const lineBreak = source.indexOf('\n', position);
+    if (lineBreak === -1 || lineBreak >= end - 1) {
+      break;
+    }
+    let first = lineBreak + 1;
+    while (first < end && (source[first] === ' ' || source[first] === '\t')) {
+      first++;
+    }
+    result += source.slice(position, first);
+    if (first < end && source[first] !== '\n' && source[first] !== '\r') {
+      result += marker(first);
+    }
+    position = first;
+  }
+  return result + source.slice(position, end);
+}
+
+/** Removes the markers of a text, for code that checks what a copy holds. */
+export function unmarked(text: string): string {
+  return text.replace(MARKER, '');
+}
+
+/** A source map, version 3. */
+export interface SourceMap {
+  version: 3;
+  file: string;
+  sources: string[];
+  sourcesContent: string[];
+  names: string[];
+  mappings: string;
+}
+
+const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function vlq(value: number): string {
+  let rest = value < 0 ? (-value << 1) | 1 : value << 1;
+  let result = '';
+  do {
+    let digit = rest & 31;
+    rest >>>= 5;
+    if (rest > 0) {
+      digit |= 32;
+    }
+    result += BASE64[digit];
+  } while (rest > 0);
+  return result;
+}
+
+/**
+ * Removes the markers of a generated module, and returns the module with a
+ * source map that points the code that came from `filename` back to it.
+ */
+export function finish(
+  code: string,
+  source: string,
+  filename: string,
+): { code: string; map: SourceMap } {
+  const lineStarts = [0];
+  for (let index = source.indexOf('\n'); index !== -1; index = source.indexOf('\n', index + 1)) {
+    lineStarts.push(index + 1);
+  }
+  const locate = (offset: number): [line: number, column: number] => {
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low < high) {
+      const middle = (low + high + 1) >> 1;
+      if (lineStarts[middle]! <= offset) {
+        low = middle;
+      } else {
+        high = middle - 1;
+      }
+    }
+    return [low, offset - lineStarts[low]!];
+  };
+
+  let output = '';
+  const lines: string[] = [''];
+  let column = 0;
+  let previousColumn = 0;
+  let previousLine = 0;
+  let previousSourceColumn = 0;
+  let position = 0;
+  // The segments of the current line, so two markers at one column write one segment.
+  let lastColumn = -1;
+  for (const match of code.matchAll(MARKER)) {
+    const text = code.slice(position, match.index);
+    output += text;
+    for (const char of text) {
+      if (char === '\n') {
+        lines.push('');
+        column = 0;
+        previousColumn = 0;
+        lastColumn = -1;
+      } else {
+        column += char.length;
+      }
+    }
+    position = match.index + match[0].length;
+    if (column === lastColumn) {
+      continue;
+    }
+    lastColumn = column;
+    const [line, sourceColumn] = locate(Number.parseInt(match[1]!, 36));
+    const segment =
+      vlq(column - previousColumn) +
+      vlq(0) +
+      vlq(line - previousLine) +
+      vlq(sourceColumn - previousSourceColumn);
+    const current = lines.length - 1;
+    lines[current] = lines[current] ? `${lines[current]},${segment}` : segment;
+    previousColumn = column;
+    previousLine = line;
+    previousSourceColumn = sourceColumn;
+  }
+  output += code.slice(position);
+  return {
+    code: output,
+    map: {
+      version: 3,
+      file: filename,
+      sources: [filename],
+      sourcesContent: [source],
+      names: [],
+      mappings: lines.join(';'),
+    },
+  };
+}

@@ -26,6 +26,7 @@ import {
   scopePath,
   slotIndex,
 } from './scopes.ts';
+import { copy, unmarked } from '../sourcemap.ts';
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -141,7 +142,7 @@ export class Emitter {
     const indent = '  '.repeat(this.depth);
     code.split('\n').forEach((line, index) => {
       const text = index === 0 ? line : line.replace(new RegExp(`^ {0,${column}}`), '');
-      this.lines.push(text.trim() === '' ? '' : `${indent}${text}`);
+      this.lines.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
     });
   }
 
@@ -397,7 +398,7 @@ export class Emitter {
     const scope = this.plan.bodyScopes.get(block.body)!;
     const anchored = this.plan.anchors.has(block);
     if (block.kind === 'for') {
-      this.line(`const ${this.file.source.slice(block.item.start, block.item.end)} = ${item};`);
+      this.line(`const ${copy(this.file.source, block.item.start, block.item.end)} = ${item};`);
     }
     if (block.index) {
       this.line(`const ${block.index.name} = ${index};`);
@@ -421,7 +422,7 @@ export class Emitter {
   emitTemplate(template: TemplateDecl): void {
     const first = template.params[0];
     const last = template.params.at(-1);
-    const params = first && last ? this.file.source.slice(first.start, last.end) : '';
+    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
     this.line(`${this.async}function ${template.name}(${params})${type} {`);
     this.line(`let $$html = '';`);

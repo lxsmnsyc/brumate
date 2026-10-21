@@ -13,6 +13,7 @@ import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
 import { prerender } from './prerender.ts';
+import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
 import type { Budget, ReportChunk } from './report.ts';
 import type { PrerenderOptions } from './prerender.ts';
@@ -437,17 +438,33 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       const part = params.get('part');
       let code: string;
+      let map: SourceMap | undefined;
       if (isRender) {
         code = result.render;
+        map = result.maps.render;
       } else if (part) {
         code = result.parts[part] ?? '';
+        map = result.maps.parts[part];
       } else if (isServer) {
-        // The components that it renders are server versions too.
+        // The components that it renders are server versions too. Only import lines change, which have no mappings.
         code = result.server.replace(/(from\s+(['"])[^'"]+\.brm)\2/g, `$1${SERVER_QUERY}$2`);
+        map = result.maps.server;
       } else {
         code = isClient ? result.client : result.server;
+        map = isClient ? result.maps.client : result.maps.server;
       }
-      return transformWithOxc(code, `${file}.ts`, { lang: 'ts' });
+      // The map points at the file by its path, so the browser shows it under its own name.
+      // `transform` below removes the types, and Vite chains the two maps.
+      return { code, map: map && { ...map, sources: [file] } };
+    },
+
+    async transform(code, id) {
+      const [file] = id.split('?');
+      if (!file?.endsWith('.brm')) {
+        return undefined;
+      }
+      const result = await transformWithOxc(code, `${file}.ts`, { lang: 'ts', sourcemap: true });
+      return { code: result.code, map: result.map };
     },
 
     configureServer(server) {

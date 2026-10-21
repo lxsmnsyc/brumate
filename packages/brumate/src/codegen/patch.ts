@@ -1,4 +1,5 @@
 import type { SFCFile } from '../ast.ts';
+import { copy } from '../sourcemap.ts';
 import type { Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
@@ -33,10 +34,10 @@ export class Patch {
     let result = '';
     let position = start;
     for (const edit of edits) {
-      result += this.source.slice(position, edit.start) + edit.text;
+      result += copy(this.source, position, edit.start) + edit.text;
       position = edit.end;
     }
-    return result + this.source.slice(position, end);
+    return result + copy(this.source, position, end);
   }
 }
 

@@ -20,6 +20,7 @@ import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, slotIndex } from './scopes.ts';
+import { copy } from '../sourcemap.ts';
 
 export interface ClientOutput {
   /** The entry module: the component ID, its props, its update table and its part loaders. */
@@ -342,7 +343,7 @@ class ClientGenerator {
     if (this.usesModuleScript()) {
       for (const statement of this.file.moduleScript!.program.body) {
         if (statement.type === 'ImportDeclaration' && !isMacroImport(statement)) {
-          lines.push(this.file.source.slice(statement.start, statement.end));
+          lines.push(copy(this.file.source, statement.start, statement.end));
         }
       }
       lines.push(...clientModuleScript(this.file, this.plan));
@@ -641,7 +642,7 @@ class ClientGenerator {
     if (site.kind === 'provide') {
       const context = site.extra![0]!;
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.provide($$s, ${this.file.source.slice(context.start, context.end)}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.provide($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
       );
       return;
     }
@@ -819,7 +820,7 @@ class ClientGenerator {
     const site = this.model.sites.find((item) => item.label === 'for key' && item.block === block)!;
     const locals = new Set(this.itemDeclarations(block));
     const key = this.rewriter.rewrite(site, '$$s', base, { locals });
-    const pattern = this.file.source.slice(block.item.start, block.item.end);
+    const pattern = copy(this.file.source, block.item.start, block.item.end);
     const index = block.index ? ` const ${block.index.name} = $$index;` : '';
     return `($$item, $$index) => { const ${pattern} = $$item;${index} return ${key}; }`;
   }
@@ -829,7 +830,7 @@ class ClientGenerator {
     const scope = this.plan.bodyScopes.get(block.body)!;
     const lines = [`export function a${scope.id}($$s, $$item, $$index) {`, '  $$s.i = $$item;'];
     if (block.kind === 'for') {
-      lines.push(`  const ${this.file.source.slice(block.item.start, block.item.end)} = $$item;`);
+      lines.push(`  const ${copy(this.file.source, block.item.start, block.item.end)} = $$item;`);
     }
     for (const declaration of this.itemDeclarations(block)) {
       const slot = slotIndex(this.plan, declaration);

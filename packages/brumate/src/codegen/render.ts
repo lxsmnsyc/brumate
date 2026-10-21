@@ -4,6 +4,7 @@ import type { Plan } from '../plan.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { propsType } from './server.ts';
+import { copy } from '../sourcemap.ts';
 
 // Sites whose reads a render module never runs.
 const SKIPPED_SITES = new Set(['server-function', 'event', 'effect', 'client']);
@@ -110,7 +111,7 @@ export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
         continue;
       }
     }
-    result.push(file.source.slice(statement.start, statement.end));
+    result.push(copy(file.source, statement.start, statement.end));
   }
   return result;
 }
@@ -170,7 +171,7 @@ export function generateRender(file: SFCFile, plan: Plan): string {
           header.push(code);
         }
       } else if (!isModule && TYPE_DECLARATIONS.has(statement.type)) {
-        moduleBody.push(file.source.slice(statement.start, statement.end));
+        moduleBody.push(copy(file.source, statement.start, statement.end));
       }
     }
   }
