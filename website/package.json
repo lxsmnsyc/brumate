@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.ts",
-    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server && node scripts/prerender.ts",
+    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
     "preview": "node scripts/preview.ts",
     "typecheck": "brumate-tsc --noEmit"
   },

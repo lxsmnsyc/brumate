@@ -9,6 +9,43 @@ import showcase from './plugins/showcase.ts';
 
 const require = createRequire(import.meta.url);
 
+/** A readable name for a built script, such as `Counter: handler h4`, from its source. */
+function label(source: string): string {
+  if (source === 'src/client.ts') {
+    return 'loader';
+  }
+  if (source.endsWith('runtime/client.js')) {
+    return 'core';
+  }
+  const runtime = /\/(navigate|rpc)-[\w-]+\.js$/.exec(source);
+  if (runtime) {
+    return runtime[1] === 'navigate' ? 'navigation' : 'server calls';
+  }
+  const component = /([\w.[\]-]+)\.brm\?brumate-client(?:&part=(\w+))?$/.exec(source);
+  if (component) {
+    const [, name, part] = component;
+    const what = !part
+      ? 'entry'
+      : part === 'all'
+        ? 'handlers and updates'
+        : part === 'update'
+          ? 'updates'
+          : part === 'shared'
+            ? 'shared code'
+            : `handler ${part}`;
+    return `${name}: ${what}`;
+  }
+  return source.split('/').pop()!;
+}
+
+/** Names for the scripts of the build, so the network panels of the demos show them. */
+function scriptNames(manifest: Record<string, { file: string }>): string {
+  const names = Object.fromEntries(
+    Object.entries(manifest).map(([source, chunk]) => [chunk.file.split('/').pop(), label(source)]),
+  );
+  return `<script>window.__scriptNames=${JSON.stringify(names).replace(/</g, '\\u003c')}</script>`;
+}
+
 export default defineConfig({
   // `BASE` is the path the site is served from, such as `/brumate/`.
   base: process.env.BASE ?? '/',
@@ -19,7 +56,8 @@ export default defineConfig({
       fileURLToPath(new URL('docs', import.meta.url)),
       fileURLToPath(new URL('../docs', import.meta.url)),
     ]),
-    brumate(),
+    // Every page is written as a static file, with readable names for the scripts.
+    brumate({ prerender: { paths: ['/', '/playground'], head: scriptNames } }),
   ],
   resolve: {
     alias: {

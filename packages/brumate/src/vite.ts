@@ -10,6 +10,8 @@ import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
+import { prerender } from './prerender.ts';
+import type { PrerenderOptions } from './prerender.ts';
 import { routeFiles, routeModule } from './routes.ts';
 
 export interface BrumateOptions {
@@ -32,6 +34,12 @@ export interface BrumateOptions {
    * part. Defaults to 2048.
    */
   merge?: number;
+  /**
+   * Writes the pages as static HTML files after the server build, for a
+   * static host. The client build must run first. `true` renders `/` and
+   * the pages that its links lead to.
+   */
+  prerender?: boolean | PrerenderOptions;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -42,6 +50,8 @@ const MANIFEST = 'virtual:brumate/manifest';
 const SERVER = 'virtual:brumate/server';
 /** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
 const ROUTES = 'virtual:brumate/routes';
+/** The entry of the server build that prerendering renders with. */
+const PRERENDER_ENTRY = 'brumate-routes';
 
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
@@ -60,6 +70,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
+  let outDir = '';
+  let base = '/';
+  let isSsrBuild = false;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -207,8 +220,47 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     name: 'brumate',
     enforce: 'pre',
 
+    config(config, env) {
+      // The server build gets the route handler as an entry of its own, to render the pages with.
+      if (!options.prerender || !env.isSsrBuild) {
+        return undefined;
+      }
+      // `--ssr <file>` names the entry, and wins over the input of the config, which can be the client's.
+      const ssr = config.build?.ssr;
+      const input = typeof ssr === 'string' ? ssr : config.build?.rolldownOptions?.input;
+      const entries =
+        typeof input === 'string'
+          ? { [path.basename(input).replace(/\.[^.]+$/, '')]: input }
+          : Array.isArray(input)
+            ? Object.fromEntries(
+                input.map((item) => [path.basename(item).replace(/\.[^.]+$/, ''), item]),
+              )
+            : { ...(input as Record<string, string> | undefined) };
+      return {
+        build: { ssr: true, rolldownOptions: { input: { ...entries, [PRERENDER_ENTRY]: ROUTES } } },
+      };
+    },
+
     configResolved(config) {
       root = config.root;
+      outDir = path.resolve(config.root, config.build.outDir);
+      base = config.base;
+      isSsrBuild = Boolean(config.build.ssr);
+    },
+
+    async writeBundle(_output, bundle) {
+      if (!options.prerender || !isSsrBuild) {
+        return;
+      }
+      const chunk = Object.values(bundle).find(
+        (item) => item.type === 'chunk' && item.isEntry && item.name === PRERENDER_ENTRY,
+      );
+      if (!chunk) {
+        return;
+      }
+      const settings = options.prerender === true ? {} : options.prerender;
+      const written = await prerender(path.join(outDir, chunk.fileName), root, base, settings);
+      this.info(`Prerendered ${written.length} pages`);
     },
 
     async buildStart() {
@@ -330,3 +382,4 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
   };
 }
+export type { ManifestChunk, PrerenderOptions } from './prerender.ts';

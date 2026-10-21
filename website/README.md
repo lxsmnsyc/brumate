@@ -2,7 +2,7 @@
 
 The documentation of brumate, built with brumate itself.
 
-- The pages are routes in [`src/routes`](./src/routes). The build renders each one to a static HTML file with [`scripts/prerender.ts`](./scripts/prerender.ts), so the site needs no server.
+- The pages are routes in [`src/routes`](./src/routes). The build renders each one to a static HTML file with the `prerender` option of the brumate plugin, so the site needs no server.
 - [`docs/`](./docs) holds the pages of the site. The other pages come from the documents of the repository, in [`../docs`](../docs), so each one is written once. [`plugins/markdown.ts`](./plugins/markdown.ts) renders them.
 - The demos on the home page are brumate components. A small inline script lists the scripts that the page loads, so a visitor sees each chunk arrive when they use a demo.
 - [`plugins/showcase.ts`](./plugins/showcase.ts) runs `inspect` on the demos at build time, so the tables of what ships come from the compiler that builds the site.

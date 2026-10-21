@@ -163,17 +163,6 @@ brumate({ budget: { loader: 2048, route: 10240 } });
 
 ## Build
 
-### Prerendering in the plugin
-
-The website prerenders its pages with its own script. The plugin could do it:
-
-```ts
-brumate({ prerender: ['/', '/docs'] });
-```
-
-- The plugin renders the listed paths after the build, follows links to the same origin, and writes each page as `index.html` in its folder.
-- A route can opt in or out with `export const prerender = true` in its module script.
-
 ### Deployment adapters
 
 The server runtime keeps the request with `AsyncLocalStorage`, and the example server is written for Node.

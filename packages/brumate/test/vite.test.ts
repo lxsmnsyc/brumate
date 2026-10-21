@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHTTPServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -179,5 +179,47 @@ describe('merged parts', () => {
     } finally {
       await dev.close();
     }
+  });
+});
+
+describe('prerendering', () => {
+  it('writes every page that links lead to, and a 404 page', async () => {
+    const app = fileURLToPath(new URL('./.output/prerender-app/', import.meta.url));
+    rmSync(app, { recursive: true, force: true });
+    mkdirSync(`${app}src/routes/docs`, { recursive: true });
+    writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
+    writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+    writeFileSync(
+      `${app}src/routes/_layout.brm`,
+      '<script>\n  import { $props } from \'brumate/signals\';\n  const { children } = $props();\n</script>\n\n<html><body><nav><a href="/">Home</a> <a href="/docs">Docs</a></nav>{children}</body></html>\n',
+    );
+    writeFileSync(`${app}src/routes/index.brm`, '<h1>Home</h1>\n');
+    writeFileSync(
+      `${app}src/routes/docs/index.brm`,
+      '<h1>Docs</h1>\n<a href="/docs/intro">Intro</a>\n',
+    );
+    writeFileSync(`${app}src/routes/docs/intro.brm`, '<h1>Intro</h1>\n');
+    writeFileSync(`${app}src/routes/hidden.brm`, '<h1>Not linked</h1>\n');
+    writeFileSync(
+      `${app}src/routes/_error.brm`,
+      "<script>\n  import { $props } from 'brumate/signals';\n  const { error } = $props();\n</script>\n\n<h1>{error.status}</h1>\n",
+    );
+    const shared: InlineConfig = { ...config, root: app, plugins: [brumate({ prerender: true })] };
+    await build({
+      ...shared,
+      build: { outDir: 'dist/client', manifest: true, rolldownOptions: { input: 'src/client.ts' } },
+    });
+    await build({ ...shared, build: { outDir: 'dist/server', ssr: 'src/server.ts' } });
+    const read = (file: string): string => readFileSync(`${app}dist/client/${file}`, 'utf8');
+    expect(read('index.html')).toContain('<h1>Home</h1>');
+    expect(read('docs/index.html')).toContain('<h1>Docs</h1>');
+    // A link from a page that was rendered leads to another one.
+    expect(read('docs/intro/index.html')).toContain('<h1>Intro</h1>');
+    expect(read('404.html')).toContain('<h1>404</h1>');
+    expect(read('index.html')).toMatch(
+      /<script type="module" async src="\/assets\/client-[\w-]+\.js"><\/script>/,
+    );
+    // A page that no link leads to is not rendered.
+    expect(() => read('hidden/index.html')).toThrow('ENOENT');
   });
 });

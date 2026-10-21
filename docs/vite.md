@@ -112,6 +112,24 @@ vite build --ssr src/server.ts --outDir dist/server
 
 [`examples/todos`](../examples/todos) has a complete production server in `server.prod.ts`.
 
+## Prerendering
+
+`prerender` writes the pages as static HTML files after the server build, for a static host:
+
+```ts
+brumate({ prerender: { paths: ['/', '/pricing'] } });
+```
+
+```bash
+vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server
+```
+
+- The client build runs first. The server build renders each path with the routes of `virtual:brumate/routes`, and writes `index.html` into a folder of its path in the client output.
+- Links in a rendered page lead to more pages, which render too. `crawl: false` renders only the listed paths. `true` renders `/` and its links.
+- The `_error.brm` of the root renders as `404.html`.
+- `client` is the output directory of the client build, `dist/client` by default. `head(manifest)` returns markup for the head of every page, from the manifest of the client build.
+- A page that answers with another status, a redirect or an endpoint is not written.
+
 ## Server functions
 
 In development, the plugin answers `POST /_brumate/<id>` itself.
@@ -161,6 +179,8 @@ brumate({
   navigate: true,
   // Client parts smaller than this in all become one module. 0 keeps one module per part.
   merge: 2048,
+  // Writes the pages as static files after the server build. See Prerendering.
+  prerender: false,
 });
 ```
 
