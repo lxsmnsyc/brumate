@@ -89,7 +89,7 @@ The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures
 
 ## Benchmarks
 
-[`benchmarks`](./benchmarks) builds the same counter and todo app with brumate, Qwik 1, Qwik 2 and Marko 6. It compares the JavaScript each page loads, the SSR HTML size and SSR speed. It needs a local Chrome for the browser metrics.
+[`benchmarks`](./benchmarks) builds the same two pages with brumate, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, and a dashboard with 50 rarely used widgets. It compares the JavaScript each page loads, the SSR HTML size and SSR speed. It needs a local Chrome for the browser metrics.
 
 ```bash
 pnpm bench

@@ -1,2 +1,5 @@
 results/*
 !results/README.md
+# The dashboard widgets, written by harness/dashboard.mjs at build time.
+*/dashboard/src/widgets/
+marko/dashboard/src/tags/

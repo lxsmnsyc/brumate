@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && vite build --ssr src/entry.ssr.tsx"
+    "build": "vite build && vite build --ssr src/entry.ssr.tsx",
+    "build:dashboard": "node ../harness/dashboard.mjs qwik2 && vite build dashboard && vite build dashboard --ssr src/entry.ssr.tsx"
   },
   "devDependencies": {
     "@qwik.dev/core": "2.0.0-rc.3",

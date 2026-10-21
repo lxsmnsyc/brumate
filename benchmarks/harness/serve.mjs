@@ -1,8 +1,9 @@
-// Serves one framework's build: the SSR page at / (with ?n=<todos>) and its static client files.
+// Serves one framework's build of a scenario: the SSR page at / and its static client files.
+// The todos page reads ?n=<todos>. The dashboard page turns the idle preload off with ?preload=off.
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
-import { loadAdapter } from './frameworks.mjs';
+import { loadApp } from './frameworks.mjs';
 
 const TYPES = {
   '.js': 'text/javascript',
@@ -13,8 +14,8 @@ const TYPES = {
   '.svg': 'image/svg+xml',
 };
 
-const name = process.argv[2];
-const app = await (await loadAdapter(name)).load();
+const [name, scenario = 'todos'] = process.argv.slice(2);
+const app = await loadApp(name, scenario);
 const root = path.resolve(app.staticDir);
 
 const server = createServer(async (request, response) => {
@@ -22,9 +23,10 @@ const server = createServer(async (request, response) => {
   response.setHeader('cache-control', 'no-store');
   try {
     if (url.pathname === '/') {
-      const html = await app.render(
-        Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3),
-      );
+      const html =
+        scenario === 'dashboard'
+          ? await app.render({ preload: url.searchParams.get('preload') !== 'off' })
+          : await app.render(Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3));
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end(html);
       return;

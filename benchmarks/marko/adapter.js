@@ -11,3 +11,13 @@ export async function load() {
     render: (n) => server.render(n),
   };
 }
+
+export async function loadDashboard() {
+  const server = await import(`${dir}dashboard/dist/server/server.js`);
+  return {
+    staticDir: `${dir}dashboard/dist/client`,
+    // Marko loads all of a page's code at start. It has no preload to turn off.
+    preloadOption: false,
+    render: () => server.render(),
+  };
+}

@@ -24,6 +24,14 @@ export async function loadAdapter(name) {
   return import(path.join(appDir(name), 'adapter.js'));
 }
 
+export const SCENARIOS = ['todos', 'dashboard'];
+
+// The app of a scenario: `load()` of the adapter for todos, `loadDashboard()` for the dashboard.
+export async function loadApp(name, scenario = 'todos') {
+  const adapter = await loadAdapter(name);
+  return scenario === 'dashboard' ? adapter.loadDashboard() : adapter.load();
+}
+
 // The versions of the dependencies that each app has installed.
 export async function versions(name) {
   const dir = appDir(name);

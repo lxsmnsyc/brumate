@@ -7,14 +7,30 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
-import { measureBrowser, measureWaterfall } from './browser.mjs';
+import {
+  measureBrowser,
+  measureDashboard,
+  measureDashboardWaterfall,
+  measureWaterfall,
+} from './browser.mjs';
 import { MISSING_CHROME, findChrome } from './chrome.mjs';
-import { appDir, benchDir, discover, loadAdapter, repoDir, versions } from './frameworks.mjs';
+import { CLICKS, COUNT } from './dashboard.mjs';
+import {
+  SCENARIOS,
+  appDir,
+  benchDir,
+  discover,
+  loadAdapter,
+  loadApp,
+  repoDir,
+  versions,
+} from './frameworks.mjs';
 import { markdown } from './report.mjs';
 
 const METRICS = ['dist', 'browser', 'ssr-size', 'ssr-speed', 'waterfall'];
 const HELP = `Usage: pnpm bench [options]
 
+  --scenario <name>   ${SCENARIOS.join(', ')} or all (default: all).
   --only <names>      Frameworks to run, comma separated (default: all). Found: ${discover().join(', ')}
   --skip <metrics>    Metrics to leave out, comma separated.
   --metrics <names>   Metrics to run, comma separated (default: all).
@@ -31,6 +47,7 @@ Set CHROME_PATH to pick the browser.`;
 
 const { values: flags } = parseArgs({
   options: {
+    scenario: { type: 'string', default: 'all' },
     only: { type: 'string' },
     skip: { type: 'string' },
     metrics: { type: 'string' },
@@ -67,6 +84,11 @@ for (const name of list(flags.skip) ?? []) metrics.delete(name);
 for (const name of metrics) {
   if (!METRICS.includes(name))
     throw new Error(`Unknown metric "${name}". Metrics: ${METRICS.join(', ')}`);
+}
+const scenarios = flags.scenario === 'all' ? SCENARIOS : list(flags.scenario);
+for (const name of scenarios) {
+  if (!SCENARIOS.includes(name))
+    throw new Error(`Unknown scenario "${name}". Scenarios: ${SCENARIOS.join(', ')}, all`);
 }
 const options = {
   rounds: Number(flags.rounds),
@@ -133,9 +155,16 @@ async function build() {
     pnpm(['--filter', 'brumate', 'build'], repoDir);
   }
   for (const name of frameworks) {
-    log(`building ${name}`);
-    await rm(path.join(appDir(name), 'dist'), { recursive: true, force: true });
-    pnpm(['run', 'build'], appDir(name));
+    if (scenarios.includes('todos')) {
+      log(`building ${name}`);
+      await rm(path.join(appDir(name), 'dist'), { recursive: true, force: true });
+      pnpm(['run', 'build'], appDir(name));
+    }
+    if (scenarios.includes('dashboard')) {
+      log(`building ${name} dashboard`);
+      await rm(path.join(appDir(name), 'dashboard/dist'), { recursive: true, force: true });
+      pnpm(['run', 'build:dashboard'], appDir(name));
+    }
   }
 }
 
@@ -148,8 +177,8 @@ function walk(dir) {
   });
 }
 
-async function distSize(name) {
-  const { staticDir } = await (await loadAdapter(name)).load();
+async function distSize(name, scenario) {
+  const { staticDir } = await loadApp(name, scenario);
   const files = walk(staticDir).filter((file) => /\.m?js$/.test(file));
   let raw = 0;
   let gzip = 0;
@@ -163,11 +192,13 @@ async function distSize(name) {
 
 // --- Processes ----------------------------------------------------------------
 
-function startServer(name) {
+function startServer(name, scenario) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(benchDir, 'harness/serve.mjs'), name], {
-      stdio: ['ignore', 'pipe', 'inherit'],
-    });
+    const child = spawn(
+      process.execPath,
+      [path.join(benchDir, 'harness/serve.mjs'), name, scenario],
+      { stdio: ['ignore', 'pipe', 'inherit'] },
+    );
     children.add(child);
     let out = '';
     child.stdout.on('data', (chunk) => {
@@ -179,8 +210,8 @@ function startServer(name) {
   });
 }
 
-function startWorker(name) {
-  const child = fork(path.join(benchDir, 'harness/worker.mjs'), [name], {
+function startWorker(name, scenario) {
+  const child = fork(path.join(benchDir, 'harness/worker.mjs'), [name, scenario], {
     stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
   });
   children.add(child);
@@ -214,7 +245,14 @@ const result = {
   date: started.toISOString(),
   machine: machine(),
   git: git(),
-  options: { ...options, frameworks, metrics: [...metrics] },
+  options: {
+    ...options,
+    scenarios,
+    frameworks,
+    metrics: [...metrics],
+    dashboardWidgets: COUNT,
+    dashboardClicks: CLICKS,
+  },
   versions: {},
   frameworks: {},
   notes: [],
@@ -231,47 +269,66 @@ if (result.machine.loadAvg[0] > result.machine.cores * 0.5) {
 
 if (!flags['no-build']) await build();
 
-if (metrics.has('dist')) {
-  for (const name of frameworks) result.frameworks[name].dist = await distSize(name);
+// Where the results of a scenario go. The todos results stay at the top level of each framework.
+const slot = (name, scenario) =>
+  scenario === 'todos' ? result.frameworks[name] : (result.frameworks[name][scenario] ??= {});
+const prefix = (scenario) => (scenario === 'todos' ? '' : `${scenario} `);
+
+for (const scenario of scenarios) {
+  if (metrics.has('dist')) {
+    for (const name of frameworks) slot(name, scenario).dist = await distSize(name, scenario);
+  }
 }
 
-if (metrics.has('ssr-size') || metrics.has('ssr-speed')) {
-  const workers = Object.fromEntries(frameworks.map((name) => [name, startWorker(name)]));
+// The SSR sizes: 0, 3 and 100 todos, or the one dashboard page.
+const SSR_SIZES = { todos: [0, 3, 100], dashboard: [0] };
+const SSR_SPEEDS = { todos: [3, 100], dashboard: [0] };
+
+for (const scenario of scenarios) {
+  if (!metrics.has('ssr-size') && !metrics.has('ssr-speed')) break;
+  const workers = Object.fromEntries(frameworks.map((name) => [name, startWorker(name, scenario)]));
   try {
     if (metrics.has('ssr-size')) {
-      log('measuring SSR size');
+      log(`measuring ${prefix(scenario)}SSR size`);
       for (const name of frameworks) {
-        const size = await workers[name].call('size', { ns: [0, 3, 100] });
+        const size = await workers[name].call('size', { ns: SSR_SIZES[scenario] });
         const problems = Object.entries(size).flatMap(([n, entry]) =>
-          entry.problems.map((p) => `n=${n}: ${p}`),
+          entry.problems.map((p) => (scenario === 'todos' ? `n=${n}: ${p}` : p)),
         );
-        if (problems.length) result.notes.push(`${name} SSR output check: ${problems.join('; ')}`);
-        result.frameworks[name].ssrSize = {
-          ...size,
-          perItemRaw: (size[100].raw - size[3].raw) / 97,
-          perItemGzip: (size[100].gzip - size[3].gzip) / 97,
-        };
+        if (problems.length)
+          result.notes.push(`${name} ${prefix(scenario)}SSR output check: ${problems.join('; ')}`);
+        slot(name, scenario).ssrSize =
+          scenario === 'todos'
+            ? {
+                ...size,
+                perItemRaw: (size[100].raw - size[3].raw) / 97,
+                perItemGzip: (size[100].gzip - size[3].gzip) / 97,
+              }
+            : size[0];
       }
     }
     if (metrics.has('ssr-speed')) {
-      log(`measuring SSR throughput: ${options.rounds} rounds of ${options.duration} ms`);
+      log(
+        `measuring ${prefix(scenario)}SSR throughput: ${options.rounds} rounds of ${options.duration} ms`,
+      );
+      const ns = SSR_SPEEDS[scenario];
       const samples = {};
       for (const name of frameworks) {
-        samples[name] = { 3: [], 100: [] };
-        for (const n of [3, 100]) await workers[name].call('warmup', { n, count: 300 });
+        samples[name] = Object.fromEntries(ns.map((n) => [n, []]));
+        for (const n of ns) await workers[name].call('warmup', { n, count: 300 });
       }
       for (let round = 0; round < options.rounds; round++) {
         // Rotates the order each round so no framework always runs first.
         const order = frameworks.map((_, i) => frameworks[(i + round) % frameworks.length]);
-        for (const n of [3, 100]) {
+        for (const n of ns) {
           for (const name of order) {
             samples[name][n].push(await workers[name].call('measure', { n, ms: options.duration }));
           }
         }
       }
       for (const name of frameworks) {
-        result.frameworks[name].ssrSpeed = Object.fromEntries(
-          [3, 100].map((n) => [
+        const speed = Object.fromEntries(
+          ns.map((n) => [
             n,
             {
               median: Math.round(median(samples[name][n])),
@@ -281,6 +338,7 @@ if (metrics.has('ssr-size') || metrics.has('ssr-speed')) {
             },
           ]),
         );
+        slot(name, scenario).ssrSpeed = scenario === 'todos' ? speed : speed[0];
       }
     }
   } finally {
@@ -303,25 +361,37 @@ if (metrics.has('browser') || metrics.has('waterfall')) {
       version: browser.version(),
     };
     try {
-      for (const name of frameworks) {
-        const { child, base } = await startServer(name);
-        try {
-          if (metrics.has('browser')) {
-            log(`browser: ${name}`);
-            const measured = await measureBrowser(browser, base, { idleMs: options.idleMs, n: 3 });
-            if (measured.failed.length)
-              result.notes.push(`${name}: interactions failed: ${measured.failed.join(', ')}`);
-            if (measured.errors.length)
-              result.notes.push(`${name}: page errors: ${measured.errors.join(' | ')}`);
-            result.frameworks[name].browser = measured;
+      for (const scenario of scenarios) {
+        for (const name of frameworks) {
+          const { child, base } = await startServer(name, scenario);
+          try {
+            if (metrics.has('browser')) {
+              log(`${prefix(scenario)}browser: ${name}`);
+              const measured =
+                scenario === 'todos'
+                  ? await measureBrowser(browser, base, { idleMs: options.idleMs, n: 3 })
+                  : await measureDashboard(browser, base, {
+                      idleMs: options.idleMs,
+                      preloadOption: (await loadApp(name, scenario)).preloadOption,
+                    });
+              const tag = `${name}${scenario === 'todos' ? '' : ` ${scenario}`}`;
+              if (measured.failed.length)
+                result.notes.push(`${tag}: interactions failed: ${measured.failed.join(', ')}`);
+              if (measured.errors.length)
+                result.notes.push(`${tag}: page errors: ${measured.errors.join(' | ')}`);
+              slot(name, scenario).browser = measured;
+            }
+            if (metrics.has('waterfall')) {
+              log(`${prefix(scenario)}waterfall: ${name}`);
+              slot(name, scenario).waterfall =
+                scenario === 'todos'
+                  ? await measureWaterfall(browser, base, options)
+                  : await measureDashboardWaterfall(browser, base, options);
+            }
+          } finally {
+            child.kill();
+            children.delete(child);
           }
-          if (metrics.has('waterfall')) {
-            log(`waterfall: ${name}`);
-            result.frameworks[name].waterfall = await measureWaterfall(browser, base, options);
-          }
-        } finally {
-          child.kill();
-          children.delete(child);
         }
       }
     } finally {

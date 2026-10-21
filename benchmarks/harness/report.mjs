@@ -16,10 +16,17 @@ function table(names, labels, rows) {
   return lines.join('\n');
 }
 
-export function markdown(result, metrics) {
-  const names = result.options.frameworks;
+const add = (a, b) =>
+  a &&
+  b && {
+    requests: a.requests + b.requests,
+    jsFiles: a.jsFiles + b.jsFiles,
+    jsRaw: a.jsRaw + b.jsRaw,
+    jsGzip: a.jsGzip + b.jsGzip,
+  };
+
+function todosRows(result, metrics) {
   const fw = result.frameworks;
-  const labels = Object.fromEntries(names.map((name) => [name, fw[name].label]));
   const rows = [];
   const browser = (name) => fw[name].browser;
 
@@ -76,6 +83,92 @@ export function markdown(result, metrics) {
       ['Right after load (cold)', (n) => cell(n, 'cold')],
     );
   }
+  return rows;
+}
+
+const checks = (c) => c && `${ms(c.above)} / ${ms(c.below)} / ${ms(c.third)}`;
+
+function dashboardRows(result, metrics) {
+  const d = (name) => result.frameworks[name].dashboard ?? {};
+  const b = (name) => d(name).browser;
+  const off = (name) => b(name)?.preloadOff;
+  const na = (name) => (b(name) && !off(name) ? 'n/a' : undefined);
+  const { above, below, third } = result.options.dashboardClicks ?? {};
+  const rows = [];
+  if (metrics.has('browser')) {
+    rows.push(
+      [`**Browser** (${result.options.dashboardWidgets} widgets; JS files · raw / gzip)`, () => ''],
+      ['JS before `load`', (n) => js(b(n)?.boot)],
+      [`JS fetched while idle ${result.options.idleMs / 1000} s`, (n) => js(b(n)?.idle)],
+      [`First click, widget ${above} (above the fold): requests`, (n) => b(n)?.above.requests],
+      [`First click, widget ${above}: JS`, (n) => js(b(n)?.above)],
+      [
+        `First click, widget ${below} (below the fold): JS on scroll`,
+        (n) => js(b(n)?.belowFirst.scroll),
+      ],
+      [`First click, widget ${below}: requests on click`, (n) => b(n)?.belowFirst.click.requests],
+      [`First click, widget ${below}: JS on click`, (n) => js(b(n)?.belowFirst.click)],
+      [
+        `Widget ${below} after widget ${above} (scroll + click): JS`,
+        (n) => js(add(b(n)?.scrollBelow, b(n)?.below)),
+      ],
+      [
+        `Widget ${third} after both (scroll + click): JS`,
+        (n) => js(add(b(n)?.scrollThird, b(n)?.third)),
+      ],
+      ['Total JS after 3 widgets', (n) => js(b(n)?.total)],
+      [`Click to update (widget ${above} / ${below} / ${third})`, (n) => checks(b(n)?.checks)],
+      ['**Idle preload off** (brumate: Save-Data; Qwik: `preloader: false`)', () => ''],
+      [`JS fetched while idle ${result.options.idleMs / 1000} s`, (n) => na(n) ?? js(off(n)?.idle)],
+      [`First click, widget ${above}: requests`, (n) => na(n) ?? off(n)?.above.requests],
+      [`First click, widget ${above}: JS`, (n) => na(n) ?? js(off(n)?.above)],
+      [
+        `Widget ${below} after widget ${above} (scroll + click): JS`,
+        (n) => na(n) ?? js(add(off(n)?.scrollBelow, off(n)?.below)),
+      ],
+      ['Total JS after 3 widgets', (n) => na(n) ?? js(off(n)?.total)],
+      [
+        `Click to update (widget ${above} / ${below} / ${third})`,
+        (n) => na(n) ?? checks(off(n)?.checks),
+      ],
+    );
+  }
+  if (metrics.has('dist')) {
+    rows.push(['**Build**', () => ''], ['Client JS emitted in dist', (n) => js(d(n).dist)]);
+  }
+  if (metrics.has('ssr-size')) {
+    const s = (name) => d(name).ssrSize;
+    rows.push(
+      ['**SSR HTML** (raw / gzip -9)', () => ''],
+      ['Dashboard page', (n) => s(n) && size(s(n).raw, s(n).gzip)],
+    );
+  }
+  if (metrics.has('ssr-speed')) {
+    const s = (name) => d(name).ssrSpeed;
+    rows.push(
+      [`**SSR renders/s** (median of ${result.options.rounds}, min–max)`, () => ''],
+      ['Dashboard page', (n) => s(n) && `${num(s(n).median)} (${num(s(n).min)}–${num(s(n).max)})`],
+    );
+  }
+  if (metrics.has('waterfall')) {
+    const w = (name, kind) => d(name).waterfall?.[kind];
+    const cell = (name, kind) =>
+      w(name, kind) &&
+      `${w(name, kind).roundTrips} RT · ${w(name, kind).requests} req · ${ms(w(name, kind).ms)}`;
+    rows.push(
+      [`**First click on widget ${above}, ${result.options.latency} ms RTT**`, () => ''],
+      ['After idle', (n) => cell(n, 'idle')],
+      ['Right after load (cold)', (n) => cell(n, 'cold')],
+    );
+  }
+  return rows;
+}
+
+export function markdown(result, metrics) {
+  const names = result.options.frameworks;
+  const fw = result.frameworks;
+  const labels = Object.fromEntries(names.map((name) => [name, fw[name].label]));
+  const scenarios = result.options.scenarios ?? ['todos'];
 
   const m = result.machine;
   const header = [
@@ -97,10 +190,16 @@ export function markdown(result, metrics) {
             .join(', ')}`,
       )
       .join('; ')}`,
+    `- Scenarios: ${scenarios.join(', ')}`,
     `- Took ${result.durationSeconds} s`,
   ].filter((line) => line !== undefined);
   const notes = result.notes.length
     ? ['', '## Notes', '', ...result.notes.map((note) => `- ${note}`)]
     : [];
-  return `${[...header, '', table(names, labels, rows), ...notes].join('\n')}\n`;
+  const sections = [];
+  if (scenarios.includes('todos'))
+    sections.push('', '## Todos', '', table(names, labels, todosRows(result, metrics)));
+  if (scenarios.includes('dashboard'))
+    sections.push('', '## Dashboard', '', table(names, labels, dashboardRows(result, metrics)));
+  return `${[...header, ...sections, ...notes].join('\n')}\n`;
 }

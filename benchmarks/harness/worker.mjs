@@ -1,17 +1,20 @@
 // Runs SSR for one framework in its own process. The parent sends commands over IPC so
 // that only one framework renders at a time.
 import { gzipSync } from 'node:zlib';
-import { loadAdapter } from './frameworks.mjs';
+import { widgets } from './dashboard.mjs';
+import { loadApp } from './frameworks.mjs';
 
-const name = process.argv[2];
-const app = await (await loadAdapter(name)).load();
+const [name, scenario = 'todos'] = process.argv.slice(2);
+const app = await loadApp(name, scenario);
+// The dashboard page has no size. Its commands get n = 0.
+const render = scenario === 'dashboard' ? () => app.render() : (n) => app.render(n);
 
 function text(html) {
   return html.replace(/<[^>]*>/g, '');
 }
 
 // Checks that the page shows the seeded todos, the count of open ones and the counter.
-function check(html, n) {
+function checkTodos(html, n) {
   const body = text(html);
   const left = Array.from({ length: n }, (_, i) => i % 3 !== 0).filter(Boolean).length;
   const problems = [];
@@ -21,11 +24,23 @@ function check(html, n) {
   return problems;
 }
 
+// Checks that the page shows every widget with its first item and the label of its first mode.
+function checkDashboard(html) {
+  const body = text(html);
+  return widgets().flatMap((widget) =>
+    [widget.title, `Mode: ${widget.modes[0]}`, String(widget.items[0])]
+      .filter((part) => !body.includes(part))
+      .map((part) => `missing "${part}"`),
+  );
+}
+
+const check = scenario === 'dashboard' ? checkDashboard : checkTodos;
+
 const commands = {
   async size({ ns }) {
     const out = {};
     for (const n of ns) {
-      const html = Buffer.from(await app.render(n));
+      const html = Buffer.from(await render(n));
       out[n] = {
         raw: html.length,
         gzip: gzipSync(html, { level: 9 }).length,
@@ -35,14 +50,14 @@ const commands = {
     return out;
   },
   async warmup({ n, count }) {
-    for (let i = 0; i < count; i++) await app.render(n);
+    for (let i = 0; i < count; i++) await render(n);
     return true;
   },
   async measure({ n, ms }) {
     let count = 0;
     const start = performance.now();
     while (performance.now() - start < ms) {
-      await app.render(n);
+      await render(n);
       count++;
     }
     return count / ((performance.now() - start) / 1000);
