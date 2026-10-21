@@ -353,11 +353,19 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
 
 const STATE = 'script[type="brumate/state"]';
 let observer: MutationObserver | undefined;
+/**
+ * Indexes the markers of markup that others insert, such as streamed
+ * `#loading` bodies and the pages that navigation adds. It is separate from
+ * `observer`, so `findComment` can take its records at once.
+ */
+let markerObserver: MutationObserver | undefined;
 
-/** Stops reading state records that arrive later. */
+/** Stops reading state records and markers that arrive later. */
 export function dispose(): void {
   observer?.disconnect();
   observer = undefined;
+  markerObserver?.disconnect();
+  markerObserver = undefined;
   document.removeEventListener('brumate:refresh', onRefresh);
   document.removeEventListener('brumate:hot', onHot);
   document.removeEventListener('brumate:remount', onRemount);
@@ -524,6 +532,8 @@ export function init(value: CoreOptions): void {
     }
   });
   observer.observe(document, { childList: true, subtree: true });
+  markerObserver = new MutationObserver(indexAdded);
+  markerObserver.observe(document, { childList: true, subtree: true });
   document.addEventListener('brumate:refresh', onRefresh);
   document.addEventListener('brumate:hot', onHot);
   document.addEventListener('brumate:remount', onRemount);
@@ -690,6 +700,8 @@ export function cells(scope: Scope, links: unknown[], names: string[]): Record<s
 
 // The latest load of each async memo, by `<scope>:<slot>`, so older results are dropped.
 const loads = new Map<string, number>();
+// Numbers loads across all memos, so a load is never numbered like an older one still in flight.
+let loadCount = 0;
 const loadingSlots = new Set<string>();
 
 /** Marks a memo as loading. Its readers update the first time, so `$isPending` becomes true. */
@@ -715,7 +727,7 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
  */
 export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): void {
   const key = `${scope.id}:${slot}`;
-  const load = (loads.get(key) ?? 0) + 1;
+  const load = ++loadCount;
   loads.set(key, load);
   startLoading(scope, slot, key);
   const settle = (value?: unknown, failed = false): void => {
@@ -762,7 +774,6 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
   }, fail);
 }
 
-/** Writes a new value of a memo. A promise is loaded with `asyncMemo`. */
 /** Thrown when a memo reads a value that is still loading. */
 class NotReady extends Error {
   readonly source: Promise<unknown>;
@@ -1087,6 +1098,19 @@ function indexMarkers(root: Node): void {
   }
 }
 
+/** Indexes the markers in the nodes that mutation records added. */
+function indexAdded(records: MutationRecord[]): void {
+  for (const record of records) {
+    for (const node of record.addedNodes) {
+      if (node.nodeType === 1) {
+        indexMarkers(node);
+      } else if (node.nodeType === 8 && MARKER.test((node as Comment).data)) {
+        comments.set(markerKey((node as Comment).data), node as Comment);
+      }
+    }
+  }
+}
+
 /**
  * Finds a marker in the page. Returns undefined when the markup is not in
  * the page, such as `children` inside a block that is closed. Updates to it
@@ -1095,7 +1119,13 @@ function indexMarkers(root: Node): void {
 function findComment(key: string): Comment | undefined {
   let comment = comments.get(key);
   if (!comment?.isConnected) {
-    indexMarkers(document.documentElement);
+    // The index has every marker in the page once it reads the records that
+    // are waiting. Before the core starts, or between pages, it reads the page.
+    if (markerObserver) {
+      indexAdded(markerObserver.takeRecords());
+    } else {
+      indexMarkers(document.documentElement);
+    }
     comment = comments.get(key);
   }
   return comment?.isConnected ? comment : undefined;
@@ -1146,6 +1176,10 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const template = document.createElement('template');
   template.innerHTML = html;
   const fragment = template.content;
+  // Markers that others inserted first, so the new markers win over them.
+  if (markerObserver) {
+    indexAdded(markerObserver.takeRecords());
+  }
   indexMarkers(fragment);
   options.listen(fragment);
   const server = serverScopes(fragment);
@@ -1154,6 +1188,8 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   } else {
     before.parentNode!.insertBefore(fragment, before);
   }
+  // The records of this insert, whose markers are indexed already.
+  markerObserver?.takeRecords();
   for (const fn of context.after.splice(0)) {
     fn();
   }
@@ -1416,10 +1452,20 @@ export function list(
   // The first node after the items placed so far. An item already there is not
   // moved, because moving a node restarts its animations and drops its focus.
   let cursor: Node = start.nextSibling!;
+  // New items next to each other go into the page with one insert.
+  let added = '';
+  const flush = (): void => {
+    if (added) {
+      insertHTML(cursor, added);
+      added = '';
+    }
+  };
   items.forEach((value, index) => {
     const id = key(value, index);
     const item = previous.get(id);
     if (item) {
+      // Before the item's updates run, so they see the new items before it.
+      flush();
       previous.delete(id);
       // Slots that keep their values do not trigger updates.
       assign(item.scope, value, index);
@@ -1431,9 +1477,10 @@ export function list(
         }
       }
     } else {
-      insertHTML(cursor, render(scope, value, index));
+      added += render(scope, value, index);
     }
   });
+  flush();
   for (const item of previous.values()) {
     destroy(item.scope);
     for (const node of item.nodes) {

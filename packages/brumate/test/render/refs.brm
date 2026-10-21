@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let input = $signal<HTMLInputElement>();
+  let panel = $signal<HTMLElement>();
+  let shown = $signal(false);
+
+  function focus() {
+    input.focus();
+  }
+</script>
+
+<input ref=input>
+<button onClick=focus>Focus</button>
+<button onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <section ref=panel>{panel ? 'ready' : 'waiting'}</section>
+}

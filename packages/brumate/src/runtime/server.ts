@@ -1013,11 +1013,50 @@ function isFormPost(request: Request): boolean {
   );
 }
 
+/** The answer to a call or a form post from a page of another site. See `isCrossSite`. */
+function crossSiteAnswer(): Response {
+  return new Response('Calls from other sites are not allowed', { status: 403 });
+}
+
+/** The answer to a call or a form post to a server function that does not exist. */
+function unknownAnswer(id: string): Response {
+  return new Response(`Unknown server function "${id}"`, { status: 404 });
+}
+
+/**
+ * Calls a server function with the data of a form that the browser sent.
+ * Returns its result, or the response that answers the post instead: a
+ * `redirect` in the function sends the browser there, and an error answers
+ * with a short text page, because there is no page to report it in. The
+ * response has `headers`. With `base`, the location of a redirect is
+ * resolved against it.
+ */
+async function callWithForm(
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  fn: (...args: any[]) => unknown,
+  request: Request,
+  event: RequestEvent,
+  headers: Headers,
+  base?: string,
+): Promise<{ result: unknown } | { answer: Response }> {
+  try {
+    const form = await request.formData();
+    return { result: await withEvent(event, () => fn(form)) };
+  } catch (error) {
+    if (error instanceof Redirect) {
+      headers.set('location', base ? new URL(error.location, base).href : error.location);
+      return { answer: new Response(null, { status: error.status, headers }) };
+    }
+    const { message, status } = errorAnswer(error, 'The server function failed');
+    headers.set('content-type', 'text/plain; charset=utf-8');
+    return { answer: new Response(message, { status, headers }) };
+  }
+}
+
 /**
  * Calls a server function with the data of a form that the browser sent, and
- * sends the browser back to the page with a redirect. A `redirect` in the
- * function sends it there instead. An error answers with a short text page,
- * because there is no page to report it in.
+ * sends the browser back to the page with a redirect. The response has the
+ * headers of the event, such as cookies that the function set.
  */
 async function handleForm(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
@@ -1026,21 +1065,12 @@ async function handleForm(
   event: RequestEvent,
 ): Promise<Response> {
   const { headers } = event;
-  const back = request.headers.get('referer') ?? '/';
-  try {
-    const form = await request.formData();
-    await withEvent(event, () => fn(form));
-    headers.set('location', back);
-    return new Response(null, { status: 303, headers });
-  } catch (error) {
-    if (error instanceof Redirect) {
-      headers.set('location', error.location);
-      return new Response(null, { status: error.status, headers });
-    }
-    const { message, status } = errorAnswer(error, 'The server function failed');
-    headers.set('content-type', 'text/plain; charset=utf-8');
-    return new Response(message, { status, headers });
+  const outcome = await callWithForm(fn, request, event, headers);
+  if ('answer' in outcome) {
+    return outcome.answer;
   }
+  headers.set('location', request.headers.get('referer') ?? '/');
+  return new Response(null, { status: 303, headers });
 }
 
 /**
@@ -1128,12 +1158,12 @@ export async function handleRequest(
     return undefined;
   }
   if (isCrossSite(request, options)) {
-    return new Response('Calls from other sites are not allowed', { status: 403 });
+    return crossSiteAnswer();
   }
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
   const fn = functions[id];
   if (!fn) {
-    return new Response(`Unknown server function "${id}"`, { status: 404 });
+    return unknownAnswer(id);
   }
   const event = new RequestEvent(request);
   // The function runs with its event, so `getEvent()` before its first await returns it.
@@ -1266,6 +1296,8 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
  * Runs the server function that a form without scripts posted to a page, as
  * `?__action=<id>`. Returns its result for `$action`, or the response that
  * answers the post instead of the page: a redirect, or an error.
+ * `handleRoute` adds the cookies of the event to that response, and no other
+ * headers of the event.
  */
 async function runAction(
   request: Request,
@@ -1274,33 +1306,14 @@ async function runAction(
   event: RequestEvent,
 ): Promise<{ actions: Map<unknown, unknown> } | { answer: Response }> {
   if (isCrossSite(request, options)) {
-    return { answer: new Response('Calls from other sites are not allowed', { status: 403 }) };
+    return { answer: crossSiteAnswer() };
   }
   const fn = options.functions?.[id];
   if (!fn) {
-    return { answer: new Response(`Unknown server function "${id}"`, { status: 404 }) };
+    return { answer: unknownAnswer(id) };
   }
-  try {
-    const form = await request.formData();
-    const result = await withEvent(event, () => fn(form));
-    return { actions: new Map([[fn, result]]) };
-  } catch (error) {
-    if (error instanceof Redirect) {
-      return {
-        answer: new Response(null, {
-          status: error.status,
-          headers: { location: new URL(error.location, request.url).href },
-        }),
-      };
-    }
-    const { message, status } = errorAnswer(error, 'The server function failed');
-    return {
-      answer: new Response(message, {
-        status,
-        headers: { 'content-type': 'text/plain; charset=utf-8' },
-      }),
-    };
-  }
+  const outcome = await callWithForm(fn, request, event, new Headers(), request.url);
+  return 'answer' in outcome ? outcome : { actions: new Map([[fn, outcome.result]]) };
 }
 
 /** Renders the page of a route tree, streamed, with the results of a form for `$action`. */

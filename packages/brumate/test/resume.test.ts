@@ -584,6 +584,34 @@ describe('resume', () => {
     await waitFor(() => expect(text('.inner')).toBe('1'));
   });
 
+  it('finds the markers of streamed #loading bodies without reading the whole page', async () => {
+    vi.resetModules();
+    const fresh = await import(`${file('loading.brm.ts')}?markers`);
+    const { html, state, pending } = await renderParts(fresh.default, {});
+    document.body.innerHTML = html + state;
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    const walkers = vi.spyOn(document, 'createTreeWalker');
+    const pageWalks = (): number =>
+      walkers.mock.calls.filter(([root]) => root === document.documentElement).length;
+
+    // The core reads the page once when it starts. The update to the body that is not there yet does not.
+    click(document.querySelector('.outer')!);
+    await waitFor(() => expect(text('.outer')).toBe('1'));
+    expect(pageWalks()).toBe(1);
+
+    fresh.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('2'));
+    expect(text('.outer')).toBe('2');
+    expect(pageWalks()).toBe(1);
+    walkers.mockRestore();
+  });
+
   it('updates a counter', async () => {
     await resume('counter', {});
     expect(text('p')).toBe('0 / 0');
@@ -687,6 +715,47 @@ describe('resume', () => {
     expect(text('section .slot')).toBe('Item');
   });
 
+  it('adds several items at once, around the items that stay', async () => {
+    await resume('batch', {});
+    const list = document.querySelector('ul')!;
+    const removed: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        removed.push(...record.removedNodes);
+      }
+    });
+    observer.observe(list, { childList: true });
+    // Each insert parses its markup in a template.
+    const create = vi.spyOn(document, 'createElement');
+
+    click(document.querySelector('.fill')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(6));
+    observer.disconnect();
+    const templates = create.mock.calls.filter(([tag]) => tag === 'template');
+    create.mockRestore();
+    expect([...list.querySelectorAll('span')].map((span) => span.textContent)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+    ]);
+    expect(buttons().map((button) => button.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
+    // The items that stay are not moved, and new items next to each other go in with one insert.
+    expect(removed).toEqual([]);
+    expect(templates).toHaveLength(3);
+
+    // The new items resume like the others.
+    click(buttons()[4]!);
+    await waitFor(() => expect(buttons()[4]!.textContent).toBe('6'));
+    click(buttons()[0]!);
+    await waitFor(() => expect(buttons()[0]!.textContent).toBe('2'));
+    click(buttons()[1]!);
+    await waitFor(() => expect(buttons()[1]!.textContent).toBe('3'));
+    expect(buttons().map((button) => button.textContent)).toEqual(['2', '3', '3', '4', '6', '6']);
+  });
+
   it('switches branches, lists and client blocks', async () => {
     await resume('blocks', { items: ['one', 'two'], tab: 'b' });
     expect(text('body > p')).toBe('B');
@@ -700,6 +769,15 @@ describe('resume', () => {
 
     await waitFor(() => expect(document.body.textContent).toContain('Client only'));
     await waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
+  });
+});
+
+describe('refs', () => {
+  it('writes a ref of an outer scope after its element is in the page', async () => {
+    await resume('refs', {});
+    expect(text('body')).not.toContain('ready');
+    click(document.querySelectorAll('button')[1]!);
+    await waitFor(() => expect(text('section')).toBe('ready'));
   });
 });
 
@@ -731,6 +809,22 @@ describe('children', () => {
     await waitFor(() => expect(document.querySelector('.outside')).not.toBeNull());
     click(document.querySelectorAll('.open')[2]!);
     await waitFor(() => expect(text('.seen')).toBe('2'));
+  });
+
+  it('skips updates to children in a closed block without reading the whole page', async () => {
+    await resume('cards', {});
+    const walkers = vi.spyOn(document, 'createTreeWalker');
+    const pageWalks = (): number =>
+      walkers.mock.calls.filter(([root]) => root === document.documentElement).length;
+    click(document.querySelector('.outside')!);
+    await waitFor(() => expect(pageWalks()).toBe(1));
+    // The core read the page once when it started. Each update to `.seen` misses, and does not read it again.
+    click(document.querySelector('.outside')!);
+    click(document.querySelector('.outside')!);
+    click(document.querySelectorAll('.open')[2]!);
+    await waitFor(() => expect(text('.seen')).toBe('3'));
+    expect(pageWalks()).toBe(1);
+    walkers.mockRestore();
   });
 });
 

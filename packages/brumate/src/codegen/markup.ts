@@ -518,7 +518,7 @@ export class Emitter {
       // The signal belongs to a scope outside this render, so it is written after the element is in the page.
       const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
       this.line(
-        `$$ctx.after(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
+        `$$ctx.after.push(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
       );
     } else {
       this.line(`${target} = ${element};`);

@@ -1,0 +1,29 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let rows = $signal([
+    { id: 'b', value: 2 },
+    { id: 'd', value: 4 },
+  ]);
+
+  function fill() {
+    rows = ['a', 'b', 'c', 'd', 'e', 'f'].map(
+      (id, index) => rows.find((row) => row.id === id) ?? { id, value: index + 1 },
+    );
+  }
+</script>
+
+<button class="fill" onClick=fill>Fill</button>
+<ul>
+  #for (row of rows by row.id) {
+    <script>
+      function add() {
+        rows = rows.map((item) => (item.id === row.id ? { ...item, value: item.value + 1 } : item));
+      }
+    </script>
+    <li>
+      <span>{row.id}</span>
+      <button onClick=add>{row.value}</button>
+    </li>
+  }
+</ul>
