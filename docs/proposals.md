@@ -7,6 +7,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
+| [Deferred blocks](#deferred-blocks)                                   | Syntax  | High   | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
@@ -34,6 +35,36 @@ A `bind:` attribute writes it once:
 
 - `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
 - The target must be a signal, so the compiler checks the write.
+
+### Deferred blocks
+
+`#defer` renders part of a page on the server later, not with the first response. The name is reserved: using it is a compile error until this lands.
+
+```html
+#defer (visible) {
+  <Recommendations user=user />
+} #loading {
+  <p>Loading recommendations…</p>
+}
+```
+
+- The first response has the fallback. When the trigger fires, the browser asks the server for the body, and the server renders it with the same props, context, route params and request, and sends its markup and state. It is like a `#loading` body, started by a trigger in place of a promise.
+- Triggers are `visible`, `idle` and `load`, as for `$client`.
+
+Why:
+
+- A page sends less HTML and state up front, and the server does less work for each request. On the dashboard benchmark, brumate's first page is 7.0 kB gzip against Marko 6's 5.4 kB, because every widget's markup and state is in it.
+- A page can be cached or prerendered, with the parts for one user rendered later. A prerendered page cannot show who is signed in today. The `/about` page of `examples/tracker` shows the header as signed out when it is loaded directly. Astro calls these server islands (`server:defer`).
+
+What it needs:
+
+- An endpoint that renders one block of a component. The inputs come from the browser, so they are signed, as sessions are, or rebuilt on the server from the route and the request, so a client cannot render the block with other props.
+- A block that reads state that only the browser has cannot be deferred. The compiler reports it.
+- Scope IDs that fit into the page, as `base` does for client navigation.
+- A body that depends on the user is not cached with the page. The block marks that boundary.
+- Without scripts, the fallback shows, with a link to the full content.
+
+Cost: about 2 to 3 weeks. Most of the risk is in signing the inputs.
 
 ## Tooling
 
