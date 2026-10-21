@@ -20,6 +20,7 @@ import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
 import { errorPayload } from './dev-error.ts';
 import { prerender } from './prerender.ts';
+import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
 import type { Budget, ReportChunk } from './report.ts';
@@ -120,6 +121,10 @@ interface Shape {
   css: string;
   /** The code of the client parts, which the page loads again when it changes. */
   code: string;
+  /** The names of the slots of each scope, by its ID in the component. */
+  slots: Record<number, string[]>;
+  /** The names of the signals, whose values stay when the markup changes. */
+  signals: string[];
 }
 
 /** Removes the scripts, styles and event handlers of a file, which leaves the markup of its page. */
@@ -156,10 +161,17 @@ function shapeOf(result: CompileResult): Shape {
   const slots = [...result.plan.scopes.values()].map(
     (layout) => `${layout.scope.id}:${layout.slots.map((slot) => slot.name).join(',')}`,
   );
+  const layouts = [...result.plan.scopes.values()];
   return {
     layout: JSON.stringify([result.client, slots, markupOf(result)]),
     css: result.css,
     code: JSON.stringify(result.parts),
+    slots: Object.fromEntries(
+      layouts.map((layout) => [layout.scope.id, layout.slots.map((slot) => slot.name)]),
+    ),
+    signals: layouts.flatMap((layout) =>
+      layout.slots.filter((slot) => slot.kind === 'signal').map((slot) => slot.name),
+    ),
   };
 }
 
@@ -740,8 +752,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // A resumed page cannot run a component again. When an edit keeps the markup, the slots
       // and the update table of each changed component, the page keeps its state: new styles
-      // replace the old ones, and the next event loads the new code. Otherwise the page reloads.
-      const reload = (): [] => {
+      // replace the old ones, and the next event loads the new code. When the markup changes,
+      // the page renders again, and the signals of the component keep their values. A file
+      // that does not compile reloads the page, which shows the error.
+      const invalidate = (): void => {
         for (const module of server.moduleGraph.idToModuleMap.values()) {
           const id = module.id ?? '';
           if (
@@ -753,11 +767,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             server.moduleGraph.invalidateModule(module);
           }
         }
+      };
+      const reload = (): [] => {
+        invalidate();
         server.ws.send({ type: 'full-reload' });
         return [];
       };
       await analyze();
-      const updates: { id: string; css?: string; url?: string }[] = [];
+      const updates: HotUpdate[] = [];
       for (const target of targets) {
         const before = shapes.get(target);
         let after: Shape;
@@ -768,9 +785,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The error shows when the page reloads and the module compiles.
           return reload();
         }
-        if (!before || before.layout !== after.layout) {
+        if (!before) {
           return reload();
         }
+        const remount = before.layout !== after.layout;
         const id = componentId(target);
         const modules = [
           ...(server.moduleGraph.getModulesByFile(target) ?? []),
@@ -786,8 +804,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         updates.push({
           id,
           css: before.css === after.css ? undefined : after.css,
-          url: before.code === after.code ? undefined : entry?.url,
+          url: before.code === after.code && !remount ? undefined : entry?.url,
+          remount: remount
+            ? {
+                before: before.slots,
+                after: after.slots,
+                signals: after.signals.filter((name) => before.signals.includes(name)),
+              }
+            : undefined,
         });
+      }
+      if (updates.some((update) => update.remount)) {
+        // The server renders the page again with the new markup.
+        invalidate();
       }
       server.ws.send({ type: 'custom', event: 'brumate:update', data: { updates, timestamp } });
       return [];

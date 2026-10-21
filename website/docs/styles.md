@@ -144,7 +144,7 @@ The first keeps each component in charge of its own look, so it is the easiest t
 
 - Install `sass` or `less` in the project.
 - `${expression}` works the same as in CSS.
-- `@use` and `@import` load files next to the component. A change to an imported file reloads the page in development.
+- `@use` and `@import` load files next to the component. A change to an imported file updates the component in development.
 - An error of the preprocessor is a compile error that points at the block.
 
 ## Global stylesheets

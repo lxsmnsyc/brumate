@@ -2,6 +2,9 @@
 // markup, its slots and its update table, the plugin sends `brumate:update`
 // instead of reloading the page. New styles replace the old ones, and the
 // next event or update of the component loads its new code. State stays.
+//
+// When the markup changes, the page loads again through the client router,
+// and the signals of the component keep their values, by their names.
 
 import type { ClientModule } from './client.ts';
 
@@ -12,6 +15,18 @@ export interface HotUpdate {
   css?: string;
   /** The URL of the new client entry, when its code changed. */
   url?: string;
+  /** Set when the markup changed, so the page renders again with the values of its signals. */
+  remount?: Remount;
+}
+
+/** The slots of a component before and after an edit, by the ID of each scope in the component. */
+export interface Remount {
+  /** The names of the slots before the edit. */
+  before: Record<number, string[]>;
+  /** The names of the slots after the edit. */
+  after: Record<number, string[]>;
+  /** The names of the signals, whose values stay. */
+  signals: string[];
 }
 
 /** The part of `import.meta.hot` that this module uses. */
@@ -52,6 +67,16 @@ export function hotLoad(
     if (changed.length > 0) {
       // The core forgets the old code of these components.
       document.dispatchEvent(new CustomEvent('brumate:hot', { detail: changed }));
+    }
+    const remounts = updates.filter((update) => update.remount);
+    if (remounts.length > 0) {
+      // The core keeps the values of the signals, and the loader loads the page again.
+      document.dispatchEvent(
+        new CustomEvent('brumate:remount', {
+          detail: remounts.map((update) => Object.assign({ id: update.id }, update.remount)),
+        }),
+      );
+      document.dispatchEvent(new CustomEvent('brumate:reload'));
     }
   });
   return (id) => {

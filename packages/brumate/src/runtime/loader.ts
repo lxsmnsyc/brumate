@@ -237,6 +237,10 @@ export function start(options: LoaderOptions): () => void {
     void loadCore().then((client) => client.submitAction(form, submitter));
   });
 
+  if (options.navigate === false) {
+    // A hot update whose markup changed loads the page again.
+    listen(document, 'brumate:reload', () => location.reload());
+  }
   if (options.navigate !== false) {
     const rpc = `${options.rpc ?? '/_brumate'}/`;
     // The page without its hash, to tell a change of the hash from a change of the page.
@@ -322,6 +326,9 @@ export function start(options: LoaderOptions): () => void {
       event.preventDefault();
       go(action, { method: 'POST', body: new FormData(form, submitter) });
     });
+    // A hot update whose markup changed loads the page again, in place. With `init`, the whole
+    // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.
+    listen(document, 'brumate:reload', () => go(location.href, { method: 'GET' }, false));
     listen(window, 'popstate', () => {
       // A change of the hash only stays on the page.
       if (location.href.split('#')[0] !== page) {

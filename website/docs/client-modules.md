@@ -110,4 +110,4 @@ These load as their own small modules, on first use:
 | `./App.brm?brumate-server`             | The server module, where the client one would load, such as in tests. |
 | `virtual:brumate/manifest`             | `load(id)`, which imports the client entry of a component by ID.      |
 
-The plugin finds `.brm` files under the root when the build starts, and again when files are added or removed. Component IDs come from the path relative to the root, so they are the same on every machine. A change to any `.brm` file in development finds which props can change again, and reloads the page, because a resumed page cannot swap the code of a component.
+The plugin finds `.brm` files under the root when the build starts, and again when files are added or removed. Component IDs come from the path relative to the root, so they are the same on every machine. A change to any `.brm` file in development finds which props can change again, and updates the page. See [Edit while it runs](./getting-started.md#edit-while-it-runs).

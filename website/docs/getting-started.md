@@ -146,7 +146,10 @@ The dev server updates the page when you save a component, and keeps its state w
 
 - An edit of a `<style>` block replaces the styles of the component in place.
 - An edit of a script or an event handler that keeps the markup and the values of the component loads the new code. The page keeps its state, and the next event runs the new code.
-- An edit of the markup, or one that adds or removes a value, reloads the page, because the HTML of the server no longer matches the page.
+- An edit of the markup, or one that adds or removes a value, renders the page again without reloading it. The server renders the new markup, and each signal of the component's script keeps its value, by its name. Signals in blocks, such as in a `#for` body, start again.
+- A file that does not compile reloads the page, which shows the error. See [`errorPage`](./reference-plugin.md#errorpageerror-server).
+
+Rendering again uses the client router. With `navigate: false`, the page reloads instead.
 
 An edit of a [module of reactive logic](./reactive-modules.md) updates the components that call it in the same way.
 

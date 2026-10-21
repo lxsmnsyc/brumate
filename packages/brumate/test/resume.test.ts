@@ -919,6 +919,41 @@ describe('refresh', () => {
   });
 });
 
+describe('hot updates of markup', () => {
+  it('keeps the values of signals by name when the page renders again', async () => {
+    await resume('counter', {});
+    click(document.querySelector('button')!);
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('p')).toBe('2 / 4'));
+    const { plan } = compile(readFileSync(join(input, 'counter.brm'), 'utf8'), {
+      filename: 'counter.brm',
+    });
+    const id = plan.id;
+    const names = Object.fromEntries(
+      [...plan.scopes.values()].map((layout) => [
+        layout.scope.id,
+        layout.slots.map((slot) => slot.name),
+      ]),
+    );
+    // As hot.ts does: the core keeps the values, then the page renders again.
+    document.dispatchEvent(
+      new CustomEvent('brumate:remount', {
+        detail: [{ id, before: names, after: names, signals: ['count'] }],
+      }),
+    );
+    // As the client router does: the core forgets the old page, and reads the new one.
+    const core = await import('../src/runtime/client.ts');
+    core.leavePage();
+    const server = await import(file('counter.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    document.body.innerHTML = html + state;
+    core.init({ load: (name: string) => import(modules.get(name)!) } as never);
+    await waitFor(() => expect(text('p')).toBe('2 / 4'));
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('p')).toBe('3 / 6'));
+  });
+});
+
 describe('$optimistic', () => {
   it('shows a guess while a form posts, and goes back to the source after', async () => {
     vi.resetModules();

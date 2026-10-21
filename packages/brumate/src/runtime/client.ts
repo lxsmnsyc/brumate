@@ -341,6 +341,9 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
       }
     }
   }
+  if (remounts.size > 0) {
+    restoreRemounts(added);
+  }
   return added;
 }
 
@@ -353,6 +356,7 @@ export function dispose(): void {
   observer = undefined;
   document.removeEventListener('brumate:refresh', onRefresh);
   document.removeEventListener('brumate:hot', onHot);
+  document.removeEventListener('brumate:remount', onRemount);
 }
 
 /**
@@ -370,6 +374,66 @@ function onHot(event: Event): void {
         loadedParts.delete(key);
       }
     }
+  }
+}
+
+/** The values of the signals of components whose markup changed, for when the page renders again. */
+const remounts = new Map<
+  string,
+  { after: Record<number, string[]>; values: Record<string, unknown>[] }
+>();
+
+/**
+ * Keeps the values of the signals of each instance of a component, by
+ * name, before the page renders again with its new markup.
+ */
+function onRemount(event: Event): void {
+  const detail = (
+    event as CustomEvent<
+      {
+        id: string;
+        before: Record<number, string[]>;
+        after: Record<number, string[]>;
+        signals: string[];
+      }[]
+    >
+  ).detail;
+  for (const { id, before, after, signals } of detail) {
+    const names = new Set(signals);
+    const instances = [...scopes.values()].filter((scope) => scope.m === id);
+    remounts.set(id, {
+      after,
+      // The signals of the script of the component. Signals of blocks, such as of a `#for`
+      // body, start again.
+      values: instances.map((root) => {
+        const values: Record<string, unknown> = {};
+        (before[root.k] ?? []).forEach((name, slot) => {
+          if (names.has(name)) {
+            values[name] = root.s[slot];
+          }
+        });
+        return values;
+      }),
+    });
+  }
+}
+
+/** Writes back the values of signals that `onRemount` kept, into the instances of the new page. */
+function restoreRemounts(added: Scope[]): void {
+  for (const [id, { after, values }] of remounts) {
+    const instances = added.filter((scope) => scope.m === id);
+    if (instances.length === 0) {
+      continue;
+    }
+    remounts.delete(id);
+    instances.forEach((root, index) => {
+      const saved = values[index];
+      (after[root.k] ?? []).forEach((name, slot) => {
+        if (saved && name in saved) {
+          set(root, slot, saved[name]);
+        }
+      });
+    });
   }
 }
 
@@ -451,6 +515,7 @@ export function init(value: CoreOptions): void {
   observer.observe(document, { childList: true, subtree: true });
   document.addEventListener('brumate:refresh', onRefresh);
   document.addEventListener('brumate:hot', onHot);
+  document.addEventListener('brumate:remount', onRemount);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
   devtools()?.attach?.({ scopes, set });
