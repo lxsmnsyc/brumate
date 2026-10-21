@@ -5,6 +5,14 @@ export interface RouteFiles {
   layout?: string;
   page?: string;
   fallback?: string;
+  /** `_error.brm`: renders when a route of the folder throws, or when no route matches. */
+  error?: string;
+  /** `_loading.brm`: shows while a route of the folder streams in. */
+  loading?: string;
+  /** `_middleware.ts`: runs before the routes of the folder. */
+  middleware?: string;
+  /** A `.ts` file that answers requests at its path, such as `api/todos.ts`. */
+  endpoint?: string;
   static?: Record<string, RouteFiles>;
   dynamic?: { name: string; node: RouteFiles };
   rest?: { name: string; node: RouteFiles };
@@ -38,20 +46,36 @@ function child(node: RouteFiles, segment: string): RouteFiles {
 }
 
 /**
- * Builds the route tree from `.brm` paths relative to the routes directory,
- * such as `todos/[id].brm`. `_layout.brm`, `_default.brm` and `index.brm`
- * belong to their folder. Other files starting with `_` are not routes.
+ * Builds the route tree from paths relative to the routes directory, such as
+ * `todos/[id].brm`. `_layout.brm`, `_default.brm`, `_error.brm`,
+ * `_loading.brm`, `_middleware.ts` and `index.brm` belong to their folder.
+ * Other files starting with `_` are not routes. A `.ts` file is an endpoint.
  */
 export function routeFiles(paths: string[]): RouteFiles {
   const tree: RouteFiles = {};
   for (const file of paths) {
-    const segments = file.replace(/\.brm$/, '').split('/');
+    const typescript = file.endsWith('.ts');
+    const segments = file.replace(/\.(brm|ts)$/, '').split('/');
     const name = segments.pop()!;
     let node = tree;
     for (const segment of segments) {
       node = child(node, segment);
     }
-    if (name === '_layout') {
+    if (typescript) {
+      if (name === '_middleware') {
+        node.middleware = file;
+      } else if (name === 'index') {
+        node.endpoint = file;
+      } else if (!name.startsWith('_')) {
+        child(node, name).endpoint = file;
+      }
+      continue;
+    }
+    if (name === '_error') {
+      node.error = file;
+    } else if (name === '_loading') {
+      node.loading = file;
+    } else if (name === '_layout') {
       node.layout = file;
     } else if (name === '_default') {
       node.fallback = file;
@@ -83,7 +107,15 @@ export function routeModule(
   };
   const write = (node: RouteFiles): string => {
     const fields: string[] = [];
-    for (const key of ['layout', 'page', 'fallback'] as const) {
+    for (const key of [
+      'layout',
+      'page',
+      'fallback',
+      'error',
+      'loading',
+      'middleware',
+      'endpoint',
+    ] as const) {
       const file = node[key];
       if (file) {
         fields.push(`${key}: ${load(file)}`);

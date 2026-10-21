@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
@@ -146,11 +147,23 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     ].join('\n');
   };
 
+  const routesDirectory = (): string =>
+    normalizePath(path.resolve(root, options.routes ?? 'src/routes'));
+
   const routeTree = (): string => {
-    const directory = normalizePath(path.resolve(root, options.routes ?? 'src/routes'));
+    const directory = routesDirectory();
     const paths = [...files.values()]
       .filter((file) => file.startsWith(`${directory}/`))
       .map((file) => file.slice(directory.length + 1));
+    // Endpoints and middleware are `.ts` files.
+    if (existsSync(directory)) {
+      for (const entry of readdirSync(directory, { recursive: true, encoding: 'utf8' })) {
+        const file = normalizePath(entry);
+        if (file.endsWith('.ts') && !file.endsWith('.d.ts')) {
+          paths.push(file);
+        }
+      }
+    }
     return routeModule(routeFiles(paths), (file) => `${directory}/${file}`, rpc, options.origins);
   };
 
@@ -266,6 +279,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           compiled.delete(importer);
           for (const module of server.moduleGraph.getModulesByFile(importer) ?? []) {
             server.moduleGraph.invalidateModule(module);
+          }
+        }
+        // A new or removed endpoint or middleware changes the routes.
+        if (
+          file.endsWith('.ts') &&
+          normalizePath(file).startsWith(`${routesDirectory()}/`) &&
+          (event === 'add' || event === 'unlink')
+        ) {
+          for (const module of server.moduleGraph.idToModuleMap.values()) {
+            if (module.id === `\0${ROUTES}`) {
+              server.moduleGraph.invalidateModule(module);
+            }
           }
         }
         if (!file.endsWith('.brm')) {

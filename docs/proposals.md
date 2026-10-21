@@ -36,39 +36,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Routing
 
-### Route error and loading files
-
-```
-src/routes/_error.brm    renders when a route of the folder throws
-src/routes/_loading.brm  renders while a route of the folder loads on the client
-```
-
-- `_error.brm` gets the error and the status. A route that throws renders the error file of its nearest folder, inside the layouts above it, with status 500, or the status of a `ServerError`.
-- `_loading.brm` wraps the route in a `#loading` block, so a route that waits for data streams in after its layouts.
-- A 404 from `setStatus` or from no route renders the nearest `_error.brm` too.
-
-### Endpoints and middleware
-
-```ts
-// src/routes/api/todos.ts: answers requests to /api/todos.
-export async function GET(request: Request): Promise<Response> {
-  return Response.json(await db.todos.all());
-}
-```
-
-```ts
-// src/routes/_middleware.ts: runs before every route of the folder.
-export async function middleware(request: Request, next: () => Promise<Response>) {
-  if (!(await session(request))) {
-    return Response.redirect(new URL('/login', request.url));
-  }
-  return next();
-}
-```
-
-- A `.ts` file in the routes folder that exports `GET`, `POST` or other methods answers those methods at its path.
-- `_middleware.ts` runs for its folder and the folders inside it, from the outside in. It can answer the request, or change the response of `next()`.
-
 ### Typed routes
 
 The plugin knows every route and its params, so it can write their types.

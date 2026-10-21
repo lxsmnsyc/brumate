@@ -1,0 +1,5 @@
+<script>
+  const { error } = $props<{ error: { message: string; status: number } }>();
+</script>
+
+<p class="todos-error">Todos failed: {error.message}</p>

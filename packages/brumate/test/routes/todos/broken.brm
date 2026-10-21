@@ -1,0 +1,7 @@
+<script>
+  import { ServerError } from 'brumate/server';
+
+  throw new ServerError('Gone for good', { status: 410 });
+</script>
+
+<p>Never</p>

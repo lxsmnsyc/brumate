@@ -4,15 +4,19 @@ Routes are `.brm` files under `src/routes`. The path of a file is the URL that i
 
 ## Files
 
-| File or folder        | What it is                                                                     |
-| --------------------- | ------------------------------------------------------------------------------ |
-| `index.brm`           | The page of its folder, such as `/` for `src/routes/index.brm`.                |
-| `about.brm`, `about/` | A fixed segment: `/about`.                                                     |
-| `[id].brm`, `[id]/`   | A dynamic segment. The page reads it as `params.id`.                           |
-| `[...rest].brm`       | The rest of the path, such as `a/b`. The page reads it as `params.rest`.       |
-| `_layout.brm`         | Wraps every route of its folder and the folders inside it.                     |
-| `@aside/`             | A sibling route tree. It matches the same URL and renders in the `aside` slot. |
-| `@aside/_default.brm` | What the `aside` slot renders when its routes do not match the URL.            |
+| File or folder         | What it is                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `index.brm`            | The page of its folder, such as `/` for `src/routes/index.brm`.                   |
+| `about.brm`, `about/`  | A fixed segment: `/about`.                                                        |
+| `[id].brm`, `[id]/`    | A dynamic segment. The page reads it as `params.id`.                              |
+| `[...rest].brm`        | The rest of the path, such as `a/b`. The page reads it as `params.rest`.          |
+| `_layout.brm`          | Wraps every route of its folder and the folders inside it.                        |
+| `@aside/`              | A sibling route tree. It matches the same URL and renders in the `aside` slot.    |
+| `@aside/_default.brm`  | What the `aside` slot renders when its routes do not match the URL.               |
+| `_error.brm`           | Renders when a route of its folder throws, or at the root, when no route matches. |
+| `_loading.brm`         | Shows while a route of its folder streams in.                                     |
+| `_middleware.ts`       | Runs before the routes of its folder and the folders inside it.                   |
+| `hello.ts`, `index.ts` | An endpoint: answers requests at its path with the handlers that it exports.      |
 
 Other files that start with `_` are not routes.
 
@@ -55,6 +59,66 @@ For `/`, `aside` renders `@aside/_default.brm`, because `@aside` has no `index.b
 A layout renders before its children and slots, and they render where the layout inserts them. So a context that a layout provides with `$provide` reaches the routes inside it.
 
 A route can render the whole document, as the root layout above does. `renderToStream` then adds the doctype, the head and the scripts.
+
+## Errors
+
+`_error.brm` renders in place of a route of its folder that throws while its page renders. It gets `error`, with `message` and `status`:
+
+```html
+<!-- src/routes/_error.brm -->
+<script>
+  const { error } = $props<{ error: { message: string; status: number } }>();
+</script>
+
+<h1>Error {error.status}</h1>
+<p>{error.message}</p>
+```
+
+- The nearest `_error.brm` of the route renders, inside the layouts of its folder and the folders above it.
+- A `ServerError` gives its message and status. Any other error gives status 500 and a generic message, and is logged on the server.
+- An error file that throws hands the error to the next one outside it.
+- A path that no route matches renders the `_error.brm` of the root, with status 404.
+- An error in a `#loading` body that streams in later keeps its fallback, because the page has been sent.
+
+## Loading
+
+`_loading.brm` shows while a route of its folder streams in. The layouts render first, and the route follows when it is ready, as the body of a `#loading` block does.
+
+```html
+<!-- src/routes/reports/_loading.brm -->
+<p>Loading the report…</p>
+```
+
+## Endpoints
+
+A `.ts` file answers requests at its path. It exports a handler for each method, which gets the request and the params:
+
+```ts
+// src/routes/api/todos/[id].ts
+export async function GET(request: Request, params: Record<string, string>): Promise<Response> {
+  return Response.json(await db.todos.get(params.id));
+}
+```
+
+- A method that the file does not export answers 405, with `Allow`. `HEAD` uses `GET`.
+- A folder can have a page and an endpoint at the same path. The endpoint answers the methods that it exports, and the page answers `GET` otherwise.
+- Endpoints do not check where a call comes from. `isCrossSite` from `brumate/server` does, for a handler that changes data.
+
+## Middleware
+
+`_middleware.ts` runs before every route of its folder, endpoints included. It exports `middleware`, which answers the request itself, or calls `next` for the answer of the route:
+
+```ts
+// src/routes/admin/_middleware.ts
+export async function middleware(request: Request, next: () => Promise<Response>) {
+  if (!(await session(request))) {
+    return Response.redirect(new URL('/login', request.url));
+  }
+  return next();
+}
+```
+
+The middleware of each folder on the path runs from the outside in.
 
 ## Serving routes
 

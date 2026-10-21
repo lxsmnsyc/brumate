@@ -1,0 +1,17 @@
+<script module>
+  let open: () => void = () => {};
+
+  export const ready = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(): void {
+    open();
+  }
+</script>
+
+<script>
+  await ready;
+</script>
+
+<p class="slow">Slow content</p>

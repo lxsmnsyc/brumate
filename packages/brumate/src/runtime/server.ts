@@ -28,10 +28,19 @@ export { affix, attribute, escape, escapeAttribute, raw, spread, vars } from './
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext } from './context.ts';
-import { matchRoute } from './router.ts';
-import type { RouteNode, RouteView } from './router.ts';
+import { matchRoute, missingPage, notFound } from './router.ts';
+import type { MiddlewareLoader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
-export type { Loader, RouteMatch, RouteNode, RouteView } from './router.ts';
+export type {
+  EndpointLoader,
+  Handler,
+  Loader,
+  Middleware,
+  MiddlewareLoader,
+  RouteMatch,
+  RouteNode,
+  RouteView,
+} from './router.ts';
 export {
   ServerError,
   getRequest,
@@ -1041,36 +1050,62 @@ interface ResolvedView {
   key: string;
   component: Component;
   slots: Record<string, ResolvedView>;
+  /** `_loading.brm`: the view streams in, and this shows until then. */
+  loading?: Component;
 }
 
 /** Imports every module of a matched route before it renders. */
 async function resolveView(view: RouteView): Promise<ResolvedView> {
-  const [module, ...slots] = await Promise.all([
+  const [module, loading, ...slots] = await Promise.all([
     view.load(),
+    view.loading?.(),
     ...Object.values(view.slots).map(resolveView),
   ]);
   const names = Object.keys(view.slots);
   return {
     key: view.key,
     component: module.default,
+    loading: loading?.default,
     slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
   };
 }
 
-/** A component that renders a route, with its slots rendering where the layout inserts them. */
-function viewComponent(view: ResolvedView, params: Record<string, string>): Component {
+/**
+ * Renders a view where its layout inserts it. A view with a loading file
+ * streams in after the rest of the page, as a `#loading` body does.
+ */
+async function renderView(
+  view: ResolvedView,
+  props: Record<string, unknown>,
+  ctx: Context,
+  scope: number | undefined,
+): Promise<string> {
+  if (!view.loading) {
+    return component(viewComponent(view, props), {}, ctx, scope);
+  }
+  const id = ctx.boundary();
+  const fallback = await component(view.loading, props, ctx, scope);
+  ctx.defer(id, (child) => component(viewComponent(view, props), {}, child, scope));
+  return `<!--l${id}-->${fallback}<!--/l-->`;
+}
+
+/**
+ * A component that renders a route, with its slots rendering where the
+ * layout inserts them. `props` go to every view, such as `params`.
+ */
+function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
   return (_props, ctx) => {
-    const props: Record<string, unknown> = { params };
+    const own: Record<string, unknown> = { ...props };
     for (const [name, slot] of Object.entries(view.slots)) {
       // Comments mark the slot, its layout's scope, the scope of its route and the route's key,
       // so the client can replace only the routes that change.
-      props[name] = lazy(async (at, scope) => {
+      own[name] = lazy(async (at, scope) => {
         const root = at.peek();
-        const html = await component(viewComponent(slot, params), {}, at, scope);
+        const html = await renderView(slot, props, at, scope);
         return `<!--R${scope ?? -1}:${name}:${root}:${encodeURIComponent(slot.key)}-->${html}<!--/R-->`;
       });
     }
-    return view.component(props, ctx);
+    return view.component(own, ctx);
   };
 }
 
@@ -1124,12 +1159,89 @@ async function runAction(
   }
 }
 
+/** Renders the page of a route tree, streamed, with the results of a form for `$action`. */
+async function renderPage(
+  view: ResolvedView,
+  props: Record<string, unknown>,
+  request: Request,
+  options: RouteOptions,
+  extra: { actions?: Map<unknown, unknown>; headers?: Headers; status?: number },
+): Promise<Response> {
+  // A page that the client loads in place of another starts above its IDs.
+  const base = Number(request.headers.get('x-brumate-base'));
+  const parts = await render(
+    viewComponent(view, props),
+    {},
+    {
+      ...options,
+      request,
+      actions: extra.actions,
+      route: view.key,
+      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
+    },
+  );
+  const headers = new Headers(parts.headers);
+  // Headers that the server function of a form set, such as a cookie.
+  extra.headers?.forEach((value, name) => headers.append(name, value));
+  headers.set('content-type', 'text/html; charset=utf-8');
+  const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
+  return new Response(body, { status: extra.status ?? parts.status, headers });
+}
+
 /**
- * Answers a request with the route that matches its path, streamed. Returns
- * undefined when no route matches. A `redirect` while the page renders
- * answers with a redirect. A form without scripts that posts to the page
- * with `?__action=<id>` runs that server function first, and the page
- * renders with its result for `$action`.
+ * Renders the first `_error.brm` that renders, from the innermost. Its
+ * component gets `error`, with the message and the status.
+ */
+async function renderError(
+  views: RouteView[],
+  error: { message: string; status: number },
+  params: Record<string, string>,
+  request: Request,
+  options: RouteOptions,
+): Promise<Response | undefined> {
+  for (const view of views) {
+    try {
+      // oxlint-disable-next-line no-await-in-loop -- The next file renders only when this one throws.
+      const resolved = await resolveView(view);
+      // oxlint-disable-next-line no-await-in-loop -- The next file renders only when this one throws.
+      return await renderPage(resolved, { params, error }, request, options, {
+        status: error.status,
+      });
+    } catch (failure) {
+      // An error file that throws hands the error to the one outside it.
+      console.error(failure);
+    }
+  }
+  return undefined;
+}
+
+/** Runs the middleware of the folders on the path, from the outside in, around the answer. */
+async function runMiddleware(
+  loaders: MiddlewareLoader[],
+  request: Request,
+  answer: () => Promise<Response>,
+): Promise<Response> {
+  const [first, ...rest] = loaders;
+  if (!first) {
+    return answer();
+  }
+  const { middleware } = await first();
+  return middleware(request, () => runMiddleware(rest, request, answer));
+}
+
+/**
+ * Answers a request with the route that matches its path, streamed:
+ *
+ * - The `_middleware.ts` of each folder on the path runs first, from the outside in.
+ * - An endpoint at the path answers the methods that it exports.
+ * - A form without scripts that posts to the page with `?__action=<id>`
+ *   runs that server function first, and the page renders with its result
+ *   for `$action`.
+ * - A route that throws renders the nearest `_error.brm`, and a path that
+ *   no route matches renders the `_error.brm` of the root with status 404.
+ *
+ * Returns undefined when no route matches and the root has no error file or
+ * middleware. A `redirect` while the page renders answers with a redirect.
  */
 export async function handleRoute(
   tree: RouteNode,
@@ -1139,7 +1251,45 @@ export async function handleRoute(
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);
   if (!match) {
-    return undefined;
+    const missing = notFound(tree);
+    if (missing.errors.length === 0 && missing.middleware.length === 0) {
+      return undefined;
+    }
+    return runMiddleware(missing.middleware, request, async () => {
+      const page = await renderError(
+        missing.errors,
+        { message: 'Not found', status: 404 },
+        {},
+        request,
+        options,
+      );
+      return page ?? new Response('Not found', { status: 404 });
+    });
+  }
+  return runMiddleware(match.middleware, request, () => answerRoute(match, request, options));
+}
+
+/** Answers a request that a route matches, after its middleware. */
+async function answerRoute(
+  match: RouteMatch,
+  request: Request,
+  options: RouteOptions,
+): Promise<Response> {
+  const url = new URL(request.url);
+  if (match.endpoint) {
+    const endpoint = await match.endpoint();
+    const handler =
+      endpoint[request.method] ?? (request.method === 'HEAD' ? endpoint.GET : undefined);
+    if (handler) {
+      return handler(request, match.params);
+    }
+    if (match.view.load === missingPage || request.method !== 'GET') {
+      const allow = Object.keys(endpoint).filter((name) => /^[A-Z]+$/.test(name));
+      return new Response('Method not allowed', {
+        status: 405,
+        headers: { allow: allow.join(', ') },
+      });
+    }
   }
   let actions: Map<unknown, unknown> | undefined;
   const posted = url.searchParams.get('__action');
@@ -1151,33 +1301,35 @@ export async function handleRoute(
     }
     actions = outcome.actions;
   }
-  const view = await resolveView(match.view);
   try {
-    // A page that the client loads in place of another starts above its IDs.
-    const base = Number(request.headers.get('x-brumate-base'));
-    const parts = await render(
-      viewComponent(view, match.params),
-      {},
-      {
-        ...options,
-        request,
-        actions,
-        route: view.key,
-        base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
-      },
-    );
-    const headers = new Headers(parts.headers);
-    // Headers that the server function of a form set, such as a cookie.
-    actionResponse.headers.forEach((value, name) => headers.append(name, value));
-    headers.set('content-type', 'text/html; charset=utf-8');
-    const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
-    return new Response(body, { status: parts.status, headers });
+    const view = await resolveView(match.view);
+    return await renderPage(view, { params: match.params }, request, options, {
+      actions,
+      headers: actionResponse.headers,
+    });
   } catch (error) {
     if (isRedirect(error)) {
       return new Response(null, {
         status: error.status,
         headers: { location: new URL(error.location, url).href },
       });
+    }
+    const known = error instanceof ServerError;
+    if (!known) {
+      console.error(error);
+    }
+    const page = await renderError(
+      match.errors,
+      {
+        message: known ? error.message : 'Something went wrong',
+        status: known ? error.status : 500,
+      },
+      match.params,
+      request,
+      options,
+    );
+    if (page) {
+      return page;
     }
     throw error;
   }

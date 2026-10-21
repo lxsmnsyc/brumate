@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { findFiles, defaultExclude } from '../src/files.ts';
@@ -17,6 +17,11 @@ function load(file: string | undefined): Loader | undefined {
   return file ? () => import(new URL(`${file}.ts`, output).href) : undefined;
 }
 
+/** Imports a `.ts` route file, such as an endpoint or middleware, as it is. */
+function plain<T>(file: string | undefined): (() => Promise<T>) | undefined {
+  return file ? () => import(new URL(file, output).href) as Promise<T> : undefined;
+}
+
 /** Turns the file tree into loaders of the compiled modules. */
 function loaders(node: RouteFiles): RouteNode {
   const map = (children: Record<string, RouteFiles> | undefined) =>
@@ -26,6 +31,10 @@ function loaders(node: RouteFiles): RouteNode {
     layout: load(node.layout),
     page: load(node.page),
     fallback: load(node.fallback),
+    error: load(node.error),
+    loading: load(node.loading),
+    middleware: plain(node.middleware),
+    endpoint: plain(node.endpoint),
     static: map(node.static),
     slots: map(node.slots),
     dynamic: node.dynamic && { name: node.dynamic.name, node: loaders(node.dynamic.node) },
@@ -42,6 +51,12 @@ beforeAll(async () => {
   const root = new URL('.', input).pathname.replace(/\/$/, '');
   paths = (await findFiles(root, defaultExclude)).map((file) => file.slice(root.length + 1));
   const sources = new Map(paths.map((file) => [file, readFileSync(new URL(file, input), 'utf8')]));
+  // Endpoints and middleware are `.ts` files, imported as they are.
+  for (const file of readdirSync(input, { recursive: true, encoding: 'utf8' })) {
+    if (file.endsWith('.ts') && file !== 'theme.ts') {
+      paths.push(file);
+    }
+  }
   // No parent passes props to a route, so `children`, the slots and `params` do not change.
   const liveProps = analyzeProject(sources);
   for (const [file, source] of sources) {
@@ -72,11 +87,22 @@ describe('route files', () => {
     expect(routeFiles(paths)).toEqual({
       layout: '_layout.brm',
       page: 'index.brm',
+      error: '_error.brm',
+      middleware: '_middleware.ts',
       rest: { name: 'rest', node: { page: '[...rest].brm' } },
       static: {
+        api: {
+          middleware: 'api/_middleware.ts',
+          dynamic: { name: 'name', node: { endpoint: 'api/[name].ts' } },
+          static: { time: { endpoint: 'api/time.ts' } },
+        },
         old: { page: 'old.brm' },
+        private: { page: 'private/index.brm' },
+        slow: { loading: 'slow/_loading.brm', page: 'slow/index.brm' },
         todos: {
           layout: 'todos/_layout.brm',
+          error: 'todos/_error.brm',
+          static: { broken: { page: 'todos/broken.brm' } },
           dynamic: { name: 'id', node: { page: 'todos/[id].brm' } },
         },
       },
@@ -165,5 +191,75 @@ describe('rendering', () => {
     expect(
       await handleRoute({ page: tree.page }, new Request('http://localhost/x')),
     ).toBeUndefined();
+  });
+});
+
+describe('error and loading files', () => {
+  it('renders the nearest error file inside the layouts above it', async () => {
+    const html = await page('/todos/broken', 410);
+    expect(html).toContain(
+      '<section class="todos"><p class="todos-error">Todos failed: Gone for good</p></section>',
+    );
+    // The root layout still renders around it.
+    expect(html).toContain('<nav>');
+  });
+
+  it('renders the root error file with 404 when no route matches', async () => {
+    const response = await handleRoute(
+      { layout: tree.layout, error: tree.error, page: tree.page },
+      new Request('http://localhost/nothing/here'),
+    );
+    expect(response?.status).toBe(404);
+    expect(await response!.text()).toContain('<h1 class="root-error">Error 404: Not found</h1>');
+  });
+
+  it('streams a route in after its loading file', async () => {
+    const module = await import(new URL('slow/index.brm.ts', output).href);
+    const response = await handleRoute(tree, new Request('http://localhost/slow'));
+    const reader = response!.body!.pipeThrough(new TextDecoderStream()).getReader();
+    const first = (await reader.read()).value!;
+    expect(first).toContain('<p class="loading">Loading slow</p>');
+    expect(first).not.toContain('Slow content');
+    module.release();
+    let rest = '';
+    // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      rest += chunk.value;
+    }
+    expect(rest).toMatch(/<template data-l="\d+"><p class="slow">Slow content<\/p><\/template>/);
+  });
+});
+
+describe('endpoints and middleware', () => {
+  it('answers with the handler of the method', async () => {
+    const response = await handleRoute(tree, new Request('http://localhost/api/time'));
+    expect(await response!.json()).toEqual({ time: 42 });
+    const posted = await handleRoute(
+      tree,
+      new Request('http://localhost/api/time', { method: 'POST' }),
+    );
+    expect(await posted!.text()).toBe('posted from /api/time');
+  });
+
+  it('passes the params of the path', async () => {
+    const response = await handleRoute(tree, new Request('http://localhost/api/ada'));
+    expect(await response!.text()).toBe('hello ada');
+  });
+
+  it('answers 405 to a method that the endpoint does not export', async () => {
+    const response = await handleRoute(
+      tree,
+      new Request('http://localhost/api/time', { method: 'DELETE' }),
+    );
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('allow')).toBe('GET, POST');
+  });
+
+  it('runs the middleware of each folder on the path, from the outside in', async () => {
+    const api = await handleRoute(tree, new Request('http://localhost/api/time'));
+    expect(api?.headers.get('x-api')).toBe('yes');
+    const blocked = await handleRoute(tree, new Request('http://localhost/private'));
+    expect(blocked?.status).toBe(401);
+    expect(await blocked!.text()).toBe('Sign in first');
   });
 });

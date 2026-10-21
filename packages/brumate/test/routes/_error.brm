@@ -1,0 +1,5 @@
+<script>
+  const { error } = $props<{ error: { message: string; status: number } }>();
+</script>
+
+<h1 class="root-error">Error {error.status}: {error.message}</h1>
