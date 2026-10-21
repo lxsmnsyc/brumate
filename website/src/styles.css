@@ -320,6 +320,8 @@ pre {
 }
 
 .demo {
+  /* A grid item is as wide as its content by default, which is wider than a narrow phone. */
+  min-width: 0;
   margin: 0;
   padding: 1.25rem;
   border: 1px solid var(--border);
@@ -339,6 +341,7 @@ pre {
 
 .demo button,
 .demo input:not([type='checkbox']) {
+  min-width: 0;
   padding: 0.5rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -778,10 +781,6 @@ pre {
 }
 
 @media (max-width: 800px) {
-  .header-nav a:nth-child(2) {
-    display: none;
-  }
-
   .playground {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -893,6 +892,56 @@ pre {
   .search {
     flex-basis: 9rem;
     margin: 0 0.5rem;
+  }
+}
+
+/* On a phone, the search box gets a row of its own below the brand and the links. */
+@media (max-width: 640px) {
+  :root {
+    --header-height: 6.5rem;
+  }
+
+  .header-inner {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 0.4rem;
+  }
+
+  .search {
+    order: 1;
+    flex: 1 1 100%;
+    margin: 0;
+  }
+
+  .header-nav a {
+    padding: 0.35rem 0.45rem;
+  }
+}
+
+/* A narrow phone keeps the brand and the links on one row. */
+@media (max-width: 420px) {
+  .header-inner {
+    padding: 0 0.75rem;
+  }
+
+  .brand {
+    gap: 0.4rem;
+    font-size: 1rem;
+  }
+
+  .header-nav {
+    gap: 0;
+  }
+
+  .header-nav a {
+    padding: 0.35rem 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .theme-toggle {
+    width: 1.9rem;
+    height: 1.9rem;
+    margin-left: 0.15rem;
   }
 }
 
