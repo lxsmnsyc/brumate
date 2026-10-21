@@ -48,6 +48,10 @@
       "types": "./dist/runtime/signals.d.ts",
       "default": "./dist/runtime/signals.js"
     },
+    "./testing": {
+      "types": "./dist/runtime/testing.d.ts",
+      "default": "./dist/runtime/testing.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {

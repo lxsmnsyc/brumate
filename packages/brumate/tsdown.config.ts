@@ -9,6 +9,7 @@ export default defineConfig({
     'src/runtime/context.ts',
     'src/runtime/html.ts',
     'src/runtime/signals.ts',
+    'src/runtime/testing.ts',
     'src/vite.ts',
     'src/cli.ts',
   ],

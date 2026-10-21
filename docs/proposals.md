@@ -129,21 +129,6 @@ A panel in development that shows what the page did:
 
 It loads only in development, and only when it is opened, so the page it shows behaves as in production.
 
-### Testing helpers
-
-The tests of this repository render on the server and resume in a DOM. Apps need the same.
-
-```ts
-import { mount } from 'brumate/testing';
-
-const page = await mount(Counter, { start: 1 });
-await page.click('button');
-expect(page.text('p')).toBe('Double: 4');
-```
-
-- `mount` renders on the server, puts the HTML and the state in the DOM of the test, starts the loader, and loads modules with the test runner's own import.
-- It works with happy-dom and jsdom.
-
 ### Project report
 
 `brumate inspect` describes one file. A report for the whole build would show what each route ships before and after its first event, and which components cost the most. It could fail a build that goes over a budget.

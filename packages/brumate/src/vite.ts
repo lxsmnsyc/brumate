@@ -55,6 +55,9 @@ const PRERENDER_ENTRY = 'brumate-routes';
 
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
+const SERVER_QUERY = '?brumate-server';
+/** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
+const TESTING = 'virtual:brumate/testing';
 
 /** Reads a request body as bytes, so files in form data stay intact. */
 async function readBody(request: IncomingMessage): Promise<Buffer> {
@@ -268,7 +271,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     resolveId(id) {
-      if (id === START || id === MANIFEST || id === SERVER || id === ROUTES) {
+      if (id === START || id === MANIFEST || id === SERVER || id === ROUTES || id === TESTING) {
         return `\0${id}`;
       }
       return undefined;
@@ -291,6 +294,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (id === `\0${ROUTES}`) {
         return routeTree();
       }
+      if (id === `\0${TESTING}`) {
+        return [
+          "import { createMount } from 'brumate/testing';",
+          `import { load } from ${JSON.stringify(MANIFEST)};`,
+          `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
+        ].join('\n');
+      }
       const [file, query] = id.split('?');
       if (!file?.endsWith('.brm')) {
         return undefined;
@@ -298,7 +308,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // Vite can add its own parameters, such as `import`.
       const params = new URLSearchParams(query);
       const isRender = params.has(RENDER_QUERY.slice(1));
-      const isClient = params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr;
+      // A test in a browser environment imports the server version of a component with this query.
+      const isServer = params.has(SERVER_QUERY.slice(1));
+      const isClient = !isServer && (params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr);
       const { source, result } = await compileFile(file);
       for (const dependency of result.plan.styles.dependencies) {
         const normalized = normalizePath(dependency);
@@ -318,6 +330,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         code = result.render;
       } else if (part) {
         code = result.parts[part] ?? '';
+      } else if (isServer) {
+        // The components that it renders are server versions too.
+        code = result.server.replace(/(from\s+(['"])[^'"]+\.brm)\2/g, `$1${SERVER_QUERY}$2`);
       } else {
         code = isClient ? result.client : result.server;
       }

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import brumate from 'brumate/vite';
 import { defineConfig } from 'vite';
-import markdown from './plugins/markdown.ts';
+import markdown, { SITE_PAGES } from './plugins/markdown.ts';
 import search from './plugins/search.ts';
 import showcase from './plugins/showcase.ts';
 
@@ -52,10 +52,14 @@ export default defineConfig({
   plugins: [
     markdown(),
     showcase(),
-    search([
-      fileURLToPath(new URL('docs', import.meta.url)),
-      fileURLToPath(new URL('../docs', import.meta.url)),
-    ]),
+    // Only the pages of the site, not the design notes of the repository.
+    search(
+      [
+        fileURLToPath(new URL('docs', import.meta.url)),
+        fileURLToPath(new URL('../docs', import.meta.url)),
+      ],
+      new Set([...SITE_PAGES].map((page) => page || 'index')),
+    ),
     // Every page is written as a static file, with readable names for the scripts.
     brumate({ prerender: { paths: ['/', '/playground'], head: scriptNames } }),
   ],

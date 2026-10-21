@@ -1,3 +1,14 @@
+declare module '*.brm?brumate-server' {
+  import type { Context } from 'brumate/server';
+
+  const Component: (props: any, ctx: Context) => Promise<string>;
+  export default Component;
+}
+
+declare module 'virtual:brumate/testing' {
+  export const mount: import('brumate/testing').Mount;
+}
+
 declare module '*.brm' {
   import type { Context } from 'brumate/server';
 

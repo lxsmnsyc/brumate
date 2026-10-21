@@ -18,7 +18,7 @@ import { language as brm } from '../src/highlight/brm.ts';
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
 
 /** The pages of the site. Links to other documents go to GitHub. */
-const SITE_PAGES = new Set([
+export const SITE_PAGES: Set<string> = new Set([
   '',
   'getting-started',
   'syntax',
@@ -28,6 +28,7 @@ const SITE_PAGES = new Set([
   'vite',
   'typescript',
   'inspect',
+  'testing',
   'model',
   'page-format',
 ]);
