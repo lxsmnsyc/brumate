@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let total = $signal(1);
+</script>
+
+#template price(label: string, amount: number) {
+  <span class="price">{label}: {amount}</span>
+}
+
+<button onClick=(() => total++)>Add</button>
+<p>{price('Subtotal', total)}</p>

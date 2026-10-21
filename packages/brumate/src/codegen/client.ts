@@ -20,7 +20,7 @@ import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
-import { instanceScope, slotIndex } from './scopes.ts';
+import { instanceScope, scopePath, slotIndex } from './scopes.ts';
 import { copy } from '../sourcemap.ts';
 
 export interface ClientOutput {
@@ -607,7 +607,8 @@ class ClientGenerator {
       }
       const site = node.site;
       const base = instanceScope(this.plan, site.scope);
-      const expression = (): string => this.rewriter.rewrite(site, '$$s', base);
+      const expression = (): string =>
+        this.withTemplates(site, this.rewriter.rewrite(site, '$$s', base));
       const name = (prefix: string): string => {
         const value = `${prefix}${site.id}`;
         this.updates.set(node, value);
@@ -958,6 +959,45 @@ class ClientGenerator {
         );
       }
     }
+  }
+
+  /**
+   * Code that calls `#template`s, such as an insert of `{price(total)}` that
+   * updates. The render module defines templates inside the component's
+   * render function, so an update defines the ones that it calls itself.
+   */
+  private withTemplates(site: Site, code: string): string {
+    const templates: Scope[] = [];
+    for (const callee of site.calls) {
+      if (callee.kind !== 'template') {
+        continue;
+      }
+      const template = this.model.scopes.find(
+        (item) => item.template?.name === callee.name && item.parent === callee.scope,
+      );
+      for (const item of template ? this.inside(template) : []) {
+        if (!templates.includes(item)) {
+          templates.push(item);
+        }
+      }
+    }
+    if (templates.length === 0) {
+      return code;
+    }
+    const base = templates[0]!.parent!;
+    const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+      mode: 'client',
+      outer: { inside: templates, base, baseVar: '$$p' },
+    });
+    for (const line of this.prologue(templates, base)) {
+      emitter.line(line);
+    }
+    for (const template of templates) {
+      emitter.emitTemplate(template.template!);
+    }
+    emitter.flush();
+    const parent = scopePath(this.plan, '$$s', site.scope, base);
+    return `(($$p) => {\n${emitter.lines.join('\n')}\nreturn ${code};\n})(${parent})`;
   }
 
   /** Declares the outer values that a render function reads, as local variables. */

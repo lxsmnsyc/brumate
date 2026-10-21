@@ -468,6 +468,16 @@ describe('resume', () => {
     await waitFor(() => expect(text('.b')).toBe('11'));
   });
 
+  it('updates markup that a #template renders, from an update in the browser', async () => {
+    await resume('template-update', {});
+    expect(text('.price')).toBe('Subtotal: 1');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.price')).toBe('Subtotal: 2'));
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.price')).toBe('Subtotal: 3'));
+    expect(document.querySelectorAll('.price')).toHaveLength(1);
+  });
+
   it('loads a memo that returns a promise without saying so', async () => {
     await resume('doubler', {});
     expect(text('p')).toBe('2');

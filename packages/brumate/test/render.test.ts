@@ -32,6 +32,7 @@ const props: Record<string, unknown> = {
   Themed: {},
   fields: {},
   'uses-counter': {},
+  'template-update': {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.
