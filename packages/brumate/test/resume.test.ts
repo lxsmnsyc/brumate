@@ -414,7 +414,9 @@ describe('resume', () => {
     field.value = 'c';
     field.dispatchEvent(new Event('input', { bubbles: true }));
     await waitFor(() => expect(text('.echoed')).toBe('c'));
-    await waitFor(() => expect(aborted.toSorted()).toEqual(['b:true', 'c:false']));
+    // The call for "b" is aborted: on the server, or before it gets there when the test runs slowly.
+    await waitFor(() => expect(aborted).toContain('c:false'));
+    expect(aborted).not.toContain('b:false');
     delete (globalThis as { aborted?: string[] }).aborted;
   });
 
