@@ -7,6 +7,7 @@ export default defineConfig({
       'brumate/server': fileURLToPath(new URL('./src/runtime/server.ts', import.meta.url)),
       'brumate/client': fileURLToPath(new URL('./src/runtime/client.ts', import.meta.url)),
       'brumate/loader': fileURLToPath(new URL('./src/runtime/loader.ts', import.meta.url)),
+      'brumate/routes': fileURLToPath(new URL('./src/runtime/routes.ts', import.meta.url)),
       'brumate/context': fileURLToPath(new URL('./src/runtime/context.ts', import.meta.url)),
     },
   },

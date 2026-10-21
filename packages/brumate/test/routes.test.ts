@@ -2,7 +2,11 @@ import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } f
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { findFiles, defaultExclude } from '../src/files.ts';
-import { routeFiles, routeModule } from '../src/routes.ts';
+import { routeFiles, routeModule, routePaths, routeTypes } from '../src/routes.ts';
+import { href as typedHref } from '../src/runtime/routes.ts';
+
+// routes.check.ts declares a few routes for the whole test program. These tests use others.
+const href = typedHref as (path: string, params?: Record<string, string>) => string;
 import type { RouteFiles } from '../src/routes.ts';
 import { handleRoute, matchRoute } from '../src/runtime/server.ts';
 import type { Loader, RouteNode } from '../src/runtime/server.ts';
@@ -261,5 +265,45 @@ describe('endpoints and middleware', () => {
     const blocked = await handleRoute(tree, new Request('http://localhost/private'));
     expect(blocked?.status).toBe(401);
     expect(await blocked!.text()).toBe('Sign in first');
+  });
+});
+
+describe('typed routes', () => {
+  const files = routeFiles([
+    '_layout.brm',
+    'index.brm',
+    '_error.brm',
+    'todos/index.brm',
+    'todos/[id].brm',
+    'todos/[id]/edit.brm',
+    'docs/[...path].brm',
+    'api/hello.ts',
+    '@aside/index.brm',
+    'todos/_middleware.ts',
+  ]);
+
+  it('lists the paths of pages and endpoints, with their params', () => {
+    expect(routePaths(files)).toEqual([
+      { path: '/', params: [] },
+      { path: '/api/hello', params: [] },
+      { path: '/docs/[...path]', params: ['path'] },
+      { path: '/todos', params: [] },
+      { path: '/todos/[id]', params: ['id'] },
+      { path: '/todos/[id]/edit', params: ['id'] },
+    ]);
+  });
+
+  it('writes them into Routes of brumate/routes', () => {
+    expect(routeTypes(files)).toContain(
+      'declare module \'brumate/routes\' {\n  interface Routes {\n    "/": {};',
+    );
+    expect(routeTypes(files)).toContain('    "/todos/[id]/edit": { id: string };');
+  });
+
+  it('puts params into a path, and keeps the slashes of a rest param', () => {
+    expect(href('/todos/[id]/edit', { id: 'a b' })).toBe('/todos/a%20b/edit');
+    expect(href('/docs/[...path]', { path: 'guide/routing' })).toBe('/docs/guide/routing');
+    expect(href('/')).toBe('/');
+    expect(() => href('/todos/[id]', {})).toThrow('The param id of /todos/[id] is missing');
   });
 });

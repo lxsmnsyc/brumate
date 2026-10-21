@@ -19,7 +19,12 @@
   "env": {
     "builtin": true
   },
-  "ignorePatterns": ["**/dist/**", "**/node_modules/**", "**/test/.output/**"],
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/test/.output/**",
+    "**/brumate-routes.d.ts"
+  ],
   "overrides": [
     {
       "files": ["**/*.d.ts"],

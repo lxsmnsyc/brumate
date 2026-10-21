@@ -1,4 +1,5 @@
 <script>
+  import { href } from 'brumate/routes';
   import { $props, $signal } from 'brumate/signals';
 
   // Wraps every page. `children` is the page, and `aside` is the @aside route for the same path.
@@ -28,7 +29,7 @@
     <meta charset="utf-8">
   </head>
   <body>
-    <nav><a href="/">Todos</a> | <a href="/counter/10">Counter</a> | <a href="/guestbook">Guestbook</a>
+    <nav><a href="/">Todos</a> | <a href=(href('/counter/[start]', { start: '10' }))>Counter</a> | <a href="/guestbook">Guestbook</a>
       <button class="toggle" onClick=(() => (wide = !wide))>{wide ? 'Narrow' : 'Wide'}</button>
     </nav>
     <div class=(wide ? 'page wide' : 'page')>

@@ -155,6 +155,23 @@ The response has the headers and the status that were set while the page rendere
 
 `handleRoute(tree, request, options)` and `matchRoute(tree, pathname)` from `brumate/server` do the same with a tree built by hand.
 
+## Links
+
+`href` from `brumate/routes` writes the URL of a route from its path in the route files, and TypeScript checks both:
+
+```html
+<script>
+  import { href } from 'brumate/routes';
+</script>
+
+<a href=(href('/todos/[id]', { id: todo.id }))>{todo.title}</a>
+```
+
+- A path that no route has, or a missing param, is a type error in the editor and in `brumate-tsc`.
+- Params are encoded. A rest param, such as `[...path]`, keeps its slashes.
+- `RouteParams<'/todos/[id]'>` is the type of the params of a route, such as for the props of its page.
+- The plugin writes the paths into `src/brumate-routes.d.ts` when routes are added or removed. The `routeTypes` option moves it, and `false` turns it off. Commit the file, so type-checking works before a build.
+
 ## Navigation
 
 Links are plain `<a>` elements. Without scripts, each one loads a full page. Once the loader runs, it loads pages itself:

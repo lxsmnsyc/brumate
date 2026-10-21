@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
@@ -13,7 +13,8 @@ import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { prerender } from './prerender.ts';
 import type { PrerenderOptions } from './prerender.ts';
-import { routeFiles, routeModule } from './routes.ts';
+import { routeFiles, routeModule, routeTypes } from './routes.ts';
+import type { RouteFiles } from './routes.ts';
 
 export interface BrumateOptions {
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
@@ -27,6 +28,12 @@ export interface BrumateOptions {
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
+  /**
+   * The declaration file that gives `href` of `brumate/routes` the paths of
+   * the routes, relative to the root. The plugin writes it when the routes
+   * change. Defaults to `src/brumate-routes.d.ts`. `false` writes none.
+   */
+  routeTypes?: string | false;
   /**
    * Loads pages without a full page load when a link is clicked or a form
    * posts. Defaults to true. `{ transition: true }` swaps pages inside a
@@ -171,7 +178,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const routesDirectory = (): string =>
     normalizePath(path.resolve(root, options.routes ?? 'src/routes'));
 
-  const routeTree = (): string => {
+  /** The route files, from the `.brm` files found and the `.ts` files of the directory. */
+  const currentRoutes = (): RouteFiles => {
     const directory = routesDirectory();
     const paths = [...files.values()]
       .filter((file) => file.startsWith(`${directory}/`))
@@ -185,7 +193,22 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
     }
-    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`, rpc, options.origins);
+    return routeFiles(paths);
+  };
+
+  const routeTree = (): string =>
+    routeModule(currentRoutes(), (file) => `${routesDirectory()}/${file}`, rpc, options.origins);
+
+  /** Writes the paths of the routes as types for `href`, when they changed. */
+  const writeRouteTypes = (): void => {
+    if (options.routeTypes === false || !existsSync(routesDirectory())) {
+      return;
+    }
+    const file = path.resolve(root, options.routeTypes ?? 'src/brumate-routes.d.ts');
+    const text = routeTypes(currentRoutes());
+    if (!existsSync(file) || readFileSync(file, 'utf8') !== text) {
+      writeFileSync(file, text);
+    }
   };
 
   const handleDevRPC = async (
@@ -273,6 +296,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     async buildStart() {
       await scan();
+      writeRouteTypes();
     },
 
     resolveId(id) {
@@ -364,11 +388,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               server.moduleGraph.invalidateModule(module);
             }
           }
+          writeRouteTypes();
         }
         if (!file.endsWith('.brm')) {
           return;
         }
-        const update = event === 'add' || event === 'unlink' ? scan() : analyze();
+        const update =
+          event === 'add' || event === 'unlink' ? scan().then(writeRouteTypes) : analyze();
         void update.then(() => {
           for (const module of server.moduleGraph.idToModuleMap.values()) {
             const id = module.id ?? '';

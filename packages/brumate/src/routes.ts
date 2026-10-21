@@ -150,3 +150,51 @@ export function routeModule(
     '}',
   ].join('\n');
 }
+
+/** A path that a request can reach, with the names of its params. */
+export interface RoutePathInfo {
+  /** The path as the route files spell it, such as `/todos/[id]`. */
+  path: string;
+  params: string[];
+}
+
+/** The paths of the pages and endpoints of a tree. Slots render at the paths of their layout. */
+export function routePaths(tree: RouteFiles): RoutePathInfo[] {
+  const result: RoutePathInfo[] = [];
+  const visit = (node: RouteFiles, path: string, params: string[]): void => {
+    if (node.page || node.endpoint) {
+      result.push({ path: path || '/', params });
+    }
+    for (const [segment, folder] of Object.entries(node.static ?? {})) {
+      visit(folder, `${path}/${segment}`, params);
+    }
+    if (node.dynamic) {
+      visit(node.dynamic.node, `${path}/[${node.dynamic.name}]`, [...params, node.dynamic.name]);
+    }
+    if (node.rest) {
+      visit(node.rest.node, `${path}/[...${node.rest.name}]`, [...params, node.rest.name]);
+    }
+  };
+  visit(tree, '', []);
+  return result.toSorted((a, b) => a.path.localeCompare(b.path));
+}
+
+/** A declaration file that adds the paths of a tree to `Routes` of `brumate/routes`. */
+export function routeTypes(tree: RouteFiles): string {
+  const lines = routePaths(tree).map(({ path, params }) => {
+    const fields = params.map((name) => `${name}: string`).join('; ');
+    return `    ${JSON.stringify(path)}: {${fields ? ` ${fields} ` : ''}};`;
+  });
+  return [
+    '// Written by the brumate Vite plugin from the route files. Do not edit.',
+    // An export makes this a module, so the block below adds to brumate/routes instead of replacing it.
+    'export {};',
+    '',
+    "declare module 'brumate/routes' {",
+    '  interface Routes {',
+    ...lines,
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+}

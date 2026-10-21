@@ -17,7 +17,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling    | High   | Medium |
 | [Devtools overlay](#devtools-overlay)                                             | Tooling    | Medium | Medium |
 | [Testing helpers](#testing-helpers)                                               | Tooling    | Medium | Small  |
-| [Typed routes](#typed-routes)                                                     | Routing    | Medium | Medium |
 | [Layouts on static hosts](#layouts-on-static-hosts)                               | Navigation | Medium | Medium |
 | [Server function streams and uploads](#server-function-streams-and-uploads)       | Server     | Medium | Medium |
 | [Request forgery protection](#request-forgery-protection)                         | Security   | High   | Small  |
@@ -32,22 +31,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 - A server function that returns an async iterable streams its values, and a memo that reads it updates with each one. seroval already streams async iterables.
 - A `File` or a `Blob` argument is sent as multipart data, so uploads do not need a form.
 - The call gets an `AbortSignal`, and a newer call to the same memo aborts the older one. Now an older answer is only dropped when it arrives.
-
-## Routing
-
-### Typed routes
-
-The plugin knows every route and its params, so it can write their types.
-
-```ts
-import { href } from 'virtual:brumate/routes';
-
-href('/todos/[id]', { id: '3' }); // '/todos/3'
-href('/todos/[id]', {}); // Type error: `id` is missing.
-```
-
-- `params` in a route gets its type from the file path, so `$props()` needs no type argument for it.
-- `brumate-tsc` checks `href` calls against the routes.
 
 ## Syntax
 
