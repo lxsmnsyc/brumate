@@ -183,6 +183,10 @@ brumate({
   merge: 2048,
   // Writes the pages as static files after the server build. See Prerendering.
   prerender: false,
+  // Prints what the client build ships. See Inspect.
+  report: false,
+  // Fails the client build when a size goes over it, in bytes after gzip.
+  budget: { loader: 3072, route: 20480 },
 });
 ```
 

@@ -22,7 +22,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Request forgery protection](#request-forgery-protection)                         | Security   | High   | Small  |
 | [Deployment adapters](#deployment-adapters)                                       | Build      | Medium | Medium |
 | [Accessibility warnings](#accessibility-warnings)                                 | Compiler   | Medium | Medium |
-| [Project report](#project-report)                                                 | Tooling    | Medium | Small  |
 
 ## Server
 
@@ -99,14 +98,6 @@ A panel in development that shows what the page did:
 - The graph of a component, from `inspect`, with the nodes that just updated marked.
 
 It loads only in development, and only when it is opened, so the page it shows behaves as in production.
-
-### Project report
-
-`brumate inspect` describes one file. A report for the whole build would show what each route ships before and after its first event, and which components cost the most. It could fail a build that goes over a budget.
-
-```ts
-brumate({ budget: { loader: 2048, route: 10240 } });
-```
 
 ## Build
 

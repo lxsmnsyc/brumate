@@ -12,6 +12,8 @@ import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { prerender } from './prerender.ts';
+import { buildReport, formatBuildReport } from './report.ts';
+import type { Budget, ReportChunk } from './report.ts';
 import type { PrerenderOptions } from './prerender.ts';
 import { routeFiles, routeModule, routeTypes } from './routes.ts';
 import type { RouteFiles } from './routes.ts';
@@ -52,6 +54,14 @@ export interface BrumateOptions {
    * the pages that its links lead to.
    */
   prerender?: boolean | PrerenderOptions;
+  /**
+   * Prints what the client build ships: what every page loads before its
+   * first event, the core, the most that each route can load, and each
+   * component. Sizes are after gzip.
+   */
+  report?: boolean;
+  /** Fails the client build when a size goes over it, in bytes after gzip. */
+  budget?: Budget;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -279,6 +289,40 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       isSsrBuild = Boolean(config.build.ssr);
     },
 
+    async generateBundle(_output, bundle) {
+      if (isSsrBuild || (!options.report && !options.budget)) {
+        return;
+      }
+      const chunks: ReportChunk[] = [];
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk') {
+          chunks.push({
+            fileName: item.fileName,
+            code: item.code,
+            isEntry: item.isEntry,
+            imports: item.imports,
+            moduleIds: item.moduleIds,
+          });
+        }
+      }
+      const list = [...files.values()];
+      const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+      const report = buildReport({
+        chunks,
+        sources: new Map(list.map((file, index) => [file, contents[index]!])),
+        routes: existsSync(routesDirectory())
+          ? { tree: currentRoutes(), resolve: (file) => `${routesDirectory()}/${file}` }
+          : undefined,
+        budget: options.budget,
+      });
+      if (options.report) {
+        this.info(`\n${formatBuildReport(report, relative)}`);
+      }
+      if (report.overBudget.length > 0) {
+        this.error(report.overBudget.join('\n'));
+      }
+    },
+
     async writeBundle(_output, bundle) {
       if (!options.prerender || !isSsrBuild) {
         return;
@@ -429,3 +473,4 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   };
 }
 export type { ManifestChunk, PrerenderOptions } from './prerender.ts';
+export type { Budget, BuildReport } from './report.ts';

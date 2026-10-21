@@ -57,3 +57,32 @@ const { report, text } = inspect(source, {
 ```
 
 Without `liveProps`, the file is inspected alone, and every prop can change.
+
+## Build report
+
+`report: true` in the plugin options prints what the client build ships. Sizes are after gzip.
+
+```
+brumate client report (gzip)
+  Every page, before its first event: 2.7 kB
+  The core, on the first event: 13.4 kB
+  The most each route loads after its first event, with the core
+    /: 15.8 kB (4 components)
+    /guestbook: 14.6 kB (2 components)
+  Components, largest first
+    src/App.brm: 1.3 kB
+    src/routes/guestbook.brm: 847 B
+```
+
+- Every page loads the entry and what it imports before its first event.
+- The first event loads the core.
+- A route can load the code of its page, its layouts, and the components that they import. Each event loads only its own part, so a page often loads much less.
+- Navigation and server calls load their own modules, which the report does not count.
+
+`budget` fails the build when a size goes over it, in bytes after gzip:
+
+```ts
+brumate({ budget: { loader: 3072, route: 20480 } });
+```
+
+The error lists every size over the budget.
