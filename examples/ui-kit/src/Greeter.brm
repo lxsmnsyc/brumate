@@ -1,0 +1,14 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import { greet } from './greeting.ts';
+
+  const { name } = $props<{ name: string }>();
+  let message = $signal('');
+
+  async function hello() {
+    message = await greet(name);
+  }
+</script>
+
+<button class="kit-greet" onClick=hello>Greet {name}</button>
+<output>{message}</output>

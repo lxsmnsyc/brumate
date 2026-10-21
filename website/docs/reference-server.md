@@ -167,6 +167,13 @@ const stop = start({ load, rpc: '/_brumate', navigate: true });
 
 `virtual:brumate/testing` exports `mount`, already connected to the client modules of the project. `brumate/testing` exports `createMount(options)`, which makes one from `load` and `rpc`.
 
+`virtual:brumate/testing` exports `answerCalls(options?)` too. It answers the server function calls of the page with `functions` of `virtual:brumate/server`, and returns a function that restores `fetch`. `brumate/testing` exports `answerCalls(functions, options?)`, which takes the functions by ID, or a function that returns a promise of them.
+
+| Option   | Type                   | What it does                                        |
+| -------- | ---------------------- | --------------------------------------------------- |
+| `rpc`    | `string`               | The URL prefix of calls. Defaults to `/_brumate`.   |
+| `onCall` | `(id: string) => void` | Gets the ID of each call, before the function runs. |
+
 ```ts
 const page = await mount(Component, props, renderOptions?);
 ```

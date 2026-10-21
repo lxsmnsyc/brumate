@@ -63,3 +63,30 @@ export async function findServerFiles(
   await visit(root);
   return result.toSorted();
 }
+
+/**
+ * Finds every script under a directory, such as `.ts` and `.brm.ts` files, as
+ * absolute paths with forward slashes, without reading them.
+ */
+export async function findScripts(
+  root: string,
+  exclude: (directory: string) => boolean,
+): Promise<string[]> {
+  const result: string[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    const directories: Promise<void>[] = [];
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!exclude(entry.name)) {
+          directories.push(visit(file));
+        }
+      } else if (/\.[cm]?[jt]sx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
+        result.push(file.split(path.sep).join('/'));
+      }
+    }
+    await Promise.all(directories);
+  };
+  await visit(root);
+  return result.toSorted();
+}

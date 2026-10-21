@@ -66,12 +66,16 @@ The client build must run first. The `_error.brm` of the root renders as `404.ht
 | `virtual:brumate/manifest` | `load(id)`, which imports the client module of a component by component ID.                                                                                                                 |
 | `virtual:brumate/routes`   | `routes`, the route tree, and `handle(request, options?)`, which answers a request with its page or endpoint, and form posts without scripts. It returns `undefined` when no route matches. |
 | `virtual:brumate/server`   | `functions`, every server function by ID, and `handle(request)`, which answers server function calls only.                                                                                  |
-| `virtual:brumate/testing`  | `mount`, for component tests. See [Testing](./testing.md).                                                                                                                                  |
-| `./App.brm?brumate-server` | The server version of a component, in an environment that would load the client version, such as a test.                                                                                    |
+| `virtual:brumate/testing`  | `mount` and `answerCalls`, for component tests. See [Testing](./testing.md).                                                                                                                |
+| `./App.brm?brumate-server` | The server version of a component, in an environment that would load the client version, such as a test. It imports the server code of `'use server'` files.                                |
 
 A server calls the `handle` of `virtual:brumate/server` for server function calls, and the `handle` of `virtual:brumate/routes` for pages. The second takes the [`DocumentOptions`](./reference-server.md#documentoptions), such as `scripts`. See [Deploying](./deploying.md).
 
 Add `brumate/types` to the `types` of `tsconfig.json` to type these modules and `.brm` imports.
+
+## Packages of components
+
+The plugin also compiles the `.brm`, `.brm.ts` and `'use server'` files of dependencies whose `package.json` has a `brumate` field. Their components join the manifest. Their server functions join `virtual:brumate/server` when the app imports their files. The plugin keeps these packages out of Vite's dep optimizer and compiles them into the server build. See [Publishing components](./packages.md).
 
 ## The `brumate` command
 

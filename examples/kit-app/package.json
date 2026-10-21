@@ -1,0 +1,24 @@
+{
+  "name": "example-kit-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.ts",
+    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
+    "start": "node server.prod.ts",
+    "typecheck": "brumate-tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "brumate": "workspace:*",
+    "example-ui-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@brumate/tsc": "workspace:*",
+    "@types/node": "^24.19.2",
+    "happy-dom": "^20.14.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

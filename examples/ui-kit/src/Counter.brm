@@ -1,0 +1,16 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import { counter } from './counter.brm.ts';
+
+  const { start = 0, label = 'Clicked' } = $props<{ start?: number; label?: string }>();
+  const { count, double, increment } = counter(start);
+</script>
+
+<button class="kit-counter" onClick=increment>{label} {count} times</button>
+<p class="kit-double">Double: {double}</p>
+
+<style>
+  button {
+    border: 2px solid rgb(0, 128, 0);
+  }
+</style>

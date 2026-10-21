@@ -1,14 +1,19 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isRunnableDevEnvironment, normalizePath, transformWithOxc } from 'vite';
-import type { EnvironmentModuleNode, Plugin, ViteDevServer } from 'vite';
+import {
+  isRunnableDevEnvironment,
+  normalizePath,
+  searchForWorkspaceRoot,
+  transformWithOxc,
+} from 'vite';
+import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
-import { defaultExclude, findFiles, findServerFiles } from './files.ts';
+import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
 import {
   hasUseServer,
   isScriptFile,
@@ -19,11 +24,20 @@ import {
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
-import { analyzeProject } from './project.ts';
+import { analyzeProject, resolveRelative } from './project.ts';
+import {
+  findPackages,
+  packageFileName,
+  packageOf,
+  reachableFiles,
+  resolvePackageImport,
+  splitSpecifier,
+} from './packages.ts';
+import type { BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
-import { isReactiveModule } from './modules.ts';
+import { isReactiveModule, resolveFromDisk } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
@@ -117,6 +131,16 @@ const SERVER_QUERY = '?brumate-server';
 const TESTING = 'virtual:brumate/testing';
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
+
+/** What tells two lists of packages of components apart. */
+function packagesKey(list: BrumatePackage[]): string {
+  return JSON.stringify(list.map((item) => [item.prefix, item.root, item.directories]));
+}
+
+/** Skips the `node_modules` and hidden directories of a package of components. */
+function packageExclude(directory: string): boolean {
+  return directory === 'node_modules' || directory.startsWith('.');
+}
 
 /** Reads a request body as bytes, so files in form data stay intact. */
 async function readBody(request: IncomingMessage): Promise<Buffer> {
@@ -245,14 +269,44 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
 
+  /** The dependencies of the app that ship `.brm` files. See `packages.ts`. */
+  let packages: BrumatePackage[] = [];
+
   // The ID is computed from the path relative to the root, so it is the same on every machine.
   const relative = (file: string): string => normalizePath(path.relative(root, file));
+  /**
+   * The name of a file, which its IDs come from: its path relative to the root,
+   * or for a file of a package, the name of the package and its path in it.
+   */
+  const nameOf = (file: string): string => {
+    let normalized = normalizePath(file);
+    let owner = packageOf(packages, normalized);
+    // With `resolve.preserveSymlinks`, Vite names a file of a package by its link.
+    if (!owner && normalized.includes('/node_modules/') && existsSync(normalized)) {
+      normalized = normalizePath(realpathSync(normalized));
+      owner = packageOf(packages, normalized);
+    }
+    return owner ? packageFileName(owner, normalized) : relative(file);
+  };
+  /** True for a bare specifier that names a package of components. */
+  const isPackageSpecifier = (specifier: string): boolean => {
+    const name = splitSpecifier(specifier)?.name;
+    return name !== undefined && packages.some((item) => item.name === name);
+  };
   /** Files of server functions: scripts whose first statement is `'use server'`, by ID. */
   const serverFiles = new Map<string, string>();
+  /** The scripts of the app, when it uses packages of components. */
+  let appScripts: string[] = [];
   /** The ID of a function that a component imports from a 'use server' file, by a relative path. */
   const serverImport = (importer: string, specifier: string, name: string): string | undefined => {
+    // A package of components can export a file of server functions.
     if (!specifier.startsWith('.')) {
-      return undefined;
+      const file = isPackageSpecifier(specifier)
+        ? resolvePackageImport(specifier, importer)
+        : undefined;
+      return file && isScriptFile(file) && hasUseServer(readFileSync(file, 'utf8'))
+        ? functionId(serverFileId(file), name, !isServe)
+        : undefined;
     }
     const stem = path.resolve(path.dirname(importer), specifier);
     const found = [
@@ -268,30 +322,81 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   };
 
   const serverFileId = (file: string): string =>
-    `${path.basename(file).replace(/\.[^.]+$/, '')}_${hash(relative(file))}`;
+    `${path.basename(file).replace(/\.[^.]+$/, '')}_${hash(nameOf(file))}`;
   const componentId = (file: string): string => {
-    const filename = relative(file);
+    const filename = nameOf(file);
     return `${getComponentName(filename)}_${hash(filename)}`;
   };
 
   const scan = async (): Promise<void> => {
+    const directories = packages.flatMap((item) =>
+      item.directories.filter((directory) => existsSync(directory)),
+    );
+    // A package inside the root, such as one of a workspace, is found once, as a package.
+    const ownFile = (file: string): boolean => !packageOf(packages, file);
+    const [own, ownServer, ...found] = await Promise.all([
+      findFiles(root, exclude),
+      findServerFiles(root, exclude),
+      ...directories.flatMap((directory) => [
+        findFiles(directory, packageExclude),
+        findServerFiles(directory, packageExclude),
+      ]),
+    ]);
+    // The scripts of the app, which can import files of packages.
+    appScripts = packages.length > 0 ? (await findScripts(root, exclude)).filter(ownFile) : [];
     files.clear();
-    for (const file of await findFiles(root, exclude)) {
+    serverFiles.clear();
+    for (const file of own!.filter(ownFile)) {
       files.set(componentId(file), file);
     }
-    serverFiles.clear();
-    for (const file of await findServerFiles(root, exclude)) {
+    for (const file of ownServer!.filter(ownFile)) {
       serverFiles.set(serverFileId(file), file);
+    }
+    for (const [index, list] of found.entries()) {
+      for (const file of list) {
+        if (index % 2 === 0) {
+          files.set(componentId(file), file);
+        } else {
+          serverFiles.set(serverFileId(file), file);
+        }
+      }
     }
     await analyze();
   };
+
+  /**
+   * The files of packages that the app reaches through its imports. A server
+   * function of a package becomes an endpoint of the app only when the app
+   * reaches its file, so installing a package does not expose all of them.
+   */
+  const reachable = (): Set<string> =>
+    reachableFiles(
+      packages,
+      [...[...files.values()].filter((file) => !packageOf(packages, file)), ...appScripts],
+      (file) => {
+        try {
+          return readFileSync(file, 'utf8');
+        } catch {
+          return undefined;
+        }
+      },
+    );
+  /** The files of packages in the last server registry. */
+  let registered = new Set<string>();
+
+  /** Resolves a `.brm` file that a component imports: next to it, or from a package of components. */
+  const resolveComponent = (specifier: string, importer: string): string | undefined =>
+    resolveRelative(specifier, importer) ??
+    (specifier.endsWith('.brm') && isPackageSpecifier(specifier)
+      ? resolvePackageImport(specifier, importer)
+      : undefined);
 
   // Props are analyzed across the project, so a change to one file can change the output of others.
   const analyze = async (): Promise<void> => {
     const list = [...files.values()];
     const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
     const sources = new Map(list.map((file, index) => [file, contents[index]!]));
-    liveProps = analyzeProject(sources);
+    liveProps = analyzeProject(sources, resolveComponent);
     compiled.clear();
   };
 
@@ -303,7 +408,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       cached = {
         source,
         result: compile(source, {
-          filename: relative(file),
+          filename: nameOf(file),
           liveProps: liveProps.get(file),
           path: file,
           merge: options.merge ?? DEFAULT_MERGE,
@@ -311,6 +416,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // A build does not show the names of server functions in their IDs.
           hideNames: !isServe,
           serverImport: (specifier, name) => serverImport(file, specifier, name),
+          // A module of reactive logic can come from a package of components.
+          resolveModule: (specifier, importer) => {
+            const local = resolveFromDisk(specifier, importer);
+            const found =
+              local === undefined && isPackageSpecifier(specifier)
+                ? resolvePackageImport(specifier, importer)
+                : undefined;
+            return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
+          },
         }),
       };
       compiled.set(file, cached);
@@ -350,16 +464,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     ].join('\n');
   };
 
-  const serverRegistry = (): string => {
-    const imports = [...files.values()].map(
-      (file, index) => `import * as m${index} from ${JSON.stringify(file)};`,
+  /**
+   * The module of every server function of the app, by ID. With `server`, in
+   * a DOM test, it imports the server code of each file, which that
+   * environment would give as browser code.
+   */
+  const serverRegistry = (server = false): string => {
+    const query = server ? SERVER_QUERY : '';
+    registered = packages.length > 0 ? reachable() : new Set();
+    const keep = (file: string): boolean => registered.has(file) || !packageOf(packages, file);
+    const components = [...files.values()].filter(keep);
+    const imports = components.map(
+      (file, index) => `import * as m${index} from ${JSON.stringify(file + query)};`,
     );
-    const spreads = [...files.values()].map((_, index) => `  ...m${index}.rpc,`);
+    const spreads = components.map((_, index) => `  ...m${index}.rpc,`);
     // Each exported function of a file of server functions, under the ID that its stub calls.
-    const fileImports = [...serverFiles.values()].map(
-      (file, index) => `import * as f${index} from ${JSON.stringify(file)};`,
+    const functionFiles = [...serverFiles.entries()].filter(([, file]) => keep(file));
+    const fileImports = functionFiles.map(
+      ([, file], index) => `import * as f${index} from ${JSON.stringify(file + query)};`,
     );
-    const fileSpreads = [...serverFiles.entries()].map(([id, file], index) => {
+    const fileSpreads = functionFiles.map(([id, file], index) => {
       // The IDs are written here, so a build can hash the names of the functions.
       const names = serverExports(readFileSync(file, 'utf8'), file);
       return names
@@ -469,7 +593,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         .map((edge) => [indexes.get(edge.from)!, indexes.get(edge.to)!]),
     };
     const text = formatReport(report(source, result, liveProps.get(file)));
-    return { name: plan.name, file: relative(file), scopes, graph, text };
+    return { name: plan.name, file: nameOf(file), scopes, graph, text };
   };
 
   const handleDevRPC = async (
@@ -480,10 +604,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const id = decodeURIComponent((request.url ?? '').slice(rpc.length + 1).split('?')[0]!);
     const owner = id.split('#')[0]!;
     const file = files.get(owner) ?? serverFiles.get(owner);
-    if (!file) {
+    // A file of a package that the app does not reach has no endpoints, as in production.
+    const reached = file && packageOf(packages, file) ? reachable() : undefined;
+    if (!file || (reached && !reached.has(file))) {
       response.statusCode = 404;
       response.end(`Unknown server function "${id}"`);
       return;
+    }
+    // The app reached the file after the registry loaded, such as with a new import.
+    if (reached && !registered.has(file)) {
+      const module = server.moduleGraph.getModuleById(`\0${SERVER}`);
+      if (module) {
+        server.moduleGraph.invalidateModule(module);
+      }
     }
     try {
       // Every server function of the app, as in production, so `event.refresh` can name a
@@ -597,6 +730,34 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [];
   }
 
+  /**
+   * The config that packages of components need. Vite must not pre-bundle them,
+   * or their `.brm` and `'use server'` files would not reach this plugin, and the
+   * server build compiles them instead of importing them from `node_modules`.
+   */
+  const packageConfig = (config: UserConfig): UserConfig => {
+    if (packages.length === 0) {
+      return {};
+    }
+    const names = [...new Set(packages.map((item) => item.name))];
+    const result: UserConfig = {
+      optimizeDeps: { exclude: names },
+      ssr: { noExternal: names },
+      // The components of a package and the app share one copy of the runtime.
+      resolve: { dedupe: ['brumate'] },
+    };
+    // The dev server serves files of the workspace. A linked package outside it is allowed too.
+    const workspace = normalizePath(searchForWorkspaceRoot(path.resolve(config.root ?? '.')));
+    const outside = packages
+      .filter((item) => item.root !== workspace && !item.root.startsWith(`${workspace}/`))
+      .map((item) => item.root);
+    if (outside.length > 0) {
+      // A list of allowed directories turns off Vite's own, so it names the workspace too.
+      result.server = { fs: { allow: [workspace, ...outside] } };
+    }
+    return result;
+  };
+
   /** The module ID of `brumate/client`, and the chunks of the loader and the core in a client build. */
   let coreModule: string | undefined;
   let loaderChunk: string | undefined;
@@ -607,13 +768,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     enforce: 'pre',
 
     config(config, env) {
+      packages = findPackages(path.resolve(config.root ?? process.cwd()));
+      const shared = packageConfig(config);
       if (!env.isSsrBuild) {
         const preload = config.build?.modulePreload;
         if (preload === false) {
-          return undefined;
+          return shared;
         }
         const resolve = typeof preload === 'object' ? preload.resolveDependencies : undefined;
         return {
+          ...shared,
           build: {
             modulePreload: {
               // The loader imports the core itself when it imports a component's module, so
@@ -632,7 +796,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // The server build gets the route handler as an entry of its own, to render the pages with.
       if (!options.prerender) {
-        return undefined;
+        return shared;
       }
       // `--ssr <file>` names the entry, and wins over the input of the config, which can be the client's.
       const ssr = config.build?.ssr;
@@ -646,6 +810,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               )
             : { ...(input as Record<string, string> | undefined) };
       return {
+        ...shared,
         build: { ssr: true, rolldownOptions: { input: { ...entries, [PRERENDER_ENTRY]: ROUTES } } },
       };
     },
@@ -710,7 +875,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         budget: options.budget,
       });
       if (options.report) {
-        this.info(`\n${formatBuildReport(measured, relative)}`);
+        this.info(`\n${formatBuildReport(measured, nameOf)}`);
       }
       if (measured.overBudget.length > 0) {
         this.error(measured.overBudget.join('\n'));
@@ -740,11 +905,34 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       writeRouteTypes();
     },
 
-    resolveId(id) {
+    async resolveId(id, importer, resolveOptions) {
       if (id === START || id === MANIFEST || id === SERVER || id === ROUTES || id === TESTING) {
         return `\0${id}`;
       }
-      return undefined;
+      // In a DOM test, the server version of a component, a file of server functions, or the
+      // registry imports the server code of a file of server functions, not its stubs. Other
+      // modules stay as they are, so the test and the server code share one copy of each.
+      if (
+        resolveOptions?.ssr ||
+        !importer ||
+        (!importer.includes(SERVER_QUERY) && importer !== `\0${SERVER}`) ||
+        id.includes(SERVER_QUERY)
+      ) {
+        return undefined;
+      }
+      const resolved = await this.resolve(id, importer, { ...resolveOptions, skipSelf: true });
+      if (
+        !resolved ||
+        resolved.external ||
+        resolved.id.includes('?') ||
+        (resolved.id.includes('/node_modules/') && !packageOf(packages, resolved.id))
+      ) {
+        return resolved;
+      }
+      const file = resolved.id;
+      return isScriptFile(file) && existsSync(file) && hasUseServer(readFileSync(file, 'utf8'))
+        ? { ...resolved, id: `${file}${SERVER_QUERY}` }
+        : resolved;
     },
 
     async load(id, loadOptions) {
@@ -780,16 +968,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return await manifest();
       }
       if (id === `\0${SERVER}`) {
-        return serverRegistry();
+        // A DOM test gets the server code of each file too, so its calls can run in the test.
+        return serverRegistry(!loadOptions?.ssr);
       }
       if (id === `\0${ROUTES}`) {
         return routeTree();
       }
       if (id === `\0${TESTING}`) {
         return [
-          "import { createMount } from 'brumate/testing';",
+          "import { answerCalls as answer, createMount } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
+          // The server code of the app loads on the first call, so a test that makes none skips it.
+          'export function answerCalls(options) {',
+          `  return answer(async () => (await import(${JSON.stringify(SERVER)})).functions, { rpc: ${JSON.stringify(rpc)}, ...options });`,
+          '}',
         ].join('\n');
       }
       const [file, query] = id.split('?');
@@ -808,7 +1001,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       } catch (error) {
         // The overlay shows the file, the line and the lines around it.
         const { message, frame, loc } = errorPayload(error, root);
-        this.error({ message, frame, loc, id: file });
+        // The file of a package is not under the root, which `errorPayload` resolves its name against.
+        this.error({ message, frame, loc: loc && { ...loc, file }, id: file });
       }
       const { source, result } = output;
       // A stylesheet that the component imports, or a module of reactive logic that it calls into,
@@ -823,7 +1017,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
-        this.warn(`${warning.message} (${relative(file)}:${line}:${column})`);
+        this.warn(`${warning.message} (${nameOf(file)}:${line}:${column})`);
       }
       const part = params.get('part');
       let code: string;
@@ -860,11 +1054,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (file && isScriptFile(file) && hasUseServer(code)) {
         try {
           const fileId = serverFileId(normalizePath(file));
-          const stubs = serverStubs(code, file, fileId, !isServe);
           // The server runs the file, with calls while a page renders sharing their results.
-          return transformOptions?.ssr
-            ? { code: serverModule(code, file, fileId), map: null }
-            : { code: stubs, map: null };
+          if (transformOptions?.ssr) {
+            return { code: serverModule(code, file, fileId), map: null };
+          }
+          // A DOM test imports the server code with the query, which Vite strips no types for.
+          if (id.includes(SERVER_QUERY)) {
+            const result = await transformWithOxc(serverModule(code, file, fileId), file, {
+              lang: /\.[cm]?ts$/.test(file) ? 'ts' : file.endsWith('.tsx') ? 'tsx' : 'jsx',
+              sourcemap: true,
+            });
+            return { code: result.code, map: result.map };
+          }
+          return { code: serverStubs(code, file, fileId, !isServe), map: null };
         } catch (error) {
           this.error((error as Error).message);
         }
@@ -880,6 +1082,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      // Vite watches the root. An edit of a linked package, such as one of a workspace, updates the page too.
+      const linked = packages.filter((item) => item.linked).flatMap((item) => item.directories);
+      if (linked.length > 0) {
+        server.watcher.add(linked);
+      }
+      // A change to the dependencies of the app, or to a package's `brumate` field, can change
+      // the packages, and with them the config of Vite, so the server restarts.
+      const manifests = [
+        path.join(root, 'package.json'),
+        ...packages.map((item) => `${item.root}/package.json`),
+      ].map((file) => normalizePath(file));
+      server.watcher.add(manifests);
+      server.watcher.on('change', (file) => {
+        if (
+          manifests.includes(normalizePath(file)) &&
+          packagesKey(findPackages(root)) !== packagesKey(packages)
+        ) {
+          void server.restart();
+        }
+      });
       server.watcher.on('all', (event, file) => {
         // A stylesheet that a component imports compiles into that component.
         for (const importer of dependents.get(normalizePath(file)) ?? []) {
@@ -904,6 +1126,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         // A file that becomes, or stops being, a file of server functions changes the registry.
         if (isScriptFile(file)) {
           const normalized = normalizePath(file);
+          if (packages.length > 0 && !packageOf(packages, normalized)) {
+            appScripts = appScripts.filter((item) => item !== normalized);
+            if (event !== 'unlink') {
+              appScripts.push(normalized);
+            }
+          }
           const id = serverFileId(normalized);
           const before = serverFiles.has(id);
           const after =
@@ -994,5 +1222,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   return plugin;
 }
 export { errorPage } from './dev-error.ts';
-export type { ManifestChunk, PrerenderOptions } from './prerender.ts';
+export type {
+  ManifestChunk,
+  PrerenderManifest,
+  PrerenderOptions,
+  PrerenderedPage,
+} from './prerender.ts';
 export type { Budget, BuildReport } from './report.ts';

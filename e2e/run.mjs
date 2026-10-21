@@ -1,7 +1,7 @@
 // Smoke tests in Chrome: builds the website and examples, serves each one,
 // and uses it as a person would. See README.md.
 //
-//   pnpm e2e [--only website,todos,tracker,nitro] [--no-build] [--headed] [--install-browser]
+//   pnpm e2e [--only website,todos,tracker,nitro,kit] [--no-build] [--headed] [--install-browser]
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright-core';
@@ -9,12 +9,13 @@ import { chromium } from 'playwright-core';
 // so a browser that --install-browser downloads serves both.
 import { findChrome } from '../benchmarks/harness/chrome.mjs';
 import { Runner, exec, indent, repo } from './lib.mjs';
+import * as kit from './suites/kit.mjs';
 import * as nitro from './suites/nitro.mjs';
 import * as todos from './suites/todos.mjs';
 import * as tracker from './suites/tracker.mjs';
 import * as website from './suites/website.mjs';
 
-const SUITES = { website, todos, tracker, nitro };
+const SUITES = { website, todos, tracker, nitro, kit };
 
 const { values } = parseArgs({
   options: {
@@ -28,10 +29,10 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`pnpm e2e [options]
-  --only website,todos,tracker,nitro  run these suites (default: all)
-  --no-build                          use the builds that are there
-  --headed                            show the browser
-  --install-browser                   download Playwright's Chromium when no Chrome is found`);
+  --only website,todos,tracker,nitro,kit  run these suites (default: all)
+  --no-build                              use the builds that are there
+  --headed                                show the browser
+  --install-browser                       download Playwright's Chromium when no Chrome is found`);
   process.exit(0);
 }
 

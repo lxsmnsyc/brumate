@@ -1,0 +1,24 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { title, children, footer } = $props<{
+    title: string;
+    children?: unknown;
+    footer?: (title: string) => unknown;
+  }>();
+</script>
+
+<section class="kit-card">
+  <h2>{title}</h2>
+  <div class="body">{children}</div>
+  #if (footer) {
+    <footer>{footer(title)}</footer>
+  }
+</section>
+
+<style>
+  .kit-card {
+    padding: 4px;
+    border: 3px solid rgb(0, 0, 255);
+  }
+</style>

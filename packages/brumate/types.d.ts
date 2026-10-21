@@ -7,6 +7,11 @@ declare module '*.brm?brumate-server' {
 
 declare module 'virtual:brumate/testing' {
   export const mount: import('brumate/testing').Mount;
+  /**
+   * Answers the server function calls of the page with the server code of
+   * the app, until the returned function restores `fetch`.
+   */
+  export function answerCalls(options?: import('brumate/testing').AnswerOptions): () => void;
 }
 
 declare module '*.brm' {

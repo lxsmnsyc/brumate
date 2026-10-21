@@ -20,5 +20,5 @@
       "brumate/context": ["./src/runtime/context.ts"]
     }
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "types.d.ts"]
 }

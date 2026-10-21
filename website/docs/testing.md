@@ -82,42 +82,45 @@ Pass a longer timeout to `waitFor` when the data takes a while.
 
 ## Server functions
 
-A server function that the component calls from a handler or a memo goes through `fetch`, which a test has no server for. Stub `fetch` so it answers the call with the functions of the component. `handleRequest` from `brumate/server` does the work, and the server version of the component exports its functions as `rpc`:
+A server function that the component calls from a handler or a memo goes through `fetch`, which a test has no server for. `answerCalls()` from `virtual:brumate/testing` answers these calls in the test process, with the server code of the app. Return it from `beforeEach`, and Vitest restores `fetch` after each test:
 
 ```ts
-import { afterEach, expect, it, vi } from 'vitest';
-import { handleRequest } from 'brumate/server';
-import { mount } from 'virtual:brumate/testing';
-import * as App from '../src/App.brm?brumate-server';
+import { beforeEach, expect, it } from 'vitest';
+import { answerCalls, mount } from 'virtual:brumate/testing';
+import App from '../src/App.brm?brumate-server';
+import { resetTodos, todos } from '../src/db.ts';
 
-// The server functions of the component, by ID.
-const functions = (App as unknown as { rpc: Record<string, (...args: unknown[]) => unknown> }).rpc;
+let calls: string[] = [];
 
-afterEach(() => {
-  vi.unstubAllGlobals();
+beforeEach(() => {
+  resetTodos();
+  calls = [];
+  return answerCalls({ onCall: (id) => calls.push(id) });
 });
 
 it('saves a new todo', async () => {
-  const calls: string[] = [];
-  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
-    const request = new Request(new URL(String(input), 'http://localhost'), init);
-    calls.push(new URL(request.url).pathname);
-    return (await handleRequest(functions, request))!;
-  });
-
-  const page = await mount(App.default, { initial: [] });
+  const page = await mount(App, {});
   page.input('input', 'Ship it');
   page.submit('form');
 
   await page.waitFor(() => expect(page.text('ul + p')).toBe('1 left'));
-  await page.waitFor(() => expect(calls).toHaveLength(1));
+  expect(todos).toHaveLength(1);
+  expect(calls).toHaveLength(1);
   page.unmount();
 });
 ```
 
-- The functions run in the test process, so they reach the same database or mocks as the rest of the test.
-- To check how the page handles an error, make the stub return an error response, or throw a `ServerError` from a mocked dependency.
-- Restore `fetch` after each test with `vi.unstubAllGlobals()`.
+- Each call goes through `handleRequest`, as on a server. Arguments and results are serialized, `getEvent()` works, and `event.refresh` loads memos again.
+- The functions are those of `virtual:brumate/server`: the functions of components and of `'use server'` files. They load on the first call.
+- They share modules with the test, such as `src/db.ts` above, so the test can set up data and check what a call changed.
+- `onCall` gets the ID of each call, such as `db_1a2b#addTodo`. The name of the function is after the `#`.
+- Requests to other URLs go to the `fetch` from before.
+
+### Why the test gets the server code
+
+A DOM test gets the browser version of a file by default, so a `'use server'` file that the test imports is the stubs, which call `fetch`. The server version of a component imports the server code of `'use server'` files instead, and so does `virtual:brumate/server`. Other modules, such as `src/db.ts`, are the same copy for the test and for the server code.
+
+`brumate/testing` exports `answerCalls(functions, options)` too, for functions of your own by ID. A server function that calls a stub throws an error that names it. Without the error, the call would answer itself through `fetch` without end.
 
 ## Type-checking tests
 

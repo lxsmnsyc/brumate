@@ -1,0 +1,22 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { addNote, listNotes } from './notes.ts';
+  import { notes as store } from './store.ts';
+
+  async function count() {
+    'use server';
+    return store.length;
+  }
+
+  const notes = $memo(listNotes());
+  let total = $signal(0);
+</script>
+
+<button class="add" onClick=(() => addNote('Second'))>Add</button>
+<button class="count" onClick=(async () => (total = await count()))>Count</button>
+<p class="total">{total}</p>
+<ul>
+  #for (note of notes by note) {
+    <li>{note}</li>
+  }
+</ul>

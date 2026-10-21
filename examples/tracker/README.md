@@ -53,5 +53,5 @@ The forms work without scripts. With scripts, links and forms load pages without
 
 - `test/routes.test.ts` renders routes, follows the middleware redirect, and posts forms without scripts.
 - `test/server.test.ts` calls the server functions and the schema.
-- `test/list.test.ts` mounts the list in happy-dom, filters it and stars an issue.
+- `test/list.test.ts` mounts the list in happy-dom, filters it and stars an issue. `answerCalls` answers its calls with the functions of `src/issues.ts`.
 - `e2e/suites/tracker.mjs` at the root of the repository uses the production build in Chrome. Run it with `pnpm e2e --only tracker`.

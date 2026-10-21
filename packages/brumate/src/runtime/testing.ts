@@ -4,7 +4,7 @@
 
 import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
-import { render } from './server.ts';
+import { handleRequest, render } from './server.ts';
 import type { Component, RenderOptions } from './server.ts';
 
 export interface TestingOptions {
@@ -160,7 +160,98 @@ export function createMount(options: TestingOptions): Mount {
       unmount: () => {
         stop();
         container.remove();
+        // The core forgets the scopes of this mount, so a refresh later does not load its memos.
+        void import('./client.ts').then((core) => core.removeRoot(String(base)));
       },
     };
+  };
+}
+
+/** Server functions by ID, as `functions` of `virtual:brumate/server` has them. */
+// oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+export type ServerFunctions = Record<string, (...args: any[]) => unknown>;
+
+export interface AnswerOptions {
+  /** The URL prefix of server function calls. Defaults to `/_brumate`. */
+  rpc?: string;
+  /** Called with the ID of each call, such as `issues_1a2b#toggleStar`, before it runs. */
+  onCall?: (id: string) => void;
+}
+
+/** What `run` of `AsyncLocalStorage` looks like, the part that `answerCalls` uses. */
+interface Storage {
+  run: <T>(store: string, callback: () => T) => T;
+  getStore: () => string | undefined;
+}
+
+let storage: Promise<Storage | undefined> | undefined;
+
+/**
+ * Tells the calls that a server function makes while it is answered. Node
+ * has `AsyncLocalStorage`. Elsewhere, such as in a browser, there is none,
+ * and nested calls are not told apart.
+ */
+function callStorage(): Promise<Storage | undefined> {
+  storage ??= import('node:async_hooks').then(
+    ({ AsyncLocalStorage }) => new AsyncLocalStorage<string>() as Storage,
+    () => undefined,
+  );
+  return storage;
+}
+
+/**
+ * Answers the server function calls of the page in the test, with
+ * `functions`, through the same request and answer as a server. Calls go
+ * through `fetch`, so it replaces `fetch` until the returned function
+ * restores it. Other requests go to the `fetch` from before.
+ *
+ * `functions` can be a function that returns them, so they are imported on
+ * the first call. A server function that calls a server function through
+ * `fetch`, as a browser stub does, throws: it would call itself without end.
+ */
+export function answerCalls(
+  functions: ServerFunctions | (() => Promise<ServerFunctions>),
+  options: AnswerOptions = {},
+): () => void {
+  const prefix = options.rpc ?? '/_brumate';
+  const original = globalThis.fetch;
+  let loaded: Promise<ServerFunctions> | undefined;
+  /** The error of a call that a server function made through `fetch`. */
+  let failure: Error | undefined;
+  const answer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const base = globalThis.location?.href ?? 'http://localhost/';
+    const url = new URL(input instanceof Request ? input.url : String(input), base);
+    if (!url.pathname.startsWith(`${prefix}/`)) {
+      return original(input, init);
+    }
+    const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
+    const calls = await callStorage();
+    const caller = calls?.getStore();
+    if (caller !== undefined) {
+      // The outer call answers with a generic error, so the error goes to its caller too.
+      failure ??= new Error(
+        `The server function "${caller}" called "${id}" through fetch, as a browser stub does. In a test, server code imports the server code of a 'use server' file: import components with ?brumate-server, and answer calls with the functions of virtual:brumate/server`,
+      );
+      throw failure;
+    }
+    options.onCall?.(id);
+    loaded ??= Promise.resolve(typeof functions === 'function' ? functions() : functions);
+    const registry = await loaded;
+    const request = input instanceof Request ? new Request(input, init) : new Request(url, init);
+    const handle = (): Promise<Response | undefined> => handleRequest(registry, request, prefix);
+    const response = await (calls ? calls.run(id, handle) : handle());
+    if (failure) {
+      const error = failure;
+      failure = undefined;
+      throw error;
+    }
+    return response ?? original(input, init);
+  };
+  globalThis.fetch = answer as typeof fetch;
+  return () => {
+    // A later `answerCalls` or stub keeps its own `fetch`.
+    if (globalThis.fetch === answer) {
+      globalThis.fetch = original;
+    }
   };
 }

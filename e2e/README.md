@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro` runs only these suites.
+- `--only website,todos,tracker,nitro,kit` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -47,9 +47,10 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - The list renders, and the activity feed streams in.
 - The search and the status filter the list.
 - A star shows before the server answers, while the call is held back, and stays after it.
+- A link after the star sends no server function calls.
 - `/issues/new` sends a visitor who is not signed in to the sign-in page, through the middleware.
-- Signing in with a short name shows an error. Signing in goes back to `/issues/new`.
-- A short title shows its error, then a valid issue opens on its page.
+- Signing in with a short name shows an error. Signing in goes back to `/issues/new` without a full page load.
+- A short title shows its error, then a valid issue opens on its page without a full page load.
 - Closing an issue shows before the server answers.
 - Delete opens a dialog that takes the focus. Esc closes it, and confirming deletes the issue.
 - A related issue that is gone shows the `#catch` of its `#try`.
@@ -61,6 +62,14 @@ Each check is a named step. Any uncaught error, console error or failed request 
 
 - The page resumes, and its counter counts.
 - The form calls a server function and the list of notes refreshes, without loading a new page. An empty note shows the error.
+
+`kit` serves the production build of `examples/kit-app` under the same policy. Its page renders the components of `examples/ui-kit`, a package of components.
+
+- The components of the package render, with their scoped styles.
+- A handler of a package component resumes, and a memo of its module follows.
+- A prop that the app changes updates the package component.
+- A server function of the package answers.
+- The app calls a module of reactive logic of the package.
 
 ## Failures
 

@@ -1,43 +1,18 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { getEvent, handleRequest } from 'brumate/server';
-import { functions as stubs } from 'virtual:brumate/server';
-import { mount } from 'virtual:brumate/testing';
+import { beforeEach, expect, it } from 'vitest';
+import { answerCalls, mount } from 'virtual:brumate/testing';
 import Index from '../src/routes/index.brm?brumate-server';
-import { allIssues, changeIssue, findIssue, resetStore } from '../src/store.ts';
+import { resetStore } from '../src/store.ts';
 
-// The list page renders on the server and resumes in happy-dom. In this DOM
-// environment, src/issues.ts is the stubs that the browser gets, so the test
-// answers their calls with functions of its own, on the same store.
-// test/server.test.ts runs the real ones.
-const idOf = (name: string) => Object.keys(stubs).find((id) => id.endsWith(`#${name}`))!;
-
-async function listIssues() {
-  return allIssues();
-}
-
-const functions = {
-  [idOf('listIssues')]: listIssues,
-  [idOf('toggleStar')]: async (id: number) => {
-    const event = getEvent();
-    changeIssue(id, { starred: !findIssue(id)!.starred });
-    event.refresh(listIssues);
-  },
-};
-
+// The list page renders on the server and resumes in happy-dom. `answerCalls`
+// answers the calls of the page with the server code of src/issues.ts, which
+// changes the same store as the test. The function that it returns restores
+// `fetch`, and Vitest calls it after each test.
 let calls: string[] = [];
 
 beforeEach(() => {
   resetStore();
   calls = [];
-  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
-    const request = new Request(new URL(String(input), 'http://localhost'), init);
-    calls.push(decodeURIComponent(new URL(request.url).pathname).split('#')[1]!);
-    return (await handleRequest(functions, request))!;
-  });
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
+  return answerCalls({ onCall: (id) => calls.push(id.split('#')[1]!) });
 });
 
 const request = () => new Request('http://localhost/');
