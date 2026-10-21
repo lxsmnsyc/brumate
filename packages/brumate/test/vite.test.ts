@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
 import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
+import { serverStubs } from '../src/server-files.ts';
 
 const root = fileURLToPath(new URL('./render/', import.meta.url));
 const runtime = (name: string): string =>
@@ -186,6 +187,60 @@ describe('style imports', () => {
     } finally {
       await dev.close();
     }
+  });
+});
+
+describe('files of server functions', () => {
+  it('gives the browser stubs, and answers their calls on the server', async () => {
+    const directory = fileURLToPath(new URL('./.output/server-files/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(
+      `${directory}users.ts`,
+      "'use server';\n\nimport { secret } from './secret.ts';\n\nexport async function greet(name: string) {\n  return `Hello ${name}, ${secret}`;\n}\n\nexport const count = async () => 3;\n",
+    );
+    writeFileSync(`${directory}secret.ts`, "export const secret = 'from the server';\n");
+    writeFileSync(
+      `${directory}Greeter.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import { greet } from './users.ts';\n  let message = $signal('');\n</script>\n<button onClick=(async () => (message = await greet('Ada')))>{message}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      // The browser gets stubs. The code of the file, and what it imports, stays on the server.
+      const stubs = await dev.transformRequest('/users.ts');
+      expect(stubs?.code).toContain('rpc(');
+      expect(stubs?.code).not.toContain('secret');
+      const { functions } = await dev.ssrLoadModule('virtual:brumate/server');
+      const ids = Object.keys(functions).filter((id) => id.startsWith('users_'));
+      expect(ids.map((id) => id.split('#')[1]).toSorted()).toEqual(['count', 'greet']);
+
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const greet = ids.find((id) => id.endsWith('#greet'))!;
+      const response = await fetch(
+        `http://localhost:${port}/_brumate/${encodeURIComponent(greet)}`,
+        {
+          method: 'POST',
+          body: JSON.stringify(toJSON(['Ada'])),
+        },
+      );
+      http.close();
+      expect(await fromChunkStream(response.body!)).toBe('Hello Ada, from the server');
+    } finally {
+      await dev.close();
+    }
+  });
+
+  it('refuses an export that is not a function', () => {
+    expect(() =>
+      serverStubs("'use server';\nexport const limit = 5;\n", 'limits.ts', 'limits_1'),
+    ).toThrow("A 'use server' file exports only functions");
   });
 });
 

@@ -44,6 +44,36 @@ async function listTodos() {
 }
 ```
 
+### A file of server functions
+
+Put `'use server'` at the top of a `.ts` file, and every function that it exports is a server function. Components import them like any function:
+
+```ts
+// src/todos.ts
+'use server';
+
+import { db } from './db.ts';
+
+export async function listTodos() {
+  return db.todos.all();
+}
+
+export async function saveTodo(todo: Todo) {
+  await db.todos.save(todo);
+}
+```
+
+```brm
+<script>
+  import { listTodos, saveTodo } from '../todos.ts';
+</script>
+```
+
+- The browser gets a stub for each export, which calls the server. The code of the file, and everything that it imports, never ships.
+- The file exports only functions. A constant or a class is a build error, because the browser could only get a stub of it.
+- Any code can import the file, including other `.ts` files. On the server, the calls are plain function calls.
+- `refresh(fn)` works with the functions of a component. Calls of a file's functions load again when the values that their memo reads change.
+
 There is no `'use client'`. The compiler decides what reaches the browser by following event handlers and other client code. See [What runs where](./what-runs-where.md).
 
 ## Calling them

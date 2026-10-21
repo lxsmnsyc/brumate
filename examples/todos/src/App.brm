@@ -1,23 +1,14 @@
 <script>
   import { $memo, $props, $signal, $title } from 'brumate/signals';
   import Counter from './Counter.brm';
-
-  interface Todo {
-    id: string;
-    title: string;
-    done: boolean;
-  }
+  import { save } from './store.ts';
+  import type { Todo } from './store.ts';
 
   const { initial } = $props<{ initial: Todo[] }>();
   let todos = $signal(initial);
   let draft = $signal('');
   const left = $memo(todos.filter((todo) => !todo.done).length);
   $title(`${left} left`);
-
-  async function save(list: Todo[]) {
-    'use server';
-    console.log('Saved', list.length, 'todos');
-  }
 
   async function slowQuote() {
     'use server';

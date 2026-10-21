@@ -1,5 +1,6 @@
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { hasUseServer, isScriptFile } from './server-files.ts';
 
 /** Skips `node_modules`, `dist` and hidden directories when looking for `.brm` files. */
 export function defaultExclude(directory: string): boolean {
@@ -25,6 +26,39 @@ export async function findFiles(
       }
     }
     await Promise.all(directories);
+  };
+  await visit(root);
+  return result.toSorted();
+}
+
+/**
+ * Finds every file of server functions under a directory: a script whose
+ * first statement is `'use server'`.
+ */
+export async function findServerFiles(
+  root: string,
+  exclude: (directory: string) => boolean,
+): Promise<string[]> {
+  const result: string[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    const pending: Promise<void>[] = [];
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!exclude(entry.name)) {
+          pending.push(visit(file));
+        }
+      } else if (isScriptFile(entry.name)) {
+        pending.push(
+          readFile(file, 'utf8').then((source) => {
+            if (hasUseServer(source)) {
+              result.push(file.split(path.sep).join('/'));
+            }
+          }),
+        );
+      }
+    }
+    await Promise.all(pending);
   };
   await visit(root);
   return result.toSorted();

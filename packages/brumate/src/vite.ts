@@ -5,7 +5,8 @@ import path from 'node:path';
 import { normalizePath, transformWithOxc } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
-import { defaultExclude, findFiles } from './files.ts';
+import { defaultExclude, findFiles, findServerFiles } from './files.ts';
+import { hasUseServer, isScriptFile, serverStubs } from './server-files.ts';
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
@@ -160,6 +161,15 @@ function shapeOf(result: CompileResult): Shape {
   };
 }
 
+/** The functions of a file of server functions, by their IDs, for a module of it. */
+function fileFunctions(id: string, module: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(module)
+      .filter(([, value]) => typeof value === 'function')
+      .map(([name, value]) => [`${id}#${name}`, value]),
+  );
+}
+
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
@@ -181,6 +191,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   // The ID is computed from the path relative to the root, so it is the same on every machine.
   const relative = (file: string): string => normalizePath(path.relative(root, file));
+  /** Files of server functions: scripts whose first statement is `'use server'`, by ID. */
+  const serverFiles = new Map<string, string>();
+  const serverFileId = (file: string): string =>
+    `${path.basename(file).replace(/\.[^.]+$/, '')}_${hash(relative(file))}`;
   const componentId = (file: string): string => {
     const filename = relative(file);
     return `${getComponentName(filename)}_${hash(filename)}`;
@@ -190,6 +204,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     files.clear();
     for (const file of await findFiles(root, exclude)) {
       files.set(componentId(file), file);
+    }
+    serverFiles.clear();
+    for (const file of await findServerFiles(root, exclude)) {
+      serverFiles.set(serverFileId(file), file);
     }
     await analyze();
   };
@@ -248,11 +266,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       (file, index) => `import * as m${index} from ${JSON.stringify(file)};`,
     );
     const spreads = [...files.values()].map((_, index) => `  ...m${index}.rpc,`);
+    // Each exported function of a file of server functions, under the ID that its stub calls.
+    const fileImports = [...serverFiles.values()].map(
+      (file, index) => `import * as f${index} from ${JSON.stringify(file)};`,
+    );
+    const fileSpreads = [...serverFiles.keys()].map(
+      (id, index) =>
+        `  ...Object.fromEntries(Object.entries(f${index}).filter(([, value]) => typeof value === 'function').map(([name, value]) => [${JSON.stringify(`${id}#`)} + name, value])),`,
+    );
     return [
       "import { handleRequest } from 'brumate/server';",
       ...imports,
+      ...fileImports,
       'export const functions = {',
       ...spreads,
+      ...fileSpreads,
       '};',
       'export function handle(request) {',
       `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])} });`,
@@ -349,7 +377,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     response: ServerResponse,
   ): Promise<void> => {
     const id = decodeURIComponent((request.url ?? '').slice(rpc.length + 1).split('?')[0]!);
-    const file = files.get(id.split('#')[0]!);
+    const owner = id.split('#')[0]!;
+    const file = files.get(owner) ?? serverFiles.get(owner);
     if (!file) {
       response.statusCode = 404;
       response.end(`Unknown server function "${id}"`);
@@ -366,7 +395,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const answer: Response = await handleRequest(module.rpc ?? {}, webRequest, rpc, {
+      const functions = serverFiles.has(owner) ? fileFunctions(owner, module) : (module.rpc ?? {});
+      const answer: Response = await handleRequest(functions, webRequest, rpc, {
         origins: options.origins,
       });
       response.statusCode = answer.status;
@@ -575,8 +605,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       };
     },
 
-    async transform(code, id) {
+    async transform(code, id, transformOptions) {
       const [file] = id.split('?');
+      // A file of server functions: the browser gets stubs that call the server instead.
+      if (file && isScriptFile(file) && hasUseServer(code)) {
+        try {
+          const stubs = serverStubs(code, file, serverFileId(normalizePath(file)));
+          return transformOptions?.ssr ? undefined : { code: stubs, map: null };
+        } catch (error) {
+          this.error((error as Error).message);
+        }
+      }
       // The shared module of a module of reactive logic is TypeScript too, under a query
       // that Vite does not strip types for.
       const shared = isReactiveModule(file ?? '') && id.endsWith(SHARED_QUERY);
@@ -608,6 +647,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             }
           }
           writeRouteTypes();
+        }
+        // A file that becomes, or stops being, a file of server functions changes the registry.
+        if (isScriptFile(file)) {
+          const normalized = normalizePath(file);
+          const id = serverFileId(normalized);
+          const before = serverFiles.has(id);
+          const after =
+            event !== 'unlink' && existsSync(file) && hasUseServer(readFileSync(file, 'utf8'));
+          if (after) {
+            serverFiles.set(id, normalized);
+          } else {
+            serverFiles.delete(id);
+          }
+          if (before !== after) {
+            for (const module of server.moduleGraph.idToModuleMap.values()) {
+              if (module.id === `\0${SERVER}` || module.id === `\0${ROUTES}`) {
+                server.moduleGraph.invalidateModule(module);
+              }
+            }
+          }
         }
         // A changed component is handled by `handleHotUpdate`, which updates the page in place when it can.
         if (!file.endsWith('.brm') || event === 'change') {
