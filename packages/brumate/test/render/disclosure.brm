@@ -1,0 +1,20 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let count = $signal(0);
+  let seen = $signal(0);
+
+  $client(() => {
+    seen = 1;
+  }, 'visible');
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<p class="seen">{seen}</p>
+#if (open) {
+  <section class="panel">
+    <p class="count">{count}</p>
+    <button class="inc" onClick=(() => count++)>+</button>
+  </section>
+}

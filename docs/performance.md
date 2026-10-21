@@ -57,9 +57,9 @@ brumate can also help on its side. `isRaw` matches on a symbol key, so every pla
 
 ## Client loading
 
-- Merge the parts of a component when the total is small, counted per component. The dashboard widgets ship as 4 parts each, because the default `merge` of 2048 B is too low for them, and each small file compresses badly on its own.
-- Preload only the handler parts at idle, and load render and update parts when a handler needs them. The idle preload on the dashboard fetches 12 files per scroll for widgets nobody clicks.
-- Components too big to merge still take two round trips: the entry, then the part. Putting part URLs in the loader's registry would fix this, but it grows the loader with each part.
+- Done: the plugin's `merge` default is 4096 B. Each dashboard widget is now one module. Total JS after 3 widgets went from 46 files and 23.5 kB gzip to 13 files and 16.9 kB, and the idle preload from 21 files and 11.6 kB to 6 files and 8.6 kB.
+- The idle preload already loads only the entry and the handler parts, and `update` only for a handler that writes a slot that an update reads. `$client` parts wait for their trigger. The dashboard handlers all write such slots, so a split widget still preloads all of its parts.
+- Components too big to merge still take two round trips on a cold first event: the entry, then the part. Merged components take one, so the cold dashboard click is now 1 RT. Putting part URLs in the loader's registry would fix the rest, but it grows the loader with each part.
 - The loader is 2.1 kB gzip. Vite's preload helper is about 0.8 kB of that, because Vite 8 wraps every dynamic import in it. Replacing the helper for the whole app would break CSS preloading in user code.
 
 ## Tooling

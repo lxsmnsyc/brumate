@@ -56,6 +56,13 @@ export function minifiedSize(code: string): number {
     .replace(/ ?([{}()[\];,:=+\-*/<>!?&|.]) ?/g, '$1').length;
 }
 
+/**
+ * The `merge` of the Vite plugin. Below it, one module costs less than the
+ * entry and the parts that a first event loads: each file has its own
+ * request, imports and gzip header, and the parts wait for the entry.
+ */
+export const DEFAULT_MERGE = 4096;
+
 /** The part that holds an export of a client module. */
 export function partOf(name: string): string {
   return /^[hc]\d/.test(name) ? name : 'update';

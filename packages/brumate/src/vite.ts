@@ -5,6 +5,7 @@ import path from 'node:path';
 import { isRunnableDevEnvironment, normalizePath, transformWithOxc } from 'vite';
 import type { EnvironmentModuleNode, Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
+import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findServerFiles } from './files.ts';
 import {
   hasUseServer,
@@ -67,9 +68,9 @@ export interface BrumateOptions {
    */
   preload?: boolean;
   /**
-   * Client parts of a component smaller than this many bytes in all become
-   * one module, so its first event loads one file. 0 keeps one module per
-   * part. Defaults to 2048.
+   * Client parts of a component smaller than this many bytes in all, after
+   * minifying, become one module, so its first event loads one file. 0
+   * keeps one module per part. Defaults to 4096.
    */
   merge?: number;
   /**
@@ -283,7 +284,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           filename: relative(file),
           liveProps: liveProps.get(file),
           path: file,
-          merge: options.merge ?? 2048,
+          merge: options.merge ?? DEFAULT_MERGE,
           a11y: options.a11y,
           // A build does not show the names of server functions in their IDs.
           hideNames: !isServe,

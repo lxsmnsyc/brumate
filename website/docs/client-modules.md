@@ -52,7 +52,15 @@ The compiler splits the client code of each component into parts. The bundler lo
 
 ### `merge`
 
-When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The first event then loads one module instead of several. Components with a `shared` part keep their parts. The plugin merges below 2048 bytes by default. `compile` does not merge unless asked.
+When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The first event then loads one module instead of several. Components with a `shared` part keep their parts. The plugin merges below 4096 bytes by default. `compile` does not merge unless asked.
+
+The default comes from measuring the dashboard benchmark, whose widgets have about 2 kB of parts each:
+
+- One merged widget is about 1 kB after gzip. Its 4 separate files are about 1.4 kB, because each file has its own imports and gzip header.
+- A first click on a split widget loads the entry, then the handler and the updates. That is 3 requests and 2 round trips, against 1 of each when merged.
+- Below 4096 bytes, the code that a merged module loads but an event does not need costs less than those extra requests. Larger components keep their parts, so an event loads only its own.
+
+Set `merge` higher to merge larger components, or to `0` to keep every part apart.
 
 A component with no client code has no parts, and a build leaves it out of the client.
 
@@ -93,6 +101,8 @@ const increment$ = ($$s, ...$$a) => $$m0.s218($$s, [1], ...$$a);
 ### Idle preload
 
 After the `load` event, when the browser is idle, the loader preloads the core and the code of the handlers of elements in or near the viewport, and of elements that come near it later. A click after that needs no request. It does not load anything before `load`, and it does not block the page.
+
+For a component with parts, it loads the entry and the `h<n>` part of each handler. A handler part loads `update` with it only when the handler writes a slot that an update reads. `$client` parts wait for their own trigger. A handler that renders new markup, such as an `#if` body with buttons, loads the parts of those buttons when they come near the viewport or on their first event. A merged component loads as one module.
 
 It skips:
 

@@ -130,6 +130,34 @@ describe('idle preload', () => {
     expect(load).not.toHaveBeenCalled();
   });
 
+  it('loads the parts of the handlers, and a merged module as it is', async () => {
+    const part = vi.fn<(name: string) => Promise<Record<string, unknown>>>((name) =>
+      Promise.resolve({ name }),
+    );
+    load.mockImplementation((id) =>
+      Promise.resolve(
+        id === 'Split_1' ? { id, props: {}, g: {}, load: part } : { id, props: {}, g: {} },
+      ),
+    );
+    document.body.innerHTML = [
+      '<button class="split" b-on="click=Split_1#h0 input=Split_1#h3">Split</button>',
+      '<template b-client="visible=Split_1#c5"></template><p>Client</p>',
+      '<button class="merged" b-on="click=Merged_1#h0">Merged</button>',
+    ].join('');
+    await startLoader();
+    window.dispatchEvent(new Event('load'));
+    runIdle();
+    observer().show();
+    await vi.waitFor(() => expect(part).toHaveBeenCalledTimes(2));
+    // The handler parts only: a `$client` part waits for its own trigger.
+    expect(part.mock.calls).toEqual([['h0'], ['h3']]);
+    expect(load.mock.calls.map(([id]) => id).toSorted()).toEqual([
+      'Merged_1',
+      'Split_1',
+      'Split_1',
+    ]);
+  });
+
   it('still loads on hover with the default strategy', async () => {
     await startLoader({ preload: false });
     document.querySelector('.near')!.dispatchEvent(new Event('pointerover', { bubbles: true }));

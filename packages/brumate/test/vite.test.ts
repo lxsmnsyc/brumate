@@ -279,9 +279,30 @@ describe('merged parts', () => {
       expect(entry?.code).toMatch(/export function u\d+/);
       expect(entry?.code).toContain('export const g = ');
       expect(entry?.code).not.toContain('part=');
-      // A large component keeps one module per part.
+      // About 2 kB of parts, as large as a dashboard widget, is still one module.
       const list = await dev.transformRequest('/list.brm?brumate-client');
-      expect(list?.code).toContain('part=h6');
+      expect(list?.code).toMatch(/as h6\b/);
+      expect(list?.code).not.toContain('part=');
+      // A large component keeps one module per part.
+      const sourced = await dev.transformRequest('/sourced.brm?brumate-client');
+      expect(sourced?.code).toContain('part=h6');
+      expect(sourced?.code).toContain('export function load');
+    } finally {
+      await dev.close();
+    }
+  });
+
+  it('takes the size from the `merge` option', async () => {
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 8192 })],
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const sourced = await dev.transformRequest('/sourced.brm?brumate-client');
+      expect(sourced?.code).not.toContain('part=');
+      expect(sourced?.code).not.toContain('export function load');
     } finally {
       await dev.close();
     }

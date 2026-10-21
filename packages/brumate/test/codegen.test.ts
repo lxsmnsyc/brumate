@@ -1,5 +1,6 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_MERGE, minifiedSize } from '../src/codegen/client.ts';
 import { classText, literalClasses } from '../src/codegen/markup.ts';
 import { compile, inspect } from '../src/index.ts';
 import { parseExpression } from '../src/oxc.ts';
@@ -135,6 +136,40 @@ describe('functions of a use server file', () => {
 const counterSource = (handlers: string): string =>
   `<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n  let hidden = $signal(0);\n  function bump(by: number) {\n    count += by;\n  }\n</script>\n${handlers}\n<p>{count}</p>`;
 
+/** A step of a generated handler, about 75 bytes after minifying. */
+const step = (index: number): string =>
+  `  arr = arr.map((v, i) => (v * ${index + 3} + i) % ${index + 97}).filter((v) => v % ${index + 5} !== 1);`;
+
+/** A component with `count` handlers of about 1.2 kB each, after minifying. */
+const widgetSource = (count: number): string => {
+  const handlers = Array.from({ length: count }, (_, index) =>
+    [
+      `<button onClick=(() => {`,
+      '  let arr = [...items];',
+      ...Array.from({ length: 16 }, (__, line) => step(index * 16 + line)),
+      `  items = arr;`,
+      '})>Run</button>',
+    ].join('\n'),
+  );
+  return [
+    '<script>',
+    "  import { $signal } from 'brumate/signals';",
+    '  let items = $signal([1, 2, 3]);',
+    '</script>',
+    '#for (value, index of items by index) {',
+    '  <li>{value}</li>',
+    '}',
+    ...handlers,
+  ].join('\n');
+};
+
+/** The estimated minified size of the parts of a component, as `merge` counts it. */
+const partsSize = (source: string): number =>
+  Object.values(compile(source, { filename: 'T.brm' }).parts).reduce(
+    (total, code) => total + minifiedSize(code),
+    0,
+  );
+
 describe('client entries and handlers', () => {
   it('passes the scope to calls of local functions, and exports a named handler as it is', () => {
     const { parts: modules } = compile(
@@ -172,6 +207,20 @@ describe('client entries and handlers', () => {
     expect(clientCode).toBe(true);
     expect(client).toMatch(/export \{ bump\$ as h\d+ \};/);
     expect(client).not.toContain('export function load');
+  });
+
+  it('merges a component of a few kB with the default of the Vite plugin', () => {
+    // Two handlers and the updates: as large as a dashboard widget, so one module.
+    expect(partsSize(widgetSource(2))).toBeGreaterThan(2048);
+    const small = compile(widgetSource(2), { filename: 'T.brm', merge: DEFAULT_MERGE });
+    expect(small.parts).toEqual({});
+    expect(small.client).not.toContain('export function load');
+    expect(Object.keys(small.loaders)).toHaveLength(3);
+    // Eight handlers keep one module per part, so an event loads only its own.
+    expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
+    const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });
+    expect(Object.keys(large.parts)).toHaveLength(9);
+    expect(large.client).toContain('export function load');
   });
 });
 
