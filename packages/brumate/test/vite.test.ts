@@ -83,6 +83,13 @@ describe('vite plugin', () => {
     expect(missing.status).toBe(404);
   });
 
+  it('serves the shared code of a module of reactive logic', async () => {
+    const shared = await server.transformRequest('/counting.brm.ts?brumate-shared');
+    expect(shared?.code).toContain('$$b.cells($$s, $$k, ["count"])');
+    // Types are removed.
+    expect(shared?.code).not.toContain(': any');
+  });
+
   it('loads client modules by component ID', async () => {
     const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
     const module = await load('Counter_m86gta');

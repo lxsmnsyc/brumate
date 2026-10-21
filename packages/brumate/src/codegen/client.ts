@@ -18,6 +18,7 @@ import type { Plan } from '../plan.ts';
 import { Emitter, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
+import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, slotIndex } from './scopes.ts';
 import { copy } from '../sourcemap.ts';
@@ -47,8 +48,13 @@ const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect'
  * `merge` bytes in all, they become one part, `all`, so the first event loads
  * one module instead of several.
  */
-export function generateClient(file: SFCFile, plan: Plan, merge = 0): ClientOutput {
-  return new ClientGenerator(file, plan, merge).generate();
+export function generateClient(
+  file: SFCFile,
+  plan: Plan,
+  merge = 0,
+  shared?: SharedContext,
+): ClientOutput {
+  return new ClientGenerator(file, plan, merge, shared).generate();
 }
 
 class ClientGenerator {
@@ -72,12 +78,14 @@ class ClientGenerator {
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
 
   private readonly merge: number;
+  private readonly shared: SharedContext | undefined;
 
-  constructor(file: SFCFile, plan: Plan, merge: number) {
+  constructor(file: SFCFile, plan: Plan, merge: number, shared?: SharedContext) {
     this.merge = merge;
     this.file = file;
     this.plan = plan;
-    this.rewriter = new Rewriter(file, plan, this.diagnostics);
+    this.shared = shared;
+    this.rewriter = new Rewriter(file, plan, this.diagnostics, shared);
     this.valuePatch = new Patch(file.source);
     addValueEdits(this.valuePatch, file, plan.graph.model.sites, 'client');
     for (const node of plan.graph.nodes) {
@@ -134,6 +142,17 @@ class ClientGenerator {
         delete parts[name];
       }
       parts.all = this.assembleAll(names);
+    }
+    // A part that calls shared code of module functions imports their shared modules.
+    for (const [name, code] of Object.entries(parts)) {
+      const used = new Set([...code.matchAll(/\$\$m(\d+)\./g)].map((match) => Number(match[1])));
+      if (used.size > 0) {
+        const imports = [...used].map(
+          (index) =>
+            `import * as $$m${index} from ${JSON.stringify(this.shared!.specifiers[index])};`,
+        );
+        parts[name] = `${imports.join('\n')}\n${code}`;
+      }
     }
     const loaders = names.map(
       (name) =>
@@ -236,8 +255,13 @@ class ClientGenerator {
   private reads(sites: Site[]): Set<Declaration> {
     const result = new Set<Declaration>();
     for (const site of sites) {
+      // Shared code of a module function imports what it needs itself. The part only builds its
+      // cells, which read values and functions of the component.
+      const shared = this.shared?.find(site.node) !== undefined;
       for (const read of site.reads) {
-        result.add(read.declaration);
+        if (!shared || read.declaration.kind !== 'import') {
+          result.add(read.declaration);
+        }
       }
     }
     return result;
@@ -513,6 +537,15 @@ class ClientGenerator {
       }
       const fn = site.node as oxc.Function | oxc.ArrowFunctionExpression;
       const base = instanceScope(this.plan, declaration.scope);
+      // A function that a module function gave the component calls its shared code.
+      const shared = this.rewriter.sharedCall(site, '$$s', base);
+      if (shared) {
+        this.part = this.placement.get(declaration)!;
+        this.emit(
+          `${this.part === 'shared' ? 'export ' : ''}const ${declaration.name}$ = ($$s, ...$$a) => ${shared.fn}($$s, ${shared.refs}, ...$$a);`,
+        );
+        continue;
+      }
       const code = this.rewriter.rewrite(site, '$$s', base, {
         edit: (patch) => {
           if (fn.type === 'FunctionDeclaration' && fn.id) {

@@ -11,7 +11,7 @@
 // - Server functions answer in the page: calls to `/_brumate/` go to them
 //   instead of the network.
 
-import { analyzeProject, compile } from 'brumate';
+import { analyzeProject, compile, generateShared } from 'brumate';
 import type { CompileResult } from 'brumate';
 import * as client from 'brumate/client';
 import * as context from 'brumate/context';
@@ -209,6 +209,9 @@ export async function runSample(
         return shim(specifier);
       }
       const { file, query } = target(specifier, from);
+      if (query.has('brumate-shared')) {
+        return shared(file);
+      }
       if (!file.endsWith('.brm')) {
         return script(file);
       }
@@ -225,6 +228,16 @@ export async function runSample(
   const script = (file: string): string =>
     once(`ts:${file}`, () =>
       blob(rewrite(strip(file, sources.get(file)!), resolver(file, 'server'))),
+    );
+  // The browser code of the functions of a module of reactive logic, shared by every call.
+  const shared = (file: string): string =>
+    once(`shared:${file}`, () =>
+      blob(
+        rewrite(
+          strip(file, generateShared({ path: file, source: sources.get(file)! }).code),
+          resolver(file, 'client'),
+        ),
+      ),
     );
   const serverModule = (file: string): string =>
     once(`server:${file}`, () =>

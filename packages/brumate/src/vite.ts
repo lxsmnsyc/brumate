@@ -13,6 +13,7 @@ import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
 import { isReactiveModule } from './modules.ts';
+import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { prerender } from './prerender.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
@@ -385,6 +386,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async load(id, loadOptions) {
+      // The browser code of the functions of a module of reactive logic, shared by every call.
+      if (id.endsWith(SHARED_QUERY)) {
+        const module = id.slice(0, -SHARED_QUERY.length);
+        this.addWatchFile(module);
+        const { code, map } = generateShared({
+          path: module,
+          source: await readFile(module, 'utf8'),
+        });
+        return { code, map: { ...map, sources: [module] } };
+      }
       if (id === `\0${START}`) {
         return [
           "import { start } from 'brumate/loader';",
@@ -470,7 +481,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     async transform(code, id) {
       const [file] = id.split('?');
-      if (!file?.endsWith('.brm')) {
+      // The shared module of a module of reactive logic is TypeScript too, under a query
+      // that Vite does not strip types for.
+      const shared = isReactiveModule(file ?? '') && id.endsWith(SHARED_QUERY);
+      if (!file?.endsWith('.brm') && !shared) {
         return undefined;
       }
       const result = await transformWithOxc(code, `${file}.ts`, { lang: 'ts', sourcemap: true });

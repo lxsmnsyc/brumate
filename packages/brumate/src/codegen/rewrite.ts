@@ -1,9 +1,10 @@
 import type { Block, Range, SFCFile } from '../ast.ts';
-import { isWithin, upstreamMemos } from '../model.ts';
+import { isWithin, lookup, upstreamMemos } from '../model.ts';
 import type { Declaration, Diagnostic, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
+import type { SharedContext } from '../shared-module.ts';
 import { Patch } from './patch.ts';
 import { instanceScope, scopePath, slotIndex } from './scopes.ts';
 
@@ -40,10 +41,62 @@ export class Rewriter {
   private readonly plan: Plan;
   private readonly diagnostics: Diagnostic[];
 
-  constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[]) {
+  private readonly shared: SharedContext | undefined;
+
+  constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[], shared?: SharedContext) {
     this.file = file;
     this.plan = plan;
     this.diagnostics = diagnostics;
+    this.shared = shared;
+  }
+
+  /**
+   * The call of the shared code of a site that a module function gave the
+   * component: the function to call, and the cells of its names in this
+   * call. Undefined when the site is the component's own code, or when a
+   * name it reads has no value in the browser.
+   */
+  sharedCall(
+    site: Site,
+    scopeVar: string,
+    base: Scope,
+  ): { fn: string; refs: string; kind: 'function' | 'expression' } | undefined {
+    const found = this.shared?.find(site.node);
+    if (!found) {
+      return undefined;
+    }
+    // A ref for each name: a slot of this scope, `[scope, slot]`, or `[value]`. See `cells`.
+    const refs: string[] = [];
+    for (const name of found.site.names) {
+      const value = found.names.get(name);
+      if (!value) {
+        return undefined;
+      }
+      if ('literal' in value) {
+        refs.push(`[${value.literal}]`);
+        continue;
+      }
+      const declaration = lookup(site.scope, value.name);
+      if (!declaration) {
+        return undefined;
+      }
+      const slot = slotIndex(this.plan, declaration);
+      if (slot !== -1) {
+        const path = scopePath(this.plan, scopeVar, base, declaration.scope);
+        refs.push(path === scopeVar ? String(slot) : `[${path}, ${slot}]`);
+        continue;
+      }
+      const read = this.value(declaration, scopeVar, base);
+      if (!read) {
+        return undefined;
+      }
+      refs.push(`[${read}]`);
+    }
+    return {
+      fn: `$$m${found.module}.${found.site.name}`,
+      refs: `[${refs.join(', ')}]`,
+      kind: found.site.kind,
+    };
   }
 
   /**
@@ -121,6 +174,15 @@ export class Rewriter {
   }
 
   rewrite(site: Site, scopeVar: string, base: Scope, options: RewriteOptions = {}): string {
+    // Code that a module function gave the component calls the shared module instead.
+    if (!options.range && !options.edit && !options.locals) {
+      const shared = this.sharedCall(site, scopeVar, base);
+      if (shared) {
+        return shared.kind === 'function'
+          ? `((...$$a) => ${shared.fn}(${scopeVar}, ${shared.refs}, ...$$a))`
+          : `${shared.fn}(${scopeVar}, ${shared.refs})`;
+      }
+    }
     const patch = new Patch(this.file.source);
     const locals = options.locals ?? new Set();
     const references = new Map<number, Reference>();

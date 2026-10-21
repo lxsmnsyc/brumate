@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
+import { generateShared } from '../src/shared-module.ts';
 import { render as renderParts, stateScript } from '../src/runtime/server.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
@@ -26,6 +27,11 @@ beforeAll(() => {
   for (const name of readdirSync(input)) {
     if (!name.endsWith('.brm')) {
       copyFileSync(join(input, name), join(output, name));
+      // The code of a module function that the browser runs, shared by every call.
+      if (name.endsWith('.brm.ts')) {
+        const module = { path: join(input, name), source: readFileSync(join(input, name), 'utf8') };
+        writeFileSync(join(output, `${name}.shared.ts`), generateShared(module).code);
+      }
       continue;
     }
     const { server, client, parts, render, plan } = compile(sources.get(name)!, {
@@ -49,7 +55,8 @@ let stop: (() => void) | undefined;
 function toRender(code: string): string {
   return code
     .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
-    .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"');
+    .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"')
+    .replace(/\.brm\.ts\?brumate-shared"/g, '.brm.ts.shared.ts"');
 }
 
 /**

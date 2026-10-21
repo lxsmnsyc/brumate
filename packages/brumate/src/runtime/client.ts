@@ -557,6 +557,33 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
   return value;
 }
 
+/**
+ * The names of a call of a module function, for its shared code. Each ref
+ * is a slot of `scope`, `[scope, slot]` for a slot of another scope, or
+ * `[value]` for a value that does not change, such as a literal argument.
+ */
+export function cells(scope: Scope, links: unknown[], names: string[]): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  names.forEach((name, index) => {
+    const ref = links[index];
+    let owner = scope;
+    let slot: number;
+    if (typeof ref === 'number') {
+      slot = ref;
+    } else if ((ref as unknown[]).length === 2) {
+      [owner, slot] = ref as [Scope, number];
+    } else {
+      Object.defineProperty(result, name, { get: () => (ref as unknown[])[0], set: () => {} });
+      return;
+    }
+    Object.defineProperty(result, name, {
+      get: () => get(owner, slot),
+      set: (value: unknown) => set(owner, slot, value),
+    });
+  });
+  return result;
+}
+
 // The latest load of each async memo, by `<scope>:<slot>`, so older results are dropped.
 const loads = new Map<string, number>();
 const loadingSlots = new Set<string>();

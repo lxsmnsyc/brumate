@@ -61,6 +61,8 @@ export interface Origin {
   offset: number;
   /** The call in the component that the code of a module replaces. */
   call?: { start: number; end: number };
+  /** True for code of a module function that another module function calls. */
+  nested?: boolean;
 }
 
 /** The source of a component with its calls of module functions replaced. */
@@ -169,7 +171,7 @@ class Builder {
   }
 }
 
-interface ModuleInfo {
+export interface ModuleInfo {
   module: ReactiveModule;
   program: oxc.Program;
   /** Imports by local name. `imported` is the exported name, `default` or `*`. */
@@ -180,7 +182,7 @@ interface ModuleInfo {
   functions: Map<string, oxc.Function | oxc.ArrowFunctionExpression>;
 }
 
-function parseModule(module: ReactiveModule): ModuleInfo {
+export function parseModule(module: ReactiveModule): ModuleInfo {
   const result = parseSync(module.path, module.source, { lang: 'ts', preserveParens: false });
   const error = result.errors[0];
   if (error) {
@@ -290,7 +292,7 @@ function directory(path: string): string {
 }
 
 /** A specifier of the module, relative to the component. Package names stay as they are. */
-function relocate(specifier: string, module: string, component: string): string {
+export function relocate(specifier: string, module: string, component: string): string {
   if (!specifier.startsWith('.')) {
     return specifier;
   }
@@ -312,7 +314,7 @@ function relocate(specifier: string, module: string, component: string): string 
  * that reads or writes a name, with the scopes of names declared inside the
  * node, so a name that a nested function or block declares again is left alone.
  */
-function forEachReference(
+export function forEachReference(
   node: oxc.Node,
   visit: (identifier: oxc.IdentifierReference, shorthand: boolean) => void,
   shadowed: Set<string> = new Set(),

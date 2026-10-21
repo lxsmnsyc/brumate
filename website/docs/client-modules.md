@@ -55,6 +55,27 @@ When the parts of a component are smaller than the `merge` option in all, they b
 
 `App.brm?brumate-render` renders a component in the browser, for a parent whose block renders it again. A parent imports it only from the code of such a block.
 
+### Shared code of module functions
+
+A component copies the body of a [module function](./reactive-modules.md) that it calls, so its signals are slots of the component. The code of that body that runs in the browser is not copied into the parts. It is compiled once, into `counter.brm.ts?brumate-shared`:
+
+```ts
+// counter.brm.ts?brumate-shared
+export function s218($$s, $$k) {
+  const $$c = $$b.cells($$s, $$k, ['count']);
+  $$c.count++;
+}
+```
+
+```ts
+// A part of the component
+const increment$ = ($$s, ...$$a) => $$m0.s218($$s, [1], ...$$a);
+```
+
+- Each export is a function of the body, a function that it returns, a memo, or an effect, named by its offset in the module.
+- `$$k` holds a ref for each name that the code reads or writes: a slot of the scope, `[scope, slot]` for a slot of another scope, or `[value]` for a literal argument or a value that does not change. `cells` turns the refs into getters and setters.
+- Code that needs the component to compile it, such as `$isPending`, is copied instead. So is the code of a module function that another module function calls.
+
 ## Prefetch
 
 | `prefetch`             | Loads the core and the parts of an element's handlers      |

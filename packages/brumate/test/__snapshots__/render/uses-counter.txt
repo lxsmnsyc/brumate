@@ -43,27 +43,24 @@ export function load(part) {
 }
 
 # Client part: h8
+import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
-import { STEP } from "./counting.brm.ts";
 
-function increment$($$s) {
-    $$b.set($$s, 1, $$b.get($$s, 1) + (STEP));
-  }
+const increment$ = ($$s, ...$$a) => $$m0.s328($$s, [1], ...$$a);
 export const h8 = ($$s, ...$$a) => (increment$.bind(null, $$s))(...$$a);
 
 # Client part: h11
+import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
-import { STEP } from "./counting.brm.ts";
 
-function bump$($$s) {
-    $$b.set($$s, 3, $$b.get($$s, 3) + (STEP));
-  }
+const bump$ = ($$s, ...$$a) => $$m0.s328($$s, [3], ...$$a);
 export const h11 = ($$s, ...$$a) => (bump$.bind(null, $$s))(...$$a);
 
 # Client part: h15
+import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
-const reset$ = ($$s) => ($$b.set($$s, 3, $$b.get($$s, 0)));
+const reset$ = ($$s, ...$$a) => $$m0.s419($$s, [3, 0], ...$$a);
 export const h15 = ($$s, ...$$a) => (reset$.bind(null, $$s))(...$$a);
 
 # Client part: h13
@@ -72,12 +69,13 @@ import * as $$b from 'brumate/client';
 export const h13 = ($$s, ...$$a) => (() => $$b.update($$s, 0, 1, false))(...$$a);
 
 # Client part: update
+import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
 const $$ctx = $$b.context;
 
 export function m2($$s) {
-  $$b.memo($$s, 2, () => $$b.get($$s, 1) * 2);
+  $$b.memo($$s, 2, () => $$m0.s313($$s, [1]));
 }
 export function u9($$s) {
   $$b.text($$s, 1, $$b.get($$s, 1));

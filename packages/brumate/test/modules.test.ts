@@ -133,4 +133,30 @@ describe('reactive logic in modules', () => {
     expect(result.maps.parts[handler]!.sources).toEqual(['App.brm', '/app/counter.brm.ts']);
     expect(result.maps.parts[handler]!.sourcesContent[1]).toBe(counter);
   });
+
+  it('calls shared code for what runs in the browser, so two calls ship it once', () => {
+    const result = build(
+      '  const { count, increment } = counter(1);\n  const { count: other, increment: bump } = counter(2);',
+      { 'counter.brm.ts': counter },
+      '<button onClick=increment>{count}</button><button onClick=bump>{other}</button>',
+    );
+    const parts = Object.values(result.parts).join('\n');
+    expect(parts).toContain('import * as $$m0 from "./counter.brm.ts?brumate-shared";');
+    // Each handler passes the slot of its own count, and the memo gets a literal start.
+    expect(parts).toMatch(
+      /const increment\$ = \(\$\$s, \.\.\.\$\$a\) => \$\$m0\.s\d+\(\$\$s, \[\d+\], \.\.\.\$\$a\);/,
+    );
+    expect(parts).not.toContain('count++');
+  });
+
+  it('copies code that needs the component to compile it, such as $isPending', () => {
+    const result = build(
+      '  const { count, busy } = counter(1);',
+      {
+        'counter.brm.ts': `import { $isPending, $memo, $signal } from 'brumate/signals';\nexport function counter(start: number) {\n  let count = $signal(start);\n  const later = $memo(Promise.resolve(count));\n  const busy = $memo($isPending(later));\n  return { count, busy, increment: () => count++ };\n}\n`,
+      },
+      '<button onClick=(() => count++)>{count} {busy}</button>',
+    );
+    expect(result.parts.update).toContain('$$b.pending(');
+  });
 });

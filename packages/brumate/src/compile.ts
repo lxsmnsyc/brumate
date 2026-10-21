@@ -1,7 +1,9 @@
 import { checkAccessibility } from './a11y.ts';
 import { finish } from './sourcemap.ts';
-import { ModuleError, expandModules, resolveFromDisk } from './modules.ts';
-import type { Origin, ReactiveModule, ResolveModule } from './modules.ts';
+import { ModuleError, expandModules, relocate, resolveFromDisk } from './modules.ts';
+import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './modules.ts';
+import { SHARED_QUERY, sharedSites } from './shared-module.ts';
+import type { SharedContext } from './shared-module.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
@@ -106,10 +108,17 @@ function expand(
   filename: string,
   path: string,
   resolve: ResolveModule,
-): { file: SFCFile; origin: (offset: number) => Origin; modules: ReactiveModule[] } {
+): {
+  file: SFCFile;
+  origin: (offset: number) => Origin;
+  modules: ReactiveModule[];
+  calls: ModuleCall[];
+} {
   let file = parse(source, { filename });
   let origin = identity;
   const modules = new Map<string, ReactiveModule>();
+  // The calls that the component itself makes. Their offsets are offsets of `source`.
+  let calls: ModuleCall[] = [];
   for (let round = 0; ; round++) {
     let expansion;
     try {
@@ -128,7 +137,10 @@ function expand(
       throw error;
     }
     if (!expansion) {
-      return { file, origin, modules: [...modules.values()] };
+      return { file, origin, modules: [...modules.values()], calls };
+    }
+    if (round === 0) {
+      calls = expansion.calls;
     }
     if (round === MAX_EXPANSIONS) {
       throw new CompileError(source, filename, [
@@ -155,6 +167,8 @@ function expand(
       return {
         ...found,
         call: call?.call ?? (call && { start: call.offset, end: outer(found.call!.end).offset }),
+        // Code of a module function that a module function calls, rather than the component.
+        nested: round > 0,
       };
     };
     try {
@@ -181,9 +195,59 @@ function locationIn(module: ReactiveModule, offset: number): string {
   return `${module.path.split(/[\\/]/).pop()}:${line}:${column}`;
 }
 
+/** True for a function node, whose shared code is called with its arguments. */
+function isFunction(node: { type: string }): boolean {
+  return (
+    node.type === 'FunctionDeclaration' ||
+    node.type === 'FunctionExpression' ||
+    node.type === 'ArrowFunctionExpression'
+  );
+}
+
+/**
+ * Lets code generation call the shared module of a module function for the
+ * code that a call of it gave the component, instead of copying the code.
+ */
+function sharedContext(
+  origin: (offset: number) => Origin,
+  modules: ReactiveModule[],
+  calls: ModuleCall[],
+  path: string,
+): SharedContext | undefined {
+  if (calls.length === 0) {
+    return undefined;
+  }
+  const byStart = new Map(calls.map((call) => [call.start, call]));
+  return {
+    specifiers: modules.map(
+      (module) =>
+        `${relocate(`./${module.path.split('/').pop()}`, module.path, path)}${SHARED_QUERY}`,
+    ),
+    find(node) {
+      const at = origin(node.start);
+      if (!at.module || at.nested || !at.call) {
+        return undefined;
+      }
+      const call = byStart.get(at.call.start);
+      const site = sharedSites(at.module).get(at.offset);
+      if (!call || call.module !== at.module.path || !site) {
+        return undefined;
+      }
+      if ((site.kind === 'function') !== isFunction(node)) {
+        return undefined;
+      }
+      return {
+        module: modules.findIndex((module) => module.path === at.module!.path),
+        site,
+        names: call.names,
+      };
+    },
+  };
+}
+
 export function compile(source: string, options: CompileOptions = {}): CompileResult {
   const filename = options.filename ?? 'Component.brm';
-  const { file, origin, modules } = expand(
+  const { file, origin, modules, calls } = expand(
     source,
     filename,
     options.path ?? filename,
@@ -226,7 +290,8 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (styleErrors.length > 0) {
     fail(styleErrors);
   }
-  const client = generateClient(file, plan, options.merge);
+  const shared = sharedContext(origin, modules, calls, options.path ?? filename);
+  const client = generateClient(file, plan, options.merge, shared);
   const clientErrors = client.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (clientErrors.length > 0) {
     fail(clientErrors);
