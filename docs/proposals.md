@@ -45,7 +45,6 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 
 ### Deployment adapters
 
-The server runtime keeps the request with `AsyncLocalStorage`, and the example server is written for Node.
+The server runtime uses only web APIs, and Nitro builds for each host. See `examples/nitro`.
 
-- Adapters for Node, Deno, Bun and Cloudflare Workers, each one a request handler that serves the client files and answers routes and server function calls.
-- Cloudflare Workers have `AsyncLocalStorage` with the Node compatibility flag. A runtime without it could pass the request down the render instead.
+- Nitro covers Node, Deno, Bun, Cloudflare Workers and others. Only its Node preset is tested.

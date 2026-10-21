@@ -1,34 +1,129 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { toJSON } from 'seroval';
+import { deleteCookie, getCookies, setCookie } from './cookies.ts';
+import type { CookieOptions } from './cookies.ts';
 import { disabledFeatures, plugins } from './shared.ts';
 
-/** What the server sets on the response while it handles a request. */
-export interface ResponseParts {
-  /** Headers to add to the response, such as `set-cookie`. */
-  headers: Headers;
+/**
+ * A request that the server handles: a server function call, a form post,
+ * a page render, or a call of middleware or an endpoint. Its methods read
+ * the request and change the response. Get it with `getEvent()`.
+ */
+export class RequestEvent {
+  readonly request: Request;
+  /** Headers to add to the response, such as `cache-control`. */
+  readonly headers: Headers = new Headers();
   /** The status that `setStatus` set. */
   status?: number;
   /** Server functions that `refresh` named, whose memos the client loads again. */
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
-}
 
-interface RequestContext {
-  request: Request;
-  response: ResponseParts;
-}
+  constructor(request: Request) {
+    this.request = request;
+  }
 
-const storage = new AsyncLocalStorage<RequestContext>();
-/** The results of server function calls while a page renders, by function and arguments. */
-const calls = new AsyncLocalStorage<Map<string, unknown>>();
+  /**
+   * Sets the status of the page response, such as 404 for a page that shows
+   * that nothing was found. It works while the first render of a page runs.
+   * Markup that streams later, such as a `#loading` body, cannot change it,
+   * because the response has started by then.
+   */
+  setStatus(status: number): void {
+    this.status = status;
+  }
+
+  /**
+   * Asks the client to load again the memos that call a server function, such
+   * as a list after a server function adds to it. The compiler gives those
+   * memos client code, so they can load.
+   */
+  refresh(fn: (...args: never[]) => unknown): void {
+    this.refreshed ??= new Set();
+    this.refreshed.add(unwrap(fn));
+  }
+
+  /** The cookies of the request, with the ones that this request set or deleted. */
+  getCookies(): Record<string, string> {
+    return getCookies(this);
+  }
+
+  /** A cookie of the request, or the value that this request set. */
+  getCookie(name: string): string | undefined {
+    return getCookies(this)[name];
+  }
+
+  /**
+   * Sets a cookie on the response. It is `HttpOnly`, `SameSite=Lax` and on
+   * the path `/` unless the options say otherwise, and `Secure` on HTTPS.
+   * Markup that streams later, such as a `#loading` body, cannot set cookies,
+   * because the response has started.
+   */
+  setCookie(name: string, value: string, options: CookieOptions = {}): void {
+    setCookie(this, name, value, options);
+  }
+
+  /** Deletes a cookie. Pass the `path` and `domain` that it was set with, if they were not the defaults. */
+  deleteCookie(name: string, options: Pick<CookieOptions, 'path' | 'domain'> = {}): void {
+    deleteCookie(this, name, options);
+  }
+}
 
 /**
- * Runs a render, so calls of the same server function with the same
- * arguments share one result, such as two components that load one user.
+ * The event of the code that runs now. The runtime sets it while it calls a
+ * server function, middleware, an endpoint or a memo, and clears it as soon
+ * as the call returns, which is at its first `await`. One request at a time
+ * runs until an `await`, so it is never the event of another request.
  */
-export function withCallCache<T>(callback: () => T): T {
-  return calls.run(new Map(), callback);
+let current: RequestEvent | undefined;
+/** The results of server function calls of the render that runs now, by function and arguments. */
+let currentCalls: Map<string, unknown> | undefined;
+
+/**
+ * Runs a callback with an event, so `getEvent()` in its code before its first
+ * `await` returns it. Returns what the callback returns, such as its promise.
+ * `calls`, while a page renders, lets calls with the same arguments share a result.
+ */
+export function withEvent<T>(
+  event: RequestEvent | undefined,
+  callback: () => T,
+  calls?: Map<string, unknown>,
+): T {
+  const outer = current;
+  const outerCalls = currentCalls;
+  current = event;
+  currentCalls = calls;
+  try {
+    return callback();
+  } finally {
+    current = outer;
+    currentCalls = outerCalls;
+  }
+}
+
+/**
+ * Returns the event of the request that the server handles: in a server
+ * function, middleware or an endpoint, or while a component renders.
+ *
+ * Call it before the first `await` of the function, and keep it in a
+ * variable. After an `await`, other requests may have run, so it throws.
+ *
+ * ```ts
+ * async function save(todo: Todo) {
+ *   'use server';
+ *   const event = getEvent();
+ *   await db.save(todo);
+ *   event.setCookie('saved', todo.id);
+ * }
+ * ```
+ */
+export function getEvent(): RequestEvent {
+  if (!current) {
+    throw new Error(
+      'getEvent() works in server functions, middleware and endpoints before their first await, and while a component renders. Call it at the start of the function, keep the event in a variable, and pass it to helpers',
+    );
+  }
+  return current;
 }
 
 /**
@@ -40,7 +135,7 @@ export function withCallCache<T>(callback: () => T): T {
 // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
 export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
   const wrapper = ((...args: unknown[]) => {
-    const cache = calls.getStore();
+    const cache = currentCalls;
     if (!cache) {
       return fn(...args);
     }
@@ -72,57 +167,6 @@ const ORIGINAL = Symbol.for('brumate.original');
  */
 export function unwrap<T>(fn: T): T {
   return ((fn as Record<symbol, T | undefined> | null)?.[ORIGINAL] ?? fn) as T;
-}
-
-/** Runs a callback with a request, so `getRequest` can read it. */
-export function withRequest<T>(request: Request, response: ResponseParts, callback: () => T): T {
-  return storage.run({ request, response }, callback);
-}
-
-/** The request and the response of the request being handled. */
-export function currentRequest(name: string): RequestContext {
-  return current(name);
-}
-
-function current(name: string): RequestContext {
-  const context = storage.getStore();
-  if (!context) {
-    throw new Error(
-      `${name}() works only in server functions, middleware, endpoints, and while rendering with the request option`,
-    );
-  }
-  return context;
-}
-
-/** Returns the request of the server function call or the page being rendered. */
-export function getRequest(): Request {
-  return current('getRequest').request;
-}
-
-/** Returns the headers to add to the response, such as `set-cookie`. */
-export function getResponseHeaders(): Headers {
-  return current('getResponseHeaders').response.headers;
-}
-
-/**
- * Asks the client to load again the memos that call a server function, such
- * as a list after a server function adds to it. Call it in a server
- * function. The compiler gives those memos client code, so they can load.
- */
-export function refresh(fn: (...args: never[]) => unknown): void {
-  const response = current('refresh').response;
-  response.refreshed ??= new Set();
-  response.refreshed.add(unwrap(fn));
-}
-
-/**
- * Sets the status of the page response, such as 404 for a page that shows
- * that nothing was found. It works while the first render of a page runs.
- * Markup that streams later, such as a `#loading` body, cannot change it,
- * because the response has started by then.
- */
-export function setStatus(status: number): void {
-  current('setStatus').response.status = status;
 }
 
 /**

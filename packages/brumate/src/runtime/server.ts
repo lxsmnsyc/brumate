@@ -24,15 +24,7 @@ import {
 } from './shared.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PageState, ScopeState } from './shared.ts';
-import {
-  Redirect,
-  ServerError,
-  isRedirect,
-  unwrap,
-  withCallCache,
-  withRequest,
-} from './request.ts';
-import type { ResponseParts } from './request.ts';
+import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { affix, attribute, escape, escapeAttribute, raw, spread, vars } from './html.ts';
@@ -53,26 +45,16 @@ export type {
   RouteView,
 } from './router.ts';
 export {
+  RequestEvent,
   ServerError,
   dedupe,
-  getRequest,
-  getResponseHeaders,
+  getEvent,
   isRedirect,
   redirect,
-  refresh,
-  setStatus,
+  withEvent,
 } from './request.ts';
 export type { Redirect } from './request.ts';
-export {
-  createSession,
-  deleteCookie,
-  getCookie,
-  getCookies,
-  parseCookies,
-  serializeCookie,
-  setCookie,
-  toNodeHeaders,
-} from './cookies.ts';
+export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
@@ -113,6 +95,24 @@ export class Context {
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
+  /** The request of the page, when it renders with one. */
+  event: RequestEvent | undefined;
+  /** Results of server function calls in this render, so the same call runs once. */
+  readonly calls: Map<string, unknown> = new Map();
+
+  /** The event of the page, for `getEvent()` in a component, which the compiler rewrites to this. */
+  getEvent(): RequestEvent {
+    const event = this.root.event;
+    if (!event) {
+      throw new Error('getEvent() works while a page renders with a request, such as in a route');
+    }
+    return event;
+  }
+
+  /** Runs code of the render with its event and its call results, such as a memo's compute. */
+  run<T>(callback: () => T): T {
+    return withEvent(this.root.event, callback, this.root.calls);
+  }
 
   /** The result of a server function that a form posted to this page. */
   actionResult(fn: unknown): unknown {
@@ -342,6 +342,8 @@ export class NotReady extends Error {
 /** A memo on the server. It computes on its first read, so nothing waits for a memo that nothing reads. */
 export interface Memo<T = unknown> {
   compute: () => T;
+  /** The render, whose event server functions that the compute calls read. */
+  ctx?: Context;
   state: 'idle' | 'pending' | 'done' | 'failed';
   value?: unknown;
   error?: unknown;
@@ -349,8 +351,8 @@ export interface Memo<T = unknown> {
 }
 
 /** Declares a memo. Its value is computed when it is first read. */
-export function memo<T>(compute: () => T): Memo<T> {
-  return { compute, state: 'idle' };
+export function memo<T>(compute: () => T, ctx?: Context): Memo<T> {
+  return { compute, ctx, state: 'idle' };
 }
 
 /**
@@ -371,7 +373,8 @@ export function read(node: Memo): any {
   }
   let value: unknown;
   try {
-    value = node.compute();
+    // Server functions that it calls read the event of the page before their first await.
+    value = node.ctx ? node.ctx.run(node.compute) : node.compute();
   } catch (error) {
     if (!(error instanceof NotReady)) {
       node.state = 'failed';
@@ -639,7 +642,7 @@ export interface RenderResult {
    * `#loading` blocks, and the state records that settle promises.
    */
   pending: AsyncIterable<string>;
-  /** Headers that server functions set while the page rendered, with `getResponseHeaders`. */
+  /** Headers that the page set while it rendered, such as cookies. */
   headers: Headers;
   /** The status that `setStatus` set while the page rendered, or 200. */
   status: number;
@@ -714,11 +717,13 @@ export interface RenderOptions {
   /** Results of server functions that a form posted to this page, by function, for `$action`. */
   actions?: Map<unknown, unknown>;
   /**
-   * The request of the page. Server functions that run while the page
-   * renders can read it with `getRequest`, and set headers with
-   * `getResponseHeaders`, which `render` returns.
+   * The request of the page. Components and the server functions that their
+   * memos call read it with `getEvent()`. Headers and cookies that they set
+   * are in the `headers` that `render` returns.
    */
   request?: Request;
+  /** The event of the request, in place of `request`, such as one that middleware already set cookies on. */
+  event?: RequestEvent;
   /**
    * A Content Security Policy nonce for the inline scripts that swap in
    * `#loading` bodies. State scripts need none, because they do not run.
@@ -744,12 +749,10 @@ export async function render<P>(
   if (options.actions) {
     ctx.actions = options.actions;
   }
-  const response: ResponseParts = { headers: new Headers() };
-  // Calls of the same server function with the same arguments share a result in this render.
-  const run = (): Promise<string> => withCallCache(() => Root(props, ctx));
-  const rendered = options.request
-    ? await withRequest(options.request, response, run)
-    : await run();
+  const event = options.event ?? (options.request ? new RequestEvent(options.request) : undefined);
+  ctx.event = event;
+  // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
+  const rendered = await ctx.run(() => Root(props, ctx));
   ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   const queue = createQueue<string>();
@@ -840,8 +843,8 @@ export async function render<P>(
     html,
     state,
     pending: queue.iterable,
-    headers: response.headers,
-    status: response.status ?? 200,
+    headers: event?.headers ?? new Headers(),
+    status: event?.status ?? 200,
     next: () => ctx.next(),
     head: ctx.headHTML(),
   };
@@ -979,11 +982,13 @@ async function handleForm(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   fn: (...args: any[]) => unknown,
   request: Request,
-  headers: Headers,
+  event: RequestEvent,
 ): Promise<Response> {
+  const { headers } = event;
   const back = request.headers.get('referer') ?? '/';
   try {
-    await fn(await request.formData());
+    const form = await request.formData();
+    await withEvent(event, () => fn(form));
     headers.set('location', back);
     return new Response(null, { status: 303, headers });
   } catch (error) {
@@ -1071,7 +1076,7 @@ export function isCrossSite(request: Request, options: RequestOptions = {}): boo
 /**
  * Answers a server function call from `brumate/client`. Returns undefined
  * when the request is not a call, so other handlers can answer it. Server
- * functions can read the request with `getRequest`. A call from a page of
+ * functions read the request with `getEvent()`. A call from a page of
  * another site answers 403. See `isCrossSite`.
  */
 export async function handleRequest(
@@ -1092,24 +1097,22 @@ export async function handleRequest(
   if (!functions[id]) {
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
-  const headers = new Headers();
-  const response: ResponseParts = { headers };
+  const event = new RequestEvent(request);
+  const fn = functions[id];
+  // The function runs with its event, so `getEvent()` before its first await returns it.
+  const invoke = (args: unknown[]): unknown => withEvent(event, () => fn(...args));
   // A call with files sends its arguments as form data, with this header.
   const call = request.headers.has('x-brumate-args');
   // The loader sends a form of an `$action` with this header, and wants the result, not a page.
   if (isFormPost(request) && !call && !request.headers.has('x-brumate-result')) {
-    return withRequest(request, response, () => handleForm(functions[id]!, request, headers));
+    return handleForm(fn, request, event);
   }
   if (isFormPost(request) && !call) {
     const form = await request.formData();
-    return withRequest(request, response, () =>
-      answerCall(functions, response, async () => functions[id]!(form)),
-    );
+    return answerCall(functions, event, async () => invoke([form]));
   }
   // Arguments that fail to read, such as a regular expression, answer as an error of the call.
-  return withRequest(request, response, () =>
-    answerCall(functions, response, async () => functions[id]!(...(await readArgs(request)))),
-  );
+  return answerCall(functions, event, async () => invoke(await readArgs(request)));
 }
 
 /**
@@ -1121,15 +1124,15 @@ export async function handleRequest(
 async function answerCall(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   functions: Record<string, (...args: any[]) => unknown>,
-  response: ResponseParts,
+  event: RequestEvent,
   run: () => Promise<unknown>,
 ): Promise<Response> {
-  const { headers } = response;
+  const { headers } = event;
   try {
     const result = await run();
     // The client loads again the memos that call the server functions that `refresh` named.
     const refreshed = Object.keys(functions).filter((key) =>
-      response.refreshed?.has(unwrap(functions[key])),
+      event.refreshed?.has(unwrap(functions[key])),
     );
     if (refreshed.length > 0) {
       headers.set('x-brumate-refresh', refreshed.join(','));
@@ -1238,7 +1241,7 @@ async function runAction(
   request: Request,
   id: string,
   options: RouteOptions,
-  response: ResponseParts,
+  event: RequestEvent,
 ): Promise<{ actions: Map<unknown, unknown> } | { answer: Response }> {
   if (isCrossSite(request, options)) {
     return { answer: new Response('Calls from other sites are not allowed', { status: 403 }) };
@@ -1249,7 +1252,7 @@ async function runAction(
   }
   try {
     const form = await request.formData();
-    const result = await withRequest(request, response, () => fn(form));
+    const result = await withEvent(event, () => fn(form));
     return { actions: new Map([[fn, result]]) };
   } catch (error) {
     if (error instanceof Redirect) {
@@ -1279,7 +1282,7 @@ async function renderPage(
   props: Record<string, unknown>,
   request: Request,
   options: RouteOptions,
-  extra: { actions?: Map<unknown, unknown>; headers?: Headers; status?: number },
+  extra: { actions?: Map<unknown, unknown>; status?: number },
 ): Promise<Response> {
   // A page that the client loads in place of another starts above its IDs.
   const base = Number(request.headers.get('x-brumate-base'));
@@ -1295,8 +1298,6 @@ async function renderPage(
     },
   );
   const headers = new Headers(parts.headers);
-  // Headers that the server function of a form set, such as a cookie.
-  extra.headers?.forEach((value, name) => headers.append(name, value));
   headers.set('content-type', 'text/html; charset=utf-8');
   const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
   return new Response(body, { status: extra.status ?? parts.status, headers });
@@ -1333,6 +1334,7 @@ async function renderError(
 async function runMiddleware(
   loaders: MiddlewareLoader[],
   request: Request,
+  event: RequestEvent,
   answer: () => Promise<Response>,
 ): Promise<Response> {
   const [first, ...rest] = loaders;
@@ -1340,7 +1342,9 @@ async function runMiddleware(
     return answer();
   }
   const { middleware } = await first();
-  return middleware(request, () => runMiddleware(rest, request, answer));
+  return withEvent(event, () =>
+    middleware(request, () => runMiddleware(rest, request, event, answer)),
+  );
 }
 
 /**
@@ -1362,15 +1366,18 @@ export async function handleRoute(
   request: Request,
   options: RouteOptions = {},
 ): Promise<Response | undefined> {
-  // Middleware and endpoints run with the request, so they can read and set cookies.
-  const parts: ResponseParts = { headers: new Headers() };
-  const answer = await withRequest(request, parts, () => routeAnswer(tree, request, options));
-  return answer && withHeaders(answer, parts.headers);
+  // One event for the request: middleware, endpoints, a form's server function and the page
+  // share it, so cookies that one sets reach the response and the others read them.
+  const event = options.event ?? new RequestEvent(request);
+  const answer = await routeAnswer(tree, request, { ...options, event });
+  return answer && withHeaders(answer, event.headers);
 }
 
 /** A response with more headers, such as cookies that middleware set. */
 function withHeaders(answer: Response, headers: Headers): Response {
-  const cookies = headers.getSetCookie();
+  // A rendered page has them already.
+  const sent = new Set(answer.headers.getSetCookie());
+  const cookies = headers.getSetCookie().filter((cookie) => !sent.has(cookie));
   if (cookies.length === 0) {
     return answer;
   }
@@ -1394,7 +1401,7 @@ async function routeAnswer(
     if (missing.errors.length === 0 && missing.middleware.length === 0) {
       return undefined;
     }
-    return runMiddleware(missing.middleware, request, async () => {
+    return runMiddleware(missing.middleware, request, options.event!, async () => {
       const page = await renderError(
         missing.errors,
         { message: 'Not found', status: 404 },
@@ -1405,7 +1412,9 @@ async function routeAnswer(
       return page ?? new Response('Not found', { status: 404 });
     });
   }
-  return runMiddleware(match.middleware, request, () => answerRoute(match, request, options));
+  return runMiddleware(match.middleware, request, options.event!, () =>
+    answerRoute(match, request, options),
+  );
 }
 
 /** Answers a request that a route matches, after its middleware. */
@@ -1420,7 +1429,7 @@ async function answerRoute(
     const handler =
       endpoint[request.method] ?? (request.method === 'HEAD' ? endpoint.GET : undefined);
     if (handler) {
-      return handler(request, match.params);
+      return withEvent(options.event, () => handler(request, match.params));
     }
     if (match.view.load === missingPage || request.method !== 'GET') {
       const allow = Object.keys(endpoint).filter((name) => /^[A-Z]+$/.test(name));
@@ -1432,9 +1441,8 @@ async function answerRoute(
   }
   let actions: Map<unknown, unknown> | undefined;
   const posted = url.searchParams.get('__action');
-  const actionResponse: ResponseParts = { headers: new Headers() };
   if (request.method === 'POST' && posted !== null) {
-    const outcome = await runAction(request, posted, options, actionResponse);
+    const outcome = await runAction(request, posted, options, options.event!);
     if ('answer' in outcome) {
       return outcome.answer;
     }
@@ -1442,10 +1450,7 @@ async function answerRoute(
   }
   try {
     const view = await resolveView(match.view);
-    return await renderPage(view, { params: match.params }, request, options, {
-      actions,
-      headers: actionResponse.headers,
-    });
+    return await renderPage(view, { params: match.params }, request, options, { actions });
   } catch (error) {
     if (isRedirect(error)) {
       return new Response(null, {

@@ -62,7 +62,7 @@ The test runs in a DOM environment, so Vite gives it the browser version of a `.
 | `waitFor(assertion, timeout)` | Retries an assertion until it passes, for 2 seconds by default. |
 | `unmount()`                   | Stops the loader and removes the component.                     |
 
-`mount` takes the options of `render` as its third argument, such as a `request` for components that read it with `getRequest`.
+`mount` takes the options of `render` as its third argument, such as a `request` for components that read it with `getEvent()`.
 
 ## Content that streams in
 

@@ -3,7 +3,7 @@ import { toJSON } from 'seroval';
 import { describe, expect, it } from 'vitest';
 import { compile } from '../src/index.ts';
 import { handleRequest, render } from '../src/runtime/server.ts';
-import { withCallCache } from '../src/runtime/request.ts';
+import { withEvent } from '../src/runtime/request.ts';
 import { serverModule } from '../src/server-files.ts';
 
 const output = new URL('./.output/dedupe/', import.meta.url);
@@ -67,11 +67,11 @@ describe('deduplicated server calls', () => {
     );
     writeFileSync(new URL('data.ts', output), code);
     const data = await import(new URL('data.ts', output).href);
-    const results = await withCallCache(async () => [
-      await data.load(2),
-      await data.load(2),
-      await data.load(3),
-    ]);
+    // As a render does: calls share results while its call cache is set.
+    const calls = new Map<string, unknown>();
+    const results = await Promise.all(
+      [2, 2, 3].map((id) => withEvent(undefined, () => data.load(id), calls)),
+    );
     expect(results).toEqual([4, 4, 6]);
     expect(await data.count()).toBe(2);
     // Outside a render, each call runs.

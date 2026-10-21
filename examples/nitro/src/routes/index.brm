@@ -1,6 +1,6 @@
 <script>
   import { $action, $isPending, $memo, $signal, $title } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
   import { addNote, listNotes } from '../notes.ts';
 
   $title('Notes');
@@ -9,8 +9,9 @@
 
   async function add(form: FormData) {
     'use server';
+    const event = getEvent();
     const result = await addNote(form);
-    refresh(listNotes);
+    event.refresh(listNotes);
     return result;
   }
 

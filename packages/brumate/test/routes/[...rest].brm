@@ -1,9 +1,9 @@
 <script>
   import { $props } from 'brumate/signals';
-  import { setStatus } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   const { params } = $props();
-  setStatus(404);
+  getEvent().setStatus(404);
 </script>
 
 <h1>No page at {params.rest}</h1>

@@ -82,7 +82,7 @@ export default {
 
 - `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
-- `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. The server runtime needs `AsyncLocalStorage`, which Cloudflare has with the `nodejs_compat` flag.
+- `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
@@ -136,7 +136,7 @@ createServer(async (incoming, outgoing) => {
 - Load the client entry with `async`, so it starts while `#loading` content is still streaming.
 - Files under `/assets/` have hashes in their names, so they can be cached for a long time.
 
-The server runtime keeps the request of each call with `AsyncLocalStorage`. Node, Deno and Bun have it. Cloudflare Workers have it with the `nodejs_compat` flag.
+The server runtime uses only web APIs, such as `Request`, `Response` and `crypto.subtle`, so it runs on Node, Deno, Bun and edge hosts such as Cloudflare Workers.
 
 ## Rendering without route files
 
@@ -157,7 +157,7 @@ return new Response(html.pipeThrough(new TextEncoderStream()), {
 ```
 
 - The first part of the page is sent as soon as it renders. `#loading` content follows as its data arrives.
-- Pass `request`, so server functions and setup code can read it with `getRequest`.
+- Pass `request`, so components and the server functions that their memos call can read it with `getEvent()`.
 - `nonce` sets a Content Security Policy nonce on the inline scripts that the stream adds.
 - A root component that renders only part of a page takes `start` and `end` markup around it.
 
@@ -167,7 +167,7 @@ return new Response(html.pipeThrough(new TextEncoderStream()), {
 import { render } from 'brumate/server';
 
 const page = await render(Root, {}, { request });
-// page.status and page.headers come from setStatus and getResponseHeaders.
+// page.status and page.headers come from the event of the page, such as event.setStatus and event.setCookie.
 // page.html, page.head and page.state are the first render. page.pending streams the rest.
 ```
 

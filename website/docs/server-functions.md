@@ -72,7 +72,7 @@ export async function saveTodo(todo: Todo) {
 - The browser gets a stub for each export, which calls the server. The code of the file, and everything that it imports, never ships.
 - The file exports only functions. A constant or a class is a build error, because the browser could only get a stub of it.
 - Any code can import the file, including other `.ts` files. On the server, the calls are plain function calls.
-- `refresh(fn)` works with the functions of a file too. Memos of components that call `fn` from the file load again.
+- `event.refresh(fn)` works with the functions of a file too. Memos of components that call `fn` from the file load again.
 
 There is no `'use client'`. The compiler decides what reaches the browser by following event handlers and other client code. See [What runs where](./what-runs-where.md).
 
@@ -149,58 +149,76 @@ Throw a `ServerError` to answer with a message and a status. The call in the bro
 
 ## The request
 
-`brumate/server` gives a server function the request of the call, and a way to change the response:
+`getEvent()` from `brumate/server` returns the event of the call: its request, and methods that change the response. Call it before the first `await` of the function, and keep it in a variable:
 
 ```ts
-import { ServerError, getRequest, getResponseHeaders, redirect } from 'brumate/server';
+import { ServerError, getEvent, redirect } from 'brumate/server';
 
 async function login(name: string) {
   'use server';
-  const agent = getRequest().headers.get('user-agent');
-  if (name === 'admin') {
-    redirect('/admin');
+  const event = getEvent();
+  const agent = event.request.headers.get('user-agent');
+  const user = await db.users.find(name);
+  if (!user) {
+    throw new ServerError('Unknown user', { status: 404 });
   }
-  getResponseHeaders().set('set-cookie', `user=${name}; HttpOnly; Path=/`);
-  return `Hello ${name}`;
+  event.setCookie('user', user.id);
+  return `Hello ${user.name}`;
 }
 ```
 
-- `getRequest()` returns the web `Request` of the call, with its headers and cookies.
-- `getResponseHeaders()` returns headers to add to the response, such as `set-cookie`.
-- `redirect(location)` stops the function, and the browser goes to `location`.
+- `event.request` is the web `Request` of the call, with its headers and its `signal`.
+- `event.headers` are headers to add to the response, such as `cache-control`.
+- `redirect(location)` stops the function, and the browser goes to `location`. It needs no event.
 
-The same functions work in the setup code of a component while a page renders. There, `setStatus(404)` also sets the status of the page. See [Routing](./routing.md#errors-and-404).
+**Why before the first `await`:** a server handles many requests at once, and other requests run while one waits. The runtime sets the event while it starts the function, and clears it at the function's first `await`. After that, `getEvent()` throws, so it never returns the event of another request. The event in your variable stays right after any number of awaits.
 
-When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `getRequest().signal` tells the function, so it can stop work it no longer needs:
+**Helpers take the event as an argument:**
+
+```ts
+async function checkout(cart: Cart) {
+  'use server';
+  const event = getEvent();
+  const user = await currentUser(event);
+  await charge(user, cart);
+  event.refresh(listOrders);
+}
+```
+
+This needs no `AsyncLocalStorage` or other runtime support, so it runs on any host.
+
+In a component, `getEvent()` returns the event of the page anywhere in its script while the page renders. There, `event.setStatus(404)` also sets the status of the page. See [Routing](./routing.md#errors-and-404). Middleware and endpoints read it before their first `await`, as server functions do.
+
+When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.request.signal` tells the function, so it can stop work it no longer needs:
 
 ```ts
 async function search(query: string) {
   'use server';
-  return db.products.search(query, { signal: getRequest().signal });
+  return db.products.search(query, { signal: getEvent().request.signal });
 }
 ```
 
 ## Cookies and sessions
 
-`getCookie` and `setCookie` read the cookies of the request and set them on the response:
+The event reads the cookies of the request and sets them on the response:
 
 ```ts
-import { getCookie, setCookie } from 'brumate/server';
+import { getEvent } from 'brumate/server';
 
 async function chooseTheme(theme: 'light' | 'dark') {
   'use server';
-  setCookie('theme', theme, { maxAge: 60 * 60 * 24 * 365 });
+  getEvent().setCookie('theme', theme, { maxAge: 60 * 60 * 24 * 365 });
 }
 
 async function currentTheme() {
   'use server';
-  return getCookie('theme') ?? 'light';
+  return getEvent().getCookie('theme') ?? 'light';
 }
 ```
 
-- A cookie is `HttpOnly`, `SameSite=Lax` and on the path `/`, unless the options say otherwise, and `Secure` on HTTPS. `deleteCookie(name)` deletes one.
+- A cookie is `HttpOnly`, `SameSite=Lax` and on the path `/`, unless the options say otherwise, and `Secure` on HTTPS. `event.deleteCookie(name)` deletes one.
 - They work in server functions, in middleware and endpoints, and while a page renders its first part. Markup that streams later, such as a `#loading` body, cannot set cookies, because the response has started.
-- After `setCookie`, `getCookie` in the same request reads the new value.
+- After `setCookie`, `getCookie` on the same event reads the new value.
 
 `createSession` keeps data in a signed cookie, such as who is logged in:
 
@@ -217,28 +235,29 @@ export const session = createSession<{ userId: string }>({
 // src/auth.ts
 'use server';
 
-import { redirect } from 'brumate/server';
+import { getEvent, redirect } from 'brumate/server';
 import { session } from './session.ts';
 
 export async function login(form: FormData) {
+  const event = getEvent();
   const user = await checkPassword(String(form.get('email')), String(form.get('password')));
-  await session.set({ userId: user.id });
+  await session.set(event, { userId: user.id });
   redirect('/');
 }
 
 export async function logout() {
-  session.clear();
+  session.clear(getEvent());
   redirect('/login');
 }
 
 export async function currentUser() {
-  const data = await session.get();
+  const data = await session.get(getEvent());
   return data && findUser(data.userId);
 }
 ```
 
-- `get()` returns undefined when there is no session, when it expired, or when its signature does not match, such as after a browser changed it.
-- `set(data)` replaces the data and starts its time again. `update(change)` changes some fields. `clear()` ends the session.
+- `get(event)` returns undefined when there is no session, when it expired, or when its signature does not match, such as after a browser changed it.
+- `set(event, data)` replaces the data and starts its time again. `update(event, change)` changes some fields. `clear(event)` ends the session.
 - The secret is at least 32 characters, kept out of the code. A list of secrets signs with the first and accepts all of them, so a secret can change without ending every session.
 - Sessions last 7 days unless `maxAge` says otherwise, in seconds.
 - The browser can read the data, but cannot change it. Keep secrets out of it: store an ID, and look the rest up on the server. A cookie holds about 4 KB.
@@ -247,7 +266,7 @@ A custom Node server sends the cookies with `toNodeHeaders(answer.headers)`, whi
 
 ## Refreshing data
 
-A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `refresh` with the function that reads it. Every memo on the page that calls that function loads again.
+A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `event.refresh` with the function that reads it. Every memo on the page that calls that function loads again.
 
 ```brm live
 <script module>
@@ -257,7 +276,7 @@ A memo that calls a server function loads again when the values it reads change.
 
 <script>
   import { $memo, $signal } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   async function list() {
     'use server';
@@ -267,7 +286,7 @@ A memo that calls a server function loads again when the values it reads change.
   async function add(name: string) {
     'use server';
     names.push(name);
-    refresh(list);
+    getEvent().refresh(list);
   }
 
   const people = $memo(list());
@@ -283,7 +302,7 @@ A memo that calls a server function loads again when the values it reads change.
 </ul>
 ```
 
-- `refresh` takes a server function of the same component, or a function of a `'use server'` file.
+- `event.refresh` takes a server function of the same component, or a function of a `'use server'` file.
 - The memos load again in every component on the page that calls the function.
 
 ## Files

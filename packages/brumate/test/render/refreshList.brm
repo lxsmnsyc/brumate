@@ -4,7 +4,7 @@
 
 <script>
   import { $memo } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   async function list() {
     'use server';
@@ -13,8 +13,9 @@
 
   async function add(name: string) {
     'use server';
+    const event = getEvent();
     names.push(name);
-    refresh(list);
+    event.refresh(list);
   }
 
   const all = $memo(list());

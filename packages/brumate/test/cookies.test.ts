@@ -1,15 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createSession,
-  deleteCookie,
-  getCookie,
   parseCookies,
   serializeCookie,
-  setCookie,
   toNodeHeaders,
 } from '../src/runtime/cookies.ts';
-import { withRequest } from '../src/runtime/request.ts';
-import type { ResponseParts } from '../src/runtime/request.ts';
+import { RequestEvent, getEvent } from '../src/runtime/request.ts';
 import { handleRoute } from '../src/runtime/server.ts';
 
 const SECRET = 'a secret of more than thirty-two characters';
@@ -17,13 +13,12 @@ const SECRET = 'a secret of more than thirty-two characters';
 /** Runs code for a request with these cookies, and returns what it set. */
 async function withCookies<T>(
   cookie: string,
-  run: () => T | Promise<T>,
+  run: (event: RequestEvent) => T | Promise<T>,
   url = 'https://example.com/',
 ): Promise<{ result: T; set: string[] }> {
-  const response: ResponseParts = { headers: new Headers() };
-  const request = new Request(url, { headers: cookie ? { cookie } : {} });
-  const result = await withRequest(request, response, run);
-  return { result, set: response.headers.getSetCookie() };
+  const event = new RequestEvent(new Request(url, { headers: cookie ? { cookie } : {} }));
+  const result = await run(event);
+  return { result, set: event.headers.getSetCookie() };
 }
 
 /** The `cookie` header that a browser sends back for `set-cookie` values. */
@@ -45,12 +40,12 @@ describe('cookies', () => {
   });
 
   it('reads the request, sets several cookies, and sees what it set', async () => {
-    const { result, set } = await withCookies('theme=light', () => {
-      const before = getCookie('theme');
-      setCookie('theme', 'dark');
-      setCookie('lang', 'fr', { httpOnly: false });
-      deleteCookie('old');
-      return [before, getCookie('theme'), getCookie('old')];
+    const { result, set } = await withCookies('theme=light', (event) => {
+      const before = event.getCookie('theme');
+      event.setCookie('theme', 'dark');
+      event.setCookie('lang', 'fr', { httpOnly: false });
+      event.deleteCookie('old');
+      return [before, event.getCookie('theme'), event.getCookie('old')];
     });
     expect(result).toEqual(['light', 'dark', undefined]);
     expect(set).toEqual([
@@ -75,47 +70,51 @@ describe('sessions', () => {
   const session = createSession<{ userId: string; theme?: string }>({ secret: SECRET });
 
   it('keeps data from one request to the next, and changes some of it', async () => {
-    const first = await withCookies('', () => session.set({ userId: 'ada' }));
-    const second = await withCookies(cookieHeader(first.set), async () => {
-      const before = await session.get();
-      const after = await session.update({ theme: 'dark' });
+    const first = await withCookies('', (event) => session.set(event, { userId: 'ada' }));
+    const second = await withCookies(cookieHeader(first.set), async (event) => {
+      const before = await session.get(event);
+      const after = await session.update(event, { theme: 'dark' });
       return [before, after];
     });
     expect(second.result).toEqual([{ userId: 'ada' }, { userId: 'ada', theme: 'dark' }]);
-    const third = await withCookies(cookieHeader(second.set), () => session.get());
+    const third = await withCookies(cookieHeader(second.set), (event) => session.get(event));
     expect(third.result).toEqual({ userId: 'ada', theme: 'dark' });
   });
 
   it('refuses a cookie that the browser changed', async () => {
-    const { set } = await withCookies('', () => session.set({ userId: 'ada' }));
+    const { set } = await withCookies('', (event) => session.set(event, { userId: 'ada' }));
     const [payload, signature] = cookieHeader(set).split('=')[1]!.split('.') as [string, string];
     const forged = btoa(JSON.stringify({ d: { userId: 'admin' }, e: Date.now() + 1000 }))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     expect(payload).not.toBe(forged);
-    const { result } = await withCookies(`session=${forged}.${signature}`, () => session.get());
+    const { result } = await withCookies(`session=${forged}.${signature}`, (event) =>
+      session.get(event),
+    );
     expect(result).toBeUndefined();
   });
 
   it('ends after its time, and when it is cleared', async () => {
     const short = createSession<{ id: number }>({ secret: SECRET, maxAge: 60 });
-    const { set } = await withCookies('', () => short.set({ id: 1 }));
+    const { set } = await withCookies('', (event) => short.set(event, { id: 1 }));
     vi.useFakeTimers({ now: Date.now() + 61_000 });
-    expect((await withCookies(cookieHeader(set), () => short.get())).result).toBeUndefined();
+    expect(
+      (await withCookies(cookieHeader(set), (event) => short.get(event))).result,
+    ).toBeUndefined();
     vi.useRealTimers();
-    const cleared = await withCookies(cookieHeader(set), async () => {
-      short.clear();
-      return short.get();
+    const cleared = await withCookies(cookieHeader(set), async (event) => {
+      short.clear(event);
+      return short.get(event);
     });
     expect(cleared.result).toBeUndefined();
     expect(cleared.set[0]).toMatch(/^session=; Path=\/; Max-Age=0/);
   });
 
   it('reads a session that an older secret signed', async () => {
-    const { set } = await withCookies('', () => session.set({ userId: 'ada' }));
+    const { set } = await withCookies('', (event) => session.set(event, { userId: 'ada' }));
     const rotated = createSession<{ userId: string }>({ secret: [`new ${SECRET}`, SECRET] });
-    expect((await withCookies(cookieHeader(set), () => rotated.get())).result).toEqual({
+    expect((await withCookies(cookieHeader(set), (event) => rotated.get(event))).result).toEqual({
       userId: 'ada',
     });
   });
@@ -131,13 +130,13 @@ describe('cookies in routes', () => {
       {
         middleware: async () => ({
           middleware: async (_request, next) => {
-            setCookie('seen', 'yes');
+            getEvent().setCookie('seen', 'yes');
             return next();
           },
         }),
         endpoint: async () => ({
           GET: () => {
-            setCookie('visits', '1');
+            getEvent().setCookie('visits', '1');
             return Response.redirect('https://example.com/next', 303);
           },
         }),
@@ -148,6 +147,42 @@ describe('cookies in routes', () => {
     expect(answer?.headers.getSetCookie()).toEqual([
       'seen=yes; Path=/; HttpOnly; Secure; SameSite=Lax',
       'visits=1; Path=/; HttpOnly; Secure; SameSite=Lax',
+    ]);
+  });
+});
+
+describe('getEvent', () => {
+  it('returns the event of a call before its first await, and throws after it', async () => {
+    const { withEvent } = await import('../src/runtime/request.ts');
+    const event = new RequestEvent(new Request('https://example.com/'));
+    let late: unknown;
+    const seen = await withEvent(event, async () => {
+      const early = getEvent();
+      await Promise.resolve();
+      try {
+        getEvent();
+      } catch (error) {
+        late = error;
+      }
+      return early;
+    });
+    expect(seen).toBe(event);
+    expect(String(late)).toContain('before their first await');
+    expect(() => getEvent()).toThrow('getEvent() works in server functions');
+  });
+
+  it('never gives one request the event of another', async () => {
+    const { withEvent } = await import('../src/runtime/request.ts');
+    const handle = (name: string, wait: number) =>
+      withEvent(new RequestEvent(new Request(`https://example.com/${name}`)), async () => {
+        const event = getEvent();
+        await new Promise((done) => setTimeout(done, wait));
+        return new URL(event.request.url).pathname;
+      });
+    expect(await Promise.all([handle('a', 20), handle('b', 5), handle('c', 10)])).toEqual([
+      '/a',
+      '/b',
+      '/c',
     ]);
   });
 });

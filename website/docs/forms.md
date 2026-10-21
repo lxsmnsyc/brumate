@@ -119,7 +119,7 @@ Set `enctype="multipart/form-data"`, so the browser sends the files when scripts
 
 ## Refreshing other data
 
-After a form changes data, call `refresh(fn)` in its function with the server function that reads the data. Memos that call it load again. See [Refreshing data](./server-functions.md#refreshing-data). Without scripts, the page renders again, so its memos are new anyway.
+After a form changes data, call `event.refresh(fn)` in its function with the server function that reads the data. Memos that call it load again. See [Refreshing data](./server-functions.md#refreshing-data). Without scripts, the page renders again, so its memos are new anyway.
 
 ## Showing a guess while it posts
 
@@ -128,7 +128,7 @@ After a form changes data, call `refresh(fn)` in its function with the server fu
 ```brm
 <script>
   import { $action, $memo, $optimistic } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   async function list() {
     'use server';
@@ -137,12 +137,13 @@ After a form changes data, call `refresh(fn)` in its function with the server fu
 
   async function sign(form: FormData) {
     'use server';
+    const event = getEvent();
     const name = String(form.get('name') ?? '');
     if (!name) {
       return { error: 'Enter a name' };
     }
     await db.add(name);
-    refresh(list);
+    event.refresh(list);
     return { error: '' };
   }
 
@@ -171,6 +172,6 @@ After a form changes data, call `refresh(fn)` in its function with the server fu
 ```
 
 - The handler runs as the form posts, so the new name shows at once.
-- When `names` changes, `shown` takes its value. Here `refresh(list)` loads the new list after the post.
+- When `names` changes, `shown` takes its value. Here `event.refresh(list)` loads the new list after the post.
 - When the post fails, or returns without changing `names`, `shown` goes back to `names` once every server call of the page finishes.
 - Write `$optimistic` in a component. Writes from a reactive module function set the value, but do not go back after a failed post.

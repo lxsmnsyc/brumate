@@ -69,7 +69,7 @@ describe('hidden server function names', () => {
   it('uses the same hashed ID in the server table, the client stubs and forms', () => {
     const source = `<script>
   import { $action, $memo } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   async function listSecretThings() {
     'use server';
@@ -78,7 +78,7 @@ describe('hidden server function names', () => {
 
   async function deleteEverything(form: FormData) {
     'use server';
-    refresh(listSecretThings);
+    getEvent().refresh(listSecretThings);
     return String(form.get('x'));
   }
 

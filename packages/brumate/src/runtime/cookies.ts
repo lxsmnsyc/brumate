@@ -1,8 +1,8 @@
 // Cookies and sessions, for server functions, rendering, middleware and
-// endpoints. They read the request and write `set-cookie` headers on the
-// response, through the request context of `request.ts`.
+// endpoints. They read the request of a `RequestEvent` and write `set-cookie`
+// headers on its response.
 
-import { currentRequest } from './request.ts';
+import type { RequestEvent } from './request.ts';
 
 export interface CookieOptions {
   /** Seconds until the cookie expires. Without it, the cookie lasts until the browser closes. */
@@ -68,10 +68,9 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
 }
 
 /** The cookies of the request, with the ones that this request set or deleted. */
-export function getCookies(): Record<string, string> {
-  const { request, response } = currentRequest('getCookies');
-  const result = parseCookies(request.headers.get('cookie'));
-  for (const [name, value] of response.cookies ?? []) {
+export function getCookies(event: RequestEvent): Record<string, string> {
+  const result = parseCookies(event.request.headers.get('cookie'));
+  for (const [name, value] of event.cookies ?? []) {
     if (value === undefined) {
       delete result[name];
     } else {
@@ -81,40 +80,32 @@ export function getCookies(): Record<string, string> {
   return result;
 }
 
-/** A cookie of the request, or the value that this request set. */
-export function getCookie(name: string): string | undefined {
-  return getCookies()[name];
-}
-
-/**
- * Sets a cookie on the response. It is `HttpOnly`, `SameSite=Lax` and on the
- * path `/` unless the options say otherwise, and `Secure` on HTTPS.
- *
- * Set cookies in server functions, middleware, endpoints, or while a page
- * renders its first part. Markup that streams later, such as a `#loading`
- * body, cannot set them, because the response has started.
- */
-export function setCookie(name: string, value: string, options: CookieOptions = {}): void {
-  const { request, response } = currentRequest('setCookie');
-  const secure = options.secure ?? new URL(request.url).protocol === 'https:';
-  response.headers.append('set-cookie', serializeCookie(name, value, { ...options, secure }));
-  response.cookies ??= new Map();
-  response.cookies.set(name, value);
+/** Sets a cookie on the response of an event. See `RequestEvent.setCookie`. */
+export function setCookie(
+  event: RequestEvent,
+  name: string,
+  value: string,
+  options: CookieOptions = {},
+): void {
+  const secure = options.secure ?? new URL(event.request.url).protocol === 'https:';
+  event.headers.append('set-cookie', serializeCookie(name, value, { ...options, secure }));
+  event.cookies ??= new Map();
+  event.cookies.set(name, value);
 }
 
 /** Deletes a cookie. Pass the `path` and `domain` that it was set with, if they were not the defaults. */
 export function deleteCookie(
+  event: RequestEvent,
   name: string,
   options: Pick<CookieOptions, 'path' | 'domain'> = {},
 ): void {
-  const { request, response } = currentRequest('deleteCookie');
-  const secure = new URL(request.url).protocol === 'https:';
-  response.headers.append(
+  const secure = new URL(event.request.url).protocol === 'https:';
+  event.headers.append(
     'set-cookie',
     serializeCookie(name, '', { ...options, secure, maxAge: 0, expires: new Date(0) }),
   );
-  response.cookies ??= new Map();
-  response.cookies.set(name, undefined);
+  event.cookies ??= new Map();
+  event.cookies.set(name, undefined);
 }
 
 export interface SessionOptions {
@@ -134,13 +125,13 @@ export interface SessionOptions {
 
 export interface Session<T> {
   /** The data of the session, or undefined when there is none, it expired, or its signature does not match. */
-  get(): Promise<T | undefined>;
+  get(event: RequestEvent): Promise<T | undefined>;
   /** Replaces the data of the session, and starts its time again. */
-  set(data: T): Promise<void>;
+  set(event: RequestEvent, data: T): Promise<void>;
   /** Changes some fields of the data, and returns the new data. */
-  update(change: Partial<T>): Promise<T>;
+  update(event: RequestEvent, change: Partial<T>): Promise<T>;
   /** Ends the session. */
-  clear(): void;
+  clear(event: RequestEvent): void;
 }
 
 const encoder = new TextEncoder();
@@ -184,7 +175,8 @@ function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
  *
  * async function login(form: FormData) {
  *   'use server';
- *   await session.set({ userId: await checkPassword(form) });
+ *   const event = getEvent();
+ *   await session.set(event, { userId: await checkPassword(form) });
  * }
  * ```
  */
@@ -196,8 +188,8 @@ export function createSession<T>(options: SessionOptions): Session<T> {
   const name = options.name ?? 'session';
   const maxAge = options.maxAge ?? 7 * 24 * 60 * 60;
 
-  const read = async (): Promise<T | undefined> => {
-    const value = getCookie(name);
+  const read = async (event: RequestEvent): Promise<T | undefined> => {
+    const value = getCookies(event)[name];
     const dot = value?.lastIndexOf('.') ?? -1;
     if (!value || dot === -1) {
       return undefined;
@@ -231,7 +223,7 @@ export function createSession<T>(options: SessionOptions): Session<T> {
     }
   };
 
-  const write = async (data: T): Promise<void> => {
+  const write = async (event: RequestEvent, data: T): Promise<void> => {
     const payload = toBase64Url(
       encoder.encode(JSON.stringify({ d: data, e: Date.now() + maxAge * 1000 })),
     );
@@ -245,18 +237,19 @@ export function createSession<T>(options: SessionOptions): Session<T> {
         `The session is ${value.length} bytes, over the 4000 that a cookie can hold. Store an ID in it instead`,
       );
     }
-    setCookie(name, value, { ...options.cookie, maxAge });
+    setCookie(event, name, value, { ...options.cookie, maxAge });
   };
 
   return {
     get: read,
     set: write,
-    async update(change) {
-      const data = { ...(await read()), ...change } as T;
-      await write(data);
+    async update(event, change) {
+      const data = { ...(await read(event)), ...change } as T;
+      await write(event, data);
       return data;
     },
-    clear: () => deleteCookie(name, { path: options.cookie?.path, domain: options.cookie?.domain }),
+    clear: (event) =>
+      deleteCookie(event, name, { path: options.cookie?.path, domain: options.cookie?.domain }),
   };
 }
 

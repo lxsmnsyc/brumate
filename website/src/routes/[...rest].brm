@@ -1,9 +1,9 @@
 <script>
   import { $title } from 'brumate/signals';
-  import { setStatus } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   const base = import.meta.env.BASE_URL;
-  setStatus(404);
+  getEvent().setStatus(404);
   $title('Not found | brumate');
 </script>
 

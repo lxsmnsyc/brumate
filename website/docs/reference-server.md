@@ -17,21 +17,26 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 
 ## `brumate/server`: in server functions
 
-These work in a server function, in middleware and endpoints, and in a component while a page renders with the `request` option. Elsewhere they throw.
+`getEvent()` returns the `RequestEvent` of the request being handled. Call it in a server function, middleware or an endpoint before their first `await`, or anywhere in a component's script while a page renders with a request. Elsewhere it throws. See [The request](./server-functions.md#the-request).
 
-| Export                                       | What it does                                                                                                     |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `getRequest(): Request`                      | The request of the call, or of the page being rendered.                                                          |
-| `getResponseHeaders(): Headers`              | Headers to add to the response, such as `set-cookie`.                                                            |
-| `setStatus(status: number)`                  | The status of the page response, such as 404. Works during the first render of a page only.                      |
-| `refresh(fn)`                                | Asks the browser to load again the memos that call the server function `fn`.                                     |
-| `redirect(location, status = 303): never`    | Stops and sends the browser to `location`.                                                                       |
-| `isRedirect(error): boolean`                 | True for the error that `redirect` throws.                                                                       |
-| `new ServerError(message, { status = 400 })` | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500. |
-| `getCookie(name)`, `getCookies()`            | Cookies of the request, with the ones that this request set.                                                     |
-| `setCookie(name, value, options?)`           | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS.  |
-| `deleteCookie(name, { path, domain }?)`      | Deletes a cookie.                                                                                                |
-| `createSession<T>({ secret, name, maxAge })` | A session in a signed cookie, with `get()`, `set(data)`, `update(change)` and `clear()`.                         |
+| `RequestEvent` member                   | What it does                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `request`                               | The web `Request`.                                                                                              |
+| `headers`                               | Headers to add to the response.                                                                                 |
+| `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                     |
+| `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                    |
+| `getCookie(name)`, `getCookies()`       | Cookies of the request, with the ones that this request set.                                                    |
+| `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
+| `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
+
+| Export                                       | What it does                                                                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `getEvent(): RequestEvent`                   | The event of the request being handled.                                                                           |
+| `redirect(location, status = 303): never`    | Stops and sends the browser to `location`.                                                                        |
+| `isRedirect(error): boolean`                 | True for the error that `redirect` throws.                                                                        |
+| `new ServerError(message, { status = 400 })` | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.  |
+| `createSession<T>({ secret, name, maxAge })` | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.  |
+| `withEvent(event, callback)`                 | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests. |
 
 See [Server functions](./server-functions.md) and [Cookies and sessions](./server-functions.md#cookies-and-sessions).
 
@@ -61,14 +66,14 @@ These work anywhere:
 
 The options of `render`, and of every function that renders.
 
-| Option    | Type                    | Meaning                                                                                       |
-| --------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| `request` | `Request`               | The request of the page, so `getRequest` and the other request helpers work while it renders. |
-| `rpc`     | `string`                | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.                  |
-| `nonce`   | `string`                | A Content Security Policy nonce for the inline scripts that swap in `#loading` bodies.        |
-| `base`    | `number`                | The first ID of the render, for a second root on the same page.                               |
-| `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`.      |
-| `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                           |
+| Option    | Type                    | Meaning                                                                                  |
+| --------- | ----------------------- | ---------------------------------------------------------------------------------------- |
+| `request` | `Request`               | The request of the page, so `getEvent()` works while it renders.                         |
+| `rpc`     | `string`                | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.             |
+| `nonce`   | `string`                | A Content Security Policy nonce for the inline scripts that swap in `#loading` bodies.   |
+| `base`    | `number`                | The first ID of the render, for a second root on the same page.                          |
+| `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`. |
+| `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                      |
 
 ### `DocumentOptions`
 
@@ -91,8 +96,8 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `head`    | `string`                | Markup for the head: the `$title` and the `#head` blocks.                                            |
 | `state`   | `string`                | The script that holds the page state.                                                                |
 | `pending` | `AsyncIterable<string>` | Markup to send after the page as it is ready: `#loading` bodies and the values that settle promises. |
-| `headers` | `Headers`               | Headers that server functions set while the page rendered.                                           |
-| `status`  | `number`                | The status that `setStatus` set, or 200.                                                             |
+| `headers` | `Headers`               | Headers and cookies that the page set on its event while it rendered.                                |
+| `status`  | `number`                | The status that `event.setStatus` set, or 200.                                                       |
 | `next()`  | `() => number`          | A number above every ID of the render, for the `base` of another root.                               |
 
 ### Route types

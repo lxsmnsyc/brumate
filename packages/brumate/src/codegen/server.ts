@@ -5,7 +5,7 @@ import type { oxc } from '../oxc.ts';
 import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
-import { Patch, addValueEdits } from './patch.ts';
+import { Patch, addEventEdits, addValueEdits } from './patch.ts';
 
 export function propsType(file: SFCFile): string {
   for (const statement of file.instanceScript?.program.body ?? []) {
@@ -54,6 +54,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
   addValueEdits(patch, file, model.sites);
+  addEventEdits(patch, model);
   const source = (node: { start: number; end: number }): string =>
     patch.slice(node.start, node.end);
 

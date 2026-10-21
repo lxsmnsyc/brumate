@@ -5,7 +5,7 @@
 
 <script>
   import { $action, $isPending, $memo, $title } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   $title('Guestbook');
 
@@ -18,13 +18,15 @@
   // With the loader, the result arrives without loading a page.
   async function sign(form: FormData) {
     'use server';
+    // Read before any await, and kept in a variable.
+    const event = getEvent();
     const name = String(form.get('name') ?? '').trim();
     if (!name) {
       return { error: 'Enter a name', signed: entries.length };
     }
     entries.push(name);
     // The list on the page loads again.
-    refresh(list);
+    event.refresh(list);
     return { error: '', signed: entries.length };
   }
 

@@ -1,9 +1,9 @@
 <script>
   import { $props, $title } from 'brumate/signals';
-  import { setStatus } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   const { params } = $props<{ params: { rest: string } }>();
-  setStatus(404);
+  getEvent().setStatus(404);
   $title('Not found');
 </script>
 

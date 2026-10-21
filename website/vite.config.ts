@@ -57,18 +57,6 @@ export default defineConfig({
       [fileURLToPath(new URL('docs', import.meta.url))],
       new Set([...SITE_PAGES].map((page) => page || 'index')),
     ),
-    // The live samples run the server runtime in the browser, which keeps the
-    // request in AsyncLocalStorage. The browser has none, so a small one stands in.
-    {
-      name: 'website:async-hooks',
-      enforce: 'pre',
-      applyToEnvironment: (environment) => environment.name === 'client',
-      resolveId(id) {
-        return id === 'node:async_hooks'
-          ? fileURLToPath(new URL('src/live/async-hooks.ts', import.meta.url))
-          : undefined;
-      },
-    },
     // Every page is written as a static file, with readable names for the scripts.
     brumate({
       navigate: { transition: true },

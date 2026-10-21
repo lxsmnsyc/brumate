@@ -4,7 +4,7 @@
 
 <script>
   import { $action, $memo, $optimistic } from 'brumate/signals';
-  import { refresh } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   async function list() {
     'use server';
@@ -13,12 +13,13 @@
 
   async function sign(form: FormData) {
     'use server';
+    const event = getEvent();
     const name = String(form.get('name'));
     if (name === 'nobody') {
       return { error: 'Enter a name' };
     }
     names.push(name);
-    refresh(list);
+    event.refresh(list);
     return { error: '' };
   }
 

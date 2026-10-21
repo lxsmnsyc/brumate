@@ -1,12 +1,12 @@
 <script>
   import { $props } from 'brumate/signals';
-  import { setStatus } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
   import DocPage from '../../components/DocPage.brm';
   import { pages } from '../../docs.ts';
 
   const { params } = $props<{ params: { page: string } }>();
   if (!(params.page in pages)) {
-    setStatus(404);
+    getEvent().setStatus(404);
   }
 </script>
 

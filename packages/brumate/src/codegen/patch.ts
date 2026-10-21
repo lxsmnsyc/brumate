@@ -1,6 +1,6 @@
 import type { SFCFile } from '../ast.ts';
 import { copy } from '../sourcemap.ts';
-import type { Site } from '../model.ts';
+import type { SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 
@@ -132,7 +132,8 @@ export function addValueEdits(
             argument.start,
             site!.awaits ? '$$b.memo(async () => (' : '$$b.memo(() => (',
           );
-          patch.replace(argument.end, node.end, '))');
+          // The render context, so server functions that the memo calls read the event of the page.
+          patch.replace(argument.end, node.end, '), $$ctx)');
         } else if (site?.awaits) {
           // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');
@@ -192,4 +193,28 @@ export function cleanText(value: string): string {
     }
   }
   return result.join(' ');
+}
+
+/**
+ * Turns `getEvent()` from `brumate/server` in the code of a component into
+ * `$$ctx.getEvent()`, which reads the event of the render. The render awaits
+ * memos in the middle of the code, so the event that the runtime sets for
+ * the first part of a call would be gone. Server functions and the module
+ * script keep `getEvent()`, which the runtime gives the event of their call.
+ */
+export function addEventEdits(patch: Patch, model: SemanticModel): void {
+  for (const declaration of model.declarations) {
+    if (
+      declaration.kind !== 'import' ||
+      declaration.imported?.source !== 'brumate/server' ||
+      declaration.imported.name !== 'getEvent'
+    ) {
+      continue;
+    }
+    for (const read of declaration.reads) {
+      if (read.site.kind !== 'server-function' && read.site.scope.kind !== 'module') {
+        patch.replace(read.range.start, read.range.end, '$$ctx.getEvent');
+      }
+    }
+  }
 }

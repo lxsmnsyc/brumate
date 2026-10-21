@@ -9,13 +9,13 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
   const $$s1 = $$ctx.scope(1, undefined, "UsesCounter_1euyiut");
   let base = (10);
   let count = (1);
-  const $$p_double = $$b.memo(() => (count * 2));
+  const $$p_double = $$b.memo(() => (count * 2), $$ctx);
   const double = await $$b.wait($$p_double);
   function increment() {
       count += STEP;
     }
   let other = (base);
-  const $$p_counter_double = $$b.memo(() => (other * 2));
+  const $$p_counter_double = $$b.memo(() => (other * 2), $$ctx);
   function bump() {
       other += STEP;
     }

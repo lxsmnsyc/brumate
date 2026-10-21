@@ -62,7 +62,7 @@ A page gets the dynamic segments of its path as `params`. `RouteParams` from `br
 
 - Every param is a string. Convert it yourself, such as with `Number(params.id)`.
 - A `[...path]` param holds the rest of the path with its slashes, such as `guide/install`.
-- The query string is on the request: `new URL(getRequest().url).searchParams`, with `getRequest` from `brumate/server`.
+- The query string is on the request: `new URL(getEvent().request.url).searchParams`, with `getEvent` from `brumate/server`.
 
 ## Layouts
 
@@ -139,22 +139,22 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 - A path that no route matches renders the `_error.brm` of the root, with status 404.
 - An error file that throws hands the error to the next one outside it.
 
-A catch-all page can answer with a 404 status itself, with `setStatus`:
+A catch-all page can answer with a 404 status itself, with `setStatus` on the event of the page:
 
 ```brm
 <!-- src/routes/[...rest].brm -->
 <script>
   import { $props } from 'brumate/signals';
-  import { setStatus } from 'brumate/server';
+  import { getEvent } from 'brumate/server';
 
   const { params } = $props<{ params: { rest: string } }>();
-  setStatus(404);
+  getEvent().setStatus(404);
 </script>
 
 <h1>No page at /{params.rest}</h1>
 ```
 
-`setStatus` works in the setup code of a component while the first part of the page renders. Content that streams in later, such as a `#loading` body, cannot change the status, because the response has started.
+`setStatus` works in the script of a component while the first part of the page renders. Content that streams in later, such as a `#loading` body, cannot change the status, because the response has started.
 
 ## Loading
 

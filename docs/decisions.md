@@ -37,7 +37,8 @@
 - `render` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
-- Server functions read the request with `getRequest`, set response headers with `getResponseHeaders`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
+- Server functions read the request with `getEvent()`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
+- `getEvent()` works before the first `await` of a server function, middleware or endpoint, and anywhere in a component while it renders. The runtime sets the event while it starts a call and clears it right after, so it never needs `AsyncLocalStorage`, and never returns the event of another request. Code keeps the event in a variable and passes it to helpers.
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
 - The head is `$title` and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A `$title` or `#head` in a `#loading` body that resolves after the first render streams with the body. A script moves it into the head and sets the title.
