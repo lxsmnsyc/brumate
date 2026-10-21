@@ -258,7 +258,9 @@ export class Emitter {
           const [context, value] = expression.arguments;
           if (context && value) {
             const target = this.scopeVar(instanceScope(this.plan, scope));
-            this.line(`$$ctx.provide(${this.source(context)}, ${this.source(value)}, ${target});`);
+            this.line(
+              `$$ctx.provide(${this.source(context)}, ${this.providedValue(value, scope)}, ${target});`,
+            );
           }
           continue;
         }
@@ -730,6 +732,42 @@ export class Emitter {
       }
     }
     return `{ ${[...entries, ...extra].join(', ')} }`;
+  }
+
+  /**
+   * A provided value. Its functions are marked, as function props are, so
+   * they serialize as references that the browser can call.
+   */
+  private providedValue(value: oxc.Node, scope: Scope): string {
+    const instance = this.scopeVar(instanceScope(this.plan, scope));
+    const mark = (part: oxc.Node, method = false): string | undefined => {
+      const site = this.sitesByNode.get(part);
+      const symbol = site?.kind === 'prop' ? this.plan.symbols.get(site) : undefined;
+      // A method, such as `toggle() {}`, is a function expression without the keyword.
+      const code = `${method ? 'function ' : ''}${this.source(part)}`;
+      return symbol
+        ? `$$ctx.fn(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
+        : undefined;
+    };
+    if (value.type !== 'ObjectExpression') {
+      return mark(value) ?? this.source(value);
+    }
+    let code = '';
+    let position = value.start;
+    for (const property of value.properties) {
+      if (property.type !== 'Property' || property.computed) {
+        continue;
+      }
+      const marked = mark(property.value, property.method);
+      if (!marked) {
+        continue;
+      }
+      code += this.patch.slice(position, property.start);
+      const key = this.patch.slice(property.key.start, property.key.end);
+      code += `${key}: ${marked}`;
+      position = property.end;
+    }
+    return code + this.patch.slice(position, value.end);
   }
 
   /** A prop value. A client function is marked so it serializes as a reference. */

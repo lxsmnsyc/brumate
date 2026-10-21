@@ -185,6 +185,7 @@ class Analyzer {
       }
     }
     this.visitNodes(this.file.children, this.component);
+    this.addProvidedFunctions();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -664,6 +665,33 @@ class Analyzer {
         break;
       default:
         break;
+    }
+  }
+
+  /**
+   * Functions in a provided value run in the browser, where a component that
+   * reads the context calls them. Each one is a client root, as a function
+   * prop is: the value itself, or the value of a key of an object, such as
+   * `toggle` in `$provide(Theme, { theme, toggle })`.
+   */
+  private addProvidedFunctions(): void {
+    for (const site of this.sites.filter((item) => item.kind === 'provide')) {
+      const value = site.node;
+      const parts =
+        value.type === 'ObjectExpression'
+          ? value.properties.flatMap((property) =>
+              property.type === 'Property' && !property.computed ? [property.value] : [],
+            )
+          : [value];
+      for (const part of parts) {
+        const isFunctionPart =
+          isFunction(part) ||
+          (part.type === 'Identifier' &&
+            ['function', 'server-function'].includes(lookup(site.scope, part.name)?.kind ?? ''));
+        if (isFunctionPart) {
+          this.createSite('prop', site.scope, part, 'provided function');
+        }
+      }
     }
   }
 

@@ -1,0 +1,10 @@
+<script>
+  import { $context } from 'brumate/signals';
+  import { Counter } from './counter-context.ts';
+
+  const counter = $context(Counter);
+</script>
+
+<button class="one" onClick=(() => counter!.increment())>One</button>
+<button class="ten" onClick=(() => counter!.add(10))>Ten</button>
+<button class="reset" onClick=(() => counter!.reset())>Reset</button>

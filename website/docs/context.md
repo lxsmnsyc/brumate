@@ -84,10 +84,51 @@ const locale = $context(Locale);
 
 ## Changing a provided value
 
-A component cannot assign to a value that it reads from a context. Keep the code that changes the value in the component that provides it, as the button of the sample does.
+A component cannot assign to a value that it reads from a context. The component that provides it can give functions that change it, and any component below can call them:
 
-A function cannot be provided yet, because the browser cannot receive it through a context. When a component further down must change the value, pass it a function as a prop instead:
+```brm live
+<script>
+  import { $provide, $signal } from 'brumate/signals';
+  import { Counter } from './counter.ts';
+  import Buttons from './Buttons.brm';
 
-```brm
-<ThemeSwitch onChange=((next) => (theme = next)) />
+  let count = $signal(0);
+
+  $provide(Counter, {
+    count,
+    add: (step: number) => (count += step),
+    reset() {
+      count = 0;
+    },
+  });
+</script>
+
+<p>Count: {count}</p>
+<Buttons />
 ```
+
+```brm live Buttons.brm
+<script>
+  import { $context } from 'brumate/signals';
+  import { Counter } from './counter.ts';
+
+  const counter = $context(Counter);
+</script>
+
+<button onClick=(() => counter.add(1))>Add one</button>
+<button onClick=(() => counter.reset())>Reset</button>
+```
+
+```ts live counter.ts
+import { createContext } from 'brumate/context';
+
+export const Counter = createContext('counter', {
+  count: 0,
+  add: (_step: number) => {},
+  reset: () => {},
+});
+```
+
+- A provided function can be the value itself, or the value of a key: a function of the component, an arrow, or a method.
+- The function runs in the component that provides it, with its values. The browser loads it the first time a component calls it.
+- A function prop does the same for one child: `<ThemeSwitch onChange=((next) => (theme = next)) />`.

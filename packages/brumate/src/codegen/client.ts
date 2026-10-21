@@ -21,7 +21,7 @@ import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, scopePath, slotIndex } from './scopes.ts';
-import { copy } from '../sourcemap.ts';
+import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
   /** The entry module: the component ID, its props, its update table and its part loaders. */
@@ -585,7 +585,11 @@ class ClientGenerator {
         continue;
       }
       const base = instanceScope(this.plan, site.scope);
-      const code = this.rewriter.rewrite(site, '$$s', base);
+      let code = this.rewriter.rewrite(site, '$$s', base);
+      // A method of a provided object, such as `reset() {}`, has no `function` keyword of its own.
+      if (site.node.type === 'FunctionExpression' && unmarked(code).trimStart().startsWith('(')) {
+        code = `function ${code}`;
+      }
       this.part = symbol;
       if (site.kind === 'client') {
         this.emit(

@@ -478,6 +478,17 @@ describe('resume', () => {
     expect(document.querySelectorAll('.price')).toHaveLength(1);
   });
 
+  it('calls functions that a context provides', async () => {
+    await resume('provide-functions', {});
+    expect(text('.count')).toBe('0');
+    click(document.querySelector('.one')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    click(document.querySelector('.ten')!);
+    await waitFor(() => expect(text('.count')).toBe('11'));
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.count')).toBe('0'));
+  });
+
   it('loads a memo that returns a promise without saying so', async () => {
     await resume('doubler', {});
     expect(text('p')).toBe('2');

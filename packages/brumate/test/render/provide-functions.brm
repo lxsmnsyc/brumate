@@ -1,0 +1,23 @@
+<script>
+  import { $provide, $signal } from 'brumate/signals';
+  import { Counter } from './counter-context.ts';
+  import CounterButtons from './CounterButtons.brm';
+
+  let count = $signal(0);
+
+  function increment() {
+    count++;
+  }
+
+  $provide(Counter, {
+    count,
+    increment,
+    add: (step: number) => (count += step),
+    reset() {
+      count = 0;
+    },
+  });
+</script>
+
+<p class="count">{count}</p>
+<CounterButtons />

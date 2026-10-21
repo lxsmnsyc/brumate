@@ -323,6 +323,10 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
   }
   const seen = new Set<object>();
   for (const scope of added) {
+    // A provided value can hold functions, which a component that reads the context calls.
+    for (const key of Object.keys(scope.v ?? {})) {
+      scope.v![key] = callable(scope.v![key], seen);
+    }
     for (let i = 0; i < scope.s.length; i++) {
       const value = callable(scope.s[i], seen);
       scope.s[i] = value;
