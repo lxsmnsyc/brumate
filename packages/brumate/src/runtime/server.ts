@@ -82,6 +82,15 @@ interface Boundary {
   id: number;
   /** Resolves to the body's markup, and its scopes in `ctx.state`. */
   render: Promise<{ html: string; ctx: Context }>;
+  /** True when a `#try` body around it failed, so its markers were never sent. */
+  cancelled?: boolean;
+}
+
+/** A point in a render that `restore` goes back to. */
+export interface Mark {
+  scope: number;
+  undo: number;
+  owner: number | undefined;
 }
 
 /**
@@ -105,6 +114,8 @@ export class Context {
   private readonly tree = new Map<number, { parent?: number; values?: Map<string, unknown> }>();
   /** The scope that renders the next component, which becomes its owner. */
   private owner: number | undefined;
+  /** Takes back what this context added to the page, from the newest, for `restore`. */
+  private readonly undo: (() => void)[] = [];
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
@@ -229,13 +240,32 @@ export class Context {
     return this.root.nextScope;
   }
 
+  /** Marks the render so far, such as before a `#try` body, for `restore`. */
+  mark(): Mark {
+    return { scope: this.root.nextScope, undo: this.undo.length, owner: this.root.owner };
+  }
+
+  /**
+   * Takes back what the render added to the page since `mark`, such as a
+   * `#try` body that threw, whose markup is not sent: its scopes, the
+   * stylesheets it counted as sent, its `#portal` and `#head` markup, its
+   * title, its `#loading` bodies, and its links to child components.
+   */
+  restore(mark: Mark): void {
+    this.drop(mark.scope);
+    for (const undo of this.undo.splice(mark.undo).toReversed()) {
+      undo();
+    }
+    this.root.owner = mark.owner;
+  }
+
   /**
    * Forgets the scopes of this render from `from` on, such as those of a
    * `#try` body that threw, so the client does not resume markup that was
    * never sent. `#loading` bodies render in contexts of their own, so their
    * scopes stay.
    */
-  drop(from: number): void {
+  private drop(from: number): void {
     for (const key of Object.keys(this.state)) {
       const id = Number(key);
       if (id >= from) {
@@ -280,8 +310,13 @@ export class Context {
   /** Records the scope of a child component at an anchor of its parent. */
   link(scope: number, anchor: number, child: number): void {
     const record = this.record(scope);
-    record.c ??= {};
-    record.c[anchor] = child;
+    const links = (record.c ??= {});
+    links[anchor] = child;
+    this.undo.push(() => {
+      if (links[anchor] === child) {
+        delete links[anchor];
+      }
+    });
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */
@@ -299,23 +334,34 @@ export class Context {
 
   /** Returns a component's stylesheet the first time the page renders the component. */
   style(id: string, css: string): string {
-    if (this.root.styles.has(id)) {
+    const styles = this.root.styles;
+    if (styles.has(id)) {
       return '';
     }
-    this.root.styles.add(id);
+    styles.add(id);
+    this.undo.push(() => styles.delete(id));
     return styleElement(id, css);
   }
 
   /** Adds the markup of a `#head` block. */
   head(html: string): void {
     // After the first render, the head has been sent, so a `#loading` body sends its own.
-    (this.root.sent ? this : this.root).heads.push(html);
+    const heads = (this.root.sent ? this : this.root).heads;
+    heads.push(html);
+    this.undo.push(() => removeLast(heads, html));
   }
 
   /** Sets the title of the page. The last call wins. */
   title(value: unknown): void {
-    (this.root.sent ? this : this.root).pageTitle =
-      value === null || value === undefined ? '' : String(value);
+    const target = this.root.sent ? this : this.root;
+    const previous = target.pageTitle;
+    const title = value === null || value === undefined ? '' : String(value);
+    target.pageTitle = title;
+    this.undo.push(() => {
+      if (target.pageTitle === title) {
+        target.pageTitle = previous;
+      }
+    });
   }
 
   /** True once the first render is done, and its head is about to be sent. */
@@ -344,6 +390,7 @@ export class Context {
   /** Adds the markup of a `#portal` block, which goes after the rest of the page. */
   portal(html: string): void {
     this.portals.push(html);
+    this.undo.push(() => removeLast(this.portals, html));
   }
 
   /** Returns the ID of a new `#loading` boundary. */
@@ -366,6 +413,10 @@ export class Context {
     } else {
       root.boundaries.push(boundary);
     }
+    this.undo.push(() => {
+      boundary.cancelled = true;
+      removeLast(root.boundaries, boundary);
+    });
   }
 
   /** Receives every boundary, including those registered before this call. */
@@ -374,6 +425,14 @@ export class Context {
     for (const boundary of this.boundaries.splice(0)) {
       onBoundary(boundary);
     }
+  }
+}
+
+/** Removes the last copy of a value from a list. */
+function removeLast<T>(list: T[], value: T): void {
+  const index = list.lastIndexOf(value);
+  if (index !== -1) {
+    list.splice(index, 1);
   }
 }
 
@@ -1062,6 +1121,11 @@ export async function render<P>(
     open++;
     boundary.render.then(
       (result) => {
+        // A `#try` body around it failed, so the page has no markers for it.
+        if (boundary.cancelled) {
+          finish();
+          return;
+        }
         serialize(result.ctx, (script) => {
           let call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
           swap = true;

@@ -1,0 +1,23 @@
+<script>
+  import { $title } from 'brumate/signals';
+  import Shout from './Shout.brm';
+</script>
+
+#try {
+  <script>
+    $title('Failed');
+  </script>
+  #portal {
+    <p class="portaled">Portaled</p>
+  }
+  #head {
+    <meta name="failed" content="yes">
+  }
+  #loading {
+    <p class="late">Late</p>
+  }
+  <Shout fail />
+} #catch {
+  <Shout fail=(false) />
+}
+<Shout fail=(false) />

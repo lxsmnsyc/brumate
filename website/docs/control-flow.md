@@ -166,6 +166,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 ```
 
 - An error in a component inside the body is caught too.
+- When the body throws on the server, nothing it rendered reaches the page: not its markup, its `#portal` and `#head` blocks, its title, its `#loading` bodies, or the state of its components. A component's stylesheet that only the body rendered is sent with the next copy of the component, such as one in `#catch`.
 - `reset` runs in the browser. If the body throws again, `#catch` renders again.
 
 ## `#loading`

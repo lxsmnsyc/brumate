@@ -11,6 +11,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     .split('\n')
     .filter((line) => line.includes('error TS'))
     .map((line) => line.replace(/^.*src\//, ''));
+  // `sign-in.brm` imports `SignIn`, the name that its file name gives the component, with no error.
   expect(errors).toEqual([
     // A prop with the wrong type, at the prop.
     "App.brm(9,19): error TS2322: Type 'string' is not assignable to type 'number'.",

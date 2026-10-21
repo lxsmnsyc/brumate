@@ -330,7 +330,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     fail(errors);
   }
   const plan = createPlan(file, graph, options.path, options.hideNames);
-  const styleErrors = plan.styles.diagnostics.filter(
+  const styleErrors = [...plan.styles.diagnostics, ...plan.diagnostics].filter(
     (diagnostic) => diagnostic.severity === 'error',
   );
   if (styleErrors.length > 0) {

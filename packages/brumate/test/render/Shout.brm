@@ -1,0 +1,20 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { fail } = $props<{ fail: boolean }>();
+
+  function check(): string {
+    if (fail) {
+      throw new Error('Shout failed');
+    }
+    return 'Shout';
+  }
+</script>
+
+<style>
+  .shout {
+    font-weight: bold;
+  }
+</style>
+
+<p class="shout">{check()}</p>

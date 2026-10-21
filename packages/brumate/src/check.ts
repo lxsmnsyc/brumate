@@ -20,7 +20,13 @@ import { parse } from './parser.ts';
 import { analyze } from './analyze.ts';
 import { buildGraph } from './graph.ts';
 import type { Declaration } from './model.ts';
-import { blockBodies, clientState, getComponentName } from './plan.ts';
+import { blockBodies, clientState } from './plan.ts';
+
+/**
+ * The name of the component function. A file can import the name that its
+ * file name gives the component, such as `SignIn` in `sign-in.brm`.
+ */
+const COMPONENT = '$$Component';
 
 /** A range of the generated code that is copied from the file. */
 export interface CheckMapping {
@@ -211,7 +217,8 @@ class Generator {
       out.text('\n');
     }
     const type = propsType(file.instanceScript?.program);
-    out.text(`\nexport default async function ${getComponentName(file.filename)}`);
+    // The function has a name of its own, so the component name of the file can be imported.
+    out.text(`\nexport default ${COMPONENT};\nasync function ${COMPONENT}`);
     if (file.generics) {
       out.text(`<${file.generics}>`);
     }
@@ -239,7 +246,7 @@ class Generator {
     this.nodes(file.children);
     out.text("return '';\n}\n");
     // Components are sent to the client by their ID, as the compiled ones are.
-    out.text(`${getComponentName(file.filename)}.brumateId = '';\n`);
+    out.text(`${COMPONENT}.brumateId = '';\n`);
   }
 
   private collectBodyImports(nodes: Markup[]): void {
@@ -598,7 +605,7 @@ export function toTypeScript(source: string, filename = 'Component.brm'): CheckO
       out.text('\n');
     }
     out.text(
-      `export default async function ${getComponentName(filename)}(..._: any[]): Promise<string> {\n  return '';\n}\n`,
+      `export default async function ${COMPONENT}(..._: any[]): Promise<string> {\n  return '';\n}\n`,
     );
     return { code: out.code, mappings: out.mappings, error };
   }

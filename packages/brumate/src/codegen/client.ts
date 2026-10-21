@@ -815,7 +815,11 @@ class ClientGenerator {
       const insert = this.findInsert(site);
       const anchor = insert && this.plan.anchors.get(insert);
       if (anchor !== undefined) {
-        const fn = this.plan.contents.has(insert!) ? 'content' : 'text';
+        const fn = this.plan.textContents.has(insert!)
+          ? 'writeText'
+          : this.plan.contents.has(insert!)
+            ? 'content'
+            : 'text';
         this.emit(
           `export function ${name('u')}($$s) {\n  $$b.${fn}($$s, ${anchor}, ${expression()});\n}`,
         );

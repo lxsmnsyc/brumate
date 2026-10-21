@@ -46,7 +46,11 @@ When the insert is the whole content of an element, the element gets the anchor 
 <span b-b="1:1">One</span>
 ```
 
-Elements whose content is text, such as `<textarea>` and `<title>`, keep the comments.
+A `<textarea>` or a `<title>` has no comments, because their content is text, where a comment would be text too:
+
+- A value that changes must be the whole content, such as ``<title>{`Count ${count}`}</title>``. The element gets the anchor, and the client sets its text. The compiler reports a value that changes next to other content.
+- A value that does not change renders as text, next to other text.
+- The client also sets the `value` of a `<textarea>`, as it does for `value` on an `<input>`. A change replaces what the user typed.
 
 ### Blocks
 

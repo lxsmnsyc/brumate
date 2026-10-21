@@ -202,6 +202,39 @@ vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/
 
 Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerenderoptions) lists every prerender option.
 
+### Content Security Policy for prerendered pages
+
+A prerendered page is rendered once, so its inline scripts have no nonce. The build writes the SHA-256 hashes of each page's inline scripts to `dist/client/.brumate/prerender.json`:
+
+```json
+{
+  "pages": {
+    "/about": { "file": "about/index.html", "scripts": ["sha256-…", "sha256-…"] }
+  },
+  "scripts": ["sha256-…", "sha256-…"]
+}
+```
+
+- `pages` has the hashes of each page. The error page is `404`.
+- `scripts` has the hashes of every page, once each.
+
+Send a policy with the hashes:
+
+```ts
+import prerendered from './dist/client/.brumate/prerender.json' with { type: 'json' };
+
+const hashes = prerendered.scripts.map((hash) => `'${hash}'`).join(' ');
+const policy = `script-src 'self' ${hashes}`;
+```
+
+Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it.
+
+A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page:
+
+```ts
+const html = (await readFile(file, 'utf8')).replaceAll('<script', `<script nonce="${nonce}"`);
+```
+
 ## Checklist
 
 - Build the client before the server.

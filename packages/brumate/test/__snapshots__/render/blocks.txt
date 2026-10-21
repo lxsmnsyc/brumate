@@ -66,12 +66,12 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     }
   }
   const $$before10 = $$html;
-  const $$scope12 = $$ctx.peek();
+  const $$mark12 = $$ctx.mark();
   try {
     $$html += await $$b.component(Broken, {  }, $$ctx, $$s1);
   } catch ($$error11) {
     $$html = $$before10;
-    $$ctx.drop($$scope12);
+    $$ctx.restore($$mark12);
     const error = $$error11;
     $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   }

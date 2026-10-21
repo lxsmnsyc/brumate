@@ -46,6 +46,23 @@ export function insertValue(value: unknown): string {
   return escape(String(value));
 }
 
+/**
+ * Renders a value as the text of an element whose content is text, such as
+ * a `<textarea>`, as `insertValue` does but without escaping.
+ */
+export function textValue(value: unknown): string {
+  if (isRaw(value)) {
+    return value[RAW];
+  }
+  if (value === null || value === undefined || typeof value === 'boolean') {
+    return '';
+  }
+  if (Array.isArray(value)) {
+    return value.map(textValue).join('');
+  }
+  return String(value);
+}
+
 function toKebabCase(name: string): string {
   return name.startsWith('--') ? name : name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
 }

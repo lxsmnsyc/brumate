@@ -1,4 +1,5 @@
 // Writes the pages of a site as static HTML files after the server build.
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -18,6 +19,25 @@ export interface ManifestChunk {
   file: string;
   src?: string;
   isEntry?: boolean;
+}
+
+/** A page that the build wrote, in the prerender manifest. */
+export interface PrerenderedPage {
+  /** The file of the page, relative to the client build. */
+  file: string;
+  /**
+   * The hashes of the page's inline scripts, as `sha256-<base64>`, for a
+   * Content Security Policy: a prerendered page has no nonce.
+   */
+  scripts: string[];
+}
+
+/** The prerender manifest, `.brumate/prerender.json` in the client build. */
+export interface PrerenderManifest {
+  /** The pages by path. The error page of a missing path is `404`. */
+  pages: Record<string, PrerenderedPage>;
+  /** The hashes of the inline scripts of every page, once each. */
+  scripts: string[];
 }
 
 type Handle = (request: Request, options: object) => Promise<Response | undefined>;
@@ -42,6 +62,21 @@ function links(html: string, base: string): string[] {
     }
   }
   return result;
+}
+
+/**
+ * Returns the hashes of the inline scripts of a page, as `sha256-<base64>`,
+ * in the order of the page. A browser hashes the text between the tags.
+ */
+export function scriptHashes(html: string): string[] {
+  const hashes: string[] = [];
+  for (const match of html.matchAll(/<script\b([^>]*)>([^]*?)<\/script>/gi)) {
+    if (/\ssrc\s*=/i.test(match[1]!)) {
+      continue;
+    }
+    hashes.push(`sha256-${createHash('sha256').update(match[2]!, 'utf8').digest('base64')}`);
+  }
+  return hashes;
 }
 
 /**
@@ -70,6 +105,7 @@ export async function prerender(
   const queue = [...(options.paths ?? ['/'])];
   const seen = new Set<string>(queue);
   const written: string[] = [];
+  const pages: Record<string, PrerenderedPage> = {};
   while (queue.length > 0) {
     const pathname = queue.shift()!;
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
@@ -85,6 +121,7 @@ export async function prerender(
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     await writeFile(file, html);
     written.push(pathname);
+    pages[pathname] = { file: fileOf(pathname), scripts: scriptHashes(html) };
     if (options.crawl !== false) {
       for (const link of links(html, base)) {
         if (!seen.has(link)) {
@@ -97,8 +134,19 @@ export async function prerender(
   // A static host answers a missing path with 404.html: the error file of the root.
   const missing = await handle(new Request('http://localhost/__brumate_not_found__'), document);
   if (missing?.status === 404 && missing.headers.get('content-type')?.includes('text/html')) {
-    await writeFile(path.join(client, '404.html'), await missing.text());
+    const html = await missing.text();
+    await writeFile(path.join(client, '404.html'), html);
     written.push('404');
+    pages['404'] = { file: '404.html', scripts: scriptHashes(html) };
   }
+  const result: PrerenderManifest = {
+    pages,
+    scripts: [...new Set(Object.values(pages).flatMap((page) => page.scripts))],
+  };
+  await mkdir(path.join(client, '.brumate'), { recursive: true });
+  await writeFile(
+    path.join(client, '.brumate/prerender.json'),
+    `${JSON.stringify(result, null, 2)}\n`,
+  );
   return written;
 }

@@ -90,3 +90,5 @@ The client code loads as modules from your origin, which `'self'` allows.
 A policy from a header stays for the whole visit, so the client router gives the state records and swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.
 
 A policy with hashes instead of a nonce does not work for the state records. Their code holds the values of the page, so each page has other hashes, and the records that stream later are not known when the headers are sent. Use a nonce, or `'unsafe-inline'`.
+
+A prerendered page is the exception. Its scripts are known at build time, and the build writes their hashes. See [Content Security Policy for prerendered pages](./deploying.md#content-security-policy-for-prerendered-pages).

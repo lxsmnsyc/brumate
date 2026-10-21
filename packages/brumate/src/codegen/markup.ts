@@ -1143,20 +1143,21 @@ export class Emitter {
         const before = this.unique('before');
         const error = this.unique('error');
         const server = this.options.mode === 'server';
-        const first = server ? this.unique('scope') : undefined;
+        const mark = server ? this.unique('mark') : undefined;
         this.open(scope, block);
         this.flush();
         this.line(`const ${before} = $$html;`);
-        if (first) {
-          this.line(`const ${first} = $$ctx.peek();`);
+        if (mark) {
+          this.line(`const ${mark} = $$ctx.mark();`);
         }
         this.line('try {');
         this.emitBody(block.body);
         this.close(`} catch (${error}) {`);
         this.line(`$$html = ${before};`);
-        // The body's markup is not sent, so the client must not resume its scopes.
-        if (first) {
-          this.line(`$$ctx.drop(${first});`);
+        // The body's markup is not sent, so the page must not keep what it added: its
+        // scopes, stylesheets, portals, head markup and `#loading` bodies.
+        if (mark) {
+          this.line(`$$ctx.restore(${mark});`);
         }
         if (block.error) {
           this.line(`const ${block.error.name} = ${error};`);

@@ -264,6 +264,17 @@ describe('#loading', () => {
   });
 });
 
+/** Renders a page whose #try body adds to the page before it throws. */
+async function renderRollback(): Promise<{ html: string; head: string; rest: string }> {
+  const module = await import(new URL('tryRollback.brm.ts', output).href);
+  const { html, head, pending } = await renderParts(module.default, {});
+  let rest = '';
+  for await (const chunk of pending) {
+    rest += chunk;
+  }
+  return { html, head, rest };
+}
+
 describe('#try', () => {
   it('leaves the scopes of a body that threw out of the state', async () => {
     const module = await import(new URL('tryChild.brm.ts', output).href);
@@ -272,6 +283,32 @@ describe('#try', () => {
     expect(html).not.toContain('broken');
     // The client would resume the component, and update markup that was never sent.
     expect(state).not.toContain('Broken_');
+  });
+
+  it('sends a stylesheet of a body that threw with the next component that needs it', async () => {
+    const { html } = await renderRollback();
+    // The body counted the stylesheet as sent, so the #catch and the sibling left it out.
+    expect(html.match(/<style/g)).toHaveLength(1);
+    expect(html.indexOf('<style')).toBeLessThan(html.indexOf('class="shout"'));
+  });
+
+  it('leaves out the #portal markup of a body that threw', async () => {
+    const { html } = await renderRollback();
+    expect(html).not.toContain('portaled');
+  });
+
+  it('leaves out the #head markup and the title of a body that threw', async () => {
+    const { head } = await renderRollback();
+    expect(head).not.toContain('failed');
+    expect(head).not.toContain('<title>');
+  });
+
+  it('does not stream the #loading bodies of a body that threw', async () => {
+    const { html, rest } = await renderRollback();
+    expect(html).not.toContain('<!--l');
+    // The boundary has no markers in the page, so nothing would swap it in.
+    expect(rest).not.toContain('late');
+    expect(rest).not.toContain('$bS');
   });
 });
 

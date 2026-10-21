@@ -4,7 +4,7 @@ import { isFunctionValue, resetUsed } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
 import type { StyleOutput } from './css.ts';
-import type { Declaration, DeclarationKind, Scope, Site } from './model.ts';
+import type { Declaration, DeclarationKind, Diagnostic, Scope, Site } from './model.ts';
 
 export interface ScopePlan {
   scope: Scope;
@@ -36,6 +36,11 @@ export interface Plan {
    */
   contents: Set<Markup>;
   /**
+   * The inserts of `contents` whose element holds text, such as a
+   * `<textarea>` or a `<title>`. The client sets the element's text.
+   */
+  textContents: Set<Markup>;
+  /**
    * Lists whose item bodies are one element. The element's `b-b` marks
    * the item, in place of `<!--i…-->` and `<!--/i-->`.
    */
@@ -50,6 +55,8 @@ export interface Plan {
   liveStyles: boolean;
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
+  /** Errors in markup that the client could not update. */
+  diagnostics: Diagnostic[];
 }
 
 /**
@@ -100,8 +107,11 @@ function isStable(node: ElementNode): boolean {
   return !UNSTABLE.has(tag);
 }
 
-/** Elements whose content is text, where a comment would be text too. */
-const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
+/**
+ * Elements whose content is text, where a comment would be text too. The
+ * parser reads `<script>` and `<style>` itself, so only these reach markup.
+ */
+const RAW_TEXT = new Set(['textarea', 'title']);
 
 // Declarations that are code or come from imports, so they never need a slot.
 const NO_SLOT = new Set<DeclarationKind>([
@@ -274,6 +284,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   }
 
   const contents = new Set<Markup>();
+  const textContents = new Set<Markup>();
+  const diagnostics: Diagnostic[] = [];
   const elementItems = new Set<Block>();
   // Root elements of list items, which get an anchor so they mark their item.
   const itemRoots = new Set<Markup>();
@@ -331,6 +343,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         if (content) {
           anchors.set(content, anchors.get(node)!);
           contents.add(content);
+          if (node.kind === 'element' && RAW_TEXT.has(node.tag.toLowerCase())) {
+            textContents.add(content);
+          }
           return;
         }
         // The children of a dynamic tag can render inside a component. An element that the
@@ -342,6 +357,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
           inner = isStable(node) ? scope : undefined;
         }
         visitNodes(node.children, scope, inner);
+        if (node.kind === 'element' && RAW_TEXT.has(node.tag.toLowerCase())) {
+          checkText(node);
+        }
         return;
       }
       case 'component': {
@@ -364,12 +382,24 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     }
   };
 
+  /**
+   * Reports live markup inside an element whose content is text. Its markers
+   * would be text, so the client can only update a value that is the whole content.
+   */
+  const checkText = (element: ElementNode): void => {
+    const found = firstAnchored(element.children, anchors);
+    if (found) {
+      const tag = element.tag.toLowerCase();
+      diagnostics.push({
+        severity: 'error',
+        message: `A value that changes in <${tag}> must be its whole content, such as <${tag}>{\`Count \${count}\`}</${tag}>`,
+        range: { start: found.start, end: found.end },
+      });
+    }
+  };
+
   /** The live insert that is the whole content of an element, if any. */
   const liveContent = (node: ElementNode): InsertNode | undefined => {
-    // Comments in these would be text, and `textarea` keeps its first value.
-    if (RAW_TEXT.has(node.tag.toLowerCase())) {
-      return undefined;
-    }
     const [only, ...rest] = node.children.filter(
       (child) => child.kind !== 'text' || cleanText(child.value) !== '',
     );
@@ -457,10 +487,40 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     bodyScopes,
     anchors,
     contents,
+    textContents,
     elementItems,
     symbols,
     clientSites,
+    diagnostics,
   };
+}
+
+/** The first node in the markup that has an anchor, at any depth. */
+function firstAnchored(nodes: Markup[], anchors: Map<AnchorTarget, number>): Markup | undefined {
+  for (const node of nodes) {
+    const found = anchors.has(node) ? node : firstAnchored(childNodes(node), anchors);
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+/** Returns the markup inside a node, with the bodies of a block. */
+function childNodes(node: Markup): Markup[] {
+  switch (node.kind) {
+    case 'text':
+    case 'insert':
+    case 'listener':
+      return [];
+    case 'element':
+    case 'component':
+    case 'dynamic':
+    case 'fragment':
+      return node.children;
+    default:
+      return blockBodies(node).flatMap((body) => body.children);
+  }
 }
 
 /** Returns the bodies of a block, in source order. */

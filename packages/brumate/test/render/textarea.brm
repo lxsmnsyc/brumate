@@ -1,0 +1,22 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { initial } = $props();
+  let body = $signal(initial);
+  let count = $signal(0);
+</script>
+
+#head {
+  <title>{`Count ${count}`}</title>
+}
+<textarea aria-label="Body">{body}</textarea>
+<textarea aria-label="Fixed">a {initial} b</textarea>
+<button
+  class="set"
+  onClick=(() => {
+    body = 'New';
+    count++;
+  })
+>
+  Set
+</button>

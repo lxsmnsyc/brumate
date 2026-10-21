@@ -12,9 +12,20 @@ describe('toTypeScript', () => {
     const code = body(
       "<script>\n  import { $props } from 'brumate/signals';\n  import Badge from './Badge.brm';\n  const { label } = $props<{ label: string }>();\n</script>\n\n<Badge label=label />",
     );
-    expect(code).toMatch(/^export default async function Card\(\$\$props: \{ label: string \}/);
+    expect(code).toMatch(
+      /^export default \$\$Component;\nasync function \$\$Component\(\$\$props: \{ label: string \}/,
+    );
     expect(code).toContain('const { label } = $props<{ label: string }>();');
     expect(code).toContain('$$component(Badge, { label: (label), });');
+  });
+
+  it('names the component function so that the file can import its component name', () => {
+    const { code } = toTypeScript(
+      "<script>\n  import { SignIn } from './auth.ts';\n</script>\n\n<p>{SignIn()}</p>",
+      'sign-in.brm',
+    );
+    expect(code).not.toMatch(/function SignIn\b/);
+    expect(code).not.toMatch(/\bSignIn\.brumateId/);
   });
 
   it('puts markup in blocks that match the control flow', () => {

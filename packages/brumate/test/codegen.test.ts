@@ -271,9 +271,11 @@ describe('compact markup', () => {
   it('updates a text that is the whole content of its element through the element', () => {
     expect(after('only')).toBe(' b-b=');
     expect(server).toMatch(/class=\\"only\\" b-b=[^]*?\\">" \+ \(typeof/);
-    // Whitespace around the text, or an element whose content is text, keeps the markers.
+    // Whitespace around the text keeps the markers.
     expect(server).toContain('<p class=\\"spaced\\"> <!--t');
-    expect(server).toContain('<textarea><!--t');
+    // A comment in an element whose content is text would be text too, so the element has the anchor.
+    expect(server).toMatch(/<textarea b-b=[^]*?">" \+ \(typeof/);
+    expect(server).not.toContain('<textarea><!--t');
   });
 });
 
