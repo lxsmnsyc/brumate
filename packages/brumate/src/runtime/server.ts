@@ -592,6 +592,11 @@ function unsendable(error: unknown, ctx: Context): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+/** JSON that is safe in a `<script>`, with each `<` escaped. */
+function scriptJSON(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
 export function streamState(
   state: PageState,
   onRecord: (record: SerovalNode) => void,
@@ -620,7 +625,7 @@ export function stateScript(
   scopes = false,
   attributes: { next?: number; route?: string; root?: number } = {},
 ): string {
-  const json = JSON.stringify(record).replace(/</g, '\\u003c');
+  const json = scriptJSON(record);
   let extra = scopes ? ' data-scopes' : '';
   if (attributes.next !== undefined) {
     extra += ` data-next="${attributes.next}"`;
@@ -810,10 +815,7 @@ export async function render<P>(
           let head = '';
           if (late.html || late.title !== undefined) {
             head = `<template data-h="${boundary.id}">${late.html}</template>`;
-            const title =
-              late.title === undefined
-                ? ''
-                : `,${JSON.stringify(late.title).replace(/</g, '\\u003c')}`;
+            const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
             call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
             headSwap = true;
           }
@@ -880,12 +882,18 @@ export type StreamOptions = DocumentOptions;
 
 const HTML = /<html[\s>]/i;
 
-/** Inserts markup before `</body>`, or at the end if there is none. */
-function beforeBodyEnd(html: string, content: string): string {
+/**
+ * Inserts markup before `</body>`, or at the end if there is none. `index`
+ * is where `</body>` is, when the caller found it already.
+ */
+function beforeBodyEnd(
+  html: string,
+  content: string,
+  index = content ? html.toLowerCase().lastIndexOf('</body>') : -1,
+): string {
   if (!content) {
     return html;
   }
-  const index = html.toLowerCase().lastIndexOf('</body>');
   return index === -1 ? html + content : html.slice(0, index) + content + html.slice(index);
 }
 
@@ -911,16 +919,28 @@ function firstRender(
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
   let page = html.slice(match.index);
+  // The page is lowercased once, to find its tags whatever their case.
   const lower = page.toLowerCase();
   const headEnd = lower.indexOf('</head>');
-  if (headEnd !== -1) {
-    page = page.slice(0, headEnd) + headContent + page.slice(headEnd);
-  } else if (headContent) {
+  let bodyEnd = lower.lastIndexOf('</body>');
+  let at = headEnd;
+  let inserted = headContent;
+  if (headEnd === -1 && headContent) {
     const bodyStart = lower.search(/<body[\s>]/);
-    const at = bodyStart === -1 ? page.indexOf('>') + 1 : bodyStart;
-    page = `${page.slice(0, at)}<head>${headContent}</head>${page.slice(at)}`;
+    at = bodyStart === -1 ? page.indexOf('>') + 1 : bodyStart;
+    inserted = `<head>${headContent}</head>`;
   }
-  return `<!doctype html>${beforeBodyEnd(page, tail)}`;
+  if (at !== -1 && inserted) {
+    page = page.slice(0, at) + inserted + page.slice(at);
+    // `</body>` moves with the markup before it, or is in the head markup when that comes after it.
+    const own = inserted.toLowerCase();
+    if (bodyEnd >= at) {
+      bodyEnd += own.length;
+    } else if (own.includes('</body>')) {
+      bodyEnd = at + own.lastIndexOf('</body>');
+    }
+  }
+  return `<!doctype html>${beforeBodyEnd(page, tail, bodyEnd)}`;
 }
 
 /**
@@ -934,15 +954,7 @@ export function renderToStream<P>(
   props: P,
   options: DocumentOptions = {},
 ): ReadableStream<string> {
-  return new ReadableStream<string>({
-    async start(controller) {
-      try {
-        await writeParts(await render(Root, props, options), options, controller);
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
+  return partsStream(() => render(Root, props, options), options);
 }
 
 /** Streams the parts of a page from `render`: the first render whole, then what resolves later. */
@@ -950,10 +962,18 @@ export function streamParts(
   parts: RenderResult,
   options: DocumentOptions = {},
 ): ReadableStream<string> {
+  return partsStream(() => parts, options);
+}
+
+/** A stream of the parts of a page. An error while it gets or writes them fails the stream. */
+function partsStream(
+  getParts: () => RenderResult | Promise<RenderResult>,
+  options: DocumentOptions,
+): ReadableStream<string> {
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        await writeParts(parts, options, controller);
+        await writeParts(await getParts(), options, controller);
       } catch (error) {
         controller.error(error);
       }
@@ -971,6 +991,18 @@ async function writeParts(
     controller.enqueue(chunk);
   }
   controller.close();
+}
+
+/**
+ * The message and status that answer an error. A `ServerError` sends its
+ * own. Any other error is logged, and sends `fallback` with status 500.
+ */
+function errorAnswer(error: unknown, fallback: string): { message: string; status: number } {
+  if (error instanceof ServerError) {
+    return { message: error.message, status: error.status };
+  }
+  console.error(error);
+  return { message: fallback, status: 500 };
 }
 
 /** True for a request that a `<form>` sent, without client code. */
@@ -1005,13 +1037,9 @@ async function handleForm(
       headers.set('location', error.location);
       return new Response(null, { status: error.status, headers });
     }
-    const known = error instanceof ServerError;
-    if (!known) {
-      console.error(error);
-    }
+    const { message, status } = errorAnswer(error, 'The server function failed');
     headers.set('content-type', 'text/plain; charset=utf-8');
-    const message = known ? error.message : 'The server function failed';
-    return new Response(message, { status: known ? error.status : 500, headers });
+    return new Response(message, { status, headers });
   }
 }
 
@@ -1103,20 +1131,19 @@ export async function handleRequest(
     return new Response('Calls from other sites are not allowed', { status: 403 });
   }
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
-  if (!functions[id]) {
+  const fn = functions[id];
+  if (!fn) {
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
   const event = new RequestEvent(request);
-  const fn = functions[id];
   // The function runs with its event, so `getEvent()` before its first await returns it.
   const invoke = (args: unknown[]): unknown => withEvent(event, () => fn(...args));
   // A call with files sends its arguments as form data, with this header.
-  const call = request.headers.has('x-brumate-args');
-  // The loader sends a form of an `$action` with this header, and wants the result, not a page.
-  if (isFormPost(request) && !call && !request.headers.has('x-brumate-result')) {
-    return handleForm(fn, request, event);
-  }
-  if (isFormPost(request) && !call) {
+  if (isFormPost(request) && !request.headers.has('x-brumate-args')) {
+    // The loader sends a form of an `$action` with this header, and wants the result, not a page.
+    if (!request.headers.has('x-brumate-result')) {
+      return handleForm(fn, request, event);
+    }
     const form = await request.formData();
     return answerCall(functions, event, async () => invoke([form]));
   }
@@ -1140,11 +1167,12 @@ async function answerCall(
   try {
     const result = await run();
     // The client loads again the memos that call the server functions that `refresh` named.
-    const refreshed = Object.keys(functions).filter((key) =>
-      event.refreshed?.has(unwrap(functions[key])),
-    );
-    if (refreshed.length > 0) {
-      headers.set('x-brumate-refresh', refreshed.join(','));
+    const { refreshed } = event;
+    if (refreshed?.size) {
+      const ids = Object.keys(functions).filter((key) => refreshed.has(unwrap(functions[key])));
+      if (ids.length > 0) {
+        headers.set('x-brumate-refresh', ids.join(','));
+      }
     }
     headers.set('content-type', STREAM_TYPE);
     return new Response(toChunkStream(result), { headers });
@@ -1153,16 +1181,9 @@ async function answerCall(
       headers.set('x-brumate-redirect', error.location);
       return new Response(null, { status: 204, headers });
     }
-    const known = error instanceof ServerError;
-    if (!known) {
-      console.error(error);
-    }
+    const { message, status } = errorAnswer(error, 'The server function failed');
     headers.set('content-type', 'application/json');
-    const message = known ? error.message : 'The server function failed';
-    return new Response(JSON.stringify({ error: message }), {
-      status: known ? error.status : 500,
-      headers,
-    });
+    return new Response(JSON.stringify({ error: message }), { status, headers });
   }
 }
 
@@ -1272,13 +1293,10 @@ async function runAction(
         }),
       };
     }
-    const known = error instanceof ServerError;
-    if (!known) {
-      console.error(error);
-    }
+    const { message, status } = errorAnswer(error, 'The server function failed');
     return {
-      answer: new Response(known ? error.message : 'The server function failed', {
-        status: known ? error.status : 500,
+      answer: new Response(message, {
+        status,
         headers: { 'content-type': 'text/plain; charset=utf-8' },
       }),
     };
@@ -1422,17 +1440,17 @@ async function routeAnswer(
     });
   }
   return runMiddleware(match.middleware, request, options.event!, () =>
-    answerRoute(match, request, options),
+    answerRoute(match, request, url, options),
   );
 }
 
-/** Answers a request that a route matches, after its middleware. */
+/** Answers a request that a route matches, after its middleware. `url` is the URL of the request. */
 async function answerRoute(
   match: RouteMatch,
   request: Request,
+  url: URL,
   options: RouteOptions,
 ): Promise<Response> {
-  const url = new URL(request.url);
   if (match.endpoint) {
     const endpoint = await match.endpoint();
     const handler =
@@ -1467,19 +1485,12 @@ async function answerRoute(
         headers: { location: new URL(error.location, url).href },
       });
     }
-    const known = error instanceof ServerError;
-    if (!known && options.dev) {
+    if (options.dev && !(error instanceof ServerError)) {
       throw error;
-    }
-    if (!known) {
-      console.error(error);
     }
     const page = await renderError(
       match.errors,
-      {
-        message: known ? error.message : 'Something went wrong',
-        status: known ? error.status : 500,
-      },
+      errorAnswer(error, 'Something went wrong'),
       match.params,
       request,
       options,

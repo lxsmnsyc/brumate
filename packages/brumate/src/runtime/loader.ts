@@ -29,15 +29,25 @@ interface Entry {
   ref: string;
 }
 
+// Parsed `data-on` values, so repeated events do not parse them again.
+const parsed = new Map<string, Entry[]>();
+
 function entries(element: Element): Entry[] {
-  return (element.getAttribute('data-on') ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .map((entry) => {
-      const [name, ref] = entry.split('=') as [string, string];
-      const [type, ...modifiers] = name.split(':') as [string, ...string[]];
-      return { raw: entry, type, modifiers, ref };
-    });
+  const value = element.getAttribute('data-on') ?? '';
+  return (parsed.get(value) ??
+    parsed
+      .set(
+        value,
+        value
+          .split(' ')
+          .filter(Boolean)
+          .map((entry) => {
+            const [name, ref] = entry.split('=') as [string, string];
+            const [type, ...modifiers] = name.split(':') as [string, ...string[]];
+            return { raw: entry, type, modifiers, ref };
+          }),
+      )
+      .get(value))!;
 }
 
 function strategy(element: Element): string {
@@ -180,7 +190,7 @@ export function start(options: LoaderOptions): () => void {
       const next = template.nextElementSibling;
       if (trigger === 'idle') {
         (window.requestIdleCallback ?? setTimeout)(go);
-      } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
+      } else if (trigger === 'visible' && next && visible) {
         const observer = new IntersectionObserver((records) => {
           if (records.some((record) => record.isIntersecting)) {
             observer.disconnect();
@@ -208,23 +218,14 @@ export function start(options: LoaderOptions): () => void {
     }
   };
 
-  listen(
-    document,
-    'pointerover',
-    (event) => {
-      const element = (event.target as Element).closest?.('[data-on]');
-      if (element && strategy(element) === 'hover') {
-        preload(element);
-      }
-    },
-    { passive: true },
-  );
-  listen(document, 'focusin', (event) => {
+  const hover = (event: Event): void => {
     const element = (event.target as Element).closest?.('[data-on]');
     if (element && strategy(element) === 'hover') {
       preload(element);
     }
-  });
+  };
+  listen(document, 'pointerover', hover, { passive: true });
+  listen(document, 'focusin', hover);
 
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {
@@ -240,8 +241,7 @@ export function start(options: LoaderOptions): () => void {
   if (options.navigate === false) {
     // A hot update whose markup changed loads the page again.
     listen(document, 'brumate:reload', () => location.reload());
-  }
-  if (options.navigate !== false) {
+  } else {
     const rpc = `${options.rpc ?? '/_brumate'}/`;
     // The page without its hash, to tell a change of the hash from a change of the page.
     let page = String(location.href).split('#')[0];

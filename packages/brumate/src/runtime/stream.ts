@@ -16,8 +16,13 @@ const decoder = new TextDecoder();
 /** The content type of a stream of chunks. */
 export const STREAM_TYPE = 'application/x-brumate-stream';
 
-function header(size: number): Uint8Array {
-  return encoder.encode(`;0x${size.toString(16).padStart(8, '0')};`);
+/** One chunk: its header and its data, in one array. */
+function chunk(text: string): Uint8Array {
+  const data = encoder.encode(text);
+  const result = new Uint8Array(HEADER_SIZE + data.length);
+  encoder.encodeInto(`;0x${data.length.toString(16).padStart(8, '0')};`, result);
+  result.set(data, HEADER_SIZE);
+  return result;
 }
 
 /** Serializes a value as a stream of chunks. */
@@ -29,9 +34,7 @@ export function toChunkStream(value: unknown): ReadableStream<Uint8Array> {
         plugins,
         disabledFeatures,
         onParse(node) {
-          const data = encoder.encode(JSON.stringify(node));
-          controller.enqueue(header(data.length));
-          controller.enqueue(data);
+          controller.enqueue(chunk(JSON.stringify(node)));
         },
         onDone() {
           controller.close();

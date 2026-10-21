@@ -11,7 +11,7 @@
 // - Report: the inspect report of a component.
 
 import type { Scope } from './client.ts';
-import { preview } from './devtools.ts';
+import { preview, rootOf } from './devtools.ts';
 import type { DevtoolsEntry, DevtoolsState } from './devtools.ts';
 
 /** What the dev server tells about a component: see the inspect endpoint of the plugin. */
@@ -122,15 +122,6 @@ function svg(
   }
   node.append(...children);
   return node;
-}
-
-/** The root scope of a scope, whose `m` names its component. */
-function rootOf(scope: Scope): Scope {
-  let root = scope;
-  while (root.p) {
-    root = root.p;
-  }
-  return root;
 }
 
 /** A value that can be edited as text: what JSON can hold. */
@@ -276,8 +267,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     const line = element('div', { class: 'slot' }, element('span', { class: 'name' }, name), ' = ');
     if (editing?.scope === scope.id && editing.slot === slot) {
       const input = element('input', { 'aria-label': `New value of ${name}` });
-      input.value =
-        typeof value === 'string' ? JSON.stringify(value) : (JSON.stringify(value) ?? '');
+      input.value = JSON.stringify(value) ?? '';
       input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           editing = undefined;
@@ -292,12 +282,9 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
       queueMicrotask(() => input.focus());
       return line;
     }
-    const text = element(
-      'span',
-      { class: editable(value) && state.set ? 'value' : '' },
-      preview(value),
-    );
-    if (editable(value) && state.set) {
+    const canEdit = editable(value) && state.set !== undefined;
+    const text = element('span', { class: canEdit ? 'value' : '' }, preview(value));
+    if (canEdit) {
       text.title = 'Click to edit. Enter JSON, or text for a string.';
       text.addEventListener('click', () => {
         editing = { scope: scope.id, slot };
@@ -402,21 +389,21 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     const { nodes, edges } = info.graph;
     // The current value of each value node, from the first instance of the component.
     const instance = roots().find((scope) => scope.m === id);
-    const scopeOfNode = (k: number): Scope | undefined => {
-      const visit = (scope: Scope): Scope | undefined => {
-        if (scope.k === k) {
-          return scope;
+    // The first scope of the instance for each scope in the compiled component.
+    const scopeOfNode = new Map<number, Scope>();
+    const visit = (scope: Scope): void => {
+      if (!scopeOfNode.has(scope.k)) {
+        scopeOfNode.set(scope.k, scope);
+      }
+      for (const child of scope.children) {
+        if (child.m === undefined) {
+          visit(child);
         }
-        for (const child of scope.children) {
-          const found = child.m === undefined ? visit(child) : undefined;
-          if (found) {
-            return found;
-          }
-        }
-        return undefined;
-      };
-      return instance && visit(instance);
+      }
     };
+    if (instance) {
+      visit(instance);
+    }
     // Nodes that a recent write reached: the written value, and what reads it.
     const now = performance.now();
     const hot = new Set<number>();
@@ -440,9 +427,13 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     }
     // Columns by the longest path from a value that nothing feeds.
     const depth = nodes.map(() => 0);
-    for (let round = 0; round < nodes.length; round++) {
+    for (let round = 0, changed = true; changed && round < nodes.length; round++) {
+      changed = false;
       for (const [from, to] of edges) {
-        depth[to] = Math.max(depth[to]!, depth[from]! + 1);
+        if (depth[from]! + 1 > depth[to]!) {
+          depth[to] = depth[from]! + 1;
+          changed = true;
+        }
       }
     }
     const rows = new Map<number, number>();
@@ -471,7 +462,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     nodes.forEach((node, index) => {
       const { x, y } = position[index]!;
       const text = svg('text', { x: x + 6, y: y + 16 });
-      const owner = node.slot === undefined ? undefined : scopeOfNode(node.scope);
+      const owner = node.slot === undefined ? undefined : scopeOfNode.get(node.scope);
       const value = owner && node.slot !== undefined ? ` = ${preview(owner.s[node.slot])}` : '';
       text.textContent = `${node.label}${value}`.slice(0, 22);
       const title = svg('title', {});

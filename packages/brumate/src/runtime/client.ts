@@ -79,6 +79,8 @@ export interface CoreOptions {
 }
 
 let options: CoreOptions;
+/** The URL prefix of server function calls, from the options. */
+let rpcPrefix = '/_brumate';
 const scopes = new Map<number, Scope>();
 
 /** What the devtools overlay hears from the core. It is set only in development. */
@@ -273,6 +275,7 @@ function dropScopes(roots: Set<number>): void {
         cleanup();
       }
       scope.p?.children.delete(scope);
+      treeChanges++;
       scopes.delete(scope.id);
     }
   }
@@ -316,6 +319,7 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
     if (record.p !== undefined) {
       scope.p = scopes.get(resolveId(record.p));
       scope.p?.children.add(scope);
+      treeChanges++;
     }
     if (record.o !== undefined) {
       scope.o = scopes.get(resolveId(record.o));
@@ -498,6 +502,7 @@ export function leavePage(): void {
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   options = value;
+  rpcPrefix = value.rpc ?? '/_brumate';
   for (const script of document.querySelectorAll(STATE)) {
     readRecord(script);
   }
@@ -687,6 +692,23 @@ export function cells(scope: Scope, links: unknown[], names: string[]): Record<s
 const loads = new Map<string, number>();
 const loadingSlots = new Set<string>();
 
+/** Marks a memo as loading. Its readers update the first time, so `$isPending` becomes true. */
+function startLoading(scope: Scope, slot: number, key: string): void {
+  if (!loadingSlots.has(key)) {
+    loadingSlots.add(key);
+    trigger(scope, slot);
+  }
+}
+
+/** True for a promise, or any object with a `then` method. */
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
+
 /**
  * Writes the result of an async memo when it arrives. Until then the slot
  * keeps its value, and `pending` is true. Only the latest load is written.
@@ -695,11 +717,7 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
   const key = `${scope.id}:${slot}`;
   const load = (loads.get(key) ?? 0) + 1;
   loads.set(key, load);
-  if (!loadingSlots.has(key)) {
-    loadingSlots.add(key);
-    // Readers of the memo update, so `$isPending` becomes true.
-    trigger(scope, slot);
-  }
+  startLoading(scope, slot, key);
   const settle = (value?: unknown, failed = false): void => {
     if (loads.get(key) !== load) {
       return;
@@ -760,8 +778,21 @@ let computing = 0;
 
 /** Aborts the server function calls of a memo's compute, by memo key. */
 const memoControllers = new Map<string, AbortController>();
-/** The signal for server function calls while a memo computes. */
-let memoSignal: AbortSignal | undefined;
+/** The key of the memo that computes, if any. */
+let memoKey: string | undefined;
+
+/** The signal for server function calls while a memo computes. It is made on the first call. */
+function memoSignal(): AbortSignal | undefined {
+  if (memoKey === undefined) {
+    return undefined;
+  }
+  let controller = memoControllers.get(memoKey);
+  if (!controller) {
+    controller = new AbortController();
+    memoControllers.set(memoKey, controller);
+  }
+  return controller.signal;
+}
 
 /**
  * Computes a memo. A promise loads, and the memo keeps its value until it
@@ -777,10 +808,9 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   let value: unknown;
   // Server function calls of the last compute are aborted, because their answers are out of date.
   memoControllers.get(key)?.abort();
-  const controller = new AbortController();
-  memoControllers.set(key, controller);
-  const outer = memoSignal;
-  memoSignal = controller.signal;
+  memoControllers.delete(key);
+  const outer = memoKey;
+  memoKey = key;
   computing++;
   try {
     value = compute();
@@ -788,20 +818,13 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
     if (!(error instanceof NotReady)) {
       throw error;
     }
-    if (!loadingSlots.has(key)) {
-      loadingSlots.add(key);
-      trigger(scope, slot);
-    }
+    startLoading(scope, slot, key);
     return;
   } finally {
     computing--;
-    memoSignal = outer;
+    memoKey = outer;
   }
-  if (
-    value !== null &&
-    typeof value === 'object' &&
-    (typeof (value as PromiseLike<unknown>).then === 'function' || isAsyncIterable(value))
-  ) {
+  if (isThenable(value) || isAsyncIterable(value)) {
     asyncMemo(scope, slot, Promise.resolve(value));
     return;
   }
@@ -925,22 +948,33 @@ function trigger(scope: Scope, slot: number): void {
 const pendingEffects = new Map<string, () => void>();
 let running = 0;
 let flushing = false;
+/** Counts changes to the scope tree, so `run` knows when the descendants it found are out of date. */
+let treeChanges = 0;
 
 function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
   running++;
+  // The descendants of each kind, found once while the tree does not change.
+  let found: Map<number, Scope[]> | undefined;
+  let foundAt = treeChanges;
   try {
     for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
       const fn = updates[name] as (scope: Scope) => void;
-      for (const target of kind === scope.k ? [scope] : descendants(scope, kind)) {
-        if (name[0] === 'e') {
-          pendingEffects.set(`${target.id}:${name}`, () => {
-            if (scopes.has(target.id)) {
-              fn(target);
-            }
-          });
-        } else {
-          fn(target);
-        }
+      if (kind === scope.k) {
+        runUpdate(fn, name, scope);
+        continue;
+      }
+      if (foundAt !== treeChanges) {
+        found = undefined;
+        foundAt = treeChanges;
+      }
+      found ??= new Map();
+      let targets = found.get(kind);
+      if (!targets) {
+        targets = descendants(scope, kind);
+        found.set(kind, targets);
+      }
+      for (const target of targets) {
+        runUpdate(fn, name, target);
       }
     }
   } finally {
@@ -948,6 +982,19 @@ function run(module: ClientModule, updates: Part, scope: Scope, slot: number): v
   }
   if (running === 0) {
     flushEffects();
+  }
+}
+
+/** Runs an update on a scope. An effect waits until the other updates have run. */
+function runUpdate(fn: (scope: Scope) => void, name: string, target: Scope): void {
+  if (name[0] === 'e') {
+    pendingEffects.set(`${target.id}:${name}`, () => {
+      if (scopes.has(target.id)) {
+        fn(target);
+      }
+    });
+  } else {
+    fn(target);
   }
 }
 
@@ -961,12 +1008,8 @@ function flushEffects(): void {
   }
   flushing = true;
   try {
-    for (
-      let next = pendingEffects.entries().next();
-      !next.done;
-      next = pendingEffects.entries().next()
-    ) {
-      const [key, runEffect] = next.value;
+    // A map iterator also visits entries that are added while it runs.
+    for (const [key, runEffect] of pendingEffects) {
       pendingEffects.delete(key);
       runEffect();
     }
@@ -1003,6 +1046,7 @@ function destroy(scope: Scope): void {
   forgetMemos(scope);
   scopes.delete(scope.id);
   scope.p?.children.delete(scope);
+  treeChanges++;
 }
 
 /** Drops the memo state of a removed scope. A load that settles later is not written. */
@@ -1444,11 +1488,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
     const slot = module.props[name];
     if (slot !== undefined) {
       // A promise loads as an async memo does: the prop keeps its value, and is pending until it settles.
-      if (
-        value !== null &&
-        typeof value === 'object' &&
-        typeof (value as PromiseLike<unknown>).then === 'function'
-      ) {
+      if (isThenable(value)) {
         asyncMemo(child, slot, Promise.resolve(value));
       } else {
         set(child, slot, value);
@@ -1482,7 +1522,7 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
 
 /** Renders the attributes of a form or button that posts to a server function. */
 export function action(name: string, id: string, method?: string, result?: string): string {
-  return actionAttributes(options.rpc ?? '/_brumate', name, id, method, result);
+  return actionAttributes(rpcPrefix, name, id, method, result);
 }
 
 /**
@@ -1501,7 +1541,7 @@ export function submitAction(form: HTMLFormElement, submitter: HTMLElement | nul
   const data = new FormData(form, submitter);
   const sent = track(
     import('./rpc.ts').then(({ submit }) =>
-      submit(options.rpc ?? '/_brumate', form.getAttribute('data-action')!, data),
+      submit(rpcPrefix, form.getAttribute('data-action')!, data),
     ),
   );
   asyncMemo(scope, slot, sent);
@@ -1510,11 +1550,9 @@ export function submitAction(form: HTMLFormElement, submitter: HTMLElement | nul
 /** Calls a server function. */
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
   // Read before the import, while the memo that calls it computes.
-  const signal = memoSignal;
+  const signal = memoSignal();
   return track(
-    import('./rpc.ts').then(({ call: callServer }) =>
-      callServer(options.rpc ?? '/_brumate', id, args, signal),
-    ),
+    import('./rpc.ts').then(({ call: callServer }) => callServer(rpcPrefix, id, args, signal)),
   );
 }
 
@@ -1591,6 +1629,7 @@ class ClientContext {
       this.owner = undefined;
     }
     parentScope?.children.add(scope);
+    treeChanges++;
     scopes.set(id, scope);
     return id;
   }

@@ -45,11 +45,13 @@ export async function call(
     form.set('args', json);
     // A blob of another DOM is copied, because form data takes only its own.
     const blobs = await Promise.all(
-      files.map(async (file: Blob) =>
+      files.map((file: Blob) =>
         // Typed as a Blob, so the check narrows a blob of another DOM to never.
         file instanceof Blob
           ? file
-          : new Blob([await (file as Blob).arrayBuffer()], { type: (file as Blob).type }),
+          : (file as Blob)
+              .arrayBuffer()
+              .then((data) => new Blob([data], { type: (file as Blob).type })),
       ),
     );
     for (const [index, blob] of blobs.entries()) {
@@ -59,10 +61,7 @@ export async function call(
   } else {
     init = { headers: { 'content-type': 'application/json' }, body: json };
   }
-  return answer(
-    id,
-    await fetch(`${prefix}/${encodeURIComponent(id)}`, { ...init, method: 'POST', signal }),
-  );
+  return post(prefix, id, { ...init, signal });
 }
 
 /**
@@ -70,13 +69,14 @@ export async function call(
  * goes as it is, files included, as when the browser posts the form.
  */
 export async function submit(prefix: string, id: string, form: FormData): Promise<unknown> {
+  return post(prefix, id, { headers: { 'x-brumate-result': '1' }, body: form });
+}
+
+/** Posts to a server function, and reads its answer. */
+async function post(prefix: string, id: string, init: RequestInit): Promise<unknown> {
   return answer(
     id,
-    await fetch(`${prefix}/${encodeURIComponent(id)}`, {
-      method: 'POST',
-      headers: { 'x-brumate-result': '1' },
-      body: form,
-    }),
+    await fetch(`${prefix}/${encodeURIComponent(id)}`, { ...init, method: 'POST' }),
   );
 }
 

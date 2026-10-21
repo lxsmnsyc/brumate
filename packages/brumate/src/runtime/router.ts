@@ -75,14 +75,13 @@ export interface RouteMatch {
   /**
    * Views that show an error in place of the route, from the innermost
    * `_error.brm` to the outermost. Each renders inside the layouts above it.
-   * The error view is the `errorView` of its tree.
    */
   errors: RouteView[];
 }
 
-/** The error file and the slots that a layout renders around it. */
+/** A layout and the slots that it renders around a view. */
 interface Wrapper {
-  layout?: Loader;
+  layout: Loader;
   key: string;
   slots: Record<string, RouteView>;
 }
@@ -92,22 +91,50 @@ function key(path: string, file: string, params: Record<string, string>): string
 }
 
 /** Puts a view in the children slot of a layout, with its other slots. */
-function wrap(view: RouteView, wrapper: Wrapper): RouteView {
-  return wrapper.layout
+function wrap(view: RouteView, wrapper: Wrapper | undefined): RouteView {
+  return wrapper
     ? { load: wrapper.layout, key: wrapper.key, slots: { ...wrapper.slots, children: view } }
     : view;
+}
+
+/** The layout of a folder, or undefined when it has none. */
+function wrapperOf(
+  node: RouteNode,
+  segments: string[],
+  index: number,
+  params: Record<string, string>,
+  path: string,
+): Wrapper | undefined {
+  return node.layout
+    ? {
+        layout: node.layout,
+        key: key(path, '_layout', params),
+        slots: namedSlots(node, segments, index, params, path),
+      }
+    : undefined;
+}
+
+/** The `_error.brm` of a folder, inside its layout. */
+function errorIn(
+  error: Loader,
+  wrapper: Wrapper | undefined,
+  params: Record<string, string>,
+  path: string,
+): RouteView {
+  return wrap({ load: error, key: key(path, ERROR_VIEW, params), slots: {} }, wrapper);
 }
 
 /** The slots of a layout other than `children`, each matched against the same path. */
 function namedSlots(
   node: RouteNode,
   segments: string[],
+  index: number,
   params: Record<string, string>,
   path: string,
 ): Record<string, RouteView> {
   const slots: Record<string, RouteView> = {};
   for (const [name, slot] of Object.entries(node.slots ?? {})) {
-    const match = matchNode(slot, segments, params, `${path}/@${name}`);
+    const match = matchNode(slot, segments, index, params, `${path}/@${name}`);
     if (match) {
       slots[name] = match.view;
     } else if (slot.fallback) {
@@ -122,17 +149,21 @@ function namedSlots(
 }
 
 /** The view of an `_error.brm`. Its component gets the error as a prop. */
-export const ERROR_VIEW = '_error';
+const ERROR_VIEW = '_error';
 
-/** `path` is the folders of `node` in the route files, such as `/todos/[id]`. */
+/**
+ * Matches the segments from `index` on. `path` is the folders of `node` in
+ * the route files, such as `/todos/[id]`.
+ */
 function matchNode(
   node: RouteNode,
   segments: string[],
+  index: number,
   params: Record<string, string>,
   path = '',
 ): RouteMatch | undefined {
   let inner: RouteMatch | undefined;
-  if (segments.length === 0) {
+  if (index === segments.length) {
     if (node.page || node.endpoint) {
       inner = {
         view: { load: node.page ?? missingPage, key: key(path, 'index', params), slots: {} },
@@ -143,19 +174,26 @@ function matchNode(
       };
     }
   } else {
-    const [first, ...rest] = segments as [string, ...string[]];
+    const first = segments[index]!;
     const fixed = node.static?.[first];
-    inner = fixed && matchNode(fixed, rest, params, `${path}/${first}`);
+    inner = fixed && matchNode(fixed, segments, index + 1, params, `${path}/${first}`);
     if (!inner && node.dynamic) {
       const { name } = node.dynamic;
-      inner = matchNode(node.dynamic.node, rest, { ...params, [name]: first }, `${path}/[${name}]`);
+      inner = matchNode(
+        node.dynamic.node,
+        segments,
+        index + 1,
+        { ...params, [name]: first },
+        `${path}/[${name}]`,
+      );
     }
     if (!inner && node.rest) {
       const { name } = node.rest;
       inner = matchNode(
         node.rest.node,
-        [],
-        { ...params, [name]: segments.join('/') },
+        segments,
+        segments.length,
+        { ...params, [name]: segments.slice(index).join('/') },
         `${path}/[...${name}]`,
       );
     }
@@ -165,14 +203,10 @@ function matchNode(
   }
   // The route of the folder streams in after its layout, with the loading file until then.
   const content: RouteView = node.loading ? { ...inner.view, loading: node.loading } : inner.view;
-  const wrapper: Wrapper = {
-    layout: node.layout,
-    key: key(path, '_layout', params),
-    slots: node.layout ? namedSlots(node, segments, params, path) : {},
-  };
-  const errors = inner.errors.map((view) => wrap(view, wrapper));
+  const wrapper = wrapperOf(node, segments, index, params, path);
+  const errors = wrapper ? inner.errors.map((view) => wrap(view, wrapper)) : inner.errors;
   if (node.error) {
-    errors.push(wrap({ load: node.error, key: key(path, ERROR_VIEW, params), slots: {} }, wrapper));
+    errors.push(errorIn(node.error, wrapper, params, path));
   }
   return {
     view: wrap(content, wrapper),
@@ -199,7 +233,7 @@ export function matchRoute(tree: RouteNode, pathname: string): RouteMatch | unde
   } catch {
     return undefined;
   }
-  return matchNode(tree, segments, {});
+  return matchNode(tree, segments, 0, {});
 }
 
 /**
@@ -207,15 +241,8 @@ export function matchRoute(tree: RouteNode, pathname: string): RouteMatch | unde
  * root, inside the root layout, and the root middleware.
  */
 export function notFound(tree: RouteNode): Pick<RouteMatch, 'errors' | 'middleware'> {
-  const wrapper: Wrapper = {
-    layout: tree.layout,
-    key: key('', '_layout', {}),
-    slots: tree.layout ? namedSlots(tree, [], {}, '') : {},
-  };
   return {
-    errors: tree.error
-      ? [wrap({ load: tree.error, key: key('', ERROR_VIEW, {}), slots: {} }, wrapper)]
-      : [],
+    errors: tree.error ? [errorIn(tree.error, wrapperOf(tree, [], 0, {}, ''), {}, '')] : [],
     middleware: tree.middleware ? [tree.middleware] : [],
   };
 }

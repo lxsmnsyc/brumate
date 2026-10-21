@@ -21,12 +21,15 @@ export function rawHTML(value: Raw): string {
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
+const toEscape = (char: string): string => ESCAPES[char]!;
+
+// Most text has nothing to escape, so a test without the global flag skips the replace.
 export function escape(value: string): string {
-  return value.replace(/[&<>]/g, (char) => ESCAPES[char]!);
+  return /[&<>]/.test(value) ? value.replace(/[&<>]/g, toEscape) : value;
 }
 
 export function escapeAttribute(value: string): string {
-  return value.replace(/[&<"]/g, (char) => ESCAPES[char]!);
+  return /[&<"]/.test(value) ? value.replace(/[&<"]/g, toEscape) : value;
 }
 
 /** Renders a value inserted in markup. Promises are not awaited. */

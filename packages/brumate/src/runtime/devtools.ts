@@ -33,6 +33,15 @@ export interface DevtoolsState {
 
 const MAX_LOG = 300;
 
+/** The root scope of a scope, whose `m` names its component. */
+export function rootOf(scope: Scope): Scope {
+  let root = scope;
+  while (root.p) {
+    root = root.p;
+  }
+  return root;
+}
+
 /** A short text for a value in the log. */
 export function preview(value: unknown): string {
   if (typeof value === 'string') {
@@ -81,10 +90,7 @@ export function installDevtools(endpoint = '/__brumate/inspect', rpc = '/_brumat
     },
     write(scope, slot, value) {
       state.written.add(scope.id);
-      let root = scope;
-      while (root.p) {
-        root = root.p;
-      }
+      const root = rootOf(scope);
       add({
         kind: 'write',
         text: `scope ${scope.id} slot ${slot} = ${preview(value)}`,

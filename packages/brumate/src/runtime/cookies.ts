@@ -67,9 +67,22 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
   return parts.join('; ');
 }
 
+/** The parsed `cookie` header of each event, with the header it was parsed from. */
+const parsed = new WeakMap<
+  RequestEvent,
+  { header: string | null; cookies: Record<string, string> }
+>();
+
 /** The cookies of the request, with the ones that this request set or deleted. */
 export function getCookies(event: RequestEvent): Record<string, string> {
-  const result = parseCookies(event.request.headers.get('cookie'));
+  const header = event.request.headers.get('cookie');
+  let cached = parsed.get(event);
+  if (cached?.header !== header) {
+    cached = { header, cookies: parseCookies(header) };
+    parsed.set(event, cached);
+  }
+  // A copy, so the caller cannot change the cache.
+  const result = { ...cached.cookies };
   for (const [name, value] of event.cookies ?? []) {
     if (value === undefined) {
       delete result[name];
@@ -99,13 +112,9 @@ export function deleteCookie(
   name: string,
   options: Pick<CookieOptions, 'path' | 'domain'> = {},
 ): void {
-  const secure = new URL(event.request.url).protocol === 'https:';
-  event.headers.append(
-    'set-cookie',
-    serializeCookie(name, '', { ...options, secure, maxAge: 0, expires: new Date(0) }),
-  );
-  event.cookies ??= new Map();
-  event.cookies.set(name, undefined);
+  // `secure` follows the request, as for a cookie set without it.
+  setCookie(event, name, '', { ...options, secure: undefined, maxAge: 0, expires: new Date(0) });
+  event.cookies!.set(name, undefined);
 }
 
 export interface SessionOptions {
@@ -135,6 +144,7 @@ export interface Session<T> {
 }
 
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 const keys = new Map<string, Promise<CryptoKey>>();
 
 function key(secret: string): Promise<CryptoKey> {
@@ -211,9 +221,7 @@ export function createSession<T>(options: SessionOptions): Session<T> {
       return undefined;
     }
     try {
-      const { d: data, e: expires } = JSON.parse(
-        new TextDecoder().decode(fromBase64Url(payload)),
-      ) as {
+      const { d: data, e: expires } = JSON.parse(decoder.decode(fromBase64Url(payload))) as {
         d: T;
         e: number;
       };

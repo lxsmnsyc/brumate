@@ -40,6 +40,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 let controller: AbortController | undefined;
 
 const STATE = 'script[type="brumate/state"]';
+const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
 
 /** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
 interface Region {
@@ -64,7 +65,7 @@ function regions(root: Node): Region[] {
     node;
     node = walker.nextNode() as Comment | null
   ) {
-    const match = /^R(-?\d+):([^:]+):(\d+):(.*)$/.exec(node.data);
+    const match = REGION.exec(node.data);
     if (match) {
       const region: Region = {
         layout: Number(match[1]),
@@ -141,19 +142,21 @@ function keepStyles(removed: HTMLStyleElement[]): void {
   }
 }
 
-/** True when a slot's end comment is a sibling of its start comment. */
+/**
+ * True when a slot's end comment is a sibling of its start comment. The end
+ * comes after the start in the document, so it then follows it.
+ */
 function complete(region: Region): boolean {
-  return between(region.start, region.end).at(-1) === region.end;
+  return region.start.parentNode === region.end.parentNode;
 }
 
 /**
  * Plans to replace only the routes that change, when the new page has the
  * same root route as the current one. Returns undefined when it cannot.
  */
-function planRoutes(next: Document, requested: number): Plan | undefined {
+function planRoutes(next: Document, state: Element | null, requested: number): Plan | undefined {
   const scripts = document.querySelectorAll(`${STATE}[data-route]`);
   const route = scripts[scripts.length - 1]?.getAttribute('data-route');
-  const state = next.body.querySelector(`${STATE}[data-route]`);
   if (!route || state?.getAttribute('data-route') !== route) {
     return undefined;
   }
@@ -177,18 +180,17 @@ function planRoutes(next: Document, requested: number): Plan | undefined {
 }
 
 /** Replaces the routes that change, and keeps the rest of the page. */
-function replaceRoutes(next: Document, result: Plan): void {
-  const state = next.body.querySelector(`${STATE}[data-route]`)!;
+function replaceRoutes(next: Document, state: Element, result: Plan): void {
   const removed: HTMLStyleElement[] = [];
   for (const [before, region] of result.replace) {
     const nodes = between(before.start, before.end);
     for (const node of nodes) {
       if (node.nodeType === 1) {
         const element = node as Element;
-        removed.push(
-          ...(element.matches('style[data-brm]') ? [element as HTMLStyleElement] : []),
-          ...element.querySelectorAll<HTMLStyleElement>('style[data-brm]'),
-        );
+        if (element.matches('style[data-brm]')) {
+          removed.push(element as HTMLStyleElement);
+        }
+        removed.push(...element.querySelectorAll<HTMLStyleElement>('style[data-brm]'));
       }
     }
     const parent = before.start.parentNode!;
@@ -225,8 +227,7 @@ interface Shift {
  * file on a static host, has its IDs moved before it is read. Returns
  * undefined when the server started them there.
  */
-function shiftFor(next: Document, requested: number): Shift | undefined {
-  const state = next.body.querySelector(`${STATE}[data-route]`);
+function shiftFor(state: Element | null, requested: number): Shift | undefined {
   if (!state) {
     return undefined;
   }
@@ -235,7 +236,10 @@ function shiftFor(next: Document, requested: number): Shift | undefined {
 }
 
 const COMMENT_IDS = /^([tb])(\d+)(:.*)$|^([ilP])(\d+)$/;
-const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
+/** Attributes that hold a scope ID, then `:` and more. */
+const SCOPED = ['data-b', 'data-result'];
+/** Attributes that hold only a scope or boundary ID. */
+const IDS = ['data-v', 'data-l', 'data-h', 'data-next'];
 
 /**
  * Adds a number to every scope and boundary ID in markup that the server
@@ -265,20 +269,21 @@ function shiftIds(root: Node, shift: Shift): void {
       return;
     }
     const element = node as Element;
-    for (const name of ['data-b', 'data-result']) {
+    for (const name of SCOPED) {
       const value = element.getAttribute(name);
       if (value) {
         const [scope, rest] = value.split(':') as [string, string];
         element.setAttribute(name, `${add(scope)}:${rest}`);
       }
     }
-    for (const name of ['data-v', 'data-l', 'data-h', 'data-next']) {
+    for (const name of IDS) {
       const value = element.getAttribute(name);
       if (value) {
         element.setAttribute(name, add(value));
       }
     }
-    if (element.matches(STATE)) {
+    // Only a script can match the state selector, so other elements skip it.
+    if (element.localName === 'script' && element.matches(STATE)) {
       element.setAttribute('data-offset', String(shift.by));
       element.setAttribute('data-root', shift.root);
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
@@ -354,13 +359,13 @@ function append(nodes: Node[], shift: Shift | undefined): void {
       shiftIds(node, shift);
     }
     const adopted = document.adoptNode(node);
-    const scripts =
-      adopted.nodeType === 1
-        ? [
-            ...((adopted as Element).matches('script') ? [adopted as HTMLScriptElement] : []),
-            ...(adopted as Element).querySelectorAll('script'),
-          ]
-        : [];
+    const scripts: HTMLScriptElement[] = [];
+    if (adopted.nodeType === 1) {
+      if ((adopted as Element).matches('script')) {
+        scripts.push(adopted as HTMLScriptElement);
+      }
+      scripts.push(...(adopted as Element).querySelectorAll('script'));
+    }
     document.body.append(adopted);
     for (const script of scripts) {
       if (
@@ -563,13 +568,14 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
-  const shift = visit.init ? undefined : shiftFor(next, requested);
+  const state = next.body.querySelector(`${STATE}[data-route]`);
+  const shift = visit.init ? undefined : shiftFor(state, requested);
   if (shift) {
     shiftIds(next.body, shift);
   }
   // A link keeps the layouts that stay the same. A form replaces the whole page,
   // because what it changed can show anywhere on it.
-  const routes = visit.init ? undefined : planRoutes(next, requested);
+  const routes = visit.init ? undefined : planRoutes(next, state, requested);
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     stop();
@@ -591,7 +597,7 @@ export async function navigate(visit: Visit): Promise<void> {
     const same = url.href === location.href;
     const top = window.scrollY;
     if (routes) {
-      replaceRoutes(next, routes);
+      replaceRoutes(next, state!, routes);
     } else {
       document.body.replaceWith(document.adoptNode(next.body));
     }
