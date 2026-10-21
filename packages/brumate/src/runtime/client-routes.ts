@@ -136,9 +136,9 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
  * when layouts stay.
  */
 export const ready: Promise<(partial: boolean) => void> = import('./client.ts').then(
-  ({ ElementReference, FunctionReference, dispose, hooks, leavePage, removeScope, scopes }) => {
+  ({ ElementReference, FunctionReference, hooks, leavePage, leaveRoutes, removeScope, scopes }) => {
     const core = { ElementReference, FunctionReference, hooks, removeScope, scopes };
     hooks.record = (script, state) => routeRecord(core, script, state);
-    return (partial) => (partial ? dispose() : leavePage());
+    return (partial) => (partial ? leaveRoutes() : leavePage());
   },
 );

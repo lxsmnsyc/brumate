@@ -5,6 +5,7 @@ import {
   insertValue,
   rawHTML,
   spread as spreadText,
+  textValue,
 } from './html.ts';
 import type { Raw } from './html.ts';
 import {
@@ -74,6 +75,8 @@ export interface Scope {
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
   children: Set<Scope>;
+  /** The `b-root` of the render that the server rendered the scope in. */
+  r?: string;
   cleanups?: Map<string, () => void>;
   keys?: Map<number, unknown>;
 }
@@ -196,7 +199,7 @@ function readRecord([script, code]: StateRecord): void {
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('b-scopes')) {
     const unpacked = unpackState(decoded as PackedState);
-    const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked);
+    const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked, root);
     if (writes > 0) {
       refresh(added);
     }
@@ -293,7 +296,7 @@ function unpackState(state: PackedState): PageState {
   return state;
 }
 
-function addScopes(state: PageState): Scope[] {
+function addScopes(state: PageState, root: string): Scope[] {
   const added: Scope[] = [];
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
@@ -307,6 +310,7 @@ function addScopes(state: PageState): Scope[] {
       v: record.v,
       x: record.x,
       children: new Set(),
+      r: root,
     };
     scopes.set(id, scope);
     added.push(scope);
@@ -362,6 +366,46 @@ export function dispose(): void {
   }
   markerObserver?.disconnect();
   markerObserver = undefined;
+}
+
+/**
+ * Stops reading, before client navigation replaces only some routes. The
+ * server renders the new routes with its current values, so only the writes
+ * that come after count for the records that stream in later.
+ */
+export function leaveRoutes(): void {
+  dispose();
+  writes = 0;
+}
+
+/**
+ * Removes the scopes of a render, by its `b-root`, with the scopes inside
+ * them. Their cleanups run, and their memos no longer load. Its markup
+ * stays. `brumate/testing` calls it when a mounted component unmounts.
+ */
+export function removeRoot(root: string): void {
+  const inside = (scope: Scope): boolean => {
+    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+      if (current.r === root) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Deleting from a map while iterating it is safe.
+  for (const scope of scopes.values()) {
+    if (inside(scope)) {
+      removeScope(scope);
+    }
+  }
+  refs.delete(root);
+  for (const cache of [comments, elements]) {
+    for (const [key, node] of cache) {
+      if (!node.isConnected) {
+        cache.delete(key);
+      }
+    }
+  }
 }
 
 /**
@@ -467,6 +511,9 @@ export function leavePage(): void {
   nextId = -1;
   refs.clear();
   writes = 0;
+  // Calls of the old page that are still out no longer count for its guesses.
+  calling = 0;
+  callEpoch++;
   lastHandler = Promise.resolve();
 }
 
@@ -841,6 +888,8 @@ function sameSource(key: string): boolean {
 }
 /** Server calls that have not finished, from forms and from `rpc`. */
 let calling = 0;
+/** Counts the pages that client navigation left, so calls of an old page are not counted down. */
+let callEpoch = 0;
 
 /**
  * Writes a guess into an optimistic value. It goes back to its source when
@@ -863,7 +912,11 @@ export function guess<T>(
 /** Counts a server call, and puts guesses back when the last one finishes. */
 export function track<T>(request: Promise<T>): Promise<T> {
   calling++;
+  const epoch = callEpoch;
   const done = (): void => {
+    if (epoch !== callEpoch) {
+      return;
+    }
     calling--;
     // Waits a task, so memos that the answer refreshed start to load first.
     setTimeout(() => calling || guesses?.reset(), 0);
@@ -1224,6 +1277,22 @@ export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
     write(element, element.firstChild, null, value);
+  }
+}
+
+/**
+ * Writes the text of an element whose content is text, such as a `<textarea>`
+ * or a `<title>`. A `<textarea>` gets the value too, as `value` does on an
+ * `<input>`, so a change replaces what the user typed.
+ */
+export function writeText(scope: Scope, anchor: number, value: unknown): void {
+  const element = findElement(scope.id, anchor);
+  if (element) {
+    const written = textValue(value);
+    element.textContent = written;
+    if (element instanceof HTMLTextAreaElement) {
+      element.value = written;
+    }
   }
 }
 

@@ -16,7 +16,8 @@ export interface LoaderOptions {
   rpc?: string;
   /**
    * Loads pages without a full page load: links to the same origin, the back
-   * and forward buttons, and forms that post to a server function. Defaults to true.
+   * and forward buttons, forms that post to a server function, and redirects
+   * from server functions to the same origin. Defaults to true.
    */
   navigate?: boolean | NavigateOptions;
   /**
@@ -33,7 +34,8 @@ export interface NavigateOptions {
   /**
    * Swaps the page inside a view transition, where the browser has them.
    * CSS can tell links, the back and forward buttons and forms apart with
-   * the types `push`, `traverse` and `form`.
+   * the types `push`, `traverse` and `form`. A redirect from a server
+   * function has the type `form`.
    */
   transition?: boolean;
 }
@@ -245,7 +247,12 @@ export function boot(
     for (const template of select(root, 'template[b-listen]')) {
       const target = template.getAttribute('b-listen') === 'window' ? window : document;
       for (const entry of entries(template)) {
-        listen(target, entry.type, (event) => apply(event, template, entry));
+        // Markup that is gone, such as a page that navigation replaced, no longer listens.
+        listen(target, entry.type, (event) => {
+          if (template.isConnected) {
+            apply(event, template, entry);
+          }
+        });
       }
     }
     for (const template of select(root, 'template[b-client]')) {

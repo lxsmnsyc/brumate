@@ -1,0 +1,19 @@
+<script>
+  import { $action, $isPending } from 'brumate/signals';
+  import { redirect } from 'brumate/server';
+
+  async function go(form: FormData) {
+    'use server';
+    redirect(String(form.get('to')));
+  }
+
+  const result = $action(go);
+</script>
+
+<form class="go" action=go>
+  <input name="to" value="/done">
+  <button>Go</button>
+</form>
+#if ($isPending(result)) {
+  <p class="pending">Going</p>
+}

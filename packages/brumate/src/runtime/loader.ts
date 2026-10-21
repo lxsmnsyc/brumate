@@ -32,14 +32,15 @@ const routes = (): (typeof Routes)['ready'] =>
 
 /**
  * Loads pages without a full page load: links to the same origin, the back
- * and forward buttons, and forms that post to a server function. Returns how
- * the loader imports the core.
+ * and forward buttons, forms that post to a server function, and redirects
+ * from server functions to the same origin. Returns how the loader imports
+ * the core.
  */
 function navigation({ options, listen, core, scan }: Navigation): () => Promise<Core> {
   const rpc = `${options.rpc ?? '/_brumate'}/`;
   // The page without its hash, to tell a change of the hash from a change of the page.
   let page = String(location.href).split('#')[0];
-  const go = (url: string, init?: RequestInit, push = true): void => {
+  const go = (url: string, init?: RequestInit, push = true, reload = false): void => {
     page = url.split('#')[0]!;
     if (core()) {
       void routes();
@@ -49,6 +50,7 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
         url,
         init,
         push,
+        reload,
         transition: typeof options.navigate === 'object' && options.navigate.transition === true,
         // The core forgets the old page, or only stops reading, when layouts stay.
         leave: async (partial) => {
@@ -118,6 +120,14 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
     }
     event.preventDefault();
     go(action, { method: 'POST', body: new FormData(form, submitter) });
+  });
+  // A server function that redirects, from `rpc.ts`. Another site loads in full.
+  listen(document, 'brumate:redirect', (event) => {
+    const url = new URL((event as CustomEvent<string>).detail, location.href);
+    if (url.origin === location.origin) {
+      event.preventDefault();
+      go(url.href, undefined, true, true);
+    }
   });
   // A hot update whose markup changed loads the page again, in place. With `init`, the whole
   // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.

@@ -79,6 +79,25 @@ export async function run({ browser, url, runner }) {
     assert((await star.getAttribute('aria-pressed')) === 'true', 'the star went away');
   });
 
+  await step('/: a link after the star sends no server calls', async () => {
+    const calls = [];
+    const onRequest = (request) => {
+      if (new URL(request.url()).pathname.startsWith('/_brumate/')) {
+        calls.push(request.url());
+      }
+    };
+    page.on('request', onRequest);
+    await page.click('.issues a:has-text("Add a dark theme")');
+    await page.waitForURL('**/issues/2', { timeout: TIMEOUT });
+    await page.locator('h1', { hasText: 'Add a dark theme' }).waitFor({ timeout: TIMEOUT });
+    await page.waitForTimeout(500);
+    page.off('request', onRequest);
+    assert(calls.length === 0, `the page called the server: ${calls.join(', ')}`);
+    await page.goBack();
+    await page.waitForURL(`${url}/`, { timeout: TIMEOUT });
+    await page.locator('.issues li a').first().waitFor({ timeout: TIMEOUT });
+  });
+
   await step('/issues/new: signed out, the middleware sends the link to sign in', async () => {
     await page.evaluate(() => (window.__e2eSamePage = true));
     await page.click('nav a[href="/issues/new"]');
@@ -92,9 +111,15 @@ export async function run({ browser, url, runner }) {
     await page.click('main form button');
     await page.locator('p.error', { hasText: 'Use 2 to 30 letters' }).waitFor({ timeout: TIMEOUT });
     await page.fill('input[name=name]', 'Ada');
+    // The redirect of an $action loads the page on the client, and the layout shows the user.
+    await page.evaluate(() => (window.__e2eSamePage = true));
     await page.click('main form button');
     await page.waitForURL('**/issues/new', { timeout: TIMEOUT });
     await page.locator('header .user span', { hasText: 'Ada' }).waitFor({ timeout: TIMEOUT });
+    assert(
+      await page.evaluate(() => window.__e2eSamePage === true),
+      'signing in loaded a new page',
+    );
   });
 
   await step('/issues/new: a short title shows an error, then the issue opens', async () => {
@@ -106,11 +131,16 @@ export async function run({ browser, url, runner }) {
     await page.fill('input[name=title]', 'Export issues as CSV');
     await page.fill('textarea[name=body]', 'For a spreadsheet.');
     await page.check('input[value=feature]');
+    await page.evaluate(() => (window.__e2eSamePage = true));
     await page.click('main form button');
-    // The redirect of an $action loads the new page in full.
+    // The redirect of an $action loads the new page on the client.
     await page.waitForURL('**/issues/5', { timeout: TIMEOUT });
     await page.locator('h1', { hasText: 'Export issues as CSV' }).waitFor({ timeout: TIMEOUT });
     assert((await page.textContent('.meta')).includes('You opened it'), 'the author is not you');
+    assert(
+      await page.evaluate(() => window.__e2eSamePage === true),
+      'the redirect loaded a new page',
+    );
   });
 
   await step('/issues/5: closing shows before the server answers', async () => {

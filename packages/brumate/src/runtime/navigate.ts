@@ -16,6 +16,12 @@ export interface Visit {
   enter: () => void;
   /** Swaps the page inside a view transition, where the browser has them. */
   transition?: boolean;
+  /**
+   * Loads the page after a server function changed something, as for a
+   * redirect from one. As a form does, it replaces the whole page, and does
+   * not use a page that a link loaded early.
+   */
+  reload?: boolean;
 }
 
 /**
@@ -28,7 +34,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
     update();
     return;
   }
-  const types = [visit.init ? 'form' : visit.push ? 'push' : 'traverse'];
+  const types = [visit.init || visit.reload ? 'form' : visit.push ? 'push' : 'traverse'];
   // Browsers that have transitions without types take only a callback.
   const started =
     typeof ViewTransition !== 'undefined' && 'types' in ViewTransition.prototype
@@ -489,7 +495,7 @@ export async function navigate(visit: Visit): Promise<void> {
   history.replaceState({ ...history.state, scroll: window.scrollY }, '');
   let response: Response;
   try {
-    const early = visit.init ? undefined : takePrefetched(visit.url, requested);
+    const early = visit.init || visit.reload ? undefined : takePrefetched(visit.url, requested);
     const headers = new Headers(visit.init?.headers);
     headers.set('x-brumate-base', String(requested));
     response = await (early ??
@@ -572,9 +578,9 @@ export async function navigate(visit: Visit): Promise<void> {
   if (shift) {
     shiftIds(next.body, shift);
   }
-  // A link keeps the layouts that stay the same. A form replaces the whole page,
-  // because what it changed can show anywhere on it.
-  const routes = visit.init ? undefined : planRoutes(next, state, requested);
+  // A link keeps the layouts that stay the same. A form, or a redirect from a server
+  // function, replaces the whole page, because what it changed can show anywhere on it.
+  const routes = visit.init || visit.reload ? undefined : planRoutes(next, state, requested);
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     stop();
@@ -611,7 +617,7 @@ export async function navigate(visit: Visit): Promise<void> {
       history.replaceState(history.state, '', url);
     }
     visit.enter();
-    if (visit.init && same) {
+    if ((visit.init || visit.reload) && same) {
       // A form that comes back to its page keeps the place on the page.
       window.scrollTo(0, top);
     } else {

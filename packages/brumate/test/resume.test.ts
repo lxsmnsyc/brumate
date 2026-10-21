@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
 import { render as renderParts, stateScript } from '../src/runtime/server.ts';
@@ -423,8 +424,9 @@ describe('resume', () => {
     const { html, state } = await runtime.render(server.default, {}, { request });
     show(html + state);
     vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
+    // Without client navigation, a redirect loads the page in full.
+    const { startWithoutNavigation } = await import('../src/runtime/static-loader.ts');
+    stop = startWithoutNavigation({ load: (id) => import(modules.get(id)!) });
     expect(text('.user')).toBe('Ada');
 
     click(document.querySelector('.ok')!);
@@ -836,6 +838,18 @@ describe('resume', () => {
 
     await waitFor(() => expect(document.body.textContent).toContain('Client only'));
     await waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
+  });
+
+  it('stops the window listeners of markup that is gone, such as a page that navigation left', async () => {
+    await resume('blocks', { items: ['one', 'two'], tab: 'b' });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    await waitFor(() => expect(text('body > p')).toBe('A'));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
+    await waitFor(() => expect(text('body > p')).toBe('B'));
+    document.querySelector('template[b-listen]')!.remove();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(text('body > p')).toBe('B');
   });
 });
 
@@ -1821,5 +1835,155 @@ describe('list items taken from their list', () => {
     await waitFor(() => expect(texts('.word')).toEqual(['later', 'Ada']));
     click(document.querySelector('.reverse')!);
     await waitFor(() => expect(texts('.todo')).toEqual(['Two', 'One']));
+  });
+});
+
+/** A stub of `fetch` with the arguments that the runtime passes. */
+type Fetch = (url: string, init?: RequestInit) => Promise<Response | undefined>;
+
+/** Answers server function calls with `rpc`, and other requests with a page that names its URL. */
+async function serve(name: string): Promise<{ fetch: Mock<Fetch> }> {
+  vi.resetModules();
+  const server = await import(file(`${name}.brm.ts`));
+  const runtime = await import('../src/runtime/server.ts');
+  const fetch = vi.fn<Fetch>(async (url, init) =>
+    url.startsWith('/_brumate/')
+      ? runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init))
+      : new Response(
+          `<!doctype html><html><head><title>Next</title></head><body><p class="page">${new URL(url, location.href).pathname}</p></body></html>`,
+          { headers: { 'content-type': 'text/html' } },
+        ),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const { html, state } = await runtime.render(
+    server.default,
+    {},
+    { request: new Request('http://localhost/') },
+  );
+  show(html + state);
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  return { fetch };
+}
+
+describe('redirects from server functions', () => {
+  it('navigates on the client after a server function call redirects', async () => {
+    history.replaceState(null, '', '/');
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    const { fetch } = await serve('session');
+    const length = history.length;
+    click(document.querySelector('.admin')!);
+    await waitFor(() => expect(text('.page')).toBe('/admin'));
+    expect(location.pathname).toBe('/admin');
+    // A new entry, as for a form post that redirects.
+    expect(history.length).toBe(length + 1);
+    expect(fetch.mock.lastCall![0]).toBe(`${location.origin}/admin`);
+    expect(fetch.mock.lastCall![1]?.method).toBeUndefined();
+    expect(assign).not.toHaveBeenCalled();
+    // Another site loads in full.
+    const other = new CustomEvent('brumate:redirect', {
+      detail: 'https://example.com/',
+      cancelable: true,
+    });
+    expect(document.dispatchEvent(other)).toBe(true);
+    assign.mockRestore();
+  });
+
+  it('navigates on the client after the form of an $action redirects', async () => {
+    history.replaceState(null, '', '/');
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await serve('redirecting');
+    const form = document.querySelector<HTMLFormElement>('.go')!;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.page')).toBe('/done'));
+    expect(location.pathname).toBe('/done');
+    expect(document.title).toBe('Next');
+    expect(assign).not.toHaveBeenCalled();
+    assign.mockRestore();
+  });
+});
+
+/** A `<main>` with one route in the children slot of the layout with scope 0. */
+function region(route: string, root: number, html: string): string {
+  return `<main><!--R0:children:${root}:${encodeURIComponent(route)}-->${html}<!--/R--></main>`;
+}
+
+describe('navigation after a write', () => {
+  it('does not compute the memos of the new routes again', async () => {
+    history.replaceState(null, '', '/');
+    vi.resetModules();
+    const counter = await import(file('counter.brm.ts'));
+    const search = await import(file('search.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const first = await runtime.render(counter.default, {}, { base: 1, route: 'root' });
+    const next = Number(/b-next="(\d+)"/.exec(first.state)![1]);
+    const second = await runtime.render(search.default, {}, { base: next, route: 'root' });
+    const later: string[] = [];
+    for await (const chunk of second.pending) {
+      later.push(chunk);
+    }
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(async (url, init) => {
+        if (url.startsWith('/_brumate/')) {
+          calls.push(url);
+          return runtime.handleRequest(search.rpc, new Request(`http://localhost${url}`, init));
+        }
+        return new Response(
+          `<!doctype html><html><head></head><body><a class="link" href="/b">B</a>${region('/b', next, second.html)}${second.state}</body></html>${later.join('')}`,
+          { headers: { 'content-type': 'text/html' } },
+        );
+      }),
+    );
+    show(`<a class="link" href="/b">B</a>${region('/', 1, first.html)}${first.state}`);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('p')).toBe('1 / 2'));
+    // The link keeps the layout, and replaces only the route.
+    document.querySelector<HTMLAnchorElement>('.link')!.click();
+    await waitFor(() => expect(items()).toEqual(['apple', 'apricot', 'banana']));
+    // The test DOM does not run the state records that navigation added.
+    document.querySelectorAll('script[b-roots]').forEach(run);
+    await new Promise((done) => setTimeout(done, 100));
+    expect(location.pathname).toBe('/b');
+    expect(calls).toEqual([]);
+    // Its memos still load when their inputs change.
+    const field = document.querySelector('input')!;
+    field.value = 'b';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(items()).toEqual(['banana']));
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe('unmount', () => {
+  it('removes the scopes of a mount, so a refresh later does not load its memos', async () => {
+    vi.resetModules();
+    const server = await import(file('refreshList.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push(decodeURIComponent(url).split('#')[1]!);
+      return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { createMount } = await import('../src/runtime/testing.ts');
+    const mount = createMount({ load: (id) => import(modules.get(id)!) });
+    const first = await mount(server.default, {});
+    first.click('.add');
+    await first.waitFor(() => expect(first.text('.names')).toContain('Grace'));
+    first.unmount();
+    calls.length = 0;
+    const second = await mount(server.default, {});
+    second.click('.add');
+    await second.waitFor(() => expect(calls).toEqual(['add', 'list']));
+    await new Promise((done) => setTimeout(done, 100));
+    // Only the memo of the mount in the page loads again.
+    expect(calls).toEqual(['add', 'list']);
+    second.unmount();
   });
 });

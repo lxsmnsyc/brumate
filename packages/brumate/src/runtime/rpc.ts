@@ -93,7 +93,11 @@ async function answer(id: string, response: Response): Promise<unknown> {
   }
   const location = response.headers.get('x-brumate-redirect');
   if (location !== null) {
-    window.location.assign(location);
+    // The loader navigates on the client when it can. Without client navigation, the page loads in full.
+    const redirect = new CustomEvent('brumate:redirect', { detail: location, cancelable: true });
+    if (document.dispatchEvent(redirect)) {
+      window.location.assign(location);
+    }
     // The page is leaving, so the call never settles.
     return new Promise(() => {});
   }

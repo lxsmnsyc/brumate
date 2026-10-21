@@ -83,6 +83,8 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 A form that posts to a server function is sent with `fetch` once the loader runs. The page that the server answers with, or redirects to, replaces the current one in the same way as a link.
 
+A server function that redirects to a page of the same site, from a handler or from the form of an `$action`, also loads that page with `fetch`. The new page replaces the whole current one and adds an entry to the history, as after a form post. A redirect to another site, or with client navigation turned off, loads the page in full.
+
 Other forms, such as a search form that uses `GET`, are left to the browser. See [Forms and actions](./forms.md).
 
 ## View transitions
@@ -95,11 +97,11 @@ brumate({ navigate: { transition: true } });
 
 By default the browser fades the old page into the new one. CSS changes the animation. Each transition has a type that tells how the page was reached:
 
-| Type       | When                          |
-| ---------- | ----------------------------- |
-| `push`     | A click on a link.            |
-| `traverse` | The back and forward buttons. |
-| `form`     | A form post.                  |
+| Type       | When                                             |
+| ---------- | ------------------------------------------------ |
+| `push`     | A click on a link.                               |
+| `traverse` | The back and forward buttons.                    |
+| `form`     | A form post, or a redirect of a server function. |
 
 ```css
 /* The back and forward buttons slide the page instead of fading it. */
