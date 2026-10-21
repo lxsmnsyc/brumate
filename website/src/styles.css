@@ -88,6 +88,8 @@ pre {
   position: sticky;
   top: 0;
   z-index: 10;
+  /* The header stays in place while the page fades between pages. */
+  view-transition-name: header;
   height: var(--header-height);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(10px);
@@ -1086,4 +1088,17 @@ pre {
   background: transparent;
   font: inherit;
   overflow: visible;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
 }

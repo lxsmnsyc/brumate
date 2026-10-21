@@ -18,7 +18,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Devtools overlay](#devtools-overlay)                                             | Tooling    | Medium | Medium |
 | [Testing helpers](#testing-helpers)                                               | Tooling    | Medium | Small  |
 | [Typed routes](#typed-routes)                                                     | Routing    | Medium | Medium |
-| [View transitions](#view-transitions)                                             | Navigation | Medium | Small  |
 | [Layouts on static hosts](#layouts-on-static-hosts)                               | Navigation | Medium | Medium |
 | [Server function streams and uploads](#server-function-streams-and-uploads)       | Server     | Medium | Medium |
 | [Request forgery protection](#request-forgery-protection)                         | Security   | High   | Small  |
@@ -49,17 +48,6 @@ href('/todos/[id]', {}); // Type error: `id` is missing.
 
 - `params` in a route gets its type from the file path, so `$props()` needs no type argument for it.
 - `brumate-tsc` checks `href` calls against the routes.
-
-## Navigation
-
-### View transitions
-
-```ts
-brumate({ navigate: { transition: true } });
-```
-
-- Navigation swaps the page inside `document.startViewTransition` where the browser has it, so pages can animate between each other with CSS.
-- Layouts that stay are not part of the transition, unless they ask with `view-transition-name`.
 
 ## Syntax
 

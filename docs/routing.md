@@ -171,6 +171,26 @@ A page starts to load when the pointer rests on its link for 80 ms, or when the 
 
 A link is left to the browser when it has `target`, `download` or `data-reload`, when a key such as Ctrl is held, or when it only changes the hash. `navigate: false` in the plugin options turns navigation off.
 
+### View transitions
+
+`navigate: { transition: true }` in the plugin options swaps each page inside a view transition, where the browser has them. By default the browser fades the old page into the new one. CSS changes the animation:
+
+```css
+/* The back and forward buttons slide the page instead. */
+html:active-view-transition-type(traverse) {
+  &::view-transition-old(root) {
+    animation: slide-out 0.2s;
+  }
+  &::view-transition-new(root) {
+    animation: slide-in 0.2s;
+  }
+}
+```
+
+- The type of a transition tells how the page was reached: `push` for a link, `traverse` for the back and forward buttons, and `form` for a form.
+- An element with a `view-transition-name` moves on its own, such as a header that stays in its place.
+- Without view transitions in the browser, the page swaps at once.
+
 ### Layouts stay
 
 A link keeps the layouts that are the same on both pages, with their markup and their state on the client. Only the routes inside them are replaced.

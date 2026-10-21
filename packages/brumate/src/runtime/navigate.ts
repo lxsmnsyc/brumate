@@ -14,6 +14,27 @@ export interface Visit {
   leave: (partial: boolean) => Promise<void>;
   /** Runs after the first render of the new page is in the document. */
   enter: () => void;
+  /** Swaps the page inside a view transition, where the browser has them. */
+  transition?: boolean;
+}
+
+/**
+ * Runs `update` inside a view transition, with a type that tells how the page
+ * was reached: `push` for a link, `traverse` for the back and forward
+ * buttons, and `form` for a form. Without transitions, it runs `update`.
+ */
+async function transition(visit: Visit, update: () => void): Promise<void> {
+  if (!visit.transition || typeof document.startViewTransition !== 'function') {
+    update();
+    return;
+  }
+  const types = [visit.init ? 'form' : visit.push ? 'push' : 'traverse'];
+  // Browsers that have transitions without types take only a callback.
+  const started =
+    typeof ViewTransition !== 'undefined' && 'types' in ViewTransition.prototype
+      ? document.startViewTransition({ update, types })
+      : document.startViewTransition(update);
+  await started.updateCallbackDone;
 }
 
 let controller: AbortController | undefined;
@@ -467,37 +488,42 @@ export async function navigate(visit: Visit): Promise<void> {
   if (current.signal.aborted) {
     return;
   }
-  // A copy, because removing an attribute changes the live list.
-  // oxlint-disable-next-line unicorn/no-useless-spread
-  for (const attribute of [...document.documentElement.attributes]) {
-    document.documentElement.removeAttribute(attribute.name);
-  }
-  for (const attribute of next.documentElement.attributes) {
-    document.documentElement.setAttribute(attribute.name, attribute.value);
-  }
-  // Read before the head moves, because moving the <title> clears it in `next`.
-  const title = next.title;
-  updateHead(next);
-  document.title = title;
-  const same = url.href === location.href;
-  const top = window.scrollY;
-  if (routes) {
-    replaceRoutes(next, routes);
-  } else {
-    document.body.replaceWith(document.adoptNode(next.body));
-  }
-  // A link to the page itself, or a form that comes back to it, does not add to the history.
-  if (visit.push && !same) {
-    history.pushState({}, '', url);
-  } else if (!same) {
-    history.replaceState(history.state, '', url);
-  }
-  visit.enter();
-  if (visit.init && same) {
-    // A form that comes back to its page keeps the place on the page.
-    window.scrollTo(0, top);
-  } else {
-    scroll(url, visit.push ? undefined : (history.state?.scroll as number | undefined));
+  await transition(visit, () => {
+    // A copy, because removing an attribute changes the live list.
+    // oxlint-disable-next-line unicorn/no-useless-spread
+    for (const attribute of [...document.documentElement.attributes]) {
+      document.documentElement.removeAttribute(attribute.name);
+    }
+    for (const attribute of next.documentElement.attributes) {
+      document.documentElement.setAttribute(attribute.name, attribute.value);
+    }
+    // Read before the head moves, because moving the <title> clears it in `next`.
+    const title = next.title;
+    updateHead(next);
+    document.title = title;
+    const same = url.href === location.href;
+    const top = window.scrollY;
+    if (routes) {
+      replaceRoutes(next, routes);
+    } else {
+      document.body.replaceWith(document.adoptNode(next.body));
+    }
+    // A link to the page itself, or a form that comes back to it, does not add to the history.
+    if (visit.push && !same) {
+      history.pushState({}, '', url);
+    } else if (!same) {
+      history.replaceState(history.state, '', url);
+    }
+    visit.enter();
+    if (visit.init && same) {
+      // A form that comes back to its page keeps the place on the page.
+      window.scrollTo(0, top);
+    } else {
+      scroll(url, visit.push ? undefined : (history.state?.scroll as number | undefined));
+    }
+  });
+  if (current.signal.aborted) {
+    return;
   }
 
   // Later markup is parsed in a document without a window, so it can arrive

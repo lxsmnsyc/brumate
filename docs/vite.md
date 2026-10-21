@@ -175,7 +175,7 @@ brumate({
   exclude: (directory) => directory === 'node_modules',
   // The directory of route files.
   routes: 'src/routes',
-  // Loads pages without a full page load. See Routing.
+  // Loads pages without a full page load. { transition: true } adds view transitions. See Routing.
   navigate: true,
   // Client parts smaller than this in all become one module. 0 keeps one module per part.
   merge: 2048,

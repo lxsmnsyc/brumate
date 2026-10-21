@@ -61,7 +61,10 @@ export default defineConfig({
       new Set([...SITE_PAGES].map((page) => page || 'index')),
     ),
     // Every page is written as a static file, with readable names for the scripts.
-    brumate({ prerender: { paths: ['/', '/playground'], head: scriptNames } }),
+    brumate({
+      navigate: { transition: true },
+      prerender: { paths: ['/', '/playground'], head: scriptNames },
+    }),
   ],
   resolve: {
     alias: {

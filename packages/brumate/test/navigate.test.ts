@@ -49,6 +49,20 @@ function pageState(next: number, base = 0): string {
   return `<script type="brumate/state" data-scopes data-next="${next}" data-route="root"${root}>{}</script>`;
 }
 
+/** Navigates to a page whose body is its URL. */
+async function visit(url: string, push: boolean, transition: boolean): Promise<void> {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(`<!doctype html><html><body><p>${url}</p></body></html>`, {
+          headers: { 'content-type': 'text/html' },
+        }),
+    ),
+  );
+  await navigate({ url, push, transition, leave: async () => {}, enter: () => {} });
+}
+
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
 
 afterEach(() => {
@@ -261,5 +275,37 @@ describe('navigate', () => {
       enter: () => {},
     });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('swaps the page inside a view transition, with the type of the visit', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = '<p>old</p>';
+    const seen: { types?: string[]; before: string; after: string }[] = [];
+    // A browser with types of view transitions has them on the prototype.
+    vi.stubGlobal(
+      'ViewTransition',
+      class {
+        get types(): Set<string> {
+          return new Set();
+        }
+      },
+    );
+    document.startViewTransition = ((options: { update: () => void; types: string[] }) => {
+      const entry = { types: options.types, before: document.body.textContent!, after: '' };
+      options.update();
+      entry.after = document.body.textContent!;
+      seen.push(entry);
+      return { updateCallbackDone: Promise.resolve() };
+    }) as never;
+    await visit('/b', true, true);
+    await visit('/a', false, true);
+    // Without the option, the page swaps at once.
+    await visit('/c', true, false);
+    expect(seen).toEqual([
+      { types: ['push'], before: 'old', after: '/b' },
+      { types: ['traverse'], before: '/b', after: '/a' },
+    ]);
+    expect(document.body.textContent).toBe('/c');
+    delete (document as { startViewTransition?: unknown }).startViewTransition;
   });
 });

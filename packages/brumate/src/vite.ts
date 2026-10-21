@@ -10,6 +10,7 @@ import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
+import type { NavigateOptions } from './runtime/loader.ts';
 import { prerender } from './prerender.ts';
 import type { PrerenderOptions } from './prerender.ts';
 import { routeFiles, routeModule } from './routes.ts';
@@ -26,8 +27,12 @@ export interface BrumateOptions {
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
-  /** Loads pages without a full page load when a link is clicked or a form posts. Defaults to true. */
-  navigate?: boolean;
+  /**
+   * Loads pages without a full page load when a link is clicked or a form
+   * posts. Defaults to true. `{ transition: true }` swaps pages inside a
+   * view transition.
+   */
+  navigate?: boolean | NavigateOptions;
   /**
    * Client parts of a component smaller than this many bytes in all become
    * one module, so its first event loads one file. 0 keeps one module per
@@ -282,7 +287,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
-          `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${options.navigate !== false} });`,
+          `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
         ].join('\n');
       }
       if (id === `\0${MANIFEST}`) {

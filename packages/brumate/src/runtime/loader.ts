@@ -10,7 +10,16 @@ export interface LoaderOptions {
    * Loads pages without a full page load: links to the same origin, the back
    * and forward buttons, and forms that post to a server function. Defaults to true.
    */
-  navigate?: boolean;
+  navigate?: boolean | NavigateOptions;
+}
+
+export interface NavigateOptions {
+  /**
+   * Swaps the page inside a view transition, where the browser has them.
+   * CSS can tell links, the back and forward buttons and forms apart with
+   * the types `push`, `traverse` and `form`.
+   */
+  transition?: boolean;
 }
 
 interface Entry {
@@ -236,6 +245,7 @@ export function start(options: LoaderOptions): () => void {
           url,
           init,
           push,
+          transition: typeof options.navigate === 'object' && options.navigate.transition === true,
           // The core forgets the old page, or only stops reading, when layouts stay.
           leave: async (partial) => {
             const client = await core;
