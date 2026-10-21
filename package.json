@@ -7,6 +7,7 @@
     "test": "pnpm -r --filter=./packages/* --filter=./examples/* test",
     "typecheck": "pnpm -r typecheck",
     "bench": "node benchmarks/harness/run.mjs",
+    "e2e": "node e2e/run.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",

@@ -27,7 +27,7 @@
   ],
   "overrides": [
     {
-      "files": ["benchmarks/**"],
+      "files": ["benchmarks/**", "e2e/**"],
       "rules": {
         "no-await-in-loop": "off",
         "no-underscore-dangle": "off",

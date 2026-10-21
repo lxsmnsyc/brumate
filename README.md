@@ -95,6 +95,10 @@ The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures
 pnpm bench
 ```
 
+## Smoke tests
+
+[`e2e`](./e2e/README.md) builds the website and the examples, serves them, and uses them in Chrome. Run it with `pnpm e2e`.
+
 ## Name
 
 Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same with its code. It loads a handler only when an event needs it.
