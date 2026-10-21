@@ -111,7 +111,17 @@ export function a3($$s, $$item, $$index) {
   $$b.set($$s, 1, $$index);
 }
 export function u9($$s) {
-  $$b.text($$s, 0, row($$b.get($$s, 1)));
+  $$b.text($$s, 0, (($$p) => {
+let label = $$b.get($$p, 2);
+function row(index: number) {
+  let $$html = '';
+  const $$s2 = $$ctx.scope(2, $$p);
+  $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+  $$ctx.slots($$s2, [index]);
+  return $$b.raw($$html);
+}
+return row($$b.get($$s, 1));
+})($$s.p));
 }
 export function u10($$s) {
   $$b.prop($$s, 1, "value", $$b.get($$s, 0));
