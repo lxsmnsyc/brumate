@@ -26,7 +26,20 @@ The prototypes for these are in a scratch profile run. Gains are renders per CPU
 
 ## seroval
 
-These would speed up every seroval user, not only brumate. They are ordered from the smallest change to the largest.
+### Upgrade
+
+[seroval#249](https://github.com/lxsmnsyc/seroval/pull/249) speeds up cross serialization with plugins. seroval's `main` is also 17% to 22% faster than the 1.6.11 that brumate uses, from changes that are not released yet. On a todos-shaped benchmark, a release with both would be 31% to 34% faster than 1.6.11. When it is out:
+
+1. Bump `seroval` and `seroval-plugins` in `packages/brumate`.
+2. Set `skipPlainObjects: true` on every plugin in `src/runtime/serial.ts` that never matches a plain object. That is 6 of the 7 today.
+3. Make raw values instances of a class, and test them with `instanceof`, so `RawPlugin` can skip plain objects too. Today it matches on a symbol key, so it must test every plain object.
+4. Run `pnpm bench --only brumate` and update the numbers in this file.
+
+`assignSharedRefsOnly` from the same PR works only with `crossSerialize`, not `crossSerializeStream`. brumate could use it for a page with nothing pending, where no later record refers back. That record would be about 21% smaller.
+
+### Ideas
+
+These would speed up every seroval user, not only brumate. They are ordered from the smallest change to the largest. Items 1, 2 and 5 are mostly done on seroval's `main`, and items 3, 4 and 6 are in the PR above.
 
 1. Check short strings with one regex before the loop over characters. `serializeString` only does this for strings of 64 characters or more, and most keys and values are shorter.
 2. Cache the serialized form of property keys. `serializeProperty` runs `Number(key)`, `toString()` and the identifier regex for every key of every object, and keys repeat.
