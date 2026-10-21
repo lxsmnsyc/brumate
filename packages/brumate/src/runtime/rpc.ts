@@ -26,5 +26,5 @@ export async function call(prefix: string, id: string, args: unknown[]): Promise
     }
     throw Object.assign(new Error(message), { name: 'ServerError', status: response.status });
   }
-  return fromJSON(await response.json(), { plugins });
+  return fromJSON(await response.json(), { plugins, disabledFeatures });
 }

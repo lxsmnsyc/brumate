@@ -42,7 +42,7 @@ The checker turns each `.brm` file into TypeScript. The scripts are copied, and 
 - The props of components. A prop with the wrong type is reported at the prop, and a missing prop at the tag. The props type is the type argument of `$props<T>()`.
 - Event handlers on elements. The event has the type of its name, such as `MouseEvent` for `onClick`, and `event.currentTarget` is the element, such as `HTMLInputElement` for `<input>`.
 - `#for` items and indexes, `#catch` errors and `reset`, and `#template` parameters, in the blocks that declare them.
-- Values that the page state sends to the client. A signal or memo that client code reads must hold values that seroval can write: plain data, `Date`, `Map`, `Set`, promises of them, and components. A function, or an instance of a class with methods, is reported at its declaration:
+- Values that the page state sends to the client. A signal or memo that client code reads must hold values that seroval can write: plain data, `Date`, `Map`, `Set`, promises of them, and components. A function, an instance of a class with methods, or a regular expression is reported at its declaration:
 
 ```html
 <script>

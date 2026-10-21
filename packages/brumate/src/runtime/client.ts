@@ -9,7 +9,7 @@ import {
   spread as spreadText,
 } from './html.ts';
 import type { Raw } from './html.ts';
-import { ElementReference, FunctionReference, plugins } from './shared.ts';
+import { ElementReference, FunctionReference, disabledFeatures, plugins } from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -102,6 +102,7 @@ function readRecord(script: Element): void {
   }
   const value = fromCrossJSON<PageState>(JSON.parse(script.textContent!), {
     plugins,
+    disabledFeatures,
     refs: refs.get(root)!,
   });
   // Records with scopes: the page state, and the state of each `#loading` body.

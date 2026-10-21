@@ -112,3 +112,12 @@ describe('calls from other sites', () => {
     expect(isCrossSite(post({ origin: 'null' }))).toBe(true);
   });
 });
+
+describe('regular expressions', () => {
+  it('refuses a call that sends a regular expression', async () => {
+    // seroval writes it when the feature is on, as a client could.
+    const response = await call('whoami', [/a+$/]);
+    expect(response?.status).toBe(500);
+    expect(await response?.json()).toEqual({ error: 'The server function failed' });
+  });
+});

@@ -113,10 +113,14 @@ export const plugins: Plugin<any, any>[] = [
 ];
 
 /**
- * Errors keep their name and message only. A stack trace would show the
- * server's files and code to the browser.
+ * Features that are off in both directions:
+ *
+ * - Errors keep their name and message only. A stack trace would show the
+ *   server's files and code to the browser.
+ * - Regular expressions are not sent. A pattern from a client could take
+ *   the server a long time to match, and reading one is refused as well.
  */
-export const disabledFeatures: number = Feature.ErrorPrototypeStack;
+export const disabledFeatures: number = Feature.ErrorPrototypeStack | Feature.RegExp;
 
 /** The state of one scope in the page. */
 export interface ScopeState {

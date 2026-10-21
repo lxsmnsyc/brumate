@@ -21,6 +21,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     // Values that the page state sends to the client, which it cannot serialize.
     "Sent.brm(16,7): error TS2345: Argument of type 'Point' is not assignable to parameter of type 'Point & { x: number; move: { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }; }'.",
     "Sent.brm(17,7): error TS2345: Argument of type '(value: number) => string' is not assignable to parameter of type '((value: number) => string) & { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }'.",
+    "Sent.brm(19,7): error TS2345: Argument of type 'RegExp' is not assignable to parameter of type 'RegExp & { 'A regular expression cannot be sent to the client. Send its source and flags': never; }'.",
   ]);
   expect(result.status).not.toBe(0);
 });

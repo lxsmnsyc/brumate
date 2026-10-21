@@ -57,7 +57,7 @@ Anything that client code reads must be serialized. The supported types are:
 
 - Primitives, including `bigint`, `undefined`, `NaN` and `Infinity`.
 - Plain objects and arrays. Shared and cyclic references are kept.
-- `Date`, `RegExp`, `Map`, `Set`, `URL`, `URLSearchParams` and typed arrays.
+- `Date`, `Map`, `Set`, `URL`, `URLSearchParams` and typed arrays. Regular expressions are not sent, because a pattern from a client could take the server a long time to match. Send the source and the flags instead.
 - Signals and memos, as references to a scope slot.
 - Elements, as references to their marker.
 - Client functions, such as handlers, server function stubs and module exports, as references to a chunk and an export name.

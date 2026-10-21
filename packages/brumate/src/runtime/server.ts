@@ -875,7 +875,7 @@ export async function handleRPC(
   if (!fn) {
     throw new Error(`Unknown server function "${id}"`);
   }
-  const args = fromJSON<unknown[]>(body, { plugins });
+  const args = fromJSON<unknown[]>(body, { plugins, disabledFeatures });
   return toJSONAsync(await fn(...args), { plugins, disabledFeatures });
 }
 

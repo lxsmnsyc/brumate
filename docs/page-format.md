@@ -134,6 +134,7 @@ type PageState = Record<number, {
 
 - The slot order is the declaration order of the scope's slots in the compiled plan. Client modules read slots by index.
 - Errors keep their name and message only. Their stack traces would show the server's files.
+- Regular expressions are not written or read, in the page state or in server function calls.
 - Shared and cyclic references are kept. A `#for` item's slot points to the same object as the list in its parent's slot.
 - The records of a render that starts above 0, with the `base` option, have `data-root`, the base. The client keeps the references of each root apart.
 - The first record of a page has `data-next`, a number above every scope and boundary ID. A page rendered by routes also has `data-route`, the key of its root route.
