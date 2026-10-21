@@ -1,0 +1,207 @@
+<script>
+  import type { RouteParams } from 'brumate/routes';
+  import { getEvent, parse, redirect } from 'brumate/server';
+  import {
+    $action,
+    $context,
+    $effect,
+    $id,
+    $isPending,
+    $memo,
+    $optimistic,
+    $props,
+    $signal,
+    $title,
+  } from 'brumate/signals';
+  import IssueLink from '../../IssueLink.brm';
+  import Labels from '../../Labels.brm';
+  import { getIssue, listIssues } from '../../issues.ts';
+  import { IssueId } from '../../schema.ts';
+  import { session } from '../../session.ts';
+  import { changeIssue, log, removeIssue } from '../../store.ts';
+  import { CurrentUser } from '../../user.ts';
+
+  const { params } = $props<{ params: RouteParams<'/issues/[id]'> }>();
+  const user = $context(CurrentUser);
+
+  // A missing issue throws a 404, and _error.brm renders in place of the page.
+  const issue = $memo(getIssue(params.id));
+  $title(`#${issue.id} ${issue.title}`);
+
+  async function toggle(form: FormData) {
+    'use server';
+    const event = getEvent();
+    const id = await parse(IssueId, form.get('id'));
+    const name = (await session.get(event))?.name ?? 'Someone';
+    const changed = changeIssue(id, { open: form.get('open') === 'true' });
+    if (changed) {
+      log(`${name} ${changed.open ? 'reopened' : 'closed'} #${id}`);
+    }
+    // The memos that read the issue and the list load again.
+    event.refresh(getIssue);
+    event.refresh(listIssues);
+  }
+
+  async function remove(form: FormData) {
+    'use server';
+    const event = getEvent();
+    const user = await session.get(event);
+    if (!user) {
+      redirect('/sign-in');
+    }
+    const id = await parse(IssueId, form.get('id'));
+    removeIssue(id);
+    log(`${user.name} deleted #${id}`);
+    redirect('/');
+  }
+
+  // The form posts without loading a page once scripts run.
+  const toggled = $action(toggle);
+  // Closing shows at once. The issue that the server sends after replaces the guess.
+  let current = $optimistic(issue);
+
+  let confirming = $signal(false);
+  let cancel = $signal<HTMLButtonElement>();
+  const title = $id();
+
+  // The dialog takes the focus when it opens, so Esc and Tab work from there.
+  $effect(() => {
+    if (confirming) {
+      cancel?.focus();
+    }
+  });
+</script>
+
+<window onKeyDown=((event) => event.key === 'Escape' && (confirming = false)) />
+
+<p class="back"><a href="/">All issues</a></p>
+<h1>{current.title} <span class="number">#{current.id}</span></h1>
+<p class="meta">
+  <span class={ state: true, open: current.open }>{current.open ? 'Open' : 'Closed'}</span>
+  {current.author === user ? 'You' : current.author} opened it on {current.created.slice(0, 10)}.
+  <Labels labels=current.labels />
+</p>
+#if (current.body) {
+  <p class="body">{current.body}</p>
+}
+
+<div class="actions">
+  <form action=toggle onSubmit=(() => (current = { ...current, open: !current.open }))>
+    <input type="hidden" name="id" value=issue.id>
+    <!-- The server state, not the guess, so a second click while it posts asks for the same change. -->
+    <input type="hidden" name="open" value=(String(!issue.open))>
+    <button disabled=($isPending(toggled))>{current.open ? 'Close issue' : 'Reopen issue'}</button>
+  </form>
+  #if (user) {
+    <!-- Without scripts the button deletes at once. With them, it asks first. -->
+    <form action=remove>
+      <input type="hidden" name="id" value=issue.id>
+      <button class="danger" onClick:prevent=(() => (confirming = true))>Delete</button>
+    </form>
+  }
+</div>
+
+#if (issue.related.length > 0) {
+  <h2>Related</h2>
+  <ul class="related">
+    #for (id of issue.related by id) {
+      #try {
+        <IssueLink id=id />
+      } #catch {
+        <li class="gone">#{id} was deleted</li>
+      }
+    }
+  </ul>
+}
+
+#if (confirming) {
+  #portal {
+    <div class="backdrop">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby=title>
+        <h2 id=title>Delete #{issue.id}?</h2>
+        <p>“{issue.title}” goes away for everyone.</p>
+        <form action=remove>
+          <input type="hidden" name="id" value=issue.id>
+          <button class="danger">Delete</button>
+          <button ref=cancel type="button" onClick=(() => (confirming = false))>Cancel</button>
+        </form>
+      </div>
+    </div>
+  }
+}
+
+<style>
+  .back {
+    margin-top: 0;
+  }
+  h1 {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .number {
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--muted);
+  }
+  .state {
+    padding: 0 0.6em;
+    border-radius: 1em;
+    background: #6e7781;
+    color: #fff;
+  }
+  .open {
+    background: #1a7f37;
+  }
+  .body {
+    white-space: pre-wrap;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--soft);
+    cursor: pointer;
+  }
+  .danger {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .related {
+    padding-left: 1.2rem;
+  }
+  .gone {
+    color: var(--muted);
+  }
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(0 0 0 / 40%);
+  }
+  .dialog {
+    width: min(100%, 24rem);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: var(--paper);
+  }
+  .dialog h2 {
+    margin-top: 0;
+  }
+  .dialog form {
+    display: flex;
+    gap: 0.5rem;
+  }
+</style>

@@ -1,0 +1,11 @@
+<script>
+  import { href } from 'brumate/routes';
+  import { $memo, $props } from 'brumate/signals';
+  import { getIssue } from './issues.ts';
+
+  // Throws while it renders when the issue is gone. The #try around it shows that.
+  const { id } = $props<{ id: number }>();
+  const issue = $memo(getIssue(id));
+</script>
+
+<li><a href=(href('/issues/[id]', { id: String(issue.id) }))>#{issue.id} {issue.title}</a></li>

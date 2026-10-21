@@ -1,0 +1,32 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { labels } = $props<{ labels: string[] }>();
+</script>
+
+#for (label of labels) {
+  <span class=(['label', label])>{label}</span>
+}
+
+<style>
+  .label {
+    display: inline-block;
+    padding: 0 0.45em;
+    border-radius: 1em;
+    background: var(--soft);
+    font-size: 0.8em;
+    line-height: 1.6;
+  }
+  .bug {
+    background: #fde2e1;
+    color: #8a1c17;
+  }
+  .feature {
+    background: #dff3e4;
+    color: #17572a;
+  }
+  .docs {
+    background: #e2ebfd;
+    color: #1d3f8a;
+  }
+</style>

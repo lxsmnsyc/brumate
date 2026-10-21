@@ -9,17 +9,6 @@
 </script>
 
 <style>
-  /* A todo is a button, so a keyboard can toggle it too. */
-  :global(.todo) {
-    padding: 0;
-    border: 0;
-    background: none;
-    font: inherit;
-    cursor: pointer;
-  }
-  :global(.done .todo) {
-    text-decoration: line-through;
-  }
   .page {
     display: flex;
     gap: 2rem;
@@ -32,12 +21,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
     <nav><a href="/">Todos</a> | <a href=(href('/counter/[start]', { start: '10' }))>Counter</a> | <a href="/guestbook">Guestbook</a>
       <button class="toggle" onClick=(() => (wide = !wide))>{wide ? 'Narrow' : 'Wide'}</button>
     </nav>
-    <div class=(wide ? 'page wide' : 'page')>
+    <div class={ page: true, wide }>
       <main>{children}</main>
       <aside>{aside}</aside>
     </div>

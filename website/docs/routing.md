@@ -238,4 +238,4 @@ const response = await handle(request, {
 
 It returns `undefined` when no route matches and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404. [Deploying](./deploying.md) shows a full server for development and production.
 
-[`examples/todos`](../../examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page.
+[`examples/todos`](../../examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](../../examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.

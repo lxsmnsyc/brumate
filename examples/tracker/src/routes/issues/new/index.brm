@@ -1,0 +1,88 @@
+<script>
+  import { href } from 'brumate/routes';
+  import { fieldErrors, getEvent, parseForm, redirect } from 'brumate/server';
+  import { $action, $isPending, $title } from 'brumate/signals';
+  import { LABELS } from '../../../labels.ts';
+  import { NewIssue } from '../../../schema.ts';
+  import { session } from '../../../session.ts';
+  import { addIssue } from '../../../store.ts';
+
+  $title('New issue');
+
+  async function create(form: FormData) {
+    'use server';
+    const event = getEvent();
+    const user = await session.get(event);
+    // The middleware guards the page, but not this call, which posts to /_brumate.
+    if (!user) {
+      redirect('/sign-in?next=/issues/new');
+    }
+    const result = await parseForm(NewIssue, form);
+    if (result.issues) {
+      // Without scripts the page renders again, so send back the title that was typed.
+      return { errors: fieldErrors(result.issues), title: String(form.get('title') ?? '') };
+    }
+    const issue = addIssue({ ...result.value, author: user.name });
+    redirect(href('/issues/[id]', { id: String(issue.id) }));
+  }
+
+  const result = $action(create);
+</script>
+
+<h1>New issue</h1>
+<form action=create>
+  <label>
+    Title
+    <input name="title" value=(result?.title ?? '') aria-invalid=(result?.errors.title ? 'true' : undefined)>
+  </label>
+  #if (result?.errors.title) {
+    <p class="error" role="alert">{result.errors.title[0]}</p>
+  }
+  <label>
+    Description
+    <textarea name="body" rows="5"></textarea>
+  </label>
+  <fieldset>
+    <legend>Labels</legend>
+    #for (label of LABELS) {
+      <label class="check"><input type="checkbox" name="labels[]" value=label> {label}</label>
+    }
+  </fieldset>
+  #if (result?.errors.labels) {
+    <p class="error" role="alert">{result.errors.labels[0]}</p>
+  }
+  <button disabled=($isPending(result))>Open the issue</button>
+</form>
+
+<style>
+  form {
+    display: grid;
+    gap: 0.75rem;
+    max-width: 32rem;
+  }
+  label {
+    display: grid;
+  }
+  input,
+  textarea,
+  button {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+  }
+  fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .check {
+    display: flex;
+    gap: 0.3rem;
+  }
+  button {
+    justify-self: start;
+  }
+</style>

@@ -56,3 +56,17 @@
 
 <h2>Counter</h2>
 <Counter start=3 />
+
+<style>
+  /* A todo is a button, so a keyboard can toggle it too. */
+  .todo {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+  }
+  .done .todo {
+    text-decoration: line-through;
+  }
+</style>

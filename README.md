@@ -54,7 +54,9 @@ pnpm build
 pnpm --filter example-todos dev
 ```
 
-[`examples/todos`](./examples/todos) renders a todo list and a counter on the server. In the browser, only the loader runs before the first click.
+[`examples/todos`](./examples/todos) renders a todo list and a counter on the server. In the browser, only the loader runs until the page loads.
+
+[`examples/tracker`](./examples/tracker) is a small issue tracker with sign-in, middleware, form validation, optimistic updates, streaming and a prerendered page. Run it with `pnpm --filter example-tracker dev`.
 
 ## Documents
 

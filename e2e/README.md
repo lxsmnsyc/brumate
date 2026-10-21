@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,nitro` runs only these suites.
+- `--only website,todos,tracker,nitro` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -41,6 +41,21 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - The counter counts after a navigation, and the todos work after going back.
 - Signing the guestbook calls a server function and refreshes the list. An empty name shows the error.
 - A link clicked before the core loads navigates, and the page works after it.
+
+`tracker` serves the production build of `examples/tracker` under the same policy. The prerendered `/about` is served as a file, without a policy, because its scripts have no nonce.
+
+- The list renders, and the activity feed streams in.
+- The search and the status filter the list.
+- A star shows before the server answers, while the call is held back, and stays after it.
+- `/issues/new` sends a visitor who is not signed in to the sign-in page, through the middleware.
+- Signing in with a short name shows an error. Signing in goes back to `/issues/new`.
+- A short title shows its error, then a valid issue opens on its page.
+- Closing an issue shows before the server answers.
+- Delete opens a dialog that takes the focus. Esc closes it, and confirming deletes the issue.
+- A related issue that is gone shows the `#catch` of its `#try`.
+- Links and the back button load pages without a full page load, and `/about` opens from a link and as a file.
+- No page is wider than 320 px on a phone.
+- Without scripts, signing in works, and a short title shows its error with the title kept.
 
 `nitro` serves the Node build of `examples/nitro` with `node .output/server/index.mjs`.
 

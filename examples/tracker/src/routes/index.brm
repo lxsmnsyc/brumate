@@ -1,0 +1,155 @@
+<script>
+  import { href } from 'brumate/routes';
+  import { getEvent } from 'brumate/server';
+  import { $context, $memo, $optimistic, $produce, $signal, $title } from 'brumate/signals';
+  import Labels from '../Labels.brm';
+  import { issueFilter } from '../filter.brm.ts';
+  import type { Status } from '../filter.brm.ts';
+  import { listIssues, toggleStar } from '../issues.ts';
+  import { CurrentUser } from '../user.ts';
+
+  $title('Issues');
+  const user = $context(CurrentUser);
+
+  const issues = $memo(listIssues());
+  // A star shows at once. The list that the server sends after the change replaces the guess.
+  let shown = $optimistic(issues);
+
+  // Without scripts, the search form loads /?q=…&status=…, and the page starts with them.
+  const search = new URL(getEvent().request.url).searchParams;
+  const { query, status, visible, counts, setQuery, setStatus } = issueFilter(
+    shown,
+    search.get('q') ?? '',
+    search.get('status') ?? 'open',
+  );
+
+  let field = $signal<HTMLInputElement>();
+
+  async function star(id: number) {
+    $produce(shown, (draft) => {
+      const issue = draft.find((item) => item.id === id);
+      if (issue) {
+        issue.starred = !issue.starred;
+      }
+    });
+    await toggleStar(id);
+  }
+
+  // `/` jumps to the search field, unless the user is typing somewhere.
+  function shortcut(event: KeyboardEvent) {
+    const target = event.target as HTMLElement;
+    if (event.key === '/' && !target.closest('input, textarea, select')) {
+      event.preventDefault();
+      field?.focus();
+    }
+  }
+</script>
+
+<window onKeyDown=shortcut />
+
+<h1>Issues</h1>
+<form class="filters" role="search" onSubmit:prevent=(() => field?.blur())>
+  <input
+    ref=field
+    type="search"
+    name="q"
+    value=query
+    placeholder="Search"
+    aria-label="Search issues"
+    onInput=((event) => setQuery(event.currentTarget.value))
+  >
+  <select name="status" aria-label="Status" onChange=((event) => setStatus(event.currentTarget.value as Status))>
+    <option value="open" selected=(status === 'open')>Open ({counts.open})</option>
+    <option value="closed" selected=(status === 'closed')>Closed ({counts.closed})</option>
+    <option value="all" selected=(status === 'all')>All</option>
+  </select>
+  <button>Search</button>
+</form>
+
+<ul class="issues">
+  #for (issue of visible by issue.id) {
+    <li class={ closed: !issue.open }>
+      <button
+        class={ star: true, on: issue.starred }
+        aria-label=(`Star #${issue.id}`)
+        aria-pressed=(String(issue.starred))
+        onClick=(() => star(issue.id))
+      >{issue.starred ? '★' : '☆'}</button>
+      <div>
+        <a href=(href('/issues/[id]', { id: String(issue.id) }))>{issue.title}</a>
+        <p class="meta">
+          #{issue.id} by {issue.author === user ? 'you' : issue.author}
+          <Labels labels=issue.labels />
+        </p>
+      </div>
+    </li>
+  } #else {
+    <li class="empty">No issues match.</li>
+  }
+</ul>
+
+<style>
+  h1 {
+    margin-top: 0;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .filters input {
+    flex: 1 1 10rem;
+    min-width: 0;
+  }
+  input,
+  select,
+  button {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+  }
+  .issues {
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .issues li {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+  }
+  .issues li + li {
+    border-top: 1px solid var(--line);
+  }
+  .issues a {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .closed a {
+    color: var(--muted);
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .star {
+    align-self: start;
+    border: 0;
+    padding: 0 0.2rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .on {
+    color: #c98a00;
+  }
+  .empty {
+    color: var(--muted);
+  }
+</style>

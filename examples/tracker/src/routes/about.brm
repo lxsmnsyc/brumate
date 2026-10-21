@@ -1,0 +1,20 @@
+<script>
+  import { $title } from 'brumate/signals';
+
+  $title('About');
+</script>
+
+<h1>About</h1>
+<p>
+  A small issue tracker, built to show the parts of brumate working together. The server
+  renders every page, and the browser loads the code of a button only when it is used.
+</p>
+<p>
+  This page has no data, so the build writes it as a static file. The other pages render on
+  each request.
+</p>
+<h2>Shortcuts</h2>
+<ul>
+  <li><kbd>/</kbd> searches the issues.</li>
+  <li><kbd>Esc</kbd> closes a dialog.</li>
+</ul>

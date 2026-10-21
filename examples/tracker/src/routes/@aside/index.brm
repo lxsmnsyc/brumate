@@ -1,0 +1,29 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { listActivity } from '../../issues.ts';
+
+  // Slow on purpose: the rest of the page does not wait for it.
+  const activity = $memo(listActivity());
+</script>
+
+<h2>Activity</h2>
+#loading {
+  <ol class="feed">
+    #for (item of activity by item.id) {
+      <li>{item.text}</li>
+    }
+  </ol>
+} #else {
+  <p>Loading the activity…</p>
+}
+
+<style>
+  h2 {
+    margin-top: 0;
+    font-size: 1rem;
+  }
+  .feed {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

@@ -1,0 +1,159 @@
+<script>
+  import { getEvent, redirect } from 'brumate/server';
+  import { $memo, $props, $provide } from 'brumate/signals';
+  import { currentUser } from '../issues.ts';
+  import { session } from '../session.ts';
+  import { CurrentUser } from '../user.ts';
+
+  // `children` is the page, and `aside` is the @aside route for the same path.
+  const { children, aside } = $props();
+
+  // Every page below reads the user with $context(CurrentUser).
+  const user = $memo(currentUser());
+  $provide(CurrentUser, user);
+
+  async function signOut() {
+    'use server';
+    session.clear(getEvent());
+    redirect('/');
+  }
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Tracker</a>
+      <nav>
+        <a href="/">Issues</a>
+        <a href="/issues/new">New issue</a>
+        <a href="/about">About</a>
+      </nav>
+      #if (user) {
+        <form class="user" action=signOut>
+          <span>{user}</span>
+          <button>Sign out</button>
+        </form>
+      } #else {
+        <a class="user" href="/sign-in">Sign in</a>
+      }
+    </header>
+    <div class="page">
+      <main>{children}</main>
+      <aside>{aside}</aside>
+    </div>
+  </body>
+</html>
+
+<style>
+  :global(:root) {
+    --ink: #1f2328;
+    --muted: #59636e;
+    --line: #d8dee4;
+    --soft: #eef1f4;
+    --paper: #fff;
+    --accent: #0b5cad;
+    --danger: #b42318;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root) {
+      --ink: #e6e8eb;
+      --muted: #9aa4af;
+      --line: #3a4048;
+      --soft: #262b31;
+      --paper: #16191d;
+      --accent: #6cb0f5;
+      --danger: #f97066;
+    }
+  }
+  :global(*, *::before, *::after) {
+    box-sizing: border-box;
+  }
+  :global(body) {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+  :global(a) {
+    color: var(--accent);
+  }
+  :global(button, input, textarea, select) {
+    font: inherit;
+    color: inherit;
+  }
+  :global(.error) {
+    margin: 0.25rem 0 0;
+    color: var(--danger);
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    /* The header stays in place while the page changes. */
+    view-transition-name: header;
+  }
+  .brand {
+    font-weight: 700;
+    color: inherit;
+    text-decoration: none;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+  }
+  .user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 16rem;
+    gap: 2rem;
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  aside {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  @media (max-width: 40rem) {
+    .page {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  /* The back and forward buttons slide the page instead of fading it. */
+  :global(html:active-view-transition-type(traverse)::view-transition-old(root)) {
+    animation: slide-out 0.2s ease-in;
+  }
+  :global(html:active-view-transition-type(traverse)::view-transition-new(root)) {
+    animation: slide-in 0.2s ease-out;
+  }
+  @keyframes slide-out {
+    to {
+      opacity: 0;
+      translate: 2rem 0;
+    }
+  }
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      translate: -2rem 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*)) {
+      animation: none;
+    }
+  }
+</style>

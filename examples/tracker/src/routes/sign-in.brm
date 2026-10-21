@@ -1,0 +1,58 @@
+<script>
+  import { fieldErrors, getEvent, parseForm, redirect } from 'brumate/server';
+  import { $action, $isPending, $title } from 'brumate/signals';
+  import { SignInForm } from '../schema.ts';
+  import { session } from '../session.ts';
+
+  $title('Sign in');
+  // The middleware of a guarded page sends the user here with the page to go back to.
+  const next = new URL(getEvent().request.url).searchParams.get('next') ?? '/';
+
+  async function signIn(form: FormData) {
+    'use server';
+    const event = getEvent();
+    const result = await parseForm(SignInForm, form);
+    if (result.issues) {
+      return { errors: fieldErrors(result.issues) };
+    }
+    await session.set(event, { name: result.value.name });
+    redirect(result.value.next);
+  }
+
+  const result = $action(signIn);
+</script>
+
+<h1>Sign in</h1>
+<p>There is no password. The name is only kept in a signed cookie.</p>
+<form action=signIn>
+  <input type="hidden" name="next" value=next>
+  <label>
+    Name
+    <input name="name" autocomplete="name">
+  </label>
+  #if (result?.errors.name) {
+    <p class="error" role="alert">{result.errors.name[0]}</p>
+  }
+  <button disabled=($isPending(result))>Sign in</button>
+</form>
+
+<style>
+  form {
+    display: grid;
+    gap: 0.5rem;
+    max-width: 20rem;
+  }
+  label {
+    display: grid;
+  }
+  input,
+  button {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+  }
+  button {
+    justify-self: start;
+  }
+</style>
