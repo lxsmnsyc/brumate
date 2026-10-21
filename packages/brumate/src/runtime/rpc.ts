@@ -33,6 +33,11 @@ export async function submit(prefix: string, id: string, form: FormData): Promis
 
 /** Reads the answer of a server function: its result, a redirect or an error. */
 async function answer(id: string, response: Response): Promise<unknown> {
+  // The server functions whose memos load again, from `refresh` on the server. The core listens.
+  const refreshed = response.headers.get('x-brumate-refresh');
+  if (refreshed) {
+    document.dispatchEvent(new CustomEvent('brumate:refresh', { detail: refreshed.split(',') }));
+  }
   const location = response.headers.get('x-brumate-redirect');
   if (location !== null) {
     window.location.assign(location);

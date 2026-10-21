@@ -67,6 +67,8 @@ export interface Declaration {
   propKey?: string;
   /** For `const result = $action(fn)`, the name of the server function. */
   action?: string;
+  /** True for a server function that a server function refreshes with `refresh(fn)`. */
+  refreshed?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** Elements whose `ref` targets this declaration. */

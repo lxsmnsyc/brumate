@@ -34,6 +34,11 @@ export interface Graph {
   diagnostics: Diagnostic[];
 }
 
+/** Memos that a server function refreshes are live, so they have client code. */
+function isMemoKind(kind: DeclarationKind): boolean {
+  return kind === 'memo' || kind === 'async-memo';
+}
+
 const SOURCE_KINDS = new Set<DeclarationKind>([
   'context',
   'signal',
@@ -279,6 +284,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         declaration.kind === 'context' ||
         // A form writes the result of its server function.
         declaration.kind === 'action' ||
+        // A server function can ask the client to load the memo again.
+        (isMemoKind(declaration.kind) &&
+          [...(declaration.site?.calls ?? [])].some((callee) => callee.refreshed)) ||
         (declaration.kind === 'signal' &&
           (declaration.writes.some((write) => reached.has(write.site)) ||
             declaration.refs.some((ref) => created.has(ref.scope)))) ||

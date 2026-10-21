@@ -6,6 +6,8 @@ export interface ResponseParts {
   headers: Headers;
   /** The status that `setStatus` set. */
   status?: number;
+  /** Server functions that `refresh` named, whose memos the client loads again. */
+  refreshed?: Set<unknown>;
 }
 
 interface RequestContext {
@@ -38,6 +40,17 @@ export function getRequest(): Request {
 /** Returns the headers to add to the response, such as `set-cookie`. */
 export function getResponseHeaders(): Headers {
   return current('getResponseHeaders').response.headers;
+}
+
+/**
+ * Asks the client to load again the memos that call a server function, such
+ * as a list after a server function adds to it. Call it in a server
+ * function. The compiler gives those memos client code, so they can load.
+ */
+export function refresh(fn: (...args: never[]) => unknown): void {
+  const response = current('refresh').response;
+  response.refreshed ??= new Set();
+  response.refreshed.add(fn);
 }
 
 /**

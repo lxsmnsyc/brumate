@@ -4,7 +4,14 @@
 </script>
 
 <script>
+  import { refresh } from 'brumate/server';
+
   $title('Guestbook');
+
+  async function list() {
+    'use server';
+    return [...entries];
+  }
 
   // A form posts here. Without scripts, the page renders again with the result.
   // With the loader, the result arrives without loading a page.
@@ -15,10 +22,13 @@
       return { error: 'Enter a name', signed: entries.length };
     }
     entries.push(name);
+    // The list on the page loads again.
+    refresh(list);
     return { error: '', signed: entries.length };
   }
 
   const result = $action(sign);
+  const names = $memo(list());
 </script>
 
 <h1>Guestbook</h1>
@@ -32,7 +42,7 @@
   <p class="signed">Thanks for signing. {result.signed} people have signed.</p>
 }
 <ul>
-  #for (entry of entries by entry) {
+  #for (entry of names by entry) {
     <li>{entry}</li>
   }
 </ul>

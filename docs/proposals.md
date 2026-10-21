@@ -28,24 +28,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Server
 
-### Refreshing server data after an action
-
-A memo that reads a server function loads again on the client only when the values it reads change. After a server function changes data, such as adding a todo, the memos that show that data keep their old values.
-
-```ts
-async function add(title: string) {
-  'use server';
-  await db.todos.insert({ title });
-  refresh(getTodos);
-}
-
-const todos = $memo(getTodos());
-```
-
-- `refresh(fn)` in a server function marks the memos that call `fn` as stale. The response of the call names them, and the client loads them again.
-- The memos to load again are known at compile time, because the compiler sees which memos call which server functions.
-- It replaces most reasons to reload a page after a form.
-
 ### Server function streams and uploads
 
 - A server function that returns an async iterable streams its values, and a memo that reads it updates with each one. seroval already streams async iterables.

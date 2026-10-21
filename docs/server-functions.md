@@ -150,6 +150,34 @@ A form often needs the answer of its server function, such as an error to show n
 - A `redirect` in the function sends the browser to another page in both cases. A thrown error answers with its message, as other forms do.
 - The fields keep what was typed when the loader sends the form. Without scripts, the page renders again, so return the values that the fields should show.
 
+## Refreshing memos
+
+A memo that calls a server function loads again on the client when the values it reads change. After another server function changes the data, such as adding an entry, call `refresh` with the function that reads it:
+
+```html
+<script>
+  import { refresh } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    return db.entries.all();
+  }
+
+  async function add(name: string) {
+    'use server';
+    await db.entries.insert(name);
+    refresh(list);
+  }
+
+  const entries = $memo(list());
+</script>
+```
+
+- The answer of the call names the refreshed functions, and the client loads every memo on the page that calls them, in any component.
+- The compiler sees `refresh(list)`, so it gives the memos that call `list` client code even when nothing on the client changes them.
+- `refresh` works for server functions of the same file.
+- A form without scripts renders the page again, so its memos are new anyway.
+
 ## Calls from other sites
 
 Server function calls and form posts carry the cookies of the user, so a page of another site must not be able to make them. The server answers 403 to a call from another site:

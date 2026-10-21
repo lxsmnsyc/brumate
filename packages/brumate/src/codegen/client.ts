@@ -137,10 +137,12 @@ class ClientGenerator {
       (name) =>
         `  ${JSON.stringify(name)}: () => import(${JSON.stringify(this.partPath(merged ? 'all' : name))}),`,
     );
+    const refresh = this.refreshTable();
     const entry = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
+      ...(refresh ? [`export const refresh = ${refresh};`] : []),
       'const parts = {',
       ...loaders,
       '};',
@@ -957,6 +959,39 @@ class ClientGenerator {
   }
 
   // Dependency table
+
+  /**
+   * The memos to load again when a server function calls `refresh(fn)`:
+   * by the ID of `fn`, the scope kind and the update of each memo.
+   */
+  private refreshTable(): string | undefined {
+    const table = new Map<string, [number, string][]>();
+    for (const node of this.plan.graph.nodes) {
+      if (node.kind !== 'memo') {
+        continue;
+      }
+      const fn = this.updates.get(node);
+      if (!fn) {
+        continue;
+      }
+      for (const callee of node.site.calls) {
+        if (callee.kind === 'server-function' && callee.refreshed) {
+          const id = `${this.plan.id}#${callee.name}`;
+          const entries = table.get(id) ?? [];
+          entries.push([instanceScope(this.plan, node.declaration.scope).id, fn]);
+          table.set(id, entries);
+        }
+      }
+    }
+    if (table.size === 0) {
+      return undefined;
+    }
+    const items = [...table].map(
+      ([id, entries]) =>
+        `${JSON.stringify(id)}: [${entries.map(([kind, fn]) => `[${kind}, ${JSON.stringify(fn)}]`).join(', ')}]`,
+    );
+    return `{ ${items.join(', ')} }`;
+  }
 
   private table(): string {
     const table = new Map<number, Map<number, [number, string, boolean][]>>();

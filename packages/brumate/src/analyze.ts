@@ -1271,6 +1271,19 @@ class Resolver {
         this.visit(node.argument);
         return;
       case 'CallExpression': {
+        // `refresh(fn)` from brumate/server in a server function: memos that call `fn` load again.
+        if (
+          this.site.kind === 'server-function' &&
+          node.callee.type === 'Identifier' &&
+          node.callee.name === 'refresh' &&
+          lookup(this.site.scope, 'refresh')?.kind === 'import' &&
+          node.arguments[0]?.type === 'Identifier'
+        ) {
+          const target = lookup(this.site.scope, node.arguments[0].name);
+          if (target?.kind === 'server-function') {
+            target.refreshed = true;
+          }
+        }
         if (
           node.callee.type === 'MemberExpression' &&
           !node.callee.computed &&

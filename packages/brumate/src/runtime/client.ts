@@ -29,6 +29,8 @@ export interface ClientModule {
   g: Record<number, Record<number, Update[]>>;
   /** Imports a part of the module. */
   load: (part: string) => Promise<Part>;
+  /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
+  refresh?: Record<string, Update[]>;
 }
 
 /** A part of a client module: one client root, or the updates. */
@@ -267,6 +269,36 @@ let observer: MutationObserver | undefined;
 export function dispose(): void {
   observer?.disconnect();
   observer = undefined;
+  document.removeEventListener('brumate:refresh', onRefresh);
+}
+
+function onRefresh(event: Event): void {
+  refreshMemos((event as CustomEvent<string[]>).detail);
+}
+
+/**
+ * Loads again the memos that call these server functions, after a server
+ * function named them with `refresh`. Each component on the page knows its
+ * own memos, from its client module.
+ */
+function refreshMemos(ids: string[]): void {
+  const roots = [...scopes.values()].filter((scope) => scope.m);
+  for (const root of roots) {
+    void loadModule(root.m!).then(async (module) => {
+      const entries = ids.flatMap((id) => module.refresh?.[id] ?? []);
+      if (entries.length === 0) {
+        return;
+      }
+      const updates = await loadPart(module, 'update');
+      for (const [kind, name] of entries) {
+        for (const target of kind === root.k ? [root] : descendants(root, kind)) {
+          if (scopes.has(target.id)) {
+            (updates[name] as (scope: Scope) => void)(target);
+          }
+        }
+      }
+    });
+  }
 }
 
 /**
@@ -309,6 +341,7 @@ export function init(value: CoreOptions): void {
     }
   });
   observer.observe(document, { childList: true, subtree: true });
+  document.addEventListener('brumate:refresh', onRefresh);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
 }

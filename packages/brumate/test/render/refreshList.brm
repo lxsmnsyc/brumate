@@ -1,0 +1,27 @@
+<script module>
+  const names: string[] = ['Ada'];
+</script>
+
+<script>
+  import { refresh } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    return [...names];
+  }
+
+  async function add(name: string) {
+    'use server';
+    names.push(name);
+    refresh(list);
+  }
+
+  const all = $memo(list());
+</script>
+
+<button class="add" onClick=(() => add('Grace'))>Add</button>
+<ul class="names">
+  #for (name of all by name) {
+    <li>{name}</li>
+  }
+</ul>

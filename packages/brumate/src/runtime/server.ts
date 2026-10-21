@@ -38,6 +38,7 @@ export {
   getResponseHeaders,
   isRedirect,
   redirect,
+  refresh,
   setStatus,
 } from './request.ts';
 export type { Redirect } from './request.ts';
@@ -976,21 +977,22 @@ export async function handleRequest(
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
   const headers = new Headers();
+  const response: ResponseParts = { headers };
   // The loader sends a form of an `$action` with this header, and wants the result, not a page.
   if (isFormPost(request) && !request.headers.has('x-brumate-result')) {
-    return withRequest(request, { headers }, () => handleForm(functions[id]!, request, headers));
+    return withRequest(request, response, () => handleForm(functions[id]!, request, headers));
   }
   if (isFormPost(request)) {
     const form = await request.formData();
-    return withRequest(request, { headers }, () =>
-      answerCall(headers, async () =>
+    return withRequest(request, response, () =>
+      answerCall(functions, response, async () =>
         toJSONAsync(await functions[id]!(form), { plugins, disabledFeatures }),
       ),
     );
   }
   const body = await request.json();
-  return withRequest(request, { headers }, () =>
-    answerCall(headers, () => handleRPC(functions, id, body)),
+  return withRequest(request, response, () =>
+    answerCall(functions, response, () => handleRPC(functions, id, body)),
   );
 }
 
@@ -999,9 +1001,22 @@ export async function handleRequest(
  * redirect is sent as a header, so the client can follow it. An error
  * answers with a message that the client throws.
  */
-async function answerCall(headers: Headers, run: () => Promise<SerovalJSON>): Promise<Response> {
+async function answerCall(
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  functions: Record<string, (...args: any[]) => unknown>,
+  response: ResponseParts,
+  run: () => Promise<SerovalJSON>,
+): Promise<Response> {
+  const { headers } = response;
   try {
     const result = await run();
+    // The client loads again the memos that call the server functions that `refresh` named.
+    const refreshed = Object.keys(functions).filter((key) =>
+      response.refreshed?.has(functions[key]),
+    );
+    if (refreshed.length > 0) {
+      headers.set('x-brumate-refresh', refreshed.join(','));
+    }
     headers.set('content-type', 'application/json');
     return new Response(JSON.stringify(result), { headers });
   } catch (error) {

@@ -732,3 +732,34 @@ describe('$action', () => {
     expect(document.querySelector('.error')).toBeNull();
   });
 });
+
+describe('refresh', () => {
+  it('loads again the memos that call a server function that another one refreshed', async () => {
+    vi.resetModules();
+    const server = await import(file('refreshList.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const { html, state, pending } = await runtime.render(server.default, {});
+    document.body.innerHTML = html + state;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(items()).toEqual(['Ada']);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(items()).toEqual(['Ada', 'Grace']));
+  });
+
+  it('lists the memos to load again in the client entry', () => {
+    const { client } = compile(readFileSync(join(input, 'refreshList.brm'), 'utf8'), {
+      filename: 'refreshList.brm',
+    });
+    expect(client).toMatch(
+      /export const refresh = \{ "RefreshList_\w+#list": \[\[1, "m\d+"\]\] \};/,
+    );
+  });
+});
