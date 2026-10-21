@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- The link preview of the site. Rendered to public/og.png at 1200 by 630. -->
+  <defs>
+    <radialGradient id="glow" cx="0.82" cy="0.18" r="0.75">
+      <stop offset="0" stop-color="#f08a52" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#f08a52" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f6a679"/>
+      <stop offset="1" stop-color="#e8743b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#141210"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <circle cx="108" cy="112" r="26" fill="#e8743b"/>
+  <text x="152" y="126" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="40" font-weight="600" fill="#efe9e2">brumate</text>
+  <text x="80" y="300" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="700" fill="#efe9e2">Web apps that <tspan fill="url(#word)">resume</tspan>,</text>
+  <text x="80" y="398" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="700" fill="#efe9e2">not hydrate.</text>
+  <text x="80" y="470" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="32" fill="#b8ada2">A component language and compiler for the web.</text>
+  <rect x="80" y="520" width="330" height="58" rx="12" fill="#221e1a" stroke="#3a332d"/>
+  <text x="104" y="558" font-family="Menlo, monospace" font-size="26" fill="#efe9e2"><tspan fill="#f08a52">$</tspan> pnpm add brumate</text>
+</svg>

@@ -44,6 +44,8 @@ export type PagePart = { html: unknown } | { files: LiveFile[] };
 
 export interface Page {
   title: string;
+  /** The first paragraph as plain text, for the description of the page in search results and link previews. */
+  description: string;
   parts: PagePart[];
   headings: Heading[];
 }
@@ -204,6 +206,24 @@ function createRenderer(base: string): MarkdownIt {
   return parser;
 }
 
+/** The text of the first paragraph, without markup, cut at about 160 characters. */
+function summary(
+  tokens: { type: string; content: string; children: { content: string }[] | null }[],
+): string {
+  const index = tokens.findIndex((token) => token.type === 'paragraph_open');
+  const inline = index === -1 ? undefined : tokens[index + 1];
+  const text = (inline?.children ?? [])
+    .map((child) => child.content)
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (text.length <= 160) {
+    return text;
+  }
+  const cut = text.slice(0, 157);
+  return `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+}
+
 /** Compiles `.md` imports into pages. */
 export default function markdown(): Plugin {
   let base = '/';
@@ -246,11 +266,12 @@ export default function markdown(): Plugin {
       }
       flush(tokens.length);
       const title = env.headings.find((heading) => heading.level === 1)?.text ?? '';
+      const description = summary(tokens);
       return {
         code: [
           // Resolved from the site, because some documents are outside it.
           `import { raw } from ${JSON.stringify(RAW_MODULE)};`,
-          `export default { title: ${JSON.stringify(title)}, headings: ${JSON.stringify(env.headings)}, parts: [${parts.join(', ')}] };`,
+          `export default { title: ${JSON.stringify(title)}, description: ${JSON.stringify(description)}, headings: ${JSON.stringify(env.headings)}, parts: [${parts.join(', ')}] };`,
         ].join('\n'),
         map: null,
       };

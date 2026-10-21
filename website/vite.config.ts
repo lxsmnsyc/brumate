@@ -46,9 +46,23 @@ function scriptNames(manifest: Record<string, { file: string }>): string {
   return `<script>window.__scriptNames=${JSON.stringify(names).replace(/</g, '\\u003c')}</script>`;
 }
 
+/**
+ * The address of the site, for link previews, which need absolute URLs. `SITE_URL` sets it.
+ * On Vercel it is the production domain of the project.
+ */
+const siteUrl = (
+  process.env.SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : 'http://localhost:5180')
+).replace(/\/$/, '');
+
 export default defineConfig({
   // `BASE` is the path the site is served from, such as `/brumate/`.
   base: process.env.BASE ?? '/',
+  define: {
+    'import.meta.env.SITE_URL': JSON.stringify(siteUrl),
+  },
   plugins: [
     markdown(),
     showcase(),

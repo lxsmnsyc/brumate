@@ -3,6 +3,7 @@
   import { decode, encode, measure, run } from '../playground/compile.ts';
   import { examples } from '../playground/examples.ts';
   import { highlight } from '../playground/highlight.ts';
+  import Meta from '../components/Meta.brm';
 
   $title('Playground | brumate');
 
@@ -30,6 +31,11 @@
 
 </script>
 
+<Meta
+  title="Playground | brumate"
+  description="Write a brumate component and see the server code, the client code and the size of what the browser loads, as you type."
+  path="playground"
+/>
 <main class="playground-page">
   <header class="playground-bar">
     <h1>Playground</h1>

@@ -1,5 +1,6 @@
 <script>
   import { $title } from 'brumate/signals';
+  import Meta from '../components/Meta.brm';
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
   import Counter from '../demos/Counter.brm';
@@ -11,6 +12,11 @@
   $title('brumate: web apps that resume');
 </script>
 
+<Meta
+  title="brumate: web apps that resume"
+  description="A component language and compiler. Components render on the server, and the browser loads the code for an event only when it fires. No hydration."
+  path=""
+/>
 <main class="home">
   <section class="hero">
     <div class="hero-glow" aria-hidden="true"></div>

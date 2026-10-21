@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  /** The address of the site without a trailing slash, such as `https://brumate.dev`. */
+  readonly SITE_URL: string;
+}
+
 declare module '*.brm?inspect' {
   import type { Raw } from 'brumate/html';
 

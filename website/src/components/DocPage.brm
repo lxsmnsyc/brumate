@@ -2,6 +2,7 @@
   import { $props, $title } from 'brumate/signals';
   import { pages, sections } from '../docs.ts';
   import LiveSample from './LiveSample.brm';
+  import Meta from './Meta.brm';
 
   const { slug } = $props<{ slug: string }>();
   const base = import.meta.env.BASE_URL;
@@ -15,6 +16,14 @@
   $title(page ? `${page.title} | brumate` : 'Not found | brumate');
 </script>
 
+#if (page) {
+  <Meta
+    title=(`${page.title} | brumate`)
+    description=page.description
+    path=(slug ? `docs/${slug}` : 'docs')
+    type="article"
+  />
+}
 <div class="docs">
   <details class="sidebar-toggle">
     <summary>Menu</summary>
