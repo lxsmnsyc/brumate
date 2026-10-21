@@ -201,10 +201,10 @@ describe('compact markup', () => {
     { filename: 'T.brm' },
   );
   /** The markup that the server writes after an element's static attributes. */
-  const after = (name: string): string => server.split(`class=\\"${name}\\"`)[1]!.slice(0, 8);
+  const after = (name: string): string => server.split(`class=\\"${name}\\"`)[1]!.slice(0, 5);
 
   it('leaves out the anchor of an element whose handlers find their scope from an element around it', () => {
-    expect(after('nested')).toBe(' data-on');
+    expect(after('nested')).toBe(' b-on');
   });
 
   it('keeps the anchor where the element around it can be in another scope or place', () => {
@@ -212,13 +212,13 @@ describe('compact markup', () => {
     // elsewhere, and the children of a dynamic tag can render inside a component.
     // The browser ends a `<p>` at a `<div>`, which a component inside it can render.
     for (const name of ['child', 'block', 'portal', 'dynamic', 'top', 'paragraph']) {
-      expect(after(name)).toBe(' data-b=');
+      expect(after(name)).toBe(' b-b=');
     }
   });
 
   it('updates a text that is the whole content of its element through the element', () => {
-    expect(after('only')).toBe(' data-b=');
-    expect(server).toMatch(/class=\\"only\\" data-b=[^]*?\\">" \+ \(typeof/);
+    expect(after('only')).toBe(' b-b=');
+    expect(server).toMatch(/class=\\"only\\" b-b=[^]*?\\">" \+ \(typeof/);
     // Whitespace around the text, or an element whose content is text, keeps the markers.
     expect(server).toContain('<p class=\\"spaced\\"> <!--t');
     expect(server).toContain('<textarea><!--t');
@@ -247,7 +247,7 @@ describe('list items of one element', () => {
     for (const body of ['<li>{row}</li>', '<tr><td>{row}</td></tr>', '<div><b>{row}</b></div>']) {
       const code = listServer(body);
       expect(code).not.toContain('<!--i');
-      expect(code).toMatch(/"<(li|tr|div) data-b=\\"" \+ \$\$s2 \+ ":0\\">/);
+      expect(code).toMatch(/"<(li|tr|div) b-b=\\"" \+ \$\$s2 \+ ":0\\">/);
     }
   });
 

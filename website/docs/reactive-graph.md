@@ -101,7 +101,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   let count = (0);
   const $$p_double = $$b.memo(() => (count * 2));
   const double = await $$b.wait($$p_double);
-  $$html += "<h1>" + await $$b.insert((label), $$ctx, $$s1) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_24o7ge#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></p>";
+  $$html += "<h1>" + await $$b.insert((label), $$ctx, $$s1) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_24o7ge#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count, double]);
   return $$html;
 }

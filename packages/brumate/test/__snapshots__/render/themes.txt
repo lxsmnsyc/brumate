@@ -11,7 +11,7 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
   let theme = ('dark');
   let show = (false);
   $$ctx.provide(Theme, theme, $$s1);
-  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
+  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
   if (show) {
     $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div><!--/b-->";
   } else {
@@ -75,7 +75,7 @@ export default function Themes($$props: Record<string, never>): string {
   let theme = ('dark');
   let show = (false);
   $$b.provideValue(Theme, theme, $$s1);
-  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div>";
+  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div>";
   if (show) {
     $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div><!--/b-->";
   } else {
@@ -86,13 +86,13 @@ export default function Themes($$props: Record<string, never>): string {
 }
 
 # HTML
-<button class="toggle" data-b="0:0" data-on="click=Themes_945372#h3">Toggle</button>
-<button class="show" data-b="0:1" data-on="click=Themes_945372#h4">Show</button>
+<button class="toggle" b-b="0:0" b-on="click=Themes_945372#h3">Toggle</button>
+<button class="show" b-b="0:1" b-on="click=Themes_945372#h4">Show</button>
 <div class="a">
-<span class="themed" data-b="1:0">dark</span>
+<span class="themed" b-b="1:0">dark</span>
 </div>
 <!--b0:2:-1-->
 <!--/b-->
 
 # State
-<script data-state data-scopes data-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Themes_945372",v:$R[2]={theme:"dark"},s:$R[3]=["dark",!1]},1:$R[4]={k:1,m:"Themed_qy9qd3",o:0,x:$R[5]={theme:0},s:$R[6]=["dark"]}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Themes_945372",v:$R[2]={theme:"dark"},s:$R[3]=["dark",!1]},1:$R[4]={k:1,m:"Themed_qy9qd3",o:0,x:$R[5]={theme:0},s:$R[6]=["dark"]}})))</script>

@@ -19,9 +19,9 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     $$html += "<b>" + (typeof ($$t = $$b.insert((n * 10), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</b>";
     return $$b.raw($$html);
   }
-  $$html += "<template data-b=\"" + $$s1 + ":0\" data-client=\"idle=Blocks_jlmev2#c4\"></template><template data-b=\"" + $$s1 + ":1\" data-listen=\"window\" data-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
+  $$html += "<template b-b=\"" + $$s1 + ":0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-b=\"" + $$s1 + ":1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
   input = $$ctx.element($$s1, 2);
-  $$html += " value=\"x\" title=\"a &amp; b\" data-b=\"" + $$s1 + ":2\">";
+  $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
   if (tab === 'a') {
     $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
   } else {
@@ -37,7 +37,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$ctx.scope(5, $$s1);
-      $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + (typeof ($$t = $$b.insert((i), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + (typeof ($$t = $$b.insert((item), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
+      $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + (typeof ($$t = $$b.insert((i), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + (typeof ($$t = $$b.insert((item), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></li>";
       $$ctx.slots($$s5, [item, i], ["item","i"]);
       $$ctx.item($$s5, $$item1);
     }
@@ -72,7 +72,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     const error = $$error10;
     $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   }
-  $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$ctx.scope(12, $$s1);
     const $$children11 = await (async () => {
@@ -80,7 +80,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       $$html += "Dynamic";
       return $$b.raw($$html);
     })();
-    $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
+    $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children11, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
   }
   $$html += "<p>" + (typeof ($$t = $$b.insert(('<escaped>'), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert((null), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert((false), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " " + (typeof ($$t = $$b.insert(([1, 2]), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.slots($$s1, [tab, list, input], ["tab","list","input"]);
@@ -162,7 +162,7 @@ export function r5($$p, $$item, $$index) {
   const item = $$item;
   const i = $$index;
   const $$s5 = $$b.createScope(5, $$p);
-  $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
+  $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
   $$b.setSlots($$s5, [item, i]);
   $$b.setItem($$s5, $$item);
   return $$html;
@@ -200,9 +200,9 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$html += "<b>" + $$b.insert((n * 10)) + "</b>";
     return $$b.raw($$html);
   }
-  $$html += "<template data-b=\"" + $$s1 + ":0\" data-client=\"idle=Blocks_jlmev2#c4\"></template><template data-b=\"" + $$s1 + ":1\" data-listen=\"window\" data-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
+  $$html += "<template b-b=\"" + $$s1 + ":0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-b=\"" + $$s1 + ":1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
   input = $$b.elementAt($$s1, 2);
-  $$html += " value=\"x\" title=\"a &amp; b\" data-b=\"" + $$s1 + ":2\">";
+  $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
   if (tab === 'a') {
     $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
   } else {
@@ -218,7 +218,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
       const item = $$item1;
       const i = $$index2;
       const $$s5 = $$b.createScope(5, $$s1);
-      $$html += "<li data-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
+      $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
       $$b.setSlots($$s5, [item, i]);
       $$b.setItem($$s5, $$item1);
     }
@@ -253,7 +253,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const error = $$error10;
     $$html += "<p>" + $$b.insert((String(error))) + "</p>";
   }
-  $$html += "<template data-b=\"" + $$s1 + ":5\" data-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children11 = (() => {
@@ -261,7 +261,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
       $$html += "Dynamic";
       return $$b.raw($$html);
     })();
-    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "data-b": `${$$s12}:0`, "data-on": "click=Blocks_jlmev2#h20" }, $$children11, undefined, $$s12);
+    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children11, undefined, $$s12);
   }
   $$html += "<p>" + $$b.insert(('<escaped>')) + " " + $$b.insert((null)) + " " + $$b.insert((false)) + " " + $$b.insert(([1, 2])) + "</p>";
   $$b.setSlots($$s1, [tab, list, input]);
@@ -269,20 +269,20 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 }
 
 # HTML
-<template data-b="0:0" data-client="idle=Blocks_jlmev2#c4">
+<template b-b="0:0" b-client="idle=Blocks_jlmev2#c4">
 </template>
-<template data-b="0:1" data-listen="window" data-on="keydown=Blocks_jlmev2#h6">
+<template b-b="0:1" b-listen="window" b-on="keydown=Blocks_jlmev2#h6">
 </template>
-<input value="x" title="a &amp; b" data-b="0:2">
+<input value="x" title="a &amp; b" b-b="0:2">
 <!--b0:3:1-->
 <p>B</p>
 <!--/b-->
 <ul>
 <!--b0:4-->
-<li data-b="1:0">
+<li b-b="1:0">
 <!--t1:1-->0<!--/t-->. <!--t1:2-->one<!--/t-->
 </li>
-<li data-b="2:0">
+<li b-b="2:0">
 <!--t2:1-->1<!--/t-->. <!--t2:2-->two<!--/t-->
 </li>
 <!--/b-->
@@ -292,12 +292,12 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 <b>0</b>
 <b>10</b>
 <p>Error: Broken</p>
-<template data-b="0:5" data-client="idle=Blocks_jlmev2#k11">
+<template b-b="0:5" b-client="idle=Blocks_jlmev2#k11">
 </template>
 <!--b0:5-->
 <!--/b-->
-<section style="font-size:12px" data-b="3:0" data-on="click=Blocks_jlmev2#h20">Dynamic</section>
+<section style="font-size:12px" b-b="3:0" b-on="click=Blocks_jlmev2#h20">Dynamic</section>
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script data-state data-scopes data-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Blocks_jlmev2",s:$R[2]=["b",$R[3]=["one","two"],$R[4]=$b.e(0,2)]},3:$R[5]={k:12,p:0},g:$R[6]=[$R[7]=[5,0,1,2,1,"one",0,1,"two",1]]})))</script>
+<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Blocks_jlmev2",s:$R[2]=["b",$R[3]=["one","two"],$R[4]=$b.e(0,2)]},3:$R[5]={k:12,p:0},g:$R[6]=[$R[7]=[5,0,1,2,1,"one",0,1,"two",1]]})))</script>

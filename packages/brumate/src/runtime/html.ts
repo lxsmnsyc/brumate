@@ -127,7 +127,7 @@ export function vars(variables: Record<string, unknown>, own: unknown): string {
 
 /** Returns a `<style>` element for a component's stylesheet. */
 export function styleElement(id: string, css: string): string {
-  return `<style data-brm="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
+  return `<style b-style="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
 }
 
 /** Renders an object of attributes. */
@@ -173,7 +173,7 @@ export function actionAttributes(
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.
-    return ` ${name}="?__action=${encodeURIComponent(id)}"${methodText} data-action="${escapeAttribute(id)}" data-result="${escapeAttribute(result)}"`;
+    return ` ${name}="?__action=${encodeURIComponent(id)}"${methodText} b-action="${escapeAttribute(id)}" b-result="${escapeAttribute(result)}"`;
   }
   const url = `${prefix}/${encodeURIComponent(id)}`;
   return ` ${name}="${escapeAttribute(url)}"${methodText}`;

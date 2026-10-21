@@ -45,11 +45,11 @@ interface Entry {
   ref: string;
 }
 
-// Parsed `data-on` values, so repeated events do not parse them again.
+// Parsed `b-on` values, so repeated events do not parse them again.
 const parsed = new Map<string, Entry[]>();
 
 export function entries(element: Element): Entry[] {
-  const value = element.getAttribute('data-on') ?? '';
+  const value = element.getAttribute('b-on') ?? '';
   return (parsed.get(value) ??
     parsed
       .set(
@@ -66,7 +66,8 @@ export function entries(element: Element): Entry[] {
       .get(value))!;
 }
 
-function strategy(element: Element): string {
+/** The `prefetch` strategy of an element, from its `data-prefetch`. */
+export function strategy(element: Element): string {
   return element.getAttribute('data-prefetch') ?? 'hover';
 }
 
@@ -97,7 +98,7 @@ export interface Navigation {
 }
 
 /**
- * Starts resuming the page. Listens to the events in `data-on` attributes
+ * Starts resuming the page. Listens to the events in `b-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
  * `navigate` adds client navigation, and returns how to import the core.
  * Returns a function that removes the listeners and stops the core.
@@ -147,10 +148,13 @@ export function boot(
       event.preventDefault();
     }
     if (entry.modifiers.includes('once')) {
-      const rest = (element.getAttribute('data-on') ?? '')
-        .split(' ')
-        .filter((item) => item !== entry.raw);
-      element.setAttribute('data-on', rest.join(' '));
+      element.setAttribute(
+        'b-on',
+        entries(element)
+          .map((item) => item.raw)
+          .filter((raw) => raw !== entry.raw)
+          .join(' '),
+      );
     }
     run(element, entry.ref, event);
     return entry.modifiers.includes('stop');
@@ -163,7 +167,7 @@ export function boot(
       node && node !== document;
       node = node.parentNode
     ) {
-      if (node.nodeType !== 1 || !(node as Element).hasAttribute('data-on')) {
+      if (node.nodeType !== 1 || !(node as Element).hasAttribute('b-on')) {
         continue;
       }
       let stop = false;
@@ -227,7 +231,7 @@ export function boot(
         visible.observe(element);
       }
     }
-    for (const element of select(root, '[data-on]:not(template)')) {
+    for (const element of select(root, '[b-on]:not(template)')) {
       for (const { type } of entries(element)) {
         if (!types.has(type)) {
           types.add(type);
@@ -238,14 +242,14 @@ export function boot(
         visible?.observe(element);
       }
     }
-    for (const template of select(root, 'template[data-listen]')) {
-      const target = template.getAttribute('data-listen') === 'window' ? window : document;
+    for (const template of select(root, 'template[b-listen]')) {
+      const target = template.getAttribute('b-listen') === 'window' ? window : document;
       for (const entry of entries(template)) {
         listen(target, entry.type, (event) => apply(event, template, entry));
       }
     }
-    for (const template of select(root, 'template[data-client]')) {
-      const [trigger, ref] = template.getAttribute('data-client')!.split('=') as [string, string];
+    for (const template of select(root, 'template[b-client]')) {
+      const [trigger, ref] = template.getAttribute('b-client')!.split('=') as [string, string];
       const go = (): void => run(template, ref);
       const next = template.nextElementSibling;
       if (trigger === 'idle') {
@@ -278,7 +282,7 @@ export function boot(
   };
 
   const hover = (event: Event): void => {
-    const element = (event.target as Element).closest?.('[data-on]');
+    const element = (event.target as Element).closest?.('[b-on]');
     if (element && strategy(element) === 'hover') {
       preload(element);
     }
@@ -289,7 +293,7 @@ export function boot(
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {
     const form = event.target as HTMLFormElement;
-    if (event.defaultPrevented || !form.hasAttribute?.('data-result')) {
+    if (event.defaultPrevented || !form.hasAttribute?.('b-result')) {
       return;
     }
     event.preventDefault();

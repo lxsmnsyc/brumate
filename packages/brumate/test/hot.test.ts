@@ -16,7 +16,7 @@ function hotContext(): HotContext & { send: (updates: HotUpdate[]) => void } {
 
 describe('hot updates', () => {
   it('replaces the styles of a component that changed', () => {
-    document.head.innerHTML = '<style data-brm="Card_1">p{color:red}</style>';
+    document.head.innerHTML = '<style b-style="Card_1">p{color:red}</style>';
     const hot = hotContext();
     hotLoad(hot, vi.fn<(id: string) => Promise<never>>());
     hot.send([{ id: 'Card_1', css: 'p{color:blue}' }]);

@@ -10,7 +10,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   let count = (0);
   const $$p_double = $$b.memo(() => (count * 2), $$ctx);
   const double = (($$t = $$b.ready($$p_double)) instanceof Promise ? await $$t : $$t);
-  $$html += "<h1>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
+  $$html += "<h1>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count, double], ["count","double"]);
   return $$html;
 }
@@ -57,17 +57,17 @@ export default function Counter($$props: Record<string, never>): string {
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
-  $$html += "<h1>" + $$b.insert((label)) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
+  $$html += "<h1>" + $$b.insert((label)) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
   $$b.setSlots($$s1, [count, double]);
   return $$html;
 }
 
 # HTML
 <h1>Clicks</h1>
-<button data-b="0:0" data-on="click=Counter_m86gta#h4">+</button>
+<button b-b="0:0" b-on="click=Counter_m86gta#h4">+</button>
 <p>
 <!--t0:1-->0<!--/t--> / <!--t0:2-->0<!--/t-->
 </p>
 
 # State
-<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Counter_m86gta",s:$R[2]=[0,0]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Counter_m86gta",s:$R[2]=[0,0]}})))</script>

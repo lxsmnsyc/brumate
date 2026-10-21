@@ -54,7 +54,7 @@ export function hotLoad(
     const changed: string[] = [];
     for (const update of updates) {
       if (update.css !== undefined) {
-        const style = document.querySelector(`style[data-brm="${CSS.escape(update.id)}"]`);
+        const style = document.querySelector(`style[b-style="${CSS.escape(update.id)}"]`);
         if (style) {
           style.textContent = update.css;
         }

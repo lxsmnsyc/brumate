@@ -85,26 +85,26 @@ function dropScopes(core: Core, roots: Set<number>): void {
 /**
  * Reads the attributes that navigation set on a state record. A page whose
  * IDs started at another number, such as a prerendered file, has them moved
- * with `data-offset`. A page that replaced only some routes of the one before
- * it drops the old routes with `data-drop`, and adds only the scopes inside
- * `data-roots`, with the scopes of the kept layouts in place of the new
- * page's copies of them, by `data-alias`.
+ * with `b-offset`. A page that replaced only some routes of the one before
+ * it drops the old routes with `b-drop`, and adds only the scopes inside
+ * `b-roots`, with the scopes of the kept layouts in place of the new
+ * page's copies of them, by `b-alias`.
  */
 function routeRecord(core: Core, script: Element, state: PageState): PageState {
   // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
-  const offset = Number(script.getAttribute('data-offset') ?? 0);
+  const offset = Number(script.getAttribute('b-offset') ?? 0);
   const value = offset ? shiftState(core, state, offset) : state;
-  const drop = script.getAttribute('data-drop');
+  const drop = script.getAttribute('b-drop');
   if (drop) {
     dropScopes(core, new Set(drop.split(',').map(Number)));
   }
-  const list = script.getAttribute('data-roots');
+  const list = script.getAttribute('b-roots');
   if (list === null) {
     return value;
   }
   const roots = new Set(list.split(',').filter(Boolean).map(Number));
   const alias = new Map<number, number>();
-  for (const pair of (script.getAttribute('data-alias') ?? '').split(',').filter(Boolean)) {
+  for (const pair of (script.getAttribute('b-alias') ?? '').split(',').filter(Boolean)) {
     const [from, to] = pair.split(':').map(Number) as [number, number];
     alias.set(from, to);
   }

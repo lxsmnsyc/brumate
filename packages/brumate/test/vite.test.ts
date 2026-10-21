@@ -45,7 +45,7 @@ describe('vite plugin', () => {
   it('compiles .brm files for the server', async () => {
     const module = await server.ssrLoadModule('/counter.brm');
     const { html } = await render(module.default, {});
-    expect(html).toContain('data-on="click=Counter_m86gta#h4"');
+    expect(html).toContain('b-on="click=Counter_m86gta#h4"');
   });
 
   it('compiles .brm files for the client, without types', async () => {

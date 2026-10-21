@@ -66,3 +66,18 @@ describe('compile-time functions', () => {
     expect(Object.values(result.parts).join('')).toContain('$$b.update(');
   });
 });
+
+describe('reserved attributes', () => {
+  it('rejects element attributes that start with b-', () => {
+    expect(() => compile('<p b-on="click">Hi</p>', { filename: 'Test.brm' })).toThrow(
+      '"b-on" is reserved',
+    );
+    expect(() =>
+      compile('<script>\nconst id = 1;\n</script>\n<p b-b={id}>Hi</p>', { filename: 'Test.brm' }),
+    ).toThrow('"b-b" is reserved');
+  });
+
+  it('accepts data attributes and component props', () => {
+    expect(() => compile('<p data-on="click">Hi</p>', { filename: 'Test.brm' })).not.toThrow();
+  });
+});

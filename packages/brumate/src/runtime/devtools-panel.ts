@@ -219,7 +219,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     if (scope === undefined) {
       return;
     }
-    for (const target of document.querySelectorAll(`[data-b^="${scope}:"]`)) {
+    for (const target of document.querySelectorAll(`[b-b^="${scope}:"]`)) {
       const rect = target.getBoundingClientRect();
       const box = element('div', {
         class: 'outline',
@@ -232,14 +232,14 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
 
   // Pick: the next click on the page selects the scope of its element.
   const onPick = (event: MouseEvent): void => {
-    const target = (event.target as Element | null)?.closest?.('[data-b]');
+    const target = (event.target as Element | null)?.closest?.('[b-b]');
     if (!target || event.composedPath().includes(panel!)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
     stopPicking();
-    selectedScope = Number(target.getAttribute('data-b')!.split(':')[0]);
+    selectedScope = Number(target.getAttribute('b-b')!.split(':')[0]);
     const scope = state.scopes?.get(selectedScope);
     selected = scope ? rootOf(scope).m : selected;
     tab = 'scopes';

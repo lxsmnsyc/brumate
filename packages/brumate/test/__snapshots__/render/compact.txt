@@ -10,7 +10,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
   const { initial } = $$props;
   let rows = (initial);
   let picks = (0);
-  $$html += "<button class=\"reverse\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" data-b=\"" + $$s1 + ":3\" data-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" data-b=\"" + $$s1 + ":4\" data-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
+  $$html += "<button class=\"reverse\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
   {
     const $$list0v = ( rows );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -24,13 +24,13 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
           item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
         );
       }
-      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " data-b=\"" + $$s2 + ":0\"><span class=\"label\" data-b=\"" + $$s2 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</span><i class=\"note\" data-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((row.note), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</i><button class=\"rename\" data-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((row.note), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
       $$ctx.slots($$s2, [row], ["row"]);
       $$ctx.item($$s2, $$item1);
     }
     if ($$list0.length === 0) {
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " data-b=\"" + $$s3 + ":0\">Nothing</li>";
+      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
     }
     $$html += "<!--/b-->";
   }
@@ -43,7 +43,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
       const $$item4 = $$list3[$$index5];
       const row = $$item4;
       const $$s4 = $$ctx.scope(4, $$s1);
-      $$html += "<!--i" + $$s4 + "--><dt data-b=\"" + $$s4 + ":0\">" + (typeof ($$t = $$b.insert((row.id), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dt><dd data-b=\"" + $$s4 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dd>";
+      $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + (typeof ($$t = $$b.insert((row.id), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dd>";
       $$ctx.slots($$s4, [row], ["row"]);
       $$ctx.item($$s4, $$item4);
       $$html += "<!--/i-->";
@@ -151,7 +151,7 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " data-b=\"" + $$s2 + ":0\"><span class=\"label\" data-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" data-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" data-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+  $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
   $$b.setSlots($$s2, [row]);
   $$b.setItem($$s2, $$item);
   return $$html;
@@ -160,14 +160,14 @@ export function r3($$p) {
   let $$html = '';
   let picks = $$b.get($$p, 1);
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " data-b=\"" + $$s3 + ":0\">Nothing</li>";
+  $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
   return $$html;
 }
 export function r4($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<!--i" + $$s4 + "--><dt data-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd data-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
+  $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
   $$b.setSlots($$s4, [row]);
   $$b.setItem($$s4, $$item);
   $$html += "<!--/i-->";
@@ -184,7 +184,7 @@ export default function Compact($$props: { initial: Row[] }): string {
   const { initial } = $$props;
   let rows = (initial);
   let picks = (0);
-  $$html += "<button class=\"reverse\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" data-b=\"" + $$s1 + ":2\" data-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" data-b=\"" + $$s1 + ":3\" data-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" data-b=\"" + $$s1 + ":4\" data-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
+  $$html += "<button class=\"reverse\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
   {
     const $$list0v = ( rows );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -198,13 +198,13 @@ export default function Compact($$props: { initial: Row[] }): string {
           item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
         );
       }
-      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " data-b=\"" + $$s2 + ":0\"><span class=\"label\" data-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" data-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" data-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+      $$html += "<li" + $$b.attribute("class", ({ marked: row.label.endsWith('!') })) + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
       $$b.setSlots($$s2, [row]);
       $$b.setItem($$s2, $$item1);
     }
     if ($$list0.length === 0) {
       const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " data-b=\"" + $$s3 + ":0\">Nothing</li>";
+      $$html += "<li" + $$b.attribute("class", ({ empty: true, odd: picks % 2 === 1 })) + " b-b=\"" + $$s3 + ":0\">Nothing</li>";
     }
     $$html += "<!--/b-->";
   }
@@ -217,7 +217,7 @@ export default function Compact($$props: { initial: Row[] }): string {
       const $$item4 = $$list3[$$index5];
       const row = $$item4;
       const $$s4 = $$b.createScope(4, $$s1);
-      $$html += "<!--i" + $$s4 + "--><dt data-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd data-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
+      $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
       $$b.setSlots($$s4, [row]);
       $$b.setItem($$s4, $$item4);
       $$html += "<!--/i-->";
@@ -230,38 +230,38 @@ export default function Compact($$props: { initial: Row[] }): string {
 }
 
 # HTML
-<button class="reverse" data-b="0:0" data-on="click=Compact_omhyaj#h2">Reverse</button>
-<button class="drop" data-b="0:1" data-on="click=Compact_omhyaj#h3">Drop</button>
-<button class="clear" data-b="0:2" data-on="click=Compact_omhyaj#h4">Clear</button>
-<button class="add" data-b="0:3" data-on="click=Compact_omhyaj#h5">Add</button>
-<button class="pick" data-b="0:4" data-on="click=Compact_omhyaj#h6">Pick</button>
+<button class="reverse" b-b="0:0" b-on="click=Compact_omhyaj#h2">Reverse</button>
+<button class="drop" b-b="0:1" b-on="click=Compact_omhyaj#h3">Drop</button>
+<button class="clear" b-b="0:2" b-on="click=Compact_omhyaj#h4">Clear</button>
+<button class="add" b-b="0:3" b-on="click=Compact_omhyaj#h5">Add</button>
+<button class="pick" b-b="0:4" b-on="click=Compact_omhyaj#h6">Pick</button>
 <ul>
 <!--b0:5-->
-<li data-b="1:0">
-<span class="label" data-b="1:1">One</span>
-<i class="note" data-b="1:2">
+<li b-b="1:0">
+<span class="label" b-b="1:1">One</span>
+<i class="note" b-b="1:2">
 </i>
-<button class="rename" data-on="click=Compact_omhyaj#h13">Rename</button>
+<button class="rename" b-on="click=Compact_omhyaj#h13">Rename</button>
 </li>
-<li data-b="2:0">
-<span class="label" data-b="2:1">Two</span>
-<i class="note" data-b="2:2">2</i>
-<button class="rename" data-on="click=Compact_omhyaj#h13">Rename</button>
+<li b-b="2:0">
+<span class="label" b-b="2:1">Two</span>
+<i class="note" b-b="2:2">2</i>
+<button class="rename" b-on="click=Compact_omhyaj#h13">Rename</button>
 </li>
 <!--/b-->
 </ul>
 <ol>
 <!--b0:6-->
 <!--i3-->
-<dt data-b="3:0">1</dt>
-<dd data-b="3:1">One</dd>
+<dt b-b="3:0">1</dt>
+<dd b-b="3:1">One</dd>
 <!--/i-->
 <!--i4-->
-<dt data-b="4:0">2</dt>
-<dd data-b="4:1">Two</dd>
+<dt b-b="4:0">2</dt>
+<dd b-b="4:1">Two</dd>
 <!--/i-->
 <!--/b-->
 </ol>
 
 # State
-<script data-state data-scopes data-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Compact_omhyaj",s:$R[2]=[$R[3]=[$R[4]={id:"1",label:"One",note:""},$R[5]={id:"2",label:"Two",note:2}],0]},g:$R[6]=[$R[7]=[2,0,1,1,1,$R[4],1,$R[5]],$R[8]=[4,0,1,1,3,$R[4],1,$R[5]]]})))</script>
+<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Compact_omhyaj",s:$R[2]=[$R[3]=[$R[4]={id:"1",label:"One",note:""},$R[5]={id:"2",label:"Two",note:2}],0]},g:$R[6]=[$R[7]=[2,0,1,1,1,$R[4],1,$R[5]],$R[8]=[4,0,1,1,3,$R[4],1,$R[5]]]})))</script>

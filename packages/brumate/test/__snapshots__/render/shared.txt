@@ -12,7 +12,7 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + ": <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
+  $$html += "<button class=\"one\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + ": <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }
@@ -74,16 +74,16 @@ export default function Shared($$props: Record<string, never>): string {
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
+  $$html += "<button class=\"one\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
   $$b.setSlots($$s1, [count]);
   return $$html;
 }
 
 # HTML
-<button class="one" data-b="0:0" data-on="click=Shared_1xpln25#h2">One</button>
-<button class="two" data-b="0:1" data-on="click=Shared_1xpln25#h3">Two</button>
+<button class="one" b-b="0:0" b-on="click=Shared_1xpln25#h2">One</button>
+<button class="two" b-b="0:1" b-on="click=Shared_1xpln25#h3">Two</button>
 <p>Count: <!--t0:2-->0<!--/t-->
 </p>
 
 # State
-<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Shared_1xpln25",s:$R[2]=[0]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Shared_1xpln25",s:$R[2]=[0]}})))</script>

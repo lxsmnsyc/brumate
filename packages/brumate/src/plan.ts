@@ -36,7 +36,7 @@ export interface Plan {
    */
   contents: Set<Markup>;
   /**
-   * Lists whose item bodies are one element. The element's `data-b` marks
+   * Lists whose item bodies are one element. The element's `b-b` marks
    * the item, in place of `<!--i…-->` and `<!--/i-->`.
    */
   elementItems: Set<Block>;

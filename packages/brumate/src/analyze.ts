@@ -857,6 +857,17 @@ class Analyzer {
     const tag =
       node.kind === 'element' ? node.tag : node.kind === 'component' ? node.name : 'dynamic';
     for (const attribute of node.attributes) {
+      if (
+        !isComponent &&
+        (attribute.kind === 'static' || attribute.kind === 'value') &&
+        attribute.name.startsWith('b-')
+      ) {
+        this.report(
+          'error',
+          `"${attribute.name}" is reserved. Brumate writes the attributes that start with "b-"`,
+          attribute,
+        );
+      }
       switch (attribute.kind) {
         case 'static':
         case 'prefetch':

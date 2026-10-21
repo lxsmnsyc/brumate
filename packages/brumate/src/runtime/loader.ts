@@ -1,12 +1,12 @@
 import type * as Routes from './client-routes.ts';
-import { boot, importCore } from './boot.ts';
+import { boot, importCore, strategy } from './boot.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
 
 export type { LoaderOptions, NavigateOptions } from './boot.ts';
 export { startWithoutNavigation } from './static-loader.ts';
 
 /**
- * Starts resuming the page. Listens to the events in `data-on` attributes
+ * Starts resuming the page. Listens to the events in `b-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
  * Returns a function that removes the listeners and stops the core.
  */
@@ -16,7 +16,7 @@ export function start(options: LoaderOptions): () => void {
 
 /** Starts loading the page of a link, unless the link asks not to. */
 function prefetch(link: HTMLAnchorElement | undefined): void {
-  if (link && link.getAttribute('data-prefetch') !== 'none') {
+  if (link && strategy(link) !== 'none') {
     void import('./navigate.ts').then((module) => module.prefetch(link.href));
   }
 }
@@ -68,8 +68,7 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
     const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
     return link &&
       !link.target &&
-      !link.hasAttribute('download') &&
-      !link.hasAttribute('data-reload') &&
+      !link.matches('[download],[data-reload]') &&
       link.origin === location.origin &&
       // A link to a place in the same page scrolls there.
       !(link.hash && link.href.split('#')[0] === page)
@@ -130,8 +129,7 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
     }
   });
   return () =>
-    Promise.all([
-      importCore(),
-      document.querySelector('[data-offset],[data-roots]') && routes(),
-    ]).then(([client]) => client);
+    Promise.all([importCore(), document.querySelector('[b-offset],[b-roots]') && routes()]).then(
+      ([client]) => client,
+    );
 }

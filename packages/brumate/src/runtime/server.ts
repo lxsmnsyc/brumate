@@ -755,28 +755,28 @@ export function stateScript(
     throw new Error('A state record would end its script');
   }
   let extra = attributes.nonce === undefined ? '' : ` nonce="${escapeAttribute(attributes.nonce)}"`;
-  extra += ' data-state';
+  extra += ' b-state';
   if (scopes) {
-    extra += ' data-scopes';
+    extra += ' b-scopes';
   }
   if (attributes.next !== undefined) {
-    extra += ` data-next="${attributes.next}"`;
+    extra += ` b-next="${attributes.next}"`;
   }
   // Records of a render that starts above 0 name it, so their references stay apart from other renders.
   if (attributes.root) {
-    extra += ` data-root="${attributes.root}"`;
+    extra += ` b-root="${attributes.root}"`;
   }
   if (attributes.route !== undefined) {
-    extra += ` data-route="${escapeAttribute(attributes.route)}"`;
+    extra += ` b-route="${escapeAttribute(attributes.route)}"`;
   }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
 
 // Moves the head markup of a `#loading` body into the head, and sets the title.
-const HEAD = `function $bH(i,t){var e=document.querySelector('template[data-h="'+i+'"]');e&&(document.head.append(e.content),e.remove());t!=null&&(document.title=t)}`;
+const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+'"]');e&&(document.head.append(e.content),e.remove());t!=null&&(document.title=t)}`;
 
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
-const SWAP = `function $bS(i){var t=document.querySelector('template[data-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
 export interface RenderResult {
   /** The markup. A `#loading` body that is not ready shows its fallback. */
@@ -951,14 +951,14 @@ export async function render<P>(
           const late = result.ctx.lateHead();
           let head = '';
           if (late.html || late.title !== undefined) {
-            head = `<template data-h="${boundary.id}">${late.html}</template>`;
+            head = `<template b-h="${boundary.id}">${late.html}</template>`;
             const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
             call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
             headSwap = true;
           }
           queue.push(
             // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
-            `<template data-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
+            `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
           );
         });
         finish();

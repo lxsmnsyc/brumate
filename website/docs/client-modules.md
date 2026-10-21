@@ -13,7 +13,7 @@ import 'virtual:brumate/start';
 
 The loader:
 
-- Listens on `document` to the events named in `data-on` attributes, and walks from the target outwards to find a handler.
+- Listens on `document` to the events named in `b-on` attributes, and walks from the target outwards to find a handler.
 - Applies event modifiers, such as `:prevent`, before anything loads.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
 - Preloads the code of an element's handlers according to its `prefetch` attribute.
@@ -27,7 +27,7 @@ On the first event, the loader imports the core, `brumate/client`, and the clien
 - Reads the state records that the page's scripts handed over, and links each scope to its parent.
 - Calls the handler with the scope of its element.
 - Writes slots, and runs the updates that read them.
-- Finds elements by `data-b`, and text and blocks by their comment markers.
+- Finds elements by `b-b`, and text and blocks by their comment markers.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
 

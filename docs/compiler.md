@@ -30,7 +30,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
-  $$html += "<h1>" + await $$b.insert((label)) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double)) + "<!--/t--></p>";
+  $$html += "<h1>" + await $$b.insert((label)) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double)) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count, double]);
   return $$html;
 }
@@ -126,7 +126,7 @@ The runtime has two parts.
 The loader, `brumate/loader`:
 
 - Is the only code that runs before the first interaction.
-- Listens to the events in `data-on` attributes on `document`, and walks from the target outwards.
+- Listens to the events in `b-on` attributes on `document`, and walks from the target outwards.
 - Applies event modifiers before anything loads.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
 - Preloads a component's module and the handler's part when the pointer is over one of its handlers.
@@ -144,7 +144,7 @@ The core, `brumate/client`, loads on the first event:
 
 - Reads the state records that the page's scripts handed over, and links scope instances to their parents. It does not include seroval.
 - Writes slots and calls the updates in `g`.
-- Finds elements by `data-b`, and text, blocks and list items by their comment markers. A text that is the whole content of an element, and a list item that is one element, are found by the element's `data-b`. A handler on an element without `data-b` runs with the scope of the nearest element around it that has one.
+- Finds elements by `b-b`, and text, blocks and list items by their comment markers. A text that is the whole content of an element, and a list item that is one element, are found by the element's `b-b`. A handler on an element without `b-b` runs with the scope of the nearest element around it that has one.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
 - Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRequest` from `brumate/server` answers them. The code for these calls is a separate chunk that loads on the first call.

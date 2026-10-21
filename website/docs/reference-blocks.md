@@ -92,6 +92,8 @@ Modifiers apply before the handler's code loads, so they work on the first event
 
 `ref` and `prefetch` are reserved on elements only. On components, they are ordinary props.
 
+Attribute names that start with `b-` are reserved on elements, because brumate writes them into the page. Using one is a compile error.
+
 ## Special elements
 
 | Element                                 | Meaning                                                                                         |

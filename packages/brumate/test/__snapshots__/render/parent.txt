@@ -72,13 +72,13 @@ export default function Parent($$props: Record<string, never>): string {
 }
 
 # HTML
-<button data-b="1:0" data-on="click=Child_108vasc#h0">1</button>
+<button b-b="1:0" b-on="click=Child_108vasc#h0">1</button>
 <div class="slot">
 <em>Count</em>
 </div>
-<button data-b="2:0" data-on="click=Child_108vasc#h0">5</button>
+<button b-b="2:0" b-on="click=Child_108vasc#h0">5</button>
 <div class="slot">
 </div>
 
 # State
-<script data-state data-scopes data-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Parent_4bs4t8",c:$R[2]={0:1},s:$R[3]=[1]},1:$R[4]={k:1,m:"Child_108vasc",o:0,s:$R[5]=[1,$R[6]=$b.f("Parent_4bs4t8#h3",0)]},2:$R[7]={k:1,m:"Child_108vasc",o:0,s:$R[8]=[5,$R[9]=$b.f("Parent_4bs4t8#h6",0)]}})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Parent_4bs4t8",c:$R[2]={0:1},s:$R[3]=[1]},1:$R[4]={k:1,m:"Child_108vasc",o:0,s:$R[5]=[1,$R[6]=$b.f("Parent_4bs4t8#h3",0)]},2:$R[7]={k:1,m:"Child_108vasc",o:0,s:$R[8]=[5,$R[9]=$b.f("Parent_4bs4t8#h6",0)]}})))</script>

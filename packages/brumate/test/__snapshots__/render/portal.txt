@@ -7,13 +7,13 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Portal_17ywlhi");
   let open = (false);
-  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
+  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
   if (open) {
     $$html += "<!--b" + $$s1 + ":1:0-->";
     const $$portal0 = await (async () => {
       let $$html = '';
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
       return $$html;
     })();
     $$ctx.portal($$portal0);
@@ -28,7 +28,7 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
     return $$html;
   })();
   $$ctx.portal($$portal1);
-  $$html += "</div><section id=\"target\"></section><template data-b=\"" + $$s1 + ":2\" data-client=\"load=Portal_17ywlhi#k5\"></template>";
+  $$html += "</div><section id=\"target\"></section><template b-b=\"" + $$s1 + ":2\" b-client=\"load=Portal_17ywlhi#k5\"></template>";
   $$ctx.slots($$s1, [open], ["open"]);
   return $$html;
 }
@@ -70,7 +70,7 @@ export function r2($$p) {
   const $$portal0 = (() => {
     let $$html = '';
     const $$s3 = $$b.createScope(3, $$p);
-    $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+    $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
     return $$html;
   })();
   $$b.addPortal($$portal0);
@@ -93,13 +93,13 @@ export default function Portal($$props: Record<string, never>): string {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Portal_17ywlhi");
   let open = (false);
-  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
+  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
   if (open) {
     $$html += "<!--b" + $$s1 + ":1:0-->";
     const $$portal0 = (() => {
       let $$html = '';
       const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" data-b=\"" + $$s3 + ":0\" data-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
+      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
       return $$html;
     })();
     $$b.addPortal($$portal0);
@@ -114,24 +114,24 @@ export default function Portal($$props: Record<string, never>): string {
     return $$html;
   })();
   $$b.addPortal($$portal1);
-  $$html += "</div><section id=\"target\"></section><template data-b=\"" + $$s1 + ":2\" data-client=\"load=Portal_17ywlhi#k5\"></template>";
+  $$html += "</div><section id=\"target\"></section><template b-b=\"" + $$s1 + ":2\" b-client=\"load=Portal_17ywlhi#k5\"></template>";
   $$b.setSlots($$s1, [open]);
   return $$html;
 }
 
 # HTML
-<button class="toggle" data-b="0:0" data-on="click=Portal_17ywlhi#h1">Toggle</button>
+<button class="toggle" b-b="0:0" b-on="click=Portal_17ywlhi#h1">Toggle</button>
 <div class="host">
 <!--b0:1:-1-->
 <!--/b-->
 </div>
 <section id="target">
 </section>
-<template data-b="0:2" data-client="load=Portal_17ywlhi#k5">
+<template b-b="0:2" b-client="load=Portal_17ywlhi#k5">
 </template>
 <!--P1-->
 <p class="note">Always here</p>
 <!--/P-->
 
 # State
-<script data-state data-scopes data-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Portal_17ywlhi",s:$R[2]=[!1]},1:$R[3]={k:4,p:0}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Portal_17ywlhi",s:$R[2]=[!1]},1:$R[3]={k:4,p:0}})))</script>

@@ -116,14 +116,14 @@ describe('streaming', () => {
 
     const first = await reader.read();
     expect(first.value).toMatch(
-      /^<body><p>Hi<\/p><script data-state data-scopes data-next="1">function \$bR[^]*<\/script>/,
+      /^<body><p>Hi<\/p><script b-state b-scopes b-next="1">function \$bR[^]*<\/script>/,
     );
     // `end` is part of the first render too.
     expect(first.value!.endsWith(`${scripts}</body>`)).toBe(true);
 
     settle('later');
     const second = await reader.read();
-    expect(second.value).toMatch(/^<script data-state>\$bR\([^]*later/);
+    expect(second.value).toMatch(/^<script b-state>\$bR\([^]*later/);
     expect((await reader.read()).done).toBe(true);
   });
 
@@ -168,16 +168,16 @@ describe('documents', () => {
     expect(page.startsWith('<!doctype html><html')).toBe(true);
     // The stylesheet and the title go into the head.
     const head = page.slice(page.indexOf('<head'), page.indexOf('</head>'));
-    expect(head).toContain('<style data-brm=');
+    expect(head).toContain('<style b-style=');
     expect(head).toContain('<title>Count 0</title>');
     // The state, the scripts and the portal are part of the first render, before </body>.
     const body = page.slice(page.indexOf('<body'), page.indexOf('</body>'));
-    expect(body).toMatch(/<script data-state data-scopes data-next="\d+">/);
+    expect(body).toMatch(/<script b-state b-scopes b-next="\d+">/);
     expect(body).toContain(scripts);
     expect(body).toMatch(/<p [^>]*class="note">Portal<\/p>/);
     // The #loading body resolves later, so it follows the document.
     const later = page.slice(page.indexOf('</html>'));
-    expect(later).toMatch(/<template data-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
+    expect(later).toMatch(/<template b-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
   });
 
   it('streams a complete document with renderToStream', async () => {
@@ -228,10 +228,10 @@ describe('#loading', () => {
     for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
       rest += chunk.value;
     }
-    expect(rest).toMatch(/^<template data-l="0"><p class="greeting">Hello Ada<\/p>/);
+    expect(rest).toMatch(/^<template b-l="0"><p class="greeting">Hello Ada<\/p>/);
     // The body moves in first, then its record runs, and the core reads its scopes.
     expect(rest).toMatch(
-      /<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script><script data-state data-scopes data-next="\d+">\$bR\([^]*<\/script>$/,
+      /<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script><script b-state b-scopes b-next="\d+">\$bR\([^]*<\/script>$/,
     );
   });
 
@@ -244,15 +244,13 @@ describe('#loading', () => {
       rest += chunk;
     }
     expect(rest).toContain('<script nonce="a&quot;b">function $bS(i)');
-    expect(rest).toContain('<script nonce="a&quot;b" data-state data-scopes');
+    expect(rest).toContain('<script nonce="a&quot;b" b-state b-scopes');
   });
 
   it('puts the nonce on the page state', async () => {
     const module = await import(new URL('loading.brm.ts', output).href);
     const { state } = await renderParts(module.default, {}, { nonce: 'n1' });
-    expect(state).toMatch(
-      /^<script nonce="n1" data-state data-scopes data-next="\d+">function \$bR/,
-    );
+    expect(state).toMatch(/^<script nonce="n1" b-state b-scopes b-next="\d+">function \$bR/);
   });
 });
 

@@ -77,6 +77,7 @@ Computed        = "[" TS<Expression> "]" [ "=" Value ] ;
 
 - A name that matches `EventName` is always an event. Its `:` segments are modifiers. Any other name can have one `:` namespace, as in `xlink:href`.
 - `ref` and `prefetch` are reserved names on elements. On components they are ordinary props.
+- Names that start with `b-` are reserved on elements, because brumate writes them. Using one is a compile error.
 - Attributes must be separated by whitespace.
 
 ## Attribute values

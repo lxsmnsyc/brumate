@@ -53,8 +53,8 @@ beforeEach(() => {
   vi.stubGlobal('IntersectionObserver', FakeObserver);
   vi.stubGlobal('requestIdleCallback', (callback: () => void) => idle.push(callback));
   document.body.innerHTML = [
-    '<button class="near" data-on="click=Near_1#h0">Near</button>',
-    '<button class="none" data-prefetch="none" data-on="click=None_1#h0">None</button>',
+    '<button class="near" b-on="click=Near_1#h0">Near</button>',
+    '<button class="none" data-prefetch="none" b-on="click=None_1#h0">None</button>',
   ].join('');
 });
 
@@ -104,7 +104,7 @@ describe('idle preload', () => {
     window.dispatchEvent(new Event('load'));
     runIdle();
     const late = document.createElement('button');
-    late.setAttribute('data-on', 'click=Late_1#h0');
+    late.setAttribute('b-on', 'click=Late_1#h0');
     document.body.append(late);
     await vi.waitFor(() => expect(observer().observed.has(late)).toBe(true));
   });

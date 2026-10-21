@@ -65,7 +65,7 @@ The size in the header lets the reader wait for exactly the bytes of one chunk. 
 | `$action` form, without scripts | The browser posts the form to its own page, with `?__action=<ID>`.            | The page, rendered with the result in the `$action`. A `redirect` answers with a redirect.  |
 | `$action` form, with the loader | The loader posts the form data to `<prefix>/<ID>` with `x-brumate-result: 1`. | A value answer, written into the `$action`.                                                 |
 
-An `$action` form carries `data-action="<ID>"` and `data-result="<scope>:<slot>"`, the slot of its `$action`.
+An `$action` form carries `b-action="<ID>"` and `b-result="<scope>:<slot>"`, the slot of its `$action`.
 
 A form post checks where it comes from, as a call does. See [Security](./reference-security.md).
 

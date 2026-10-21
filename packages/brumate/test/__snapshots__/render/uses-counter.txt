@@ -21,7 +21,7 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
       other += STEP;
     }
   const reset = () => (other = base);
-  $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\">" + (typeof ($$t = $$b.insert((other), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><button class=\"base\" data-b=\"" + $$s1 + ":4\" data-on=\"click=UsesCounter_1euyiut#h13\">" + (typeof ($$t = $$b.insert((base), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><button class=\"reset\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
+  $$html += "<button class=\"a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((double), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"b\" b-b=\"" + $$s1 + ":3\" b-on=\"click=UsesCounter_1euyiut#h11\">" + (typeof ($$t = $$b.insert((other), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><button class=\"base\" b-b=\"" + $$s1 + ":4\" b-on=\"click=UsesCounter_1euyiut#h13\">" + (typeof ($$t = $$b.insert((base), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><button class=\"reset\" b-b=\"" + $$s1 + ":5\" b-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
   $$ctx.slots($$s1, [base, count, double, other], ["base","count","double","other"]);
   return $$html;
 }
@@ -109,18 +109,18 @@ export default function UsesCounter($$props: Record<string, never>): string {
       other += STEP;
     }
   const reset = () => (other = base);
-  $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\">" + $$b.insert((other)) + "</button><button class=\"base\" data-b=\"" + $$s1 + ":4\" data-on=\"click=UsesCounter_1euyiut#h13\">" + $$b.insert((base)) + "</button><button class=\"reset\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
+  $$html += "<button class=\"a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></button><button class=\"b\" b-b=\"" + $$s1 + ":3\" b-on=\"click=UsesCounter_1euyiut#h11\">" + $$b.insert((other)) + "</button><button class=\"base\" b-b=\"" + $$s1 + ":4\" b-on=\"click=UsesCounter_1euyiut#h13\">" + $$b.insert((base)) + "</button><button class=\"reset\" b-b=\"" + $$s1 + ":5\" b-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
   $$b.setSlots($$s1, [base, count, double, other]);
   return $$html;
 }
 
 # HTML
-<button class="a" data-b="0:0" data-on="click=UsesCounter_1euyiut#h8">
+<button class="a" b-b="0:0" b-on="click=UsesCounter_1euyiut#h8">
 <!--t0:1-->1<!--/t--> <!--t0:2-->2<!--/t-->
 </button>
-<button class="b" data-b="0:3" data-on="click=UsesCounter_1euyiut#h11">10</button>
-<button class="base" data-b="0:4" data-on="click=UsesCounter_1euyiut#h13">10</button>
-<button class="reset" data-b="0:5" data-on="click=UsesCounter_1euyiut#h15">Reset</button>
+<button class="b" b-b="0:3" b-on="click=UsesCounter_1euyiut#h11">10</button>
+<button class="base" b-b="0:4" b-on="click=UsesCounter_1euyiut#h13">10</button>
+<button class="reset" b-b="0:5" b-on="click=UsesCounter_1euyiut#h15">Reset</button>
 
 # State
-<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"UsesCounter_1euyiut",s:$R[2]=[10,1,2,10]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"UsesCounter_1euyiut",s:$R[2]=[10,1,2,10]}})))</script>

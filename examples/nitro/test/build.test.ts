@@ -51,5 +51,5 @@ it('serves the client entry, and answers a form post with the page', async () =>
     headers: { origin: `http://localhost:${port}` },
   });
   // The page renders again with the new note, in the element that marks its item.
-  expect(await answer.text()).toMatch(/<li data-b="[\d:]+">From the test<\/li>/);
+  expect(await answer.text()).toMatch(/<li b-b="[\d:]+">From the test<\/li>/);
 });

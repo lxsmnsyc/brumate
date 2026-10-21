@@ -152,12 +152,9 @@ export function refreshMemos(ids: string[]): Promise<void> {
  * `submitAction` in the core.
  */
 export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null): Promise<void> {
-  const [scopeId, slot] = form.getAttribute('data-result')!.split(':').map(Number) as [
-    number,
-    number,
-  ];
+  const [scopeId, slot] = form.getAttribute('b-result')!.split(':').map(Number) as [number, number];
   const data = new FormData(form, submitter);
-  const action = form.getAttribute('data-action')!;
+  const action = form.getAttribute('b-action')!;
   return import('./client.ts').then(({ asyncMemo, rpcPrefix, scopes, track }) => {
     const scope = scopes.get(scopeId);
     if (scope) {

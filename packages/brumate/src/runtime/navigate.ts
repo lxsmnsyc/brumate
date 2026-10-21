@@ -39,7 +39,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 
 let controller: AbortController | undefined;
 
-const STATE = 'script[data-state]';
+const STATE = 'script[b-state]';
 const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
 
 /** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
@@ -132,10 +132,10 @@ function between(start: Node, end: Node): Node[] {
  */
 function keepStyles(removed: HTMLStyleElement[]): void {
   for (const style of removed) {
-    const id = style.getAttribute('data-brm')!;
+    const id = style.getAttribute('b-style')!;
     // The component ID ends with the hash that scopes its elements, as `s-<hash>`.
     const attribute = `s-${id.slice(id.lastIndexOf('_') + 1)}`;
-    const present = document.querySelector(`style[data-brm="${CSS.escape(id)}"]`);
+    const present = document.querySelector(`style[b-style="${CSS.escape(id)}"]`);
     if (!present && document.querySelector(`[${attribute}]`)) {
       document.head.append(style);
     }
@@ -155,14 +155,14 @@ function complete(region: Region): boolean {
  * same root route as the current one. Returns undefined when it cannot.
  */
 function planRoutes(next: Document, state: Element | null, requested: number): Plan | undefined {
-  const scripts = document.querySelectorAll(`${STATE}[data-route]`);
-  const route = scripts[scripts.length - 1]?.getAttribute('data-route');
-  if (!route || state?.getAttribute('data-route') !== route) {
+  const scripts = document.querySelectorAll(`${STATE}[b-route]`);
+  const route = scripts[scripts.length - 1]?.getAttribute('b-route');
+  if (!route || state?.getAttribute('b-route') !== route) {
     return undefined;
   }
   // A page that did not start its IDs above this one, such as a static file that
   // ignores the request header, would mix its IDs with the kept layouts.
-  if (state.getAttribute('data-root') !== String(requested)) {
+  if (state.getAttribute('b-root') !== String(requested)) {
     return undefined;
   }
   const result = plan(regions(document.body), regions(next.body), {
@@ -187,10 +187,10 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
     for (const node of nodes) {
       if (node.nodeType === 1) {
         const element = node as Element;
-        if (element.matches('style[data-brm]')) {
+        if (element.matches('style[b-style]')) {
           removed.push(element as HTMLStyleElement);
         }
-        removed.push(...element.querySelectorAll<HTMLStyleElement>('style[data-brm]'));
+        removed.push(...element.querySelectorAll<HTMLStyleElement>('style[b-style]'));
       }
     }
     const parent = before.start.parentNode!;
@@ -203,12 +203,9 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
   }
   keepStyles(removed);
   // The core drops the scopes of the old routes, and adds only the scopes of the new ones.
-  state.setAttribute('data-drop', result.replace.map(([before]) => before.root).join(','));
-  state.setAttribute('data-roots', result.replace.map(([, region]) => region.root).join(','));
-  state.setAttribute(
-    'data-alias',
-    [...result.alias].map(([from, to]) => `${from}:${to}`).join(','),
-  );
+  state.setAttribute('b-drop', result.replace.map(([before]) => before.root).join(','));
+  state.setAttribute('b-roots', result.replace.map(([, region]) => region.root).join(','));
+  state.setAttribute('b-alias', [...result.alias].map(([from, to]) => `${from}:${to}`).join(','));
   // The records run as they are added, after the IDs and these attributes are set.
   for (const script of next.body.querySelectorAll<HTMLScriptElement>(STATE)) {
     document.body.append(runnable(script));
@@ -219,7 +216,7 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
 interface Shift {
   /** The number to add to each scope and boundary ID. */
   by: number;
-  /** The `data-root` of its state records, which keeps their references apart. */
+  /** The `b-root` of its state records, which keeps their references apart. */
   root: string;
 }
 
@@ -232,20 +229,20 @@ function shiftFor(state: Element | null, requested: number): Shift | undefined {
   if (!state) {
     return undefined;
   }
-  const root = Number(state.getAttribute('data-root') ?? 0);
+  const root = Number(state.getAttribute('b-root') ?? 0);
   return root === requested ? undefined : { by: requested - root, root: String(requested) };
 }
 
 const COMMENT_IDS = /^([tb])(\d+)(:.*)$|^([ilP])(\d+)$/;
 /** Attributes that hold a scope ID, then `:` and more. */
-const SCOPED = ['data-b', 'data-result'];
+const SCOPED = ['b-b', 'b-result'];
 /** Attributes that hold only a scope or boundary ID. */
-const IDS = ['data-v', 'data-l', 'data-h', 'data-next'];
+const IDS = ['b-v', 'b-l', 'b-h', 'b-next'];
 
 /**
  * Adds a number to every scope and boundary ID in markup that the server
  * rendered: anchors, markers, swap scripts and state records. The core moves
- * the IDs inside a state record when it reads one with `data-offset`.
+ * the IDs inside a state record when it reads one with `b-offset`.
  */
 function shiftIds(root: Node, shift: Shift): void {
   const add = (value: string): string => String(Number(value) + shift.by);
@@ -286,8 +283,8 @@ function shiftIds(root: Node, shift: Shift): void {
     // Only a script can match the state selector, so other elements skip it. The text of a
     // record is not changed: the core moves the IDs in its value when it reads it.
     if (element.localName === 'script' && element.matches(STATE)) {
-      element.setAttribute('data-offset', String(shift.by));
-      element.setAttribute('data-root', shift.root);
+      element.setAttribute('b-offset', String(shift.by));
+      element.setAttribute('b-root', shift.root);
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
       // The scripts that swap in `#loading` bodies and their head name the boundary.
       element.textContent = element.textContent!.replace(
@@ -307,8 +304,8 @@ function shiftIds(root: Node, shift: Shift): void {
 /** A number above every scope and boundary ID in the page, for the server to start the next page at. */
 function base(): number {
   let value = 0;
-  for (const script of document.querySelectorAll(`${STATE}[data-next]`)) {
-    value = Math.max(value, Number(script.getAttribute('data-next')));
+  for (const script of document.querySelectorAll(`${STATE}[b-next]`)) {
+    value = Math.max(value, Number(script.getAttribute('b-next')));
   }
   return value;
 }
@@ -570,7 +567,7 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
-  const state = next.body.querySelector(`${STATE}[data-route]`);
+  const state = next.body.querySelector(`${STATE}[b-route]`);
   const shift = visit.init ? undefined : shiftFor(state, requested);
   if (shift) {
     shiftIds(next.body, shift);

@@ -17,7 +17,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   let query = ('');
   const $$p_results = $$b.memo(() => (search(query)), $$ctx);
   const results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t);
-  $$html += "<input" + $$b.attribute("value", (query)) + " data-b=\"" + $$s1 + ":0\" data-on=\"input=Search_s4k9u0#h4\">";
+  $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
   if (false) {
     $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
   } else {
@@ -32,7 +32,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
       const $$item1 = $$list0[$$index2];
       const result = $$item1;
       const $$s3 = $$ctx.scope(3, $$s1);
-      $$html += "<li data-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((result), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</li>";
+      $$html += "<li b-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((result), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</li>";
       $$ctx.slots($$s3, [result], ["result"]);
       $$ctx.item($$s3, $$item1);
     }
@@ -96,7 +96,7 @@ export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
+  $$html += "<li b-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
   $$b.setSlots($$s3, [result]);
   $$b.setItem($$s3, $$item);
   return $$html;
@@ -111,7 +111,7 @@ export default function Search($$props: Record<string, never>): string {
   const $$s1 = $$b.createScope(1, undefined, "Search_s4k9u0");
   let query = ('');
   const results = (search(query));
-  $$html += "<input" + $$b.attribute("value", (query)) + " data-b=\"" + $$s1 + ":0\" data-on=\"input=Search_s4k9u0#h4\">";
+  $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
   if (false) {
     $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
   } else {
@@ -126,7 +126,7 @@ export default function Search($$props: Record<string, never>): string {
       const $$item1 = $$list0[$$index2];
       const result = $$item1;
       const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
+      $$html += "<li b-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
       $$b.setSlots($$s3, [result]);
       $$b.setItem($$s3, $$item1);
     }
@@ -138,16 +138,16 @@ export default function Search($$props: Record<string, never>): string {
 }
 
 # HTML
-<input value="" data-b="0:0" data-on="input=Search_s4k9u0#h4">
+<input value="" b-b="0:0" b-on="input=Search_s4k9u0#h4">
 <!--b0:1:-1-->
 <!--/b-->
 <ul>
 <!--b0:2-->
-<li data-b="1:0">apple</li>
-<li data-b="2:0">apricot</li>
-<li data-b="3:0">banana</li>
+<li b-b="1:0">apple</li>
+<li b-b="2:0">apricot</li>
+<li b-b="3:0">banana</li>
 <!--/b-->
 </ul>
 
 # State
-<script data-state data-scopes data-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},g:$R[4]=[$R[5]=[3,0,1,1,1,"apple",1,"apricot",1,"banana"]]})))</script>
+<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},g:$R[4]=[$R[5]=[3,0,1,1,1,"apple",1,"apricot",1,"banana"]]})))</script>

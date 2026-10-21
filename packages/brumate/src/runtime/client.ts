@@ -83,7 +83,7 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
-  /** Adds event listeners for the `data-on` attributes in new markup. */
+  /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
@@ -147,7 +147,7 @@ const elements = new Map<string, Element>();
 let nextId = -1;
 
 // Records of one render share references through an array, so a later record can settle a
-// promise of an earlier one. Each render on the page has its own array, by its `data-root`.
+// promise of an earlier one. Each render on the page has its own array, by its `b-root`.
 const refs = new Map<string, unknown[]>();
 
 /**
@@ -187,13 +187,13 @@ function readRecord([script, code]: StateRecord): void {
   if (!script?.isConnected) {
     return;
   }
-  const root = script.getAttribute('data-root') ?? '0';
+  const root = script.getAttribute('b-root') ?? '0';
   if (!refs.has(root)) {
     refs.set(root, []);
   }
   const decoded = code(refs.get(root)!, stateValues);
   // Records with scopes: the page state, and the state of each `#loading` body.
-  if (script.hasAttribute('data-scopes')) {
+  if (script.hasAttribute('b-scopes')) {
     const unpacked = unpackState(decoded as PackedState);
     const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked);
     if (writes > 0) {
@@ -550,11 +550,11 @@ function withTarget(event: Event, element: Element): Event {
 
 /**
  * Runs the handler `ref` for an element. The scope comes from the element's
- * `data-b` anchor, or from the nearest element around it that has one, which
+ * `b-b` anchor, or from the nearest element around it that has one, which
  * the compiler checks is in the same scope.
  */
 export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
-  const anchor = element.closest('[data-b]')?.getAttribute('data-b');
+  const anchor = element.closest('[b-b]')?.getAttribute('b-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
   const args = event ? [withTarget(event, element)] : [];
   if (DEV) {
@@ -1081,7 +1081,7 @@ function findElement(scope: number, anchor: number): Element | null {
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
-    element = document.querySelector(`[data-b="${key}"]`) ?? undefined;
+    element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
     if (element) {
       elements.set(key, element);
     }
@@ -1152,8 +1152,8 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
  */
 function serverScopes(root: ParentNode): Scope[] {
   const ids = new Set<number>();
-  for (const element of root.querySelectorAll('[data-b]')) {
-    ids.add(Number(element.getAttribute('data-b')!.split(':')[0]));
+  for (const element of root.querySelectorAll('[b-b]')) {
+    ids.add(Number(element.getAttribute('b-b')!.split(':')[0]));
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -1381,10 +1381,10 @@ export function list(
   let position = 0;
   for (let node = start.nextSibling; node && node !== end;) {
     const data = node.nodeType === 8 ? (node as Comment).data : undefined;
-    // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `data-b` names the scope.
+    // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `b-b` names the scope.
     const id = data
       ? /^i(-?\d+)$/.exec(data)?.[1]
-      : (node as Element).getAttribute?.('data-b')?.split(':')[0];
+      : (node as Element).getAttribute?.('b-b')?.split(':')[0];
     const item = id === undefined ? undefined : scopes.get(Number(id));
     let last: Node = node;
     // The elements of the fallback have scopes of its kinds.
@@ -1465,7 +1465,7 @@ export function list(
 /** Sets a style variable on the top-level elements of a component instance. */
 export function setVar(scope: Scope, name: string, value: unknown): void {
   const css = value === null || value === undefined || value === false ? '' : String(value);
-  for (const element of document.querySelectorAll<HTMLElement>(`[data-v="${scope.id}"]`)) {
+  for (const element of document.querySelectorAll<HTMLElement>(`[b-v="${scope.id}"]`)) {
     element.style.setProperty(name, css);
   }
 }
@@ -1697,9 +1697,9 @@ export function addPortal(html: string): void {
 
 /** Adds a component's stylesheet to the page, if the server did not. */
 export function addStyle(id: string, css: string): string {
-  if (!document.querySelector(`style[data-brm="${id}"]`)) {
+  if (!document.querySelector(`style[b-style="${id}"]`)) {
     const sheet = document.createElement('style');
-    sheet.dataset.brm = id;
+    sheet.setAttribute('b-style', id);
     sheet.textContent = css;
     document.head.append(sheet);
   }

@@ -9,9 +9,9 @@ export default async function Styled($$props: Record<string, never>, $$ctx: $$b.
   const $$s1 = $$ctx.scope(1, undefined, "Styled_9wx0az");
   $$html += $$ctx.style("Styled_9wx0az", $$css);
   let big = (false);
-  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " data-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " b-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
   if (big) {
-    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
   }
@@ -54,7 +54,7 @@ export function b4($$s) {
 export function r2($$p) {
   let $$html = '';
   let big = $$b.get($$p, 0);
-  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$p + "\" class=\"big\">Big</p>";
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$p + "\" class=\"big\">Big</p>";
   return $$html;
 }
 
@@ -67,9 +67,9 @@ export default function Styled($$props: Record<string, never>): string {
   const $$s1 = $$b.createScope(1, undefined, "Styled_9wx0az");
   $$html += $$b.addStyle("Styled_9wx0az", $$css);
   let big = (false);
-  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " data-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
+  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " b-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
   if (big) {
-    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " data-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
   }
@@ -78,7 +78,7 @@ export default function Styled($$props: Record<string, never>): string {
 }
 
 # HTML
-<style data-brm="Styled_9wx0az">p[s-9wx0az] {
+<style b-style="Styled_9wx0az">p[s-9wx0az] {
     color: var(--s-9wx0az-0);
     font-size: var(--s-9wx0az-1);
   }
@@ -88,11 +88,11 @@ export default function Styled($$props: Record<string, never>): string {
   body .note[s-9wx0az] {
     margin: 0;
   }</style>
-<p s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px;padding: 1px" data-v="0" class="note">Hello <b s-9wx0az>there</b>
+<p s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px;padding: 1px" b-v="0" class="note">Hello <b s-9wx0az>there</b>
 </p>
-<button s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px" data-v="0" data-b="0:0" data-on="click=Styled_9wx0az#h3">Toggle</button>
+<button s-9wx0az style="--s-9wx0az-0:blue;--s-9wx0az-1:12px" b-v="0" b-b="0:0" b-on="click=Styled_9wx0az#h3">Toggle</button>
 <!--b0:1:-1-->
 <!--/b-->
 
 # State
-<script data-state data-scopes data-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Styled_9wx0az",s:$R[2]=[!1]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Styled_9wx0az",s:$R[2]=[!1]}})))</script>

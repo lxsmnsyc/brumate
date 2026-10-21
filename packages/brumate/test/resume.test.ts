@@ -77,7 +77,7 @@ function run(script: Element): void {
 /** Shows a page and runs its state records, as a browser does while it parses the page. */
 function show(html: string): void {
   document.body.innerHTML = html;
-  document.body.querySelectorAll('script[data-state]').forEach(run);
+  document.body.querySelectorAll('script[b-state]').forEach(run);
 }
 
 /** Appends streamed markup and runs its inline scripts in order, as a browser does. */
@@ -162,7 +162,7 @@ function text(selector: string): string {
  * It marks every record, also the ones that only settle promises.
  */
 function moved(record: string): string {
-  return record.replace('<script ', '<script data-offset="5" data-root="5" ');
+  return record.replace('<script ', '<script b-offset="5" b-root="5" ');
 }
 
 function click(element: Element): void {
@@ -271,7 +271,7 @@ describe('resume', () => {
     }
     expect(document.querySelector('.fallback')).toBeNull();
     expect(text('.greeting')).toBe('Hello Ada');
-    expect(document.querySelector('template[data-l]')).toBeNull();
+    expect(document.querySelector('template[b-l]')).toBeNull();
 
     // The streamed body resumes, and updates with the rest of the page.
     click(document.querySelector('.inner')!);
@@ -281,7 +281,7 @@ describe('resume', () => {
 
   it('scopes styles and updates style variables', async () => {
     await resume('styled', {});
-    expect(document.querySelectorAll('style[data-brm]')).toHaveLength(1);
+    expect(document.querySelectorAll('style[b-style]')).toHaveLength(1);
     const first = document.querySelector<HTMLElement>('.note')!;
     expect(first.style.getPropertyValue('--s-9wx0az-0')).toBe('blue');
     expect(first.style.getPropertyValue('padding')).toBe('1px');
@@ -302,7 +302,7 @@ describe('resume', () => {
     document.head.innerHTML = '';
     render.default({});
     render.default({});
-    expect(document.head.querySelectorAll('style[data-brm="Styled_9wx0az"]')).toHaveLength(1);
+    expect(document.head.querySelectorAll('style[b-style="Styled_9wx0az"]')).toHaveLength(1);
   });
 
   it('renders portals at the end of the page and into targets', async () => {
@@ -966,7 +966,7 @@ describe('$action', () => {
     const plain = await renderParts(server.default, {});
     const form = /<form[^>]*>/.exec(plain.html)![0];
     expect(form).toMatch(/action="\?__action=Signup_\w+%23signUp" method="post"/);
-    expect(form).toMatch(/data-action="Signup_\w+#signUp" data-result="\d+:\d+"/);
+    expect(form).toMatch(/b-action="Signup_\w+#signUp" b-result="\d+:\d+"/);
     expect(plain.html).not.toContain('class="error"');
     // A page that renders for a post gets the result of the server function.
     const signUp = Object.values(server.rpc)[0];
@@ -977,7 +977,7 @@ describe('$action', () => {
         actions: new Map([[signUp, { error: 'Enter an email address', email: '' }]]),
       },
     );
-    expect(posted.html).toContain('<p class="error" data-b="1:0">Enter an email address</p>');
+    expect(posted.html).toContain('<p class="error" b-b="1:0">Enter an email address</p>');
     expect(posted.html).toContain('Enter an email address');
   });
 
@@ -1376,7 +1376,7 @@ function renameAt(index: number): void {
 /** Renames, moves, removes, empties and fills the list, which has one element per item. */
 async function exercise(): Promise<void> {
   // The button has no anchor: its handler runs with the scope of the `<li>` around it.
-  expect(document.querySelector('ul .rename')!.hasAttribute('data-b')).toBe(false);
+  expect(document.querySelector('ul .rename')!.hasAttribute('b-b')).toBe(false);
   // A text that is the whole content of its element. An empty one has no text node.
   expect(document.querySelector('ul .note')!.childNodes).toHaveLength(0);
   renameAt(1);
@@ -1429,16 +1429,16 @@ describe('compact markup', () => {
 
   it('updates, moves and removes items, and finds the scope of handlers', async () => {
     await resume('compact', { initial });
-    expect(document.querySelector('ul li')!.getAttribute('data-b')).toBe('1:0');
+    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('1:0');
     await exercise();
   }, 20_000);
 
   it('works after navigation moves the IDs of the page', async () => {
     document.body.innerHTML =
-      '<script data-state data-scopes data-next="5" data-route="root">$bR(($R,$b)=>({}))</script>';
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
     const server = await import(file('compact.brm.ts'));
     const { html, state } = await renderParts(server.default, { initial });
-    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script data-route="root" ')}</body></html>`;
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
@@ -1447,9 +1447,9 @@ describe('compact markup', () => {
     await navigate({ url: '/compact', push: true, leave: async () => {}, enter: () => {} });
     expect(fetch).toHaveBeenCalledTimes(1);
     // The anchors of items and of texts in elements moved by 5, as the state does.
-    expect(document.querySelector('ul li')!.getAttribute('data-b')).toBe('6:0');
-    expect(document.querySelector('ul .label')!.getAttribute('data-b')).toBe('6:1');
-    for (const script of document.querySelectorAll('script[data-state]')) {
+    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('6:0');
+    expect(document.querySelector('ul .label')!.getAttribute('b-b')).toBe('6:1');
+    for (const script of document.querySelectorAll('script[b-state]')) {
       run(script);
     }
     await startLoader();

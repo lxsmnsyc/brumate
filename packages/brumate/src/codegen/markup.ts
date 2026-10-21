@@ -399,10 +399,10 @@ export class Emitter {
         continue;
       }
       const anchor = this.anchor(scope, site)!;
-      this.html('<template data-b="');
+      this.html('<template b-b="');
       this.code(anchor.scope);
       this.html(
-        `:${anchor.index}" data-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"></template>`,
+        `:${anchor.index}" b-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"></template>`,
       );
     }
   }
@@ -445,7 +445,7 @@ export class Emitter {
   /** Emits one item of `#for` or `#repeat`, given expressions for the item and its index. */
   emitItem(block: ForBlock | RepeatBlock, item: string, index: string): void {
     const scope = this.plan.bodyScopes.get(block.body)!;
-    // An item whose markup is one element is marked by the element's `data-b`.
+    // An item whose markup is one element is marked by the element's `b-b`.
     const anchored = this.plan.anchors.has(block) && !this.plan.elementItems.has(block);
     if (block.kind === 'for') {
       this.line(`const ${copy(this.file.source, block.item.start, block.item.end)} = ${item};`);
@@ -544,10 +544,10 @@ export class Emitter {
         const events = node.attributes.map((attribute) =>
           this.eventEntry(attribute.event, attribute.modifiers, attribute.handler),
         );
-        this.html('<template data-b="');
+        this.html('<template b-b="');
         this.code(anchor.scope);
         this.html(
-          `:${anchor.index}" data-listen="${node.target}" data-on="${events.join(' ')}"></template>`,
+          `:${anchor.index}" b-listen="${node.target}" b-on="${events.join(' ')}"></template>`,
         );
         return;
       }
@@ -607,7 +607,7 @@ export class Emitter {
     this.code(`$$b.attribute("style", $$b.vars({ ${values.join(', ')} }, ${existing}))`);
     if (this.plan.liveStyles) {
       // Marks the element, so changes to the variables reach it.
-      this.html(' data-v="');
+      this.html(' b-v="');
       this.code(this.scopeVar(this.plan.graph.model.component));
       this.html('"');
     }
@@ -717,12 +717,12 @@ export class Emitter {
       }
     }
     if (anchor) {
-      this.html(' data-b="');
+      this.html(' b-b="');
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
     }
     if (events.length > 0) {
-      this.html(` data-on="${events.join(' ')}"`);
+      this.html(` b-on="${events.join(' ')}"`);
       if (prefetch) {
         this.html(` data-prefetch="${prefetch}"`);
       }
@@ -880,7 +880,7 @@ export class Emitter {
     }
     const anchor = this.anchor(scope, node);
     if (anchor) {
-      extra.push(`"data-b": \`\${${anchor.scope}}:${anchor.index}\``);
+      extra.push(`"b-b": \`\${${anchor.scope}}:${anchor.index}\``);
     }
     const events = node.attributes.flatMap((attribute) =>
       attribute.kind === 'event'
@@ -888,7 +888,7 @@ export class Emitter {
         : [],
     );
     if (events.length > 0) {
-      extra.push(`"data-on": ${JSON.stringify(events.join(' '))}`);
+      extra.push(`"b-on": ${JSON.stringify(events.join(' '))}`);
     }
     let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     const { variables } = this.plan.styles;
@@ -911,7 +911,7 @@ export class Emitter {
       );
       extra.push(`"style": $$b.vars({ ${values.join(', ')} }, ${existing})`);
       if (this.plan.liveStyles) {
-        extra.push(`"data-v": ${this.scopeVar(this.plan.graph.model.component)}`);
+        extra.push(`"b-v": ${this.scopeVar(this.plan.graph.model.component)}`);
       }
     }
     this.code(
@@ -932,9 +932,9 @@ export class Emitter {
     const body = this.plan.bodyScopes.get(block.body)!;
     if (block.kind === 'portal' && block.target) {
       const anchor = this.anchor(scope, block)!;
-      this.html('<template data-b="');
+      this.html('<template b-b="');
       this.code(anchor.scope);
-      this.html(`:${anchor.index}" data-client="load=${this.plan.id}#k${body.id}"></template>`);
+      this.html(`:${anchor.index}" b-client="load=${this.plan.id}#k${body.id}"></template>`);
       return;
     }
     const name = this.unique('portal');
@@ -1078,10 +1078,10 @@ export class Emitter {
       case 'client': {
         const anchor = this.anchor(scope, block)!;
         const body = this.plan.bodyScopes.get(block.body)!;
-        this.html('<template data-b="');
+        this.html('<template b-b="');
         this.code(anchor.scope);
         this.html(
-          `:${anchor.index}" data-client="${block.trigger}=${this.plan.id}#k${body.id}"></template>`,
+          `:${anchor.index}" b-client="${block.trigger}=${this.plan.id}#k${body.id}"></template>`,
         );
         this.open(scope, block);
         this.end(block);

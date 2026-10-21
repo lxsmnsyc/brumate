@@ -32,7 +32,7 @@ function respond(
 /** A page with a layout scope, one route in its children slot, and its state. */
 function page(layout: number, route: string, next: number): string {
   return (
-    `<nav data-b="${layout}:0">Menu</nav>` +
+    `<nav b-b="${layout}:0">Menu</nav>` +
     `<main><!--R${layout}:children:${layout + 1}:${encodeURIComponent(route)}--><p>${route}</p><!--/R--></main>` +
     pageState(next, layout)
   );
@@ -45,9 +45,9 @@ function region(layout: number, route: string, content: string): string {
 
 /** The first state record of a page with a root route. `base` is where its IDs start. */
 function pageState(next: number, base = 0, nonce = ''): string {
-  const root = base > 0 ? ` data-root="${base}"` : '';
+  const root = base > 0 ? ` b-root="${base}"` : '';
   const attribute = nonce ? ` nonce="${nonce}"` : '';
-  return `<script${attribute} data-state data-scopes data-next="${next}" data-route="root"${root}>$bR(($R,$b)=>({}))</script>`;
+  return `<script${attribute} b-state b-scopes b-next="${next}" b-route="root"${root}>$bR(($R,$b)=>({}))</script>`;
 }
 
 /** Navigates to a page whose body is its URL. */
@@ -72,12 +72,12 @@ afterEach(() => {
 
 describe('navigate', () => {
   it('swaps in the first render, then streams later markup into the body', async () => {
-    document.head.innerHTML = '<title>Old</title><style data-brm="Old">a{}</style>';
+    document.head.innerHTML = '<title>Old</title><style b-style="Old">a{}</style>';
     document.body.innerHTML = '<p>old page</p>';
     const { response, next } = respond([
-      '<!doctype html><html lang="en"><head><title>New</title><style data-brm="New">b{}</style>',
+      '<!doctype html><html lang="en"><head><title>New</title><style b-style="New">b{}</style>',
       '</head><body><p class="fallback">Loading</p></body></ht',
-      'ml><template data-l="0"><p class="later">Ready</p></templ',
+      'ml><template b-l="0"><p class="later">Ready</p></templ',
       'ate><script>window.swapped = (window.swapped ?? 0) + 1</script>',
     ]);
     vi.stubGlobal(
@@ -106,13 +106,13 @@ describe('navigate', () => {
     expect(calls).toEqual(['leave:old page', 'enter:Loading']);
     expect(document.title).toBe('New');
     expect(document.documentElement.getAttribute('lang')).toBe('en');
-    expect(document.head.innerHTML).toBe('<title>New</title><style data-brm="New">b{}</style>');
+    expect(document.head.innerHTML).toBe('<title>New</title><style b-style="New">b{}</style>');
     expect(location.pathname).toBe('/next');
     // Later markup arrives in pieces, and a node moves in once it is complete.
     expect(document.body.querySelector('template')).toBeNull();
     next();
     await tick();
-    expect(document.body.querySelector('template[data-l="0"]')).not.toBeNull();
+    expect(document.body.querySelector('template[b-l="0"]')).not.toBeNull();
     next();
     await done;
     // Inline scripts are made again, so the browser runs them. The DOM environment of the tests does not run them.
@@ -128,7 +128,7 @@ describe('navigate', () => {
     document.body.innerHTML = '<p>old page</p>';
     const { response, next } = respond([
       '<!doctype html><html><head></head><body><p>Loading</p></body></html>',
-      '<template data-l="0"><p>Ready</p></template><script nonce="new-nonce">swap(0)</script>',
+      '<template b-l="0"><p>Ready</p></template><script nonce="new-nonce">swap(0)</script>',
     ]);
     vi.stubGlobal(
       'fetch',
@@ -158,7 +158,7 @@ describe('navigate', () => {
     document.body.innerHTML = '<p>old page</p>';
     const { response, next } = respond([
       `<!doctype html><html><head></head><body><p>New</p>${pageState(3, 0, 'new-nonce')}</body></html>`,
-      '<script nonce="new-nonce" data-state>$bR(($R,$b)=>(1))</script>',
+      '<script nonce="new-nonce" b-state>$bR(($R,$b)=>(1))</script>',
     ]);
     vi.stubGlobal(
       'fetch',
@@ -176,9 +176,9 @@ describe('navigate', () => {
     next();
     await done;
     // Both records are scripts that this document made, so the browser runs them, in order.
-    const scripts = [...document.body.querySelectorAll<HTMLScriptElement>('script[data-state]')];
+    const scripts = [...document.body.querySelectorAll<HTMLScriptElement>('script[b-state]')];
     expect(scripts.map((script) => script.nonce)).toEqual(['loaded-nonce', 'loaded-nonce']);
-    expect(scripts[0]!.getAttribute('data-next')).toBe('3');
+    expect(scripts[0]!.getAttribute('b-next')).toBe('3');
     expect(scripts[1]!.textContent).toBe('$bR(($R,$b)=>(1))');
   });
 
@@ -231,10 +231,10 @@ describe('navigate', () => {
       `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
     );
     // The core drops the old route, adds the new one, and reads the new layout scope as the old one.
-    const state = document.querySelectorAll('script[data-state]')[1]!;
-    expect(state.getAttribute('data-drop')).toBe('1');
-    expect(state.getAttribute('data-roots')).toBe('3');
-    expect(state.getAttribute('data-alias')).toBe('2:0');
+    const state = document.querySelectorAll('script[b-state]')[1]!;
+    expect(state.getAttribute('b-drop')).toBe('1');
+    expect(state.getAttribute('b-roots')).toBe('3');
+    expect(state.getAttribute('b-alias')).toBe('2:0');
     // A copy, which the browser runs, so the core reads it.
     expect(state.ownerDocument).toBe(document);
     expect(state.textContent).toBe('$bR(($R,$b)=>({}))');
@@ -248,7 +248,7 @@ describe('navigate', () => {
       region(
         0,
         '/a',
-        '<style data-brm="Badge_b1">b{}</style><style data-brm="Card_c1">c{}</style><p>a</p>',
+        '<style b-style="Badge_b1">b{}</style><style b-style="Card_c1">c{}</style><p>a</p>',
       ) + `<aside><b s-b1>Badge</b></aside>${pageState(2)}`;
     vi.stubGlobal(
       'fetch',
@@ -262,8 +262,8 @@ describe('navigate', () => {
       }),
     );
     await navigate({ url: '/b', push: true, leave: async () => {}, enter: () => {} });
-    expect(document.head.querySelector('style[data-brm="Badge_b1"]')).not.toBeNull();
-    expect(document.querySelector('style[data-brm="Card_c1"]')).toBeNull();
+    expect(document.head.querySelector('style[b-style="Badge_b1"]')).not.toBeNull();
+    expect(document.querySelector('style[b-style="Card_c1"]')).toBeNull();
   });
 
   it('keeps the layouts of a page that starts its IDs at 0, by moving its IDs', async () => {
@@ -276,7 +276,7 @@ describe('navigate', () => {
       vi.fn(async () => {
         const { response, next } = respond([
           `<!doctype html><html><head><title>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
-          '<template data-l="1"><p data-b="1:0">later</p></template><script>$bS(1)</script>',
+          '<template b-l="1"><p b-b="1:0">later</p></template><script>$bS(1)</script>',
         ]);
         next();
         next();
@@ -299,16 +299,16 @@ describe('navigate', () => {
     expect(document.querySelector('main')!.innerHTML).toBe(
       `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
     );
-    const state = document.querySelectorAll('script[data-state]')[1]!;
-    expect(state.getAttribute('data-offset')).toBe('2');
-    expect(state.getAttribute('data-root')).toBe('2');
-    expect(state.getAttribute('data-next')).toBe('4');
+    const state = document.querySelectorAll('script[b-state]')[1]!;
+    expect(state.getAttribute('b-offset')).toBe('2');
+    expect(state.getAttribute('b-root')).toBe('2');
+    expect(state.getAttribute('b-next')).toBe('4');
     // Markup that streams in later moves too.
-    expect(document.querySelector('template')?.getAttribute('data-l')).toBe('3');
+    expect(document.querySelector('template')?.getAttribute('b-l')).toBe('3');
     expect(
-      document.querySelector('template')!.content.querySelector('p')?.getAttribute('data-b'),
+      document.querySelector('template')!.content.querySelector('p')?.getAttribute('b-b'),
     ).toBe('3:0');
-    expect(document.body.querySelector('script:not([data-state])')?.textContent).toBe('$bS(3)');
+    expect(document.body.querySelector('script:not([b-state])')?.textContent).toBe('$bS(3)');
   });
 
   it('uses a page that its link started to load', async () => {

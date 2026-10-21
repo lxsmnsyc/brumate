@@ -183,7 +183,7 @@ describe('rendering', () => {
       new RegExp(`<main><!--R0:children:\\d+:${key('/todos/_layout {}')}--><section`),
     );
     // The route of the page is on the state, so the client can compare it with the next page.
-    expect(html).toContain(`data-route="/_layout {}"`);
+    expect(html).toContain(`b-route="/_layout {}"`);
   });
 
   it('starts IDs above the base that the client sends', async () => {
@@ -238,7 +238,7 @@ describe('error and loading files', () => {
     for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
       rest += chunk.value;
     }
-    expect(rest).toMatch(/<template data-l="\d+"><p class="slow">Slow content<\/p><\/template>/);
+    expect(rest).toMatch(/<template b-l="\d+"><p class="slow">Slow content<\/p><\/template>/);
   });
 });
 

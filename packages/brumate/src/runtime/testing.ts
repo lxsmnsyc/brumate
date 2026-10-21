@@ -99,7 +99,7 @@ export function createMount(options: TestingOptions): Mount {
     container.innerHTML = html + state;
     document.body.append(container);
     // The page state, which waits for the core.
-    container.querySelectorAll('script[data-state]').forEach(run);
+    container.querySelectorAll('script[b-state]').forEach(run);
     // One loader for the document, as a page has, however many mounts are in it.
     loader ??= {
       stop: start({ load: options.load, rpc: options.rpc, navigate: false, preload: false }),

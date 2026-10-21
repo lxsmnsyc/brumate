@@ -25,7 +25,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
-    $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+    $$html += "<p class=\"error\" b-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</p><button class=\"retry\" b-b=\"" + $$s3 + ":1\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>";
     $$ctx.slots($$s3, [error], ["error"]);
   }
   $$html += "<!--/b-->";
@@ -69,7 +69,7 @@ export function r3($$p, $$error) {
   const error = $$error;
   const reset = undefined;
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+  $$html += "<p class=\"error\" b-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" b-b=\"" + $$s3 + ":1\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>";
   $$b.setSlots($$s3, [error]);
   return $$html;
 }
@@ -114,7 +114,7 @@ export default function Retry($$props: Record<string, never>): string {
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$b.createScope(3, $$s1);
-    $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+    $$html += "<p class=\"error\" b-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" b-b=\"" + $$s3 + ":1\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>";
     $$b.setSlots($$s3, [error]);
   }
   $$html += "<!--/b-->";
@@ -123,9 +123,9 @@ export default function Retry($$props: Record<string, never>): string {
 
 # HTML
 <!--b0:0-->
-<p class="error" data-b="1:0">Error: Not ready</p>
-<button class="retry" data-b="1:1" data-on="click=Retry_pyus3c#h2">Try again</button>
+<p class="error" b-b="1:0">Error: Not ready</p>
+<button class="retry" b-b="1:1" b-on="click=Retry_pyus3c#h2">Try again</button>
 <!--/b-->
 
 # State
-<script data-state data-scopes data-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Retry_pyus3c"},1:$R[2]={k:3,p:0,s:$R[3]=[$R[4]=new Error("Not ready")]}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Retry_pyus3c"},1:$R[2]={k:3,p:0,s:$R[3]=[$R[4]=new Error("Not ready")]}})))</script>
