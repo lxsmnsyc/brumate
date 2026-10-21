@@ -122,3 +122,21 @@ describe('regular expressions', () => {
     expect(await response?.json()).toEqual({ error: 'The server function failed' });
   });
 });
+
+describe('values in the page and in calls', () => {
+  it('sends URL and URLSearchParams', async () => {
+    const { fromJSON } = await import('seroval');
+    const { disabledFeatures, plugins } = await import('../src/runtime/shared.ts');
+    const value = {
+      url: new URL('https://example.com/a?b=1#c'),
+      query: new URLSearchParams('x=1&x=2'),
+    };
+    const back = fromJSON<typeof value>(toJSON(value, { plugins, disabledFeatures }), {
+      plugins,
+      disabledFeatures,
+    });
+    expect(back.url).toBeInstanceOf(URL);
+    expect(back.url.href).toBe('https://example.com/a?b=1#c');
+    expect(back.query.getAll('x')).toEqual(['1', '2']);
+  });
+});

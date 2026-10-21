@@ -104,6 +104,27 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
     Object.assign(() => '', { brumateId: ctx.deserialize<string>(node.c) }),
 });
 
+/** A value that its string makes again, such as a `URL` from its `href`. */
+function stringPlugin<T extends { toString(): string }>(
+  tag: string,
+  type: new (text: string) => T,
+): Plugin<T, { v: SerovalNode }> {
+  return createPlugin<T, { v: SerovalNode }>({
+    tag,
+    test: (value) => value instanceof type,
+    parse: {
+      sync: (value, ctx) => ({ v: ctx.parse(value.toString()) }),
+      async: async (value, ctx) => ({ v: await ctx.parse(value.toString()) }),
+      stream: (value, ctx) => ({ v: ctx.parse(value.toString()) }),
+    },
+    serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
+    deserialize: (node, ctx) => new type(ctx.deserialize<string>(node.v)),
+  });
+}
+
+const URLPlugin = stringPlugin('brumate/url', URL);
+const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams);
+
 /**
  * A file or a blob in the arguments of a server function call. The call
  * sends it as a part of multipart form data, named `file<index>`, instead
@@ -169,6 +190,8 @@ export const plugins: Plugin<any, any>[] = [
   RawPlugin,
   ComponentPlugin,
   UploadPlugin,
+  URLPlugin,
+  SearchParamsPlugin,
 ];
 
 /**

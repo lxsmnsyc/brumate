@@ -14,6 +14,8 @@ const SENDABLE = new Set([
   'Array',
   'Object',
   'Date',
+  'URL',
+  'URLSearchParams',
   'Map',
   'Set',
   'Promise',
