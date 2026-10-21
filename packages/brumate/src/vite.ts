@@ -12,6 +12,7 @@ import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
+import { isReactiveModule } from './modules.ts';
 import { prerender } from './prerender.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
@@ -114,8 +115,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
-  /** Files that SCSS and Less import, and the `.brm` files that import them. */
-  const styleImports = new Map<string, Set<string>>();
+  /** Files that a component depends on, such as SCSS that it imports or modules that it calls into, with the components. */
+  const dependents = new Map<string, Set<string>>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
 
@@ -424,13 +425,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const isServer = params.has(SERVER_QUERY.slice(1));
       const isClient = !isServer && (params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr);
       const { source, result } = await compileFile(file);
-      for (const dependency of result.plan.styles.dependencies) {
+      // A stylesheet that the component imports, or a module of reactive logic that it calls into,
+      // changes the output of the component.
+      for (const dependency of [...result.plan.styles.dependencies, ...result.modules]) {
         const normalized = normalizePath(dependency);
         this.addWatchFile(normalized);
-        if (!styleImports.has(normalized)) {
-          styleImports.set(normalized, new Set());
+        if (!dependents.has(normalized)) {
+          dependents.set(normalized, new Set());
         }
-        styleImports.get(normalized)!.add(file);
+        dependents.get(normalized)!.add(file);
       }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
@@ -453,9 +456,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         code = isClient ? result.client : result.server;
         map = isClient ? result.maps.client : result.maps.server;
       }
-      // The map points at the file by its path, so the browser shows it under its own name.
+      // The map points at the file by its path, so the browser shows it under its own name. Code
+      // that came from modules of reactive logic points at them, by their paths too.
       // `transform` below removes the types, and Vite chains the two maps.
-      return { code, map: map && { ...map, sources: [file] } };
+      return {
+        code,
+        map: map && {
+          ...map,
+          sources: map.sources.map((name, index) => (index === 0 ? file : name)),
+        },
+      };
     },
 
     async transform(code, id) {
@@ -470,7 +480,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     configureServer(server) {
       server.watcher.on('all', (event, file) => {
         // A stylesheet that a component imports compiles into that component.
-        for (const importer of styleImports.get(normalizePath(file)) ?? []) {
+        for (const importer of dependents.get(normalizePath(file)) ?? []) {
           compiled.delete(importer);
           for (const module of server.moduleGraph.getModulesByFile(importer) ?? []) {
             server.moduleGraph.invalidateModule(module);
@@ -529,7 +539,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     handleHotUpdate({ file, server }) {
       // A resumed page cannot swap a component's code, so the page reloads.
-      if (file.endsWith('.brm') || styleImports.has(normalizePath(file))) {
+      if (file.endsWith('.brm') || isReactiveModule(file) || dependents.has(normalizePath(file))) {
         server.ws.send({ type: 'full-reload' });
         return [];
       }

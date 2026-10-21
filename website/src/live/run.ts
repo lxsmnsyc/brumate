@@ -18,6 +18,7 @@ import * as context from 'brumate/context';
 import * as html from 'brumate/html';
 import * as routes from 'brumate/routes';
 import * as server from 'brumate/server';
+import * as signals from 'brumate/signals';
 import { transformSync } from 'oxc-transform';
 
 export interface LiveFile {
@@ -47,6 +48,8 @@ const RUNTIME: Record<string, object> = {
   'brumate/html': html,
   'brumate/routes': routes,
   'brumate/server': server,
+  // A module of reactive logic imports it, though its functions run only as copies in components.
+  'brumate/signals': signals,
 };
 
 function blob(code: string): string {
@@ -157,8 +160,15 @@ export async function runSample(
       if (name.endsWith('.brm')) {
         const result = compile(source, {
           filename: name,
+          path: name,
           liveProps: liveProps.get(name),
           merge: 2048,
+          // A module of reactive logic is another file of the sample, such as counter.brm.ts.
+          resolveModule: (specifier, importer) => {
+            const file = `${importer.slice(0, importer.lastIndexOf('/'))}/${specifier.replace(/^\.\//, '')}`;
+            const text = sources.get(file);
+            return text === undefined ? undefined : { path: file, source: text };
+          },
         });
         compiled.set(name, result);
         warnings.push(...result.warnings.map((warning) => clean(warning.message)));

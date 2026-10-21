@@ -78,20 +78,19 @@ function vlq(value: number): string {
   return result;
 }
 
-/**
- * Removes the markers of a generated module, and returns the module with a
- * source map that points the code that came from `filename` back to it.
- */
-export function finish(
-  code: string,
-  source: string,
-  filename: string,
-): { code: string; map: SourceMap } {
+/** A file that code comes from. */
+export interface SourceFile {
+  name: string;
+  content: string;
+}
+
+/** The line and column of each offset of a text, both from 0. */
+function lineIndex(text: string): (offset: number) => [line: number, column: number] {
   const lineStarts = [0];
-  for (let index = source.indexOf('\n'); index !== -1; index = source.indexOf('\n', index + 1)) {
+  for (let index = text.indexOf('\n'); index !== -1; index = text.indexOf('\n', index + 1)) {
     lineStarts.push(index + 1);
   }
-  const locate = (offset: number): [line: number, column: number] => {
+  return (offset) => {
     let low = 0;
     let high = lineStarts.length - 1;
     while (low < high) {
@@ -104,6 +103,22 @@ export function finish(
     }
     return [low, offset - lineStarts[low]!];
   };
+}
+
+/**
+ * Removes the markers of a generated module, and returns the module with a
+ * source map that points the code that came from the files back to them.
+ * The markers hold offsets of the code that was compiled. `place` turns one
+ * into the index of its file in `files` and the offset in that file, for
+ * code that a component copied from a module.
+ */
+export function finish(
+  code: string,
+  files: SourceFile[],
+  place: (offset: number) => { index: number; offset: number } = (offset) => ({ index: 0, offset }),
+): { code: string; map: SourceMap } {
+  const indexes = files.map((file) => lineIndex(file.content));
+  let previousSource = 0;
 
   let output = '';
   const lines: string[] = [''];
@@ -132,12 +147,14 @@ export function finish(
       continue;
     }
     lastColumn = column;
-    const [line, sourceColumn] = locate(Number.parseInt(match[1]!, 36));
+    const placed = place(Number.parseInt(match[1]!, 36));
+    const [line, sourceColumn] = indexes[placed.index]!(placed.offset);
     const segment =
       vlq(column - previousColumn) +
-      vlq(0) +
+      vlq(placed.index - previousSource) +
       vlq(line - previousLine) +
       vlq(sourceColumn - previousSourceColumn);
+    previousSource = placed.index;
     const current = lines.length - 1;
     lines[current] = lines[current] ? `${lines[current]},${segment}` : segment;
     previousColumn = column;
@@ -149,9 +166,9 @@ export function finish(
     code: output,
     map: {
       version: 3,
-      file: filename,
-      sources: [filename],
-      sourcesContent: [source],
+      file: files[0]!.name,
+      sources: files.map((file) => file.name),
+      sourcesContent: files.map((file) => file.content),
       names: [],
       mappings: lines.join(';'),
     },

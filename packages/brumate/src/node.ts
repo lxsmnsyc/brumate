@@ -1,12 +1,14 @@
 // Node built-ins that the compiler uses only for some features, loaded when
 // they are needed, so the compiler also runs in a browser.
 
+import type * as NodeFs from 'node:fs';
 import type * as NodeModule from 'node:module';
 import type * as NodePath from 'node:path';
 import type * as NodeURL from 'node:url';
 import type * as NodeZlib from 'node:zlib';
 
 interface Builtins {
+  'node:fs': typeof NodeFs;
   'node:module': typeof NodeModule;
   'node:path': typeof NodePath;
   'node:url': typeof NodeURL;

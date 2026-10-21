@@ -27,6 +27,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'async-data',
       'effects',
       'context',
+      'reactive-modules',
       'page-metadata',
       'server-functions',
       'forms',

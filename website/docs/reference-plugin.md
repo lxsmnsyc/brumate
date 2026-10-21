@@ -67,23 +67,24 @@ Shows what each component ships to the browser, and why. See [Inspect and devtoo
 
 The `brumate` package exports the compiler, for tools.
 
-| Export                            | What it does                                                                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `compile(source, options?)`       | Compiles a `.brm` file. Returns `server`, `client`, `parts`, `render`, `css` and `warnings`. Throws `CompileError` with every error. |
-| `inspect(source, options?)`       | Compiles a file and returns `{ report, text }`, the report of `brumate inspect`.                                                     |
-| `analyzeProject(files)`           | Finds, for each file of a map of sources, the props that its parents can change.                                                     |
-| `analyzeProjectProps(files)`      | The same, with the parents that change each prop.                                                                                    |
-| `toTypeScript(source, filename?)` | The TypeScript that the type checker reads for a file, with source mappings.                                                         |
-| `parse(source, options?)`         | The syntax tree of a file. Throws `BrumateError` on a syntax error.                                                                  |
+| Export                            | What it does                                                                                                                                                                                                                 |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `compile(source, options?)`       | Compiles a `.brm` file. Returns `server`, `client`, `parts`, `render`, `css`, `warnings`, `maps` (a source map for each module) and `modules` (the `.brm.ts` modules it calls into). Throws `CompileError` with every error. |
+| `inspect(source, options?)`       | Compiles a file and returns `{ report, text }`, the report of `brumate inspect`.                                                                                                                                             |
+| `analyzeProject(files)`           | Finds, for each file of a map of sources, the props that its parents can change.                                                                                                                                             |
+| `analyzeProjectProps(files)`      | The same, with the parents that change each prop.                                                                                                                                                                            |
+| `toTypeScript(source, filename?)` | The TypeScript that the type checker reads for a file, with source mappings.                                                                                                                                                 |
+| `parse(source, options?)`         | The syntax tree of a file. Throws `BrumateError` on a syntax error.                                                                                                                                                          |
 
 `compile` takes these options:
 
-| Option      | Type          | Meaning                                                                                      |
-| ----------- | ------------- | -------------------------------------------------------------------------------------------- |
-| `filename`  | `string`      | The file name, for messages, the component name and the component ID.                        |
-| `liveProps` | `Set<string>` | The props that parents can change, from `analyzeProject`. Without it, every prop can change. |
-| `path`      | `string`      | The absolute path of the file, so SCSS and Less can import files next to it.                 |
-| `merge`     | `number`      | Merges small client parts, as the plugin option does. Defaults to `0`.                       |
-| `a11y`      | `boolean`     | Warns about accessibility mistakes. Defaults to `true`.                                      |
+| Option          | Type                                                     | Meaning                                                                                                                           |
+| --------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `filename`      | `string`                                                 | The file name, for messages, the component name and the component ID.                                                             |
+| `liveProps`     | `Set<string>`                                            | The props that parents can change, from `analyzeProject`. Without it, every prop can change.                                      |
+| `path`          | `string`                                                 | The absolute path of the file, so SCSS and Less can import files next to it.                                                      |
+| `merge`         | `number`                                                 | Merges small client parts, as the plugin option does. Defaults to `0`.                                                            |
+| `a11y`          | `boolean`                                                | Warns about accessibility mistakes. Defaults to `true`.                                                                           |
+| `resolveModule` | `(specifier, importer) => { path, source } \| undefined` | Reads a [module of reactive logic](./reactive-modules.md) that the file imports. Defaults to reading it from disk next to `path`. |
 
 `inspect` takes the options of `compile`, and `parents`, the parents that change each prop, from `analyzeProjectProps`.

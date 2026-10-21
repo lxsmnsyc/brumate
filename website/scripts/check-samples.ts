@@ -36,7 +36,17 @@ for (const name of readdirSync(folder)
     const liveProps = analyzeProject(components);
     for (const [file, source] of components) {
       try {
-        const { warnings } = compile(source, { filename: file, liveProps: liveProps.get(file) });
+        const { warnings } = compile(source, {
+          filename: file,
+          path: `/${file}`,
+          liveProps: liveProps.get(file),
+          // A module of reactive logic is another file of the sample.
+          resolveModule: (specifier) => {
+            const module = specifier.replace(/^\.\//, '');
+            const text = files.get(module);
+            return text === undefined ? undefined : { path: `/${module}`, source: text };
+          },
+        });
         for (const warning of warnings) {
           failures++;
           console.error(`${name}:${line} ${file}: warning: ${warning.message}`);

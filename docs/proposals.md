@@ -7,7 +7,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
-| [Reactive logic in modules](#reactive-logic-in-modules)               | Syntax  | High   | Large  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 
@@ -31,33 +30,6 @@ A `bind:` attribute writes it once:
 
 - `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
 - The target must be a signal, so the compiler checks the write.
-
-### Reactive logic in modules
-
-Reactive logic cannot leave a `.brm` file, so two components that need the same logic copy it. A module compiled with the same rules would let them share it.
-
-```ts
-// counter.brm.ts
-export function counter(start: number) {
-  let count = $signal(start);
-  const double = $memo(count * 2);
-  return {
-    get count() {
-      return count;
-    },
-    get double() {
-      return double;
-    },
-    increment() {
-      count++;
-    },
-  };
-}
-```
-
-- The compiler inlines a call to such a function into the component, so its signals become slots of the component's scope and the graph stays static.
-- The function cannot be called conditionally or in a loop, because the scope has a fixed set of slots.
-- This is the largest proposal. It needs the analyzer to follow calls across files, as it already follows props.
 
 ## Tooling
 

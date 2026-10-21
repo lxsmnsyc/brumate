@@ -1,4 +1,5 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { render as renderParts, renderToStream } from '../src/runtime/server.ts';
@@ -30,6 +31,7 @@ const props: Record<string, unknown> = {
   themes: {},
   Themed: {},
   fields: {},
+  'uses-counter': {},
 };
 
 // Compiled as the Vite plugin does, with the props that parents can change.
@@ -48,6 +50,7 @@ beforeAll(() => {
       const { server } = compile(sources.get(name)!, {
         filename: name,
         liveProps: liveProps.get(name),
+        path: fileURLToPath(new URL(name, input)),
       });
       writeFileSync(new URL(`${name}.ts`, output), server.replace(/\.brm'/g, ".brm.ts'"));
     } else {
@@ -63,6 +66,7 @@ describe('server render', () => {
     const { server, client, parts, render } = compile(source, {
       filename,
       liveProps: liveProps.get(filename),
+      path: fileURLToPath(new URL(filename, input)),
     });
     const module = await import(new URL(`${name}.brm.ts`, output).href);
     const { html, state } = await renderParts(module.default, props[name]);

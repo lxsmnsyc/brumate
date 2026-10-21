@@ -31,6 +31,7 @@ beforeAll(() => {
     const { server, client, parts, render, plan } = compile(sources.get(name)!, {
       filename: name,
       liveProps: liveProps.get(name),
+      path: join(input, name),
     });
     for (const [part, code] of Object.entries(parts)) {
       writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
@@ -439,6 +440,25 @@ describe('resume', () => {
     await waitFor(() => expect(aborted).toContain('c:false'));
     expect(aborted).not.toContain('b:false');
     delete (globalThis as { aborted?: string[] }).aborted;
+  });
+
+  it('runs reactive logic from a module as values of the component', async () => {
+    await resume('uses-counter', {});
+    expect(text('.a')).toBe('1 2');
+    expect(text('.b')).toBe('10');
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(text('.a')).toBe('2 4'));
+    // Each call has its own values.
+    expect(text('.b')).toBe('10');
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(text('.b')).toBe('11'));
+    // The second call reads `base` through its parameter, so a reset takes its current value.
+    click(document.querySelector('.base')!);
+    await waitFor(() => expect(text('.base')).toBe('11'));
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(text('.b')).toBe('12'));
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.b')).toBe('11'));
   });
 
   it('loads a memo that returns a promise without saying so', async () => {
