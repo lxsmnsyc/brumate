@@ -292,6 +292,7 @@ class Analyzer {
       reads: [],
       writes: [],
       calls: new Set(),
+      trackedCalls: new Set(),
       awaits: false,
       ...extra,
     };
@@ -1118,6 +1119,9 @@ class Resolver {
       declaration.kind === 'template'
     ) {
       this.site.calls.add(declaration);
+      if (this.untracked === 0) {
+        this.site.trackedCalls.add(declaration);
+      }
     }
   }
 

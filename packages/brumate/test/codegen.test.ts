@@ -1,6 +1,6 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
-import { compile } from '../src/index.ts';
+import { compile, inspect } from '../src/index.ts';
 
 /** The client parts of a component whose handler calls `f`, declared as given. */
 function parts(declaration: string): string {
@@ -14,14 +14,53 @@ function parts(declaration: string): string {
 describe('client functions', () => {
   it.each([
     ['an arrow with parentheses', 'const f = (n) => n.length;', 'const f$ = ($$s, n) =>'],
-    ['an arrow with types', 'const f = (n: string): number => n.length;', 'const f$ = ($$s, n: string): number =>'],
+    [
+      'an arrow with types',
+      'const f = (n: string): number => n.length;',
+      'const f$ = ($$s, n: string): number =>',
+    ],
     ['an arrow without parentheses', 'const f = n => n.length;', 'const f$ = ($$s, n) =>'],
-    ['an async arrow', 'const f = async (n: string) => n.length;', 'const f$ = async ($$s, n: string) =>'],
+    [
+      'an async arrow',
+      'const f = async (n: string) => n.length;',
+      'const f$ = async ($$s, n: string) =>',
+    ],
     ['a function', 'function f(n: string) { return n.length; }', 'function f$($$s, n: string)'],
     ['a function without parameters', 'function f() { return 1; }', 'function f$($$s)'],
   ])('takes the scope before the parameters of %s', (_, declaration, expected) => {
     const code = parts(declaration);
     expect(code).toContain(expected);
     expect(parseSync('part.ts', code).errors).toEqual([]);
+  });
+});
+
+describe('$untrack', () => {
+  it('reads through a called function without depending on what it reads', () => {
+    const { report } = inspect(
+      [
+        '<script>',
+        "  import { $effect, $signal, $untrack } from 'brumate/signals';",
+        '  let query = $signal(0);',
+        '  let runs = $signal(0);',
+        '  function run() {',
+        '    runs++;',
+        '  }',
+        '  $effect(() => {',
+        '    void query;',
+        '    $untrack(run());',
+        '  });',
+        '  $effect(() => {',
+        '    run();',
+        '  });',
+        '</script>',
+        '<button onClick=(() => query++)>{query}</button>',
+      ].join('\n'),
+      { filename: 'T.brm' },
+    );
+    const effects = report.changes.filter((change) => change.label === 'effect');
+    expect(effects.map((effect) => effect.reason)).toEqual([
+      'reads signal query',
+      'reads signal runs',
+    ]);
   });
 });

@@ -116,6 +116,11 @@ export interface Site {
   writes: Reference[];
   /** Functions, server functions and templates that the site references. */
   calls: Set<Declaration>;
+  /**
+   * The calls outside `$untrack`. The values that their functions read are
+   * values that the site depends on.
+   */
+  trackedCalls: Set<Declaration>;
   /** The declaration that a function or memo site belongs to. */
   declaration?: Declaration;
   /** The element, component or listener of an attribute or event site. */

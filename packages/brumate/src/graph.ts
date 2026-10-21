@@ -171,7 +171,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         result.push(read.declaration);
       }
     }
-    for (const callee of site.calls) {
+    // A call inside `$untrack` reads its values without depending on them.
+    for (const callee of site.trackedCalls) {
       if (callee.kind === 'function' && callee.site) {
         result.push(...dependencies(callee.site, seen));
       }
