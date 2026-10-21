@@ -41,7 +41,8 @@ function siteLabel(source: string, site: Site): string {
   return `${site.label} (${at(source, site.range)})`;
 }
 
-function scopeLabel(source: string, scope: Scope): string {
+/** A short name for a scope, such as `body of #for (12:3)`. */
+export function scopeLabel(source: string, scope: Scope): string {
   if (scope.kind === 'body' && scope.block) {
     return `body of #${scope.block.kind} (${at(source, scope.block)})`;
   }

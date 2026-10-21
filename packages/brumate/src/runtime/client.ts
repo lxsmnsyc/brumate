@@ -80,6 +80,25 @@ export interface CoreOptions {
 
 let options: CoreOptions;
 const scopes = new Map<number, Scope>();
+
+/** What the devtools overlay hears from the core. It is set only in development. */
+export interface DevtoolsHooks {
+  /** The core started, with the scopes of the page. */
+  attach?(core: { scopes: Map<number, Scope> }): void;
+  /** A handler starts for an event. */
+  handler?(ref: string, element: Element, event?: Event): void;
+  /** A part of a component's client code loaded. */
+  part?(component: string, name: string): void;
+  /** A slot got a new value. */
+  write?(scope: Scope, slot: number, value: unknown): void;
+}
+
+/** The global key of the devtools hooks. */
+export const DEVTOOLS: unique symbol = Symbol.for('brumate.devtools');
+
+function devtools(): DevtoolsHooks | undefined {
+  return (globalThis as Record<symbol, DevtoolsHooks | undefined>)[DEVTOOLS];
+}
 const modules = new Map<string, ClientModule>();
 const loading = new Map<string, Promise<ClientModule>>();
 const parts = new Map<string, Promise<Part>>();
@@ -399,6 +418,7 @@ export function init(value: CoreOptions): void {
   document.addEventListener('brumate:refresh', onRefresh);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
+  devtools()?.attach?.({ scopes });
 }
 
 /** Replaces function references with functions that call them. */
@@ -437,6 +457,7 @@ function loadPart(module: ClientModule, name: string): Promise<Part> {
   if (!promise) {
     promise = module.load(name).then((part) => {
       loadedParts.set(key, part);
+      devtools()?.part?.(module.id, name);
       return part;
     });
     parts.set(key, promise);
@@ -481,6 +502,7 @@ export function handle(element: Element, ref: string, event?: Event): Promise<un
   const anchor = element.getAttribute('data-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
   const args = event ? [withTarget(event, element)] : [];
+  devtools()?.handler?.(ref, element, event);
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
   const loaded = resolve(ref);
@@ -522,6 +544,7 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
     scope.s[slot] = value;
+    devtools()?.write?.(scope, slot, value);
     trigger(scope, slot);
   }
   return value;

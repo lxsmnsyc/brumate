@@ -58,6 +58,16 @@ const { report, text } = inspect(source, {
 
 Without `liveProps`, the file is inspected alone, and every prop can change.
 
+## Devtools
+
+The dev server adds a `brm` button to each page. It opens a panel with three tabs:
+
+- **Scopes**: each component on the page, with its scopes and the value of each slot by name. A scope that changed since the panel last drew flashes.
+- **Log**: each handler that ran, each part of client code that loaded, and each write to a slot.
+- **Report**: the report of `brumate inspect` for a component. Choose one in Scopes.
+
+Until the button is pressed, only a small listener runs, so the page behaves as in production. The panel loads when it opens. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
+
 ## Build report
 
 `report: true` in the plugin options prints what the client build ships. Sizes are after gzip.

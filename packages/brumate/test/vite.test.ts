@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHTTPServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +59,28 @@ describe('vite plugin', () => {
     expect(list?.code).toMatch(/import Child from "\/Child\.brm\?.*brumate-render/);
     const child = await server.transformRequest('/Child.brm?brumate-render');
     expect(child?.code).toContain('export default function Child');
+  });
+
+  it('loads the devtools on the dev server, and tells them about components', async () => {
+    const start = await server.transformRequest('virtual:brumate/start');
+    expect(start?.code).toContain('installDevtools');
+    const http = createHTTPServer(server.middlewares);
+    await new Promise<void>((resolve) => http.listen(0, resolve));
+    const { port } = http.address() as AddressInfo;
+    const response = await fetch(`http://localhost:${port}/__brumate/inspect/Counter_m86gta`);
+    const missing = await fetch(`http://localhost:${port}/__brumate/inspect/Nothing_0`);
+    http.close();
+    const info = (await response.json()) as {
+      name: string;
+      scopes: Record<number, { label: string; slots: string[] }>;
+      text: string;
+    };
+    expect(info.name).toBe('Counter');
+    expect(Object.values(info.scopes)).toEqual([
+      { label: 'component', slots: ['count', 'double'] },
+    ]);
+    expect(info.text).toContain('Client code');
+    expect(missing.status).toBe(404);
   });
 
   it('loads client modules by component ID', async () => {
@@ -220,6 +242,11 @@ describe('prerendering', () => {
     expect(read('index.html')).toMatch(
       /<script type="module" async src="\/assets\/client-[\w-]+\.js"><\/script>/,
     );
+    // The devtools are only for the dev server.
+    const assets = readdirSync(`${app}dist/client/assets`).map((file) =>
+      readFileSync(`${app}dist/client/assets/${file}`, 'utf8'),
+    );
+    expect(assets.join('')).not.toContain('installDevtools');
     // A page that no link leads to is not rendered.
     expect(() => read('hidden/index.html')).toThrow('ENOENT');
   });

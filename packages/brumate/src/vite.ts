@@ -11,6 +11,7 @@ import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
+import { formatReport, report, scopeLabel } from './inspect.ts';
 import { prerender } from './prerender.ts';
 import { buildReport, formatBuildReport } from './report.ts';
 import type { Budget, ReportChunk } from './report.ts';
@@ -64,6 +65,12 @@ export interface BrumateOptions {
   budget?: Budget;
   /** Warns about common accessibility mistakes in markup. Defaults to true. */
   a11y?: boolean;
+  /**
+   * Shows a button that opens the devtools panel, on the dev server only.
+   * The panel shows the scopes of the page, a log of events, and the report
+   * of each component. Defaults to true.
+   */
+  devtools?: boolean;
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -82,6 +89,8 @@ const RENDER_QUERY = '?brumate-render';
 const SERVER_QUERY = '?brumate-server';
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
 const TESTING = 'virtual:brumate/testing';
+/** The dev server answers the devtools panel about a component at this path. */
+const INSPECT = '/__brumate/inspect';
 
 /** Reads a request body as bytes, so files in form data stay intact. */
 async function readBody(request: IncomingMessage): Promise<Buffer> {
@@ -100,6 +109,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let outDir = '';
   let base = '/';
   let isSsrBuild = false;
+  let isServe = false;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -224,6 +234,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
   };
 
+  /** What the devtools panel shows about a component: its name, its scopes and its report. */
+  const inspectComponent = async (id: string): Promise<object | undefined> => {
+    const file = files.get(id);
+    if (!file) {
+      return undefined;
+    }
+    const { source, result } = await compileFile(file);
+    const scopes: Record<number, { label: string; slots: string[] }> = {};
+    for (const layout of result.plan.scopes.values()) {
+      scopes[layout.scope.id] = {
+        label: scopeLabel(source, layout.scope),
+        slots: layout.slots.map((slot) => slot.name),
+      };
+    }
+    const text = formatReport(report(source, result, liveProps.get(file)));
+    return { name: result.plan.name, file: relative(file), scopes, text };
+  };
+
   const handleDevRPC = async (
     server: ViteDevServer,
     request: IncomingMessage,
@@ -287,6 +315,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     configResolved(config) {
       root = config.root;
+      isServe = config.command === 'serve';
       outDir = path.resolve(config.root, config.build.outDir);
       base = config.base;
       isSsrBuild = Boolean(config.build.ssr);
@@ -310,7 +339,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       const list = [...files.values()];
       const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
-      const report = buildReport({
+      const measured = buildReport({
         chunks,
         sources: new Map(list.map((file, index) => [file, contents[index]!])),
         routes: existsSync(routesDirectory())
@@ -319,10 +348,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         budget: options.budget,
       });
       if (options.report) {
-        this.info(`\n${formatBuildReport(report, relative)}`);
+        this.info(`\n${formatBuildReport(measured, relative)}`);
       }
-      if (report.overBudget.length > 0) {
-        this.error(report.overBudget.join('\n'));
+      if (measured.overBudget.length > 0) {
+        this.error(measured.overBudget.join('\n'));
       }
     },
 
@@ -359,6 +388,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
+          // The devtools listen to the core before it starts. Only the dev server has them.
+          ...(isServe && options.devtools !== false
+            ? [
+                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}));`,
+              ]
+            : []),
         ].join('\n');
       }
       if (id === `\0${MANIFEST}`) {
@@ -459,6 +494,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       server.middlewares.use((request, response, next) => {
         if (request.method === 'POST' && request.url?.startsWith(`${rpc}/`)) {
           void handleDevRPC(server, request, response);
+          return;
+        }
+        if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {
+          void inspectComponent(decodeURIComponent(request.url.slice(INSPECT.length + 1)))
+            .then((info) => {
+              response.statusCode = info ? 200 : 404;
+              response.setHeader('content-type', 'application/json');
+              response.end(JSON.stringify(info ?? { error: 'Unknown component' }));
+            })
+            .catch(next);
           return;
         }
         next();
