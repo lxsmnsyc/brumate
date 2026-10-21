@@ -36,11 +36,28 @@ function checkDashboard(html) {
 
 const check = scenario === 'dashboard' ? checkDashboard : checkTodos;
 
+// Encodes a render result to UTF-8 bytes, as a server must before it sends it. A string is
+// encoded whole, the way `res.end(html)` does it. A stream or other iterable of chunks is
+// encoded chunk by chunk as each one arrives, the way a streaming response writes it. This
+// also flattens a rope string, so a renderer that builds one pays for it here.
+async function encode(output) {
+  if (typeof output === 'string') return [Buffer.from(output, 'utf8')];
+  if (output instanceof Uint8Array) return [output];
+  const chunks = [];
+  for await (const chunk of output) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk);
+  }
+  return chunks;
+}
+
+// The bytes of every encoded page go into this sum, so the encoding cannot be skipped.
+let sink = 0;
+
 const commands = {
   async size({ ns }) {
     const out = {};
     for (const n of ns) {
-      const html = Buffer.from(await render(n));
+      const html = Buffer.concat(await encode(await render(n)));
       out[n] = {
         raw: html.length,
         gzip: gzipSync(html, { level: 9 }).length,
@@ -50,16 +67,19 @@ const commands = {
     return out;
   },
   async warmup({ n, count }) {
-    for (let i = 0; i < count; i++) await render(n);
-    return true;
+    for (let i = 0; i < count; i++) {
+      for (const chunk of await encode(await render(n))) sink += chunk.length;
+    }
+    return sink > 0;
   },
   async measure({ n, ms }) {
     let count = 0;
     const start = performance.now();
     while (performance.now() - start < ms) {
-      await render(n);
+      for (const chunk of await encode(await render(n))) sink += chunk.length;
       count++;
     }
+    if (sink === 0) throw new Error('every page was empty');
     return count / ((performance.now() - start) / 1000);
   },
 };

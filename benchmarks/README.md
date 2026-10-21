@@ -61,8 +61,8 @@ The todos scenario:
 
 - `browser`: Headless Chrome loads `/?n=3` in a fresh context. It records every same-origin response with the phase in which its request started: before `load`, while idle for 3 s after network idle, and during each interaction. Each interaction waits until the DOM shows the expected result. One session clicks the counter first and the other toggles a todo first, so both first interactions run on a page with no earlier clicks. The total covers the counter click, the toggle and an add.
 - `dist`: The size of every `.js` file in the client build output, whether the page loads it or not.
-- `ssr-size`: The HTML for 0, 3 and 100 todos. The cost per todo is the difference between 100 and 3 todos divided by 97. The worker also checks that the HTML shows the todos, the `N left` line and the counter.
-- `ssr-speed`: Each framework renders in its own process. After 300 warm-up renders per size, the runner asks one framework at a time to render for 1 s and counts the renders. It repeats this for 5 rounds, rotates the order each round, and reports the median with the min and max.
+- `ssr-size`: The UTF-8 bytes of the HTML for 0, 3 and 100 todos. The cost per todo is the difference between 100 and 3 todos divided by 97. The worker also checks that the HTML shows the todos, the `N left` line and the counter.
+- `ssr-speed`: Each framework renders in its own process. After 300 warm-up renders per size, the runner asks one framework at a time to render for 1 s and counts the renders. Each render includes encoding the HTML to UTF-8 bytes, as a server must before it sends the page. It repeats this for 5 rounds, rotates the order each round, and reports the median with the min and max. See "SSR encoding" below.
 - `waterfall`: Chrome throttles the network to 150 ms of latency and about 1.6 Mbit/s, then clicks the counter. "After idle" throttles after the page loaded and idled. "Cold" throttles from the start and clicks right at `load`. The round trip (RT) count is the longest chain of requests in which each one starts after the previous one finished.
 
 The dashboard scenario:
@@ -72,11 +72,22 @@ The dashboard scenario:
   - The second session scrolls to widget 30 and clicks it first, so the click on a widget below the fold runs on a page with no earlier clicks.
   - The third session repeats the main one with the idle preload off, for the frameworks that have one. brumate gets the Save-Data flag in the page (`navigator.connection.saveData`), which makes its loader skip the preload, the same check as the plugin's `preload: false`. Qwik renders with `preloader: false`. Marko loads all code at start and has no such option.
 - `dist`: The size of every `.js` file in the dashboard client build.
-- `ssr-size`: The HTML of the page. The worker checks that it shows every widget.
+- `ssr-size`: The UTF-8 bytes of the HTML of the page. The worker checks that it shows every widget.
 - `ssr-speed`: As for todos, with the one dashboard page.
 - `waterfall`: As for todos, with a click on the button of widget 1.
 
 Sizes show raw and gzip bytes. The harness compresses each file with gzip level 9 itself. The servers send files uncompressed.
+
+### SSR encoding
+
+A renderer that builds its HTML with `html += part` can return a rope: a string that V8 keeps as a tree of parts and has not copied into one block yet. Code that never reads the string does not pay for the copy. A server must turn the page into bytes before it sends it, and that step copies the rope. Without it, the loop would favor renderers that leave a deep rope.
+
+So the worker encodes the result of every render, in the warm-up and in the measured rounds, with the same code for every framework:
+
+- A string is encoded whole with `Buffer.from(html, 'utf8')`, which is what `res.end(html)` does in Node.
+- A stream or other iterable of chunks is encoded chunk by chunk as each chunk arrives, which is what a streaming response does. No adapter returns a stream now.
+
+The worker adds the byte count of each page to a sum, so the engine cannot drop the encoding.
 
 ## Options
 
@@ -109,7 +120,7 @@ The browser metrics use `playwright-core` with a Chrome that is already installe
 ## Caveats
 
 - Timings depend on the machine. The report records the CPU, the load average at the start and the end, and notes when the machine was busy. Close other work, or compare runs from the same machine only.
-- The SSR throughput runs in-process `render` calls, with no HTTP. It measures the renderer, not a server.
+- The SSR throughput runs in-process `render` calls and encodes the result, with no HTTP. It measures the renderer and the encoding, not a server.
 - All apps are production builds. Dev servers load different code and are not measured.
 - Gzip level 9 runs offline in the harness. A real server may use Brotli or a lower level.
 - The servers run on localhost with `cache-control: no-store`. Each browser session starts with an empty cache.
