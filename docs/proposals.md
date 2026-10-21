@@ -10,6 +10,9 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
+| [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
+| [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
+| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
 
 ## Syntax
 
@@ -85,8 +88,8 @@ From Terracotta:
 
 | React Aria Components or Terracotta | brumate                                                                                                                   |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Context provider in `Select`        | `$provide(POPOVER, { … })` in `Select.brm`                                                                                |
-| `useContextProps` in a part         | `$context(POPOVER)` merged with the part's props                                                                          |
+| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                             |
+| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                       |
 | `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                        |
 | `triggerRef` for positioning        | CSS anchor positioning: `anchor-name` on the trigger and `position-anchor` on the popover. It needs no ref and no script. |
 | Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                      |
@@ -108,7 +111,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 Build `Select` from `Label`, `Button`, `SelectValue`, `Popover` and `ListBox` with context composition, slots, `as` and render props. It answers:
 
 - Do parts that the caller passes as `children` read the contexts of `Select`? Children are rendered in the caller's scope and placed inside `Select`.
-- What does `$context` return when no provider is above a part?
+- What does `$getContext` return when no provider is above a part?
 - Does markup that a `#template` prop rendered update when the state that the part passed to it changes?
 - Can the `as` element get the part's handlers, ARIA attributes and focus, when `as` names a component?
 
@@ -123,3 +126,86 @@ Build `Select` from `Label`, `Button`, `SelectValue`, `Popover` and `ListBox` wi
 Cost: about 2 weeks for the compiler work, and a few months for the parts with their keyboard and focus details and tests. `Select` and `ComboBox` take the most time.
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
+
+### Progressive forms
+
+A form library that takes its API and behaviour from [Conform](https://conform.guide), which is built for forms that work without scripts in Remix and Next.js. brumate forms already work that way, with `action=fn`, `parseForm` and `$action`. This adds the layer on top. It is written in brumate. No React code runs.
+
+#### What it fixes
+
+- Lists of objects. `parseForm` makes `items.0.name` an object keyed `"0"`, so a form cannot post a list of objects. Conform names nested objects and arrays, and its intent buttons add, remove and reorder list items. Without scripts, an intent is a post that the server answers.
+- Values after a failed post. Without scripts, the page must send back what was typed, or the fields come back empty. Conform returns a submission with the last values and the errors of each field, and the fields read their defaults from it.
+- Form-level errors. They are under `errors['']` today. Conform keeps them apart from the errors of fields.
+- Accessibility. Each field gets its `id`, `name`, `aria-invalid`, `aria-describedby` and the id of its error from a helper, not by hand. The [headless UI components](#headless-ui-components) can use the same helpers.
+- One schema for both sides. With scripts, fields validate on blur or input with the same Standard Schema as the server, and with the browser's constraint validation. Without scripts, the server validates as before.
+
+All of this state is data: values, errors and the intent. It goes into the page state and resumes, and nothing needs to run when the page loads.
+
+#### Sketch
+
+```ts
+// A server function
+import { parseSubmission } from 'brumate/forms';
+
+async function save(form: FormData) {
+  'use server';
+  const submission = await parseSubmission(form, Order);
+  if (submission.status !== 'success') {
+    return submission.reply();
+  }
+  await db.orders.save(submission.value);
+}
+```
+
+```html
+<script>
+  import { $action } from 'brumate/signals';
+  import { formFields } from 'brumate/forms';
+
+  const result = $action(save);
+  const { form, field, list } = formFields(result, Order);
+</script>
+
+<form action=save {...form.attrs}>
+  <input {...field('email').attrs}>
+  #if (field('email').errors) { <p {...field('email').errorAttrs}>{field('email').errors[0]}</p> }
+  #for (item, index of list('items')) {
+    <input {...field(`items.${index}.name`).attrs}>
+    <button {...list('items').remove(index)}>Remove</button>
+  }
+  <button {...list('items').insert()}>Add an item</button>
+</form>
+```
+
+#### What it needs
+
+- `parseSubmission` on the server, which replaces `parseForm` for forms with lists and intents.
+- `formFields` in a `.brm.ts` module, which returns the attributes, errors and intent buttons of each field.
+- Handlers in spreads, from [Headless UI components](#headless-ui-components), so `field(...).attrs` can bring its own `onBlur` and `onInput` for validation in the browser. Without it, the first version validates only on the server.
+
+Cost: about 1 to 2 weeks for nested and array fields, intents, the field helpers, validation in the browser, tests and docs.
+
+### Markdown with components
+
+Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
+
+- A `.md` page compiles to a `.brm` component. Front matter becomes its props or page metadata. Fenced code is highlighted at build time.
+- The website already has a markdown plugin and live samples. They would become a general plugin that apps can use.
+
+Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
+
+### Compiled messages for i18n
+
+[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) compiles each translated message to its own function, so a page ships only the messages it uses. That matches how brumate ships only the code an event needs.
+
+- Paraglide works with any framework, so this is a guide and a small adapter, not a port: the locale of a request on the server, the same locale on the client, and links that keep it.
+- Messages that the server renders cost no client code. Only messages in client code, such as a handler that shows a toast, ship.
+
+Cost: a few days for the adapter, a guide and an example.
+
+### Order
+
+1. [Headless UI components](#headless-ui-components) and [progressive forms](#progressive-forms) share the compiler work: handlers in spreads, conditional `preventDefault`, and components from packages. Do that work first.
+2. Progressive forms next, because they are smaller and every app has forms.
+3. Then the UI components, starting with the `Select` spike.
+4. Compiled messages and Markdown with components when an app or the website needs them.
