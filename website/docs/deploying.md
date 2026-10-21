@@ -81,6 +81,7 @@ createServer(async (incoming, outgoing) => {
 `toRequest` and `send` turn Node's request and response into web ones. [`examples/todos`](../../examples/todos) has them in `node.ts`, with the full server in `server.prod.ts`, which also sets content types and refuses paths outside `dist/client`.
 
 - `route` returns `undefined` when no route matches and there is no root `_error.brm`. `send` answers with a 404 then.
+- `send` writes the headers with `toNodeHeaders` from `brumate/server`, which keeps each `set-cookie` apart. `Object.fromEntries(answer.headers)` would join them, and the browser would keep only one cookie.
 - Load the client entry with `async`, so it starts while `#loading` content is still streaming.
 - Files under `/assets/` have hashes in their names, so they can be cached for a long time.
 

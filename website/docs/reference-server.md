@@ -17,7 +17,7 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 
 ## `brumate/server`: in server functions
 
-These work in a server function, and in a component while a page renders with the `request` option. Elsewhere they throw.
+These work in a server function, in middleware and endpoints, and in a component while a page renders with the `request` option. Elsewhere they throw.
 
 | Export                                       | What it does                                                                                                     |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -28,8 +28,20 @@ These work in a server function, and in a component while a page renders with th
 | `redirect(location, status = 303): never`    | Stops and sends the browser to `location`.                                                                       |
 | `isRedirect(error): boolean`                 | True for the error that `redirect` throws.                                                                       |
 | `new ServerError(message, { status = 400 })` | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500. |
+| `getCookie(name)`, `getCookies()`            | Cookies of the request, with the ones that this request set.                                                     |
+| `setCookie(name, value, options?)`           | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS.  |
+| `deleteCookie(name, { path, domain }?)`      | Deletes a cookie.                                                                                                |
+| `createSession<T>({ secret, name, maxAge })` | A session in a signed cookie, with `get()`, `set(data)`, `update(change)` and `clear()`.                         |
 
-See [Server functions](./server-functions.md).
+See [Server functions](./server-functions.md) and [Cookies and sessions](./server-functions.md#cookies-and-sessions).
+
+These work anywhere:
+
+| Export                                   | What it does                                                  |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| `parseCookies(header)`                   | The cookies of a `cookie` header.                             |
+| `serializeCookie(name, value, options?)` | A `set-cookie` header value.                                  |
+| `toNodeHeaders(headers)`                 | Headers for Node's `writeHead`, with each `set-cookie` apart. |
 
 ## `brumate/server`: rendering
 

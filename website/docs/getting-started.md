@@ -95,6 +95,7 @@ A layout renders the document around the pages. `children` is the page for the c
 // server.ts
 import { createServer as createHTTPServer } from 'node:http';
 import { Readable } from 'node:stream';
+import { toNodeHeaders } from 'brumate/server';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
@@ -110,7 +111,7 @@ createHTTPServer((request, response) => {
       response.end('Not found');
       return;
     }
-    response.writeHead(answer.status, Object.fromEntries(answer.headers));
+    response.writeHead(answer.status, toNodeHeaders(answer.headers));
     Readable.fromWeb(answer.body).pipe(response);
   });
 }).listen(5173);

@@ -17,6 +17,7 @@ import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
+import { toNodeHeaders } from './runtime/cookies.ts';
 import { prerender } from './prerender.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
@@ -400,7 +401,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         origins: options.origins,
       });
       response.statusCode = answer.status;
-      answer.headers.forEach((value, name) => response.setHeader(name, value));
+      // Each cookie stays apart, as `forEach` would set only the last one.
+      for (const [name, value] of Object.entries(toNodeHeaders(answer.headers))) {
+        response.setHeader(name, value);
+      }
       response.end(await answer.text());
     } catch (error) {
       server.config.logger.error(String((error as Error).stack ?? error));

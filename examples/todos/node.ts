@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
+import { toNodeHeaders } from 'brumate/server';
 
 /** Turns a Node request into a web Request. */
 export async function toRequest(request: IncomingMessage): Promise<Request> {
@@ -22,7 +23,8 @@ export function send(answer: Response | undefined, response: ServerResponse): vo
     response.end('Not found');
     return;
   }
-  response.writeHead(answer.status, Object.fromEntries(answer.headers));
+  // Each cookie stays a header of its own.
+  response.writeHead(answer.status, toNodeHeaders(answer.headers));
   if (answer.body) {
     Readable.fromWeb(answer.body as never).pipe(response);
   } else {

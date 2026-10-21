@@ -55,6 +55,17 @@ export {
   setStatus,
 } from './request.ts';
 export type { Redirect } from './request.ts';
+export {
+  createSession,
+  deleteCookie,
+  getCookie,
+  getCookies,
+  parseCookies,
+  serializeCookie,
+  setCookie,
+  toNodeHeaders,
+} from './cookies.ts';
+export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
 
@@ -1335,6 +1346,31 @@ export async function handleRoute(
   tree: RouteNode,
   request: Request,
   options: RouteOptions = {},
+): Promise<Response | undefined> {
+  // Middleware and endpoints run with the request, so they can read and set cookies.
+  const parts: ResponseParts = { headers: new Headers() };
+  const answer = await withRequest(request, parts, () => routeAnswer(tree, request, options));
+  return answer && withHeaders(answer, parts.headers);
+}
+
+/** A response with more headers, such as cookies that middleware set. */
+function withHeaders(answer: Response, headers: Headers): Response {
+  const cookies = headers.getSetCookie();
+  if (cookies.length === 0) {
+    return answer;
+  }
+  // A response can have headers that cannot change, such as one from `Response.redirect`.
+  const result = new Response(answer.body, answer);
+  for (const cookie of cookies) {
+    result.headers.append('set-cookie', cookie);
+  }
+  return result;
+}
+
+async function routeAnswer(
+  tree: RouteNode,
+  request: Request,
+  options: RouteOptions,
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);

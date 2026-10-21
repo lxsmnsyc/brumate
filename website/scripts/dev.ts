@@ -1,5 +1,6 @@
 import { createServer as createHTTPServer } from 'node:http';
 import { Readable } from 'node:stream';
+import { toNodeHeaders } from 'brumate/server';
 import { createServer } from 'vite';
 
 // Renders the pages with Vite in development. Vite also serves the client modules.
@@ -24,7 +25,7 @@ const http = createHTTPServer((request, response) => {
       // The playground runs a WebAssembly parser with threads, which needs cross-origin isolation.
       response.setHeader('cross-origin-opener-policy', 'same-origin');
       response.setHeader('cross-origin-embedder-policy', 'require-corp');
-      response.writeHead(answer.status, Object.fromEntries(answer.headers));
+      response.writeHead(answer.status, toNodeHeaders(answer.headers));
       Readable.fromWeb(answer.body as never).pipe(response);
     } catch (error) {
       vite.ssrFixStacktrace(error as Error);

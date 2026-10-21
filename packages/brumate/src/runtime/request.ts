@@ -8,6 +8,8 @@ export interface ResponseParts {
   status?: number;
   /** Server functions that `refresh` named, whose memos the client loads again. */
   refreshed?: Set<unknown>;
+  /** Cookies that this request set, or deleted with undefined, so later reads see them. */
+  cookies?: Map<string, string | undefined>;
 }
 
 interface RequestContext {
@@ -22,11 +24,16 @@ export function withRequest<T>(request: Request, response: ResponseParts, callba
   return storage.run({ request, response }, callback);
 }
 
+/** The request and the response of the request being handled. */
+export function currentRequest(name: string): RequestContext {
+  return current(name);
+}
+
 function current(name: string): RequestContext {
   const context = storage.getStore();
   if (!context) {
     throw new Error(
-      `${name}() works only in server functions, and while rendering with the request option`,
+      `${name}() works only in server functions, middleware, endpoints, and while rendering with the request option`,
     );
   }
   return context;

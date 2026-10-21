@@ -180,6 +180,71 @@ async function search(query: string) {
 }
 ```
 
+## Cookies and sessions
+
+`getCookie` and `setCookie` read the cookies of the request and set them on the response:
+
+```ts
+import { getCookie, setCookie } from 'brumate/server';
+
+async function chooseTheme(theme: 'light' | 'dark') {
+  'use server';
+  setCookie('theme', theme, { maxAge: 60 * 60 * 24 * 365 });
+}
+
+async function currentTheme() {
+  'use server';
+  return getCookie('theme') ?? 'light';
+}
+```
+
+- A cookie is `HttpOnly`, `SameSite=Lax` and on the path `/`, unless the options say otherwise, and `Secure` on HTTPS. `deleteCookie(name)` deletes one.
+- They work in server functions, in middleware and endpoints, and while a page renders its first part. Markup that streams later, such as a `#loading` body, cannot set cookies, because the response has started.
+- After `setCookie`, `getCookie` in the same request reads the new value.
+
+`createSession` keeps data in a signed cookie, such as who is logged in:
+
+```ts
+// src/session.ts
+import { createSession } from 'brumate/server';
+
+export const session = createSession<{ userId: string }>({
+  secret: process.env.SESSION_SECRET!,
+});
+```
+
+```ts
+// src/auth.ts
+'use server';
+
+import { redirect } from 'brumate/server';
+import { session } from './session.ts';
+
+export async function login(form: FormData) {
+  const user = await checkPassword(String(form.get('email')), String(form.get('password')));
+  await session.set({ userId: user.id });
+  redirect('/');
+}
+
+export async function logout() {
+  session.clear();
+  redirect('/login');
+}
+
+export async function currentUser() {
+  const data = await session.get();
+  return data && findUser(data.userId);
+}
+```
+
+- `get()` returns undefined when there is no session, when it expired, or when its signature does not match, such as after a browser changed it.
+- `set(data)` replaces the data and starts its time again. `update(change)` changes some fields. `clear()` ends the session.
+- The secret is at least 32 characters, kept out of the code. A list of secrets signs with the first and accepts all of them, so a secret can change without ending every session.
+- Sessions last 7 days unless `maxAge` says otherwise, in seconds.
+- The browser can read the data, but cannot change it. Keep secrets out of it: store an ID, and look the rest up on the server. A cookie holds about 4 KB.
+
+A custom Node server sends the cookies with `toNodeHeaders(answer.headers)`, which keeps each one apart. See [Deploying](./deploying.md).
+
 ## Refreshing data
 
 A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `refresh` with the function that reads it. Every memo on the page that calls that function loads again.
