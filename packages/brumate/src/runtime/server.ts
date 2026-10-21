@@ -24,7 +24,14 @@ import {
 } from './shared.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PageState, ScopeState } from './shared.ts';
-import { Redirect, ServerError, isRedirect, withRequest } from './request.ts';
+import {
+  Redirect,
+  ServerError,
+  isRedirect,
+  unwrap,
+  withCallCache,
+  withRequest,
+} from './request.ts';
 import type { ResponseParts } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -47,6 +54,7 @@ export type {
 } from './router.ts';
 export {
   ServerError,
+  dedupe,
   getRequest,
   getResponseHeaders,
   isRedirect,
@@ -108,7 +116,7 @@ export class Context {
 
   /** The result of a server function that a form posted to this page. */
   actionResult(fn: unknown): unknown {
-    return this.root.actions.get(fn);
+    return this.root.actions.get(unwrap(fn));
   }
 
   constructor(root?: Context, rpc?: string, base = 0) {
@@ -737,7 +745,8 @@ export async function render<P>(
     ctx.actions = options.actions;
   }
   const response: ResponseParts = { headers: new Headers() };
-  const run = (): Promise<string> => Root(props, ctx);
+  // Calls of the same server function with the same arguments share a result in this render.
+  const run = (): Promise<string> => withCallCache(() => Root(props, ctx));
   const rendered = options.request
     ? await withRequest(options.request, response, run)
     : await run();

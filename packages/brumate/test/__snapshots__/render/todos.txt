@@ -12,6 +12,7 @@ async function persist(list: Todo[]) {
     console.log(list);
   }
 export const rpc = { "Todos_t3g9lr#persist": persist };
+persist = $$b.dedupe(persist, "Todos_t3g9lr#persist");
 
 export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

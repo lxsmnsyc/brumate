@@ -8,6 +8,7 @@ async function search(query: string): Promise<string[]> {
     return query === '' ? fruits : fruits.filter((fruit) => fruit.startsWith(query));
   }
 export const rpc = { "Search_s4k9u0#search": search };
+search = $$b.dedupe(search, "Search_s4k9u0#search");
 
 export default async function Search($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';

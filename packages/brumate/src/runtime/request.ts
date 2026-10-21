@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { toJSON } from 'seroval';
+import { disabledFeatures, plugins } from './shared.ts';
 
 /** What the server sets on the response while it handles a request. */
 export interface ResponseParts {
@@ -18,6 +20,59 @@ interface RequestContext {
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
+/** The results of server function calls while a page renders, by function and arguments. */
+const calls = new AsyncLocalStorage<Map<string, unknown>>();
+
+/**
+ * Runs a render, so calls of the same server function with the same
+ * arguments share one result, such as two components that load one user.
+ */
+export function withCallCache<T>(callback: () => T): T {
+  return calls.run(new Map(), callback);
+}
+
+/**
+ * Wraps a server function, so its calls while a page renders share a result
+ * when their arguments are the same. Calls from the browser, which are
+ * requests of their own, always run, so a function that changes something
+ * runs each time.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
+  const wrapper = ((...args: unknown[]) => {
+    const cache = calls.getStore();
+    if (!cache) {
+      return fn(...args);
+    }
+    let key: string;
+    try {
+      key = `${id} ${JSON.stringify(toJSON(args, { plugins, disabledFeatures }))}`;
+    } catch {
+      // Arguments that cannot be compared, such as a promise.
+      return fn(...args);
+    }
+    if (!cache.has(key)) {
+      cache.set(key, fn(...args));
+    }
+    return cache.get(key);
+  }) as F;
+  Object.defineProperty(wrapper, ORIGINAL, { value: fn });
+  return wrapper;
+}
+
+/**
+ * The function that `dedupe` wrapped, on its wrapper. A symbol of the
+ * registry, so two copies of the runtime agree on it.
+ */
+const ORIGINAL = Symbol.for('brumate.original');
+
+/**
+ * The server function itself, for a wrapper that `dedupe` made. `refresh`
+ * and `$action` compare server functions, and the registry holds them unwrapped.
+ */
+export function unwrap<T>(fn: T): T {
+  return ((fn as Record<symbol, T | undefined> | null)?.[ORIGINAL] ?? fn) as T;
+}
 
 /** Runs a callback with a request, so `getRequest` can read it. */
 export function withRequest<T>(request: Request, response: ResponseParts, callback: () => T): T {
@@ -57,7 +112,7 @@ export function getResponseHeaders(): Headers {
 export function refresh(fn: (...args: never[]) => unknown): void {
   const response = current('refresh').response;
   response.refreshed ??= new Set();
-  response.refreshed.add(fn);
+  response.refreshed.add(unwrap(fn));
 }
 
 /**

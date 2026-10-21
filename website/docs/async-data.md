@@ -53,6 +53,20 @@ The server renders the page once, so it waits for the values that the page needs
 - Markup outside every `#loading` block waits for the memos it reads. The page starts to stream after they settle.
 - Markup inside a `#loading` block does not hold up the page. Its fallback goes out with the first render, and the content streams in when its values settle.
 
+### One call for the same arguments
+
+While a page renders, calls of the same server function with the same arguments share one result. Two components that load `getUser(1)` make one call:
+
+```ts
+// Header.brm and Sidebar.brm, on one page
+const user = $memo(getUser(id));
+```
+
+- It holds for the server functions of components and of `'use server'` files.
+- Arguments are compared by value, as they would be sent, so `getUser({ id: 1 })` twice is one call.
+- Each render starts with no results, so a new request loads fresh data.
+- Calls from the browser, such as from a handler, always run. A function that changes something, such as `save(todo)`, runs each time it is called.
+
 ## `#loading`
 
 `#loading` shows a fallback while the values that its body reads load:

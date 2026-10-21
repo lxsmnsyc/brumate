@@ -97,7 +97,8 @@ export function generateServer(file: SFCFile, plan: Plan): string {
     if (node.type === 'FunctionDeclaration') {
       moduleBody.push(source(node));
     } else {
-      moduleBody.push(`const ${declaration.name} = ${source(node)};`);
+      // `let`, so the function can be wrapped below.
+      moduleBody.push(`let ${declaration.name} = ${source(node)};`);
     }
   }
   const exported = serverFunctions(plan).map(
@@ -105,6 +106,13 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   );
   // Every server module has it, so the server function registry can read it from any file.
   moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
+  // Calls while a page renders share a result when their arguments are the same. Calls from
+  // the browser use the functions of `rpc`, which run each time.
+  for (const declaration of serverFunctions(plan)) {
+    moduleBody.push(
+      `${declaration.name} = $$b.dedupe(${declaration.name}, ${JSON.stringify(`${plan.id}#${declaration.name}`)});`,
+    );
+  }
 
   if (plan.styles.css) {
     moduleBody.push(`const $$css = ${JSON.stringify(plan.styles.css)};`);

@@ -6,7 +6,7 @@ import { normalizePath, transformWithOxc } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
 import { defaultExclude, findFiles, findServerFiles } from './files.ts';
-import { hasUseServer, isScriptFile, serverStubs } from './server-files.ts';
+import { hasUseServer, isScriptFile, serverModule, serverStubs } from './server-files.ts';
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { getComponentName, hash } from './plan.ts';
@@ -614,8 +614,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // A file of server functions: the browser gets stubs that call the server instead.
       if (file && isScriptFile(file) && hasUseServer(code)) {
         try {
-          const stubs = serverStubs(code, file, serverFileId(normalizePath(file)));
-          return transformOptions?.ssr ? undefined : { code: stubs, map: null };
+          const fileId = serverFileId(normalizePath(file));
+          const stubs = serverStubs(code, file, fileId);
+          // The server runs the file, with calls while a page renders sharing their results.
+          return transformOptions?.ssr
+            ? { code: serverModule(code, file, fileId), map: null }
+            : { code: stubs, map: null };
         } catch (error) {
           this.error((error as Error).message);
         }

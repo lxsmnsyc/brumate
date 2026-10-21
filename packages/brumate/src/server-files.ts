@@ -107,3 +107,83 @@ export function serverStubs(source: string, filename: string, id: string): strin
   }
   return `${lines.join('\n')}\n`;
 }
+
+/**
+ * The module that the server runs for a file of server functions: the file,
+ * with each exported function wrapped, so its calls while a page renders
+ * share a result when their arguments are the same. Offsets stay the same.
+ */
+export function serverModule(source: string, filename: string, id: string): string {
+  const { program } = parseSync(filename, source, { lang: 'ts' });
+  // Local names of exported functions, with the name that each is exported as.
+  const wrapped = new Map<string, string>();
+  const declarations = new Map<string, 'function' | 'const'>();
+  let code = source;
+  for (const statement of program.body) {
+    const declaration =
+      statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+    if (declaration?.type === 'FunctionDeclaration' && declaration.id) {
+      declarations.set(declaration.id.name, 'function');
+    } else if (declaration?.type === 'VariableDeclaration') {
+      for (const declarator of declaration.declarations) {
+        if (declarator.id.type === 'Identifier' && isFunction(declarator.init)) {
+          declarations.set(declarator.id.name, 'const');
+        }
+      }
+    }
+  }
+  const letOf = (declaration: { start: number; kind: string }): void => {
+    // `const` becomes `let  `, so the function can be wrapped and offsets stay the same.
+    if (declaration.kind === 'const') {
+      code = `${code.slice(0, declaration.start)}let  ${code.slice(declaration.start + 5)}`;
+    }
+  };
+  for (const statement of program.body) {
+    if (
+      statement.type !== 'ExportNamedDeclaration' ||
+      statement.source ||
+      statement.exportKind === 'type'
+    ) {
+      continue;
+    }
+    const declaration = statement.declaration;
+    if (declaration?.type === 'FunctionDeclaration' && declaration.id) {
+      wrapped.set(declaration.id.name, declaration.id.name);
+    } else if (declaration?.type === 'VariableDeclaration') {
+      for (const declarator of declaration.declarations) {
+        if (declarator.id.type === 'Identifier' && isFunction(declarator.init)) {
+          wrapped.set(declarator.id.name, declarator.id.name);
+          letOf(declaration);
+        }
+      }
+    }
+    for (const specifier of statement.specifiers) {
+      const local = specifier.local.type === 'Identifier' ? specifier.local.name : '';
+      const exported =
+        specifier.exported.type === 'Identifier'
+          ? specifier.exported.name
+          : specifier.exported.value;
+      if (declarations.has(local)) {
+        wrapped.set(local, exported);
+      }
+    }
+  }
+  // A `const` arrow that `export { name }` exports is declared with `let` too.
+  for (const statement of program.body) {
+    if (statement.type === 'VariableDeclaration') {
+      for (const declarator of statement.declarations) {
+        if (declarator.id.type === 'Identifier' && wrapped.has(declarator.id.name)) {
+          letOf(statement);
+        }
+      }
+    }
+  }
+  if (wrapped.size === 0) {
+    return source;
+  }
+  const lines = ["import { dedupe as __brumateDedupe } from 'brumate/server';"];
+  for (const [local, exported] of wrapped) {
+    lines.push(`${local} = __brumateDedupe(${local}, ${JSON.stringify(`${id}#${exported}`)});`);
+  }
+  return `${code}\n${lines.join('\n')}\n`;
+}
