@@ -2,6 +2,7 @@ import {
   crossSerialize,
   fromCrossJSON,
   fromJSON,
+  getPlainObjectPlugins,
   toCrossJSON,
   toCrossJSONAsync,
   toCrossJSONStream,
@@ -43,7 +44,9 @@ function stream(value: unknown): Promise<SerovalNode[]> {
     toCrossJSONStream(value, {
       ...options,
       refs: new Map(),
-      onParse: (node) => nodes.push(node),
+      onParse: (node) => {
+        nodes.push(node);
+      },
       onError: reject,
       onDone: () => resolve(nodes),
     });
@@ -103,6 +106,22 @@ function runRecord(code: string, refs: unknown[] = []): unknown {
   ) => unknown;
   return read(refs, stateValues);
 }
+
+describe('plain objects', () => {
+  it('skips every plugin test for object literals', () => {
+    // seroval tests no plugin on a plain object when every plugin opts out.
+    expect(getPlainObjectPlugins(plugins) ?? []).toEqual([]);
+    expect(Object.getPrototypeOf(raw('<b>x</b>'))).not.toBe(Object.prototype);
+    const parsed = fromCrossJSON(
+      toCrossJSON({ html: raw('<b>x</b>') }, { ...options, refs: new Map() }),
+      {
+        ...options,
+        refs: new Map(),
+      },
+    ) as { html: Parameters<typeof rawHTML>[0] };
+    expect(rawHTML(parsed.html)).toBe('<b>x</b>');
+  });
+});
 
 describe('state records', () => {
   it('make the values of the plugins with the functions that the core passes', () => {

@@ -50,8 +50,11 @@ function parsers<T, K extends string>(
 
 // In the page state, each value is a call of `stateValues`, which the code of a record gets as `$b`.
 
+// No plugin here matches a plain object, so each one sets skipPlainObjects and seroval
+// does not run its test on object literals. Raw HTML is a class instance for this reason.
 const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
   tag: 'brumate/element',
+  skipPlainObjects: true,
   test: (value) => value instanceof ElementReference,
   parse: parsers((value) => ({ a: value.scope, b: value.anchor })),
   serialize: (node, ctx) => `$b.e(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
@@ -61,6 +64,7 @@ const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
 
 const FunctionPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/function',
+  skipPlainObjects: true,
   test: (value) => typeof value === 'function' && functionReferences.has(value),
   parse: parsers((value) => {
     const reference = functionReferences.get(value)!;
@@ -74,6 +78,7 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
 /** HTML, such as the `children` of a component, so the client can insert it again. */
 const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   tag: 'brumate/raw',
+  skipPlainObjects: true,
   test: isRaw,
   parse: parsers((value) => ({ h: rawHTML(value) })),
   serialize: (node, ctx) => `$b.r(${ctx.serialize(node.h)})`,
@@ -83,6 +88,7 @@ const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
 /** A component in the page state, such as the value of a dynamic tag. See `stateValues.c`. */
 const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
   tag: 'brumate/component',
+  skipPlainObjects: true,
   test: (value) =>
     typeof value === 'function' && typeof (value as Partial<ComponentValue>).brumateId === 'string',
   parse: parsers((value) => ({ c: value.brumateId })),
@@ -97,6 +103,7 @@ function stringPlugin<T extends { toString(): string }>(
 ): Plugin<T, { v: SerovalNode }> {
   return createPlugin<T, { v: SerovalNode }>({
     tag,
+    skipPlainObjects: true,
     test: (value) => value instanceof type,
     parse: parsers((value) => ({ v: value.toString() })),
     serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
@@ -110,6 +117,7 @@ const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams
 /** A file in the arguments of a server function call. It is never in the page state. */
 const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
   tag: 'brumate/upload',
+  skipPlainObjects: true,
   test: (value) => value instanceof Upload,
   parse: parsers((value) => ({ i: value.index })),
   serialize: () => {

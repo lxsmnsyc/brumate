@@ -5,7 +5,7 @@
 // hex digits, and the data: `;0x0000001f;{...}`. The reader knows how many
 // bytes to wait for, and can refuse a chunk that is too large.
 
-import { fromCrossJSON, isStream, toCrossJSONStream } from 'seroval';
+import { Stream, fromCrossJSON, toCrossJSONStream } from 'seroval';
 import type { SerovalNode } from 'seroval';
 import { disabledFeatures, plugins } from './serial.ts';
 
@@ -137,7 +137,8 @@ class Refs extends Map<number, unknown> {
 function failPending(refs: Refs, error: unknown): void {
   for (const value of refs.values()) {
     try {
-      if (isStream(value)) {
+      // The deserializer makes a Stream. A LiveStream comes only from user code, and its producer fails it.
+      if (value instanceof Stream) {
         value.throw(error);
       } else if (value !== null && typeof value === 'object') {
         const resolver = value as { p?: unknown; f?: unknown };

@@ -367,8 +367,8 @@ importers:
         specifier: ^7.1.6
         version: 7.1.6
       seroval:
-        specifier: ^1.6.11
-        version: 1.6.11
+        specifier: ^1.7.0
+        version: 1.7.0
     devDependencies:
       '@oxc-project/types':
         specifier: ^0.154.0
@@ -3895,9 +3895,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  seroval@1.6.11:
-    resolution: {integrity: sha512-hpb6XnMCGN/A+79Uf8V7/iTGkyyyazNn5X0CoCAp7Uy9vT3RT8jZ9GLcnxGoVjg3P8AArbe4ZVHq6C8oT2a0kA==}
-    engines: {node: '>=10'}
+  seroval@1.7.0:
+    resolution: {integrity: sha512-FU+LUkmDzWNsJ6oubZFN3dGPKny53DRhPJG6nftEaXDL8MIn19+kEE1Gvc+63Go+qPOwVUlKIdKhsu2HN6tksw==}
+    engines: {node: '>=20'}
 
   shell-quote@1.12.0:
     resolution: {integrity: sha512-PcByqNyT/38F2kDNi006HAMRJaULuBzq/FOsw3qdZvX/GA9W/jamDaRskgHjubHiftXK5sIFxLNkvrXUwcof6Q==}
@@ -7364,7 +7364,7 @@ snapshots:
 
   semver@7.8.5: {}
 
-  seroval@1.6.11: {}
+  seroval@1.7.0: {}
 
   shell-quote@1.12.0: {}
 

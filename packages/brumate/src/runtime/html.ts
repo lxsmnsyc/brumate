@@ -7,8 +7,17 @@ export interface Raw {
   [RAW]: string;
 }
 
+// A class, not an object literal, so serializers can skip their test for raw HTML on plain objects.
+class RawHTML implements Raw {
+  readonly [RAW]: string;
+
+  constructor(html: string) {
+    this[RAW] = html;
+  }
+}
+
 export function raw(html: string): Raw {
-  return { [RAW]: html };
+  return new RawHTML(html);
 }
 
 export function isRaw(value: unknown): value is Raw {

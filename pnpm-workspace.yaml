@@ -14,3 +14,6 @@ allowBuilds:
   keytar: false
   # Vite 7 in benchmarks/qwik1 brings esbuild. Its platform binary comes as an optional dependency.
   esbuild: false
+
+minimumReleaseAgeExclude:
+  - seroval@1.7.0
