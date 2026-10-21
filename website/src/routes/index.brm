@@ -14,7 +14,7 @@
 
 <Meta
   title="brumate: web apps that resume"
-  description="A component language and compiler. Components render on the server, and the browser loads the code for an event only when it fires. No hydration."
+  description="A component language and compiler. Components render on the server, and the browser loads each handler only when it's needed. No hydration."
   path=""
 />
 <main class="home">
@@ -23,9 +23,8 @@
     <p class="eyebrow">A component language and compiler</p>
     <h1>Web apps that <span class="gradient-text">resume</span>, not hydrate.</h1>
     <p class="lead">
-      brumate renders components on the server and writes their state into the page.
-      The browser loads a small loader, and the code for an event only when it fires.
-      No component runs again to rebuild what the server rendered.
+      Components render on the server. The browser keeps their state and loads each handler
+      only when it's needed. Pages work at once, and nothing runs twice.
     </p>
     <div class="actions">
       <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
