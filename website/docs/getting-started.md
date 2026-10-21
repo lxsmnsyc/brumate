@@ -130,6 +130,16 @@ Open `http://localhost:5173`. The page works before any script runs, and the fir
 
 [Deploying](./deploying.md) describes the production build and server, and static sites.
 
+## Edit while it runs
+
+The dev server updates the page when you save a component, and keeps its state when it can:
+
+- An edit of a `<style>` block replaces the styles of the component in place.
+- An edit of a script or an event handler that keeps the markup and the values of the component loads the new code. The page keeps its state, and the next event runs the new code.
+- An edit of the markup, or one that adds or removes a value, reloads the page, because the HTML of the server no longer matches the page.
+
+An edit of a [module of reactive logic](./reactive-modules.md) updates the components that call it in the same way.
+
 ## Type-check
 
 `brumate-tsc` type-checks the project, `.brm` files included. Add the types of brumate to `tsconfig.json`:

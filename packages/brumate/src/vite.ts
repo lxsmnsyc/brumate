@@ -13,6 +13,7 @@ import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
 import { isReactiveModule } from './modules.ts';
+import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { prerender } from './prerender.ts';
 import type { SourceMap } from './sourcemap.ts';
@@ -104,6 +105,60 @@ async function readBody(request: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/** What decides whether an edit of a component can update a page without a reload. */
+interface Shape {
+  /**
+   * The parts of the output that a page in the browser depends on: the
+   * client entry with its update table, the slots of each scope, and the
+   * markup. When they stay the same, the page keeps working with new code.
+   */
+  layout: string;
+  css: string;
+  /** The code of the client parts, which the page loads again when it changes. */
+  code: string;
+}
+
+/** Removes the scripts, styles and event handlers of a file, which leaves the markup of its page. */
+function markupOf(result: CompileResult): string {
+  const { file } = result;
+  const ranges: { start: number; end: number }[] = [
+    ...(file.instanceScript ? [file.instanceScript] : []),
+    ...(file.moduleScript ? [file.moduleScript] : []),
+    ...file.styles,
+  ];
+  forEachNode(file.children, (node) => {
+    if ('body' in node && node.body && 'script' in node.body && node.body.script) {
+      ranges.push(node.body.script);
+    }
+    // The code of an event handler is not in the page, which only names the handler.
+    if ('attributes' in node) {
+      for (const attribute of node.attributes) {
+        if (attribute.kind === 'event') {
+          ranges.push(attribute.handler);
+        }
+      }
+    }
+  });
+  let markup = '';
+  let position = 0;
+  for (const range of ranges.toSorted((a, b) => a.start - b.start)) {
+    markup += file.source.slice(position, range.start);
+    position = Math.max(position, range.end);
+  }
+  return markup + file.source.slice(position);
+}
+
+function shapeOf(result: CompileResult): Shape {
+  const slots = [...result.plan.scopes.values()].map(
+    (layout) => `${layout.scope.id}:${layout.slots.map((slot) => slot.name).join(',')}`,
+  );
+  return {
+    layout: JSON.stringify([result.client, slots, markupOf(result)]),
+    css: result.css,
+    code: JSON.stringify(result.parts),
+  };
+}
+
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
@@ -118,6 +173,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const compiled = new Map<string, { source: string; result: CompileResult }>();
   /** Files that a component depends on, such as SCSS that it imports or modules that it calls into, with the components. */
   const dependents = new Map<string, Set<string>>();
+  /** What the browser has of each component, from its last compile. See `shapeOf`. */
+  const shapes = new Map<string, Shape>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
 
@@ -161,6 +218,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }),
       };
       compiled.set(file, cached);
+      shapes.set(file, shapeOf(cached.result));
     }
     return cached;
   };
@@ -400,7 +458,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
-          `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
+          // On the dev server, an edit of a component can update the page without a reload.
+          ...(isServe
+            ? [
+                "import { hotLoad } from 'brumate/hot';",
+                `start({ load: hotLoad(import.meta.hot, load), rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
+              ]
+            : [
+                `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
+              ]),
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
@@ -513,24 +579,25 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           writeRouteTypes();
         }
-        if (!file.endsWith('.brm')) {
+        // A changed component is handled by `handleHotUpdate`, which updates the page in place when it can.
+        if (!file.endsWith('.brm') || event === 'change') {
           return;
         }
-        const update =
-          event === 'add' || event === 'unlink' ? scan().then(writeRouteTypes) : analyze();
-        void update.then(() => {
-          for (const module of server.moduleGraph.idToModuleMap.values()) {
-            const id = module.id ?? '';
-            if (
-              id.includes('.brm') ||
-              id === `\0${MANIFEST}` ||
-              id === `\0${SERVER}` ||
-              id === `\0${ROUTES}`
-            ) {
-              server.moduleGraph.invalidateModule(module);
+        void scan()
+          .then(writeRouteTypes)
+          .then(() => {
+            for (const module of server.moduleGraph.idToModuleMap.values()) {
+              const id = module.id ?? '';
+              if (
+                id.includes('.brm') ||
+                id === `\0${MANIFEST}` ||
+                id === `\0${SERVER}` ||
+                id === `\0${ROUTES}`
+              ) {
+                server.moduleGraph.invalidateModule(module);
+              }
             }
-          }
-        });
+          });
       });
       server.middlewares.use((request, response, next) => {
         if (request.method === 'POST' && request.url?.startsWith(`${rpc}/`)) {
@@ -551,13 +618,67 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       });
     },
 
-    handleHotUpdate({ file, server }) {
-      // A resumed page cannot swap a component's code, so the page reloads.
-      if (file.endsWith('.brm') || isReactiveModule(file) || dependents.has(normalizePath(file))) {
+    async handleHotUpdate({ file, server, timestamp }) {
+      const normalized = normalizePath(file);
+      const targets = file.endsWith('.brm')
+        ? [normalized]
+        : [...(dependents.get(normalized) ?? [])];
+      if (targets.length === 0) {
+        return undefined;
+      }
+      // A resumed page cannot run a component again. When an edit keeps the markup, the slots
+      // and the update table of each changed component, the page keeps its state: new styles
+      // replace the old ones, and the next event loads the new code. Otherwise the page reloads.
+      const reload = (): [] => {
+        for (const module of server.moduleGraph.idToModuleMap.values()) {
+          const id = module.id ?? '';
+          if (
+            id.includes('.brm') ||
+            id === `\0${MANIFEST}` ||
+            id === `\0${SERVER}` ||
+            id === `\0${ROUTES}`
+          ) {
+            server.moduleGraph.invalidateModule(module);
+          }
+        }
         server.ws.send({ type: 'full-reload' });
         return [];
+      };
+      await analyze();
+      const updates: { id: string; css?: string; url?: string }[] = [];
+      for (const target of targets) {
+        const before = shapes.get(target);
+        let after: Shape;
+        try {
+          // oxlint-disable-next-line no-await-in-loop -- The first component that cannot update in place reloads the page.
+          after = shapeOf((await compileFile(target)).result);
+        } catch {
+          // The error shows when the page reloads and the module compiles.
+          return reload();
+        }
+        if (!before || before.layout !== after.layout) {
+          return reload();
+        }
+        const id = componentId(target);
+        const modules = [
+          ...(server.moduleGraph.getModulesByFile(target) ?? []),
+          // The shared code of a module of reactive logic that changed.
+          ...(target === normalized ? [] : (server.moduleGraph.getModulesByFile(normalized) ?? [])),
+        ];
+        for (const module of modules) {
+          server.moduleGraph.invalidateModule(module, new Set(), timestamp, true);
+        }
+        const entry = [...(server.moduleGraph.getModulesByFile(target) ?? [])].find((module) =>
+          module.id?.endsWith(CLIENT_QUERY),
+        );
+        updates.push({
+          id,
+          css: before.css === after.css ? undefined : after.css,
+          url: before.code === after.code ? undefined : entry?.url,
+        });
       }
-      return undefined;
+      server.ws.send({ type: 'custom', event: 'brumate:update', data: { updates, timestamp } });
+      return [];
     },
   };
 }

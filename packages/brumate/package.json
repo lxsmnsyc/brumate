@@ -56,6 +56,10 @@
       "types": "./dist/runtime/devtools.d.ts",
       "default": "./dist/runtime/devtools.js"
     },
+    "./hot": {
+      "types": "./dist/runtime/hot.d.ts",
+      "default": "./dist/runtime/hot.js"
+    },
     "./testing": {
       "types": "./dist/runtime/testing.d.ts",
       "default": "./dist/runtime/testing.js"

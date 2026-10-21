@@ -344,6 +344,25 @@ export function dispose(): void {
   observer?.disconnect();
   observer = undefined;
   document.removeEventListener('brumate:refresh', onRefresh);
+  document.removeEventListener('brumate:hot', onHot);
+}
+
+/**
+ * Forgets the code of components that changed on the dev server, so the next
+ * event or update loads the new code. Their state stays. See `brumate/hot`.
+ */
+function onHot(event: Event): void {
+  for (const id of (event as CustomEvent<string[]>).detail) {
+    modules.delete(id);
+    loading.delete(id);
+    // Deleting the entry that a loop is at is safe for a Map.
+    for (const key of parts.keys()) {
+      if (key.startsWith(`${id}:`)) {
+        parts.delete(key);
+        loadedParts.delete(key);
+      }
+    }
+  }
 }
 
 function onRefresh(event: Event): void {
@@ -423,6 +442,7 @@ export function init(value: CoreOptions): void {
   });
   observer.observe(document, { childList: true, subtree: true });
   document.addEventListener('brumate:refresh', onRefresh);
+  document.addEventListener('brumate:hot', onHot);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
   devtools()?.attach?.({ scopes });
