@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { render as renderParts, stateScript } from '../src/runtime/server.ts';
+import { toChunkStream } from '../src/runtime/stream.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
 const input = resolve(import.meta.dirname, 'render');
@@ -331,6 +332,53 @@ describe('resume', () => {
     expect(items()).toEqual(['banana']);
   });
 
+  it('streams server function answers, sends files, and aborts calls that are out of date', async () => {
+    vi.resetModules();
+    const server = await import(file('stream.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const aborted: string[] = [];
+    (globalThis as { aborted?: string[] }).aborted = aborted;
+    const { html, state } = await runtime.render(
+      server.default,
+      {},
+      { request: new Request('http://localhost/') },
+    );
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    // The server renders the first value of a stream.
+    expect(text('.value')).toBe('1');
+
+    // The memo takes each value as it arrives.
+    click(document.querySelector('.more')!);
+    const seen = new Set<string>();
+    await waitFor(() => {
+      seen.add(text('.value'));
+      expect(text('.value')).toBe('4');
+    });
+    expect(seen.size).toBeGreaterThan(1);
+
+    // Files and blobs go as parts of form data, in arrays and objects too.
+    click(document.querySelector('.upload')!);
+    await waitFor(() => expect(text('.uploaded')).toBe('note.txt: hello, blob: world'));
+
+    // A newer input aborts the call of the older one.
+    const field = document.querySelector('input')!;
+    aborted.length = 0;
+    field.value = 'b';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 5));
+    field.value = 'c';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.echoed')).toBe('c'));
+    await waitFor(() => expect(aborted.toSorted()).toEqual(['b:true', 'c:false']));
+    delete (globalThis as { aborted?: string[] }).aborted;
+  });
+
   it('loads a memo that returns a promise without saying so', async () => {
     await resume('doubler', {});
     expect(text('p')).toBe('2');
@@ -439,7 +487,7 @@ describe('resume', () => {
     const calls: [string, unknown][] = [];
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       calls.push([url, JSON.parse(init.body as string)]);
-      return new Response(JSON.stringify({ t: { t: 2, s: 1 }, f: 127, m: [] }));
+      return new Response(toChunkStream(undefined));
     });
     await resume('todos', {
       initial: [
@@ -474,10 +522,7 @@ describe('resume', () => {
   });
 
   it('runs handlers in the order of their events', async () => {
-    vi.stubGlobal(
-      'fetch',
-      async () => new Response(JSON.stringify({ t: { t: 2, s: 1 }, f: 127, m: [] })),
-    );
+    vi.stubGlobal('fetch', async () => new Response(toChunkStream(undefined)));
     // The input handler's part loads after the submit handler's part.
     await resume('todos', { initial: [] }, { h7: 100 });
     const field = document.querySelector('input')!;

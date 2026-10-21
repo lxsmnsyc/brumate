@@ -7,6 +7,7 @@ import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
+import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
 
 const root = fileURLToPath(new URL('./render/', import.meta.url));
@@ -81,7 +82,7 @@ describe('vite plugin', () => {
     );
     http.close();
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ t: { t: 2 } });
+    expect(await fromChunkStream(response.body!)).toBeUndefined();
   });
 
   it('passes the request to server functions in development', async () => {
@@ -93,7 +94,7 @@ describe('vite plugin', () => {
       { method: 'POST', headers: { 'x-user': 'Ada' }, body: JSON.stringify(toJSON([])) },
     );
     http.close();
-    expect(await response.json()).toMatchObject({ t: { s: 'Ada' } });
+    expect(await fromChunkStream(response.body!)).toBe('Ada');
   });
 
   it('exports server functions for production', async () => {

@@ -104,12 +104,71 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
     Object.assign(() => '', { brumateId: ctx.deserialize<string>(node.c) }),
 });
 
+/**
+ * A file or a blob in the arguments of a server function call. The call
+ * sends it as a part of multipart form data, named `file<index>`, instead
+ * of in the JSON of the arguments.
+ */
+export class Upload {
+  readonly index: number;
+
+  constructor(index: number) {
+    this.index = index;
+  }
+}
+
+const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
+  tag: 'brumate/upload',
+  test: (value) => value instanceof Upload,
+  parse: {
+    sync: (value, ctx) => ({ i: ctx.parse(value.index) }),
+    async: async (value, ctx) => ({ i: await ctx.parse(value.index) }),
+    stream: (value, ctx) => ({ i: ctx.parse(value.index) }),
+  },
+  serialize: (node, ctx) => `{u:${ctx.serialize(node.i)}}`,
+  deserialize: (node, ctx) => new Upload(ctx.deserialize<number>(node.i)),
+});
+
+/**
+ * Replaces each value in arrays and plain objects that `replace` returns a
+ * value for. Returns a copy, or the value itself when nothing changed.
+ */
+export function replaceDeep(value: unknown, replace: (value: unknown) => unknown): unknown {
+  const replaced = replace(value);
+  if (replaced !== undefined) {
+    return replaced;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceDeep(item, replace));
+  }
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, replaceDeep(item, replace)]),
+    );
+  }
+  return value;
+}
+
+/** True for a value that `for await` reads, such as the result of an async generator. */
+export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+  );
+}
+
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
 export const plugins: Plugin<any, any>[] = [
   ElementPlugin,
   FunctionPlugin,
   RawPlugin,
   ComponentPlugin,
+  UploadPlugin,
 ];
 
 /**

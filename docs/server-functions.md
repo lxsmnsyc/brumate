@@ -209,6 +209,54 @@ const user = $memo(getUser(id));
 
 When `id` changes on the client, the client calls `getUser` through RPC, and the page keeps the old `user` until the call answers. Data access stays on the server, and the client only holds the stub. See [`$memo`](./syntax.md#memo).
 
+When `id` changes again before the call answers, the client aborts the older call. The server function sees it on the request:
+
+```ts
+async function getUser(id: number) {
+  'use server';
+  const { signal } = getRequest();
+  return db.users.find(id, { signal });
+}
+```
+
+## Streams
+
+A server function can return promises and async iterables, as values or inside other values. The answer streams, and each one settles on the client as its part arrives.
+
+```ts
+async function* progress(job: string) {
+  'use server';
+  for await (const step of runJob(job)) {
+    yield step;
+  }
+}
+
+let job = $signal('build');
+const step = $memo(progress(job));
+```
+
+- A `$memo` of an async iterable takes each value as it arrives. It is pending until the first one.
+- A newer load of the memo stops reading the older stream, and aborts its call.
+- The server renders the first value of the stream. A page renders once, so the server stops reading after it.
+- A handler can read the stream with `for await`.
+
+The answer is a series of chunks. Each chunk has a 12-byte header with its size, `;0x0000001f;`, and a seroval node in JSON.
+
+## Files
+
+Files and blobs in the arguments go as parts of multipart form data, and the server function gets them as `File` values:
+
+```ts
+async function upload(file: File, meta: { tags: string[] }) {
+  'use server';
+  await storage.put(file.name, await file.arrayBuffer());
+}
+
+<input type="file" onChange=((event) => upload(event.currentTarget.files![0]!, { tags: [] }))>
+```
+
+Files can be arguments, or values in arrays and plain objects in the arguments.
+
 ## No `'use client'`
 
 There is no `'use client'` directive. The compiler decides what ships by following client roots. See [Execution model](./model.md#client-roots).

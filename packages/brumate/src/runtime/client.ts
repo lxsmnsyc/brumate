@@ -9,7 +9,13 @@ import {
   spread as spreadText,
 } from './html.ts';
 import type { Raw } from './html.ts';
-import { ElementReference, FunctionReference, disabledFeatures, plugins } from './shared.ts';
+import {
+  ElementReference,
+  FunctionReference,
+  disabledFeatures,
+  isAsyncIterable,
+  plugins,
+} from './shared.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -543,13 +549,37 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
       trigger(scope, slot);
     }
   };
-  promise.then(
-    (value) => settle(value),
-    (error: unknown) => {
+  const fail = (error: unknown): void => {
+    // A newer load of the memo aborted this one.
+    if (loads.get(key) === load) {
       console.error(error);
       settle(undefined, true);
-    },
-  );
+    }
+  };
+  promise.then((value) => {
+    if (!isAsyncIterable(value)) {
+      settle(value);
+      return;
+    }
+    // A stream, such as a server function that yields: the memo takes each
+    // value, and is pending until the first arrives. A newer load stops it.
+    void (async () => {
+      try {
+        for await (const item of value) {
+          if (loads.get(key) !== load) {
+            break;
+          }
+          if (loadingSlots.has(key)) {
+            settle(item);
+          } else if (!Object.is(scope.s[slot], item)) {
+            set(scope, slot, item);
+          }
+        }
+      } catch (error) {
+        fail(error);
+      }
+    })();
+  }, fail);
 }
 
 /** Writes a new value of a memo. A promise is loaded with `asyncMemo`. */
@@ -566,6 +596,11 @@ class NotReady extends Error {
 // More than 0 while a memo computes, so reading a value that is still loading stops it.
 let computing = 0;
 
+/** Aborts the server function calls of a memo's compute, by memo key. */
+const memoControllers = new Map<string, AbortController>();
+/** The signal for server function calls while a memo computes. */
+let memoSignal: AbortSignal | undefined;
+
 /**
  * Computes a memo. A promise loads, and the memo keeps its value until it
  * settles. A memo that reads a value that is still loading keeps its value
@@ -574,6 +609,12 @@ let computing = 0;
 export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   let value: unknown;
+  // Server function calls of the last compute are aborted, because their answers are out of date.
+  memoControllers.get(key)?.abort();
+  const controller = new AbortController();
+  memoControllers.set(key, controller);
+  const outer = memoSignal;
+  memoSignal = controller.signal;
   computing++;
   try {
     value = compute();
@@ -588,11 +629,12 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
     return;
   } finally {
     computing--;
+    memoSignal = outer;
   }
   if (
     value !== null &&
     typeof value === 'object' &&
-    typeof (value as PromiseLike<unknown>).then === 'function'
+    (typeof (value as PromiseLike<unknown>).then === 'function' || isAsyncIterable(value))
   ) {
     asyncMemo(scope, slot, Promise.resolve(value));
     return;
@@ -1209,8 +1251,10 @@ export function submitAction(form: HTMLFormElement, submitter: HTMLElement | nul
 
 /** Calls a server function. */
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
+  // Read before the import, while the memo that calls it computes.
+  const signal = memoSignal;
   const { call: callServer } = await import('./rpc.ts');
-  return callServer(options.rpc ?? '/_brumate', id, args);
+  return callServer(options.rpc ?? '/_brumate', id, args, signal);
 }
 
 // Rendering on the client

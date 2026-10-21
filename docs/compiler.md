@@ -141,7 +141,7 @@ The core, `brumate/client`, loads on the first event:
 - Finds elements by `data-b` and text and blocks by their comment markers.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
-- Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRPC` from `brumate/server` answers them. The code for these calls is a separate chunk that loads on the first call.
+- Calls server functions with `fetch`, at `/_brumate/<id>` by default. `handleRequest` from `brumate/server` answers them. The code for these calls is a separate chunk that loads on the first call.
 
 Handlers run after the event has finished dispatching, so the core passes them an event whose `currentTarget` is still the element.
 

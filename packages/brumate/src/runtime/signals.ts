@@ -21,8 +21,14 @@ export function $signal(): never {
   return compileTimeOnly('$signal');
 }
 
-/** Declares a value computed from other values. A promise is awaited where it is read. */
-export function $memo<T>(_value: T): Awaited<T> {
+/** The value of a memo: what a promise settles to, or the latest value of an async iterable. */
+export type MemoValue<T> = Awaited<T> extends AsyncIterable<infer U> ? U : Awaited<T>;
+
+/**
+ * Declares a value computed from other values. A promise is awaited where it
+ * is read. An async iterable gives each of its values in turn.
+ */
+export function $memo<T>(_value: T): MemoValue<T> {
   return compileTimeOnly('$memo');
 }
 

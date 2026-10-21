@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { toJSON } from 'seroval';
 import { compile } from '../src/index.ts';
 import { handleRequest, isCrossSite, render } from '../src/runtime/server.ts';
+import { fromChunkStream } from '../src/runtime/stream.ts';
 
 const source = readFileSync(new URL('./render/session.brm', import.meta.url), 'utf8');
 const output = new URL('./.output/request/', import.meta.url);
@@ -43,7 +44,7 @@ describe('server functions and the request', () => {
 
   it('reads the request in a call', async () => {
     const response = await call('whoami', [], { 'x-user': 'Grace' });
-    expect(await response!.json()).toMatchObject({ t: { s: 'Grace' } });
+    expect(await fromChunkStream(response!.body!)).toBe('Grace');
   });
 
   it('sets response headers', async () => {

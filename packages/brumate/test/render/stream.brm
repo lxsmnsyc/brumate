@@ -1,0 +1,47 @@
+<script>
+  import { getRequest } from 'brumate/server';
+  import { $memo, $signal } from 'brumate/signals';
+
+  // Yields 1, 2, and so on up to `to`.
+  async function* count(to: number) {
+    'use server';
+    for (let value = 1; value <= to; value++) {
+      await new Promise((done) => setTimeout(done, 10));
+      yield value;
+    }
+  }
+
+  let to = $signal(2);
+  const value = $memo(count(to));
+
+  async function upload(file: File, notes: { label: string; file: Blob }[]) {
+    'use server';
+    return `${file.name}: ${await file.text()}, ${notes[0]!.label}: ${await notes[0]!.file.text()}`;
+  }
+
+  let uploaded = $signal('');
+  async function send() {
+    uploaded = await upload(new File(['hello'], 'note.txt'), [
+      { label: 'blob', file: new Blob(['world']) },
+    ]);
+  }
+
+  // Records whether the request of each call was aborted, for the test.
+  async function slow(query: string) {
+    'use server';
+    const { signal } = getRequest();
+    await new Promise((done) => setTimeout(done, 40));
+    (globalThis as { aborted?: string[] }).aborted?.push(`${query}:${signal.aborted}`);
+    return query;
+  }
+
+  let query = $signal('a');
+  const echoed = $memo(slow(query));
+</script>
+
+<button class="more" onClick=(() => (to = 4))>More</button>
+<p class="value">{value}</p>
+<button class="upload" onClick=send>Upload</button>
+<p class="uploaded">{uploaded}</p>
+<input value=query onInput=((event) => (query = event.currentTarget.value))>
+<p class="echoed">{echoed}</p>

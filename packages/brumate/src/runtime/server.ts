@@ -1,4 +1,4 @@
-import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval';
+import { fromJSON, toCrossJSONStream } from 'seroval';
 import type { SerovalJSON, SerovalNode } from 'seroval';
 import {
   VOID_ELEMENTS,
@@ -16,9 +16,13 @@ import {
   ElementReference,
   FunctionReference,
   disabledFeatures,
+  Upload,
   functionReferences,
+  isAsyncIterable,
   plugins,
+  replaceDeep,
 } from './shared.ts';
+import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PageState, ScopeState } from './shared.ts';
 import { Redirect, ServerError, isRedirect, withRequest } from './request.ts';
 import type { ResponseParts } from './request.ts';
@@ -354,24 +358,41 @@ export function read(node: Memo): any {
   if (
     value !== null &&
     typeof value === 'object' &&
-    typeof (value as PromiseLike<unknown>).then === 'function'
+    (typeof (value as PromiseLike<unknown>).then === 'function' || isAsyncIterable(value))
   ) {
     node.state = 'pending';
-    node.load = Promise.resolve(value).then(
-      (result) => {
-        node.state = 'done';
-        node.value = result;
-      },
-      (error: unknown) => {
-        node.state = 'failed';
-        node.error = error;
-      },
-    );
+    node.load = Promise.resolve(value)
+      .then(firstValue)
+      .then(
+        (result) => {
+          node.state = 'done';
+          node.value = result;
+        },
+        (error: unknown) => {
+          node.state = 'failed';
+          node.error = error;
+        },
+      );
     throw new NotReady(node.load);
   }
   node.state = 'done';
   node.value = value;
   return value;
+}
+
+/**
+ * The first value of an async iterable, such as a server function that
+ * streams. A page renders once, so the server stops reading after it. Other
+ * values are themselves.
+ */
+async function firstValue(value: unknown): Promise<unknown> {
+  if (!isAsyncIterable(value)) {
+    return value;
+  }
+  const iterator = value[Symbol.asyncIterator]();
+  const first = await iterator.next();
+  await iterator.return?.();
+  return first.value;
 }
 
 /** Waits for the value of a memo, through every load it reads. */
@@ -898,22 +919,25 @@ async function handleForm(
 }
 
 /**
- * Calls a server function for a request from `rpc` in `brumate/client`.
- * `functions` maps server function IDs to the functions, from the `rpc`
- * exports of server modules.
+ * The arguments of a call. They come as seroval JSON, or as multipart form
+ * data when they hold files: the JSON in `args`, and each file in
+ * `file<index>`, where an `Upload` stands in the JSON.
  */
-export async function handleRPC(
-  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
-  functions: Record<string, (...args: any[]) => unknown>,
-  id: string,
-  body: SerovalJSON,
-): Promise<SerovalJSON> {
-  const fn = functions[id];
-  if (!fn) {
-    throw new Error(`Unknown server function "${id}"`);
+async function readArgs(request: Request): Promise<unknown[]> {
+  if (!request.headers.has('x-brumate-args')) {
+    return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
+      plugins,
+      disabledFeatures,
+    });
   }
-  const args = fromJSON<unknown[]>(body, { plugins, disabledFeatures });
-  return toJSONAsync(await fn(...args), { plugins, disabledFeatures });
+  const form = await request.formData();
+  const args = fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
+    plugins,
+    disabledFeatures,
+  });
+  return replaceDeep(args, (value) =>
+    value instanceof Upload ? (form.get(`file${value.index}`) ?? undefined) : undefined,
+  ) as unknown[];
 }
 
 export interface RequestOptions {
@@ -987,26 +1011,27 @@ export async function handleRequest(
   }
   const headers = new Headers();
   const response: ResponseParts = { headers };
+  // A call with files sends its arguments as form data, with this header.
+  const call = request.headers.has('x-brumate-args');
   // The loader sends a form of an `$action` with this header, and wants the result, not a page.
-  if (isFormPost(request) && !request.headers.has('x-brumate-result')) {
+  if (isFormPost(request) && !call && !request.headers.has('x-brumate-result')) {
     return withRequest(request, response, () => handleForm(functions[id]!, request, headers));
   }
-  if (isFormPost(request)) {
+  if (isFormPost(request) && !call) {
     const form = await request.formData();
     return withRequest(request, response, () =>
-      answerCall(functions, response, async () =>
-        toJSONAsync(await functions[id]!(form), { plugins, disabledFeatures }),
-      ),
+      answerCall(functions, response, async () => functions[id]!(form)),
     );
   }
-  const body = await request.json();
+  // Arguments that fail to read, such as a regular expression, answer as an error of the call.
   return withRequest(request, response, () =>
-    answerCall(functions, response, () => handleRPC(functions, id, body)),
+    answerCall(functions, response, async () => functions[id]!(...(await readArgs(request)))),
   );
 }
 
 /**
- * Answers a server function call with its result as seroval JSON. A
+ * Answers a server function call with its result as a stream of seroval
+ * chunks, so promises and async iterables in it stream as they settle. A
  * redirect is sent as a header, so the client can follow it. An error
  * answers with a message that the client throws.
  */
@@ -1014,7 +1039,7 @@ async function answerCall(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   functions: Record<string, (...args: any[]) => unknown>,
   response: ResponseParts,
-  run: () => Promise<SerovalJSON>,
+  run: () => Promise<unknown>,
 ): Promise<Response> {
   const { headers } = response;
   try {
@@ -1026,8 +1051,8 @@ async function answerCall(
     if (refreshed.length > 0) {
       headers.set('x-brumate-refresh', refreshed.join(','));
     }
-    headers.set('content-type', 'application/json');
-    return new Response(JSON.stringify(result), { headers });
+    headers.set('content-type', STREAM_TYPE);
+    return new Response(toChunkStream(result), { headers });
   } catch (error) {
     if (error instanceof Redirect) {
       headers.set('x-brumate-redirect', error.location);

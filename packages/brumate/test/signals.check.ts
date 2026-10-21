@@ -32,3 +32,10 @@ export function component(): void {
   todos = [];
   input = undefined;
 }
+
+// A memo of an async iterable holds its values, one at a time.
+async function* ticks(): AsyncGenerator<number> {
+  yield 1;
+}
+const tick: number = $memo(ticks());
+void tick;

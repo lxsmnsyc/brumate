@@ -62,6 +62,8 @@ Anything that client code reads must be serialized. The supported types are:
 - Elements, as references to their marker.
 - Client functions, such as handlers, server function stubs and module exports, as references to a chunk and an export name.
 - Promises. The server awaits them, or streams the value later.
+- Async iterables, in the answer of a server function. Each value streams as it is ready.
+- Files and blobs, in the arguments of a server function. They go as multipart form data.
 
 A client root that captures any other value is a compile error. The error shows the capture:
 
