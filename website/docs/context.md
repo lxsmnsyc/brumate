@@ -4,12 +4,12 @@ A context passes a value from a component to every component inside it, without 
 
 ```brm live
 <script>
-  import { $provide, $signal } from 'brumate/signals';
+  import { $setContext, $signal } from 'brumate/signals';
   import Toolbar from './Toolbar.brm';
   import { Theme } from './theme.ts';
 
   let theme = $signal<'light' | 'dark'>('light');
-  $provide(Theme, theme);
+  $setContext(Theme, theme);
 </script>
 
 <button onClick=(() => (theme = theme === 'light' ? 'dark' : 'light'))>Switch the theme</button>
@@ -26,10 +26,10 @@ A context passes a value from a component to every component inside it, without 
 
 ```brm live Badge.brm
 <script>
-  import { $context } from 'brumate/signals';
+  import { $getContext } from 'brumate/signals';
   import { Theme } from './theme.ts';
 
-  const theme = $context(Theme);
+  const theme = $getContext(Theme);
 </script>
 
 <strong>The badge reads {theme}.</strong>
@@ -58,11 +58,11 @@ export const Locale = createContext<string>('locale', 'en');
 
 ## Providing a value
 
-`$provide(context, value)` gives the components inside this one a value of the context:
+`$setContext(context, value)` gives the components inside this one a value of the context:
 
 ```ts
 let locale = $signal('fr');
-$provide(Locale, locale);
+$setContext(Locale, locale);
 ```
 
 - Call it at the top level of a script. A `<script>` of a block, such as the body of a `#for`, provides to the markup of that block.
@@ -72,10 +72,10 @@ $provide(Locale, locale);
 
 ## Reading a value
 
-`$context(context)` reads the value from the nearest component above that provides it:
+`$getContext(context)` reads the value from the nearest component above that provides it:
 
 ```ts
-const locale = $context(Locale);
+const locale = $getContext(Locale);
 ```
 
 - Declare it with `const`. It reads like any value, and the markup updates when the provided value changes.
@@ -88,13 +88,13 @@ A component cannot assign to a value that it reads from a context. The component
 
 ```brm live
 <script>
-  import { $provide, $signal } from 'brumate/signals';
+  import { $setContext, $signal } from 'brumate/signals';
   import { Counter } from './counter.ts';
   import Buttons from './Buttons.brm';
 
   let count = $signal(0);
 
-  $provide(Counter, {
+  $setContext(Counter, {
     count,
     add: (step: number) => (count += step),
     reset() {
@@ -109,10 +109,10 @@ A component cannot assign to a value that it reads from a context. The component
 
 ```brm live Buttons.brm
 <script>
-  import { $context } from 'brumate/signals';
+  import { $getContext } from 'brumate/signals';
   import { Counter } from './counter.ts';
 
-  const counter = $context(Counter);
+  const counter = $getContext(Counter);
 </script>
 
 <button onClick=(() => counter.add(1))>Add one</button>

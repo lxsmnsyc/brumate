@@ -90,7 +90,7 @@ A `_layout.brm` wraps every route of its folder and of the folders inside it. It
 - The root layout usually renders the whole document. The server adds the doctype, the head of the components and the scripts.
 - Layouts nest. `posts/_layout.brm` renders inside the root layout, around the pages of `/posts`.
 - A layout gets `params` too.
-- A context that a layout provides with `$provide` reaches every route inside it. See [Context](./context.md).
+- A context that a layout provides with `$setContext` reaches every route inside it. See [Context](./context.md).
 - When a link leads to another page with the same layout, the layout stays in the browser with its state. See [Navigation](./navigation.md#layouts-keep-their-state).
 
 ## Named slots

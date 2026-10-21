@@ -1,6 +1,6 @@
 <script>
   import { getEvent, redirect } from 'brumate/server';
-  import { $memo, $props, $provide } from 'brumate/signals';
+  import { $memo, $props, $setContext } from 'brumate/signals';
   import { currentUser } from '../issues.ts';
   import { session } from '../session.ts';
   import { CurrentUser } from '../user.ts';
@@ -8,9 +8,9 @@
   // `children` is the page, and `aside` is the @aside route for the same path.
   const { children, aside } = $props();
 
-  // Every page below reads the user with $context(CurrentUser).
+  // Every page below reads the user with $getContext(CurrentUser).
   const user = $memo(currentUser());
-  $provide(CurrentUser, user);
+  $setContext(CurrentUser, user);
 
   async function signOut() {
     'use server';

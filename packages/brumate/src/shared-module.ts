@@ -42,8 +42,8 @@ export interface SharedSite {
 const UNSHARED = new Set([
   '$isPending',
   '$id',
-  '$context',
-  '$provide',
+  '$getContext',
+  '$setContext',
   '$title',
   '$action',
   '$props',

@@ -1,8 +1,8 @@
 <script>
-  import { $context } from 'brumate/signals';
+  import { $getContext } from 'brumate/signals';
   import { Theme } from './theme';
 
-  const theme = $context(Theme);
+  const theme = $getContext(Theme);
 </script>
 
 <span class="themed">{theme}</span>

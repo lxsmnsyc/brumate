@@ -104,7 +104,7 @@ describe('features of the core', () => {
       // `$optimistic`, `$produce`, context and props of child components.
       'guess',
       'produce',
-      'setContext',
+      'updateContext',
       'prop',
       // Hot updates and client navigation.
       'forget',

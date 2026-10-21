@@ -1,9 +1,9 @@
 <script>
-  import { $props, $provide } from 'brumate/signals';
+  import { $props, $setContext } from 'brumate/signals';
   import { Theme } from './theme';
 
   const { children, sidebar } = $props();
-  $provide(Theme, 'dark');
+  $setContext(Theme, 'dark');
 </script>
 
 <html>

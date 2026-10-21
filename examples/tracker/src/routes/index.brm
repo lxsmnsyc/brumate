@@ -1,7 +1,7 @@
 <script>
   import { href } from 'brumate/routes';
   import { getEvent } from 'brumate/server';
-  import { $context, $memo, $optimistic, $produce, $signal, $title } from 'brumate/signals';
+  import { $getContext, $memo, $optimistic, $produce, $signal, $title } from 'brumate/signals';
   import Labels from '../Labels.brm';
   import { issueFilter } from '../filter.brm.ts';
   import type { Status } from '../filter.brm.ts';
@@ -9,7 +9,7 @@
   import { CurrentUser } from '../user.ts';
 
   $title('Issues');
-  const user = $context(CurrentUser);
+  const user = $getContext(CurrentUser);
 
   const issues = $memo(listIssues());
   // A star shows at once. The list that the server sends after the change replaces the guess.

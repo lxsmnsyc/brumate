@@ -833,7 +833,7 @@ class ClientGenerator {
     if (site.kind === 'provide') {
       const context = site.extra![0]!;
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.setContext($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.updateContext($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
       );
       return;
     }

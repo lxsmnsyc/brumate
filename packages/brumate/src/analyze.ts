@@ -58,10 +58,11 @@ const REACTIVE = new Set<string>([
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
 const MISPLACED: Record<string, string> = {
-  $provide: 'Call $provide at the top level of a script',
+  $setContext: 'Call $setContext at the top level of a script',
   $title: 'Call $title at the top level of a script',
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
-  $context: 'Read a context with "const name = $context(Context)" at the top level of a script',
+  $getContext:
+    'Read a context with "const name = $getContext(Context)" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
@@ -170,8 +171,8 @@ class Analyzer {
   }
 
   run(): SemanticModel {
-    const imported = resolveMacros(this.file);
-    this.diagnostics.push(...checkMacroImports(this.file, imported));
+    const { imported, diagnostics } = resolveMacros(this.file);
+    this.diagnostics.push(...diagnostics, ...checkMacroImports(this.file, imported));
     if (this.file.moduleScript) {
       this.declareModuleScript(this.file.moduleScript.program);
     }
@@ -474,7 +475,7 @@ class Analyzer {
             } else {
               this.createSite('title', scope, call.arguments[0]!, 'title');
             }
-          } else if (name === '$provide') {
+          } else if (name === '$setContext') {
             this.declareProvide(statement.expression as oxc.CallExpression, scope);
           } else if (name === '$effect' || name === '$client') {
             this.declareEffect(statement.expression as oxc.CallExpression, name, scope);
@@ -561,13 +562,13 @@ class Analyzer {
       return;
     }
 
-    if (name === '$context') {
+    if (name === '$getContext') {
       if (kind !== 'const' || id.type !== 'Identifier') {
-        this.report('error', 'Read a context with "const name = $context(Context)"', declarator);
+        this.report('error', 'Read a context with "const name = $getContext(Context)"', declarator);
         return;
       }
       if (call.arguments.length !== 1) {
-        this.report('error', '$context takes one argument, the context', call);
+        this.report('error', '$getContext takes one argument, the context', call);
       }
       this.addDeclaration(scope, id.name, 'context', id);
       const argument = call.arguments[0];
@@ -695,7 +696,7 @@ class Analyzer {
    * Functions in a provided value run in the browser, where a component that
    * reads the context calls them. Each one is a client root, as a function
    * prop is: the value itself, or the value of a key of an object, such as
-   * `toggle` in `$provide(Theme, { theme, toggle })`.
+   * `toggle` in `$setContext(Theme, { theme, toggle })`.
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites.filter((item) => item.kind === 'provide')) {
@@ -721,7 +722,7 @@ class Analyzer {
   private declareProvide(call: oxc.CallExpression, scope: Scope): void {
     const [context, value] = call.arguments;
     if (!context || !value || call.arguments.length !== 2) {
-      this.report('error', '$provide takes two arguments, the context and the value', call);
+      this.report('error', '$setContext takes two arguments, the context and the value', call);
       return;
     }
     this.createSite('provide', scope, value, 'provide', { extra: [context] });

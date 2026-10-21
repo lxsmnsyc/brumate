@@ -1,8 +1,8 @@
 <script>
-  import { $context } from 'brumate/signals';
+  import { $getContext } from 'brumate/signals';
   import { Counter } from './counter-context.ts';
 
-  const counter = $context(Counter);
+  const counter = $getContext(Counter);
 </script>
 
 <button class="one" onClick=(() => counter!.increment())>One</button>

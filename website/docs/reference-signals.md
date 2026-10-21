@@ -23,8 +23,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
 | `$untrack(value)`             | the value                  | Any expression                         | [State](./state.md)                                |
 | `$produce(signal, recipe)`    | `void`                     | Where a signal can be written          | [State](./state.md)                                |
-| `$provide(context, value)`    | `void`                     | Statement at the top level of a script | [Context](./context.md)                            |
-| `$context(context)`           | the value                  | `const` at the top level of a script   | [Context](./context.md)                            |
+| `$setContext(context, value)` | `void`                     | Statement at the top level of a script | [Context](./context.md)                            |
+| `$getContext(context)`        | the value                  | `const` at the top level of a script   | [Context](./context.md)                            |
 | `$id()`                       | `string`                   | `const` at the top level of a script   | [Page metadata](./page-metadata.md)                |
 | `$title(value)`               | `void`                     | Statement at the top level of a script | [Page metadata](./page-metadata.md)                |
 | `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script   | [Forms](./forms.md)                                |
@@ -137,18 +137,18 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 - The new value shares the objects that the recipe did not change. If the recipe changes nothing, the signal keeps its value.
 - Only plain objects and arrays are drafted.
 
-## `$provide`
+## `$setContext`
 
 ```ts
-function $provide<T>(context: Context<T>, value: T): void;
+function $setContext<T>(context: Context<T>, value: T): void;
 ```
 
 Provides a value of a context to the components inside this one. A statement at the top level of a script. When `value` changes in the browser, every component that reads it updates. Create the context with `createContext` from `brumate/context`.
 
-## `$context`
+## `$getContext`
 
 ```ts
-function $context<T>(context: Context<T>): T;
+function $getContext<T>(context: Context<T>): T;
 ```
 
 Reads a context from the nearest component above that provides it, or its default value. Assign it to a `const` at the top level of a script.

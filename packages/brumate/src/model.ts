@@ -143,7 +143,7 @@ export interface Site {
   trigger?: 'visible' | 'idle' | 'load';
   /** True if the site awaits outside a nested function. */
   awaits: boolean;
-  /** More code of the site, such as the context of `$provide(context, value)`. */
+  /** More code of the site, such as the context of `$setContext(context, value)`. */
   extra?: oxc.Node[];
 }
 

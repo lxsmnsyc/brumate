@@ -55,14 +55,14 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 
 type Part = { static: string } | { code: string };
 
-/** The name of the compile-time function that a declarator calls, for `$context` and `$id`. */
-function specialCall(declarator: oxc.VariableDeclarator): '$context' | '$id' | undefined {
+/** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
+function specialCall(declarator: oxc.VariableDeclarator): '$getContext' | '$id' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
-  return name === '$context' || name === '$id' ? name : undefined;
+  return name === '$getContext' || name === '$id' ? name : undefined;
 }
 
 export interface EmitterOptions {
@@ -299,7 +299,7 @@ export class Emitter {
           this.line(`${this.helper('title')}(${this.source(expression.arguments[0])});`);
           continue;
         }
-        if (name === '$provide' && expression.type === 'CallExpression') {
+        if (name === '$setContext' && expression.type === 'CallExpression') {
           const [context, value] = expression.arguments;
           if (context && value) {
             const target = this.scopeVar(instanceScope(this.plan, scope));
@@ -357,7 +357,7 @@ export class Emitter {
         );
         continue;
       }
-      if (call !== '$context' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
+      if (call !== '$getContext' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
         this.line(`${statement.kind} ${this.source(declarator)};`);
         continue;
       }

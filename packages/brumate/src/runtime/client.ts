@@ -1573,7 +1573,7 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
 }
 
 /** Writes a provided value, and the slot of every scope that reads it from this provider. */
-export function setContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
+export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
   for (const target of scopes.values()) {

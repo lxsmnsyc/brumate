@@ -1,5 +1,5 @@
 <script>
-  import { $provide, $signal } from 'brumate/signals';
+  import { $setContext, $signal } from 'brumate/signals';
   import { Counter } from './counter-context.ts';
   import CounterButtons from './CounterButtons.brm';
 
@@ -9,7 +9,7 @@
     count++;
   }
 
-  $provide(Counter, {
+  $setContext(Counter, {
     count,
     increment,
     add: (step: number) => (count += step),

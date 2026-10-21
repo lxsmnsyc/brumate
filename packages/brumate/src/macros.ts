@@ -20,11 +20,17 @@ export const MACROS: Set<string> = new Set([
   '$untrack',
   '$produce',
   '$isPending',
-  '$provide',
-  '$context',
+  '$setContext',
+  '$getContext',
   '$id',
   '$title',
   '$action',
+]);
+
+/** Compile-time functions that have a new name, by old name. */
+export const RENAMED_MACROS: ReadonlyMap<string, string> = new Map([
+  ['$provide', '$setContext'],
+  ['$context', '$getContext'],
 ]);
 
 /** True for `import … from 'brumate/signals'`, which the compiler removes. */
@@ -59,10 +65,15 @@ function walk(value: unknown, visit: (node: oxc.Node) => void, seen = new Set<ob
  * Reads the imports of `brumate/signals` in the file. A call of a renamed
  * import, such as `signal(0)` after `import { $signal as signal }`, gets the
  * name of the compile-time function, so the compiler sees `$signal(0)`.
- * Returns the compile-time functions that the file imports.
+ * Returns the compile-time functions that the file imports, and errors for
+ * imports of compile-time functions that have a new name.
  */
-export function resolveMacros(file: SFCFile): Set<string> {
+export function resolveMacros(file: SFCFile): {
+  imported: Set<string>;
+  diagnostics: Diagnostic[];
+} {
   const aliases = new Map<string, string>();
+  const diagnostics: Diagnostic[] = [];
   walk(file, (node) => {
     if (!isMacroImport(node)) {
       return;
@@ -74,6 +85,14 @@ export function resolveMacros(file: SFCFile): Set<string> {
             ? specifier.imported.name
             : specifier.imported.value;
         aliases.set(specifier.local.name, imported);
+        const renamed = RENAMED_MACROS.get(imported);
+        if (renamed) {
+          diagnostics.push({
+            severity: 'error',
+            message: `${imported} was renamed to ${renamed}. Import ${renamed} from '${SIGNALS_MODULE}'`,
+            range: { start: specifier.start, end: specifier.end },
+          });
+        }
       }
     }
   });
@@ -87,7 +106,7 @@ export function resolveMacros(file: SFCFile): Set<string> {
       }
     });
   }
-  return new Set(aliases.values());
+  return { imported: new Set(aliases.values()), diagnostics };
 }
 
 /** Reports calls of compile-time functions that the file does not import. */
@@ -97,16 +116,21 @@ export function checkMacroImports(file: SFCFile, imported: Set<string>): Diagnos
     if (
       node.type === 'CallExpression' &&
       node.callee.type === 'Identifier' &&
-      MACROS.has(node.callee.name) &&
+      (MACROS.has(node.callee.name) || RENAMED_MACROS.has(node.callee.name)) &&
       !imported.has(node.callee.name) &&
       !missing.has(node.callee.name)
     ) {
       missing.set(node.callee.name, { start: node.start, end: node.end });
     }
   });
-  return [...missing].map(([name, range]) => ({
-    severity: 'error',
-    message: `Import ${name} from '${SIGNALS_MODULE}'`,
-    range,
-  }));
+  return [...missing].map(([name, range]) => {
+    const renamed = RENAMED_MACROS.get(name);
+    return {
+      severity: 'error',
+      message: renamed
+        ? `${name} was renamed to ${renamed}. Import ${renamed} from '${SIGNALS_MODULE}'`
+        : `Import ${name} from '${SIGNALS_MODULE}'`,
+      range,
+    };
+  });
 }

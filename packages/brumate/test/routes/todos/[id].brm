@@ -1,9 +1,9 @@
 <script>
-  import { $context, $props, $title } from 'brumate/signals';
+  import { $getContext, $props, $title } from 'brumate/signals';
   import { Theme } from '../theme';
 
   const { params } = $props();
-  const theme = $context(Theme);
+  const theme = $getContext(Theme);
   $title(`Todo ${params.id}`);
 </script>
 

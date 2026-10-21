@@ -56,6 +56,26 @@ describe('compile-time functions', () => {
     );
   });
 
+  it('names the new names of $provide and $context', () => {
+    expect(() =>
+      compile(
+        "<script>\n  import { $provide } from 'brumate/signals';\n  $provide(Theme, 'dark');\n</script>",
+        { filename: 'Test.brm' },
+      ),
+    ).toThrow("$provide was renamed to $setContext. Import $setContext from 'brumate/signals'");
+    expect(() =>
+      compile(
+        "<script>\n  import { $context } from 'brumate/signals';\n  const theme = $context(Theme);\n</script>\n<p>{theme}</p>",
+        { filename: 'Test.brm' },
+      ),
+    ).toThrow("$context was renamed to $getContext. Import $getContext from 'brumate/signals'");
+    expect(() =>
+      compile('<script>\n  const theme = $context(Theme);\n</script>\n<p>{theme}</p>', {
+        filename: 'Test.brm',
+      }),
+    ).toThrow('$context was renamed to $getContext');
+  });
+
   it('reads a renamed import as the function it names', () => {
     const result = compile(
       "<script>\n  import { $signal as signal } from 'brumate/signals';\n  let count = signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>",

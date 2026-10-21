@@ -71,13 +71,13 @@ export function $id(): string {
 }
 
 /** Provides a value of a context to the components inside this one. */
-export function $provide<T>(_context: Context<T>, _value: T): void {
-  compileTimeOnly('$provide');
+export function $setContext<T>(_context: Context<T>, _value: T): void {
+  compileTimeOnly('$setContext');
 }
 
 /** Reads a context from the nearest component above that provides it, or its default value. */
-export function $context<T>(_context: Context<T>): T {
-  return compileTimeOnly('$context');
+export function $getContext<T>(_context: Context<T>): T {
+  return compileTimeOnly('$getContext');
 }
 
 /** Changes an object or an array in a signal through a draft, and writes the signal with the result. */

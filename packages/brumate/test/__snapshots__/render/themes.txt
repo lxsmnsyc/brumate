@@ -53,7 +53,7 @@ import Themed from "./Themed.brm?brumate-render";
 import { Theme } from "./theme";
 
 export function u2($$s) {
-  $$b.setContext($$s, Theme, $$b.get($$s, 0));
+  $$b.updateContext($$s, Theme, $$b.get($$s, 0));
 }
 export function b5($$s) {
   $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);

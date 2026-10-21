@@ -3,8 +3,8 @@
   import { getEvent, parse, redirect } from 'brumate/server';
   import {
     $action,
-    $context,
     $effect,
+    $getContext,
     $id,
     $isPending,
     $memo,
@@ -22,7 +22,7 @@
   import { CurrentUser } from '../../user.ts';
 
   const { params } = $props<{ params: RouteParams<'/issues/[id]'> }>();
-  const user = $context(CurrentUser);
+  const user = $getContext(CurrentUser);
 
   // A missing issue throws a 404, and _error.brm renders in place of the page.
   const issue = $memo(getIssue(params.id));

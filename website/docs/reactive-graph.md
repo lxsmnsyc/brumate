@@ -17,7 +17,7 @@ The compiler decides what ships to the browser from a graph of what reads what, 
 
 The graph is static. The runtime records no subscriptions.
 
-- A node is a `$signal`, a `$memo`, a prop, a binding in the markup, a block condition or list, an attribute, a `$title`, a `$provide` value, or a `$effect`.
+- A node is a `$signal`, a `$memo`, a prop, a binding in the markup, a block condition or list, an attribute, a `$title`, a `$setContext` value, or a `$effect`.
 - An edge goes from a node to every node that reads it by name.
 - A read inside a local function counts for every site that calls the function, and for the functions that it calls in turn.
 - `$untrack(expression)` reads without an edge. A call inside it, such as `$untrack(save())`, adds no edges for what the function reads either.
