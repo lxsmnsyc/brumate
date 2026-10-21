@@ -9,6 +9,8 @@ export const examples: Example[] = [
   {
     name: 'Counter',
     source: `<script>
+  import { $memo, $signal } from 'brumate/signals';
+
   let count = $signal(0);
   const double = $memo(count * 2);
 </script>
@@ -21,6 +23,8 @@ export const examples: Example[] = [
   {
     name: 'Todos',
     source: `<script>
+  import { $memo, $signal } from 'brumate/signals';
+
   let todos = $signal([{ id: 1, title: 'Write the docs', done: false }]);
   let draft = $signal('');
   const left = $memo(todos.filter((todo) => !todo.done).length);
@@ -45,6 +49,8 @@ export const examples: Example[] = [
   {
     name: 'Server function',
     source: `<script>
+  import { $memo, $signal } from 'brumate/signals';
+
   async function greet(name: string) {
     'use server';
     return \`Hello, \${name}\`;
@@ -65,6 +71,8 @@ export const examples: Example[] = [
   {
     name: 'Styles',
     source: `<script>
+  import { $signal } from 'brumate/signals';
+
   let big = $signal(false);
 </script>
 

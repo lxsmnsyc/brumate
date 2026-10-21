@@ -39,6 +39,8 @@ Routes are `.brm` files under `src/routes`. A layout renders the document around
 ```html
 <!-- src/routes/_layout.brm -->
 <script>
+  import { $props } from 'brumate/signals';
+
   const { children } = $props();
 </script>
 
@@ -55,6 +57,8 @@ Routes are `.brm` files under `src/routes`. A layout renders the document around
 ```html
 <!-- src/routes/index.brm -->
 <script>
+  import { $signal } from 'brumate/signals';
+
   let count = $signal(0);
 </script>
 

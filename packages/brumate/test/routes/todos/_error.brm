@@ -1,4 +1,6 @@
 <script>
+  import { $props } from 'brumate/signals';
+
   const { error } = $props<{ error: { message: string; status: number } }>();
 </script>
 

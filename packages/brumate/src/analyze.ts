@@ -1,3 +1,4 @@
+import { MACROS, checkMacroImports, isMacroImport, resolveMacros } from './macros.ts';
 import type {
   Block,
   Body,
@@ -54,21 +55,7 @@ const REACTIVE = new Set<string>([
   'action',
 ]);
 
-const COMPILE_TIME_FUNCTIONS = new Set([
-  '$props',
-  '$signal',
-  '$memo',
-  '$effect',
-  '$client',
-  '$untrack',
-  '$produce',
-  '$isPending',
-  '$provide',
-  '$context',
-  '$id',
-  '$title',
-  '$action',
-]);
+const COMPILE_TIME_FUNCTIONS = MACROS;
 
 const MISPLACED: Record<string, string> = {
   $provide: 'Call $provide at the top level of a script',
@@ -181,6 +168,8 @@ class Analyzer {
   }
 
   run(): SemanticModel {
+    const imported = resolveMacros(this.file);
+    this.diagnostics.push(...checkMacroImports(this.file, imported));
     if (this.file.moduleScript) {
       this.declareModuleScript(this.file.moduleScript.program);
     }
@@ -405,7 +394,8 @@ class Analyzer {
   }
 
   private declareImport(statement: oxc.ImportDeclaration, scope: Scope): void {
-    if (statement.importKind === 'type') {
+    // Compile-time functions are not values. The compiler replaces their calls.
+    if (statement.importKind === 'type' || isMacroImport(statement)) {
       return;
     }
     for (const specifier of statement.specifiers) {

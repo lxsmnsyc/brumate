@@ -31,6 +31,7 @@
 - `$action(fn)` holds the result of a form. Without scripts the page renders again with it, and with the loader it is written into the page. `refresh(fn)` in a server function loads again the memos that call `fn`, which the compiler finds.
 - A form posts to a server function with `action=fn`, without client code. The server answers with a 303 back to the page, so the page renders again with the new data.
 - The project is named brumate, and its files use `.brm`. Brumation is how reptiles stay dormant in the cold and resume when it warms, as a page resumes on its first event without hydrating.
+- Compile-time functions such as `$signal` are imported from `brumate/signals`, not global. The compiler finds them through the import, so a renamed import works and their types reach only the files that import them. The compiler removes the import.
 - Server rendering streams only. `renderToStream` sends the whole first render at once, closing tags included, and streams what resolves later after it, as Solid does. `render` returns the parts for custom servers. There is no `renderToString`, because waiting for every `#loading` body defeats streaming.
 - A component can render the whole document. The runtime adds the doctype, and puts the head before `</head>` and the state, scripts and portals before `</body>`.
 - `render` and `renderToStream` take a `nonce` for the inline swap scripts. State scripts need none, because the browser does not run them.

@@ -17,6 +17,7 @@ This repository holds the design and the compiler. The compiler generates a serv
 
 ```html
 <script>
+  import { $memo, $props, $signal } from 'brumate/signals';
   import { persist } from './todos.server';
 
   const { initial } = $props<{ initial: Todo[] }>();

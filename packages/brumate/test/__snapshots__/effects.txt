@@ -11,24 +11,24 @@ scope 1 component
   signal count
   signal title
 sites
-  signal count (2:23)
-  signal title (3:23)
-  effect (5:11) reads count
-  effect (9:11) reads title
-  client idle (13:11) reads count writes count
-  insert (19:5) reads count
-  insert (19:13) reads ~title
+  signal count (4:23)
+  signal title (5:23)
+  effect (7:11) reads count
+  effect (11:11) reads title
+  client idle (15:11) reads count writes count
+  insert (21:5) reads count
+  insert (21:13) reads ~title
 
 # Graph
 nodes
   signal count live
   signal title static
-  effect (5:11) live <- signal count
-  effect (9:11) static <- signal title
-  insert (19:5) live <- signal count
-  insert (19:13) static
+  effect (7:11) live <- signal count
+  effect (11:11) static <- signal title
+  insert (21:5) live <- signal count
+  insert (21:13) static
 client
-  effect (5:11)
-  client idle (13:11)
+  effect (7:11)
+  client idle (15:11)
 diagnostics
-  warning This $effect reads no value that changes on the client, so it never runs (9:11)
+  warning This $effect reads no value that changes on the client, so it never runs (11:11)

@@ -1,4 +1,6 @@
 <script>
+  import { $signal, $title } from 'brumate/signals';
+
   let count = $signal(0);
   let open = $signal(false);
   $title(`Count ${count} <`);

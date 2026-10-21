@@ -22,15 +22,15 @@ scope 1 component
 scope 2 template row
   template-param name
 sites
-  signal count (5:23)
-  setup (6:17)
-  insert (12:8) reads name
-  prop Child.value (9:14) reads count
-  prop Child.fixed (9:26) reads fixed
-  prop Child.onChange (9:42) writes count
-  spread p (10:8) reads rest
-  insert (10:15) reads label
-  insert (14:6) reads row, fixed calls row
+  signal count (6:23)
+  setup (7:17)
+  insert (13:8) reads name
+  prop Child.value (10:14) reads count
+  prop Child.fixed (10:26) reads fixed
+  prop Child.onChange (10:42) writes count
+  spread p (11:8) reads rest
+  insert (11:15) reads label
+  insert (15:6) reads row, fixed calls row
 
 # Graph
 nodes
@@ -38,12 +38,12 @@ nodes
   props-rest rest live
   signal count live
   template-param name static
-  insert (12:8) static <- template-param name
-  prop Child.value (9:14) live <- signal count
-  prop Child.fixed (9:26) static
-  prop Child.onChange (9:42) static
-  spread p (10:8) live <- props-rest rest
-  insert (10:15) live <- prop label
-  insert (14:6) static
+  insert (13:8) static <- template-param name
+  prop Child.value (10:14) live <- signal count
+  prop Child.fixed (10:26) static
+  prop Child.onChange (10:42) static
+  spread p (11:8) live <- props-rest rest
+  insert (11:15) live <- prop label
+  insert (15:6) static
 client
-  prop Child.onChange (9:42)
+  prop Child.onChange (10:42)

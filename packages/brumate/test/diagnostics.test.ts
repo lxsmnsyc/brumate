@@ -3,7 +3,7 @@ import { compile } from '../src/index.ts';
 
 /** Compiles a component and returns its warnings. */
 function warnings(script: string, markup = ''): string[] {
-  const source = `<script>\n${script}\n</script>\n\n${markup}`;
+  const source = `<script>\nimport { $memo, $produce, $props, $signal } from 'brumate/signals';\n${script}\n</script>\n\n${markup}`;
   return compile(source, { filename: 'Test.brm' }).warnings.map((warning) =>
     source.slice(warning.range.start, warning.range.end),
   );
@@ -46,5 +46,23 @@ function add() {
   todos.map((todo) => todo).sort();
 }`),
     ).toEqual([]);
+  });
+});
+
+describe('compile-time functions', () => {
+  it('needs them imported from brumate/signals', () => {
+    expect(() => compile('<script>\n  let count = $signal(0);\n</script>\n<p>{count}</p>')).toThrow(
+      "Import $signal from 'brumate/signals'",
+    );
+  });
+
+  it('reads a renamed import as the function it names', () => {
+    const result = compile(
+      "<script>\n  import { $signal as signal } from 'brumate/signals';\n  let count = signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>",
+      { filename: 'Test.brm' },
+    );
+    expect(result.server).toContain('let count = (0);');
+    expect(result.server).not.toContain('brumate/signals');
+    expect(Object.values(result.parts).join('')).toContain('$$b.update(');
   });
 });

@@ -32,46 +32,46 @@ scope 0 module
 scope 1 component
   signal tab
   signal stars
-scope 2 body (switch 7:1)
-scope 3 body (switch 7:1)
-scope 4 body (repeat 15:1)
+scope 2 body (switch 9:1)
+scope 3 body (switch 9:1)
+scope 4 body (repeat 17:1)
   index i
-scope 5 body (try 18:1)
-scope 6 body (try 18:1)
+scope 5 body (try 20:1)
+scope 6 body (try 20:1)
   error error
   reset reset
-scope 7 body (client 24:1)
-scope 8 body (key 27:1)
+scope 7 body (client 26:1)
+scope 8 body (key 29:1)
 sites
-  signal tab (2:32)
-  signal stars (3:23)
-  event window.keydown (6:20) writes tab
-  case (8:10) reads tab
-  repeat (15:14) reads stars
-  insert (16:10) reads i
-  insert (21:7) reads error
-  event button.click (22:19) reads reset
-  key (27:7) reads tab
+  signal tab (4:32)
+  signal stars (5:23)
+  event window.keydown (8:20) writes tab
+  case (10:10) reads tab
+  repeat (17:14) reads stars
+  insert (18:10) reads i
+  insert (23:7) reads error
+  event button.click (24:19) reads reset
+  key (29:7) reads tab
 
 # Graph
 nodes
   signal tab live
   signal stars static
-  index i static <- repeat (15:14)
+  index i static <- repeat (17:14)
   error error live
-  case (8:10) live <- signal tab
-  repeat (15:14) static <- signal stars
-  insert (16:10) static <- index i
-  insert (21:7) live <- error error
-  key (27:7) live <- signal tab
+  case (10:10) live <- signal tab
+  repeat (17:14) static <- signal stars
+  insert (18:10) static <- index i
+  insert (23:7) live <- error error
+  key (29:7) live <- signal tab
 client
-  event window.keydown (6:20)
-  insert (21:7)
-  event button.click (22:19)
+  event window.keydown (8:20)
+  insert (23:7)
+  event button.click (24:19)
 created
-  2 body (switch 7:1)
-  3 body (switch 7:1)
-  5 body (try 18:1)
-  6 body (try 18:1)
-  7 body (client 24:1)
-  8 body (key 27:1)
+  2 body (switch 9:1)
+  3 body (switch 9:1)
+  5 body (try 20:1)
+  6 body (try 20:1)
+  7 body (client 26:1)
+  8 body (key 29:1)

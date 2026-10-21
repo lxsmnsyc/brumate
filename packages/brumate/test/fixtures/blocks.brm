@@ -1,4 +1,6 @@
 <script>
+  import { $signal } from 'brumate/signals';
+
   let tab = $signal<'a' | 'b'>('a');
   let stars = $signal(3);
 </script>

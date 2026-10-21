@@ -1,4 +1,5 @@
 <script>
+  import { $memo, $signal } from 'brumate/signals';
   import { ServerError, getRequest, getResponseHeaders, redirect } from 'brumate/server';
 
   async function whoami() {

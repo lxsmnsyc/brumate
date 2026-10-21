@@ -1,4 +1,5 @@
 <script>
+  import { $props, $title } from 'brumate/signals';
   import Counter from '../../Counter.brm';
 
   const { params } = $props<{ params: { start: string } }>();

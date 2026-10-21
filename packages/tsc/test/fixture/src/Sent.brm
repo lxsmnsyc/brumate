@@ -1,4 +1,6 @@
 <script>
+  import { $signal } from 'brumate/signals';
+
   class Point {
     constructor(public x: number) {}
     move(): Point {

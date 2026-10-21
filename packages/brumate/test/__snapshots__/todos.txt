@@ -29,51 +29,51 @@ scope 1 component
   memo left
   server-function persist
   function add
-scope 2 body (for 34:3)
+scope 2 body (for 35:3)
   item todo
   function toggle
 sites
-  signal todos (12:23) reads initial
-  signal draft (13:23)
-  memo left (14:22) reads todos
-  server function persist (16:18)
-  function add (21:18) reads todos, draft, persist writes todos, draft calls persist
-  event form.submit (29:24) reads add calls add
-  attribute input.value (30:16) reads draft
-  event input.input (30:31) writes draft
-  for (34:16) reads todos
-  for key (34:25) reads todo
-  function toggle (36:16) reads todos, todo writes todos
-  attribute li.class (40:15) reads todo
-  event li.click (40:43) reads toggle calls toggle
-  insert (41:8) reads todo
-  insert (41:27) reads format, todo
-  insert (47:5) reads left
+  signal todos (13:23) reads initial
+  signal draft (14:23)
+  memo left (15:22) reads todos
+  server function persist (17:18)
+  function add (22:18) reads todos, draft, persist writes todos, draft calls persist
+  event form.submit (30:24) reads add calls add
+  attribute input.value (31:16) reads draft
+  event input.input (31:31) writes draft
+  for (35:16) reads todos
+  for key (35:25) reads todo
+  function toggle (37:16) reads todos, todo writes todos
+  attribute li.class (41:15) reads todo
+  event li.click (41:43) reads toggle calls toggle
+  insert (42:8) reads todo
+  insert (42:27) reads format, todo
+  insert (48:5) reads left
 
 # Graph
 nodes
   prop initial live
   signal todos live
   signal draft live
-  item todo live <- for (34:16)
+  item todo live <- for (35:16)
   memo left live <- signal todos
-  attribute input.value (30:16) live <- signal draft
-  for (34:16) live <- signal todos
-  for key (34:25) live <- item todo
-  attribute li.class (40:15) live <- item todo
-  insert (41:8) live <- item todo
-  insert (41:27) live <- item todo
-  insert (47:5) live <- memo left
+  attribute input.value (31:16) live <- signal draft
+  for (35:16) live <- signal todos
+  for key (35:25) live <- item todo
+  attribute li.class (41:15) live <- item todo
+  insert (42:8) live <- item todo
+  insert (42:27) live <- item todo
+  insert (48:5) live <- memo left
 client
-  server function persist (16:18) (stub)
-  function add (21:18)
-  event form.submit (29:24)
-  event input.input (30:31)
-  for key (34:25)
-  function toggle (36:16)
-  attribute li.class (40:15)
-  event li.click (40:43)
-  insert (41:8)
-  insert (41:27)
+  server function persist (17:18) (stub)
+  function add (22:18)
+  event form.submit (30:24)
+  event input.input (31:31)
+  for key (35:25)
+  function toggle (37:16)
+  attribute li.class (41:15)
+  event li.click (41:43)
+  insert (42:8)
+  insert (42:27)
 created
-  2 body (for 34:3)
+  2 body (for 35:3)

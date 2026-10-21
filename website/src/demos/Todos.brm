@@ -1,4 +1,6 @@
 <script>
+  import { $memo, $signal } from 'brumate/signals';
+
   interface Todo {
     id: number;
     title: string;

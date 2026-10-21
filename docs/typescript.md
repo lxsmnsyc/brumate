@@ -46,6 +46,8 @@ The checker turns each `.brm` file into TypeScript. The scripts are copied, and 
 
 ```html
 <script>
+  import { $signal } from 'brumate/signals';
+
   let format = $signal((value: number) => String(value));
   // error: A function cannot be sent to the client. Keep it out of the signal or memo
 </script>

@@ -1,4 +1,6 @@
 <script>
+  import { $signal } from 'brumate/signals';
+
   let items = $signal(['a', 'b', 'c']);
   let open = $signal(false);
 </script>

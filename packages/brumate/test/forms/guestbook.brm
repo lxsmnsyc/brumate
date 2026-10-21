@@ -3,6 +3,7 @@
 </script>
 
 <script>
+  import { $signal } from 'brumate/signals';
   import { ServerError, redirect } from 'brumate/server';
 
   let show = $signal(false);

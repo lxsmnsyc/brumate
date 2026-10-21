@@ -12,6 +12,8 @@ Components are `.brm` files. A script declares state, and the markup reads it.
 
 ```html
 <script>
+  import { $memo, $signal } from 'brumate/signals';
+
   let count = $signal(0);
   const double = $memo(count * 2);
 </script>

@@ -10,7 +10,7 @@ function body(source: string): string {
 describe('toTypeScript', () => {
   it('copies the scripts, and types the props from $props', () => {
     const code = body(
-      "<script>\n  import Badge from './Badge.brm';\n  const { label } = $props<{ label: string }>();\n</script>\n\n<Badge label=label />",
+      "<script>\n  import { $props } from 'brumate/signals';\n  import Badge from './Badge.brm';\n  const { label } = $props<{ label: string }>();\n</script>\n\n<Badge label=label />",
     );
     expect(code).toMatch(/^export default async function Card\(\$\$props: \{ label: string \}/);
     expect(code).toContain('const { label } = $props<{ label: string }>();');
@@ -19,6 +19,7 @@ describe('toTypeScript', () => {
 
   it('puts markup in blocks that match the control flow', () => {
     const code = body(`<script>
+  import { $signal } from 'brumate/signals';
   let items = $signal([1, 2]);
 </script>
 
@@ -40,7 +41,8 @@ describe('toTypeScript', () => {
   });
 
   it('maps copied code to the file', () => {
-    const source = '<script>\n  let count = $signal(0);\n</script>\n\n<p>{count + 1}</p>';
+    const source =
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n\n<p>{count + 1}</p>";
     const { code, mappings } = toTypeScript(source, 'Card.brm');
     const insert = source.indexOf('count + 1');
     const mapping = mappings.find((item) => item.source === insert)!;

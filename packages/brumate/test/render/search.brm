@@ -1,4 +1,6 @@
 <script>
+  import { $isPending, $memo, $signal } from 'brumate/signals';
+
   async function search(query: string): Promise<string[]> {
     'use server';
     // "ap" answers last, so a later query can finish first.

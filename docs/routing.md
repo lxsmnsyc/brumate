@@ -29,6 +29,8 @@ A layout gets the matched route as `children`, one prop for each `@` folder next
 ```html
 <!-- src/routes/_layout.brm -->
 <script>
+  import { $props } from 'brumate/signals';
+
   const { children, aside } = $props();
 </script>
 
@@ -67,6 +69,8 @@ A route can render the whole document, as the root layout above does. `renderToS
 ```html
 <!-- src/routes/_error.brm -->
 <script>
+  import { $props } from 'brumate/signals';
+
   const { error } = $props<{ error: { message: string; status: number } }>();
 </script>
 
@@ -139,6 +143,7 @@ The response has the headers and the status that were set while the page rendere
 ```html
 <!-- src/routes/[...rest].brm -->
 <script>
+  import { $props } from 'brumate/signals';
   import { setStatus } from 'brumate/server';
 
   const { params } = $props();

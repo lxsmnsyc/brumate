@@ -1,4 +1,5 @@
 <script>
+  import { $title } from 'brumate/signals';
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
   import Counter from '../demos/Counter.brm';

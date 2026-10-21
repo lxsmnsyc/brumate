@@ -27,15 +27,11 @@ The file extension is `.brm`.
 
 ## Compile-time functions
 
-There are twelve. They need no import. Their types are in `brumate/types`, which also declares `.brm` modules and the Vite plugin's virtual modules:
-
-```json
-{ "compilerOptions": { "types": ["brumate/types"] } }
-```
-
-The code inside `.brm` files is not type-checked yet.
+They come from `brumate/signals`. The compiler replaces every call and removes the import, so nothing of `brumate/signals` ships:
 
 ```ts
+import { $client, $effect, $memo, $props, $signal, $untrack } from 'brumate/signals';
+
 const { initial } = $props<{ initial: number }>();
 
 let count = $signal(initial);
@@ -53,6 +49,15 @@ $client(() => {
 }, 'idle');
 
 $untrack(count);
+```
+
+- A call needs the import. A call of a compile-time function that the file does not import is a compile error.
+- A renamed import works, as in `import { $signal as signal } from 'brumate/signals'`.
+- Outside a `.brm` file, a call throws, because nothing compiles it.
+- `brumate/types` declares `.brm` modules and the virtual modules of the Vite plugin. Add it to the types of the project:
+
+```json
+{ "compilerOptions": { "types": ["brumate/types"] } }
 ```
 
 ### `$props`
@@ -84,6 +89,8 @@ Declares a read-only value computed from other values.
 
 ```html
 <script>
+  import { $isPending, $memo, $signal } from 'brumate/signals';
+
   let query = $signal('');
   const results = $memo(search(query));
 </script>
@@ -105,6 +112,8 @@ On the server, it is always false.
 
 ```html
 <script>
+  import { $id } from 'brumate/signals';
+
   const id = $id();
 </script>
 
@@ -141,6 +150,7 @@ export const Theme = createContext<'light' | 'dark'>('theme', 'light');
 ```html
 <!-- Layout.brm -->
 <script>
+  import { $context, $provide, $signal } from 'brumate/signals';
   import { Theme } from './theme';
 
   let theme = $signal<'light' | 'dark'>('dark');
@@ -166,6 +176,8 @@ export const Theme = createContext<'light' | 'dark'>('theme', 'light');
 
 ```html
 <script>
+  import { $signal } from 'brumate/signals';
+
   let input = $signal<HTMLInputElement>();
 
   function focus() {
@@ -370,6 +382,8 @@ Skips the body on the server. The client renders it when its trigger fires. The 
 ```html
 <!-- Child.brm -->
 <script>
+  import { $props } from 'brumate/signals';
+
   const { value, onChange } = $props<{ value: number; onChange: (value: number) => void }>();
 </script>
 
@@ -379,6 +393,7 @@ Skips the body on the server. The client renders it when its trigger fires. The 
 ```html
 <!-- Parent.brm -->
 <script>
+  import { $signal } from 'brumate/signals';
   import Child from './Child.brm';
 
   let count = $signal(0);

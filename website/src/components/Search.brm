@@ -1,4 +1,6 @@
 <script>
+  import { $signal } from 'brumate/signals';
+
   interface Result {
     href: string;
     title: string;

@@ -4,9 +4,9 @@ Client code
   none
 
 Changes on the client
-  prop label (2:11)
+  prop label (4:11)
     toolbar.brm passes a value that changes
-  insert (5:19)
+  insert (7:19)
     reads prop label
 
 State

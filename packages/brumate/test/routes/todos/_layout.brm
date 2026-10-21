@@ -1,4 +1,6 @@
 <script>
+  import { $props } from 'brumate/signals';
+
   const { children } = $props();
 </script>
 

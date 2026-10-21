@@ -302,6 +302,8 @@ Rules:
 
 ```html
 <script>
+  import { $memo, $signal } from 'brumate/signals';
+
   const label = 'Clicks';
   let count = $signal(0);
   const double = $memo(count * 2);

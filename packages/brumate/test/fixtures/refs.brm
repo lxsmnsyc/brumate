@@ -1,4 +1,6 @@
 <script>
+  import { $signal } from 'brumate/signals';
+
   let input = $signal<HTMLInputElement>();
   let panel = $signal<HTMLElement>();
   let shown = $signal(false);

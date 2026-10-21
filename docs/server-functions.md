@@ -122,6 +122,8 @@ A form often needs the answer of its server function, such as an error to show n
 
 ```html
 <script>
+  import { $action, $isPending } from 'brumate/signals';
+
   async function signUp(form: FormData) {
     'use server';
     const email = String(form.get('email'));
@@ -156,6 +158,7 @@ A memo that calls a server function loads again on the client when the values it
 
 ```html
 <script>
+  import { $memo } from 'brumate/signals';
   import { refresh } from 'brumate/server';
 
   async function list() {

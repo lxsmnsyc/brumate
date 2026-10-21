@@ -1,4 +1,6 @@
 <script>
+  import { $props } from 'brumate/signals';
+
   // What the compiler ships for a component, from `brumate inspect` at build time.
   const { report } = $props<{
     report: {

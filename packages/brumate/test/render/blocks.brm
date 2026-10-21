@@ -1,4 +1,6 @@
 <script>
+  import { $client, $props, $signal } from 'brumate/signals';
+
   const { items, tab: initialTab } = $props<{ items: string[]; tab: 'a' | 'b' }>();
   let tab = $signal(initialTab);
   let list = $signal(items);

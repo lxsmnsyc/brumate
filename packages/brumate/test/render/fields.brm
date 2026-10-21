@@ -1,4 +1,6 @@
 <script>
+  import { $id, $signal } from 'brumate/signals';
+
   const id = $id();
   const hint = $id();
   let names = $signal(['First', 'Last']);

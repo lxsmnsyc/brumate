@@ -11,6 +11,8 @@
 </script>
 
 <script>
+  import { $memo, $signal, $title } from 'brumate/signals';
+
   let count = $signal(0);
   const greeting = $memo(`Hello ${await ready}`);
   $title(`Count ${count}`);

@@ -1,4 +1,6 @@
 <script>
+  import { $effect, $memo, $signal } from 'brumate/signals';
+
   let count = $signal(0);
   const double = $memo(count * 2);
   const triple = $memo(count * 3);

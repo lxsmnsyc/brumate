@@ -3,6 +3,7 @@
 </script>
 
 <script>
+  import { $memo } from 'brumate/signals';
   import { refresh } from 'brumate/server';
 
   async function list() {

@@ -1,4 +1,6 @@
 <script>
+  import { $props, $title } from 'brumate/signals';
+
   const { error } = $props<{ error: { message: string; status: number } }>();
   $title(`Error ${error.status}`);
 </script>

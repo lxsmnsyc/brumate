@@ -1,4 +1,5 @@
 <script>
+  import { $client, $effect, $memo, $signal, $title, $untrack } from 'brumate/signals';
   import { decode, encode, measure, run } from '../playground/compile.ts';
   import { examples } from '../playground/examples.ts';
   import { highlight } from '../playground/highlight.ts';

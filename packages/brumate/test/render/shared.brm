@@ -4,6 +4,8 @@
 </script>
 
 <script>
+  import { $signal } from 'brumate/signals';
+
   let count = $signal(0);
 
   function bump(by: number) {

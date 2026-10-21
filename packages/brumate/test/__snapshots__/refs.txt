@@ -17,26 +17,26 @@ scope 1 component
   signal panel
   signal shown
   function focus
-scope 2 body (if 14:1)
+scope 2 body (if 16:1)
 sites
-  signal shown (4:23)
-  function focus (6:12) reads input
-  event button.click (12:17) reads focus calls focus
-  event button.click (13:18) writes shown
-  if (14:6) reads shown
-  insert (15:23) reads panel
+  signal shown (6:23)
+  function focus (8:12) reads input
+  event button.click (14:17) reads focus calls focus
+  event button.click (15:18) writes shown
+  if (16:6) reads shown
+  insert (17:23) reads panel
 
 # Graph
 nodes
   signal input static
   signal panel live
   signal shown live
-  if (14:6) live <- signal shown
-  insert (15:23) live <- signal panel
+  if (16:6) live <- signal shown
+  insert (17:23) live <- signal panel
 client
-  function focus (6:12)
-  event button.click (12:17)
-  event button.click (13:18)
-  insert (15:23)
+  function focus (8:12)
+  event button.click (14:17)
+  event button.click (15:18)
+  insert (17:23)
 created
-  2 body (if 14:1)
+  2 body (if 16:1)

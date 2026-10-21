@@ -1,4 +1,6 @@
 <script>
+  import { $props } from 'brumate/signals';
+
   const { label, count } = $props<{ label: string; count: number }>();
 </script>
 

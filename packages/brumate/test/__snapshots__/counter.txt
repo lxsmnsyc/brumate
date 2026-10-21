@@ -16,20 +16,20 @@ scope 1 component
   signal count
   memo double
 sites
-  setup (2:17)
-  signal count (3:23)
-  memo double (4:24) reads count
-  insert (7:6) reads label
-  event button.click (8:18) reads count writes count
-  insert (9:5) reads count
-  insert (9:15) reads double
+  setup (4:17)
+  signal count (5:23)
+  memo double (6:24) reads count
+  insert (9:6) reads label
+  event button.click (10:18) reads count writes count
+  insert (11:5) reads count
+  insert (11:15) reads double
 
 # Graph
 nodes
   signal count live
   memo double live <- signal count
-  insert (7:6) static
-  insert (9:5) live <- signal count
-  insert (9:15) live <- memo double
+  insert (9:6) static
+  insert (11:5) live <- signal count
+  insert (11:15) live <- memo double
 client
-  event button.click (8:18)
+  event button.click (10:18)

@@ -1,4 +1,6 @@
 <script>
+  import { $action, $isPending } from 'brumate/signals';
+
   async function signUp(form: FormData) {
     'use server';
     const email = String(form.get('email') ?? '');

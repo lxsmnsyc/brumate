@@ -1,4 +1,6 @@
 <script>
+  import { $props, $signal } from 'brumate/signals';
+
   // Wraps every page. `children` is the page, and `aside` is the @aside route for the same path.
   const { children, aside } = $props();
   // Client state in a layout stays when a link changes only the route inside it.

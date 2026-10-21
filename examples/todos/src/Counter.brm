@@ -1,4 +1,6 @@
 <script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+
   const { start = 0 } = $props<{ start?: number }>();
   let count = $signal(start);
   const double = $memo(count * 2);

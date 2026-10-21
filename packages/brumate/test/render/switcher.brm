@@ -1,4 +1,5 @@
 <script>
+  import { $memo, $signal } from 'brumate/signals';
   import Badge from './Badge.brm';
   import Tag from './Tag.brm';
 

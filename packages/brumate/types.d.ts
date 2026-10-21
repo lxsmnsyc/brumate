@@ -1,5 +1,3 @@
-/// <reference path="./globals.d.ts" />
-
 declare module '*.brm' {
   import type { Context } from 'brumate/server';
 

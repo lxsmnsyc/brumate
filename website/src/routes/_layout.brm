@@ -1,4 +1,5 @@
 <script>
+  import { $props } from 'brumate/signals';
   import { raw } from 'brumate/html';
   import Header from '../components/Header.brm';
   import { NETWORK_SCRIPT, THEME_SCRIPT } from '../scripts.ts';

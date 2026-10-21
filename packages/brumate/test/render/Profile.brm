@@ -1,4 +1,6 @@
 <script>
+  import { $props, $title } from 'brumate/signals';
+
   const { name } = $props<{ name: string }>();
   $title(`Profile of ${name}`);
 </script>

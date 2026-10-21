@@ -11,6 +11,7 @@
 </script>
 
 <script>
+  import { $memo, $title } from 'brumate/signals';
   import Profile from './Profile.brm';
 
   const name = $memo(await ready);

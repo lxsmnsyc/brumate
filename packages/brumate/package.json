@@ -9,8 +9,7 @@
   },
   "files": [
     "dist",
-    "types.d.ts",
-    "globals.d.ts"
+    "types.d.ts"
   ],
   "type": "module",
   "exports": {
@@ -44,6 +43,10 @@
     "./html": {
       "types": "./dist/runtime/html.d.ts",
       "default": "./dist/runtime/html.js"
+    },
+    "./signals": {
+      "types": "./dist/runtime/signals.d.ts",
+      "default": "./dist/runtime/signals.js"
     },
     "./package.json": "./package.json"
   },

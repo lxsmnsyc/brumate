@@ -1,13 +1,13 @@
 Child (Child.brm) Child_108vasc
 
 Client code
-  h0: event button.click (5:18)
+  h0: event button.click (7:18)
     runs on the event
 
 Changes on the client
-  prop value (2:11)
+  prop value (4:11)
     list.brm and parent.brm pass a value that changes
-  insert (5:46)
+  insert (7:46)
     reads prop value
 
 State

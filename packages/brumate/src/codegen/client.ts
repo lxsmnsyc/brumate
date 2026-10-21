@@ -1,3 +1,4 @@
+import { isMacroImport } from '../macros.ts';
 import type {
   Block,
   Body,
@@ -340,7 +341,7 @@ class ClientGenerator {
     const lines = ["import * as $$b from 'brumate/client';", ...this.importsFor(names, false)];
     if (this.usesModuleScript()) {
       for (const statement of this.file.moduleScript!.program.body) {
-        if (statement.type === 'ImportDeclaration') {
+        if (statement.type === 'ImportDeclaration' && !isMacroImport(statement)) {
           lines.push(this.file.source.slice(statement.start, statement.end));
         }
       }

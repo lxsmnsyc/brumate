@@ -4,6 +4,8 @@
 
 ```html
 <script>
+  import { $signal } from 'brumate/signals';
+
   let big = $signal(false);
 </script>
 

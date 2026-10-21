@@ -44,7 +44,7 @@ describe('inspect', () => {
     expect(badge.name).toBe('Badge');
     expect(badge.changes[0]).toEqual({
       label: 'prop label',
-      at: '2:11',
+      at: '4:11',
       reason: 'toolbar.brm passes a value that changes',
     });
   });

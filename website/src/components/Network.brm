@@ -1,4 +1,6 @@
 <script>
+  import { $props } from 'brumate/signals';
+
   const { title = 'Scripts this page loaded' } = $props<{ title?: string }>();
 </script>
 

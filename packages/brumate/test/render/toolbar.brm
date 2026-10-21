@@ -1,4 +1,5 @@
 <script>
+  import { $signal } from 'brumate/signals';
   import Badge from './Badge.brm';
 
   let count = $signal(0);

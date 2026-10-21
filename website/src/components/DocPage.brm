@@ -1,4 +1,5 @@
 <script>
+  import { $props, $title } from 'brumate/signals';
   import { pages, sections } from '../docs.ts';
 
   const { slug } = $props<{ slug: string }>();

@@ -1,4 +1,5 @@
 <script>
+  import { $props, $provide } from 'brumate/signals';
   import { Theme } from './theme';
 
   const { children, sidebar } = $props();

@@ -6,6 +6,8 @@
 </script>
 
 <script>
+  import { $isPending, $memo, $signal } from 'brumate/signals';
+
   let count = $signal(1);
   const doubled = $memo(double(count));
 </script>

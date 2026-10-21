@@ -4,6 +4,7 @@
 </script>
 
 <script>
+  import { $action, $isPending, $memo, $title } from 'brumate/signals';
   import { refresh } from 'brumate/server';
 
   $title('Guestbook');

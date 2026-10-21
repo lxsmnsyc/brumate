@@ -1,4 +1,5 @@
 <script>
+  import { $context } from 'brumate/signals';
   import { Theme } from './theme';
 
   const theme = $context(Theme);

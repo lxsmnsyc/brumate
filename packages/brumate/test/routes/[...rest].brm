@@ -1,4 +1,5 @@
 <script>
+  import { $props } from 'brumate/signals';
   import { setStatus } from 'brumate/server';
 
   const { params } = $props();
