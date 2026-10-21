@@ -97,6 +97,8 @@ export function routeModule(
   resolve: (file: string) => string,
   rpc = '/_brumate',
   origins: string[] = [],
+  /** In development, errors reach the dev server instead of `_error.brm`. */
+  dev = false,
 ): string {
   // Static imports, because the server registry of server functions imports every file anyway.
   const imports: string[] = [];
@@ -146,7 +148,7 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions${dev ? ', dev: true' : ''}, ...options });`,
     '}',
   ].join('\n');
 }

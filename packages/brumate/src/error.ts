@@ -17,11 +17,34 @@ export function getLocation(source: string, offset: number): Location {
   return { line, column: offset - lineStart + 1 };
 }
 
+/**
+ * The lines around an offset, with line numbers and a caret under the
+ * column, as Vite shows in its error overlay.
+ */
+export function codeFrame(source: string, offset: number): string {
+  const { line, column } = getLocation(source, offset);
+  const lines = source.split('\n');
+  const first = Math.max(1, line - 2);
+  const last = Math.min(lines.length, line + 2);
+  const width = String(last).length;
+  const result: string[] = [];
+  for (let number = first; number <= last; number++) {
+    const marker = number === line ? '>' : ' ';
+    result.push(`${marker} ${String(number).padStart(width)} | ${lines[number - 1]}`);
+    if (number === line) {
+      result.push(`  ${' '.repeat(width)} | ${' '.repeat(column - 1)}^`);
+    }
+  }
+  return result.join('\n');
+}
+
 /** A syntax error. Parsing stops at the first one. */
 export class BrumateError extends Error {
   readonly filename: string;
   readonly offset: number;
   readonly location: Location;
+  /** The lines around the error. */
+  readonly frame: string;
 
   constructor(message: string, source: string, offset: number, filename: string) {
     const location = getLocation(source, offset);
@@ -30,6 +53,7 @@ export class BrumateError extends Error {
     this.filename = filename;
     this.offset = offset;
     this.location = location;
+    this.frame = codeFrame(source, offset);
   }
 }
 

@@ -18,6 +18,7 @@ import { isReactiveModule } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
+import { errorPayload } from './dev-error.ts';
 import { prerender } from './prerender.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
@@ -311,7 +312,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   };
 
   const routeTree = (): string =>
-    routeModule(currentRoutes(), (file) => `${routesDirectory()}/${file}`, rpc, options.origins);
+    routeModule(
+      currentRoutes(),
+      (file) => `${routesDirectory()}/${file}`,
+      rpc,
+      options.origins,
+      isServe,
+    );
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
   const writeRouteTypes = (): void => {
@@ -565,7 +572,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // A test in a browser environment imports the server version of a component with this query.
       const isServer = params.has(SERVER_QUERY.slice(1));
       const isClient = !isServer && (params.has(CLIENT_QUERY.slice(1)) || !loadOptions?.ssr);
-      const { source, result } = await compileFile(file);
+      let output: Awaited<ReturnType<typeof compileFile>>;
+      try {
+        output = await compileFile(file);
+      } catch (error) {
+        // The overlay shows the file, the line and the lines around it.
+        const { message, frame, loc } = errorPayload(error, root);
+        this.error({ message, frame, loc, id: file });
+      }
+      const { source, result } = output;
       // A stylesheet that the component imports, or a module of reactive logic that it calls into,
       // changes the output of the component.
       for (const dependency of [...result.plan.styles.dependencies, ...result.modules]) {
@@ -779,5 +794,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
   };
 }
+export { errorPage } from './dev-error.ts';
 export type { ManifestChunk, PrerenderOptions } from './prerender.ts';
 export type { Budget, BuildReport } from './report.ts';

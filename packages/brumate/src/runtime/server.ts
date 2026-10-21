@@ -1218,6 +1218,12 @@ function viewComponent(view: ResolvedView, props: Record<string, unknown>): Comp
 }
 
 export interface RouteOptions extends DocumentOptions, RequestOptions {
+  /**
+   * Throws errors that are not a `ServerError` instead of rendering
+   * `_error.brm`, so a dev server can show them, such as with `errorPage`
+   * from `brumate/vite`. The Vite plugin sets it in development.
+   */
+  dev?: boolean;
   /** The server functions, by ID, for forms that post to a page. `virtual:brumate/routes` passes them. */
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   functions?: Record<string, (...args: any[]) => unknown>;
@@ -1448,6 +1454,9 @@ async function answerRoute(
       });
     }
     const known = error instanceof ServerError;
+    if (!known && options.dev) {
+      throw error;
+    }
     if (!known) {
       console.error(error);
     }

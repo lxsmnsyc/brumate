@@ -96,28 +96,37 @@ A layout renders the document around the pages. `children` is the page for the c
 import { createServer as createHTTPServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { toNodeHeaders } from 'brumate/server';
+import { errorPage } from 'brumate/vite';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 
 createHTTPServer((request, response) => {
   vite.middlewares(request, response, async () => {
-    const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
-    const answer = await handle(new Request(`http://localhost${request.url}`), {
-      scripts: '<script type="module" async src="/src/client.ts"></script>',
-    });
-    if (!answer) {
-      response.statusCode = 404;
-      response.end('Not found');
-      return;
+    try {
+      const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
+      const answer = await handle(new Request(`http://localhost${request.url}`), {
+        scripts:
+          '<script type="module" src="/@vite/client"></script><script type="module" async src="/src/client.ts"></script>',
+      });
+      if (!answer) {
+        response.statusCode = 404;
+        response.end('Not found');
+        return;
+      }
+      response.writeHead(answer.status, toNodeHeaders(answer.headers));
+      Readable.fromWeb(answer.body).pipe(response);
+    } catch (error) {
+      response.statusCode = 500;
+      response.setHeader('content-type', 'text/html');
+      response.end(errorPage(error, vite));
     }
-    response.writeHead(answer.status, toNodeHeaders(answer.headers));
-    Readable.fromWeb(answer.body).pipe(response);
   });
 }).listen(5173);
 ```
 
-- `scripts` is the markup that loads the client entry. It goes at the end of the page.
+- `scripts` is the markup that loads the client entry. It goes at the end of the page. `/@vite/client` updates components when you edit them.
+- `errorPage` answers with Vite's error overlay when a page fails to render, such as after a compile error. It names the file and line, and the page loads again when you fix it.
 - `handle` returns undefined when no route matches and the root has no `_error.brm`.
 - This server passes only the URL. Forms that post to a route need the method, the headers and the body too. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a complete server.
 

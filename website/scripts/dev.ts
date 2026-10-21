@@ -1,6 +1,7 @@
 import { createServer as createHTTPServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { toNodeHeaders } from 'brumate/server';
+import { errorPage } from 'brumate/vite';
 import { createServer } from 'vite';
 
 // Renders the pages with Vite in development. Vite also serves the client modules.
@@ -28,9 +29,10 @@ const http = createHTTPServer((request, response) => {
       response.writeHead(answer.status, toNodeHeaders(answer.headers));
       Readable.fromWeb(answer.body as never).pipe(response);
     } catch (error) {
-      vite.ssrFixStacktrace(error as Error);
+      // Vite's error overlay shows the error, and the page loads again after a fix.
       response.statusCode = 500;
-      response.end(String((error as Error).stack));
+      response.setHeader('content-type', 'text/html');
+      response.end(errorPage(error, vite));
     }
   });
 });

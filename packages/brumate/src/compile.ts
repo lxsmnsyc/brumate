@@ -10,7 +10,8 @@ import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
 import { generateRender } from './codegen/render.ts';
 import { generateServer } from './codegen/server.ts';
-import { BrumateError, getLocation } from './error.ts';
+import { BrumateError, codeFrame, getLocation } from './error.ts';
+import type { Location } from './error.ts';
 import { buildGraph } from './graph.ts';
 import type { Diagnostic } from './model.ts';
 import { parse } from './parser.ts';
@@ -81,6 +82,11 @@ export interface CompileResult {
 /** Thrown when a file has errors. Every error is in `diagnostics`. */
 export class CompileError extends Error {
   readonly diagnostics: Diagnostic[];
+  readonly filename: string;
+  /** Where the first error is. */
+  readonly location: Location;
+  /** The lines around the first error. */
+  readonly frame: string;
 
   constructor(source: string, filename: string, diagnostics: Diagnostic[]) {
     const lines = diagnostics.map((diagnostic) => {
@@ -90,6 +96,10 @@ export class CompileError extends Error {
     super(lines.join('\n'));
     this.name = 'CompileError';
     this.diagnostics = diagnostics;
+    this.filename = filename;
+    const start = diagnostics[0]?.range.start ?? 0;
+    this.location = getLocation(source, start);
+    this.frame = codeFrame(source, start);
   }
 }
 

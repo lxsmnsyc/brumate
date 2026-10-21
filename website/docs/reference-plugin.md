@@ -40,6 +40,23 @@ export default defineConfig({
 
 The client build must run first. The `_error.brm` of the root renders as `404.html`. See [Deploying](./deploying.md).
 
+## `errorPage(error, server)`
+
+`brumate/vite` exports `errorPage`, for a dev server that renders with `ssrLoadModule`. It returns a page that shows the error in Vite's error overlay:
+
+```ts
+} catch (error) {
+  response.statusCode = 500;
+  response.setHeader('content-type', 'text/html');
+  response.end(errorPage(error, vite));
+}
+```
+
+- A compile error shows the file, the line and the lines around it. A click on the file opens it in the editor.
+- Other errors show their stack, with lines of the source files.
+- The page loads again when a file changes, so a fix shows the page.
+- It logs the error in the terminal too.
+
 ## Modules
 
 | Import                     | Exports                                                                                                                                                                                     |
