@@ -2,8 +2,8 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
-import { normalizePath, transformWithOxc } from 'vite';
-import type { Plugin, ViteDevServer } from 'vite';
+import { isRunnableDevEnvironment, normalizePath, transformWithOxc } from 'vite';
+import type { EnvironmentModuleNode, Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
 import { defaultExclude, findFiles, findServerFiles } from './files.ts';
 import {
@@ -217,6 +217,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const relative = (file: string): string => normalizePath(path.relative(root, file));
   /** Files of server functions: scripts whose first statement is `'use server'`, by ID. */
   const serverFiles = new Map<string, string>();
+  /** The ID of a function that a component imports from a 'use server' file, by a relative path. */
+  const serverImport = (importer: string, specifier: string, name: string): string | undefined => {
+    if (!specifier.startsWith('.')) {
+      return undefined;
+    }
+    const stem = path.resolve(path.dirname(importer), specifier);
+    const found = [
+      stem,
+      ...['.ts', '.tsx', '.js', '.mjs'].map((extension) => stem + extension),
+    ].find(
+      (candidate) =>
+        isScriptFile(candidate) &&
+        existsSync(candidate) &&
+        hasUseServer(readFileSync(candidate, 'utf8')),
+    );
+    return found && functionId(serverFileId(normalizePath(found)), name, !isServe);
+  };
+
   const serverFileId = (file: string): string =>
     `${path.basename(file).replace(/\.[^.]+$/, '')}_${hash(relative(file))}`;
   const componentId = (file: string): string => {
@@ -260,6 +278,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           a11y: options.a11y,
           // A build does not show the names of server functions in their IDs.
           hideNames: !isServe,
+          serverImport: (specifier, name) => serverImport(file, specifier, name),
         }),
       };
       compiled.set(file, cached);
@@ -451,6 +470,89 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       response.end(String(error));
     }
   };
+
+  /** Updates the page in the browser after a change to a component, or reloads it. */
+  async function updateClient(
+    file: string,
+    server: ViteDevServer,
+    timestamp: number,
+  ): Promise<[] | undefined> {
+    const normalized = normalizePath(file);
+    const targets = file.endsWith('.brm') ? [normalized] : [...(dependents.get(normalized) ?? [])];
+    if (targets.length === 0) {
+      return undefined;
+    }
+    // A resumed page cannot run a component again. When an edit keeps the markup, the slots
+    // and the update table of each changed component, the page keeps its state: new styles
+    // replace the old ones, and the next event loads the new code. When the markup changes,
+    // the page renders again, and the signals of the component keep their values. A file
+    // that does not compile reloads the page, which shows the error.
+    const invalidate = (): void => {
+      for (const module of server.moduleGraph.idToModuleMap.values()) {
+        const id = module.id ?? '';
+        if (
+          id.includes('.brm') ||
+          id === `\0${MANIFEST}` ||
+          id === `\0${SERVER}` ||
+          id === `\0${ROUTES}`
+        ) {
+          server.moduleGraph.invalidateModule(module);
+        }
+      }
+    };
+    const reload = (): [] => {
+      invalidate();
+      server.ws.send({ type: 'full-reload' });
+      return [];
+    };
+    await analyze();
+    const updates: HotUpdate[] = [];
+    for (const target of targets) {
+      const before = shapes.get(target);
+      let after: Shape;
+      try {
+        // oxlint-disable-next-line no-await-in-loop -- The first component that cannot update in place reloads the page.
+        after = shapeOf((await compileFile(target)).result);
+      } catch {
+        // The error shows when the page reloads and the module compiles.
+        return reload();
+      }
+      if (!before) {
+        return reload();
+      }
+      const remount = before.layout !== after.layout;
+      const id = componentId(target);
+      const modules = [
+        ...(server.moduleGraph.getModulesByFile(target) ?? []),
+        // The shared code of a module of reactive logic that changed.
+        ...(target === normalized ? [] : (server.moduleGraph.getModulesByFile(normalized) ?? [])),
+      ];
+      for (const module of modules) {
+        server.moduleGraph.invalidateModule(module, new Set(), timestamp, true);
+      }
+      const entry = [...(server.moduleGraph.getModulesByFile(target) ?? [])].find((module) =>
+        module.id?.endsWith(CLIENT_QUERY),
+      );
+      updates.push({
+        id,
+        css: before.css === after.css ? undefined : after.css,
+        url: before.code === after.code && !remount ? undefined : entry?.url,
+        remount: remount
+          ? {
+              before: before.slots,
+              after: after.slots,
+              signals: after.signals.filter((name) => before.signals.includes(name)),
+            }
+          : undefined,
+      });
+    }
+    if (updates.some((update) => update.remount)) {
+      // The server renders the page again with the new markup.
+      invalidate();
+    }
+    server.ws.send({ type: 'custom', event: 'brumate:update', data: { updates, timestamp } });
+    return [];
+  }
 
   return {
     name: 'brumate',
@@ -744,7 +846,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           });
       });
       server.middlewares.use((request, response, next) => {
-        if (request.method === 'POST' && request.url?.startsWith(`${rpc}/`)) {
+        // When the server code runs in Vite, the plugin answers calls with it. A framework that
+        // runs it elsewhere, such as Nitro in a worker, answers them in its own server entry.
+        const ssr = server.environments.ssr;
+        if (
+          request.method === 'POST' &&
+          request.url?.startsWith(`${rpc}/`) &&
+          ssr &&
+          isRunnableDevEnvironment(ssr)
+        ) {
           void handleDevRPC(server, request, response);
           return;
         }
@@ -762,83 +872,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       });
     },
 
-    async handleHotUpdate({ file, server, timestamp }) {
+    // A server environment that runs apart from Vite, such as Nitro's worker, keeps the code
+    // of components it loaded. A change to a component or to a file that one reads, such as
+    // a stylesheet, reloads its server code, so the next render uses the new code.
+    async hotUpdate({ file, server, timestamp }) {
+      const environment = this.environment;
+      if (environment.config.consumer === 'client') {
+        return updateClient(file, server, timestamp);
+      }
       const normalized = normalizePath(file);
-      const targets = file.endsWith('.brm')
-        ? [normalized]
-        : [...(dependents.get(normalized) ?? [])];
-      if (targets.length === 0) {
+      if (!file.endsWith('.brm') && !dependents.has(normalized)) {
         return undefined;
       }
-      // A resumed page cannot run a component again. When an edit keeps the markup, the slots
-      // and the update table of each changed component, the page keeps its state: new styles
-      // replace the old ones, and the next event loads the new code. When the markup changes,
-      // the page renders again, and the signals of the component keep their values. A file
-      // that does not compile reloads the page, which shows the error.
-      const invalidate = (): void => {
-        for (const module of server.moduleGraph.idToModuleMap.values()) {
-          const id = module.id ?? '';
-          if (
-            id.includes('.brm') ||
-            id === `\0${MANIFEST}` ||
-            id === `\0${SERVER}` ||
-            id === `\0${ROUTES}`
-          ) {
-            server.moduleGraph.invalidateModule(module);
-          }
+      const invalidated = new Set<EnvironmentModuleNode>();
+      for (const module of environment.moduleGraph.idToModuleMap.values()) {
+        const id = module.id ?? '';
+        if (id.includes('.brm') || id.startsWith('\0virtual:brumate')) {
+          environment.moduleGraph.invalidateModule(module, invalidated, timestamp, true);
         }
-      };
-      const reload = (): [] => {
-        invalidate();
-        server.ws.send({ type: 'full-reload' });
-        return [];
-      };
-      await analyze();
-      const updates: HotUpdate[] = [];
-      for (const target of targets) {
-        const before = shapes.get(target);
-        let after: Shape;
-        try {
-          // oxlint-disable-next-line no-await-in-loop -- The first component that cannot update in place reloads the page.
-          after = shapeOf((await compileFile(target)).result);
-        } catch {
-          // The error shows when the page reloads and the module compiles.
-          return reload();
-        }
-        if (!before) {
-          return reload();
-        }
-        const remount = before.layout !== after.layout;
-        const id = componentId(target);
-        const modules = [
-          ...(server.moduleGraph.getModulesByFile(target) ?? []),
-          // The shared code of a module of reactive logic that changed.
-          ...(target === normalized ? [] : (server.moduleGraph.getModulesByFile(normalized) ?? [])),
-        ];
-        for (const module of modules) {
-          server.moduleGraph.invalidateModule(module, new Set(), timestamp, true);
-        }
-        const entry = [...(server.moduleGraph.getModulesByFile(target) ?? [])].find((module) =>
-          module.id?.endsWith(CLIENT_QUERY),
-        );
-        updates.push({
-          id,
-          css: before.css === after.css ? undefined : after.css,
-          url: before.code === after.code && !remount ? undefined : entry?.url,
-          remount: remount
-            ? {
-                before: before.slots,
-                after: after.slots,
-                signals: after.signals.filter((name) => before.signals.includes(name)),
-              }
-            : undefined,
-        });
       }
-      if (updates.some((update) => update.remount)) {
-        // The server renders the page again with the new markup.
-        invalidate();
-      }
-      server.ws.send({ type: 'custom', event: 'brumate:update', data: { updates, timestamp } });
+      environment.hot.send({ type: 'full-reload' });
       return [];
     },
   };

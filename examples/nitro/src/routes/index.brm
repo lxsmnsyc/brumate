@@ -1,0 +1,34 @@
+<script>
+  import { $action, $isPending, $memo, $signal, $title } from 'brumate/signals';
+  import { refresh } from 'brumate/server';
+  import { addNote, listNotes } from '../notes.ts';
+
+  $title('Notes');
+
+  let count = $signal(0);
+
+  async function add(form: FormData) {
+    'use server';
+    const result = await addNote(form);
+    refresh(listNotes);
+    return result;
+  }
+
+  const result = $action(add);
+  const notes = $memo(listNotes());
+</script>
+
+<h1>Notes</h1>
+<button class="count" onClick=(() => count++)>Clicked {count} times</button>
+<form action=add>
+  <input name="text" aria-label="Note">
+  <button disabled=($isPending(result))>Add</button>
+</form>
+#if (result?.error) {
+  <p class="error">{result.error}</p>
+}
+<ul>
+  #for (note of notes by note) {
+    <li>{note}</li>
+  }
+</ul>

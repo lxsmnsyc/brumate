@@ -2,6 +2,8 @@
 
 A brumate app builds into client files and a server bundle. The server renders pages and answers server function calls. A site without server functions can also be prerendered to static files.
 
+[Nitro](https://nitro.build) builds the app for a host, such as Node, Bun, Deno, Cloudflare or Vercel, without a server of your own. See [Deploying with Nitro](#deploying-with-nitro). The sections after it describe a server that you write yourself.
+
 ## Build
 
 The client and the server build separately, the client first:
@@ -36,6 +38,55 @@ export { handle } from 'virtual:brumate/server';
 // Pages, endpoints and middleware of the route files.
 export { handle as route } from 'virtual:brumate/routes';
 ```
+
+## Deploying with Nitro
+
+Add Nitro's Vite plugin after brumate's, and name the client entry:
+
+```ts
+// vite.config.ts
+import brumate from 'brumate/vite';
+import { nitro } from 'nitro/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [brumate(), nitro()],
+  environments: {
+    client: { build: { rollupOptions: { input: 'src/client.ts' } } },
+  },
+});
+```
+
+Nitro uses `src/entry-server.ts` for each request that is not a file of the build. Its `fetch` answers server function calls, then routes:
+
+```ts
+// src/entry-server.ts
+import { handle } from 'virtual:brumate/routes';
+import { handle as handleCall } from 'virtual:brumate/server';
+import client from './client.ts?assets=client';
+
+const scripts = `${import.meta.env.DEV ? '<script type="module" src="/@vite/client"></script>' : ''}<script type="module" async src="${client.entry}"></script>`;
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    if (request.method === 'POST') {
+      const answer = await handleCall(request);
+      if (answer) {
+        return answer;
+      }
+    }
+    return (await handle(request, { scripts })) ?? new Response('Not found', { status: 404 });
+  },
+};
+```
+
+- `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
+- `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
+- `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. The server runtime needs `AsyncLocalStorage`, which Cloudflare has with the `nodejs_compat` flag.
+- `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
+- Nitro is in beta. The example uses version `3.0.260903-beta`.
+
+[`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
 
 ## A production server
 
