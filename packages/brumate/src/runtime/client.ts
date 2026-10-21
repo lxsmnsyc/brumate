@@ -83,8 +83,11 @@ const scopes = new Map<number, Scope>();
 
 /** What the devtools overlay hears from the core. It is set only in development. */
 export interface DevtoolsHooks {
-  /** The core started, with the scopes of the page. */
-  attach?(core: { scopes: Map<number, Scope> }): void;
+  /** The core started, with the scopes of the page, and a way to write a slot, as a handler does. */
+  attach?(core: {
+    scopes: Map<number, Scope>;
+    set: (scope: Scope, slot: number, value: unknown) => void;
+  }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
   /** A part of a component's client code loaded. */
@@ -445,7 +448,7 @@ export function init(value: CoreOptions): void {
   document.addEventListener('brumate:hot', onHot);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
-  devtools()?.attach?.({ scopes });
+  devtools()?.attach?.({ scopes, set });
 }
 
 /** Replaces function references with functions that call them. */

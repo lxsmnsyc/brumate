@@ -179,8 +179,9 @@ describe('style imports', () => {
       };
       expect(await css()).toContain('color: teal');
       writeFileSync(`${directory}_theme.scss`, '$brand: navy;\n');
+      // The file watcher can take a while to notice the change while other tests run.
       await vi.waitFor(async () => expect(await css()).toContain('color: navy'), {
-        timeout: 5000,
+        timeout: 15_000,
       });
     } finally {
       await dev.close();

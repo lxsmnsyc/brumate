@@ -47,11 +47,18 @@ Use it when a component ships more than you expect. The "Changes on the client" 
 
 ## Devtools
 
-The dev server adds a `brm` button to each page. It opens a panel with three tabs:
+The dev server adds a `brm` button to each page. It opens a panel with four tabs:
 
 - **Scopes** shows each component on the page, with the value of each of its signals and memos by name. A scope that just changed flashes.
-- **Log** lists each handler that ran, each module of client code that loaded, and each value that changed.
-- **Report** shows the `brumate inspect` report of a component. Choose one in Scopes.
+- **Graph** shows what changes in the browser in a component, and what reads what. A value that changes marks its node and every node after it for a moment.
+- **Log** lists each handler that ran, each module of client code that loaded, each value that changed, and each server function call with its status and how long it took. Filter it by kind, pause it, or clear it.
+- **Report** shows the `brumate inspect` report of a component.
+
+In Scopes:
+
+- Click a value to change it. Type JSON, or text for a string, and press Enter. The page updates as if a handler wrote the value. Elements and functions cannot be changed.
+- Hover the label of a scope to outline its elements on the page.
+- Press **Pick**, then click an element of the page, to find its scope.
 
 Until you press the button, only a small listener runs, so the page behaves as in production. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
 

@@ -12,6 +12,7 @@ import { getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
+import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
@@ -302,15 +303,44 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return undefined;
     }
     const { source, result } = await compileFile(file);
+    const { plan } = result;
     const scopes: Record<number, { label: string; slots: string[] }> = {};
-    for (const layout of result.plan.scopes.values()) {
+    for (const layout of plan.scopes.values()) {
       scopes[layout.scope.id] = {
-        label: scopeLabel(source, layout.scope),
+        label: scopeLabel(result.file.source, layout.scope),
         slots: layout.slots.map((slot) => slot.name),
       };
     }
+    // The nodes that can change in the browser, with the slot of each value, so the panel
+    // can mark a node when its slot is written.
+    const nodes = plan.graph.nodes.filter((node) => plan.graph.live.has(node));
+    const indexes = new Map(nodes.map((node, index) => [node, index]));
+    const graph = {
+      nodes: nodes.map((node) => {
+        if (node.kind === 'source' || node.kind === 'memo') {
+          return {
+            kind: node.kind === 'memo' ? 'memo' : node.declaration.kind,
+            label: node.declaration.name,
+            scope: instanceScope(plan, node.declaration.scope).id,
+            slot: slotIndex(plan, node.declaration),
+          };
+        }
+        // Markup has no name, so its place in the file tells nodes apart, such as `insert 9:42`.
+        // Code that a module function gave the component has no place in the component's file.
+        const at = result.locate(node.site.range.start);
+        const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+        return {
+          kind: node.kind,
+          label: where ? `${node.site.label} ${where.line}:${where.column}` : node.site.label,
+          scope: instanceScope(plan, node.site.scope).id,
+        };
+      }),
+      edges: plan.graph.edges
+        .filter((edge) => indexes.has(edge.from) && indexes.has(edge.to))
+        .map((edge) => [indexes.get(edge.from)!, indexes.get(edge.to)!]),
+    };
     const text = formatReport(report(source, result, liveProps.get(file)));
-    return { name: result.plan.name, file: relative(file), scopes, text };
+    return { name: plan.name, file: relative(file), scopes, graph, text };
   };
 
   const handleDevRPC = async (
@@ -470,7 +500,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
-                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}));`,
+                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}));`,
               ]
             : []),
         ].join('\n');

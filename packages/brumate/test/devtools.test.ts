@@ -24,6 +24,7 @@ describe('devtools', () => {
         [0, root],
         [1, item],
       ]),
+      set: () => {},
     });
     hooks().handler!('Counter_1#h0', document.createElement('button'), new Event('click'));
     hooks().part!('Counter_1', 'h0');
@@ -60,5 +61,72 @@ describe('devtools', () => {
     expect(preview([1, 2])).toBe('Array(2)');
     expect(preview({ a: 1, b: 2, c: 3, d: 4 })).toBe('{a, b, c}');
     expect(preview(new Map())).toBe('Map');
+  });
+
+  it('edits a value, draws the graph with what a write reached, and filters the log', async () => {
+    document.body.innerHTML = '';
+    document.querySelector('brumate-devtools')?.remove();
+    const writes: [number, unknown][] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input).startsWith('/_brumate/')) {
+        return new Response(null, { status: 204, headers: { 'x-brumate-redirect': '/done' } });
+      }
+      return Response.json({
+        name: 'Counter',
+        file: 'src/Counter.brm',
+        scopes: { 0: { label: 'component', slots: ['count', 'double'] } },
+        graph: {
+          nodes: [
+            { kind: 'signal', label: 'count', scope: 0, slot: 0 },
+            { kind: 'memo', label: 'double', scope: 0, slot: 1 },
+            { kind: 'binding', label: 'insert', scope: 0 },
+          ],
+          edges: [
+            [0, 1],
+            [1, 2],
+          ],
+        },
+        text: 'Counter report',
+      });
+    }) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const host = document.querySelector('brumate-devtools')!;
+    const shadow = host.shadowRoot!;
+    const root: Scope = { id: 7, k: 0, m: 'Counter_2', s: [1, 2], children: new Set() };
+    hooks().attach!({
+      scopes: new Map([[7, root]]),
+      set: (scope, slot, value) => {
+        writes.push([slot, value]);
+        scope.s[slot] = value;
+      },
+    });
+    togglePanel(shadow, state);
+    const body = (): HTMLElement => shadow.querySelector('.body')!;
+    await expect.poll(() => body().textContent).toContain('count = 1');
+
+    // A click on a value edits it, and Enter writes it as JSON.
+    (shadow.querySelector('.slot .value') as HTMLElement).click();
+    await expect.poll(() => shadow.querySelector('.slot input')).not.toBeNull();
+    const input = shadow.querySelector('.slot input') as HTMLInputElement;
+    input.value = '41';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(writes).toEqual([[0, 41]]);
+
+    // A write marks its node and the nodes that read it.
+    hooks().write!(root, 0, 42);
+    (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
+    await expect.poll(() => shadow.querySelectorAll('svg g.hot').length).toBe(3);
+    expect(shadow.querySelectorAll('svg g').length).toBe(3);
+
+    // A server function call is logged, and the log shows writes by the name of their slot.
+    await fetch('/_brumate/Counter_2%23save', { method: 'POST' });
+    (shadow.querySelector('[data-tab="log"]') as HTMLElement).click();
+    await expect.poll(() => body().textContent).toContain('Counter_2#save: redirect to /done');
+    expect(body().textContent).toContain('Counter count = 42');
+    const [, , writeBox] = [...shadow.querySelectorAll('.filters input')] as HTMLInputElement[];
+    writeBox!.checked = false;
+    writeBox!.dispatchEvent(new Event('change'));
+    await expect.poll(() => body().textContent).not.toContain('Counter count = 42');
+    togglePanel(shadow, state);
   });
 });
