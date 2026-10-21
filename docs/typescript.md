@@ -23,7 +23,7 @@ Add `brumate/types` to the types of the project:
 
 ## In an editor
 
-Add the plugin to `tsconfig.json`, and use the TypeScript version of the workspace in the editor:
+In VS Code, the [extension](./editor.md) adds the plugin itself. In another editor, add the plugin to `tsconfig.json`, and use the TypeScript version of the workspace in the editor:
 
 ```json
 {

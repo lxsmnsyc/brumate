@@ -26,6 +26,7 @@ const repository = import.meta.glob<Page>(
     '../../docs/typescript.md',
     '../../docs/inspect.md',
     '../../docs/testing.md',
+    '../../docs/editor.md',
     '../../docs/model.md',
     '../../docs/page-format.md',
   ],
@@ -45,7 +46,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     title: 'Guide',
     pages: ['', 'getting-started', 'syntax', 'server-functions', 'routing', 'styles'],
   },
-  { title: 'Tools', pages: ['vite', 'typescript', 'testing', 'inspect'] },
+  { title: 'Tools', pages: ['vite', 'typescript', 'editor', 'testing', 'inspect'] },
   { title: 'How it works', pages: ['model', 'page-format'] },
 ].map((section) => ({
   title: section.title,

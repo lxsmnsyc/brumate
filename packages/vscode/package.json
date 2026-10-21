@@ -1,0 +1,84 @@
+{
+  "name": "brumate-vscode",
+  "displayName": "brumate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Language support for .brm files: highlighting, types, styles and compiler diagnostics",
+  "categories": [
+    "Programming Languages"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lxsmnsyc/brumate",
+    "directory": "packages/vscode"
+  },
+  "publisher": "lxsmnsyc",
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "scripts": {
+    "build": "tsdown && node scripts/after-build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "pnpm build && vsce package"
+  },
+  "devDependencies": {
+    "@brumate/language-server": "workspace:*",
+    "@brumate/typescript-plugin": "workspace:*",
+    "@oxc-parser/binding-wasm32-wasi": "0.154.0",
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.100.0",
+    "@volar/vscode": "2.4.28",
+    "@vscode/vsce": "^3.6.0",
+    "brumate": "workspace:*",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.2.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "brumate",
+        "aliases": [
+          "brumate",
+          "brm"
+        ],
+        "extensions": [
+          ".brm"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "brumate",
+        "scopeName": "source.brm",
+        "path": "./syntaxes/brumate.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.ts": "typescript",
+          "meta.embedded.expression.ts": "typescript",
+          "meta.embedded.block.css": "css",
+          "meta.embedded.block.scss": "scss",
+          "meta.embedded.block.less": "less"
+        }
+      }
+    ],
+    "typescriptServerPlugins": [
+      {
+        "name": "brumate-typescript-plugin-pack",
+        "enableForWorkspaceTypeScriptVersions": true,
+        "languages": [
+          "brumate"
+        ]
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:brumate"
+  ],
+  "engines": {
+    "vscode": "^1.100.0"
+  }
+}

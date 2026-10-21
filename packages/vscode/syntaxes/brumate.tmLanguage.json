@@ -1,0 +1,454 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "brumate",
+  "scopeName": "source.brm",
+  "fileTypes": ["brm"],
+  "patterns": [
+    {
+      "include": "#markup"
+    }
+  ],
+  "repository": {
+    "markup": {
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#script"
+        },
+        {
+          "include": "#style"
+        },
+        {
+          "include": "#block"
+        },
+        {
+          "include": "#block-end"
+        },
+        {
+          "include": "#closing-tag"
+        },
+        {
+          "include": "#tag"
+        },
+        {
+          "include": "#expression"
+        }
+      ]
+    },
+    "comment": {
+      "name": "comment.block.brumate",
+      "begin": "<!--",
+      "end": "-->"
+    },
+    "script": {
+      "begin": "(<)(script)\\b((?=[^>]*>))",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.brumate"
+        },
+        "2": {
+          "name": "entity.name.tag.script.brumate"
+        }
+      },
+      "end": "(</)(script)\\s*(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.brumate"
+        },
+        "2": {
+          "name": "entity.name.tag.script.brumate"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.brumate"
+        }
+      },
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.end.brumate"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#plain-attribute"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=>)",
+          "end": "(?=</script\\s*>)",
+          "contentName": "meta.embedded.block.ts",
+          "patterns": [
+            {
+              "include": "source.ts"
+            }
+          ]
+        }
+      ]
+    },
+    "style": {
+      "patterns": [
+        {
+          "begin": "(<)(style)\\b((?=[^>]*\\blang=[\\\"']?scss))",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            }
+          },
+          "end": "(</)(style)\\s*(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            },
+            "3": {
+              "name": "punctuation.definition.tag.end.brumate"
+            }
+          },
+          "patterns": [
+            {
+              "begin": "\\G",
+              "end": "(>)",
+              "endCaptures": {
+                "1": {
+                  "name": "punctuation.definition.tag.end.brumate"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#plain-attribute"
+                }
+              ]
+            },
+            {
+              "begin": "(?<=>)",
+              "end": "(?=</style\\s*>)",
+              "contentName": "meta.embedded.block.scss",
+              "patterns": [
+                {
+                  "include": "source.css.scss"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "begin": "(<)(style)\\b((?=[^>]*\\blang=[\\\"']?less))",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            }
+          },
+          "end": "(</)(style)\\s*(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            },
+            "3": {
+              "name": "punctuation.definition.tag.end.brumate"
+            }
+          },
+          "patterns": [
+            {
+              "begin": "\\G",
+              "end": "(>)",
+              "endCaptures": {
+                "1": {
+                  "name": "punctuation.definition.tag.end.brumate"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#plain-attribute"
+                }
+              ]
+            },
+            {
+              "begin": "(?<=>)",
+              "end": "(?=</style\\s*>)",
+              "contentName": "meta.embedded.block.less",
+              "patterns": [
+                {
+                  "include": "source.css.less"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "begin": "(<)(style)\\b((?=[^>]*>))",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            }
+          },
+          "end": "(</)(style)\\s*(>)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.tag.begin.brumate"
+            },
+            "2": {
+              "name": "entity.name.tag.style.brumate"
+            },
+            "3": {
+              "name": "punctuation.definition.tag.end.brumate"
+            }
+          },
+          "patterns": [
+            {
+              "begin": "\\G",
+              "end": "(>)",
+              "endCaptures": {
+                "1": {
+                  "name": "punctuation.definition.tag.end.brumate"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#plain-attribute"
+                }
+              ]
+            },
+            {
+              "begin": "(?<=>)",
+              "end": "(?=</style\\s*>)",
+              "contentName": "meta.embedded.block.css",
+              "patterns": [
+                {
+                  "include": "source.css"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "block": {
+      "begin": "(#)(else if|if|else|for|repeat|switch|case|default|try|catch|loading|portal|head|client|key|template)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.block.brumate"
+        },
+        "2": {
+          "name": "keyword.control.block.brumate"
+        }
+      },
+      "end": "(\\{)|(?=<|\\n\\s*\\n)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.begin.brumate"
+        }
+      },
+      "patterns": [
+        {
+          "match": "(?<=template)\\s+([A-Za-z_$][\\w$]*)",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.brumate"
+            }
+          }
+        },
+        {
+          "include": "#paren-expression"
+        }
+      ]
+    },
+    "block-end": {
+      "match": "\\}",
+      "name": "punctuation.section.block.end.brumate"
+    },
+    "paren-expression": {
+      "begin": "\\(",
+      "beginCaptures": {
+        "0": {
+          "name": "meta.brace.round.ts"
+        }
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": {
+          "name": "meta.brace.round.ts"
+        }
+      },
+      "contentName": "meta.embedded.expression.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    "expression": {
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.brumate"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.brumate"
+        }
+      },
+      "contentName": "meta.embedded.expression.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    "closing-tag": {
+      "match": "(</)([A-Za-z][\\w.:-]*)?\\s*(>)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.brumate"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#tag-name"
+            }
+          ]
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.brumate"
+        }
+      }
+    },
+    "tag": {
+      "begin": "(<)(?:([A-Za-z][\\w.:-]*)|(?=\\{))",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.brumate"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#tag-name"
+            }
+          ]
+        }
+      },
+      "end": "(/?>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.end.brumate"
+        }
+      },
+      "name": "meta.tag.brumate",
+      "patterns": [
+        {
+          "include": "#expression"
+        },
+        {
+          "include": "#attribute"
+        }
+      ]
+    },
+    "tag-name": {
+      "patterns": [
+        {
+          "match": "[A-Z][\\w.]*",
+          "name": "support.class.component.brumate"
+        },
+        {
+          "match": "[a-z][\\w.:-]*",
+          "name": "entity.name.tag.brumate"
+        }
+      ]
+    },
+    "plain-attribute": {
+      "patterns": [
+        {
+          "match": "[A-Za-z_:][\\w:.-]*",
+          "name": "entity.other.attribute-name.brumate"
+        },
+        {
+          "match": "=",
+          "name": "punctuation.separator.key-value.brumate"
+        },
+        {
+          "include": "#string"
+        }
+      ]
+    },
+    "attribute": {
+      "patterns": [
+        {
+          "match": "on[A-Z][\\w]*(?::[\\w-]+)*",
+          "name": "entity.other.attribute-name.event.brumate"
+        },
+        {
+          "match": "[A-Za-z_$][\\w$:.-]*",
+          "name": "entity.other.attribute-name.brumate"
+        },
+        {
+          "begin": "=",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.separator.key-value.brumate"
+            }
+          },
+          "end": "(?<=[\\\"'})])|(?=[\\s>]|/>)",
+          "patterns": [
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#expression"
+            },
+            {
+              "include": "#paren-expression"
+            },
+            {
+              "begin": "(?=[^\\s\\\"'{(>])",
+              "end": "(?=[\\s>]|/>)",
+              "contentName": "meta.embedded.expression.ts",
+              "patterns": [
+                {
+                  "include": "#paren-expression"
+                },
+                {
+                  "include": "source.ts"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.brumate",
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "name": "string.quoted.single.brumate",
+          "begin": "'",
+          "end": "'"
+        }
+      ]
+    }
+  }
+}

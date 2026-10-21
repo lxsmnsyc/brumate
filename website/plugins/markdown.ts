@@ -29,6 +29,7 @@ export const SITE_PAGES: Set<string> = new Set([
   'typescript',
   'inspect',
   'testing',
+  'editor',
   'model',
   'page-format',
 ]);

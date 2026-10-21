@@ -1,0 +1,46 @@
+{
+  "name": "@brumate/language-server",
+  "version": "0.0.0",
+  "description": "Language server for .brm files",
+  "license": "MIT",
+  "bin": {
+    "brumate-language-server": "./bin/brumate-language-server.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@brumate/language-core": "workspace:*",
+    "@volar/language-server": "2.4.28",
+    "brumate": "workspace:*",
+    "volar-service-css": "0.0.71",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "vscode-uri": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

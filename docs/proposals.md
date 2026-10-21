@@ -14,7 +14,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Prerendering in the plugin](#prerendering-in-the-plugin)                         | Build      | High   | Small  |
 | [Two-way binding](#two-way-binding)                                               | Syntax     | Medium | Small  |
 | [Reactive logic in modules](#reactive-logic-in-modules)                           | Syntax     | High   | Large  |
-| [Editor extension](#editor-extension)                                             | Tooling    | High   | Medium |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling    | High   | Medium |
 | [Devtools overlay](#devtools-overlay)                                             | Tooling    | Medium | Medium |
 | [Testing helpers](#testing-helpers)                                               | Tooling    | Medium | Small  |
 | [Typed routes](#typed-routes)                                                     | Routing    | Medium | Medium |
@@ -111,13 +111,13 @@ export function counter(start: number) {
 
 ## Tooling
 
-### Editor extension
+### Content mappers for TypeScript 7
 
-`@brumate/typescript-plugin` gives editors type information, but not the rest of a language: highlighting, folding, completion for compile-time functions and blocks, and diagnostics from the compiler, such as writes outside client roots.
+TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScript 6 and older, through `@brumate/tsc` and `@brumate/typescript-plugin`. TypeScript 7.1 adds an API for content mappers, which turn the files of other languages into TypeScript and map positions between them.
 
-- A TextMate grammar for highlighting, from the twinkleplop language of the website.
-- A language server on Volar with the TypeScript plugin, the CSS service for styles, and the compiler's diagnostics.
-- A VS Code extension that bundles both.
+- A content mapper from `toTypeScript` would let `tsc` and the editor of TypeScript 7 check `.brm` files.
+- It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
+- This waits for the API to be stable, and for its documentation.
 
 ### Devtools overlay
 

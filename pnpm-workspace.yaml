@@ -6,3 +6,5 @@ packages:
 # Sass brings an optional file watcher with a native build. The tests do not need it.
 allowBuilds:
   '@parcel/watcher': false
+  '@vscode/vsce-sign': false
+  keytar: false

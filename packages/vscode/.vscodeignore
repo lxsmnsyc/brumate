@@ -1,0 +1,8 @@
+**
+!dist/**
+!syntaxes/**
+!language-configuration.json
+!node_modules/brumate-typescript-plugin-pack/**
+!package.json
+!README.md
+!LICENSE

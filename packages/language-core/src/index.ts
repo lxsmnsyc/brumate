@@ -6,7 +6,7 @@ import type {
   VirtualCode,
 } from '@volar/language-core';
 import type { TypeScriptServiceScript } from '@volar/typescript';
-import { toTypeScript } from 'brumate';
+import { parse, toTypeScript } from 'brumate';
 import type { BrumateError } from 'brumate';
 
 export const LANGUAGE_ID = 'brumate';
@@ -37,6 +37,43 @@ function createSnapshot(text: string): IScriptSnapshot {
     getLength: () => text.length,
     getChangeRange: () => undefined,
   };
+}
+
+/** CSS features for the text of a style block. Formatting would rewrite the interpolations. */
+const STYLE_FEATURES: CodeInformation = { ...FEATURES, verification: true, format: false };
+
+/**
+ * The style blocks of a file, each as its own CSS, SCSS or Less code. An
+ * interpolation such as `${size}` becomes underscores of the same length, a
+ * name that the CSS service accepts, so offsets stay the same.
+ */
+function styleCodes(source: string, fileName: string): VirtualCode[] {
+  let styles;
+  try {
+    ({ styles } = parse(source, { filename: fileName }));
+  } catch {
+    return [];
+  }
+  return styles.map((style, index) => {
+    const start = style.start + source.slice(style.start, style.end).indexOf('>') + 1;
+    const content = source.slice(start, start + style.content.length);
+    const text = content.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, (match) =>
+      '_'.repeat(match.length),
+    );
+    return {
+      id: `style_${index}`,
+      languageId: style.lang,
+      snapshot: createSnapshot(text),
+      mappings: [
+        {
+          sourceOffsets: [start],
+          generatedOffsets: [0],
+          lengths: [text.length],
+          data: STYLE_FEATURES,
+        },
+      ],
+    };
+  });
 }
 
 /** The virtual code of a `.brm` file: the file, and the TypeScript generated from it. */
@@ -73,7 +110,7 @@ export function createBrumateVirtualCode(
         data: { ...FEATURES, structure: true },
       },
     ],
-    embeddedCodes: [script],
+    embeddedCodes: [script, ...styleCodes(source, fileName)],
   };
 }
 
