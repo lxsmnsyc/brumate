@@ -306,13 +306,43 @@ function base(): number {
   return value;
 }
 
+/**
+ * The Content Security Policy nonce of the page that the browser loaded.
+ * Its policy stays for the whole visit, so scripts of later pages need it,
+ * not the nonce of their own response. Read once, while a script holds it.
+ */
+let loadedNonce: string | undefined;
+
+/** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
+function nonceOf(script: HTMLScriptElement): string | null {
+  return script.nonce || script.getAttribute('nonce');
+}
+
+function pageNonce(): string | undefined {
+  for (const script of loadedNonce ? [] : document.querySelectorAll('script')) {
+    loadedNonce = nonceOf(script) || undefined;
+    if (loadedNonce) {
+      break;
+    }
+  }
+  return loadedNonce;
+}
+
 /** Copies a script, so the browser runs it. Scripts from a parser that has no window do not run. */
 function runnable(script: HTMLScriptElement): HTMLScriptElement {
   const copy = document.createElement('script');
   for (const attribute of script.attributes) {
-    copy.setAttribute(attribute.name, attribute.value);
+    if (attribute.name !== 'nonce') {
+      copy.setAttribute(attribute.name, attribute.value);
+    }
   }
-  copy.nonce = script.nonce;
+  // A script that its server gave a nonce runs under the policy of the loaded page.
+  const nonce = nonceOf(script);
+  if (nonce) {
+    copy.nonce = pageNonce() ?? nonce;
+    // A DOM without the property, such as in tests, reads the attribute.
+    copy.setAttribute('nonce', copy.nonce);
+  }
   copy.textContent = script.textContent;
   return copy;
 }
@@ -419,6 +449,8 @@ function takePrefetched(url: string, requested: number): Promise<Response> | und
 }
 
 export async function navigate(visit: Visit): Promise<void> {
+  // Read before the page changes, while the scripts of the loaded page are in it.
+  pageNonce();
   controller?.abort();
   const requested = base();
   const current = new AbortController();

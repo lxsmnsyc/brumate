@@ -74,3 +74,5 @@ response?.headers.set('content-security-policy', `script-src 'self' 'nonce-${non
 ```
 
 The client code loads as modules from your origin, which `'self'` allows.
+
+A policy from a header stays for the whole visit, so the client router gives the swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.

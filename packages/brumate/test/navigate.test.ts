@@ -120,6 +120,36 @@ describe('navigate', () => {
     expect(script?.ownerDocument).toBe(document);
   });
 
+  it('gives the swap scripts of a later page the nonce of the loaded page', async () => {
+    vi.resetModules();
+    const fresh = await import('../src/runtime/navigate.ts');
+    document.head.innerHTML = '<script nonce="loaded-nonce">/* the loaded page */</script>';
+    document.body.innerHTML = '<p>old page</p>';
+    const { response, next } = respond([
+      '<!doctype html><html><head></head><body><p>Loading</p></body></html>',
+      '<template data-l="0"><p>Ready</p></template><script nonce="new-nonce">swap(0)</script>',
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const done = fresh.navigate({
+      url: '/next',
+      push: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    next();
+    await tick();
+    next();
+    next();
+    await done;
+    const script = document.body.querySelector('script')!;
+    expect(script.textContent).toBe('swap(0)');
+    // The policy of the loaded page allows its own nonce only.
+    expect(script.nonce).toBe('loaded-nonce');
+  });
+
   it('shows the error of a form post as text', async () => {
     const response = new Response('Enter a <name>', {
       status: 422,
