@@ -1,6 +1,7 @@
 <script>
   import { $props, $title } from 'brumate/signals';
   import { pages, sections } from '../docs.ts';
+  import LiveSample from './LiveSample.brm';
 
   const { slug } = $props<{ slug: string }>();
   const base = import.meta.env.BASE_URL;
@@ -28,7 +29,13 @@
   </nav>
   <article class="prose">
     #if (page) {
-      {page.html}
+      #for (part, index of page.parts by index) {
+        #if ('files' in part) {
+          <LiveSample files=part.files />
+        } #else {
+          {part.html}
+        }
+      }
       <nav class="pager" aria-label="Pages">
         #if (previous) {
           <a class="previous" href=(link(previous.slug))><small>Previous</small>{previous.title}</a>

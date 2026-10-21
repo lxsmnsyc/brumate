@@ -1,17 +1,9 @@
 // The pages of the documentation. The site's own pages are in `website/docs`,
 // and the rest come from the documents of the repository, so each is written once.
 
-interface Heading {
-  level: number;
-  text: string;
-  id: string;
-}
+import type { Page } from '../plugins/markdown.ts';
 
-export interface Page {
-  title: string;
-  html: unknown;
-  headings: Heading[];
-}
+export type { Page };
 
 const site = import.meta.glob<Page>('../docs/*.md', { eager: true, import: 'default' });
 // Only the documents for users. The design notes of the repository, such as

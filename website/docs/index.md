@@ -10,7 +10,7 @@ The name comes from brumation: reptiles stay still through the cold, and move ag
 
 Components are `.brm` files. A script declares state, and the markup reads it.
 
-```html
+```brm live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 

@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@brumate/tsc": "workspace:*",
+    "@oxc-transform/binding-wasm32-wasi": "0.154.0",
     "@twinkleplop/bash": "0.1.7",
     "@twinkleplop/json": "0.1.7",
     "@twinkleplop/markdown-it": "0.1.7",
@@ -27,6 +28,7 @@
     "@types/markdown-it": "14.1.2",
     "@types/node": "^24.19.2",
     "markdown-it": "14.1.0",
+    "oxc-transform": "0.154.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }

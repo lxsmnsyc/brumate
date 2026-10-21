@@ -1,0 +1,122 @@
+<script>
+  import { $client, $effect, $memo, $props, $signal, $untrack } from 'brumate/signals';
+  import type { LiveFile, LiveOutput } from '../live/run.ts';
+  import { highlight } from '../playground/highlight.ts';
+
+  // A code sample of the docs that runs in the page. Editing it runs it again.
+  const { files } = $props<{ files: LiveFile[] }>();
+
+  let sources = $signal(files.map((file) => file.source));
+  let active = $signal(0);
+  let view = $signal<'result' | 'output'>('result');
+  let error = $signal('');
+  let output = $signal<LiveOutput>();
+  let running = $signal(false);
+  let runs = $signal(0);
+  let result = $signal<HTMLElement>();
+  let backdrop = $signal<HTMLElement>();
+
+  const language = (name: string): 'brm' | 'ts' | 'css' => (name.endsWith('.brm') ? 'brm' : 'ts');
+  // A line break at the end keeps the last line of the editor and the highlight the same height.
+  const code = $memo(highlight(`${sources[active]}\n`, language(files[active]!.name)));
+
+  async function run() {
+    // Only the latest run writes its result, so an older run that finishes later is dropped.
+    runs++;
+    const id = runs;
+    running = true;
+    try {
+      const { runSample } = await import('../live/run.ts');
+      const next = await runSample(
+        result!,
+        files.map((file, index) => ({ name: file.name, source: sources[index]! })),
+        () => id === runs,
+      );
+      if (id === runs) {
+        output = next;
+        error = '';
+      }
+    } catch (caught) {
+      if (id === runs) {
+        error = caught instanceof Error ? caught.message : String(caught);
+      }
+    }
+    if (id === runs) {
+      running = false;
+    }
+  }
+
+  // The sample runs when it comes into view.
+  $client(() => {
+    void run();
+  });
+
+  // An edit runs the sample again, once typing pauses. The effect reads only
+  // `sources`: `run` reads and writes other values, which must not run it again.
+  $effect(() => {
+    const current = sources;
+    const timer = setTimeout(() => {
+      if (current === $untrack(sources)) {
+        void $untrack(run());
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  });
+</script>
+
+<figure class="live">
+  <div class="live-bar">
+    #if (files.length > 1) {
+      #for (file, index of files by file.name) {
+        <button class={ active: index === active } aria-pressed=(index === active) onClick=(() => (active = index))>{file.name}</button>
+      }
+    } #else {
+      <span class="live-file">{files[0]!.name}</span>
+    }
+    <span class="live-hint">Edit the code to run it again</span>
+  </div>
+  <div class="live-editor">
+    <div class="live-backdrop code" ref=backdrop aria-hidden="true">{code}</div>
+    <textarea
+      aria-label=(`Source of ${files[active]!.name}`)
+      spellcheck="false"
+      value=(sources[active])
+      onInput=((event) => {
+        const next = [...sources];
+        next[active] = event.currentTarget.value;
+        sources = next;
+      })
+      onScroll=((event) => {
+        backdrop!.scrollLeft = event.currentTarget.scrollLeft;
+      })
+    >{$untrack(sources[0])}</textarea>
+  </div>
+  <div class="live-tabs" role="tablist">
+    <button role="tab" aria-selected=(view === 'result') class={ active: view === 'result' } onClick=(() => (view = 'result'))>Result</button>
+    <button role="tab" aria-selected=(view === 'output') class={ active: view === 'output' } onClick=(() => (view = 'output'))>Compiled</button>
+    #if (running) {
+      <span class="live-status">Running</span>
+    }
+  </div>
+  #if (error) {
+    <pre class="live-error">{error}</pre>
+  }
+  <div class={ 'live-result': true, hidden: view !== 'result' } ref=result>
+    <p class="live-placeholder">The sample runs when it comes into view.</p>
+  </div>
+  #if (view === 'output' && output) {
+    <div class="live-output">
+      #for (module of output.modules by module.name) {
+        <p class="live-module">{module.name}</p>
+        <div class="code">{highlight(module.code, 'ts')}</div>
+      }
+    </div>
+  }
+  #if (output && output.warnings.length > 0) {
+    <ul class="live-warnings">
+      #for (warning of output.warnings by warning) {
+        <li>{warning}</li>
+      }
+    </ul>
+  }
+</figure>

@@ -60,6 +60,18 @@ export default defineConfig({
       ],
       new Set([...SITE_PAGES].map((page) => page || 'index')),
     ),
+    // The live samples run the server runtime in the browser, which keeps the
+    // request in AsyncLocalStorage. The browser has none, so a small one stands in.
+    {
+      name: 'website:async-hooks',
+      enforce: 'pre',
+      applyToEnvironment: (environment) => environment.name === 'client',
+      resolveId(id) {
+        return id === 'node:async_hooks'
+          ? fileURLToPath(new URL('src/live/async-hooks.ts', import.meta.url))
+          : undefined;
+      },
+    },
     // Every page is written as a static file, with readable names for the scripts.
     brumate({
       navigate: { transition: true },
@@ -73,11 +85,21 @@ export default defineConfig({
         path.dirname(require.resolve('@oxc-parser/binding-wasm32-wasi/package.json')),
         'parser.wasi-browser.js',
       ),
+      // The live samples strip types with oxc-transform on WebAssembly.
+      '@oxc-transform/binding-wasm32-wasip1': path.join(
+        path.dirname(require.resolve('@oxc-transform/binding-wasm32-wasi/package.json')),
+        'transform.wasi-browser.js',
+      ),
     },
   },
   // The compiler of the playground parses with oxc on WebAssembly, which loads its files itself.
   optimizeDeps: {
-    exclude: ['oxc-parser', '@oxc-parser/binding-wasm32-wasi'],
+    exclude: [
+      'oxc-parser',
+      '@oxc-parser/binding-wasm32-wasi',
+      'oxc-transform',
+      '@oxc-transform/binding-wasm32-wasi',
+    ],
   },
   worker: { format: 'es' },
   build: {

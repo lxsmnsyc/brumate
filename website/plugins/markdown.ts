@@ -42,10 +42,41 @@ export interface Heading {
   id: string;
 }
 
+/** A file of a live sample. */
+export interface LiveFile {
+  name: string;
+  source: string;
+}
+
+/** A piece of a page: HTML, or a live sample that runs in the page. */
+export type PagePart = { html: unknown } | { files: LiveFile[] };
+
 export interface Page {
   title: string;
-  html: unknown;
+  parts: PagePart[];
   headings: Heading[];
+}
+
+/**
+ * The file of a live sample: a code block such as ```` ```brm live ```` or
+ * ```` ```brm live Child.brm ````. Blocks next to each other are the files of
+ * one sample, and the first one renders.
+ */
+function liveFile(
+  token: { type: string; info: string; content: string },
+  first: boolean,
+): LiveFile | undefined {
+  const match =
+    token.type === 'fence'
+      ? /^(?:brm|html|ts)\s+live\b(?:\s+(\S+))?/.exec(token.info.trim())
+      : null;
+  if (!match) {
+    return undefined;
+  }
+  return {
+    name: match[1] ?? (first ? 'App.brm' : 'module.ts'),
+    source: token.content.replace(/\n$/, ''),
+  };
 }
 
 const LANGUAGES = {
@@ -195,13 +226,40 @@ export default function markdown(): Plugin {
         return null;
       }
       const env = { headings: [] as Heading[] };
-      const html = createRenderer(base).render(code, env);
+      const parser = createRenderer(base);
+      const tokens = parser.parse(code, env);
+      // The page is HTML between live samples. Each sample is its files.
+      const parts: string[] = [];
+      let start = 0;
+      let index = 0;
+      const flush = (end: number): void => {
+        if (end > start) {
+          const html = parser.renderer.render(tokens.slice(start, end), parser.options, env);
+          parts.push(`{ html: raw(${JSON.stringify(html)}) }`);
+        }
+      };
+      while (index < tokens.length) {
+        if (!liveFile(tokens[index]!, true)) {
+          index++;
+          continue;
+        }
+        flush(index);
+        const files: LiveFile[] = [];
+        let file: LiveFile | undefined;
+        while (index < tokens.length && (file = liveFile(tokens[index]!, files.length === 0))) {
+          files.push(file);
+          index++;
+        }
+        parts.push(`{ files: ${JSON.stringify(files)} }`);
+        start = index;
+      }
+      flush(tokens.length);
       const title = env.headings.find((heading) => heading.level === 1)?.text ?? '';
       return {
         code: [
           // Resolved from the site, because some documents are outside it.
           `import { raw } from ${JSON.stringify(RAW_MODULE)};`,
-          `export default { title: ${JSON.stringify(title)}, headings: ${JSON.stringify(env.headings)}, html: raw(${JSON.stringify(html)}) };`,
+          `export default { title: ${JSON.stringify(title)}, headings: ${JSON.stringify(env.headings)}, parts: [${parts.join(', ')}] };`,
         ].join('\n'),
         map: null,
       };
