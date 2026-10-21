@@ -1,0 +1,40 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import Counter from './Counter.brm';
+
+  interface Todo { id: string; title: string; done: boolean }
+  const { initial } = $props<{ initial: Todo[] }>();
+  let todos = $signal(initial);
+  let draft = $signal('');
+  let next = $signal(initial.length + 1);
+  const left = $memo(todos.filter((todo) => !todo.done).length);
+
+  function add() {
+    if (draft.trim() === '') {
+      return;
+    }
+    todos = [...todos, { id: String(next), title: draft, done: false }];
+    next = next + 1;
+    draft = '';
+  }
+</script>
+
+<h1>Todos</h1>
+<form onSubmit:prevent=add>
+  <input value=draft placeholder="What needs doing?" onInput=((event) => (draft = event.currentTarget.value))>
+  <button>Add</button>
+</form>
+<ul>
+  #for (todo of todos by todo.id) {
+    <script>
+      function toggle() {
+        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+      }
+    </script>
+    <li class={ done: todo.done }><button class="todo" onClick=toggle>{todo.title}</button></li>
+  }
+</ul>
+<p>{left} left</p>
+
+<h2>Counter</h2>
+<Counter start=0 />

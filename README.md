@@ -87,6 +87,14 @@ pnpm format
 
 The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the modules, the HTML and the state with a snapshot. The tests in `test/resume.test.ts` load that HTML into a DOM, start the loader, and check that events update the page.
 
+## Benchmarks
+
+[`benchmarks`](./benchmarks) builds the same counter and todo app with brumate, Qwik 1, Qwik 2 and Marko 6. It compares the JavaScript each page loads, the SSR HTML size and SSR speed. It needs a local Chrome for the browser metrics.
+
+```bash
+pnpm bench
+```
+
 ## Name
 
 Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same with its code. It loads a handler only when an event needs it.

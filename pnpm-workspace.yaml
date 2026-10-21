@@ -2,9 +2,13 @@ packages:
   - packages/*
   - examples/*
   - website
+  # Benchmark apps. The root build, test and typecheck scripts leave them out.
+  - benchmarks/*
 
 # Sass brings an optional file watcher with a native build. The tests do not need it.
 allowBuilds:
   '@parcel/watcher': false
   '@vscode/vsce-sign': false
   keytar: false
+  # Vite 7 in benchmarks/qwik1 brings esbuild. Its platform binary comes as an optional dependency.
+  esbuild: false

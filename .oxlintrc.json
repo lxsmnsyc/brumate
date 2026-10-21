@@ -27,6 +27,14 @@
   ],
   "overrides": [
     {
+      "files": ["benchmarks/**"],
+      "rules": {
+        "no-await-in-loop": "off",
+        "no-underscore-dangle": "off",
+        "oxc/no-map-spread": "off"
+      }
+    },
+    {
       "files": ["**/*.d.ts"],
       "rules": {
         "typescript/consistent-type-imports": "off",

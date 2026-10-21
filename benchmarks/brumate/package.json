@@ -1,0 +1,14 @@
+{
+  "name": "bench-brumate",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server"
+  },
+  "dependencies": {
+    "brumate": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.3.4"
+  }
+}

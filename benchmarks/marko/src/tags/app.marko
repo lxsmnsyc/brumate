@@ -1,0 +1,27 @@
+<let/todos=input.initial/>
+<let/draft=""/>
+<let/next=input.initial.length + 1/>
+<const/left=todos.filter((todo) => !todo.done).length/>
+<h1>Todos</h1>
+<form onSubmit(event) {
+  event.preventDefault();
+  if (draft.trim() === "") return;
+  todos = [...todos, { id: String(next), title: draft, done: false }];
+  next = next + 1;
+  draft = "";
+}>
+  <input value:=draft placeholder="What needs doing?"/>
+  <button>Add</button>
+</form>
+<ul>
+  <for|todo| of=todos by="id">
+    <li class={ done: todo.done }>
+      <button class="todo" onClick() {
+        todos = todos.map((item) => item.id === todo.id ? { ...item, done: !item.done } : item);
+      }>${todo.title}</button>
+    </li>
+  </for>
+</ul>
+<p>${left} left</p>
+<h2>Counter</h2>
+<counter/>
