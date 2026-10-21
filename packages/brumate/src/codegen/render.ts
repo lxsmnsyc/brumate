@@ -1,5 +1,6 @@
 import type { Markup, SFCFile } from '../ast.ts';
 import type { oxc } from '../oxc.ts';
+import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
@@ -106,7 +107,7 @@ export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
       const found = plan.graph.model.module.declarations.get(declaration.id.name);
       if (found?.kind === 'server-function') {
         result.push(
-          `const ${found.name} = (...$$a) => $$b.rpc(${JSON.stringify(`${plan.id}#${found.name}`)}, $$a);`,
+          `const ${found.name} = (...$$a) => $$b.rpc(${JSON.stringify(serverFunctionId(plan, found.name))}, $$a);`,
         );
         continue;
       }
@@ -180,7 +181,7 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   }
   for (const declaration of model.declarations) {
     if (declaration.kind === 'server-function' && declaration.scope !== model.module) {
-      const ref = `${plan.id}#${declaration.name}`;
+      const ref = serverFunctionId(plan, declaration.name);
       moduleBody.push(
         `const ${declaration.name} = (...$$a) => $$b.rpc(${JSON.stringify(ref)}, $$a);`,
       );

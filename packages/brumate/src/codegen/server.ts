@@ -2,6 +2,7 @@ import { isMacroImport } from '../macros.ts';
 import type { SFCFile } from '../ast.ts';
 import type { Declaration } from '../model.ts';
 import type { oxc } from '../oxc.ts';
+import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
@@ -102,7 +103,8 @@ export function generateServer(file: SFCFile, plan: Plan): string {
     }
   }
   const exported = serverFunctions(plan).map(
-    (declaration) => `${JSON.stringify(`${plan.id}#${declaration.name}`)}: ${declaration.name}`,
+    (declaration) =>
+      `${JSON.stringify(serverFunctionId(plan, declaration.name))}: ${declaration.name}`,
   );
   // Every server module has it, so the server function registry can read it from any file.
   moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
@@ -110,7 +112,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   // the browser use the functions of `rpc`, which run each time.
   for (const declaration of serverFunctions(plan)) {
     moduleBody.push(
-      `${declaration.name} = $$b.dedupe(${declaration.name}, ${JSON.stringify(`${plan.id}#${declaration.name}`)});`,
+      `${declaration.name} = $$b.dedupe(${declaration.name}, ${JSON.stringify(serverFunctionId(plan, declaration.name))});`,
     );
   }
 

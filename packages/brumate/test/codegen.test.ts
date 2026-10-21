@@ -64,3 +64,44 @@ describe('$untrack', () => {
     ]);
   });
 });
+
+describe('hidden server function names', () => {
+  it('uses the same hashed ID in the server table, the client stubs and forms', () => {
+    const source = `<script>
+  import { $action, $memo } from 'brumate/signals';
+  import { refresh } from 'brumate/server';
+
+  async function listSecretThings() {
+    'use server';
+    return [1];
+  }
+
+  async function deleteEverything(form: FormData) {
+    'use server';
+    refresh(listSecretThings);
+    return String(form.get('x'));
+  }
+
+  const result = $action(deleteEverything);
+  const things = $memo(listSecretThings());
+</script>
+
+<form action=deleteEverything><button>Go</button></form>
+<button onClick=(() => deleteEverything(new FormData()))>Now</button>
+<p>{things.length} {result}</p>
+`;
+    const shown = compile(source, { filename: 'Secret.brm' });
+    const hidden = compile(source, { filename: 'Secret.brm', hideNames: true });
+    expect(shown.server).toContain('#deleteEverything');
+    const browser = [hidden.client, ...Object.values(hidden.parts), hidden.render].join('\n');
+    expect(browser).not.toMatch(
+      /listSecretThings"|deleteEverything"|#listSecretThings|#deleteEverything/,
+    );
+    const ids = [...hidden.server.matchAll(/"(Secret_\w+#f\w+)": (\w+)/g)].map((match) => match[1]);
+    expect(ids).toHaveLength(2);
+    // The browser calls and refreshes the functions by the IDs of the server table.
+    for (const id of ids) {
+      expect(browser).toContain(JSON.stringify(id));
+    }
+  });
+});

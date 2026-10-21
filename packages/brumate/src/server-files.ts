@@ -4,6 +4,7 @@
 // server, and the code of the file never ships.
 
 import { parseSync } from 'oxc-parser';
+import { functionId } from './plan.ts';
 
 /** The import of the stubs, which call server functions with `rpc` of the core. */
 const CLIENT = 'brumate/client';
@@ -99,10 +100,15 @@ export function serverExports(source: string, filename: string): string[] {
 }
 
 /** The module that the browser gets in place of a file of server functions. */
-export function serverStubs(source: string, filename: string, id: string): string {
+export function serverStubs(
+  source: string,
+  filename: string,
+  id: string,
+  hideNames = false,
+): string {
   const lines = [`import { rpc } from ${JSON.stringify(CLIENT)};`];
   for (const name of serverExports(source, filename)) {
-    const call = `(...args) => rpc(${JSON.stringify(`${id}#${name}`)}, args)`;
+    const call = `(...args) => rpc(${JSON.stringify(functionId(id, name, hideNames))}, args)`;
     lines.push(name === 'default' ? `export default ${call};` : `export const ${name} = ${call};`);
   }
   return `${lines.join('\n')}\n`;

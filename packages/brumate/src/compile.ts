@@ -38,6 +38,11 @@ export interface CompileOptions {
   /** Warns about common accessibility mistakes in the markup. Defaults to true. */
   a11y?: boolean;
   /**
+   * Server function IDs use a hash of each function's name instead of the
+   * name, so the browser does not see it. The Vite plugin sets it in builds.
+   */
+  hideNames?: boolean;
+  /**
    * Reads a module of reactive logic, such as `./counter.brm.ts`, that the
    * component imports. Defaults to reading it from disk next to `path`.
    */
@@ -294,7 +299,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     fail(errors);
   }
-  const plan = createPlan(file, graph, options.path);
+  const plan = createPlan(file, graph, options.path, options.hideNames);
   const styleErrors = plan.styles.diagnostics.filter(
     (diagnostic) => diagnostic.severity === 'error',
   );

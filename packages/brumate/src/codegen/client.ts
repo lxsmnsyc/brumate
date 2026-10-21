@@ -13,7 +13,7 @@ import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
 import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
-import { blockBodies } from '../plan.ts';
+import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { Emitter, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
@@ -520,7 +520,7 @@ class ClientGenerator {
       this.part = name;
       for (const declaration of this.reads(this.partSites(name))) {
         if (declaration.kind === 'server-function' && declaration.scope !== this.model.module) {
-          const ref = `${this.plan.id}#${declaration.name}`;
+          const ref = serverFunctionId(this.plan, declaration.name);
           this.emit(
             `const ${declaration.name}$ = (...$$a) => $$b.rpc(${JSON.stringify(ref)}, $$a);`,
           );
@@ -1056,7 +1056,7 @@ class ClientGenerator {
       }
       for (const callee of node.site.calls) {
         if (callee.kind === 'server-function' && callee.refreshed) {
-          const id = `${this.plan.id}#${callee.name}`;
+          const id = serverFunctionId(this.plan, callee.name);
           const entries = table.get(id) ?? [];
           entries.push([instanceScope(this.plan, node.declaration.scope).id, fn]);
           table.set(id, entries);

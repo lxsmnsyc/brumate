@@ -6,10 +6,16 @@ import { normalizePath, transformWithOxc } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
 import { defaultExclude, findFiles, findServerFiles } from './files.ts';
-import { hasUseServer, isScriptFile, serverModule, serverStubs } from './server-files.ts';
+import {
+  hasUseServer,
+  isScriptFile,
+  serverExports,
+  serverModule,
+  serverStubs,
+} from './server-files.ts';
 import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
-import { getComponentName, hash } from './plan.ts';
+import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
 import type { NavigateOptions } from './runtime/loader.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
@@ -176,11 +182,15 @@ function shapeOf(result: CompileResult): Shape {
 }
 
 /** The functions of a file of server functions, by their IDs, for a module of it. */
-function fileFunctions(id: string, module: Record<string, unknown>): Record<string, unknown> {
+function fileFunctions(
+  id: string,
+  module: Record<string, unknown>,
+  hideNames: boolean,
+): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(module)
       .filter(([, value]) => typeof value === 'function')
-      .map(([name, value]) => [`${id}#${name}`, value]),
+      .map(([name, value]) => [functionId(id, name, hideNames), value]),
   );
 }
 
@@ -248,6 +258,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           path: file,
           merge: options.merge ?? 2048,
           a11y: options.a11y,
+          // A build does not show the names of server functions in their IDs.
+          hideNames: !isServe,
         }),
       };
       compiled.set(file, cached);
@@ -284,10 +296,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const fileImports = [...serverFiles.values()].map(
       (file, index) => `import * as f${index} from ${JSON.stringify(file)};`,
     );
-    const fileSpreads = [...serverFiles.keys()].map(
-      (id, index) =>
-        `  ...Object.fromEntries(Object.entries(f${index}).filter(([, value]) => typeof value === 'function').map(([name, value]) => [${JSON.stringify(`${id}#`)} + name, value])),`,
-    );
+    const fileSpreads = [...serverFiles.entries()].map(([id, file], index) => {
+      // The IDs are written here, so a build can hash the names of the functions.
+      const names = serverExports(readFileSync(file, 'utf8'), file);
+      return names
+        .map(
+          (name) =>
+            `  ${JSON.stringify(functionId(id, name, !isServe))}: f${index}[${JSON.stringify(name)}],`,
+        )
+        .join('\n');
+    });
     return [
       "import { handleRequest } from 'brumate/server';",
       ...imports,
@@ -415,7 +433,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const functions = serverFiles.has(owner) ? fileFunctions(owner, module) : (module.rpc ?? {});
+      const functions = serverFiles.has(owner)
+        ? fileFunctions(owner, module, !isServe)
+        : (module.rpc ?? {});
       const answer: Response = await handleRequest(functions, webRequest, rpc, {
         origins: options.origins,
       });
@@ -642,7 +662,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (file && isScriptFile(file) && hasUseServer(code)) {
         try {
           const fileId = serverFileId(normalizePath(file));
-          const stubs = serverStubs(code, file, fileId);
+          const stubs = serverStubs(code, file, fileId, !isServe);
           // The server runs the file, with calls while a page renders sharing their results.
           return transformOptions?.ssr
             ? { code: serverModule(code, file, fileId), map: null }

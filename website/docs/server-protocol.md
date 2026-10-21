@@ -4,10 +4,11 @@ How the browser calls a server function, and how the server answers. App code ne
 
 ## Function IDs
 
-Each server function has an ID: `<component ID>#<function name>`, such as `Todos_t3g9lr#persist`.
+Each server function has an ID: `<component ID>#<function name>`, such as `Todos_t3g9lr#persist`. A build hashes the name, as in `Todos_t3g9lr#f1k2m3n`, so the browser does not see it.
 
 - The component ID is the component name and a hash of the file's path relative to the root, so it is the same on every machine.
-- The ID includes the name of the function. Do not put secrets in function names.
+- A `'use server'` file has an ID of the same form, from its file name and path.
+- In development the ID keeps the name of the function, so the network panel and the devtools show it.
 - On the server, `virtual:brumate/server` exports `functions`, every server function by ID.
 - In the browser, the function is a stub that calls the server with its ID. Its body never ships.
 

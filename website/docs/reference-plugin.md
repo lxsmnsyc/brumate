@@ -102,6 +102,7 @@ The `brumate` package exports the compiler, for tools.
 | `path`          | `string`                                                 | The absolute path of the file, so SCSS and Less can import files next to it.                                                      |
 | `merge`         | `number`                                                 | Merges small client parts, as the plugin option does. Defaults to `0`.                                                            |
 | `a11y`          | `boolean`                                                | Warns about accessibility mistakes. Defaults to `true`.                                                                           |
+| `hideNames`     | `boolean`                                                | Hashes the names of server functions in their IDs. The plugin sets it in builds. Defaults to `false`.                             |
 | `resolveModule` | `(specifier, importer) => { path, source } \| undefined` | Reads a [module of reactive logic](./reactive-modules.md) that the file imports. Defaults to reading it from disk next to `path`. |
 
 `inspect` takes the options of `compile`, and `parents`, the parents that change each prop, from `analyzeProjectProps`.

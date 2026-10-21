@@ -37,6 +37,8 @@ export interface Plan {
   styles: StyleOutput;
   /** True if a style variable can change on the client. */
   liveStyles: boolean;
+  /** True when server function IDs hash the names of the functions. */
+  hideNames: boolean;
 }
 
 // Declarations that are code or come from imports, so they never need a slot.
@@ -61,6 +63,19 @@ export function getComponentName(filename: string): string {
     .map((part) => part[0]!.toUpperCase() + part.slice(1))
     .join('');
   return /^\d/.test(name) ? `Component${name}` : name || 'Component';
+}
+
+/**
+ * The ID of a server function: the component or file ID, and the name of the
+ * function, or a hash of it, so a production build does not show the names.
+ */
+export function functionId(owner: string, name: string, hidden = false): string {
+  return `${owner}#${hidden ? `f${hash(`${owner}#${name}`)}` : name}`;
+}
+
+/** The ID of a server function of a component. */
+export function serverFunctionId(plan: Plan, name: string): string {
+  return functionId(plan.id, name, plan.hideNames);
 }
 
 /** A short, stable hash of a string, in base 36. */
@@ -128,7 +143,7 @@ export function clientState(graph: Graph): {
   return { isLiveSite, clientSites, slots };
 }
 
-export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
+export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames = false): Plan {
   const model = graph.model;
   const name = getComponentName(file.filename);
   const bodyScopes = new Map<Body, Scope>();
@@ -304,6 +319,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string): Plan {
     id: `${name}_${hash(file.filename)}`,
     styles,
     liveStyles,
+    hideNames,
     scopes,
     bodyScopes,
     anchors,

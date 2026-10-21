@@ -15,6 +15,7 @@ import type {
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
+import { serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
@@ -576,7 +577,7 @@ export class Emitter {
     if (declaration?.kind !== 'server-function') {
       return undefined;
     }
-    const ref = JSON.stringify(`${this.plan.id}#${declaration.name}`);
+    const ref = JSON.stringify(serverFunctionId(this.plan, declaration.name));
     // The form posts, unless the element sets its own method.
     const hasMethod = node.attributes.some(
       (attribute) => 'name' in attribute && attribute.name === method,
