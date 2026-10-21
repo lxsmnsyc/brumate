@@ -519,7 +519,8 @@ class ClientGenerator {
           }
           const first = fn.params[0];
           if (first) {
-            const parenthesized = this.file.source.lastIndexOf('(', first.start) > fn.start;
+            // An arrow such as `(n) => n` starts at its parenthesis.
+            const parenthesized = this.file.source.lastIndexOf('(', first.start) >= fn.start;
             patch.insert(first.start, parenthesized ? '$$s, ' : '($$s, ');
             if (!parenthesized) {
               patch.insert(first.end, ')');
