@@ -1,7 +1,7 @@
 {
   "name": "brumate-vscode",
   "displayName": "brumate",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Language support for .brm files: highlighting, types, styles and compiler diagnostics",
   "categories": [
