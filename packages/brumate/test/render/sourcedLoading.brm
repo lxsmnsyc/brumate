@@ -1,0 +1,37 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let todos = $signal([{ id: '1', title: 'One' }, { id: '2', title: 'Two' }]);
+  const words = $memo([await ready, 'later']);
+</script>
+
+<button class="reverse" onClick=(() => (todos = [...todos].reverse()))>Reverse</button>
+#loading {
+  <script>
+    let local = $signal(words);
+  </script>
+  <ul class="local">
+    #for (word of local) {
+      <li class="word" onClick=(() => (local = [...local].reverse()))>{word}</li>
+    }
+  </ul>
+  <ul class="outer">
+    #for (todo of todos by todo.id) {
+      <li class="todo">{todo.title}</li>
+    }
+  </ul>
+} #else {
+  <p class="fallback">Loading</p>
+}

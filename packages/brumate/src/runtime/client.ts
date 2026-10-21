@@ -15,6 +15,7 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  SOURCE,
   isAsyncIterable,
   stateValues,
 } from './shared.ts';
@@ -242,20 +243,31 @@ function refresh(added: Scope[]): void {
 
 /** Reads the groups of scope records back into one record per scope. See `PackedState`. */
 function unpackState(state: PackedState): PageState {
+  // Items to take from the list in a slot of another record, once every record is read.
+  const taken: [records: ScopeState[], source: number, slot: number, first: number][] = [];
   for (const group of state.g ?? []) {
     const [k, base, flags] = group as number[];
     const count = group[3] as number;
-    const m = flags & MODULE ? (group[4] as string) : undefined;
+    let at = 4;
+    const m = flags & MODULE ? (group[at++] as string) : undefined;
+    const source: ScopeState[] | undefined = flags & SOURCE ? [] : undefined;
+    if (source) {
+      taken.push([source, group[at++] as number, group[at++] as number, flags & ITEM_SLOT]);
+    }
+    // The first slot of a taken item is not written. The gap before the slots holds its place.
+    const skip = source && flags & ITEM_SLOT ? 1 : 0;
     let id = flags & OWNER ? 0 : base;
-    for (let at = m === undefined ? 4 : 5; at < group.length;) {
+    while (at < group.length) {
       id += group[at++] as number;
-      const s = group.slice(at, (at += count));
+      const s = group.slice(at - skip, (at += count - skip));
       const record: ScopeState = flags & OWNER ? { k, o: id - base } : { k, p: base };
       record.s = s;
       if (m !== undefined) {
         record.m = m;
       }
-      if (flags & ITEM_SLOT) {
+      if (source) {
+        source.push(record);
+      } else if (flags & ITEM_SLOT) {
         record.i = s[0];
       } else if (flags & ITEM) {
         record.i = group[at++];
@@ -267,6 +279,17 @@ function unpackState(state: PackedState): PageState {
     }
   }
   delete state.g;
+  for (const [records, source, slot, first] of taken) {
+    // An array, or a Set, whose order the state keeps.
+    const values = Array.from(state[source]!.s![slot] as Iterable<unknown>);
+    for (let n = 0; n < records.length; n++) {
+      const record = records[n]!;
+      record.i = values[n];
+      if (first) {
+        record.s![0] = values[n];
+      }
+    }
+  }
   return state;
 }
 

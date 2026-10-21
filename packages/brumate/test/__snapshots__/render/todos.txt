@@ -33,6 +33,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     const $$list0v = ( todos );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":2-->";
+    const $$source3 = [$$s1, 0];
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const todo = $$item1;
@@ -42,7 +43,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
       }
       $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--> <time b-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((format(todo.at)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</time></li>";
       $$ctx.slots($$s2, [todo], ["todo"]);
-      $$ctx.item($$s2, $$item1);
+      $$ctx.item($$s2, $$item1, $$source3);
     }
     $$html += "<!--/b-->";
   }
@@ -198,4 +199,4 @@ export default function Todos($$props: { initial: Todo[] }): string {
 <!--t0:3-->1<!--/t--> left</p>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Todos_t3g9lr",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Write the docs",done:!0,at:$R[5]=new Date("2026-10-01T00:00:00.000Z")},$R[6]={id:"2",title:"Build \x3Cthe> compiler",done:!1,at:$R[7]=new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:$R[8]=[$R[9]=[2,0,1,1,1,$R[4],1,$R[6]]]})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Todos_t3g9lr",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Write the docs",done:!0,at:$R[5]=new Date("2026-10-01T00:00:00.000Z")},$R[6]={id:"2",title:"Build \x3Cthe> compiler",done:!1,at:$R[7]=new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:$R[8]=[$R[9]=[2,0,33,1,0,0,1,1]]})))</script>

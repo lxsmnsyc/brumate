@@ -33,13 +33,14 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
     const $$list0v = ( todos );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":1-->";
+    const $$source3 = [$$s1, 0];
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const todo = $$item1;
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Produce_9t90yy#h7\">" + (typeof ($$t = $$b.insert((todo.title), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</li>";
       $$ctx.slots($$s2, [todo], ["todo"]);
-      $$ctx.item($$s2, $$item1);
+      $$ctx.item($$s2, $$item1, $$source3);
     }
     $$html += "<!--/b-->";
   }
@@ -177,4 +178,4 @@ export default function Produce($$props: Record<string, never>): string {
 <!--t0:2-->0<!--/t--> done</p>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Produce_9t90yy",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Docs",done:!1},$R[5]={id:"2",title:"Ship",done:!1}]]},g:$R[6]=[$R[7]=[2,0,1,1,1,$R[4],1,$R[5]]]})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Produce_9t90yy",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Docs",done:!1},$R[5]={id:"2",title:"Ship",done:!1}]]},g:$R[6]=[$R[7]=[2,0,33,1,0,0,1,1]]})))</script>

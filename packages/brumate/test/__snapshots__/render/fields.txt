@@ -14,6 +14,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
     const $$list0v = ( names);
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":0-->";
+    const $$source3 = [$$s1, 0];
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const name = $$item1;
@@ -22,7 +23,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
       const field = $$ctx.id($$s2, 0);
       $$html += "<label" + $$b.attribute("for", (field)) + " b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((name), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</label><input" + $$b.attribute("id", (field)) + ">";
       $$ctx.slots($$s2, [name, field], ["name","field"]);
-      $$ctx.item($$s2, $$item1);
+      $$ctx.item($$s2, $$item1, $$source3);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
@@ -128,4 +129,4 @@ export default function Fields($$props: Record<string, never>): string {
 <button b-b="0:1" b-on="click=Fields_1cs3w3p#h9">Add</button>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Fields_1cs3w3p",s:$R[2]=[$R[3]=["First","Last"]]},g:$R[4]=[$R[5]=[2,0,1,2,1,"First","b1-0",1,"Last","b2-0"]]})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Fields_1cs3w3p",s:$R[2]=[$R[3]=["First","Last"]]},g:$R[4]=[$R[5]=[2,0,33,2,0,0,1,"b1-0",1,"b2-0"]]})))</script>

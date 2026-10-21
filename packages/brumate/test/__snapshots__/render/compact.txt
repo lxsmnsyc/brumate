@@ -15,6 +15,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
     const $$list0v = ( rows );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":5-->";
+    const $$source3 = [$$s1, 0];
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const row = $$item1;
@@ -26,7 +27,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
       }
       $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + (typeof ($$t = $$b.insert((row.note), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
       $$ctx.slots($$s2, [row], ["row"]);
-      $$ctx.item($$s2, $$item1);
+      $$ctx.item($$s2, $$item1, $$source3);
     }
     if ($$list0.length === 0) {
       const $$s3 = $$ctx.scope(3, $$s1);
@@ -36,16 +37,17 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
   }
   $$html += "</ul><ol>";
   {
-    const $$list3v = ( rows );
-    const $$list3 = Array.isArray($$list3v) ? $$list3v : Array.from($$list3v);
+    const $$list4v = ( rows );
+    const $$list4 = Array.isArray($$list4v) ? $$list4v : Array.from($$list4v);
     $$html += "<!--b" + $$s1 + ":6-->";
-    for (let $$index5 = 0; $$index5 < $$list3.length; $$index5++) {
-      const $$item4 = $$list3[$$index5];
-      const row = $$item4;
+    const $$source7 = [$$s1, 0];
+    for (let $$index6 = 0; $$index6 < $$list4.length; $$index6++) {
+      const $$item5 = $$list4[$$index6];
+      const row = $$item5;
       const $$s4 = $$ctx.scope(4, $$s1);
       $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + (typeof ($$t = $$b.insert((row.id), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + (typeof ($$t = $$b.insert((row.label), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</dd>";
       $$ctx.slots($$s4, [row], ["row"]);
-      $$ctx.item($$s4, $$item4);
+      $$ctx.item($$s4, $$item5, $$source7);
       $$html += "<!--/i-->";
     }
     $$html += "<!--/b-->";
@@ -264,4 +266,4 @@ export default function Compact($$props: { initial: Row[] }): string {
 </ol>
 
 # State
-<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Compact_omhyaj",s:$R[2]=[$R[3]=[$R[4]={id:"1",label:"One",note:""},$R[5]={id:"2",label:"Two",note:2}],0]},g:$R[6]=[$R[7]=[2,0,1,1,1,$R[4],1,$R[5]],$R[8]=[4,0,1,1,3,$R[4],1,$R[5]]]})))</script>
+<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Compact_omhyaj",s:$R[2]=[$R[3]=[$R[4]={id:"1",label:"One",note:""},$R[5]={id:"2",label:"Two",note:2}],0]},g:$R[6]=[$R[7]=[2,0,33,1,0,0,1,1],$R[8]=[4,0,33,1,0,0,3,1]]})))</script>

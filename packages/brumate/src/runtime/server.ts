@@ -21,6 +21,7 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  SOURCE,
   isAsyncIterable,
 } from './shared.ts';
 import { Upload, functionReferences, replaceDeep } from './calls.ts';
@@ -72,6 +73,9 @@ export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './c
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
 export type { PageState, ScopeState };
+
+/** The scope and the slot that hold the list of a list item. */
+export type ItemSource = readonly [scope: number, slot: number];
 
 /** A `#loading` body that renders after the rest of the page. */
 interface Boundary {
@@ -237,9 +241,22 @@ export class Context {
     }
   }
 
-  /** Records the item of a list that can change on the client. */
-  item(scope: number, value: unknown): void {
+  /**
+   * The list of each list item scope whose list is a slot of an enclosing
+   * scope, as `[scope, slot]`. The items of a list share one array.
+   */
+  readonly sources: Map<number, ItemSource> = new Map();
+
+  /**
+   * Records the item of a list that can change on the client. `source` is
+   * the scope and slot that hold the list, when the compiler found one, so
+   * the client can take the item from there.
+   */
+  item(scope: number, value: unknown, source?: ItemSource): void {
     this.record(scope).i = value;
+    if (source) {
+      this.sources.set(scope, source);
+    }
   }
 
   /** Records the scope of a child component at an anchor of its parent. */
@@ -623,17 +640,56 @@ function scriptJSON(value: unknown): string {
 /** The fields that a record in a group of `PackedState` can have. */
 const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
 
+/** A group of `PackedState` while `packState` collects it. */
+interface PackGroup {
+  k: number;
+  base: number;
+  flags: number;
+  count: number;
+  m: string | undefined;
+  ids: number[];
+}
+
+/**
+ * The list that the client can take the items of a group from: the items
+ * are list items with the same source, the source's record is in `state`,
+ * and the item of the scope at each position of the group is the value at
+ * that position of the list. The client reads the same list, so it gets the
+ * same values. Otherwise the items are written.
+ */
+function groupSource(
+  state: PageState,
+  sources: Map<number, ItemSource>,
+  group: PackGroup,
+): ItemSource | undefined {
+  const source = sources.get(group.ids[0]!);
+  if (!source || !(group.flags & (ITEM | ITEM_SLOT))) {
+    return undefined;
+  }
+  const value = state[source[0]]?.s?.[source[1]];
+  // Seroval keeps the order of a Set. A Map's entries are new arrays, which the check below rejects.
+  const list = Array.isArray(value) ? value : value instanceof Set ? Array.from(value) : undefined;
+  if (!list || list.length < group.ids.length) {
+    return undefined;
+  }
+  for (let n = 0; n < group.ids.length; n++) {
+    const id = group.ids[n]!;
+    if (sources.get(id) !== source || !Object.is(list[n], state[id]!.i)) {
+      return undefined;
+    }
+  }
+  return source;
+}
+
 /**
  * Writes the records of scopes with the same kind, parent and shape, such as
  * the items of a list, in groups. Each one then costs its slots and the gap
- * to the ID before it. See `PackedState`.
+ * to the ID before it. The items of a list whose list is in `sources` and in
+ * the state are not written. See `PackedState`.
  */
-export function packState(state: PageState): PackedState {
+export function packState(state: PageState, sources?: Map<number, ItemSource>): PackedState {
   const result: PackedState = {};
-  const groups = new Map<
-    string,
-    { values: unknown[]; last: number; first: [number, ScopeState] }
-  >();
+  const groups = new Map<string, PackGroup>();
   // Integer keys come in ascending order, so the gaps are positive.
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
@@ -661,32 +717,50 @@ export function packState(state: PageState): PackedState {
       flags |= MODULE;
     }
     const name = `${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
-    let group = groups.get(name);
-    if (!group) {
-      const values: unknown[] = [record.k, base, flags, slots.length];
-      if (record.m !== undefined) {
-        values.push(record.m);
-      }
-      group = { values, last: flags & OWNER ? 0 : base, first: [id, record] };
-      groups.set(name, group);
+    const group = groups.get(name);
+    if (group) {
+      group.ids.push(id);
+    } else {
+      groups.set(name, { k: record.k, base, flags, count: slots.length, m: record.m, ids: [id] });
     }
-    group.values.push(id - group.last, ...slots);
-    if (flags & ITEM) {
-      group.values.push(record.i);
-    }
-    if (flags & CHILDREN) {
-      group.values.push(record.c);
-    }
-    group.last = id;
   }
   const packed: unknown[][] = [];
   for (const group of groups.values()) {
+    const { ids } = group;
     // A group of one scope is no shorter than its record.
-    if (group.last === group.first[0]) {
-      result[group.first[0]] = group.first[1];
-    } else {
-      packed.push(group.values);
+    if (ids.length === 1) {
+      result[ids[0]!] = state[ids[0]!]!;
+      continue;
     }
+    const source = sources && sources.size > 0 ? groupSource(state, sources, group) : undefined;
+    const flags = source ? group.flags | SOURCE : group.flags;
+    const values: unknown[] = [group.k, group.base, flags, group.count];
+    if (group.m !== undefined) {
+      values.push(group.m);
+    }
+    if (source) {
+      values.push(source[0], source[1]);
+    }
+    // With a source, the client takes the item, and the first slot when it is the item.
+    const from = source && flags & ITEM_SLOT ? 1 : 0;
+    const item = !source && flags & ITEM;
+    let last = flags & OWNER ? 0 : group.base;
+    for (const id of ids) {
+      const record = state[id]!;
+      values.push(id - last);
+      const slots = record.s ?? [];
+      for (let n = from; n < slots.length; n++) {
+        values.push(slots[n]);
+      }
+      if (item) {
+        values.push(record.i);
+      }
+      if (flags & CHILDREN) {
+        values.push(record.c);
+      }
+      last = id;
+    }
+    packed.push(values);
   }
   if (packed.length > 0) {
     result.g = packed;
@@ -705,8 +779,9 @@ function serializeState(
   onRecord: (code: string, initial: boolean) => void,
   onError: (error: unknown) => void,
   onDone: () => void,
+  sources?: Map<number, ItemSource>,
 ): void {
-  crossSerializeStream(packState(state), {
+  crossSerializeStream(packState(state, sources), {
     plugins,
     disabledFeatures,
     refs,
@@ -940,7 +1015,7 @@ export async function render<P>(
     }
   };
   const serialize = (
-    state: PageState,
+    { state, sources }: Context,
     onScopes: (script: string) => void,
     route?: string,
     onError: (error: unknown) => void = (error) => pending().fail(error),
@@ -961,6 +1036,7 @@ export async function render<P>(
       },
       onError,
       finish,
+      sources,
     );
   };
 
@@ -968,7 +1044,7 @@ export async function render<P>(
     open++;
     boundary.render.then(
       (result) => {
-        serialize(result.ctx.state, (script) => {
+        serialize(result.ctx, (script) => {
           let call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
           swap = true;
           const late = result.ctx.lateHead();
@@ -999,7 +1075,7 @@ export async function render<P>(
   // fails the render here, with its name, instead of leaving the page without its state.
   let failure: unknown;
   serialize(
-    ctx.state,
+    ctx,
     (script) => {
       state = script;
     },

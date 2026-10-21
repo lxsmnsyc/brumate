@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
 import { render as renderParts, stateScript } from '../src/runtime/server.ts';
+import type { PageState } from '../src/runtime/server.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -1212,8 +1213,13 @@ async function serverRecords(name: string, props: unknown): Promise<Record<numbe
   const { Context } = await import('../src/runtime/server.ts');
   const ctx = new Context();
   await server.default(props, ctx);
+  return toRecords(ctx.state);
+}
+
+/** The fields of scope records that `clientRecords` reads, from records of the server. */
+function toRecords(state: PageState): Record<number, unknown> {
   return Object.fromEntries(
-    Object.entries(ctx.state).map(([id, record]) => [
+    Object.entries(state).map(([id, record]) => [
       id,
       {
         k: record.k,
@@ -1507,5 +1513,268 @@ describe('compact markup', () => {
     await waitFor(() => expect(rowLabels()).toEqual(['One!', 'Two', 'Three!']));
     click(document.querySelector('.reverse')!);
     await waitFor(() => expect(rowLabels()).toEqual(['Three!', 'Two', 'One!']));
+  });
+});
+
+/**
+ * For each list of the component of `name.brm`, by the code of its list:
+ * `taken` when the server left the items out of the state, so the client
+ * takes them from the list, and `written` when it wrote them.
+ */
+async function lists(
+  name: string,
+  props: unknown,
+  state?: PageState,
+  sources?: Map<number, readonly [number, number]>,
+): Promise<Record<string, string>> {
+  const { plan } = compile(readFileSync(join(input, `${name}.brm`), 'utf8'), {
+    filename: `${name}.brm`,
+  });
+  const codes = new Map<number, string>();
+  for (const scope of plan.bodyScopes.values()) {
+    if (scope.block?.kind === 'for' && scope.block.body === scope.body) {
+      codes.set(scope.id, scope.block.list.code.trim());
+    }
+  }
+  const { Context, packState } = await import('../src/runtime/server.ts');
+  const { OWNER, SOURCE } = await import('../src/runtime/shared.ts');
+  if (!state) {
+    const ctx = new Context();
+    await (await import(file(`${name}.brm.ts`))).default(props, ctx);
+    state = ctx.state;
+    sources = ctx.sources;
+  }
+  const component = (id: number): string | undefined => {
+    for (let record = state![id]; record; record = state![record.p ?? record.o ?? -1]) {
+      if (record.m !== undefined) {
+        return record.m;
+      }
+    }
+    return undefined;
+  };
+  const result: Record<string, string> = {};
+  for (const [k, base, flags] of (packState(state, sources).g ?? []) as number[][]) {
+    if (flags! & OWNER || component(base!) !== plan.id || !codes.has(k!)) {
+      continue;
+    }
+    const kind = flags! & SOURCE ? 'taken' : 'written';
+    const code = codes.get(k!)!;
+    result[code] = result[code] === undefined || result[code] === kind ? kind : 'mixed';
+  }
+  return result;
+}
+
+/** Moves, adds, removes and changes items of every list of `sourced.brm`. */
+async function change(): Promise<void> {
+  expect(texts('.todos .toggle')).toEqual(['One', 'Two', 'Three', 'Four']);
+  // A block script in the item body reads the item.
+  click(document.querySelectorAll('.todos .toggle')[1]!);
+  await waitFor(() => expect(texts('.finished li')).toEqual(['One', 'Two', 'Three']));
+  expect(texts('.open li')).toEqual(['Four']);
+  click(document.querySelector('.reverse')!);
+  await waitFor(() => expect(texts('.todos .toggle')).toEqual(['Four', 'Three', 'Two', 'One']));
+  click(document.querySelectorAll('.todos .toggle')[0]!);
+  await waitFor(() => expect(texts('.finished li')).toEqual(['Four', 'Three', 'Two', 'One']));
+  expect(document.querySelector('.todos li')!.classList.contains('done')).toBe(true);
+  click(document.querySelector('.add')!);
+  await waitFor(() => expect(texts('.todos .toggle')).toHaveLength(5));
+  click(document.querySelector('.drop')!);
+  await waitFor(() => expect(texts('.todos .toggle')).toEqual(['Three', 'Two', 'One', 'New 5']));
+  click(document.querySelectorAll('.todos .toggle')[2]!);
+  await waitFor(() => expect(texts('.open li')).toEqual(['One']));
+  expect(texts('.todos .label')).toEqual(['3L1', '3L2', '2L1', '2L2', '1L1', '1L2', '5L1', '5L2']);
+  click(document.querySelector('.relabel')!);
+  await waitFor(() => expect(texts('.todos .label').slice(0, 3)).toEqual(['3L2', '3L1', '3L3']));
+  click(document.querySelector('.pick')!);
+  await waitFor(() => expect(texts('.picked li')).toEqual(['a', 'b', 'c']));
+  expect(texts('.prop')).toEqual(['x', 'y']);
+  click(document.querySelector('.rename')!);
+  await waitFor(() => expect(texts('.prop')).toEqual(['z', 'y', 'x']));
+  expect(texts('.names li')).toHaveLength(3);
+  click(document.querySelector('.regroup')!);
+  await waitFor(() => expect(texts('.groups b')).toEqual(['c3', 'c4', 'c1', 'c2']));
+}
+
+describe('list items taken from their list', () => {
+  const initial = [
+    { id: '1', title: 'One', done: true },
+    { id: '2', title: 'Two', done: false },
+    { id: '3', title: 'Three', done: true },
+    { id: '4', title: 'Four', done: false },
+  ];
+
+  it('leaves out the items of lists of signals, memos, props and Sets, and only those', async () => {
+    expect(await lists('sourced', { initial })).toEqual({
+      // A signal, a signal in a list item, a memo, a Set, and a list whose item no slot holds.
+      todos: 'taken',
+      labels: 'taken',
+      finished: 'taken',
+      picked: 'taken',
+      names: 'taken',
+      groups: 'taken',
+      // Computed lists and lists in an item keep their items.
+      'todos.filter((todo) => !todo.done)': 'written',
+      'group.children': 'written',
+    });
+    expect(await lists('SourcedList', { items: ['x', 'y'] })).toEqual({ items: 'taken' });
+  });
+
+  it('writes the items when the list does not hold them at their position', async () => {
+    const { Context } = await import('../src/runtime/server.ts');
+    const ctx = new Context();
+    await (await import(file('sourced.brm.ts'))).default({ initial }, ctx);
+    const state = structuredClone(ctx.state);
+    const todos = state[0]!.s![0] as unknown[];
+    // The record of the list is not in this state, as for a `#loading` body that streams later.
+    const { 0: root, ...rest } = state;
+    expect(
+      (await lists('sourced', {}, { ...rest, 0: { k: 1, m: root!.m } }, ctx.sources)).todos,
+    ).toBe('written');
+    // The slot holds a promise.
+    expect(
+      (
+        await lists(
+          'sourced',
+          {},
+          { ...state, 0: { ...root, s: [Promise.resolve(todos)] } },
+          ctx.sources,
+        )
+      ).todos,
+    ).toBe('written');
+    // An item is another value than the one at its position.
+    expect(
+      (
+        await lists(
+          'sourced',
+          {},
+          { ...state, 0: { ...root, s: [todos.toReversed()] } },
+          ctx.sources,
+        )
+      ).todos,
+    ).toBe('written');
+    // A copy from `structuredClone` keeps the items of the list the same objects.
+    expect((await lists('sourced', {}, state, ctx.sources)).todos).toBe('taken');
+  });
+
+  it('reads every field of every scope back', async () => {
+    const expected = await serverRecords('sourced', { initial });
+    await resume('sourced', { initial });
+    const client = await import('../src/runtime/client.ts');
+    document.dispatchEvent(new Event('brumate:core'));
+    await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
+    expect(await clientRecords(Object.keys(expected))).toEqual(expected);
+  });
+
+  it('reads them back after navigation moves the IDs', async () => {
+    const expected = await serverRecords('sourced', { initial });
+    const server = await import(file('sourced.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial });
+    show(html + moved(state));
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    await (
+      await import('../src/runtime/client-routes.ts')
+    ).ready;
+    client.init({
+      load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    expect(client.scopeOf(1)).toBeUndefined();
+    expect(await clientRecords(Object.keys(expected), 5)).toEqual(expected);
+    client.dispose();
+  });
+
+  it('moves, adds, removes and changes items after it resumes', async () => {
+    await resume('sourced', { initial });
+    expect(document.querySelector('.todos li')!.hasAttribute('b-b')).toBe(true);
+    await change();
+  }, 20_000);
+
+  it('does the same after navigation moves the IDs of the page', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('sourced.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial });
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/sourced', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    await change();
+  }, 20_000);
+
+  it('keeps working after a hot update renders the page again', async () => {
+    await resume('sourced', { initial });
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(texts('.todos .toggle')).toEqual(['Four', 'Three', 'Two', 'One']));
+    const { plan } = compile(readFileSync(join(input, 'sourced.brm'), 'utf8'), {
+      filename: 'sourced.brm',
+    });
+    const names = Object.fromEntries(
+      [...plan.scopes.values()].map((layout) => [
+        layout.scope.id,
+        layout.slots.map((slot) => slot.name),
+      ]),
+    );
+    const core = await import('../src/runtime/client.ts');
+    core.remount([{ id: plan.id, before: names, after: names, signals: ['todos'] }]);
+    core.leavePage();
+    const server = await import(file('sourced.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial });
+    show(html + state);
+    core.init({ load: (name: string) => import(modules.get(name)!), listen: () => {} } as never);
+    await waitFor(() => expect(texts('.todos .toggle')).toEqual(['Four', 'Three', 'Two', 'One']));
+    click(document.querySelectorAll('.todos .toggle')[0]!);
+    await waitFor(() => expect(texts('.finished li')).toEqual(['Four', 'Three', 'One']));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(texts('.todos .toggle')).toEqual(['One', 'Two', 'Three', 'Four']));
+  });
+
+  it('takes items in a #loading body that streams later from that body only', async () => {
+    vi.resetModules();
+    const fresh = await import(`${file('sourcedLoading.brm.ts')}?taken`);
+    const { Context } = await import('../src/runtime/server.ts');
+    // The records of the server, the page's and the body's.
+    const ctx = new Context();
+    const bodies: Promise<{ ctx: InstanceType<typeof Context> }>[] = [];
+    ctx.watch((boundary) => bodies.push(boundary.render));
+    await fresh.default({}, ctx);
+    const { html, state, pending } = await renderParts(fresh.default, {});
+    show(html + state);
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(text('.fallback')).toBe('Loading');
+    fresh.release('Ada');
+    const [body] = await Promise.all(bodies);
+    for await (const chunk of pending) {
+      // The list of the body is in the body's record. The page's list is in the page's record.
+      expect(chunk).toMatch(/b-scopes/);
+      appendChunk(chunk);
+    }
+    const { packState } = await import('../src/runtime/server.ts');
+    const { SOURCE } = await import('../src/runtime/shared.ts');
+    const flags = (packState(body!.ctx.state, body!.ctx.sources).g ?? []).map(
+      (group) => (group[2] as number) & SOURCE,
+    );
+    // One group takes its items, from the body's signal. The other writes them.
+    expect(flags.toSorted()).toEqual([0, SOURCE]);
+    const expected = { ...toRecords(ctx.state), ...toRecords(body!.ctx.state) };
+    const client = await import('../src/runtime/client.ts');
+    document.dispatchEvent(new Event('brumate:core'));
+    await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
+    expect(await clientRecords(Object.keys(expected))).toEqual(expected);
+
+    expect(texts('.word')).toEqual(['Ada', 'later']);
+    click(document.querySelector('.word')!);
+    await waitFor(() => expect(texts('.word')).toEqual(['later', 'Ada']));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(texts('.todo')).toEqual(['Two', 'One']));
   });
 });

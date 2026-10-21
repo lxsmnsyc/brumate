@@ -442,8 +442,46 @@ export class Emitter {
     this.emitSlots(scope);
   }
 
-  /** Emits one item of `#for` or `#repeat`, given expressions for the item and its index. */
-  emitItem(block: ForBlock | RepeatBlock, item: string, index: string): void {
+  /**
+   * On the server, the scope and slot of the list of a `#for` whose list is
+   * a signal, memo or prop of an enclosing scope that the client gets, as an
+   * expression. The client then takes each item from that list, and the
+   * server does not write it. The server checks that each item is the value
+   * of the list at its position before it leaves one out.
+   */
+  private itemSource(block: ForBlock | RepeatBlock): string | undefined {
+    if (
+      this.options.mode !== 'server' ||
+      block.kind !== 'for' ||
+      block.list.ast.type !== 'Identifier' ||
+      block.item.type !== 'Identifier' ||
+      !this.plan.anchors.has(block)
+    ) {
+      return undefined;
+    }
+    const scope = this.plan.bodyScopes.get(block.body)!.parent!;
+    const declaration = lookup(scope, block.list.ast.name);
+    if (!declaration || !['signal', 'memo', 'prop'].includes(declaration.kind)) {
+      return undefined;
+    }
+    // A template renders anywhere, so its scopes are not the ones around its markup.
+    for (let current: Scope | undefined = scope; current; current = current.parent) {
+      if (current.kind === 'template') {
+        return undefined;
+      }
+      if (current === declaration.scope) {
+        break;
+      }
+    }
+    const slot = this.plan.scopes.get(declaration.scope)?.slots.indexOf(declaration) ?? -1;
+    return slot === -1 ? undefined : `[${this.scopeVar(declaration.scope)}, ${slot}]`;
+  }
+
+  /**
+   * Emits one item of `#for` or `#repeat`, given expressions for the item and
+   * its index, and on the server the scope and slot of its list.
+   */
+  emitItem(block: ForBlock | RepeatBlock, item: string, index: string, source?: string): void {
     const scope = this.plan.bodyScopes.get(block.body)!;
     // An item whose markup is one element is marked by the element's `b-b`.
     const anchored = this.plan.anchors.has(block) && !this.plan.elementItems.has(block);
@@ -464,7 +502,8 @@ export class Emitter {
     }
     this.emitBody(block.body, false);
     if (this.plan.anchors.has(block)) {
-      this.line(`${this.helper('item')}(${this.scopeVar(scope)}, ${item});`);
+      const from = source ? `, ${source}` : '';
+      this.line(`${this.helper('item')}(${this.scopeVar(scope)}, ${item}${from});`);
     }
     if (anchored) {
       this.html('<!--/i-->');
@@ -1080,10 +1119,16 @@ export class Emitter {
           );
         }
         this.open(scope, block);
+        const from = this.itemSource(block);
+        const source = from && this.unique('source');
+        if (source) {
+          // One array for the list, which every item shares.
+          this.line(`const ${source} = ${from};`);
+        }
         // An indexed loop, without an iterator and an `[index, item]` pair for each item.
         this.line(`for (let ${index} = 0; ${index} < ${list}.length; ${index}++) {`);
         this.line(`const ${item} = ${list}[${index}];`);
-        this.emitItem(block, item, index);
+        this.emitItem(block, item, index, source);
         this.close();
         if (block.fallback) {
           this.line(`if (${list}.length === 0) {`);
