@@ -4,13 +4,15 @@
 
 `brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
 
-This repository holds the design and the compiler. The compiler generates a server module that renders HTML with the state, and a client module that resumes it. A Vite plugin compiles `.brm` files in an app.
+The compiler generates a server module that renders HTML with the state, and client modules that resume it. A Vite plugin compiles `.brm` files in an app.
+
+This repository holds the compiler and its runtime, the type checker and editor support, the website, examples, benchmarks and smoke tests. brumate is at 0.x: the page format can change between versions, so the server and the client must come from the same version.
 
 ## Goals
 
 - Ship only the client code that an interaction can reach. Markup that never changes ships as HTML and nothing else.
 - Never run component code again on the client to rebuild state.
-- Keep a loader under 1 KB that is the only code loaded before the first interaction.
+- Keep the loader, the only code that loads before the page is used, under 1 KB. It is about 2 KB after gzip today.
 - Keep the syntax small: scripts, markup with `#` blocks, and a few compile-time functions.
 
 ## Example
@@ -58,13 +60,15 @@ pnpm --filter example-todos dev
 
 [`examples/tracker`](./examples/tracker) is a small issue tracker with sign-in, middleware, form validation, optimistic updates, streaming and a prerendered page. Run it with `pnpm --filter example-tracker dev`.
 
+[`examples/ui-kit`](./examples/ui-kit) is a package of components, and [`examples/kit-app`](./examples/kit-app) is an app that uses it.
+
 ## Documents
 
 The documentation is in [`website/docs`](./website/docs), and the website shows it with samples that run in the page.
 
 - [Introduction](./website/docs/index.md) and [Getting started](./website/docs/getting-started.md) set up a project.
 - [Your first app](./website/docs/tutorial.md) builds a todo app step by step.
-- The guides cover [components](./website/docs/components.md), [state](./website/docs/state.md), [async data](./website/docs/async-data.md), [server functions](./website/docs/server-functions.md), [routing](./website/docs/routing.md) and the rest.
+- The guides cover [components](./website/docs/components.md), [state](./website/docs/state.md), [async data](./website/docs/async-data.md), [server functions](./website/docs/server-functions.md), [routing](./website/docs/routing.md), [testing](./website/docs/testing.md), [publishing components](./website/docs/packages.md) and the rest.
 - The reference lists every [compile-time function](./website/docs/reference-signals.md), [block](./website/docs/reference-blocks.md), [runtime export](./website/docs/reference-server.md) and [plugin option](./website/docs/reference-plugin.md).
 - The internals describe the [reactive graph](./website/docs/reactive-graph.md), the [page format](./website/docs/page-format.md) and the [server function protocol](./website/docs/server-protocol.md).
 
@@ -81,17 +85,20 @@ Design notes for contributors are in [`docs`](./docs):
 
 ```bash
 pnpm install
+pnpm build
 pnpm test
 pnpm typecheck
 pnpm lint
 pnpm format
 ```
 
+Build first: the examples and the website use the built `brumate` package.
+
 The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the modules, the HTML and the state with a snapshot. The tests in `test/resume.test.ts` load that HTML into a DOM, start the loader, and check that events update the page.
 
 ## Benchmarks
 
-[`benchmarks`](./benchmarks) builds the same two pages with brumate, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, and a dashboard with 50 rarely used widgets. It compares the JavaScript each page loads, the SSR HTML size and SSR speed. It needs a local Chrome for the browser metrics.
+[`benchmarks`](./benchmarks) builds the same two pages with brumate, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, and a dashboard with 50 rarely used widgets. It compares the client code each page loads, the size of the server-rendered HTML, and how fast the server renders. It needs a local Chrome for the browser metrics.
 
 ```bash
 pnpm bench
@@ -104,8 +111,6 @@ pnpm bench
 ## Name
 
 Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same with its code. It loads a handler only when an event needs it.
-
-The name is free on npm.
 
 ## License
 
