@@ -1,14 +1,10 @@
 # Introduction
 
-brumate is a component language and a compiler for web apps that resume instead of hydrating.
-
-A brumate page arrives as HTML with its state written into it. The browser loads a small loader and nothing else. When an event fires, the loader loads the code for that event, and the code picks up from the state in the page. No component runs again in the browser to rebuild what the server already rendered.
-
-The name comes from brumation: reptiles stay still through the cold, and move again where they stopped when it warms.
+brumate is a component language and a compiler for web apps that resume instead of hydrating. Pages arrive as HTML with their state in them, and the browser loads the code for an event only when that event happens.
 
 ## A component
 
-Components are `.brm` files. A script declares state, and the markup reads it.
+Components are `.brm` files. A `<script>` declares state, and the markup reads it. This one runs in the page. Click the button, then edit the code:
 
 ```brm live
 <script>
@@ -22,20 +18,41 @@ Components are `.brm` files. A script declares state, and the markup reads it.
 <p>Double: {double}</p>
 ```
 
-- The server renders the button and the paragraph with `count` and `double`, and writes both values into the page.
-- The browser loads the loader only. A click on the button loads the handler and the code that updates the two texts, and nothing else.
+- `$signal` declares a value that can change. Assigning to `count` updates every place that reads it.
+- `$memo` declares a value computed from other values. `double` follows `count`.
+- `{count}` inserts a value into the markup. `onClick` runs code when the button is clicked.
+
+## Resuming instead of hydrating
+
+Most frameworks hydrate. The server renders HTML, then the browser downloads the code of every component and runs it again to rebuild the state and attach event listeners. The page cannot respond until that is done, and all component code ships, even code that only ever renders once.
+
+brumate resumes:
+
+- The server renders the page and writes its state into the HTML.
+- The browser loads a small loader and nothing else.
+- When an event fires, the loader loads the code for that event. The code reads the state from the page and continues from there.
+- No component runs again in the browser to rebuild what the server rendered.
+
+## What happens on the first click
+
+For the counter above:
+
+1. The server renders the button and the paragraph, and writes `count` and `double` into the page.
+2. The page is ready. No component code has loaded.
+3. The first click loads the click handler and the code that updates the two texts. Nothing else loads.
+4. The handler adds one to `count`. The texts that read `count` and `double` update.
+
+The compiler decides what each event needs when it compiles the component:
+
+- A value that only the server reads is never sent to the browser.
 - Markup that never changes ships as HTML only.
+- The code of an event handler loads when its event first fires, or earlier when the pointer moves over its element.
+- A function marked `'use server'` runs on the server. In the browser it becomes a call to the server.
 
-## What the compiler decides
-
-The compiler builds the graph of what reads what, once, when it compiles. From the graph it knows which values can change in the browser, which markup reads them, and which code an event can reach.
-
-- A value that only the server reads is not sent to the browser.
-- A handler is its own module, loaded when its event fires, or earlier when the pointer is over its element.
-- A function that runs on the server, marked with `'use server'`, becomes a call to the server in the browser.
+[What runs where](./what-runs-where.md) explains these rules in detail.
 
 ## Next
 
 - [Getting started](./getting-started.md) sets up a project.
-- [Syntax](./syntax.md) describes the file format, the markup and control flow.
-- [Execution model](./model.md) explains what runs where.
+- [Your first app](./tutorial.md) builds a todo app step by step.
+- [Components](./components.md) describes the parts of a `.brm` file.

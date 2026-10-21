@@ -10,6 +10,7 @@ import { language as json } from '@twinkleplop/json';
 import twinkleplop from '@twinkleplop/markdown-it';
 import { language as tsx } from '@twinkleplop/tsx';
 import { language as typescript } from '@twinkleplop/typescript';
+import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import MarkdownIt from 'markdown-it';
 import type { Plugin } from 'vite';
@@ -17,22 +18,12 @@ import { language as brm } from '../src/highlight/brm.ts';
 
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
 
-/** The pages of the site. Links to other documents go to GitHub. */
-export const SITE_PAGES: Set<string> = new Set([
-  '',
-  'getting-started',
-  'syntax',
-  'server-functions',
-  'routing',
-  'styles',
-  'vite',
-  'typescript',
-  'inspect',
-  'testing',
-  'editor',
-  'model',
-  'page-format',
-]);
+/** The pages of the site, from the files in `website/docs`. Links to other documents go to GitHub. */
+export const SITE_PAGES: Set<string> = new Set(
+  readdirSync(new URL('../docs/', import.meta.url))
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => (file === 'index.md' ? '' : file.slice(0, -3))),
+);
 
 const RAW_MODULE = fileURLToPath(import.meta.resolve('brumate/html'));
 

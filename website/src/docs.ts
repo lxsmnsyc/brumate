@@ -1,49 +1,69 @@
-// The pages of the documentation. The site's own pages are in `website/docs`,
-// and the rest come from the documents of the repository, so each is written once.
+// The pages of the documentation, from the Markdown files in `website/docs`.
+// The design notes of the repository stay in `docs` on GitHub.
 
 import type { Page } from '../plugins/markdown.ts';
 
 export type { Page };
 
-const site = import.meta.glob<Page>('../docs/*.md', { eager: true, import: 'default' });
-// Only the documents for users. The design notes of the repository, such as
-// its decisions and the compiler internals, stay on GitHub.
-const repository = import.meta.glob<Page>(
-  [
-    '../../docs/syntax.md',
-    '../../docs/server-functions.md',
-    '../../docs/routing.md',
-    '../../docs/styles.md',
-    '../../docs/vite.md',
-    '../../docs/typescript.md',
-    '../../docs/inspect.md',
-    '../../docs/testing.md',
-    '../../docs/editor.md',
-    '../../docs/model.md',
-    '../../docs/page-format.md',
-  ],
-  { eager: true, import: 'default' },
-);
+const files = import.meta.glob<Page>('../docs/*.md', { eager: true, import: 'default' });
 
 /** The pages, by their path after `/docs/`. */
 export const pages: Record<string, Page> = {};
-for (const [file, page] of Object.entries({ ...repository, ...site })) {
+for (const [file, page] of Object.entries(files)) {
   const name = /([\w-]+)\.md$/.exec(file)![1]!;
   pages[name === 'index' ? '' : name] = page;
 }
 
 /** The sections of the sidebar, in reading order. */
 export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
+  { title: 'Start', pages: ['', 'getting-started', 'tutorial'] },
   {
-    title: 'Guide',
-    pages: ['', 'getting-started', 'syntax', 'server-functions', 'routing', 'styles'],
+    title: 'Guides',
+    pages: [
+      'components',
+      'markup',
+      'control-flow',
+      'state',
+      'async-data',
+      'effects',
+      'context',
+      'page-metadata',
+      'server-functions',
+      'forms',
+      'routing',
+      'navigation',
+      'styles',
+      'what-runs-where',
+      'testing',
+      'deploying',
+    ],
   },
-  { title: 'Tools', pages: ['vite', 'typescript', 'editor', 'testing', 'inspect'] },
-  { title: 'How it works', pages: ['model', 'page-format'] },
+  { title: 'Tools', pages: ['typescript', 'editor', 'inspect'] },
+  {
+    title: 'Reference',
+    pages: [
+      'reference-signals',
+      'reference-blocks',
+      'reference-server',
+      'reference-routes',
+      'reference-plugin',
+      'reference-serialization',
+      'reference-security',
+    ],
+  },
+  {
+    title: 'Internals',
+    pages: [
+      'reactive-graph',
+      'page-format',
+      'server-protocol',
+      'style-compilation',
+      'client-modules',
+    ],
+  },
 ].map((section) => ({
   title: section.title,
-  pages: section.pages.map((slug) => ({
-    slug,
-    title: slug === '' ? 'Introduction' : (pages[slug]?.title ?? slug),
-  })),
+  pages: section.pages
+    .filter((slug) => slug in pages)
+    .map((slug) => ({ slug, title: slug === '' ? 'Introduction' : pages[slug]!.title })),
 }));

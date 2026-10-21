@@ -58,20 +58,19 @@ pnpm --filter example-todos dev
 
 ## Documents
 
-- [Execution model](./docs/model.md) explains what runs where and how the compiler decides what ships.
-- [Syntax](./docs/syntax.md) describes the file format, the compile-time functions, markup and control flow.
-- [Server functions](./docs/server-functions.md) describes the `'use server'` directive.
-- [Styles](./docs/styles.md) describes scoped CSS and style variables.
+The documentation is in [`website/docs`](./website/docs), and the website shows it with samples that run in the page.
+
+- [Introduction](./website/docs/index.md) and [Getting started](./website/docs/getting-started.md) set up a project.
+- [Your first app](./website/docs/tutorial.md) builds a todo app step by step.
+- The guides cover [components](./website/docs/components.md), [state](./website/docs/state.md), [async data](./website/docs/async-data.md), [server functions](./website/docs/server-functions.md), [routing](./website/docs/routing.md) and the rest.
+- The reference lists every [compile-time function](./website/docs/reference-signals.md), [block](./website/docs/reference-blocks.md), [runtime export](./website/docs/reference-server.md) and [plugin option](./website/docs/reference-plugin.md).
+- The internals describe the [reactive graph](./website/docs/reactive-graph.md), the [page format](./website/docs/page-format.md) and the [server function protocol](./website/docs/server-protocol.md).
+
+Design notes for contributors are in [`docs`](./docs):
+
 - [Grammar](./docs/grammar.md) defines the file format in EBNF.
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
-- [Vite](./docs/vite.md) describes the Vite plugin.
-- [Routing](./docs/routing.md) describes route files, layouts and sibling routes.
-- [TypeScript](./docs/typescript.md) describes type-checking `.brm` files.
-- [Testing](./docs/testing.md) describes testing components with `brumate/testing`.
-- [Editors](./docs/editor.md) describes the VS Code extension and the language server.
-- [Inspect](./docs/inspect.md) describes `brumate inspect`, which shows what each component ships to the client and why.
-- [Page format](./docs/page-format.md) describes the markers and the state that the server writes into the page.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Proposals](./docs/proposals.md) lists features that would be good to add, with a sketch of each.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.

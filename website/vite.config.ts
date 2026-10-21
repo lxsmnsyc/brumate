@@ -52,12 +52,9 @@ export default defineConfig({
   plugins: [
     markdown(),
     showcase(),
-    // Only the pages of the site, not the design notes of the repository.
+    // The pages of the site. The design notes of the repository are not on it.
     search(
-      [
-        fileURLToPath(new URL('docs', import.meta.url)),
-        fileURLToPath(new URL('../docs', import.meta.url)),
-      ],
+      [fileURLToPath(new URL('docs', import.meta.url))],
       new Set([...SITE_PAGES].map((page) => page || 'index')),
     ),
     // The live samples run the server runtime in the browser, which keeps the

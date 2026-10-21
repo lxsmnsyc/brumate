@@ -62,9 +62,9 @@
 
 1. Write the grammar and the intermediate representation. Done in [Grammar](./grammar.md) and [Intermediate representation](./ir.md).
 2. Build the parser and the analyzer, and test them on the graph output without a browser. Done in [`packages/brumate`](../packages/brumate).
-3. Write the server codegen with markers and state. Done. See [Page format](./page-format.md).
+3. Write the server codegen with markers and state. Done. See [Page format](../website/docs/page-format.md).
 4. Write the client codegen and the loader. Measure the bytes for a counter and a todo list. Done. See [Compiler](./compiler.md#size).
 5. Split client modules per handler and per update. Done. See [Code splitting](./compiler.md#code-splitting).
 6. Render components on the client, inside blocks that change. Done. See [Render modules](./compiler.md#render-modules).
-7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](./vite.md).
+7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](../website/docs/reference-plugin.md).
 8. Add component summaries. Done as a project analysis in the Vite plugin. See [Props across files](./compiler.md#props-across-files).

@@ -31,5 +31,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      # Every live sample of the docs compiles without warnings.
+      - run: pnpm --filter website check:samples
       # The website builds every page with the packages, so it checks them together.
       - run: pnpm --filter website build

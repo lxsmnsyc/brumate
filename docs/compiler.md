@@ -40,7 +40,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
 - Static markup becomes string literals. Only live values get markers.
 - The slots of a scope are recorded after its markup, so `ref` signals hold their elements.
 
-`renderToStream` from `brumate/server` runs the module, serializes the state and streams the page. [Page format](./page-format.md) describes the markers and the state.
+`renderToStream` from `brumate/server` runs the module, serializes the state and streams the page. [Page format](../website/docs/page-format.md) describes the markers and the state.
 
 The client module for the same component:
 
@@ -93,7 +93,7 @@ Compiled alone, a component treats every prop as live. `analyzeProject` finds th
 
 `compile` takes the result as `liveProps`. A prop that never changes needs no slot and no update code. A function passed as a prop never changes: it calls the parent's handler, which reads the current values.
 
-The [Vite plugin](./vite.md) runs the analysis when the build starts and when a `.brm` file changes.
+The [Vite plugin](../website/docs/reference-plugin.md) runs the analysis when the build starts and when a `.brm` file changes.
 
 ## Code splitting
 
@@ -113,7 +113,7 @@ The compiler splits each component's client code itself. It does not depend on a
 
 A bundler loads a part as `App.brm?brumate-client&part=<name>`.
 
-The [Vite plugin](./vite.md) connects the compiler to the dev server and the build. It serves the modules and maps server function IDs to their modules.
+The [Vite plugin](../website/docs/reference-plugin.md) connects the compiler to the dev server and the build. It serves the modules and maps server function IDs to their modules.
 
 ## Runtime
 
