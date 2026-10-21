@@ -1,9 +1,16 @@
 {
   "name": "brumate",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A component language and compiler for resumable web apps",
+  "homepage": "https://github.com/lxsmnsyc/brumate",
+  "bugs": "https://github.com/lxsmnsyc/brumate/issues",
   "license": "MIT",
   "author": "Alexis Munsayac",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxsmnsyc/brumate.git",
+    "directory": "packages/brumate"
+  },
   "bin": {
     "brumate": "./dist/cli.js"
   },

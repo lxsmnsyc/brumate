@@ -1,8 +1,15 @@
 {
   "name": "@brumate/language-server",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Language server for .brm files",
+  "homepage": "https://github.com/lxsmnsyc/brumate",
+  "bugs": "https://github.com/lxsmnsyc/brumate/issues",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxsmnsyc/brumate.git",
+    "directory": "packages/language-server"
+  },
   "bin": {
     "brumate-language-server": "./bin/brumate-language-server.js"
   },
