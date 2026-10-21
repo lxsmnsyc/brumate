@@ -1055,8 +1055,8 @@ class ClientGenerator {
         continue;
       }
       for (const callee of node.site.calls) {
-        if (callee.kind === 'server-function' && callee.refreshed) {
-          const id = serverFunctionId(this.plan, callee.name);
+        if (callee.serverImport || (callee.kind === 'server-function' && callee.refreshed)) {
+          const id = callee.serverImport ?? serverFunctionId(this.plan, callee.name);
           const entries = table.get(id) ?? [];
           entries.push([instanceScope(this.plan, node.declaration.scope).id, fn]);
           table.set(id, entries);

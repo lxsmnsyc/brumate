@@ -406,7 +406,21 @@ class Analyzer {
       if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
         continue;
       }
-      this.addDeclaration(scope, specifier.local.name, 'import', specifier.local);
+      const declaration = this.addDeclaration(
+        scope,
+        specifier.local.name,
+        'import',
+        specifier.local,
+      );
+      if (specifier.type !== 'ImportNamespaceSpecifier') {
+        const imported =
+          specifier.type === 'ImportDefaultSpecifier'
+            ? 'default'
+            : specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : specifier.imported.value;
+        declaration.imported = { source: statement.source.value, name: imported };
+      }
     }
   }
 

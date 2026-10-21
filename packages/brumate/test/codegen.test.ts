@@ -105,3 +105,25 @@ describe('hidden server function names', () => {
     }
   });
 });
+
+describe('functions of a use server file', () => {
+  it('loads memos that call one again when a server function refreshes it', () => {
+    const source = `<script>
+  import { $memo } from 'brumate/signals';
+  import { listNotes } from './notes.ts';
+  import { format } from './format.ts';
+
+  const notes = $memo(listNotes());
+  const label = $memo(format(1));
+</script>
+
+<p>{notes.length} {label}</p>
+`;
+    const { client } = compile(source, {
+      filename: 'Notes.brm',
+      serverImport: (specifier, name) =>
+        specifier === './notes.ts' ? `notes_1#${name}` : undefined,
+    });
+    expect(client).toMatch(/export const refresh = \{ "notes_1#listNotes": \[\[1, "m\d+"\]\] \};/);
+  });
+});

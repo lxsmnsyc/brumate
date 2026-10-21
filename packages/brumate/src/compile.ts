@@ -38,6 +38,12 @@ export interface CompileOptions {
   /** Warns about common accessibility mistakes in the markup. Defaults to true. */
   a11y?: boolean;
   /**
+   * The ID of a function that the file imports from a `'use server'` file,
+   * or undefined for other imports. Memos that call one load again when a
+   * server function calls `refresh` with it. The Vite plugin passes it.
+   */
+  serverImport?: (specifier: string, name: string) => string | undefined;
+  /**
    * Server function IDs use a hash of each function's name instead of the
    * name, so the browser does not see it. The Vite plugin sets it in builds.
    */
@@ -289,6 +295,21 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     throw new CompileError(source, filename, errors.map(translate));
   };
   const model = analyze(file);
+  for (const declaration of model.declarations) {
+    if (declaration.imported && options.serverImport) {
+      declaration.serverImport = options.serverImport(
+        declaration.imported.source,
+        declaration.imported.name,
+      );
+      if (declaration.serverImport !== undefined) {
+        // Any server function can refresh it, so the memos that call it load again on the client.
+        declaration.refreshed = true;
+        for (const read of declaration.reads) {
+          read.site.calls.add(declaration);
+        }
+      }
+    }
+  }
   const graph = buildGraph(model, { liveProps: options.liveProps });
   const diagnostics = [
     ...model.diagnostics,

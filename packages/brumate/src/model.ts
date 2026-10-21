@@ -69,6 +69,10 @@ export interface Declaration {
   action?: string;
   /** True for a server function that a server function refreshes with `refresh(fn)`. */
   refreshed?: boolean;
+  /** For an import, the module and the name that it imports, such as `default`. */
+  imported?: { source: string; name: string };
+  /** For an import of a function of a `'use server'` file, the ID of the function. */
+  serverImport?: string;
   /**
    * For `let shown = $optimistic(source)`, the value it follows. A write sets
    * a guess, until the source changes or the server calls of the page finish.

@@ -1129,7 +1129,7 @@ async function answerCall(
     const result = await run();
     // The client loads again the memos that call the server functions that `refresh` named.
     const refreshed = Object.keys(functions).filter((key) =>
-      response.refreshed?.has(functions[key]),
+      response.refreshed?.has(unwrap(functions[key])),
     );
     if (refreshed.length > 0) {
       headers.set('x-brumate-refresh', refreshed.join(','));

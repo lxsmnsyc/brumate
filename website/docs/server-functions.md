@@ -72,7 +72,7 @@ export async function saveTodo(todo: Todo) {
 - The browser gets a stub for each export, which calls the server. The code of the file, and everything that it imports, never ships.
 - The file exports only functions. A constant or a class is a build error, because the browser could only get a stub of it.
 - Any code can import the file, including other `.ts` files. On the server, the calls are plain function calls.
-- `refresh(fn)` works with the functions of a component. Calls of a file's functions load again when the values that their memo reads change.
+- `refresh(fn)` works with the functions of a file too. Memos of components that call `fn` from the file load again.
 
 There is no `'use client'`. The compiler decides what reaches the browser by following event handlers and other client code. See [What runs where](./what-runs-where.md).
 
@@ -283,7 +283,7 @@ A memo that calls a server function loads again when the values it reads change.
 </ul>
 ```
 
-- `refresh` takes a server function of the same file.
+- `refresh` takes a server function of the same component, or a function of a `'use server'` file.
 - The memos load again in every component on the page that calls the function.
 
 ## Files
