@@ -17,7 +17,7 @@ import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject } from './project.ts';
-import type { NavigateOptions } from './runtime/loader.ts';
+import type { NavigateOptions } from './runtime/boot.ts';
 import { formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule } from './modules.ts';
@@ -58,6 +58,14 @@ export interface BrumateOptions {
    * view transition.
    */
   navigate?: boolean | NavigateOptions;
+  /**
+   * After the page loads, while the browser is idle, the loader loads the
+   * core and the code of the handlers of elements in or near the viewport,
+   * so the first event needs no request. It skips elements with
+   * `prefetch="none"`, and loads nothing when the browser asks to save data
+   * or the connection is 2G. Defaults to true.
+   */
+  preload?: boolean;
   /**
    * Client parts of a component smaller than this many bytes in all become
    * one module, so its first event loads one file. 0 keeps one module per
@@ -724,18 +732,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           // Without client navigation, the bundle leaves its code out.
           options.navigate === false
-            ? "import { startWithoutNavigation as start } from 'brumate/loader';"
+            ? "import { startWithoutNavigation as start } from 'brumate/static-loader';"
             : "import { start } from 'brumate/loader';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
-          ...(isServe
-            ? [
-                "import { hotLoad } from 'brumate/hot';",
-                `start({ load: hotLoad(import.meta.hot, load), rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
-              ]
-            : [
-                `start({ load, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)} });`,
-              ]),
+          ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [

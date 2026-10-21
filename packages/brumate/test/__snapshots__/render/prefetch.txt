@@ -41,8 +41,6 @@ export const h3 = ($$s) => $$b.update($$s, 0, -1, false);
 # Client part: update
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export function u2($$s) {
   $$b.content($$s, 0, $$b.get($$s, 0));
 }
@@ -50,14 +48,12 @@ export function u2($$s) {
 # Render module
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export default function Prefetch($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Prefetch_okfwof");
+  const $$s1 = $$b.createScope(1, undefined, "Prefetch_okfwof");
   let count = (0);
   $$html += "<button class=\"idle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Prefetch_okfwof#h1\" data-prefetch=\"idle\">" + $$b.insert((count)) + "</button><button class=\"none\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Prefetch_okfwof#h3\" data-prefetch=\"none\">-</button>";
-  $$ctx.slots($$s1, [count]);
+  $$b.setSlots($$s1, [count]);
   return $$html;
 }
 

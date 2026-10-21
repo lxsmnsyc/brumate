@@ -25,6 +25,7 @@ const config: InlineConfig = {
       'brumate/server': runtime('server'),
       'brumate/client': runtime('client'),
       'brumate/loader': runtime('loader'),
+      'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
     },
   },

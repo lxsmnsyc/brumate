@@ -66,6 +66,8 @@
 - `.brm` files are type-checked through generated TypeScript, with a Volar language plugin. `brumate-tsc` checks a project, and `@brumate/typescript-plugin` serves editors.
 - `children` ship as the HTML that the server rendered. When the client inserts them again, it runs the updates of the scopes in them, so the values are current. Updates to markup that is not in the page do nothing.
 - Changing a reactive value in place, such as `todos.push(todo)` or `todo.done = true`, is a warning. Nothing updates, because the value is the same. `$produce(todos, (draft) => { draft.push(todo) })` is the way to write it.
+- The core is one module whose helpers are exports of their own, and the loader reads only its `loader` export, so a build keeps the helpers that its components call and leaves out the rest. Features that change how the core reads the page, such as the pages that client navigation adds and hot updates, are modules that set hooks of the core when they load, and they read the core with `import()`. The cost is a few bytes in the loader to load them, and a small chunk after the first client navigation. A core per page would need a chunk per set of features, and more requests.
+- After `load`, when the browser is idle, the loader preloads the core and the handlers' code of elements in or near the viewport, so a first click needs no request. It costs 97 B gzip in the loader, and the bytes of the core and the modules on every page that has handlers, even when nobody clicks. `prefetch="none"`, Save-Data, 2G connections and the `preload: false` option turn it off.
 
 ## Open
 

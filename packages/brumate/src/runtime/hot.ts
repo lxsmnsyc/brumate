@@ -65,19 +65,22 @@ export function hotLoad(
       }
     }
     if (changed.length > 0) {
-      // The core forgets the old code of these components.
       document.dispatchEvent(new CustomEvent('brumate:hot', { detail: changed }));
     }
     const remounts = updates.filter((update) => update.remount);
-    if (remounts.length > 0) {
-      // The core keeps the values of the signals, and the loader loads the page again.
-      document.dispatchEvent(
-        new CustomEvent('brumate:remount', {
-          detail: remounts.map((update) => Object.assign({ id: update.id }, update.remount)),
-        }),
-      );
-      document.dispatchEvent(new CustomEvent('brumate:reload'));
+    if (changed.length === 0 && remounts.length === 0) {
+      return;
     }
+    // The core has the hot update code, which only this module calls, so builds leave it out.
+    void import('./client.ts').then(({ forget, remount }) => {
+      // The core forgets the old code of these components.
+      forget(changed);
+      if (remounts.length > 0) {
+        // The core keeps the values of the signals, and the loader loads the page again.
+        remount(remounts.map((update) => Object.assign({ id: update.id }, update.remount!)));
+        document.dispatchEvent(new CustomEvent('brumate:reload'));
+      }
+    });
   });
   return (id) => {
     const url = fresh.get(id);

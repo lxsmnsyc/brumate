@@ -46,8 +46,6 @@ export const h2 = ($$s) => $$b.update($$s, 0, 1, false);
 import * as $$b from 'brumate/client';
 import { double } from "./doubler.brm?brumate-client&part=shared";
 
-const $$ctx = $$b.context;
-
 export function m1($$s) {
   $$b.memo($$s, 1, () => double($$b.get($$s, 0)));
 }
@@ -79,11 +77,9 @@ export function double(value: number): Promise<number> {
     return new Promise((done) => setTimeout(() => done(value * 2), 150));
   }
 
-const $$ctx = $$b.context;
-
 export default function Doubler($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Doubler_1bxsryb");
+  const $$s1 = $$b.createScope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
   const doubled = (double(count));
   $$html += "<button data-b=\"" + $$s1 + ":0\" data-on=\"click=Doubler_1bxsryb#h2\">" + $$b.insert((count)) + "</button><p data-b=\"" + $$s1 + ":1\">" + $$b.insert((doubled)) + "</p>";
@@ -92,7 +88,7 @@ export default function Doubler($$props: Record<string, never>): string {
   } else {
     $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
-  $$ctx.slots($$s1, [count, doubled]);
+  $$b.setSlots($$s1, [count, doubled]);
   return $$html;
 }
 

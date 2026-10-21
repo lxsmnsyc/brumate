@@ -74,8 +74,6 @@ export const h13 = ($$s) => $$b.update($$s, 0, 1, false);
 import * as $$m0 from "./counting.brm.ts?brumate-shared";
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export function m2($$s) {
   $$b.memo($$s, 2, () => $$m0.s313($$s, [1]));
 }
@@ -96,11 +94,9 @@ export function u14($$s) {
 import * as $$b from 'brumate/client';
 import { STEP } from "./counting.brm.ts";
 
-const $$ctx = $$b.context;
-
 export default function UsesCounter($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "UsesCounter_1euyiut");
+  const $$s1 = $$b.createScope(1, undefined, "UsesCounter_1euyiut");
   let base = (10);
   let count = (1);
   const double = (count * 2);
@@ -114,7 +110,7 @@ export default function UsesCounter($$props: Record<string, never>): string {
     }
   const reset = () => (other = base);
   $$html += "<button class=\"a\" data-b=\"" + $$s1 + ":0\" data-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></button><button class=\"b\" data-b=\"" + $$s1 + ":3\" data-on=\"click=UsesCounter_1euyiut#h11\">" + $$b.insert((other)) + "</button><button class=\"base\" data-b=\"" + $$s1 + ":4\" data-on=\"click=UsesCounter_1euyiut#h13\">" + $$b.insert((base)) + "</button><button class=\"reset\" data-b=\"" + $$s1 + ":5\" data-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
-  $$ctx.slots($$s1, [base, count, double, other]);
+  $$b.setSlots($$s1, [base, count, double, other]);
   return $$html;
 }
 

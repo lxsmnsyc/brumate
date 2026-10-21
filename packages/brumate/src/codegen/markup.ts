@@ -81,6 +81,24 @@ export interface EmitterOptions {
 }
 
 /** Writes code that renders markup to an HTML string, on the server or on the client. */
+/** The exports of the core that do on the client what the server's render context does. */
+const CLIENT_HELPERS: Record<string, string> = {
+  scope: 'createScope',
+  slots: 'setSlots',
+  item: 'setItem',
+  element: 'elementAt',
+  id: 'makeId',
+  own: 'setOwner',
+  provide: 'provideValue',
+  consume: 'consumeContext',
+  head: 'addHead',
+  portal: 'addPortal',
+  style: 'addStyle',
+  fn: 'handlerProp',
+  after: 'afterInsert',
+  title: 'title',
+};
+
 export class Emitter {
   readonly lines: string[] = [];
   private readonly file: SFCFile;
@@ -91,6 +109,8 @@ export class Emitter {
   private readonly refTargets = new Map<object, Declaration>();
   private readonly wait: string;
   private readonly async: string;
+  /** The render context as an argument, which the client's helpers do not take. */
+  private readonly ctxArgument: string;
   /** Async memos that the server awaits where they are declared. */
   private readonly blocking: Set<Declaration>;
   private parts: Part[] = [];
@@ -106,6 +126,7 @@ export class Emitter {
     this.options = options;
     this.wait = options.mode === 'server' ? 'await ' : '';
     this.async = options.mode === 'server' ? 'async ' : '';
+    this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
     this.blocking = blockingMemos(plan);
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
@@ -224,7 +245,7 @@ export class Emitter {
   private createScope(scope: Scope): void {
     const parent = instanceScope(this.plan, scope.parent!);
     this.line(
-      `const ${this.scopeVar(scope)} = $$ctx.scope(${scope.id}, ${this.scopeVar(parent)});`,
+      `const ${this.scopeVar(scope)} = ${this.helper('scope')}(${scope.id}, ${this.scopeVar(parent)});`,
     );
   }
 
@@ -237,7 +258,9 @@ export class Emitter {
       // The server also passes the names, so an error can say which value cannot be sent.
       const names =
         this.options.mode === 'server' ? `, ${JSON.stringify(slots.map((slot) => slot.name))}` : '';
-      this.line(`$$ctx.slots(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`);
+      this.line(
+        `${this.helper('slots')}(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`,
+      );
     }
   }
 
@@ -273,7 +296,7 @@ export class Emitter {
           continue;
         }
         if (name === '$title' && expression.type === 'CallExpression' && expression.arguments[0]) {
-          this.line(`$$ctx.title(${this.source(expression.arguments[0])});`);
+          this.line(`${this.helper('title')}(${this.source(expression.arguments[0])});`);
           continue;
         }
         if (name === '$provide' && expression.type === 'CallExpression') {
@@ -281,7 +304,7 @@ export class Emitter {
           if (context && value) {
             const target = this.scopeVar(instanceScope(this.plan, scope));
             this.line(
-              `$$ctx.provide(${this.source(context)}, ${this.providedValue(value, scope)}, ${target});`,
+              `${this.helper('provide')}(${this.source(context)}, ${this.providedValue(value, scope)}, ${target});`,
             );
           }
           continue;
@@ -329,7 +352,9 @@ export class Emitter {
           ? scope.declarations.get(declarator.id.name)
           : undefined;
       if (call === '$id' && declaration?.idIndex !== undefined) {
-        this.line(`const ${declaration.name} = $$ctx.id(${target}, ${declaration.idIndex});`);
+        this.line(
+          `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
+        );
         continue;
       }
       if (call !== '$context' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
@@ -340,7 +365,7 @@ export class Emitter {
       // The slot is recorded, so a change to the provided value reaches it on the client.
       const record = slot === -1 ? '' : `, ${slot}`;
       this.line(
-        `const ${declarator.id.name} = $$ctx.consume(${this.source(init.arguments[0])}, ${target}${record});`,
+        `const ${declarator.id.name} = ${this.helper('consume')}(${this.source(init.arguments[0])}, ${target}${record});`,
       );
     }
     return true;
@@ -387,7 +412,7 @@ export class Emitter {
     const component = this.plan.graph.model.component;
     if (this.plan.styles.css) {
       // The stylesheet is written once per page, before the first instance.
-      this.code(`$$ctx.style(${JSON.stringify(this.plan.id)}, $$css)`);
+      this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
     }
     this.emitStatements(setup, component);
     for (const template of this.file.templates) {
@@ -439,7 +464,7 @@ export class Emitter {
     }
     this.emitBody(block.body, false);
     if (this.plan.anchors.has(block)) {
-      this.line(`$$ctx.item(${this.scopeVar(scope)}, ${item});`);
+      this.line(`${this.helper('item')}(${this.scopeVar(scope)}, ${item});`);
     }
     if (anchored) {
       this.html('<!--/i-->');
@@ -466,6 +491,15 @@ export class Emitter {
     for (const node of nodes) {
       this.emitNode(node, scope);
     }
+  }
+
+  /**
+   * A render helper: a method of the render context on the server, and an
+   * export of the core on the client, where a build keeps only the helpers
+   * that its components call.
+   */
+  private helper(name: string): string {
+    return this.options.mode === 'server' ? `$$ctx.${name}` : `$$b.${CLIENT_HELPERS[name]!}`;
   }
 
   private emitNode(node: Markup, scope: Scope): void {
@@ -534,13 +568,13 @@ export class Emitter {
     anchor: { scope: string; index: number },
   ): void {
     const declaration = this.refTargets.get(attribute);
-    const element = `$$ctx.element(${anchor.scope}, ${anchor.index})`;
+    const element = `${this.helper('element')}(${anchor.scope}, ${anchor.index})`;
     const outer = this.options.outer;
     if (declaration && outer && !this.isInside(declaration.scope)) {
       // The signal belongs to a scope outside this render, so it is written after the element is in the page.
       const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
       this.line(
-        `$$ctx.after.push(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
+        `${this.helper('after')}.push(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
       );
     } else {
       this.line(`${target} = ${element};`);
@@ -786,7 +820,7 @@ export class Emitter {
       // A method, such as `toggle() {}`, is a function expression without the keyword.
       const code = `${method ? 'function ' : ''}${this.source(part)}`;
       return symbol
-        ? `$$ctx.fn(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
+        ? `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
         : undefined;
     };
     if (value.type !== 'ObjectExpression') {
@@ -817,7 +851,7 @@ export class Emitter {
     const symbol = site && this.plan.symbols.get(site);
     if (symbol) {
       const instance = this.scopeVar(instanceScope(this.plan, scope));
-      return `$$ctx.fn(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`;
+      return `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`;
     }
     return code;
   }
@@ -833,7 +867,9 @@ export class Emitter {
     // The rendering scope becomes the owner of the child, so the child finds the contexts above it.
     const owner = this.scopeVar(instanceScope(this.plan, scope));
     const link = anchor ? `, ${anchor.index}` : '';
-    this.code(`${this.wait}$$b.component(${node.name}, ${props}, $$ctx, ${owner}${link})`);
+    this.code(
+      `${this.wait}$$b.component(${node.name}, ${props}, ${this.ctxArgument}, ${owner}${link})`,
+    );
   }
 
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
@@ -880,7 +916,7 @@ export class Emitter {
     }
     this.code(
       this.ready(
-        `$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+        `$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
       ),
     );
   }
@@ -914,7 +950,7 @@ export class Emitter {
     this.line('return $$html;');
     this.close('})();');
     // `#head` content goes to the document's head, and portal content to the end of the page.
-    this.line(`$$ctx.${block.kind === 'head' ? 'head' : 'portal'}(${name});`);
+    this.line(`${this.helper(block.kind === 'head' ? 'head' : 'portal')}(${name});`);
   }
 
   /**

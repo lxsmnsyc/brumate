@@ -13,13 +13,8 @@ import { describe, expect, it } from 'vitest';
 import { raw, rawHTML } from '../src/runtime/html.ts';
 import { disabledFeatures, plugins } from '../src/runtime/serial.ts';
 import { stateScript, streamState } from '../src/runtime/server.ts';
-import {
-  ElementReference,
-  FunctionReference,
-  Upload,
-  functionReferences,
-  stateValues,
-} from '../src/runtime/shared.ts';
+import { Upload, functionReferences } from '../src/runtime/calls.ts';
+import { ElementReference, FunctionReference, stateValues } from '../src/runtime/shared.ts';
 
 const handler = (): void => {};
 functionReferences.set(handler, new FunctionReference('Card_x1#h2', 4));

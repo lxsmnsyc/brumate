@@ -17,6 +17,7 @@ The loader:
 - Applies event modifiers, such as `:prevent`, before anything loads.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
 - Preloads the code of an element's handlers according to its `prefetch` attribute.
+- After the page loads, when the browser is idle, preloads the core and the code of the handlers of elements in or near the viewport. See [Idle preload](#idle-preload).
 - Watches the page for added markup, such as `#loading` bodies, and listens to its handlers too.
 
 ## The first event
@@ -29,6 +30,8 @@ On the first event, the loader imports the core, `brumate/client`, and the clien
 - Finds elements by `data-b`, and text and blocks by their comment markers.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
+
+The core holds only the helpers that the build's components call. A build without `#for`, `$produce` or `$optimistic` leaves their code out, and a build with `navigate: false` leaves out the code that reads the pages that navigation adds. That code loads after the first client navigation, as a small module of its own.
 
 Handlers run after the event has finished dispatching. The core passes them an event whose `currentTarget` is still the element. Parts load in parallel, but handlers start in the order of their events, so typing and then submitting runs the input handler before the submit handler.
 
@@ -86,6 +89,18 @@ const increment$ = ($$s, ...$$a) => $$m0.s218($$s, [1], ...$$a);
 | `"visible"`            | When the element enters the viewport.                      |
 | `"idle"`               | When the browser is idle after the page loads.             |
 | `"none"`               | Never. The event loads them.                               |
+
+### Idle preload
+
+After the `load` event, when the browser is idle, the loader preloads the core and the code of the handlers of elements in or near the viewport, and of elements that come near it later. A click after that needs no request. It does not load anything before `load`, and it does not block the page.
+
+It skips:
+
+- Elements with `prefetch="none"`.
+- Browsers that ask to save data, with `navigator.connection.saveData`.
+- Connections whose `effectiveType` is `2g` or `slow-2g`.
+
+The plugin's [`preload`](./reference-plugin.md#options) option, or the loader's `preload` option, turns it off.
 
 ## Navigation and server calls
 

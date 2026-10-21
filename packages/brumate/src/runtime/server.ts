@@ -21,11 +21,9 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
-  Upload,
-  functionReferences,
   isAsyncIterable,
-  replaceDeep,
 } from './shared.ts';
+import { Upload, functionReferences, replaceDeep } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PackedState, PageState, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';

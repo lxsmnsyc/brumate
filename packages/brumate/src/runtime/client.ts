@@ -24,6 +24,8 @@ import type { Context as ContextValue } from './context.ts';
 export { affix, attribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
+// For `client-routes.ts`, which reads the core with `import()`.
+export { ElementReference, FunctionReference } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -87,10 +89,24 @@ export interface CoreOptions {
   rpc?: string;
 }
 
+// The core keeps only what every page needs: it reads the state, runs handlers and updates.
+// Each helper that compiled code calls is an export of its own, so a build leaves out the ones
+// that no component calls. Features that change how the core reads the page, such as client
+// navigation and hot updates, live in their own modules and set `hooks` when they load.
+
 let options: CoreOptions;
 /** The URL prefix of server function calls, from the options. */
-let rpcPrefix = '/_brumate';
-const scopes = new Map<number, Scope>();
+export let rpcPrefix = '/_brumate';
+/** The scopes of the page, by ID. */
+export const scopes: Map<number, Scope> = new Map();
+
+/** What modules of optional features add to the core. See `client-routes.ts` and `hot`. */
+export const hooks: {
+  /** Changes a state record before its scopes are added, such as for a page that navigation added. */
+  record?: (script: Element, state: PageState) => PageState;
+  /** Runs after the scopes of a state record are added. */
+  added?: (added: Scope[]) => void;
+} = {};
 
 /** What the devtools overlay hears from the core. It is set only in development. */
 export interface DevtoolsHooks {
@@ -109,6 +125,13 @@ export interface DevtoolsHooks {
 
 /** The global key of the devtools hooks. */
 export const DEVTOOLS: unique symbol = Symbol.for('brumate.devtools');
+
+/**
+ * True on the dev server, which has the devtools. A Vite build replaces it
+ * with `false`, so the calls of the devtools hooks are left out. Without
+ * Vite, `import.meta.env` is undefined, and the hooks are off.
+ */
+const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
 
 function devtools(): DevtoolsHooks | undefined {
   return (globalThis as Record<symbol, DevtoolsHooks | undefined>)[DEVTOOLS];
@@ -171,17 +194,8 @@ function readRecord([script, code]: StateRecord): void {
   const decoded = code(refs.get(root)!, stateValues);
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
-    // A page that started its IDs at another number, such as a prerendered file, moves them here.
-    // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
-    const offset = Number(script.getAttribute('data-offset') ?? 0);
     const unpacked = unpackState(decoded as PackedState);
-    const value = offset ? shiftState(unpacked, offset) : unpacked;
-    // A page that replaced only some routes of the one before it: see `navigate`.
-    const drop = script.getAttribute('data-drop');
-    if (drop) {
-      dropScopes(new Set(drop.split(',').map(Number)));
-    }
-    const added = addScopes(value, routeOptions(script));
+    const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked);
     if (writes > 0) {
       refresh(added);
     }
@@ -256,111 +270,10 @@ function unpackState(state: PackedState): PageState {
   return state;
 }
 
-/** Adds a number to the scope IDs of a state record. */
-function shiftState(state: PageState, by: number): PageState {
-  const seen = new Set<object>();
-  // References to elements and client functions name the scope of their markup.
-  const shiftValue = (value: unknown): unknown => {
-    if (value instanceof ElementReference) {
-      return new ElementReference(value.scope + by, value.anchor);
-    }
-    if (value instanceof FunctionReference) {
-      return new FunctionReference(value.ref, value.scope + by);
-    }
-    // A later record settles it, with a value whose IDs move too.
-    if (value instanceof Promise) {
-      return value.then(shiftValue);
-    }
-    if (typeof value === 'object' && value !== null && !seen.has(value)) {
-      seen.add(value);
-      if (Array.isArray(value)) {
-        value.forEach((item, index) => {
-          value[index] = shiftValue(item);
-        });
-      } else if (Object.getPrototypeOf(value) === Object.prototype) {
-        for (const [key, item] of Object.entries(value)) {
-          (value as Record<string, unknown>)[key] = shiftValue(item);
-        }
-      }
-    }
-    return value;
-  };
-  const result: PageState = {};
-  for (const [key, record] of Object.entries(state)) {
-    result[Number(key) + by] = {
-      ...record,
-      p: record.p === undefined ? undefined : record.p + by,
-      o: record.o === undefined ? undefined : record.o + by,
-      c:
-        record.c &&
-        Object.fromEntries(Object.entries(record.c).map(([anchor, id]) => [anchor, id + by])),
-      s: record.s?.map(shiftValue),
-    };
-  }
-  return result;
-}
-
-interface RouteOptions {
-  /** Scopes of the new page that stand for scopes of the kept layouts. */
-  alias: Map<number, number>;
-  /** The scopes of the routes that replaced old ones. Only they and the scopes inside them are added. */
-  roots: Set<number>;
-}
-
-function routeOptions(script: Element): RouteOptions | undefined {
-  const roots = script.getAttribute('data-roots');
-  if (roots === null) {
-    return undefined;
-  }
-  const alias = new Map<number, number>();
-  for (const pair of (script.getAttribute('data-alias') ?? '').split(',').filter(Boolean)) {
-    const [from, to] = pair.split(':').map(Number) as [number, number];
-    alias.set(from, to);
-  }
-  return { alias, roots: new Set(roots.split(',').filter(Boolean).map(Number)) };
-}
-
-/** Removes scopes and the scopes inside them, and runs their cleanups. */
-function dropScopes(roots: Set<number>): void {
-  const inside = (scope: Scope): boolean => {
-    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
-      if (roots.has(current.id)) {
-        return true;
-      }
-    }
-    return false;
-  };
-  // Deleting from a map while iterating it is safe.
-  for (const scope of scopes.values()) {
-    if (inside(scope)) {
-      for (const cleanup of scope.cleanups?.values() ?? []) {
-        cleanup();
-      }
-      scope.p?.children.delete(scope);
-      treeChanges++;
-      scopes.delete(scope.id);
-    }
-  }
-}
-
-function addScopes(state: PageState, route?: RouteOptions): Scope[] {
+function addScopes(state: PageState): Scope[] {
   const added: Scope[] = [];
-  const kept = (id: number): boolean => {
-    for (let current: number | undefined = id; current !== undefined;) {
-      if (route!.roots.has(current)) {
-        return true;
-      }
-      const record: ScopeState | undefined = state[current];
-      current = record?.p ?? record?.o;
-    }
-    return false;
-  };
   for (const [key, record] of Object.entries(state)) {
     const id = Number(key);
-    // The new page renders the kept layouts again. Their scopes are not added.
-    if (route && !kept(id)) {
-      continue;
-    }
     const scope: Scope = {
       id,
       k: record.k ?? 0,
@@ -375,16 +288,15 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
     scopes.set(id, scope);
     added.push(scope);
   }
-  const resolveId = (id: number): number => route?.alias.get(id) ?? id;
   for (const scope of added) {
     const record = state[scope.id]!;
     if (record.p !== undefined) {
-      scope.p = scopes.get(resolveId(record.p));
+      scope.p = scopes.get(record.p);
       scope.p?.children.add(scope);
       treeChanges++;
     }
     if (record.o !== undefined) {
-      scope.o = scopes.get(resolveId(record.o));
+      scope.o = scopes.get(record.o);
     }
   }
   const seen = new Set<object>();
@@ -407,9 +319,7 @@ function addScopes(state: PageState, route?: RouteOptions): Scope[] {
       }
     }
   }
-  if (remounts.size > 0) {
-    restoreRemounts(added);
-  }
+  hooks.added?.(added);
   return added;
 }
 
@@ -429,17 +339,14 @@ export function dispose(): void {
   }
   markerObserver?.disconnect();
   markerObserver = undefined;
-  document.removeEventListener('brumate:refresh', onRefresh);
-  document.removeEventListener('brumate:hot', onHot);
-  document.removeEventListener('brumate:remount', onRemount);
 }
 
 /**
  * Forgets the code of components that changed on the dev server, so the next
- * event or update loads the new code. Their state stays. See `brumate/hot`.
+ * event or update loads the new code. Their state stays. `brumate/hot` calls it.
  */
-function onHot(event: Event): void {
-  for (const id of (event as CustomEvent<string[]>).detail) {
+export function forget(ids: string[]): void {
+  for (const id of ids) {
     modules.delete(id);
     loading.delete(id);
     // Deleting the entry that a loop is at is safe for a Map.
@@ -460,19 +367,17 @@ const remounts = new Map<
 
 /**
  * Keeps the values of the signals of each instance of a component, by
- * name, before the page renders again with its new markup.
+ * name, before the page renders again with its new markup. `brumate/hot` calls it.
  */
-function onRemount(event: Event): void {
-  const detail = (
-    event as CustomEvent<
-      {
-        id: string;
-        before: Record<number, string[]>;
-        after: Record<number, string[]>;
-        signals: string[];
-      }[]
-    >
-  ).detail;
+export function remount(
+  detail: {
+    id: string;
+    before: Record<number, string[]>;
+    after: Record<number, string[]>;
+    signals: string[];
+  }[],
+): void {
+  hooks.added = restoreRemounts;
   for (const { id, before, after, signals } of detail) {
     const names = new Set(signals);
     const instances = [...scopes.values()].filter((scope) => scope.m === id);
@@ -512,38 +417,10 @@ function restoreRemounts(added: Scope[]): void {
   }
 }
 
-function onRefresh(event: Event): void {
-  refreshMemos((event as CustomEvent<string[]>).detail);
-}
-
-/**
- * Loads again the memos that call these server functions, after a server
- * function named them with `refresh`. Each component on the page knows its
- * own memos, from its client module.
- */
-function refreshMemos(ids: string[]): void {
-  const roots = [...scopes.values()].filter((scope) => scope.m);
-  for (const root of roots) {
-    void loadModule(root.m!).then(async (module) => {
-      const entries = ids.flatMap((id) => module.refresh?.[id] ?? []);
-      if (entries.length === 0) {
-        return;
-      }
-      const updates = await loadPart(module, 'update');
-      for (const [kind, name] of entries) {
-        for (const target of kind === root.k ? [root] : descendants(root, kind)) {
-          if (scopes.has(target.id)) {
-            (updates[name] as (scope: Scope) => void)(target);
-          }
-        }
-      }
-    });
-  }
-}
-
 /**
  * Forgets the page, before another page replaces it. Cleanups run. Loaded
- * modules and parts stay, so the next page does not load them again.
+ * modules and parts stay, so the next page does not load them again. Only
+ * client navigation calls it.
  */
 export function leavePage(): void {
   dispose();
@@ -563,7 +440,7 @@ export function leavePage(): void {
   }
   memoControllers.clear();
   // The next page reuses scope IDs, so a guess left here would match its memos.
-  guesses.clear();
+  guesses?.map.clear();
   nextId = -1;
   refs.clear();
   writes = 0;
@@ -582,12 +459,11 @@ export function init(value: CoreOptions): void {
   }
   markerObserver = new MutationObserver(indexAdded);
   markerObserver.observe(document, { childList: true, subtree: true });
-  document.addEventListener('brumate:refresh', onRefresh);
-  document.addEventListener('brumate:hot', onHot);
-  document.addEventListener('brumate:remount', onRemount);
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
-  devtools()?.attach?.({ scopes, set });
+  if (DEV) {
+    devtools()?.attach?.({ scopes, set });
+  }
 }
 
 /** Replaces function references with functions that call them. */
@@ -622,14 +498,16 @@ export function loadModule(id: string): Promise<ClientModule> {
   return promise;
 }
 
-function loadPart(module: ClientModule, name: string): Promise<Part> {
+export function loadPart(module: ClientModule, name: string): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
     promise = (module.load ? module.load(name) : Promise.resolve(module as unknown as Part)).then(
       (part) => {
         loadedParts.set(key, part);
-        devtools()?.part?.(module.id, name);
+        if (DEV) {
+          devtools()?.part?.(module.id, name);
+        }
         return part;
       },
     );
@@ -679,7 +557,9 @@ export function handle(element: Element, ref: string, event?: Event): Promise<un
   const anchor = element.closest('[data-b]')?.getAttribute('data-b');
   const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
   const args = event ? [withTarget(event, element)] : [];
-  devtools()?.handler?.(ref, element, event);
+  if (DEV) {
+    devtools()?.handler?.(ref, element, event);
+  }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
   const loaded = resolve(ref);
@@ -721,7 +601,9 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
     scope.s[slot] = value;
-    devtools()?.write?.(scope, slot, value);
+    if (DEV) {
+      devtools()?.write?.(scope, slot, value);
+    }
     trigger(scope, slot);
   }
   return value;
@@ -869,7 +751,7 @@ function memoSignal(): AbortSignal | undefined {
 export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   // A guess stays while its source has not changed, such as when a value the server streamed arrives.
-  if (sameSource(key)) {
+  if (guesses?.same(key)) {
     return;
   }
   let value: unknown;
@@ -899,7 +781,7 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const waited = loadingSlots.delete(key);
   loads.delete(key);
   // An optimistic value that computes again follows its source, and drops its guess.
-  guesses.delete(key);
+  guesses?.map.delete(key);
   if (!Object.is(scope.s[slot], value)) {
     set(scope, slot, value);
   } else if (waited) {
@@ -907,17 +789,24 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   }
 }
 
-/** Optimistic values that hold a guess, with the slot that each goes back to. */
-const guesses = new Map<
-  string,
-  { scope: Scope; slot: number; source?: [Scope, number]; base?: unknown }
->();
+interface Guesses {
+  /** Optimistic values that hold a guess, with the slot that each goes back to. */
+  map: Map<string, { scope: Scope; slot: number; source?: [Scope, number]; base?: unknown }>;
+  same: (key: string) => boolean;
+  reset: () => void;
+}
+
+/**
+ * The guesses of `$optimistic` values. The first `guess` sets it, so the
+ * code that reads guesses is left out of a build that makes none.
+ */
+let guesses: Guesses | undefined;
 /** The values of promises that the server streamed, so a guess knows its source did not change. */
 const settled = new WeakMap<Promise<unknown>, unknown>();
 
 /** True while the source of a guess holds the value it had when the guess was made. */
 function sameSource(key: string): boolean {
-  const entry = guesses.get(key);
+  const entry = guesses!.map.get(key);
   if (!entry?.source) {
     return false;
   }
@@ -943,32 +832,30 @@ export function guess<T>(
   const value = rest.at(-1) as T;
   const source = rest.length === 3 ? ([rest[0], rest[1]] as [Scope, number]) : undefined;
   const base = source && source[0].s[source[1]];
-  guesses.set(`${scope.id}:${slot}`, { scope, slot, source, base });
+  guesses ??= { map: new Map(), same: sameSource, reset: resetGuesses };
+  guesses.map.set(`${scope.id}:${slot}`, { scope, slot, source, base });
   return set(scope, slot, value);
 }
 
 /** Counts a server call, and puts guesses back when the last one finishes. */
-function track<T>(request: Promise<T>): Promise<T> {
+export function track<T>(request: Promise<T>): Promise<T> {
   calling++;
   const done = (): void => {
     calling--;
     // Waits a task, so memos that the answer refreshed start to load first.
-    setTimeout(resetGuesses, 0);
+    setTimeout(() => calling || guesses?.reset(), 0);
   };
   request.then(done, done);
   return request;
 }
 
 function resetGuesses(): void {
-  if (calling > 0) {
-    return;
-  }
-  for (const [key, { scope, slot, source }] of guesses) {
+  for (const [key, { scope, slot, source }] of guesses!.map) {
     // A source that loads again, such as a refreshed list, resets the guess when it arrives.
     if (source && pending(source[0], source[1])) {
       continue;
     }
-    guesses.delete(key);
+    guesses!.map.delete(key);
     if (source && scopes.has(scope.id) && !Object.is(scope.s[slot], source[0].s[source[1]])) {
       set(scope, slot, source[0].s[source[1]]);
     }
@@ -1085,7 +972,7 @@ function flushEffects(): void {
   }
 }
 
-function descendants(scope: Scope, kind: number, result: Scope[] = []): Scope[] {
+export function descendants(scope: Scope, kind: number, result: Scope[] = []): Scope[] {
   for (const child of scope.children) {
     if (child.k === kind) {
       result.push(child);
@@ -1107,25 +994,28 @@ function destroy(scope: Scope): void {
     start.remove();
     end.remove();
   }
+  removeScope(scope);
+}
+
+/**
+ * Removes a scope from the page: its cleanups run, and its memo state goes,
+ * so a load that settles later is not written. Its markup stays.
+ */
+export function removeScope(scope: Scope): void {
   for (const cleanup of scope.cleanups?.values() ?? []) {
     cleanup();
   }
-  forgetMemos(scope);
-  scopes.delete(scope.id);
-  scope.p?.children.delete(scope);
-  treeChanges++;
-}
-
-/** Drops the memo state of a removed scope. A load that settles later is not written. */
-function forgetMemos(scope: Scope): void {
   for (let slot = 0; slot < scope.s.length; slot++) {
     const key = `${scope.id}:${slot}`;
     memoControllers.get(key)?.abort();
     memoControllers.delete(key);
     loads.delete(key);
     loadingSlots.delete(key);
-    guesses.delete(key);
+    guesses?.map.delete(key);
   }
+  scopes.delete(scope.id);
+  scope.p?.children.delete(scope);
+  treeChanges++;
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
@@ -1246,7 +1136,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   }
   // The records of this insert, whose markers are indexed already.
   markerObserver?.takeRecords();
-  for (const fn of context.after.splice(0)) {
+  for (const fn of afterInsert.splice(0)) {
     fn();
   }
   // HTML from the server, such as `children`, can be older than the values on the client.
@@ -1282,7 +1172,12 @@ function serverScopes(root: ParentNode): Scope[] {
  * Renders a `#portal` body into its target, between markers with its scope
  * ID. `kinds` names the body, so a new target first removes it from the old one.
  */
-export function portal(scope: Scope, target: unknown, render: Render, kinds: number[] = []): void {
+export function portalTo(
+  scope: Scope,
+  target: unknown,
+  render: Render,
+  kinds: number[] = [],
+): void {
   disposeKinds(scope, kinds);
   const element = typeof target === 'string' ? document.querySelector(target) : target;
   if (!(element instanceof Element)) {
@@ -1442,7 +1337,7 @@ export async function reset(
   } catch (error) {
     // Scopes that the body created before it threw.
     disposeKinds(scope, kinds);
-    context.after.length = 0;
+    afterInsert.length = 0;
     html = (updates[fallback] as (parent: Scope, error: unknown) => string)(scope, error);
   }
   insertHTML(end, html);
@@ -1586,7 +1481,7 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
 }
 
 /** Writes a provided value, and the slot of every scope that reads it from this provider. */
-export function provide(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
+export function setContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
   for (const target of scopes.values()) {
@@ -1651,34 +1546,18 @@ export function action(name: string, id: string, method?: string, result?: strin
 }
 
 /**
- * Sends a form to the server function of its `$action`, and writes the
- * result into the `$action` when it arrives. It is pending until then.
+ * Sends a form of an `$action`. The code is in `rpc.ts`, which every server
+ * call loads, so the core holds only this.
  */
 export function submitAction(form: HTMLFormElement, submitter: HTMLElement | null): void {
-  const [scopeId, slot] = form.getAttribute('data-result')!.split(':').map(Number) as [
-    number,
-    number,
-  ];
-  const scope = scopes.get(scopeId);
-  if (!scope) {
-    return;
-  }
-  const data = new FormData(form, submitter);
-  const sent = track(
-    import('./rpc.ts').then(({ submit }) =>
-      submit(rpcPrefix, form.getAttribute('data-action')!, data),
-    ),
-  );
-  asyncMemo(scope, slot, sent);
+  void import('./rpc.ts').then((module) => module.sendAction(form, submitter));
 }
 
 /** Calls a server function. */
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
   // Read before the import, while the memo that calls it computes.
   const signal = memoSignal();
-  return track(
-    import('./rpc.ts').then(({ call: callServer }) => callServer(rpcPrefix, id, args, signal)),
-  );
+  return track(import('./rpc.ts').then((module) => module.call(rpcPrefix, id, args, signal)));
 }
 
 // Rendering on the client
@@ -1713,7 +1592,7 @@ export function component<P>(
     parent.c[anchor] = nextId;
   }
   if (parent) {
-    context.own(parent);
+    setOwner(parent);
   }
   return Child(props);
 }
@@ -1738,101 +1617,111 @@ export function dynamic(
   return VOID_ELEMENTS.has(name) ? open : `${open}${children ? rawHTML(children) : ''}</${name}>`;
 }
 
-class ClientContext {
-  /** Work that waits until rendered markup is in the page. */
-  readonly after: (() => void)[] = [];
+/** Work that waits until rendered markup is in the page. */
+export const afterInsert: (() => void)[] = [];
 
-  /** The scope that renders the next component, which becomes its owner. */
-  private owner: Scope | undefined;
+/** The scope that renders the next component, which becomes its owner. */
+let owner: Scope | undefined;
 
-  scope(kind: number, parent?: Scope | number, module?: string): number {
-    const id = nextId--;
-    const parentScope = resolveScope(parent);
-    const scope: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
-    if (module !== undefined && this.owner) {
-      scope.o = this.owner;
-      this.owner = undefined;
-    }
-    parentScope?.children.add(scope);
-    treeChanges++;
-    scopes.set(id, scope);
-    return id;
+// The helpers below are what the server's render context does, for markup that the client
+// renders. Each is an export of its own, so a build keeps only those that its components call.
+
+/** Creates a scope for markup that the client renders, and returns its ID. */
+export function createScope(kind: number, parent?: Scope | number, module?: string): number {
+  const id = nextId--;
+  const parentScope = resolveScope(parent);
+  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  if (module !== undefined && owner) {
+    created.o = owner;
+    owner = undefined;
   }
-
-  /** The ID that `$id()` makes. Client scope IDs are negative, so they differ from the server's. */
-  id(scope: Scope | number, index: number): string {
-    return `b${resolveScope(scope)!.id}-${index}`;
-  }
-
-  /** Sets the owner of the next component's root scope. */
-  own(scope: Scope | number): void {
-    this.owner = resolveScope(scope);
-  }
-
-  /** Provides a value of a context to the scopes inside `scope`. */
-  provide<T>(context: ContextValue<T>, value: T, scope: Scope | number): void {
-    const target = resolveScope(scope)!;
-    target.v ??= {};
-    target.v[context.key] = value;
-  }
-
-  /** Reads a context, and records its slot so that changes to the provided value reach it. */
-  consume<T>(context: ContextValue<T>, scope: Scope | number, slot?: number): T {
-    const target = resolveScope(scope)!;
-    if (slot !== undefined) {
-      target.x ??= {};
-      target.x[context.key] = slot;
-    }
-    const provider = findProvider(target, context.key);
-    return provider ? (provider.v![context.key] as T) : context.defaultValue;
-  }
-
-  slots(id: number, values: unknown[]): void {
-    scopes.get(id)!.s = values;
-  }
-
-  item(id: number, value: unknown): void {
-    scopes.get(id)!.i = value;
-  }
-
-  element(scope: number, anchor: number): ElementReference {
-    return new ElementReference(scope, anchor);
-  }
-
-  /** Adds the markup of a `#head` block to the document's head. */
-  head(html: string): void {
-    this.after.push(() => insertHTML({ parent: document.head }, html));
-  }
-
-  /** Sets the title of the page, for a component that the client renders. */
-  title(value: unknown): void {
-    title(value);
-  }
-
-  /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
-  portal(html: string): void {
-    this.after.push(() => insertHTML({ parent: document.body }, html));
-  }
-
-  /** Adds a component's stylesheet to the page, if the server did not. */
-  style(id: string, css: string): string {
-    if (!document.querySelector(`style[data-brm="${id}"]`)) {
-      const style = document.createElement('style');
-      style.dataset.brm = id;
-      style.textContent = css;
-      document.head.append(style);
-    }
-    return '';
-  }
-
-  /** A function prop rendered on the client calls the parent's exported handler. */
-  fn(value: unknown, ref: string, scope: Scope | number): unknown {
-    if (typeof value !== 'function') {
-      return value;
-    }
-    const instance = resolveScope(scope);
-    return (...args: unknown[]) => call(ref, instance, args);
-  }
+  parentScope?.children.add(created);
+  treeChanges++;
+  scopes.set(id, created);
+  return id;
 }
 
-export const context: ClientContext = new ClientContext();
+/** The ID that `$id()` makes. Client scope IDs are negative, so they differ from the server's. */
+export function makeId(scope: Scope | number, index: number): string {
+  return `b${resolveScope(scope)!.id}-${index}`;
+}
+
+/** Sets the owner of the next component's root scope. */
+export function setOwner(scope: Scope | number): void {
+  owner = resolveScope(scope);
+}
+
+/** Provides a value of a context to the scopes inside `scope`. */
+export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | number): void {
+  const target = resolveScope(scope)!;
+  target.v ??= {};
+  target.v[context.key] = value;
+}
+
+/** Reads a context, and records its slot so that changes to the provided value reach it. */
+export function consumeContext<T>(
+  context: ContextValue<T>,
+  scope: Scope | number,
+  slot?: number,
+): T {
+  const target = resolveScope(scope)!;
+  if (slot !== undefined) {
+    target.x ??= {};
+    target.x[context.key] = slot;
+  }
+  const provider = findProvider(target, context.key);
+  return provider ? (provider.v![context.key] as T) : context.defaultValue;
+}
+
+export function setSlots(id: number, values: unknown[]): void {
+  scopes.get(id)!.s = values;
+}
+
+export function setItem(id: number, value: unknown): void {
+  scopes.get(id)!.i = value;
+}
+
+export function elementAt(scope: number, anchor: number): ElementReference {
+  return new ElementReference(scope, anchor);
+}
+
+/** Adds the markup of a `#head` block to the document's head. */
+export function addHead(html: string): void {
+  afterInsert.push(() => insertHTML({ parent: document.head }, html));
+}
+
+/** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
+export function addPortal(html: string): void {
+  afterInsert.push(() => insertHTML({ parent: document.body }, html));
+}
+
+/** Adds a component's stylesheet to the page, if the server did not. */
+export function addStyle(id: string, css: string): string {
+  if (!document.querySelector(`style[data-brm="${id}"]`)) {
+    const sheet = document.createElement('style');
+    sheet.dataset.brm = id;
+    sheet.textContent = css;
+    document.head.append(sheet);
+  }
+  return '';
+}
+
+/** A function prop rendered on the client calls the parent's exported handler. */
+export function handlerProp(value: unknown, ref: string, scope: Scope | number): unknown {
+  if (typeof value !== 'function') {
+    return value;
+  }
+  const instance = resolveScope(scope);
+  return (...args: unknown[]) => call(ref, instance, args);
+}
+
+/**
+ * What the loader calls. It is one export, so the loader's import of the core
+ * names one export, and a build keeps the rest only when components call them.
+ */
+export const loader: {
+  init: typeof init;
+  handle: typeof handle;
+  dispose: typeof dispose;
+  submitAction: typeof submitAction;
+} = { init, handle, dispose, submitAction };

@@ -1,81 +1,9 @@
-import type * as Client from './client.ts';
-import type { ClientModule } from './client.ts';
+import type * as Routes from './client-routes.ts';
+import { boot, importCore } from './boot.ts';
+import type { Core, LoaderOptions, Navigation } from './boot.ts';
 
-export interface LoaderOptions {
-  /**
-   * Imports the client module of a component, by component ID. Undefined for
-   * a component that has no client code.
-   */
-  load: (id: string) => Promise<ClientModule> | undefined;
-  /** The URL prefix of server function calls. */
-  rpc?: string;
-  /**
-   * Loads pages without a full page load: links to the same origin, the back
-   * and forward buttons, and forms that post to a server function. Defaults to true.
-   */
-  navigate?: boolean | NavigateOptions;
-}
-
-export interface NavigateOptions {
-  /**
-   * Swaps the page inside a view transition, where the browser has them.
-   * CSS can tell links, the back and forward buttons and forms apart with
-   * the types `push`, `traverse` and `form`.
-   */
-  transition?: boolean;
-}
-
-interface Entry {
-  raw: string;
-  type: string;
-  modifiers: string[];
-  ref: string;
-}
-
-// Parsed `data-on` values, so repeated events do not parse them again.
-const parsed = new Map<string, Entry[]>();
-
-function entries(element: Element): Entry[] {
-  const value = element.getAttribute('data-on') ?? '';
-  return (parsed.get(value) ??
-    parsed
-      .set(
-        value,
-        value
-          .split(' ')
-          .filter(Boolean)
-          .map((entry) => {
-            const [name, ref] = entry.split('=') as [string, string];
-            const [type, ...modifiers] = name.split(':') as [string, ...string[]];
-            return { raw: entry, type, modifiers, ref };
-          }),
-      )
-      .get(value))!;
-}
-
-function strategy(element: Element): string {
-  return element.getAttribute('data-prefetch') ?? 'hover';
-}
-
-/** Starts loading the page of a link, unless the link asks not to. */
-function prefetch(link: HTMLAnchorElement | undefined): void {
-  if (link && link.getAttribute('data-prefetch') !== 'none') {
-    void import('./navigate.ts').then((module) => module.prefetch(link.href));
-  }
-}
-
-/** What the loader gives the code that loads pages without a full page load. */
-interface Navigation {
-  options: LoaderOptions;
-  listen: (
-    target: EventTarget,
-    type: string,
-    listener: (event: Event) => void,
-    flags?: AddEventListenerOptions | boolean,
-  ) => void;
-  core: () => Promise<typeof Client> | undefined;
-  scan: (root: ParentNode) => void;
-}
+export type { LoaderOptions, NavigateOptions } from './boot.ts';
+export { startWithoutNavigation } from './static-loader.ts';
 
 /**
  * Starts resuming the page. Listens to the events in `data-on` attributes
@@ -86,245 +14,46 @@ export function start(options: LoaderOptions): () => void {
   return boot(options, options.navigate === false ? undefined : navigation);
 }
 
-/**
- * `start` for a site that loads every page with a full page load, as with
- * `navigate: false`. A bundle that only calls it leaves out the code of
- * client navigation.
- */
-export function startWithoutNavigation(options: LoaderOptions): () => void {
-  return boot(options);
-}
-
-function boot(options: LoaderOptions, navigate?: (navigation: Navigation) => void): () => void {
-  let core: Promise<typeof Client> | undefined;
-  const types = new Set<string>();
-  const removers: (() => void)[] = [];
-  const listen = (
-    target: EventTarget,
-    type: string,
-    listener: (event: Event) => void,
-    flags?: AddEventListenerOptions | boolean,
-  ): void => {
-    target.addEventListener(type, listener, flags);
-    removers.push(() => target.removeEventListener(type, listener, flags));
-  };
-
-  const loadCore = (): Promise<typeof Client> =>
-    (core ??= import('./client.ts').then((client) => {
-      client.init({ ...options, listen: scan });
-      return client;
-    }));
-
-  // The devtools panel asks for the core when it opens, so it can show the page before any event.
-  listen(document, 'brumate:core', () => void loadCore());
-
-  // Starts loading the module of a handler and its part, as one step when the module holds them.
-  const warm = (ref: string): void => {
-    const [id, name] = ref.split('#') as [string, string];
-    void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
-  };
-
-  const run = (element: Element, ref: string, event?: Event): void => {
-    // The module loads while the core does, not after it.
-    warm(ref);
-    void loadCore().then((client) => client.handle(element, ref, event));
-  };
-
-  const apply = (event: Event, element: Element, entry: Entry): boolean => {
-    if (entry.modifiers.includes('prevent')) {
-      event.preventDefault();
-    }
-    if (entry.modifiers.includes('once')) {
-      const rest = (element.getAttribute('data-on') ?? '')
-        .split(' ')
-        .filter((item) => item !== entry.raw);
-      element.setAttribute('data-on', rest.join(' '));
-    }
-    run(element, entry.ref, event);
-    return entry.modifiers.includes('stop');
-  };
-
-  // Handlers run from the target outwards, as if each element had its own listener.
-  const onEvent = (event: Event): void => {
-    for (
-      let node = event.target as Node | null;
-      node && node !== document;
-      node = node.parentNode
-    ) {
-      if (node.nodeType !== 1 || !(node as Element).hasAttribute('data-on')) {
-        continue;
-      }
-      let stop = false;
-      for (const entry of entries(node as Element)) {
-        if (entry.type === event.type && apply(event, node as Element, entry)) {
-          stop = true;
-        }
-      }
-      if (stop) {
-        event.stopPropagation();
-        return;
-      }
-    }
-  };
-
-  // Templates are started once, even when markup is scanned again.
-  const started = new WeakSet<Element>();
-  const select = (root: ParentNode, selector: string): Element[] => {
-    const found = [...root.querySelectorAll(selector)];
-    if ((root as Element).matches?.(selector)) {
-      found.unshift(root as Element);
-    }
-    return found.filter((element) => {
-      if (element.tagName !== 'TEMPLATE') {
-        return true;
-      }
-      if (started.has(element)) {
-        return false;
-      }
-      started.add(element);
-      return true;
-    });
-  };
-
-  const visible =
-    typeof IntersectionObserver === 'undefined'
-      ? undefined
-      : new IntersectionObserver((records) => {
-          for (const record of records) {
-            if (record.isIntersecting) {
-              visible!.unobserve(record.target);
-              preload(record.target);
-            }
-          }
-        });
-  removers.push(() => visible?.disconnect());
-
-  const scan = (root: ParentNode): void => {
-    for (const element of select(root, '[data-prefetch="visible"], [data-prefetch="idle"]')) {
-      if (strategy(element) === 'idle' || !visible) {
-        (window.requestIdleCallback ?? setTimeout)(() => preload(element));
-      } else {
-        visible.observe(element);
-      }
-    }
-    for (const element of select(root, '[data-on]:not(template)')) {
-      for (const { type } of entries(element)) {
-        if (!types.has(type)) {
-          types.add(type);
-          listen(document, type, onEvent, true);
-        }
-      }
-    }
-    for (const template of select(root, 'template[data-listen]')) {
-      const target = template.getAttribute('data-listen') === 'window' ? window : document;
-      for (const entry of entries(template)) {
-        listen(target, entry.type, (event) => apply(event, template, entry));
-      }
-    }
-    for (const template of select(root, 'template[data-client]')) {
-      const [trigger, ref] = template.getAttribute('data-client')!.split('=') as [string, string];
-      const go = (): void => run(template, ref);
-      const next = template.nextElementSibling;
-      if (trigger === 'idle') {
-        (window.requestIdleCallback ?? setTimeout)(go);
-      } else if (trigger === 'visible' && next && visible) {
-        const observer = new IntersectionObserver((records) => {
-          if (records.some((record) => record.isIntersecting)) {
-            observer.disconnect();
-            go();
-          }
-        });
-        observer.observe(next);
-      } else {
-        go();
-      }
-    }
-  };
-
-  // Preloads the core and the parts of an element's handlers, so its first event does not wait for them.
-  const preloaded = new WeakSet<Element>();
-  const preload = (element: Element): void => {
-    if (preloaded.has(element)) {
-      return;
-    }
-    preloaded.add(element);
-    void import('./client.ts');
-    for (const entry of entries(element)) {
-      warm(entry.ref);
-    }
-  };
-
-  const hover = (event: Event): void => {
-    const element = (event.target as Element).closest?.('[data-on]');
-    if (element && strategy(element) === 'hover') {
-      preload(element);
-    }
-  };
-  listen(document, 'pointerover', hover, { passive: true });
-  listen(document, 'focusin', hover);
-
-  // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
-  listen(document, 'submit', (event) => {
-    const form = event.target as HTMLFormElement;
-    if (event.defaultPrevented || !form.hasAttribute?.('data-result')) {
-      return;
-    }
-    event.preventDefault();
-    const submitter = (event as SubmitEvent).submitter;
-    void loadCore().then((client) => client.submitAction(form, submitter));
-  });
-
-  if (navigate) {
-    navigate({ options, listen, core: () => core, scan });
-  } else {
-    // A hot update whose markup changed loads the page again.
-    listen(document, 'brumate:reload', () => location.reload());
+/** Starts loading the page of a link, unless the link asks not to. */
+function prefetch(link: HTMLAnchorElement | undefined): void {
+  if (link && link.getAttribute('data-prefetch') !== 'none') {
+    void import('./navigate.ts').then((module) => module.prefetch(link.href));
   }
-
-  scan(document);
-  // Markup that streams in later, such as a `#loading` body, has handlers too.
-  const observer = new MutationObserver((records) => {
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (node.nodeType === 1) {
-          scan(node as Element);
-        }
-      }
-    }
-  });
-  observer.observe(document, { childList: true, subtree: true });
-  return () => {
-    observer.disconnect();
-    for (const remove of removers.splice(0)) {
-      remove();
-    }
-    void core?.then((client) => client.dispose());
-  };
 }
+
+/**
+ * Imports the code with which the core reads the pages that navigation adds.
+ * A core that runs loads it when the loader navigates. A core that starts
+ * later loads it with the core, when the page has records that navigation
+ * marked.
+ */
+const routes = (): (typeof Routes)['ready'] =>
+  import('./client-routes.ts').then((module) => module.ready);
 
 /**
  * Loads pages without a full page load: links to the same origin, the back
- * and forward buttons, and forms that post to a server function.
+ * and forward buttons, and forms that post to a server function. Returns how
+ * the loader imports the core.
  */
-function navigation({ options, listen, core, scan }: Navigation): void {
+function navigation({ options, listen, core, scan }: Navigation): () => Promise<Core> {
   const rpc = `${options.rpc ?? '/_brumate'}/`;
   // The page without its hash, to tell a change of the hash from a change of the page.
   let page = String(location.href).split('#')[0];
   const go = (url: string, init?: RequestInit, push = true): void => {
     page = url.split('#')[0]!;
-    void import('./navigate.ts').then(({ navigate }) =>
-      navigate({
+    if (core()) {
+      void routes();
+    }
+    void import('./navigate.ts').then((module) =>
+      module.navigate({
         url,
         init,
         push,
         transition: typeof options.navigate === 'object' && options.navigate.transition === true,
         // The core forgets the old page, or only stops reading, when layouts stay.
         leave: async (partial) => {
-          const client = await core();
-          if (partial) {
-            client?.dispose();
-          } else {
-            client?.leavePage();
+          if (core()) {
+            (await routes())(partial);
           }
         },
         enter: () => {
@@ -400,4 +129,9 @@ function navigation({ options, listen, core, scan }: Navigation): void {
       go(location.href, undefined, false);
     }
   });
+  return () =>
+    Promise.all([
+      importCore(),
+      document.querySelector('[data-offset],[data-roots]') && routes(),
+    ]).then(([client]) => client);
 }

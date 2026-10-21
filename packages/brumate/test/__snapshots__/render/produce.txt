@@ -90,8 +90,6 @@ export { add$ as h3 };
 # Client part: update
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export function b4($$s) {
   $$b.list($$s, 1, Array.from($$b.get($$s, 0)), ($$item, $$index) => { const todo = $$item; return todo.id; }, r2, a2, undefined, []);
 }
@@ -112,10 +110,10 @@ export function u9($$s) {
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
-  const $$s2 = $$ctx.scope(2, $$p);
+  const $$s2 = $$b.createScope(2, $$p);
   $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\">" + $$b.insert((todo.title)) + "</li>";
-  $$ctx.slots($$s2, [todo]);
-  $$ctx.item($$s2, $$item);
+  $$b.setSlots($$s2, [todo]);
+  $$b.setItem($$s2, $$item);
   return $$html;
 }
 
@@ -127,11 +125,9 @@ interface Todo {
     done: boolean;
   }
 
-const $$ctx = $$b.context;
-
 export default function Produce($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Produce_9t90yy");
+  const $$s1 = $$b.createScope(1, undefined, "Produce_9t90yy");
   let todos = ([
     { id: '1', title: 'Docs', done: false },
     { id: '2', title: 'Ship', done: false },
@@ -157,15 +153,15 @@ export default function Produce($$props: Record<string, never>): string {
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const todo = $$item1;
-      const $$s2 = $$ctx.scope(2, $$s1);
+      const $$s2 = $$b.createScope(2, $$s1);
       $$html += "<li" + $$b.attribute("class", ({ done: todo.done })) + " data-b=\"" + $$s2 + ":0\" data-on=\"click=Produce_9t90yy#h7\">" + $$b.insert((todo.title)) + "</li>";
-      $$ctx.slots($$s2, [todo]);
-      $$ctx.item($$s2, $$item1);
+      $$b.setSlots($$s2, [todo]);
+      $$b.setItem($$s2, $$item1);
     }
     $$html += "<!--/b-->";
   }
   $$html += "</ul><p><!--t" + $$s1 + ":2-->" + $$b.insert((todos.filter((todo) => todo.done).length)) + "<!--/t--> done</p>";
-  $$ctx.slots($$s1, [todos]);
+  $$b.setSlots($$s1, [todos]);
   return $$html;
 }
 

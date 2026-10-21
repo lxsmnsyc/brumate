@@ -6,6 +6,7 @@ export default defineConfig({
     'src/runtime/server.ts',
     'src/runtime/client.ts',
     'src/runtime/loader.ts',
+    'src/runtime/static-loader.ts',
     'src/runtime/context.ts',
     'src/runtime/html.ts',
     'src/runtime/signals.ts',

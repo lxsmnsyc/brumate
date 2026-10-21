@@ -1,6 +1,7 @@
 import { toJSONAsync } from 'seroval';
+import type { Scope } from './client.ts';
 import { disabledFeatures, plugins } from './serial.ts';
-import { Upload, replaceDeep } from './shared.ts';
+import { Upload, replaceDeep } from './calls.ts';
 import { fromChunkStream } from './stream.ts';
 
 /**
@@ -83,10 +84,12 @@ async function post(prefix: string, id: string, init: RequestInit): Promise<unkn
 
 /** Reads the answer of a server function: its result, a redirect or an error. */
 async function answer(id: string, response: Response): Promise<unknown> {
-  // The server functions whose memos load again, from `refresh` on the server. The core listens.
+  // The server functions whose memos load again, from `refresh` on the server.
   const refreshed = response.headers.get('x-brumate-refresh');
   if (refreshed) {
-    document.dispatchEvent(new CustomEvent('brumate:refresh', { detail: refreshed.split(',') }));
+    const ids = refreshed.split(',');
+    void refreshMemos(ids);
+    document.dispatchEvent(new CustomEvent('brumate:refresh', { detail: ids }));
   }
   const location = response.headers.get('x-brumate-redirect');
   if (location !== null) {
@@ -105,4 +108,60 @@ async function answer(id: string, response: Response): Promise<unknown> {
   }
   // Promises and async iterables in the result settle as the rest of the answer arrives.
   return fromChunkStream(response.body!);
+}
+
+// The code below reads the core with `import()`, not a static import: a module that imports
+// the core statically would make the package build move the core into a chunk of its own, behind
+// a module that only re-exports it, which a page loads one after the other. The core is loaded
+// already when it runs, so the import costs no request. It names the exports it uses, so a build
+// keeps only them.
+
+/**
+ * Loads again the memos that call these server functions, after a server
+ * function named them with `refresh`. Each component on the page knows its
+ * own memos, from its client module. It is here, and not in the core, because
+ * only the answer of a server call starts it.
+ */
+export function refreshMemos(ids: string[]): Promise<void> {
+  return import('./client.ts').then(({ descendants, loadModule, loadPart, scopes }) => {
+    for (const root of scopes.values()) {
+      if (!root.m) {
+        continue;
+      }
+      void loadModule(root.m).then(async (module) => {
+        const entries = ids.flatMap((id) => module.refresh?.[id] ?? []);
+        if (entries.length === 0) {
+          return;
+        }
+        const updates = await loadPart(module, 'update');
+        for (const [kind, name] of entries) {
+          for (const target of kind === root.k ? [root] : descendants(root, kind)) {
+            if (scopes.has(target.id)) {
+              (updates[name] as (scope: Scope) => void)(target);
+            }
+          }
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Sends a form to the server function of its `$action`, and writes the
+ * result into the `$action` when it arrives. It is pending until then. See
+ * `submitAction` in the core.
+ */
+export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null): Promise<void> {
+  const [scopeId, slot] = form.getAttribute('data-result')!.split(':').map(Number) as [
+    number,
+    number,
+  ];
+  const data = new FormData(form, submitter);
+  const action = form.getAttribute('data-action')!;
+  return import('./client.ts').then(({ asyncMemo, rpcPrefix, scopes, track }) => {
+    const scope = scopes.get(scopeId);
+    if (scope) {
+      asyncMemo(scope, slot, track(submit(rpcPrefix, action, data)));
+    }
+  });
 }

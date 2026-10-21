@@ -53,7 +53,7 @@ describe('hot updates', () => {
     await client.loadModule('Card_1');
     await client.loadModule('Card_1');
     expect(load).toHaveBeenCalledTimes(1);
-    document.dispatchEvent(new CustomEvent('brumate:hot', { detail: ['Card_1'] }));
+    client.forget(['Card_1']);
     expect(await client.loadModule('Card_1')).toMatchObject({ version: 2 });
     client.dispose();
   });

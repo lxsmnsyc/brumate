@@ -13,7 +13,8 @@ import type {
 } from 'seroval';
 import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
-import { ElementReference, Upload, functionReferences, stateValues } from './shared.ts';
+import { Upload, functionReferences } from './calls.ts';
+import { ElementReference, stateValues } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
 type ReferenceNode = { a: SerovalNode; b: SerovalNode };

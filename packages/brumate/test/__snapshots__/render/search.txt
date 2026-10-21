@@ -66,8 +66,6 @@ export const h4 = ($$s, event) => ($$b.set($$s, 0, event.currentTarget.value));
 # Client part: update
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 const search$ = (...$$a) => $$b.rpc("Search_s4k9u0#search", $$a);
 export function m2($$s) {
   $$b.memo($$s, 1, () => search$($$b.get($$s, 0)));
@@ -97,10 +95,10 @@ export function r2($$p) {
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
-  const $$s3 = $$ctx.scope(3, $$p);
+  const $$s3 = $$b.createScope(3, $$p);
   $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
-  $$ctx.slots($$s3, [result]);
-  $$ctx.item($$s3, $$item);
+  $$b.setSlots($$s3, [result]);
+  $$b.setItem($$s3, $$item);
   return $$html;
 }
 
@@ -108,11 +106,9 @@ export function r3($$p, $$item, $$index) {
 import * as $$b from 'brumate/client';
 const search = (...$$a) => $$b.rpc("Search_s4k9u0#search", $$a);
 
-const $$ctx = $$b.context;
-
 export default function Search($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Search_s4k9u0");
+  const $$s1 = $$b.createScope(1, undefined, "Search_s4k9u0");
   let query = ('');
   const results = (search(query));
   $$html += "<input" + $$b.attribute("value", (query)) + " data-b=\"" + $$s1 + ":0\" data-on=\"input=Search_s4k9u0#h4\">";
@@ -129,15 +125,15 @@ export default function Search($$props: Record<string, never>): string {
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
       const $$item1 = $$list0[$$index2];
       const result = $$item1;
-      const $$s3 = $$ctx.scope(3, $$s1);
+      const $$s3 = $$b.createScope(3, $$s1);
       $$html += "<li data-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
-      $$ctx.slots($$s3, [result]);
-      $$ctx.item($$s3, $$item1);
+      $$b.setSlots($$s3, [result]);
+      $$b.setItem($$s3, $$item1);
     }
     $$html += "<!--/b-->";
   }
   $$html += "</ul>";
-  $$ctx.slots($$s1, [query, results]);
+  $$b.setSlots($$s1, [query, results]);
   return $$html;
 }
 

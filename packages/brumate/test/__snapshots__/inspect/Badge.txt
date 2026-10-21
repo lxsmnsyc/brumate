@@ -17,4 +17,4 @@ HTML only
 
 Client modules, before minifying (bytes, gzip)
   entry: 296 B, 220 B
-  update: 136 B, 125 B
+  update: 108 B, 109 B

@@ -56,8 +56,6 @@ export const h2 = ($$s, ...$$a) => ($$b.reset.bind(null, $$s.p, 0, "Retry_pyus3c
 import * as $$b from 'brumate/client';
 import { check } from "./retry.brm?brumate-client&part=shared";
 
-const $$ctx = $$b.context;
-
 export function u1($$s) {
   $$b.content($$s, 0, String($$b.get($$s, 0)));
 }
@@ -70,9 +68,9 @@ export function r3($$p, $$error) {
   let $$html = '';
   const error = $$error;
   const reset = undefined;
-  const $$s3 = $$ctx.scope(3, $$p);
+  const $$s3 = $$b.createScope(3, $$p);
   $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
-  $$ctx.slots($$s3, [error]);
+  $$b.setSlots($$s3, [error]);
   return $$html;
 }
 
@@ -104,11 +102,9 @@ export function check(): string {
     return 'Ready';
   }
 
-const $$ctx = $$b.context;
-
 export default function Retry($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Retry_pyus3c");
+  const $$s1 = $$b.createScope(1, undefined, "Retry_pyus3c");
   $$html += "<!--b" + $$s1 + ":0-->";
   const $$before0 = $$html;
   try {
@@ -117,9 +113,9 @@ export default function Retry($$props: Record<string, never>): string {
     $$html = $$before0;
     const error = $$error1;
     const reset = undefined;
-    const $$s3 = $$ctx.scope(3, $$s1);
+    const $$s3 = $$b.createScope(3, $$s1);
     $$html += "<p class=\"error\" data-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" data-b=\"" + $$s3 + ":1\" data-on=\"click=Retry_pyus3c#h2\">Try again</button>";
-    $$ctx.slots($$s3, [error]);
+    $$b.setSlots($$s3, [error]);
   }
   $$html += "<!--/b-->";
   return $$html;

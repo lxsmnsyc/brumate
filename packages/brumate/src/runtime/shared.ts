@@ -28,22 +28,6 @@ export class FunctionReference {
   }
 }
 
-/** Server functions that are passed to the client, with their references. */
-export const functionReferences: WeakMap<object, FunctionReference> = new WeakMap();
-
-/**
- * A file or a blob in the arguments of a server function call. The call
- * sends it as a part of multipart form data, named `file<index>`, instead
- * of in the JSON of the arguments.
- */
-export class Upload {
-  readonly index: number;
-
-  constructor(index: number) {
-    this.index = index;
-  }
-}
-
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
@@ -71,30 +55,6 @@ export const stateValues: {
   r: raw,
   c: (id) => Object.assign(() => '', { brumateId: id }),
 };
-
-/**
- * Replaces each value in arrays and plain objects that `replace` returns a
- * value for. Returns a copy, or the value itself when nothing changed.
- */
-export function replaceDeep(value: unknown, replace: (value: unknown) => unknown): unknown {
-  const replaced = replace(value);
-  if (replaced !== undefined) {
-    return replaced;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => replaceDeep(item, replace));
-  }
-  if (
-    value !== null &&
-    typeof value === 'object' &&
-    Object.getPrototypeOf(value) === Object.prototype
-  ) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, replaceDeep(item, replace)]),
-    );
-  }
-  return value;
-}
 
 /** True for a value that `for await` reads, such as the result of an async generator. */
 export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {

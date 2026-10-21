@@ -38,8 +38,6 @@ export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
 # Client part: update
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export function m2($$s) {
   $$b.memo($$s, 1, () => $$b.get($$s, 0) * 2);
 }
@@ -53,16 +51,14 @@ export function u6($$s) {
 # Render module
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export default function Counter($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Counter_m86gta");
+  const $$s1 = $$b.createScope(1, undefined, "Counter_m86gta");
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
   $$html += "<h1>" + $$b.insert((label)) + "</h1><button data-b=\"" + $$s1 + ":0\" data-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
-  $$ctx.slots($$s1, [count, double]);
+  $$b.setSlots($$s1, [count, double]);
   return $$html;
 }
 

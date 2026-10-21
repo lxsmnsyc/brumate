@@ -237,6 +237,10 @@ describe('resume', () => {
 
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
+    // Navigation marked the records, so the core reads them with this module.
+    await (
+      await import('../src/runtime/client-routes.ts')
+    ).ready;
     client.init({
       load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
@@ -1079,13 +1083,9 @@ describe('hot updates of markup', () => {
       ]),
     );
     // As hot.ts does: the core keeps the values, then the page renders again.
-    document.dispatchEvent(
-      new CustomEvent('brumate:remount', {
-        detail: [{ id, before: names, after: names, signals: ['count'] }],
-      }),
-    );
-    // As the client router does: the core forgets the old page, and reads the new one.
     const core = await import('../src/runtime/client.ts');
+    core.remount([{ id, before: names, after: names, signals: ['count'] }]);
+    // As the client router does: the core forgets the old page, and reads the new one.
     core.leavePage();
     const server = await import(file('counter.brm.ts'));
     const { html, state } = await renderParts(server.default, {});
@@ -1272,6 +1272,9 @@ describe('scopes in groups', () => {
     show(html + moved(state));
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
+    await (
+      await import('../src/runtime/client-routes.ts')
+    ).ready;
     client.init({
       load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
@@ -1466,12 +1469,8 @@ describe('compact markup', () => {
         layout.slots.map((slot) => slot.name),
       ]),
     );
-    document.dispatchEvent(
-      new CustomEvent('brumate:remount', {
-        detail: [{ id: plan.id, before: names, after: names, signals: ['rows'] }],
-      }),
-    );
     const core = await import('../src/runtime/client.ts');
+    core.remount([{ id: plan.id, before: names, after: names, signals: ['rows'] }]);
     core.leavePage();
     const server = await import(file('compact.brm.ts'));
     const { html, state } = await renderParts(server.default, { initial });

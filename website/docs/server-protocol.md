@@ -37,7 +37,7 @@ A call is a `POST` to `<rpc prefix>/<encoded ID>`. The prefix is `/_brumate` by 
 | Another site         | 403        |                                              | Text.                                                               |
 | Unknown ID           | 404        |                                              | Text.                                                               |
 
-- `x-brumate-refresh: <id>,<id>` lists the server functions that `refresh` named during the call. The client dispatches `brumate:refresh` on `document`, and the core loads again the memos that call those functions.
+- `x-brumate-refresh: <id>,<id>` lists the server functions that `refresh` named during the call. The client loads again the memos that call those functions, and dispatches `brumate:refresh` on `document` with their IDs.
 - Headers that the function set on its event, such as cookies, are on the answer.
 - The client throws an error named `ServerError`, with the message and the status, for an error answer.
 

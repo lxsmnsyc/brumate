@@ -102,7 +102,7 @@ export function createMount(options: TestingOptions): Mount {
     container.querySelectorAll('script[data-state]').forEach(run);
     // One loader for the document, as a page has, however many mounts are in it.
     loader ??= {
-      stop: start({ load: options.load, rpc: options.rpc, navigate: false }),
+      stop: start({ load: options.load, rpc: options.rpc, navigate: false, preload: false }),
       users: 0,
     };
     loader.users++;

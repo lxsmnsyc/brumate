@@ -204,19 +204,11 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   );
   emitter.line(`let $$html = '';`);
   emitter.line(
-    `const ${emitter.scopeVar(model.component)} = $$ctx.scope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,
+    `const ${emitter.scopeVar(model.component)} = $$b.createScope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,
   );
   emitter.emitComponentContent(setup);
   emitter.line('return $$html;');
   emitter.close();
 
-  return [
-    ...header,
-    ...moduleBody,
-    '',
-    'const $$ctx = $$b.context;',
-    '',
-    ...emitter.lines,
-    '',
-  ].join('\n');
+  return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
 }

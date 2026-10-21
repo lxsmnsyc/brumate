@@ -2,16 +2,17 @@
 
 The modules that app code imports, other than `brumate/signals`. Most apps use only the request helpers of `brumate/server`, `href` and `createContext`. The rendering functions are for a custom server.
 
-| Module            | For                                                                      |
-| ----------------- | ------------------------------------------------------------------------ |
-| `brumate/server`  | Server functions and rendering: the request, errors, redirects, streams. |
-| `brumate/routes`  | Links to routes.                                                         |
-| `brumate/context` | Contexts.                                                                |
-| `brumate/html`    | Raw HTML.                                                                |
-| `brumate/loader`  | Starting the loader by hand.                                             |
-| `brumate/testing` | Component tests.                                                         |
-| `brumate/vite`    | The Vite plugin. See [Plugin options](./reference-plugin.md).            |
-| `brumate`         | The compiler. See [Plugin options](./reference-plugin.md#compiler-api).  |
+| Module                  | For                                                                      |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `brumate/server`        | Server functions and rendering: the request, errors, redirects, streams. |
+| `brumate/routes`        | Links to routes.                                                         |
+| `brumate/context`       | Contexts.                                                                |
+| `brumate/html`          | Raw HTML.                                                                |
+| `brumate/loader`        | Starting the loader by hand.                                             |
+| `brumate/static-loader` | Starting the loader by hand, without client navigation.                  |
+| `brumate/testing`       | Component tests.                                                         |
+| `brumate/vite`          | The Vite plugin. See [Plugin options](./reference-plugin.md).            |
+| `brumate`               | The compiler. See [Plugin options](./reference-plugin.md#compiler-api).  |
 
 `brumate/client` is the core that the loader loads. Compiled code calls it, and apps do not.
 
@@ -138,13 +139,16 @@ const stop = start({ load, rpc: '/_brumate', navigate: true });
 
 `virtual:brumate/start` does this for you. Use `start` to add to `load`, or to start the loader of a page that another tool renders.
 
-| Option     | Type                                    | Meaning                                                           |
-| ---------- | --------------------------------------- | ----------------------------------------------------------------- |
-| `load`     | `(id: string) => Promise<ClientModule>` | Imports the client module of a component, by component ID.        |
-| `rpc`      | `string`                                | The URL prefix of server function calls. Defaults to `/_brumate`. |
-| `navigate` | `boolean \| { transition?: boolean }`   | Client navigation, and view transitions. Defaults to `true`.      |
+| Option     | Type                                    | Meaning                                                                                                                                                        |
+| ---------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load`     | `(id: string) => Promise<ClientModule>` | Imports the client module of a component, by component ID.                                                                                                     |
+| `rpc`      | `string`                                | The URL prefix of server function calls. Defaults to `/_brumate`.                                                                                              |
+| `navigate` | `boolean \| { transition?: boolean }`   | Client navigation, and view transitions. Defaults to `true`.                                                                                                   |
+| `preload`  | `boolean`                               | Loads the code of handlers near the viewport while the browser is idle after `load`. Defaults to `true`. See [Idle preload](./client-modules.md#idle-preload). |
 
 `start` returns a function that stops the loader and removes its listeners.
+
+`brumate/static-loader` exports `startWithoutNavigation`, which takes the same options and never loads pages in place. A bundle that imports only it has none of the code of client navigation. The plugin uses it with `navigate: false`. `brumate/loader` exports it too, but a bundle that imports `brumate/loader` keeps the parts of the core that navigation reads.
 
 ## `brumate/testing`
 

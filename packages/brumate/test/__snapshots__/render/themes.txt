@@ -52,17 +52,15 @@ import * as $$b from 'brumate/client';
 import Themed from "./Themed.brm?brumate-render";
 import { Theme } from "./theme";
 
-const $$ctx = $$b.context;
-
 export function u2($$s) {
-  $$b.provide($$s, Theme, $$b.get($$s, 0));
+  $$b.setContext($$s, Theme, $$b.get($$s, 0));
 }
 export function b5($$s) {
   $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);
 }
 export function r2($$p) {
   let $$html = '';
-  $$html += "<div class=\"b\">" + $$b.component(Themed, {  }, $$ctx, $$p) + "</div>";
+  $$html += "<div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$p) + "</div>";
   return $$html;
 }
 
@@ -71,21 +69,19 @@ import * as $$b from 'brumate/client';
 import Themed from "./Themed.brm?brumate-render";
 import { Theme } from "./theme";
 
-const $$ctx = $$b.context;
-
 export default function Themes($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Themes_945372");
+  const $$s1 = $$b.createScope(1, undefined, "Themes_945372");
   let theme = ('dark');
   let show = (false);
-  $$ctx.provide(Theme, theme, $$s1);
-  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
+  $$b.provideValue(Theme, theme, $$s1);
+  $$html += "<button class=\"toggle\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div>";
   if (show) {
-    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, $$ctx, $$s1) + "</div><!--/b-->";
+    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
-  $$ctx.slots($$s1, [theme, show]);
+  $$b.setSlots($$s1, [theme, show]);
   return $$html;
 }
 

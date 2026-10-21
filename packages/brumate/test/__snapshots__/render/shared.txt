@@ -48,8 +48,6 @@ export const h3 = ($$s) => bump$($$s, 2);
 # Client part: update
 import * as $$b from 'brumate/client';
 
-const $$ctx = $$b.context;
-
 export function u5($$s) {
   $$b.text($$s, 2, $$b.get($$s, 0));
 }
@@ -69,17 +67,15 @@ import * as $$b from 'brumate/client';
 export const STEP = 2;
 const label = 'Count';
 
-const $$ctx = $$b.context;
-
 export default function Shared($$props: Record<string, never>): string {
   let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Shared_1xpln25");
+  const $$s1 = $$b.createScope(1, undefined, "Shared_1xpln25");
   let count = (0);
   function bump(by: number) {
     count += by * STEP;
   }
   $$html += "<button class=\"one\" data-b=\"" + $$s1 + ":0\" data-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" data-b=\"" + $$s1 + ":1\" data-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
-  $$ctx.slots($$s1, [count]);
+  $$b.setSlots($$s1, [count]);
   return $$html;
 }
 

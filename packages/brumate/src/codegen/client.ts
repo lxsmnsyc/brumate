@@ -418,9 +418,6 @@ class ClientGenerator {
         `import { ${[...new Set(shared)].join(', ')} } from ${JSON.stringify(this.partPath('shared'))};`,
       );
     }
-    if (name === 'update') {
-      lines.push('', 'const $$ctx = $$b.context;');
-    }
     lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []), '');
     return lines.join('\n');
   }
@@ -438,8 +435,6 @@ class ClientGenerator {
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(imports, true),
-      '',
-      'const $$ctx = $$b.context;',
       '',
       ...this.serverStubs(names),
     ];
@@ -816,7 +811,7 @@ class ClientGenerator {
     if (site.kind === 'provide') {
       const context = site.extra![0]!;
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.provide($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.setContext($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
       );
       return;
     }
@@ -962,7 +957,7 @@ class ClientGenerator {
         // A new target moves the body: the old one is removed and the body renders into the new one.
         const body = this.plan.bodyScopes.get(block.body)!;
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.portal($$s, ${header(0)}, r${body.id}, [${body.id}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.portalTo($$s, ${header(0)}, r${body.id}, [${body.id}]);\n}`,
         );
         return;
       }
@@ -1089,7 +1084,7 @@ class ClientGenerator {
         )!;
         const target = this.rewriter.rewrite(header, '$$s', instanceScope(this.plan, base));
         this.emit(
-          `export function k${scope.id}($$s) {\n  $$b.portal($$s, ${target}, r${scope.id});\n}`,
+          `export function k${scope.id}($$s) {\n  $$b.portalTo($$s, ${target}, r${scope.id});\n}`,
         );
       }
       if (block.kind === 'client') {

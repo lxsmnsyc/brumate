@@ -145,12 +145,12 @@ Use `:prevent` rather than calling `event.preventDefault()` in the handler. The 
 
 ### Loading handlers early
 
-The code of a handler loads when the pointer moves over its element, or when the element gets focus, so it is often ready before the click. `prefetch` on the element changes when:
+The code of a handler loads when the pointer moves over its element, or when the element gets focus, so it is often ready before the click. Once the page has loaded and the browser is idle, it also loads for elements in or near the viewport. See [Idle preload](./client-modules.md#idle-preload). `prefetch` on the element changes when:
 
-- `prefetch="hover"`, the default: on pointer over or focus.
+- `prefetch="hover"`, the default: on pointer over or focus, and near the viewport once the page is idle.
 - `prefetch="visible"`: when the element enters the viewport.
 - `prefetch="idle"`: when the browser is idle after the page loads.
-- `prefetch="none"`: only when the event fires.
+- `prefetch="none"`: only when the event fires. Idle preload skips it too.
 
 ```brm
 <button prefetch="visible" onClick=checkout>Buy</button>
