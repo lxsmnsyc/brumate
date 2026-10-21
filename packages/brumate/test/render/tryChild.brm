@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Broken from './Broken.brm';
+
+  let label = $signal('label');
+</script>
+
+<button class="rename" onClick=(() => (label = 'other'))>Rename</button>
+#try {
+  <Broken label=label />
+} #catch {
+  <p class="gone">Gone</p>
+}

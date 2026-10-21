@@ -264,6 +264,17 @@ describe('#loading', () => {
   });
 });
 
+describe('#try', () => {
+  it('leaves the scopes of a body that threw out of the state', async () => {
+    const module = await import(new URL('tryChild.brm.ts', output).href);
+    const { html, state } = await renderParts(module.default, {});
+    expect(html).toContain('<p class="gone"');
+    expect(html).not.toContain('broken');
+    // The client would resume the component, and update markup that was never sent.
+    expect(state).not.toContain('Broken_');
+  });
+});
+
 describe('memos that read memos', () => {
   it('does not wait for a memo that only a #loading body reads, through another memo', async () => {
     const module = await import(new URL('loadingChain.brm.ts', output).href);

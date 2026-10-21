@@ -1142,13 +1142,22 @@ export class Emitter {
       case 'try': {
         const before = this.unique('before');
         const error = this.unique('error');
+        const server = this.options.mode === 'server';
+        const first = server ? this.unique('scope') : undefined;
         this.open(scope, block);
         this.flush();
         this.line(`const ${before} = $$html;`);
+        if (first) {
+          this.line(`const ${first} = $$ctx.peek();`);
+        }
         this.line('try {');
         this.emitBody(block.body);
         this.close(`} catch (${error}) {`);
         this.line(`$$html = ${before};`);
+        // The body's markup is not sent, so the client must not resume its scopes.
+        if (first) {
+          this.line(`$$ctx.drop(${first});`);
+        }
         if (block.error) {
           this.line(`const ${block.error.name} = ${error};`);
         }

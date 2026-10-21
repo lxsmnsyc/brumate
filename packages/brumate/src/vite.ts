@@ -193,19 +193,6 @@ function shapeOf(result: CompileResult): Shape {
   };
 }
 
-/** The functions of a file of server functions, by their IDs, for a module of it. */
-function fileFunctions(
-  id: string,
-  module: Record<string, unknown>,
-  hideNames: boolean,
-): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(module)
-      .filter(([, value]) => typeof value === 'function')
-      .map(([name, value]) => [functionId(id, name, hideNames), value]),
-  );
-}
-
 /** What Vitest passes to `configureVitest`, the part that this plugin uses. */
 interface VitestContext {
   defineCacheKeyGenerator?: (generate: () => string) => void;
@@ -499,7 +486,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return;
     }
     try {
-      const module = await server.ssrLoadModule(file);
+      // Every server function of the app, as in production, so `event.refresh` can name a
+      // function of another file, such as a component's call that refreshes a 'use server' file.
+      const { functions } = await server.ssrLoadModule(SERVER);
       const { handleRequest } = await server.ssrLoadModule('brumate/server');
       // The same path as production, so server functions can read the request.
       const webRequest = new Request(new URL(request.url ?? '/', 'http://localhost'), {
@@ -509,9 +498,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const functions = serverFiles.has(owner)
-        ? fileFunctions(owner, module, !isServe)
-        : (module.rpc ?? {});
       const answer: Response = await handleRequest(functions, webRequest, rpc, {
         origins: options.origins,
       });

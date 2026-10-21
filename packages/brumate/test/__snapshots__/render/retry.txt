@@ -18,10 +18,12 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
   const $$s1 = $$ctx.scope(1, undefined, "Retry_pyus3c");
   $$html += "<!--b" + $$s1 + ":0-->";
   const $$before0 = $$html;
+  const $$scope2 = $$ctx.peek();
   try {
     $$html += "<p class=\"ok\">" + (typeof ($$t = $$b.insert((check()), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   } catch ($$error1) {
     $$html = $$before0;
+    $$ctx.drop($$scope2);
     const error = $$error1;
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);

@@ -229,6 +229,24 @@ export class Context {
     return this.root.nextScope;
   }
 
+  /**
+   * Forgets the scopes of this render from `from` on, such as those of a
+   * `#try` body that threw, so the client does not resume markup that was
+   * never sent. `#loading` bodies render in contexts of their own, so their
+   * scopes stay.
+   */
+  drop(from: number): void {
+    for (const key of Object.keys(this.state)) {
+      const id = Number(key);
+      if (id >= from) {
+        delete this.state[id];
+        this.root.slotNames.delete(id);
+        this.root.tree.delete(id);
+        this.sources.delete(id);
+      }
+    }
+  }
+
   private record(scope: number): ScopeState {
     this.state[scope] ??= {};
     return this.state[scope];

@@ -1,0 +1,12 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { label } = $props<{ label: string }>();
+  let clicks = $signal(0);
+
+  function fail(text: string): string {
+    throw new Error(`No ${text}`);
+  }
+</script>
+
+<button class="broken" onClick=(() => clicks++)>{fail(label)} {clicks}</button>

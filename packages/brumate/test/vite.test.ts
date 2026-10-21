@@ -257,6 +257,45 @@ describe('files of server functions', () => {
     }
   });
 
+  it('refreshes a function of a file from a call of a component in development', async () => {
+    const directory = fileURLToPath(new URL('./.output/server-refresh/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(
+      `${directory}notes.ts`,
+      "'use server';\n\nexport async function listNotes() {\n  return ['one'];\n}\n",
+    );
+    writeFileSync(
+      `${directory}Notes.brm`,
+      "<script>\n  import { $memo } from 'brumate/signals';\n  import { getEvent } from 'brumate/server';\n  import { listNotes } from './notes.ts';\n  async function add() {\n    'use server';\n    getEvent().refresh(listNotes);\n  }\n  const notes = $memo(listNotes());\n</script>\n<button onClick=(() => add())>{notes.length}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { functions } = await dev.ssrLoadModule('virtual:brumate/server');
+      const ids = Object.keys(functions);
+      const add = ids.find((id) => id.endsWith('#add'))!;
+      const list = ids.find((id) => id.endsWith('#listNotes'))!;
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const response = await fetch(`http://localhost:${port}/_brumate/${encodeURIComponent(add)}`, {
+        method: 'POST',
+        body: JSON.stringify(toJSON([])),
+      });
+      http.close();
+      expect(response.status).toBe(200);
+      // The page loads the memos that call the function of the file again, as in production.
+      expect(response.headers.get('x-brumate-refresh')).toBe(list);
+    } finally {
+      await dev.close();
+    }
+  });
+
   it('refuses an export that is not a function', () => {
     expect(() =>
       serverStubs("'use server';\nexport const limit = 5;\n", 'limits.ts', 'limits_1'),
