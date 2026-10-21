@@ -62,6 +62,11 @@ export type Mount = <P>(
   renderOptions?: RenderOptions,
 ) => Promise<Mounted>;
 
+/** Mounts so far, so each starts its scope IDs at a number of its own. */
+let mounts = 0;
+/** The loader that the mounts of the document share, and how many mounts use it. */
+let loader: { stop: () => void; users: number } | undefined;
+
 /** Returns `mount`, which loads client modules with `options.load`. */
 export function createMount(options: TestingOptions): Mount {
   /**
@@ -74,11 +79,29 @@ export function createMount(options: TestingOptions): Mount {
     props: P,
     renderOptions: RenderOptions = {},
   ): Promise<Mounted> {
-    const { html, state, pending } = await render(component, props, renderOptions);
+    // IDs of their own, so two mounts in a file do not share scopes or state references.
+    const base = renderOptions.base ?? ++mounts * 1_000_000;
+    const { html, state, pending } = await render(component, props, { ...renderOptions, base });
     const container = document.createElement('div');
     container.innerHTML = html + state;
     document.body.append(container);
-    const stop = start({ load: options.load, rpc: options.rpc, navigate: false });
+    // One loader for the document, as a page has, however many mounts are in it.
+    loader ??= {
+      stop: start({ load: options.load, rpc: options.rpc, navigate: false }),
+      users: 0,
+    };
+    loader.users++;
+    let mounted = true;
+    const stop = (): void => {
+      if (!mounted || !loader) {
+        return;
+      }
+      mounted = false;
+      if (--loader.users === 0) {
+        loader.stop();
+        loader = undefined;
+      }
+    };
     void (async () => {
       for await (const chunk of pending) {
         append(container, chunk);
