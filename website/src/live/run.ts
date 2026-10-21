@@ -291,16 +291,33 @@ export async function runSample(
     }
   })();
 
-  const result = compiled.get(entry)!;
   if (!isLatest()) {
     return undefined;
   }
+  // Every file of the sample, in the order of the sample, with each name before its modules.
+  const outputs: { name: string; code: string }[] = [];
+  for (const file of files) {
+    const name = path(file.name);
+    const result = compiled.get(name);
+    if (result) {
+      outputs.push(
+        { name: `${file.name}: client entry`, code: result.client },
+        ...Object.entries(result.parts).map(([part, code]) => ({
+          name: `${file.name}: part ${part}`,
+          code,
+        })),
+        { name: `${file.name}: server`, code: result.server },
+      );
+    } else if (file.name.endsWith('.brm.ts')) {
+      // A module of reactive logic: components copy its functions, and the browser shares this code.
+      outputs.push({
+        name: `${file.name}: shared browser code`,
+        code: generateShared({ path: name, source: file.source }).code,
+      });
+    }
+  }
   return {
-    modules: [
-      { name: 'client entry', code: result.client },
-      ...Object.entries(result.parts).map(([name, code]) => ({ name: `part ${name}`, code })),
-      { name: 'server', code: result.server },
-    ].map((module) => ({ name: module.name, code: clean(module.code) })),
+    modules: outputs.map((module) => ({ name: module.name, code: clean(module.code) })),
     warnings,
   };
 }
