@@ -476,16 +476,25 @@ export function actionResult(ctx: Context, fn: unknown): unknown {
  * Renders a value inserted in markup. `ctx` and `scope` are where it is
  * inserted, for markup that renders there.
  */
-export async function insert(value: unknown, ctx?: Context, scope?: number): Promise<string> {
-  const resolved = await value;
-  if (isLazy(resolved) && ctx) {
-    return resolved[LAZY](ctx, scope);
+export function insert(value: unknown, ctx?: Context, scope?: number): string | Promise<string> {
+  // A value that is ready renders without a promise, because most inserts are plain text.
+  if (
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  ) {
+    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope));
   }
-  if (Array.isArray(resolved)) {
-    const parts = await Promise.all(resolved.map((item) => insert(item, ctx, scope)));
-    return parts.join('');
+  if (isLazy(value) && ctx) {
+    return value[LAZY](ctx, scope);
   }
-  return insertValue(resolved);
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => insert(item, ctx, scope));
+    return parts.every((part) => typeof part === 'string')
+      ? parts.join('')
+      : Promise.all(parts).then((all) => all.join(''));
+  }
+  return insertValue(value);
 }
 
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
@@ -495,7 +504,7 @@ export type Component<P = any> = (props: P, ctx: Context) => Promise<string>;
  * Renders a child component. With `scope` and `anchor`, records the child's
  * scope so the parent can update its props on the client.
  */
-export async function component<P>(
+export function component<P>(
   Child: Component<P>,
   props: P,
   ctx: Context,
@@ -512,13 +521,13 @@ export async function component<P>(
 }
 
 /** Renders a dynamic tag, which can be an element name or a component. */
-export async function dynamic(
+export function dynamic(
   tag: string | Component,
   attributes: Record<string, unknown>,
   children: Raw | undefined,
   ctx: Context,
   scope?: number,
-): Promise<string> {
+): string | Promise<string> {
   if (typeof tag === 'function') {
     return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
   }

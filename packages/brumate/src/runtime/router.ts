@@ -188,12 +188,17 @@ export const missingPage: Loader = () => {
   throw new Error('This path has an endpoint and no page');
 };
 
-/** Finds the route for a path. */
+/** Finds the route for a path. A path with a malformed escape, such as `/%E0`, matches none. */
 export function matchRoute(tree: RouteNode, pathname: string): RouteMatch | undefined {
-  const segments = pathname
-    .split('/')
-    .filter(Boolean)
-    .map((segment) => decodeURIComponent(segment));
+  let segments: string[];
+  try {
+    segments = pathname
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment));
+  } catch {
+    return undefined;
+  }
   return matchNode(tree, segments, {});
 }
 

@@ -307,6 +307,58 @@ describe('navigate', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('settles without an error when a later navigation stops it', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = '<p>a</p>';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (url: string, init: RequestInit) =>
+          new Promise<Response>((resolve, reject) => {
+            if (url.endsWith('/slow')) {
+              init.signal!.addEventListener('abort', () =>
+                reject(new DOMException('Aborted', 'AbortError')),
+              );
+              return;
+            }
+            resolve(
+              new Response('<!doctype html><html><body><p>fast</p></body></html>', {
+                headers: { 'content-type': 'text/html' },
+              }),
+            );
+          }),
+      ),
+    );
+    const slow = navigate({ url: '/slow', push: true, leave: async () => {}, enter: () => {} });
+    await navigate({ url: '/fast', push: true, leave: async () => {}, enter: () => {} });
+    await expect(slow).resolves.toBeUndefined();
+    expect(document.body.textContent).toBe('fast');
+  });
+
+  it('stops pages that loaded early when a navigation does not use them', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = '<p>a</p>';
+    const signals = new Map<string, AbortSignal>();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit) => {
+        signals.set(url, init.signal!);
+        return new Response('<!doctype html><html><body><p>page</p></body></html>', {
+          headers: { 'content-type': 'text/html' },
+        });
+      }),
+    );
+    prefetch('http://localhost:3000/unused');
+    await navigate({
+      url: 'http://localhost:3000/other',
+      push: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(signals.get('http://localhost:3000/unused')!.aborted).toBe(true);
+    expect(signals.get('http://localhost:3000/other')!.aborted).toBe(false);
+  });
+
   it('swaps the page inside a view transition, with the type of the visit', async () => {
     document.head.innerHTML = '<title>A</title>';
     document.body.innerHTML = '<p>old</p>';

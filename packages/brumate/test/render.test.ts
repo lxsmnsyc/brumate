@@ -2,7 +2,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
-import { render as renderParts, renderToStream } from '../src/runtime/server.ts';
+import { insert, render as renderParts, renderToStream } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
 
 const input = new URL('./render/', import.meta.url);
@@ -148,6 +148,12 @@ async function readAll(
 
 describe('documents', () => {
   const scripts = '<script type="module" async src="/client.js"></script>';
+
+  it('inserts values that are ready without a promise', async () => {
+    expect(insert('<a>')).toBe('&lt;a&gt;');
+    expect(insert(['a', 1, null])).toBe('a1');
+    expect(await insert(['a', Promise.resolve('b')])).toBe('ab');
+  });
 
   it('renders a complete document', async () => {
     const module = await import(`${new URL('document.brm.ts', output).href}?string`);

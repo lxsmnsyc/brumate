@@ -217,6 +217,14 @@ describe('error and loading files', () => {
     expect(await response!.text()).toContain('<h1 class="root-error">Error 404: Not found</h1>');
   });
 
+  it('answers 404 to a path with a malformed escape', async () => {
+    const response = await handleRoute(
+      { layout: tree.layout, error: tree.error, page: tree.page },
+      new Request('http://localhost/%E0'),
+    );
+    expect(response?.status).toBe(404);
+  });
+
   it('streams a route in after its loading file', async () => {
     const module = await import(new URL('slow/index.brm.ts', output).href);
     const response = await handleRoute(tree, new Request('http://localhost/slow'));

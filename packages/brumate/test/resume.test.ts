@@ -606,6 +606,14 @@ describe('resume', () => {
       ],
     });
     expect(text('p')).toBe('1 left');
+    // Items that stay in place are not moved when the list changes.
+    const removed: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        removed.push(...record.removedNodes);
+      }
+    });
+    observer.observe(document.querySelector('ul')!, { childList: true });
 
     const field = document.querySelector('input')!;
     field.value = 'Ship it';
@@ -617,6 +625,8 @@ describe('resume', () => {
     await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(3));
     expect(text('li:last-child')).toContain('Ship it');
     expect(text('p')).toBe('2 left');
+    observer.disconnect();
+    expect(removed).toEqual([]);
     expect(field.value).toBe('');
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]![0]).toBe('/_brumate/Todos_t3g9lr%23persist');

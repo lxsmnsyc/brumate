@@ -416,7 +416,10 @@ function scroll(url: URL, saved: number | undefined): void {
  * streams after it, such as `#loading` bodies, follows as it arrives.
  */
 // Pages that a link started to load before its click, by URL without the hash.
-const prefetched = new Map<string, { at: number; base: number; response: Promise<Response> }>();
+const prefetched = new Map<
+  string,
+  { at: number; base: number; response: Promise<Response>; controller: AbortController }
+>();
 
 /** How long a page that loaded early is used, in milliseconds. */
 const FRESH = 10_000;
@@ -431,11 +434,29 @@ export function prefetch(url: string): void {
   if (entry && performance.now() - entry.at < FRESH) {
     return;
   }
+  entry?.controller.abort();
   const requested = base();
-  const response = fetch(key, { headers: { 'x-brumate-base': String(requested) } });
+  const loading = new AbortController();
+  const response = fetch(key, {
+    headers: { 'x-brumate-base': String(requested) },
+    signal: loading.signal,
+  });
+  const next = { at: performance.now(), base: requested, response, controller: loading };
   // A failed load is not used. The click loads the page again.
-  response.catch(() => prefetched.delete(key));
-  prefetched.set(key, { at: performance.now(), base: requested, response });
+  response.catch(() => {
+    if (prefetched.get(key) === next) {
+      prefetched.delete(key);
+    }
+  });
+  prefetched.set(key, next);
+}
+
+/** Stops the pages that loaded early and were not used, so they free their connections. */
+function clearPrefetched(): void {
+  for (const entry of prefetched.values()) {
+    entry.controller.abort();
+  }
+  prefetched.clear();
 }
 
 /** The response of a page that loaded early for these IDs, if it is still fresh. */
@@ -443,10 +464,15 @@ function takePrefetched(url: string, requested: number): Promise<Response> | und
   const key = url.split('#')[0]!;
   const entry = prefetched.get(key);
   prefetched.delete(key);
-  return entry && entry.base === requested && performance.now() - entry.at < FRESH
-    ? entry.response
-    : undefined;
+  if (entry && entry.base === requested && performance.now() - entry.at < FRESH) {
+    return entry.response;
+  }
+  entry?.controller.abort();
+  return undefined;
 }
+
+// The end of the first render, which can be split across chunks.
+const HTML_END = /<\/html\s*>/gi;
 
 export async function navigate(visit: Visit): Promise<void> {
   // Read before the page changes, while the scripts of the loaded page are in it.
@@ -465,12 +491,19 @@ export async function navigate(visit: Visit): Promise<void> {
     response = await (early ??
       fetch(visit.url, { ...visit.init, headers, signal: current.signal }));
     // Other pages loaded for this page, whose IDs no longer fit the next one.
-    prefetched.clear();
+    clearPrefetched();
   } catch (error) {
-    if (!current.signal.aborted) {
-      location.assign(visit.url);
+    // A later navigation stopped this one.
+    if (current.signal.aborted) {
+      return;
     }
+    location.assign(visit.url);
     throw error;
+  }
+  if (current.signal.aborted) {
+    // A page that loaded early is not tied to the signal, so its body is cancelled here.
+    response.body?.cancel().catch(() => {});
+    return;
   }
   const type = response.headers.get('content-type') ?? '';
   if (!type.includes('text/html') || !response.body) {
@@ -488,24 +521,45 @@ export async function navigate(visit: Visit): Promise<void> {
   const url = new URL(response.url || visit.url, location.href);
   url.hash = new URL(visit.url, location.href).hash;
   const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+  // Frees the connection of a page that a later navigation replaced.
+  const stop = (): void => {
+    reader.cancel().catch(() => {});
+  };
+  // The next chunk, or nothing once a later navigation started.
+  const read = async (): Promise<ReadableStreamReadResult<string> | undefined> => {
+    try {
+      const chunk = await reader.read();
+      if (!current.signal.aborted) {
+        return chunk;
+      }
+    } catch (error) {
+      if (!current.signal.aborted) {
+        throw error;
+      }
+    }
+    stop();
+    return undefined;
+  };
 
   // The first render ends with </html>. What comes after it streams in later.
   let text = '';
   let end = -1;
   while (end === -1) {
     // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
-    const chunk = await reader.read();
-    if (current.signal.aborted) {
+    const chunk = await read();
+    if (!chunk) {
       return;
     }
     if (chunk.done) {
       end = text.length;
       break;
     }
+    // A tag split across chunks starts at the last `<` of the text so far.
+    HTML_END.lastIndex = Math.max(0, text.lastIndexOf('<'));
     text += chunk.value;
-    const index = text.search(/<\/html\s*>/i);
-    if (index !== -1) {
-      end = index + text.slice(index).indexOf('>') + 1;
+    const match = HTML_END.exec(text);
+    if (match) {
+      end = match.index + match[0].length;
     }
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
@@ -518,6 +572,7 @@ export async function navigate(visit: Visit): Promise<void> {
   const routes = visit.init ? undefined : planRoutes(next, requested);
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
+    stop();
     return;
   }
   await transition(visit, () => {
@@ -555,6 +610,7 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   });
   if (current.signal.aborted) {
+    stop();
     return;
   }
 
@@ -570,8 +626,8 @@ export async function navigate(visit: Visit): Promise<void> {
       append([...sink.body.childNodes].slice(0, -1), shift);
     }
     // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
-    const chunk = await reader.read();
-    if (current.signal.aborted) {
+    const chunk = await read();
+    if (!chunk) {
       return;
     }
     if (chunk.done) {

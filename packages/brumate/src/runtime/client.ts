@@ -483,6 +483,12 @@ export function leavePage(): void {
   pendingEffects.clear();
   loads.clear();
   loadingSlots.clear();
+  for (const memoController of memoControllers.values()) {
+    memoController.abort();
+  }
+  memoControllers.clear();
+  // The next page reuses scope IDs, so a guess left here would match its memos.
+  guesses.clear();
   nextId = -1;
   refs.clear();
   writes = 0;
@@ -994,8 +1000,21 @@ function destroy(scope: Scope): void {
   for (const cleanup of scope.cleanups?.values() ?? []) {
     cleanup();
   }
+  forgetMemos(scope);
   scopes.delete(scope.id);
   scope.p?.children.delete(scope);
+}
+
+/** Drops the memo state of a removed scope. A load that settles later is not written. */
+function forgetMemos(scope: Scope): void {
+  for (let slot = 0; slot < scope.s.length; slot++) {
+    const key = `${scope.id}:${slot}`;
+    memoControllers.get(key)?.abort();
+    memoControllers.delete(key);
+    loads.delete(key);
+    loadingSlots.delete(key);
+    guesses.delete(key);
+  }
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
@@ -1350,6 +1369,9 @@ export function list(
     node.parentNode?.removeChild(node);
   }
   const parent = end.parentNode!;
+  // The first node after the items placed so far. An item already there is not
+  // moved, because moving a node restarts its animations and drops its focus.
+  let cursor: Node = start.nextSibling!;
   items.forEach((value, index) => {
     const id = key(value, index);
     const item = previous.get(id);
@@ -1357,11 +1379,15 @@ export function list(
       previous.delete(id);
       // Slots that keep their values do not trigger updates.
       assign(item.scope, value, index);
-      for (const node of item.nodes) {
-        parent.insertBefore(node, end);
+      if (item.nodes[0] === cursor) {
+        cursor = item.nodes.at(-1)!.nextSibling!;
+      } else {
+        for (const node of item.nodes) {
+          parent.insertBefore(node, cursor);
+        }
       }
     } else {
-      insertHTML(end, render(scope, value, index));
+      insertHTML(cursor, render(scope, value, index));
     }
   });
   for (const item of previous.values()) {
