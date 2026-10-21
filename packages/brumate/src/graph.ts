@@ -37,6 +37,7 @@ export interface Graph {
 const SOURCE_KINDS = new Set<DeclarationKind>([
   'context',
   'signal',
+  'action',
   'prop',
   'props-rest',
   'item',
@@ -276,6 +277,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
           isLiveProp(declaration, options.liveProps)) ||
         // A provider above can change the value.
         declaration.kind === 'context' ||
+        // A form writes the result of its server function.
+        declaration.kind === 'action' ||
         (declaration.kind === 'signal' &&
           (declaration.writes.some((write) => reached.has(write.site)) ||
             declaration.refs.some((ref) => created.has(ref.scope)))) ||

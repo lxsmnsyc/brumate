@@ -95,6 +95,10 @@ Declares a read-only value computed from other values.
 
 On the server, it is always false.
 
+### `$action`
+
+`const result = $action(fn)` holds the latest result of a server function that a form of this component posts to. See [Server functions](./server-functions.md#results-with-action).
+
 ### `$id`
 
 `const name = $id()` returns an ID that is unique in the page, for attributes such as `for`, `id` and `aria-describedby`:

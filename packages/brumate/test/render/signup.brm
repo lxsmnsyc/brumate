@@ -1,0 +1,26 @@
+<script>
+  async function signUp(form: FormData) {
+    'use server';
+    const email = String(form.get('email') ?? '');
+    if (!email.includes('@')) {
+      return { error: 'Enter an email address', email: '' };
+    }
+    return { error: '', email };
+  }
+
+  const result = $action(signUp);
+</script>
+
+<form class="signup" action=signUp>
+  <input name="email">
+  <button>Sign up</button>
+</form>
+#if ($isPending(result)) {
+  <p class="pending">Sending</p>
+}
+#if (result?.error) {
+  <p class="error">{result.error}</p>
+}
+#if (result?.email) {
+  <p class="welcome">Welcome {result.email}</p>
+}

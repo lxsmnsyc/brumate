@@ -76,6 +76,14 @@ export class Context {
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
 
+  /** Results of server functions that a form posted to this page, for `$action`. */
+  actions: Map<unknown, unknown> = new Map();
+
+  /** The result of a server function that a form posted to this page. */
+  actionResult(fn: unknown): unknown {
+    return this.root.actions.get(fn);
+  }
+
   constructor(root?: Context, rpc?: string, base = 0) {
     this.root = root ?? this;
     if (rpc) {
@@ -388,8 +396,22 @@ function isLazy(value: unknown): value is Lazy {
 }
 
 /** Renders the attributes of a form or button that posts to a server function. */
-export function action(ctx: Context, name: string, id: string, method?: string): string {
-  return actionAttributes(ctx.rpc(), name, id, method);
+export function action(
+  ctx: Context,
+  name: string,
+  id: string,
+  method?: string,
+  result?: string,
+): string {
+  return actionAttributes(ctx.rpc(), name, id, method, result);
+}
+
+/**
+ * The result of a server function that a form posted to this page, for
+ * `$action`, or undefined when the page was not rendered for a post.
+ */
+export function actionResult(ctx: Context, fn: unknown): unknown {
+  return ctx.actionResult(fn);
 }
 
 /**
@@ -586,6 +608,8 @@ export interface RenderOptions {
   base?: number;
   /** Names the route of the page, so the client knows which layouts it can keep. */
   route?: string;
+  /** Results of server functions that a form posted to this page, by function, for `$action`. */
+  actions?: Map<unknown, unknown>;
   /**
    * The request of the page. Server functions that run while the page
    * renders can read it with `getRequest`, and set headers with
@@ -614,6 +638,9 @@ export async function render<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context(undefined, options.rpc, options.base);
+  if (options.actions) {
+    ctx.actions = options.actions;
+  }
   const response: ResponseParts = { headers: new Headers() };
   const run = (): Promise<string> => Root(props, ctx);
   const rendered = options.request
@@ -949,32 +976,50 @@ export async function handleRequest(
     return new Response(`Unknown server function "${id}"`, { status: 404 });
   }
   const headers = new Headers();
-  if (isFormPost(request)) {
+  // The loader sends a form of an `$action` with this header, and wants the result, not a page.
+  if (isFormPost(request) && !request.headers.has('x-brumate-result')) {
     return withRequest(request, { headers }, () => handleForm(functions[id]!, request, headers));
   }
+  if (isFormPost(request)) {
+    const form = await request.formData();
+    return withRequest(request, { headers }, () =>
+      answerCall(headers, async () =>
+        toJSONAsync(await functions[id]!(form), { plugins, disabledFeatures }),
+      ),
+    );
+  }
   const body = await request.json();
-  return withRequest(request, { headers }, async () => {
-    try {
-      const result = await handleRPC(functions, id, body);
-      headers.set('content-type', 'application/json');
-      return new Response(JSON.stringify(result), { headers });
-    } catch (error) {
-      if (error instanceof Redirect) {
-        headers.set('x-brumate-redirect', error.location);
-        return new Response(null, { status: 204, headers });
-      }
-      const known = error instanceof ServerError;
-      if (!known) {
-        console.error(error);
-      }
-      headers.set('content-type', 'application/json');
-      const message = known ? error.message : 'The server function failed';
-      return new Response(JSON.stringify({ error: message }), {
-        status: known ? error.status : 500,
-        headers,
-      });
+  return withRequest(request, { headers }, () =>
+    answerCall(headers, () => handleRPC(functions, id, body)),
+  );
+}
+
+/**
+ * Answers a server function call with its result as seroval JSON. A
+ * redirect is sent as a header, so the client can follow it. An error
+ * answers with a message that the client throws.
+ */
+async function answerCall(headers: Headers, run: () => Promise<SerovalJSON>): Promise<Response> {
+  try {
+    const result = await run();
+    headers.set('content-type', 'application/json');
+    return new Response(JSON.stringify(result), { headers });
+  } catch (error) {
+    if (error instanceof Redirect) {
+      headers.set('x-brumate-redirect', error.location);
+      return new Response(null, { status: 204, headers });
     }
-  });
+    const known = error instanceof ServerError;
+    if (!known) {
+      console.error(error);
+    }
+    headers.set('content-type', 'application/json');
+    const message = known ? error.message : 'The server function failed';
+    return new Response(JSON.stringify({ error: message }), {
+      status: known ? error.status : 500,
+      headers,
+    });
+  }
 }
 
 interface ResolvedView {
@@ -1014,20 +1059,82 @@ function viewComponent(view: ResolvedView, params: Record<string, string>): Comp
   };
 }
 
+export interface RouteOptions extends DocumentOptions, RequestOptions {
+  /** The server functions, by ID, for forms that post to a page. `virtual:brumate/routes` passes them. */
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  functions?: Record<string, (...args: any[]) => unknown>;
+}
+
+/**
+ * Runs the server function that a form without scripts posted to a page, as
+ * `?__action=<id>`. Returns its result for `$action`, or the response that
+ * answers the post instead of the page: a redirect, or an error.
+ */
+async function runAction(
+  request: Request,
+  id: string,
+  options: RouteOptions,
+  response: ResponseParts,
+): Promise<{ actions: Map<unknown, unknown> } | { answer: Response }> {
+  if (isCrossSite(request, options)) {
+    return { answer: new Response('Calls from other sites are not allowed', { status: 403 }) };
+  }
+  const fn = options.functions?.[id];
+  if (!fn) {
+    return { answer: new Response(`Unknown server function "${id}"`, { status: 404 }) };
+  }
+  try {
+    const form = await request.formData();
+    const result = await withRequest(request, response, () => fn(form));
+    return { actions: new Map([[fn, result]]) };
+  } catch (error) {
+    if (error instanceof Redirect) {
+      return {
+        answer: new Response(null, {
+          status: error.status,
+          headers: { location: new URL(error.location, request.url).href },
+        }),
+      };
+    }
+    const known = error instanceof ServerError;
+    if (!known) {
+      console.error(error);
+    }
+    return {
+      answer: new Response(known ? error.message : 'The server function failed', {
+        status: known ? error.status : 500,
+        headers: { 'content-type': 'text/plain; charset=utf-8' },
+      }),
+    };
+  }
+}
+
 /**
  * Answers a request with the route that matches its path, streamed. Returns
  * undefined when no route matches. A `redirect` while the page renders
- * answers with a redirect.
+ * answers with a redirect. A form without scripts that posts to the page
+ * with `?__action=<id>` runs that server function first, and the page
+ * renders with its result for `$action`.
  */
 export async function handleRoute(
   tree: RouteNode,
   request: Request,
-  options: DocumentOptions = {},
+  options: RouteOptions = {},
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);
   if (!match) {
     return undefined;
+  }
+  let actions: Map<unknown, unknown> | undefined;
+  const posted = url.searchParams.get('__action');
+  const actionResponse: ResponseParts = { headers: new Headers() };
+  if (request.method === 'POST' && posted !== null) {
+    const outcome = await runAction(request, posted, options, actionResponse);
+    if ('answer' in outcome) {
+      return outcome.answer;
+    }
+    actions = outcome.actions;
   }
   const view = await resolveView(match.view);
   try {
@@ -1039,11 +1146,14 @@ export async function handleRoute(
       {
         ...options,
         request,
+        actions,
         route: view.key,
         base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       },
     );
     const headers = new Headers(parts.headers);
+    // Headers that the server function of a form set, such as a cookie.
+    actionResponse.headers.forEach((value, name) => headers.append(name, value));
     headers.set('content-type', 'text/html; charset=utf-8');
     const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
     return new Response(body, { status: parts.status, headers });

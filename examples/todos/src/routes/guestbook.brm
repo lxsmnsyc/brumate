@@ -4,26 +4,33 @@
 </script>
 
 <script>
-  import { ServerError } from 'brumate/server';
-
   $title('Guestbook');
 
-  // A form posts here without client code. The browser comes back to the page after.
+  // A form posts here. Without scripts, the page renders again with the result.
+  // With the loader, the result arrives without loading a page.
   async function sign(form: FormData) {
     'use server';
     const name = String(form.get('name') ?? '').trim();
     if (!name) {
-      throw new ServerError('Enter a name', { status: 422 });
+      return { error: 'Enter a name', signed: entries.length };
     }
     entries.push(name);
+    return { error: '', signed: entries.length };
   }
+
+  const result = $action(sign);
 </script>
 
 <h1>Guestbook</h1>
 <form action=sign>
   <input name="name" placeholder="Your name">
-  <button>Sign</button>
+  <button disabled=($isPending(result))>Sign</button>
 </form>
+#if (result?.error) {
+  <p class="error">{result.error}</p>
+} #else if (result) {
+  <p class="signed">Thanks for signing. {result.signed} people have signed.</p>
+}
 <ul>
   #for (entry of entries by entry) {
     <li>{entry}</li>

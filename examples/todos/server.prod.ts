@@ -18,9 +18,11 @@ const TYPES: Record<string, string> = {
 const http = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   try {
+    // One request for both handlers, because its body can be read once.
+    const webRequest = await toRequest(request);
     // Server function calls.
     if (request.method === 'POST') {
-      const answer = await server.handle(await toRequest(request));
+      const answer = await server.handle(webRequest);
       if (answer) {
         send(answer, response);
         return;
@@ -39,7 +41,7 @@ const http = createServer(async (request, response) => {
       return;
     }
     // The route files under src/routes render the page.
-    const answer = await server.route(await toRequest(request), {
+    const answer = await server.route(webRequest, {
       scripts: `<script type="module" async src="${entry}"></script>`,
     });
     send(answer, response);

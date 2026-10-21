@@ -45,7 +45,8 @@ export type DeclarationKind =
   | 'reset'
   | 'template'
   | 'template-param'
-  | 'context';
+  | 'context'
+  | 'action';
 
 export interface Declaration {
   id: number;
@@ -64,6 +65,8 @@ export interface Declaration {
    * `const { user: { name } } = $props()`. Undefined for the props object.
    */
   propKey?: string;
+  /** For `const result = $action(fn)`, the name of the server function. */
+  action?: string;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** Elements whose `ref` targets this declaration. */

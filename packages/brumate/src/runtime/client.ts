@@ -1098,8 +1098,28 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
 }
 
 /** Renders the attributes of a form or button that posts to a server function. */
-export function action(name: string, id: string, method?: string): string {
-  return actionAttributes(options.rpc ?? '/_brumate', name, id, method);
+export function action(name: string, id: string, method?: string, result?: string): string {
+  return actionAttributes(options.rpc ?? '/_brumate', name, id, method, result);
+}
+
+/**
+ * Sends a form to the server function of its `$action`, and writes the
+ * result into the `$action` when it arrives. It is pending until then.
+ */
+export function submitAction(form: HTMLFormElement, submitter: HTMLElement | null): void {
+  const [scopeId, slot] = form.getAttribute('data-result')!.split(':').map(Number) as [
+    number,
+    number,
+  ];
+  const scope = scopes.get(scopeId);
+  if (!scope) {
+    return;
+  }
+  const data = new FormData(form, submitter);
+  const sent = import('./rpc.ts').then(({ submit }) =>
+    submit(options.rpc ?? '/_brumate', form.getAttribute('data-action')!, data),
+  );
+  asyncMemo(scope, slot, sent);
 }
 
 /** Calls a server function. */

@@ -44,7 +44,15 @@ const MUTATORS = new Set([
 ]);
 
 /** Declarations whose value the client tracks. Changing their value in place updates nothing. */
-const REACTIVE = new Set<string>(['signal', 'memo', 'async-memo', 'prop', 'props-rest', 'item']);
+const REACTIVE = new Set<string>([
+  'signal',
+  'memo',
+  'async-memo',
+  'prop',
+  'props-rest',
+  'item',
+  'action',
+]);
 
 const COMPILE_TIME_FUNCTIONS = new Set([
   '$props',
@@ -59,6 +67,7 @@ const COMPILE_TIME_FUNCTIONS = new Set([
   '$context',
   '$id',
   '$title',
+  '$action',
 ]);
 
 const MISPLACED: Record<string, string> = {
@@ -69,6 +78,8 @@ const MISPLACED: Record<string, string> = {
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $action:
+    'Declare the result of a form with "const name = $action(serverFunction)" at the top level of a script',
   $effect: 'Call $effect at the top level of a script',
   $client: 'Call $client at the top level of a script',
 };
@@ -558,6 +569,29 @@ class Analyzer {
       return;
     }
 
+    if (name === '$action') {
+      const argument = call.arguments[0];
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report(
+          'error',
+          'Declare the result of a form with "const name = $action(serverFunction)"',
+          declarator,
+        );
+        return;
+      }
+      if (argument?.type !== 'Identifier' || call.arguments.length !== 1) {
+        this.report(
+          'error',
+          '$action needs a server function of this file as its only argument',
+          call,
+        );
+        return;
+      }
+      const declaration = this.addDeclaration(scope, id.name, 'action', id);
+      declaration.action = argument.name;
+      return;
+    }
+
     if (name === '$signal' || name === '$memo') {
       const expected = name === '$signal' ? 'let' : 'const';
       if (kind !== expected) {
@@ -965,6 +999,18 @@ class Analyzer {
   }
 
   private check(): void {
+    for (const declaration of this.declarations) {
+      if (declaration.kind === 'action') {
+        const target = lookup(declaration.scope, declaration.action!);
+        if (target?.kind !== 'server-function') {
+          this.report(
+            'error',
+            `$action needs a server function of this file, and ${declaration.action} is not one`,
+            declaration.range,
+          );
+        }
+      }
+    }
     for (const site of this.sites) {
       for (const write of site.writes) {
         const declaration = write.declaration;

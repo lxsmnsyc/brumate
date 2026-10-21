@@ -116,6 +116,40 @@ A form can post to a server function. It works without client code, so it works 
 
 The form uses the `rpc` prefix of the render, which defaults to `/_brumate`. `virtual:brumate/routes` passes the prefix of the plugin.
 
+### Results with `$action`
+
+A form often needs the answer of its server function, such as an error to show next to a field. `$action(fn)` holds the latest result:
+
+```html
+<script>
+  async function signUp(form: FormData) {
+    'use server';
+    const email = String(form.get('email'));
+    if (!email.includes('@')) {
+      return { error: 'Enter an email address' };
+    }
+    await save(email);
+    redirect('/welcome');
+  }
+
+  const result = $action(signUp);
+</script>
+
+<form action=signUp>
+  <input name="email">
+  <button disabled=($isPending(result))>Sign up</button>
+</form>
+#if (result?.error) {
+  <p class="error">{result.error}</p>
+}
+```
+
+- The result is undefined until the form is sent. Return errors as values, so the page can show them.
+- Without scripts, the form posts to its own page with `?__action=<id>`. The server runs the function, and renders the page with the result. A route answers this with `virtual:brumate/routes`, which passes the server functions to `handleRoute`. A custom server passes the result to `render` as `actions`.
+- With the loader, the form is sent with `fetch`, and the result is written into the page. `$isPending(result)` is true while it sends, and only the answer to the latest send is written.
+- A `redirect` in the function sends the browser to another page in both cases. A thrown error answers with its message, as other forms do.
+- The fields keep what was typed when the loader sends the form. Without scripts, the page renders again, so return the values that the fields should show.
+
 ## Calls from other sites
 
 Server function calls and form posts carry the cookies of the user, so a page of another site must not be able to make them. The server answers 403 to a call from another site:

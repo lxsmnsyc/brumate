@@ -677,3 +677,58 @@ describe('pending through memos', () => {
     expect(document.querySelector('.pending')).toBeNull();
   });
 });
+
+describe('$action', () => {
+  it('renders the result of a form post to the page', async () => {
+    const server = await import(file('signup.brm.ts'));
+    const plain = await renderParts(server.default, {});
+    const form = /<form[^>]*>/.exec(plain.html)![0];
+    expect(form).toMatch(/action="\?__action=Signup_\w+%23signUp" method="post"/);
+    expect(form).toMatch(/data-action="Signup_\w+#signUp" data-result="\d+:\d+"/);
+    expect(plain.html).not.toContain('class="error"');
+    // A page that renders for a post gets the result of the server function.
+    const signUp = Object.values(server.rpc)[0];
+    const posted = await renderParts(
+      server.default,
+      {},
+      {
+        actions: new Map([[signUp, { error: 'Enter an email address', email: '' }]]),
+      },
+    );
+    expect(posted.html).toContain('<p class="error">');
+    expect(posted.html).toContain('Enter an email address');
+  });
+
+  it('sends the form with fetch and writes the result into the page', async () => {
+    vi.resetModules();
+    const server = await import(file('signup.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    let release: (() => void) | undefined;
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      await new Promise<void>((done) => {
+        release = done;
+      });
+      return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { html, state } = await runtime.render(server.default, {});
+    document.body.innerHTML = html + state;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+
+    const form = document.querySelector<HTMLFormElement>('.signup')!;
+    form.querySelector('input')!.value = 'nope';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    release!();
+    await waitFor(() => expect(text('.error')).toBe('Enter an email address'));
+    expect(document.querySelector('.pending')).toBeNull();
+
+    form.querySelector('input')!.value = 'ada@example.com';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
+    release!();
+    await waitFor(() => expect(text('.welcome')).toBe('Welcome ada@example.com'));
+    expect(document.querySelector('.error')).toBeNull();
+  });
+});

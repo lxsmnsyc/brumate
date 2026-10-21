@@ -72,6 +72,7 @@ export function routeModule(
   tree: RouteFiles,
   resolve: (file: string) => string,
   rpc = '/_brumate',
+  origins: string[] = [],
 ): string {
   // Static imports, because the server registry of server functions imports every file anyway.
   const imports: string[] = [];
@@ -108,10 +109,12 @@ export function routeModule(
   const routes = write(tree);
   return [
     "import { handleRoute } from 'brumate/server';",
+    // Forms without scripts post to their page, which runs the server function.
+    "import { functions } from 'virtual:brumate/server';",
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, ...options });`,
     '}',
   ].join('\n');
 }

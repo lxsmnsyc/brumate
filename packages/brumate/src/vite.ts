@@ -151,7 +151,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const paths = [...files.values()]
       .filter((file) => file.startsWith(`${directory}/`))
       .map((file) => file.slice(directory.length + 1));
-    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`, rpc);
+    return routeModule(routeFiles(paths), (file) => `${directory}/${file}`, rpc, options.origins);
   };
 
   const handleDevRPC = async (

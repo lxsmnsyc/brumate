@@ -54,12 +54,14 @@ export function start(options: LoaderOptions): () => void {
     removers.push(() => target.removeEventListener(type, listener, flags));
   };
 
-  const run = (element: Element, ref: string, event?: Event): void => {
-    core ??= import('./client.ts').then((client) => {
+  const loadCore = (): Promise<typeof Client> =>
+    (core ??= import('./client.ts').then((client) => {
       client.init({ ...options, listen: scan });
       return client;
-    });
-    void core.then((client) => client.handle(element, ref, event));
+    }));
+
+  const run = (element: Element, ref: string, event?: Event): void => {
+    void loadCore().then((client) => client.handle(element, ref, event));
   };
 
   const apply = (event: Event, element: Element, entry: Entry): boolean => {
@@ -203,6 +205,17 @@ export function start(options: LoaderOptions): () => void {
     if (element && strategy(element) === 'hover') {
       preload(element);
     }
+  });
+
+  // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
+  listen(document, 'submit', (event) => {
+    const form = event.target as HTMLFormElement;
+    if (event.defaultPrevented || !form.hasAttribute?.('data-result')) {
+      return;
+    }
+    event.preventDefault();
+    const submitter = (event as SubmitEvent).submitter;
+    void loadCore().then((client) => client.submitAction(form, submitter));
   });
 
   if (options.navigate !== false) {

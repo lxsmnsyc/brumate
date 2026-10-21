@@ -40,3 +40,11 @@ declare function $produce<T>(signal: T, recipe: (draft: T) => T | void): void;
 
 /** Sets the title of the page. The last component that sets it wins. */
 declare function $title(value: unknown): void;
+
+/**
+ * The latest result of a server function that a form of this component posts
+ * to, or undefined before the first post. Pending while the form sends.
+ */
+declare function $action<F extends (...args: any[]) => unknown>(
+  fn: F,
+): Awaited<ReturnType<F>> | undefined;

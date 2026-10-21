@@ -28,39 +28,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Server
 
-### Form actions with results
-
-A form that posts to a server function redirects back to its page, and an error shows as a page of text. A real form needs to show validation errors next to its fields, keep what was typed, and show that it is sending.
-
-```html
-<script>
-  async function signUp(form: FormData) {
-    'use server';
-    const email = String(form.get('email'));
-    if (!email.includes('@')) {
-      return { error: 'Enter an email address' };
-    }
-    await save(email);
-    redirect('/welcome');
-  }
-
-  const result = $action(signUp);
-</script>
-
-<form action=signUp>
-  <input name="email">
-  #if (result?.error) {
-    <p class="error">{result.error}</p>
-  }
-  <button disabled=($isPending(result))>Sign up</button>
-</form>
-```
-
-- `$action(fn)` is the latest result of the server function for this page, or undefined.
-- Without scripts, the server renders the page again with the result after the post, instead of a redirect. The page keeps the posted values in its fields.
-- With scripts, the loader sends the form with `fetch`, and the client writes the result into the page without loading another page. `$isPending` is true while it sends.
-- A `redirect` in the function still sends the browser to another page.
-
 ### Refreshing server data after an action
 
 A memo that reads a server function loads again on the client only when the values it reads change. After a server function changes data, such as adding a todo, the memos that show that data keep their old values.

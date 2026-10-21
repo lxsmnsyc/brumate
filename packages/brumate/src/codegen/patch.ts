@@ -69,6 +69,17 @@ export function addValueEdits(
         patch.replace(node.start, node.end, '$$props');
         return;
       }
+      if (name === '$action') {
+        // The server reads the result of a form post to this page. The client gets it from the state.
+        patch.replace(
+          node.start,
+          node.end,
+          mode === 'server' && argument?.type === 'Identifier'
+            ? `$$b.actionResult($$ctx, ${argument.name})`
+            : 'undefined',
+        );
+        return;
+      }
       if (name === '$isPending') {
         // Nothing loads again on the server.
         patch.replace(node.start, node.end, 'false');

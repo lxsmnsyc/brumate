@@ -576,9 +576,24 @@ export class Emitter {
       (attribute) => 'name' in attribute && attribute.name === method,
     );
     const methodArgument = hasMethod ? '' : `, ${JSON.stringify(method)}`;
+    // A form whose result a `$action` reads posts to its page, and the result is written into that slot.
+    const result = name === 'action' ? this.actionSlot(declaration) : undefined;
+    const resultArgument = result ? `${hasMethod ? ', undefined' : ''}, ${result}` : '';
     return this.options.mode === 'server'
-      ? `$$b.action($$ctx, ${JSON.stringify(name)}, ${ref}${methodArgument})`
-      : `$$b.action(${JSON.stringify(name)}, ${ref}${methodArgument})`;
+      ? `$$b.action($$ctx, ${JSON.stringify(name)}, ${ref}${methodArgument}${resultArgument})`
+      : `$$b.action(${JSON.stringify(name)}, ${ref}${methodArgument}${resultArgument})`;
+  }
+
+  /** The `scope:slot` of the `$action` that reads the result of a server function, as code. */
+  private actionSlot(fn: Declaration): string | undefined {
+    const declaration = this.plan.graph.model.declarations.find(
+      (item) => item.kind === 'action' && item.action === fn.name,
+    );
+    const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+    if (!declaration || slot === -1) {
+      return undefined;
+    }
+    return `\`\${${this.scopeVar(instanceScope(this.plan, declaration.scope))}}:${slot}\``;
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
