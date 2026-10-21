@@ -47,6 +47,8 @@
   - The browser runs the scripts, which is not `eval`. Under a Content Security Policy they need the `nonce` of the render.
   - The code is smaller than the JSON nodes and faster to write. On the `/` page of `examples/todos`, the state is 673 B instead of 1485 B, and the benchmark renders about 1.5 times as many pages per second.
   - The core does not need seroval's reader for the page, so seroval loads with the first server function call. The core is 7.6 KB gzip instead of 15 KB.
+  - Records of scopes with the same kind, parent and shape, such as the items of a list, go in one flat array per group. Each item then costs its slots and the gap to the ID before it, instead of an object with `k`, `p`, its slots array and a copy of its item. The core rebuilds the records when it reads the page. In the benchmark, one more todo costs 214 B of HTML instead of 254 B, 26 B gzip instead of 36 B, and 100 todos render about 1.4 times as fast. The core grows by 148 B gzip.
+  - The kind and the parent of an item are not read from the markers in the page. The core reads the state before it has the components' code, and markers carry only the scope ID, so they would need more bytes for the same information.
 - Scope IDs are integers given in render order. A render can start above another one with `base`, so several roots and pages that the client loads in place never share IDs.
 - A child component keeps its props in its own slots. The parent links to the child's scope to update them.
 - The compiler splits client roots and server functions into modules itself. It does not use another splitter. A component whose parts are small in all ships them as one module, because one request costs more than the bytes it saves.

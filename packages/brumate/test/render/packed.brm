@@ -1,0 +1,39 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import Child from './Child.brm';
+
+  interface Row { id: string; label: string; tags: string[] }
+  const { initial } = $props<{ initial: Row[] }>();
+  let rows = $signal(initial);
+  let picked = $signal(new Set(['a', 'b']));
+  let count = $signal(2);
+
+  function rename(id: string) {
+    rows = rows.map((row) => (row.id === id ? { ...row, label: `${row.label}!` } : row));
+  }
+</script>
+
+<button class="reverse" onClick=(() => (rows = [...rows].reverse()))>Reverse</button>
+<button class="add" onClick=(() => (rows = [...rows, { id: String(rows.length + 1), label: `Row ${rows.length + 1}`, tags: ['new'] }]))>Add</button>
+<button class="drop" onClick=(() => (rows = rows.slice(1)))>Drop</button>
+<button class="pick" onClick=(() => (picked = new Set([...picked, 'c'])))>Pick</button>
+<button class="more" onClick=(() => (count = count + 1))>More</button>
+<ul>
+  #for ({ id, label, tags } of rows by id) {
+    <li class="row">
+      <span class="label" onClick=(() => rename(id))>{label}</span>
+      #for (tag, i of tags) {
+        <em>{i}:{tag}</em>
+      }
+      <Child value=(tags.length) onChange=((value) => (rows = rows.map((row) => (row.id === id ? { ...row, tags: [...row.tags, String(value)] } : row)))) />
+    </li>
+  }
+</ul>
+<ol>
+  #for (name of picked) {
+    <li class="picked">{name}</li>
+  }
+</ol>
+#repeat (n of count) {
+  <b>{n}</b>
+}

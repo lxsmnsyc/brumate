@@ -162,7 +162,7 @@ Minified, from the production build of `examples/todos`, with `gzip -9`:
 | Of that, Vite's preload helper                         | 1502 B  | 785 B  |
 | Loader with its registry and client navigation         | 6502 B  | 2756 B |
 | Navigation module, on the first link                   | 7489 B  | 3045 B |
-| Core                                                   | 20227 B | 7613 B |
+| Core                                                   | 20492 B | 7761 B |
 | Server function calls, with seroval, on the first call | 28831 B | 8861 B |
 | `App.brm`: one module with 3 handlers and the updates  | 1398 B  | 817 B  |
 | `Counter.brm`: one module                              | 324 B   | 267 B  |

@@ -169,4 +169,4 @@ export default function Search($$props: Record<string, never>): string {
 </ul>
 
 # State
-<script data-state data-scopes data-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},1:$R[4]={k:3,p:0,s:$R[5]=["apple"],i:"apple"},2:$R[6]={k:3,p:0,s:$R[7]=["apricot"],i:"apricot"},3:$R[8]={k:3,p:0,s:$R[9]=["banana"],i:"banana"}})))</script>
+<script data-state data-scopes data-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},g:$R[4]=[$R[5]=[3,0,1,1,1,"apple",1,"apricot",1,"banana"]]})))</script>

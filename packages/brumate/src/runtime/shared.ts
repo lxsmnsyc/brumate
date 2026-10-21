@@ -129,3 +129,29 @@ export interface ScopeState {
 
 /** The state of a page, by scope ID. */
 export type PageState = Record<number, ScopeState>;
+
+/**
+ * The flags of a group of scope records in `PackedState`:
+ * - `ITEM_SLOT`: the item of each scope is its first slot.
+ * - `ITEM`: each scope has its item after its slots.
+ * - `CHILDREN`: each scope has its child components after that.
+ * - `OWNER`: the scopes are component root scopes. `base` is the distance from the scope that
+ *   rendered each one, `o`, to the scope, and the first gap is from 0. Otherwise `base` is the
+ *   parent, `p`, of every scope.
+ * - `MODULE`: the group has the component ID of its scopes after its header.
+ */
+export const ITEM_SLOT = 1;
+export const ITEM = 2;
+export const CHILDREN = 4;
+export const OWNER = 8;
+export const MODULE = 16;
+
+/**
+ * The page state as the server writes it. Records of scopes that share their
+ * kind, their parent or owner, and their shape are in one group of `g`,
+ * such as the items of a list, instead of one object each. A group is a flat
+ * array: `[kind, base, flags, slotCount, module?, ...scopes]`, and each scope
+ * is its ID as the gap from the one before it (the first from `base`), its
+ * slots, and then its item and its child components, as `flags` says.
+ */
+export type PackedState = PageState & { g?: unknown[][] };

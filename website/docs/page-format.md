@@ -156,6 +156,20 @@ type PageState = Record<number, {
 }>;
 ```
 
+The server writes records that share their shape in groups, under the key `g`, such as the items of a list. Each scope in a group costs its slots and one number:
+
+```js
+// Three todo items of kind 2 in scope 0, whose item is their first slot.
+g: [[2, 0, 1, 1, 1, $R[4], 1, $R[5], 1, $R[6]]]
+```
+
+- A group is `[kind, base, flags, slotCount, module?, ...scopes]`.
+- Each scope is the gap from the ID before it, then its slots, then its item and its child components when the flags say so. The first gap is from `base`.
+- `base` is the parent, `p`, of every scope of the group. For the root scopes of components, flag 8, it is the distance from the scope that rendered each one, `o`, to its ID, and the first gap is from 0.
+- The flags are 1 when the item is the first slot, 2 when the item comes after the slots, 4 when the child components `c` come after that, 8 for component root scopes, and 16 when `module` is in the header.
+- A group holds the fields `k`, `p`, `o`, `m`, `s`, `i` and `c`. A record with other fields, a record without a parent or an owner, and the only record of its shape keep their own object.
+- The core turns the groups back into one record per scope before it moves IDs or adds scopes.
+
 - The slot order is the order of the scope's slots in the compiled plan. Client modules read slots by index.
 - Errors keep their name and message only.
 - Regular expressions are not written or read.

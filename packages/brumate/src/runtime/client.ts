@@ -8,8 +8,18 @@ import {
   spread as spreadText,
 } from './html.ts';
 import type { Raw } from './html.ts';
-import { ElementReference, FunctionReference, isAsyncIterable, stateValues } from './shared.ts';
-import type { PageState, ScopeState } from './shared.ts';
+import {
+  CHILDREN,
+  ElementReference,
+  FunctionReference,
+  ITEM,
+  ITEM_SLOT,
+  MODULE,
+  OWNER,
+  isAsyncIterable,
+  stateValues,
+} from './shared.ts';
+import type { PackedState, PageState, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { affix, attribute, escape, raw, spread, vars } from './html.ts';
@@ -159,14 +169,14 @@ function readRecord([script, code]: StateRecord): void {
   if (!refs.has(root)) {
     refs.set(root, []);
   }
-  const decoded = code(refs.get(root)!, stateValues) as PageState;
-  // A page that started its IDs at another number, such as a prerendered file, moves them here.
-  // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
-  const offset = Number(script.getAttribute('data-offset') ?? 0);
-  const value =
-    offset && script.hasAttribute('data-scopes') ? shiftState(decoded, offset) : decoded;
+  const decoded = code(refs.get(root)!, stateValues);
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('data-scopes')) {
+    // A page that started its IDs at another number, such as a prerendered file, moves them here.
+    // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
+    const offset = Number(script.getAttribute('data-offset') ?? 0);
+    const unpacked = unpackState(decoded as PackedState);
+    const value = offset ? shiftState(unpacked, offset) : unpacked;
     // A page that replaced only some routes of the one before it: see `navigate`.
     const drop = script.getAttribute('data-drop');
     if (drop) {
@@ -215,6 +225,36 @@ function refresh(added: Scope[]): void {
       }
     });
   }
+}
+
+/** Reads the groups of scope records back into one record per scope. See `PackedState`. */
+function unpackState(state: PackedState): PageState {
+  for (const group of state.g ?? []) {
+    const [k, base, flags] = group as number[];
+    const count = group[3] as number;
+    const m = flags & MODULE ? (group[4] as string) : undefined;
+    let id = flags & OWNER ? 0 : base;
+    for (let at = m === undefined ? 4 : 5; at < group.length;) {
+      id += group[at++] as number;
+      const s = group.slice(at, (at += count));
+      const record: ScopeState = flags & OWNER ? { k, o: id - base } : { k, p: base };
+      record.s = s;
+      if (m !== undefined) {
+        record.m = m;
+      }
+      if (flags & ITEM_SLOT) {
+        record.i = s[0];
+      } else if (flags & ITEM) {
+        record.i = group[at++];
+      }
+      if (flags & CHILDREN) {
+        record.c = group[at++] as Record<number, number>;
+      }
+      state[id] = record;
+    }
+  }
+  delete state.g;
+  return state;
 }
 
 /** Adds a number to the scope IDs of a state record. */

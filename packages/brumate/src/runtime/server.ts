@@ -14,15 +14,20 @@ import {
 import type { Raw } from './html.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 import {
+  CHILDREN,
   ElementReference,
   FunctionReference,
+  ITEM,
+  ITEM_SLOT,
+  MODULE,
+  OWNER,
   Upload,
   functionReferences,
   isAsyncIterable,
   replaceDeep,
 } from './shared.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PageState, ScopeState } from './shared.ts';
+import type { PackedState, PageState, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -605,6 +610,80 @@ function scriptJSON(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+/** The fields that a record in a group of `PackedState` can have. */
+const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
+
+/**
+ * Writes the records of scopes with the same kind, parent and shape, such as
+ * the items of a list, in groups. Each one then costs its slots and the gap
+ * to the ID before it. See `PackedState`.
+ */
+export function packState(state: PageState): PackedState {
+  const result: PackedState = {};
+  const groups = new Map<
+    string,
+    { values: unknown[]; last: number; first: [number, ScopeState] }
+  >();
+  // Integer keys come in ascending order, so the gaps are positive.
+  for (const [key, record] of Object.entries(state)) {
+    const id = Number(key);
+    // The root scope of a component in a list item has its own owner, the item, at the same
+    // distance before it in each item. The parent of other scopes is the same for the group.
+    const base = record.p ?? (record.o === undefined ? undefined : id - record.o);
+    if (
+      record.k === undefined ||
+      base === undefined ||
+      (record.p !== undefined && record.o !== undefined) ||
+      !Object.keys(record).every((field) => PACKED_FIELDS.has(field))
+    ) {
+      result[id] = record;
+      continue;
+    }
+    const slots = record.s ?? [];
+    let flags = record.p === undefined ? OWNER : 0;
+    if ('i' in record) {
+      flags |= slots.length > 0 && Object.is(record.i, slots[0]) ? ITEM_SLOT : ITEM;
+    }
+    if (record.c) {
+      flags |= CHILDREN;
+    }
+    if (record.m !== undefined) {
+      flags |= MODULE;
+    }
+    const name = `${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
+    let group = groups.get(name);
+    if (!group) {
+      const values: unknown[] = [record.k, base, flags, slots.length];
+      if (record.m !== undefined) {
+        values.push(record.m);
+      }
+      group = { values, last: flags & OWNER ? 0 : base, first: [id, record] };
+      groups.set(name, group);
+    }
+    group.values.push(id - group.last, ...slots);
+    if (flags & ITEM) {
+      group.values.push(record.i);
+    }
+    if (flags & CHILDREN) {
+      group.values.push(record.c);
+    }
+    group.last = id;
+  }
+  const packed: unknown[][] = [];
+  for (const group of groups.values()) {
+    // A group of one scope is no shorter than its record.
+    if (group.last === group.first[0]) {
+      result[group.first[0]] = group.first[1];
+    } else {
+      packed.push(group.values);
+    }
+  }
+  if (packed.length > 0) {
+    result.g = packed;
+  }
+  return result;
+}
+
 /**
  * Serializes the page state as seroval cross-reference code, one record at
  * a time. The first record holds the state, and each later record settles a
@@ -617,7 +696,7 @@ function serializeState(
   onError: (error: unknown) => void,
   onDone: () => void,
 ): void {
-  crossSerializeStream(state, {
+  crossSerializeStream(packState(state), {
     plugins,
     disabledFeatures,
     refs,

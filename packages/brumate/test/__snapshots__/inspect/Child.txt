@@ -6,7 +6,7 @@ Client code
 
 Changes on the client
   prop value (4:11)
-    list.brm and parent.brm pass a value that changes
+    list.brm, packed.brm and parent.brm pass a value that changes
   insert (7:46)
     reads prop value
 

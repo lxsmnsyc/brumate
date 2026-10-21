@@ -1174,3 +1174,180 @@ describe('a promise passed as a prop', () => {
     expect(document.querySelector('.pending')).toBeNull();
   });
 });
+
+/** The records of the scopes of a render, as the server holds them before it writes them. */
+async function serverRecords(name: string, props: unknown): Promise<Record<number, unknown>> {
+  const server = await import(file(`${name}.brm.ts`));
+  const { Context } = await import('../src/runtime/server.ts');
+  const ctx = new Context();
+  await server.default(props, ctx);
+  return Object.fromEntries(
+    Object.entries(ctx.state).map(([id, record]) => [
+      id,
+      {
+        k: record.k,
+        p: record.p,
+        o: record.o,
+        m: record.m,
+        i: record.i,
+        c: record.c,
+        // Both sides hold a function for a client function. They compare by kind.
+        s: (record.s ?? []).map((value) => (typeof value === 'function' ? 'fn' : value)),
+      },
+    ]),
+  );
+}
+
+/** The same fields of the scopes that the client read from the page, with IDs moved by `by`. */
+async function clientRecords(ids: string[], by = 0): Promise<Record<number, unknown>> {
+  const client = await import('../src/runtime/client.ts');
+  return Object.fromEntries(
+    ids.map((id) => {
+      const scope = client.scopeOf(Number(id) + by)!;
+      const back = (value: number | undefined): number | undefined =>
+        value === undefined ? undefined : value - by;
+      return [
+        id,
+        {
+          k: scope.k,
+          p: back(scope.p?.id),
+          o: back(scope.o?.id),
+          m: scope.m,
+          i: scope.i,
+          c:
+            scope.c &&
+            Object.fromEntries(
+              Object.entries(scope.c).map(([anchor, child]) => [anchor, back(child)]),
+            ),
+          s: scope.s.map((value) => (typeof value === 'function' ? 'fn' : value)),
+        },
+      ];
+    }),
+  );
+}
+
+/** The labels of the rows of `packed.brm`. */
+const labels = (): string[] =>
+  [...document.querySelectorAll('.label')].map((label) => label.textContent!);
+/** The tags of each row of `packed.brm`. */
+const tags = (): string[] =>
+  [...document.querySelectorAll('.row')].map((row) =>
+    [...row.querySelectorAll('em')].map((em) => em.textContent).join(' '),
+  );
+
+describe('scopes in groups', () => {
+  const rows = [
+    { id: '1', label: 'One', tags: ['a', 'b'] },
+    { id: '2', label: 'Two', tags: ['c', 'd'] },
+    { id: '3', label: 'Three', tags: ['e', 'f'] },
+  ];
+
+  it('writes list items as groups and reads every field of their scopes back', async () => {
+    const expected = await serverRecords('packed', { initial: rows });
+    const server = await import(file('packed.brm.ts'));
+    const { state } = await renderParts(server.default, { initial: rows });
+    // The items of each list are in a group, not in a record each.
+    expect(state).toContain('g:');
+    expect(state).not.toMatch(/k:2,p:0/);
+    await resume('packed', { initial: rows });
+    // Kinds, parents, owners, items, child components and slots, for every kind of group:
+    // items whose item is their first slot, items with their own item, nested lists, the
+    // root scopes of components in items, and items of a Set and of #repeat.
+    // The core starts on the first event, or when something asks for it.
+    const client = await import('../src/runtime/client.ts');
+    document.dispatchEvent(new Event('brumate:core'));
+    await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
+    expect(await clientRecords(Object.keys(expected))).toEqual(expected);
+  });
+
+  it('moves the IDs of scopes in groups', async () => {
+    const expected = await serverRecords('packed', { initial: rows });
+    const server = await import(file('packed.brm.ts'));
+    const { html, state } = await renderParts(server.default, { initial: rows });
+    show(html + moved(state));
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    client.init({
+      load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    expect(client.scopeOf(1)).toBeUndefined();
+    expect(await clientRecords(Object.keys(expected), 5)).toEqual(expected);
+    client.dispose();
+  });
+
+  it('settles promises in the slots of scopes in groups', async () => {
+    const { streamState } = await import('../src/runtime/server.ts');
+    let settle!: (value: number) => void;
+    const pending = new Promise<number>((done) => {
+      settle = done;
+    });
+    const records: string[] = [];
+    const done = streamState(
+      {
+        0: { k: 1, m: 'Test', s: [] },
+        1: { k: 2, p: 0, s: [pending], i: pending },
+        2: { k: 2, p: 0, s: [7], i: 7 },
+        // A record with fields that groups do not hold keeps its own.
+        3: { k: 2, p: 0, s: [8], x: { theme: 0 } },
+      },
+      (record) => {
+        records.push(stateScript(record, records.length === 0, { define: records.length === 0 }));
+      },
+    );
+    expect(records[0]).toContain('g:');
+    expect(records[0]).toContain('3:');
+    show(records[0]!);
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    client.init({
+      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    expect(client.scopeOf(2)!.i).toBe(7);
+    expect(client.scopeOf(3)!.x).toEqual({ theme: 0 });
+    expect(client.scopeOf(3)!.p).toBe(client.scopeOf(0));
+    expect(client.get(client.scopeOf(1)!, 0)).toBeInstanceOf(Promise);
+    settle(42);
+    await done;
+    appendChunk(records[1]!);
+    await waitFor(() => expect(client.get(client.scopeOf(1)!, 0)).toBe(42));
+    client.dispose();
+  });
+
+  it('updates, moves, adds and removes items of groups', async () => {
+    await resume('packed', { initial: rows });
+    // The key of each item is its id, which the client reads from the item of its scope.
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(labels()).toEqual(['Three', 'Two', 'One']));
+    click(document.querySelectorAll('.label')[2]!);
+    await waitFor(() => expect(labels()).toEqual(['Three', 'Two', 'One!']));
+
+    // A component in an item calls a function of the item's scope, its owner.
+    click(document.querySelectorAll('.row')[1]!.querySelector('button')!);
+    await waitFor(() => expect(tags()).toEqual(['0:e 1:f', '0:c 1:d 2:3', '0:a 1:b']));
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(labels()).toEqual(['Three', 'Two', 'One!', 'Row 4']));
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(labels()).toEqual(['Two', 'One!', 'Row 4']));
+    expect(tags()).toEqual(['0:c 1:d 2:3', '0:a 1:b', '0:new']);
+
+    click(document.querySelector('.pick')!);
+    await waitFor(() =>
+      expect([...document.querySelectorAll('.picked')].map((li) => li.textContent)).toEqual([
+        'a',
+        'b',
+        'c',
+      ]),
+    );
+    click(document.querySelector('.more')!);
+    await waitFor(() =>
+      expect([...document.querySelectorAll('b')].map((b) => b.textContent)).toEqual([
+        '0',
+        '1',
+        '2',
+      ]),
+    );
+  });
+});

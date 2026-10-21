@@ -136,4 +136,4 @@ export default function Fields($$props: Record<string, never>): string {
 <button data-b="0:1" data-on="click=Fields_1cs3w3p#h9">Add</button>
 
 # State
-<script data-state data-scopes data-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Fields_1cs3w3p",s:$R[2]=[$R[3]=["First","Last"]]},1:$R[4]={k:2,p:0,s:$R[5]=["First","b1-0"],i:"First"},2:$R[6]={k:2,p:0,s:$R[7]=["Last","b2-0"],i:"Last"}})))</script>
+<script data-state data-scopes data-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Fields_1cs3w3p",s:$R[2]=[$R[3]=["First","Last"]]},g:$R[4]=[$R[5]=[2,0,1,2,1,"First","b1-0",1,"Last","b2-0"]]})))</script>
