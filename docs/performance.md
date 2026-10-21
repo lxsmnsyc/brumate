@@ -20,8 +20,13 @@ The prototypes for these are in a scratch profile run. Gains are renders per CPU
 1. A one-pass serializer for the state of a page with nothing pending. It walks the packed state once and writes the code with `s +=`. It inserts `$R[i]=` only before objects that appear twice. Anything else, such as a promise, Map, Set, Date, class instance or cycle, falls back to seroval. Measured +25% and +47%.
    - A two-pass scan and write, and a version that joins an array, were both slower than seroval.
    - It has to match seroval for `-0`, `NaN`, bigint, symbol keys and escaping.
-2. Render to a string, or to a lighter stream than `ReadableStream`, for pages with nothing pending. Node's web streams cost about 3 µs per page. Measured +26% and +13% after the other items. This is an API change.
-3. Smaller scope bookkeeping. Build `root.tree` lazily from the records, since only `provide` and `consume` read it. Keep slot names in a static table per component, read only for errors. Have the compiler write list items straight into packed groups, because `packState` is still 9% to 11% after the other items.
+2. Do not send the item slot when the `#for` source is a parent slot or memo. The client sets `s[0]` and `i` from the parent's list by index. Measured +11% and +23% on top of item 1, and the state for 100 todos drops from 17.4 kB to 15.9 kB.
+   - This is safe because the item cannot change on its own. The analyzer rejects any write to a loop variable with `Cannot assign to item`, in handlers and in block scripts. A change in place, such as `todo.done = true`, is a warning, and it changes the same object that the parent's list holds.
+   - Slots of a block script in the body still ship, so only the item slot goes.
+   - Computed sources such as `todos.filter(...)` keep the current path, because the client would have to run the expression again.
+   - This changes the page format.
+3. Render to a string, or to a lighter stream than `ReadableStream`, for pages with nothing pending. Node's web streams cost about 3 µs per page. Measured +26% and +13% after the other items. This is an API change.
+4. Smaller scope bookkeeping. Build `root.tree` lazily from the records, since only `provide` and `consume` read it. Keep slot names in a static table per component, read only for errors. Have the compiler write list items straight into packed groups, because `packState` is still 9% to 11% after the other items.
 
 ## seroval
 
