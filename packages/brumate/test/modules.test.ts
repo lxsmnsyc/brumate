@@ -51,7 +51,8 @@ describe('reactive logic in modules', () => {
       { 'counter.brm.ts': counter },
       '<button onClick=increment>{count} {double}</button>',
     );
-    expect(result.file.source).toContain('let count = $signal(counter_start);');
+    // A literal argument is written into the code, so it is not a value in the state of the page.
+    expect(result.file.source).toContain('let count = $signal(1);');
     // `double` is not destructured, so its local gets a name of its own.
     expect(result.file.source).toContain('const counter_double = $memo(count * 2);');
     expect(result.file.source).toContain('const increment = () => count++;');
@@ -63,6 +64,15 @@ describe('reactive logic in modules', () => {
       'counter.brm.ts': counter,
     });
     expect(result.file.source).toContain('let count = $signal(base);');
+  });
+
+  it('keeps a local for a parameter that the function assigns to', () => {
+    const result = build('  let base = $signal(3);\n  const { count } = counter(base);', {
+      'counter.brm.ts': `import { $signal } from 'brumate/signals';\nexport function counter(start: number) {\n  start = start * 2;\n  let count = $signal(start);\n  return { count };\n}\n`,
+    });
+    // Writing the parameter must not write the component's signal.
+    expect(result.file.source).toContain('let counter_start = (base);');
+    expect(result.file.source).toContain('counter_start = counter_start * 2;');
   });
 
   it('imports what the function reads from its module, from the component', () => {

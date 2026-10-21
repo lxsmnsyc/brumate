@@ -69,6 +69,51 @@ export interface Expansion {
   origin: (offset: number) => Origin;
   /** The modules that the component reads, so a change to one compiles it again. */
   modules: ReactiveModule[];
+  /** Each call, by the offset of its statement in the source before this expansion. */
+  calls: ModuleCall[];
+}
+
+/** What a name of a module function is in the component that calls it. */
+export type CallName = { name: string } | { literal: string };
+
+/** A call of a module function, and what each name of the function became. */
+export interface ModuleCall {
+  /** The offset of the statement of the call. */
+  start: number;
+  /** The path of the module. */
+  module: string;
+  /** The name of the function. */
+  fn: string;
+  names: Map<string, CallName>;
+}
+
+/** True for an argument that can be written into the code as it is, such as `'name'` or `-1`. */
+function isLiteral(node: oxc.Node): boolean {
+  if (node.type === 'Literal') {
+    return !('regex' in node && node.regex);
+  }
+  if (node.type === 'TemplateLiteral') {
+    return node.expressions.length === 0;
+  }
+  return (
+    node.type === 'UnaryExpression' &&
+    (node.operator === '-' || node.operator === '+') &&
+    node.argument.type === 'Literal' &&
+    typeof node.argument.value === 'number'
+  );
+}
+
+/** The names that code assigns to, such as `start` in `start = 1` or `start++`. */
+function assignedNames(node: oxc.Node, names: Set<string> = new Set()): Set<string> {
+  if (node.type === 'AssignmentExpression' && node.left.type === 'Identifier') {
+    names.add(node.left.name);
+  } else if (node.type === 'UpdateExpression' && node.argument.type === 'Identifier') {
+    names.add(node.argument.name);
+  }
+  for (const [, child] of children(node)) {
+    assignedNames(child, names);
+  }
+  return names;
 }
 
 /** An error in a module function or in a call of one. */
@@ -605,6 +650,8 @@ export function expandModules(
   const importsOffset =
     file.instanceScript!.start + source.slice(file.instanceScript!.start).indexOf('>') + 1;
 
+  const expanded: ModuleCall[] = [];
+
   function inline(call: Call, builder: Builder): void {
     const site = { start: call.statement.start, end: call.statement.end };
     const generated = (text: string): void =>
@@ -662,6 +709,8 @@ export function expandModules(
 
     const origin = (offset: number): Origin => ({ module, offset, call: site });
     const renames = new Map<string, string>();
+    // What each name of the function is in the component: a name, or a literal argument.
+    const names = new Map<string, CallName>();
     const before: string[] = [];
 
     // What the component destructures, by the key that the function returns.
@@ -744,32 +793,50 @@ export function expandModules(
       }
     }
 
-    // Parameters read the argument when it is a name, so a signal stays reactive.
+    // A parameter reads its argument in place when the argument is a name, so a signal stays
+    // reactive, or a literal, so the value is in the code instead of in the state of the page.
+    // A parameter that the function assigns to keeps a local of its own.
+    const assigned = assignedNames(body);
     fn.params.forEach((param, index) => {
       const argument = call.call.arguments[index];
       const pattern = param.type === 'AssignmentPattern' ? param.left : param;
       if (pattern.type !== 'Identifier') {
         throw new ModuleError(`Parameters of ${name} must be plain names`, call.call.start);
       }
-      if (argument?.type === 'Identifier') {
+      if (!assigned.has(pattern.name) && argument?.type === 'Identifier') {
         renames.set(pattern.name, argument.name);
+        names.set(pattern.name, { name: argument.name });
+        return;
+      }
+      if (!assigned.has(pattern.name) && argument && isLiteral(argument)) {
+        const text = source.slice(argument.start, argument.end);
+        renames.set(pattern.name, text);
+        names.set(pattern.name, { literal: text });
         return;
       }
       const local = unique(`${name}_${pattern.name}`);
       renames.set(pattern.name, local);
+      const declare = assigned.has(pattern.name) ? 'let' : 'const';
       if (argument && argument.type !== 'SpreadElement') {
         before.push(local);
-        generated(`const ${local} = (`);
+        generated(`${declare} ${local} = (`);
         builder.add(source.slice(argument.start, argument.end), { offset: argument.start }, true);
         generated(');\n');
       } else if (param.type === 'AssignmentPattern') {
-        generated(`const ${local} = (`);
+        generated(`${declare} ${local} = (`);
         copy(param.right);
         generated(');\n');
       } else {
-        generated(`const ${local} = undefined;\n`);
+        generated(`${declare} ${local} = undefined;\n`);
       }
     });
+
+    for (const [local, renamed] of renames) {
+      if (!names.has(local)) {
+        names.set(local, { name: renamed });
+      }
+    }
+    expanded.push({ start: call.statement.start, module: module.path, fn: name, names });
 
     // A name of the module that the body reads: imported into the component.
     const moduleName = (local: string): string | undefined => {
@@ -956,5 +1023,6 @@ export function expandModules(
     source: builder.text,
     origin: (at) => builder.origin(at),
     modules: [...modules.values()].map((value) => value.module),
+    calls: expanded,
   };
 }

@@ -3,10 +3,10 @@ export {};
 
 declare module 'brumate/routes' {
   interface Routes {
-    "/": {};
-    "/[...rest]": { rest: string };
-    "/docs": {};
-    "/docs/[page]": { page: string };
-    "/playground": {};
+    '/': {};
+    '/[...rest]': { rest: string };
+    '/docs': {};
+    '/docs/[page]': { page: string };
+    '/playground': {};
   }
 }
