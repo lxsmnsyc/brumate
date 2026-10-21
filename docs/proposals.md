@@ -129,61 +129,146 @@ Not planned: running React Aria, Radix or Headless UI, which need React; an adap
 
 ### Progressive forms
 
-A form library that takes its API and behaviour from [Conform](https://conform.guide), which is built for forms that work without scripts in Remix and Next.js. brumate forms already work that way, with `action=fn`, `parseForm` and `$action`. This adds the layer on top. It is written in brumate. No React code runs.
+A form library for brumate, `brumate/forms`. Its server side and wire format follow [Conform](https://conform.guide), which builds forms that work without scripts in Remix and Next.js. Its component API follows [Formisch](https://formisch.dev), which types field paths from the schema and keeps form state in signals. It is written in brumate. No React code runs.
 
-#### What it fixes
+brumate forms already post without scripts, with `action=fn`, `parseForm` and `$action`. This adds lists, echoed values, form-level errors, accessibility attributes and validation in the browser on top.
 
-- Lists of objects. `parseForm` makes `items.0.name` an object keyed `"0"`, so a form cannot post a list of objects. Conform names nested objects and arrays, and its intent buttons add, remove and reorder list items. Without scripts, an intent is a post that the server answers.
-- Values after a failed post. Without scripts, the page must send back what was typed, or the fields come back empty. Conform returns a submission with the last values and the errors of each field, and the fields read their defaults from it.
-- Form-level errors. They are under `errors['']` today. Conform keeps them apart from the errors of fields.
-- Accessibility. Each field gets its `id`, `name`, `aria-invalid`, `aria-describedby` and the id of its error from a helper, not by hand. The [headless UI components](#headless-ui-components) can use the same helpers.
-- One schema for both sides. With scripts, fields validate on blur or input with the same Standard Schema as the server, and with the browser's constraint validation. Without scripts, the server validates as before.
+#### Libraries compared
 
-All of this state is data: values, errors and the intent. It goes into the page state and resumes, and nothing needs to run when the page loads.
+| Library       | Model                                                        | Without scripts | Lists                                              | Fit                                                         |
+| ------------- | ------------------------------------------------------------ | --------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| Conform       | Server first, built on `FormData`                            | Yes, by design  | Path names and intent buttons                      | The protocol to copy. Its API is made for React.            |
+| Superforms    | Server first, on SvelteKit form actions                      | Yes             | Yes. Its JSON mode for complex data needs scripts. | Close in spirit, tied to SvelteKit.                         |
+| Formisch      | Client first, one small core for many frameworks, on signals | No              | Typed paths from the schema                        | The API to copy. It has no story for forms without scripts. |
+| TanStack Form | Client first, with a store, and server validation in Start   | Not built in    | Yes                                                | Heavy, and its store does not resume.                       |
 
-#### Sketch
+So `brumate/forms` takes the wire format from Conform and the shape of the API from Formisch. Validation uses Standard Schema, as `parse` and `parseForm` do.
+
+#### Wire format
+
+- Field names are paths: `email`, `address.city`, `items[0].name`. `parseForm` learns bracket indexes too, so `items[0].name` makes an array. Its current rules for `a.b`, repeated names and `tags[]` stay.
+- An intent is a submit button with a reserved name. A button posts its value only when it is clicked, so intents work without scripts:
+
+  ```html
+  <button name="__intent" value='{"type":"remove","name":"items","index":1}' formnovalidate>Remove</button>
+  ```
+
+  The types are `insert`, `remove`, `reorder`, `reset` and `validate`.
+
+- The reply is data, so it goes through `$action` and the page state:
+
+  ```ts
+  type SubmissionResult = {
+    status: 'success' | 'error' | 'intent';
+    // The values as posted, after the intent. Files and passwords are left out.
+    value: unknown;
+    // The errors of each field, by path name.
+    errors: Record<string, string[]>;
+    // The errors of the whole form. They replace errors[''] of fieldErrors.
+    formErrors: string[];
+    // Stable keys of list items, for `#for … by`.
+    keys: Record<string, string[]>;
+  };
+  ```
+
+#### Server
 
 ```ts
-// A server function
 import { parseSubmission } from 'brumate/forms';
 
-async function save(form: FormData) {
+async function save(data: FormData) {
   'use server';
-  const submission = await parseSubmission(form, Order);
+  const submission = await parseSubmission(data, Order);
   if (submission.status !== 'success') {
+    // An intent, or values that failed the schema: send the values back.
     return submission.reply();
   }
+  if (await db.orders.exists(submission.value.id)) {
+    return submission.reply({ formErrors: ['That order exists already'] });
+  }
   await db.orders.save(submission.value);
+  return submission.reply({ reset: true });
 }
 ```
+
+- An intent changes the posted values. It inserts, removes or moves a list item and keeps the keys of the others. It reports no errors on fields that were not touched.
+- An intent is input from the browser, so it is checked: its path must exist in the posted values, indexes must be in range, lists have a maximum length, and path parts such as `__proto__` are rejected, as in `parseForm`.
+
+#### Component
+
+`form(schema, result, options)` is a function of a `.brm.ts` module that ships with brumate. Its state is signals, so it resumes like any reactive module.
 
 ```html
 <script>
   import { $action } from 'brumate/signals';
-  import { formFields } from 'brumate/forms';
+  import { form as createForm } from 'brumate/forms';
 
   const result = $action(save);
-  const { form, field, list } = formFields(result, Order);
+  const form = createForm(Order, result, { defaultValue: { items: [{ name: '' }] } });
+  const items = form.list(['items']);
 </script>
 
-<form action=save {...form.attrs}>
-  <input {...field('email').attrs}>
-  #if (field('email').errors) { <p {...field('email').errorAttrs}>{field('email').errors[0]}</p> }
-  #for (item, index of list('items')) {
-    <input {...field(`items.${index}.name`).attrs}>
-    <button {...list('items').remove(index)}>Remove</button>
+<form action=save {...form.attrs} onFocusout=form.blur onInput=form.input onClick=form.intent>
+  <button {...form.defaultSubmit}></button>
+
+  <label for=(form.field(['email']).id)>Email</label>
+  <input {...form.field(['email']).attrs} type="email" required>
+  #if (form.field(['email']).errors) {
+    <p {...form.field(['email']).errorAttrs}>{form.field(['email']).errors[0]}</p>
   }
-  <button {...list('items').insert()}>Add an item</button>
+
+  #for (item of items.items by item.key) {
+    <input {...form.field(['items', item.index, 'name']).attrs}>
+    <button {...items.remove(item.index)}>Remove</button>
+  }
+  <button {...items.insert()}>Add an item</button>
+
+  #if (form.errors) {
+    <p role="alert">{form.errors[0]}</p>
+  }
+  <button>Save</button>
 </form>
 ```
 
-#### What it needs
+- `form.field(path)` takes a path as an array, typed by the output of the schema. A string such as `'items[0].name'` also works. It returns:
+  - `attrs`: `name`, `id`, `aria-invalid`, `aria-describedby`, and the echoed `value`, `checked` or `selected`.
+  - `errors`, `errorAttrs` (the id of the error, and `role="alert"` after a submit), and the typed default value.
+- `form.list(path)` returns the items with their keys and indexes, and `insert()`, `remove(index)` and `reorder(from, to)`, which give the attributes of intent buttons.
+- `form.fieldset(path)` gives the same helpers below a path, for a part of the form in its own component.
+- `form.errors` holds the errors of the whole form.
+- `form.defaultSubmit` is a hidden submit button. Enter in a field submits the first submit button of the form, so without it, Enter could press "Remove".
+- Every helper gives plain attributes. No field or button has a handler, so spreads work as they do today.
 
-- `parseSubmission` on the server, which replaces `parseForm` for forms with lists and intents.
-- `formFields` in a `.brm.ts` module, which returns the attributes, errors and intent buttons of each field.
-- Handlers in spreads, from [Headless UI components](#headless-ui-components), so `field(...).attrs` can bring its own `onBlur` and `onInput` for validation in the browser. Without it, the first version validates only on the server.
+#### Without scripts
 
-Cost: about 1 to 2 weeks for nested and array fields, intents, the field helpers, validation in the browser, tests and docs.
+The same markup works in three states:
+
+1. Without scripts, the form posts and the page renders again with the result. The fields show what was typed and their errors. An intent button posts the whole form, and the server applies the intent, so what was typed in other fields stays.
+2. With scripts, before the code of the form loads, `$action` sends the form with `fetch`, and the page does not load again.
+3. With the code of the form loaded, it validates as fields change and applies intents at once.
+
+What a form without scripts has to handle:
+
+- The constraint attributes of the browser, such as `required` and `type="email"`, still block a submit. Intent buttons have `formnovalidate`, so a list can grow while the form is incomplete.
+- A checkbox that is not checked is not posted. The schema must read a missing value as `false`.
+- A file input cannot be filled again. After an error, the user picks the file again, and only the error shows.
+- Passwords are not echoed.
+- Each post loads the page, so focus and scroll start over. A summary of errors should link to its fields, such as `<a href="#email">`.
+
+#### In the browser
+
+- `onFocusout=form.blur` and `onInput=form.input` on the `<form>` see every field, because brumate delegates events. They validate with the same schema and show the errors of fields that were touched, and of every field after a submit, as Conform does.
+- `onClick=form.intent` handles clicks on intent buttons. It applies the intent to the values at once and stops the post.
+- The schema and the validation code load with the first focus out or input, not with the page, so a form costs nothing until someone uses it.
+- `form.intent` must stop the click before it submits the form. Handlers run after their code loads, so this needs `:prevent` on the button, or one of the conditional `preventDefault` options in [Headless UI components](#headless-ui-components). Until then, an intent goes to the server through `$action`, which works, but slower.
+
+#### Plan
+
+1. The wire format and the server: `parseSubmission`, bracket paths in `parseForm`, `reply`, and the field and list helpers with plain attributes. It works without scripts and through `$action`. About 1 week with tests and docs.
+2. Validation in the browser through `onFocusout` and `onInput` on the form, loaded when first used. About 3 to 4 days.
+3. Intents in the browser, once the click can be stopped. About 2 to 3 days.
+
+It lives at `brumate/forms` while the page format still changes, and can move to its own package later.
 
 ### Markdown with components
 
@@ -205,7 +290,7 @@ Cost: a few days for the adapter, a guide and an example.
 
 ### Order
 
-1. [Headless UI components](#headless-ui-components) and [progressive forms](#progressive-forms) share the compiler work: handlers in spreads, conditional `preventDefault`, and components from packages. Do that work first.
-2. Progressive forms next, because they are smaller and every app has forms.
-3. Then the UI components, starting with the `Select` spike.
+1. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
+2. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
+3. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
 4. Compiled messages and Markdown with components when an app or the website needs them.
