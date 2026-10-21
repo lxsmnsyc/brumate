@@ -120,7 +120,12 @@ function answerCalls(): void {
   };
 }
 
-/** Runs the inline scripts of markup that streams in later, such as the swap of a `#loading` body. */
+/**
+ * Adds markup to `container` and runs its inline scripts: the state records
+ * of the render, and the swap of a `#loading` body that streams in later.
+ * Markup set with `innerHTML` does not run them, so each one is a new
+ * script, which a state record also needs as `document.currentScript`.
+ */
 function append(container: HTMLElement, markup: string): void {
   const template = document.createElement('template');
   template.innerHTML = markup;
@@ -128,8 +133,12 @@ function append(container: HTMLElement, markup: string): void {
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const node of [...template.content.childNodes]) {
     if (node.nodeName === 'SCRIPT' && !(node as Element).hasAttribute('type')) {
-      // oxlint-disable-next-line no-eval -- The script is the swap code of the server render.
-      (0, eval)(node.textContent!);
+      const script = document.createElement('script');
+      for (const attribute of (node as Element).attributes) {
+        script.setAttribute(attribute.name, attribute.value);
+      }
+      script.textContent = node.textContent;
+      container.append(script);
     } else {
       container.append(node);
     }
@@ -283,8 +292,8 @@ export async function runSample(
   }
   // The markup goes into its own element, so markup that streams in after a newer run goes nowhere.
   const holder = document.createElement('div');
-  holder.innerHTML = rendered.html + rendered.state;
   container.replaceChildren(holder);
+  append(holder, rendered.html + rendered.state);
   void (async () => {
     for await (const chunk of rendered.pending) {
       append(holder, chunk);
