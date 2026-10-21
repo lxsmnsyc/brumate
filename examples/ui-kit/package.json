@@ -1,6 +1,6 @@
 {
   "name": "example-ui-kit",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "A package of brumate components, used by examples/kit-app",
   "files": [
