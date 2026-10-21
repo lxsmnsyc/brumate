@@ -141,6 +141,27 @@ function click(element: Element): void {
 }
 
 describe('resume', () => {
+  it('reads state records inside markup that a script inserts after the core starts', async () => {
+    const { streamState } = await import('../src/runtime/server.ts');
+    const records: string[] = [];
+    await streamState({ 0: { k: 1, m: 'Test', s: [7] } }, (record) => {
+      records.push(stateScript(record, records.length === 0));
+    });
+    document.body.innerHTML = '';
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    client.init({
+      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    const holder = document.createElement('div');
+    holder.innerHTML = `<p>Inserted</p>${records[0]!}`;
+    document.body.append(holder);
+    await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
+    expect(client.get(client.scopeOf(0)!, 0)).toBe(7);
+    client.dispose();
+  });
+
   it('settles promises from state records that arrive later', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
     let settle!: (value: number) => void;

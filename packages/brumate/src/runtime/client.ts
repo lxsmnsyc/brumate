@@ -408,8 +408,15 @@ export function init(value: CoreOptions): void {
   observer = new MutationObserver((records) => {
     for (const record of records) {
       for (const node of record.addedNodes) {
-        if (node.nodeType === 1 && (node as Element).matches(STATE)) {
-          readRecord(node as Element);
+        if (node.nodeType !== 1) {
+          continue;
+        }
+        // A record can be inside the added node, such as in markup that a script inserts.
+        const element = node as Element;
+        if (element.matches(STATE)) {
+          readRecord(element);
+        } else {
+          element.querySelectorAll(STATE).forEach(readRecord);
         }
       }
     }
