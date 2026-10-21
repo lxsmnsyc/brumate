@@ -2,5 +2,11 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "singleQuote": true,
   "embeddedLanguageFormatting": "off",
-  "ignorePatterns": ["**/dist/**", "pnpm-lock.yaml", "**/__snapshots__/**", "**/test/.output/**"]
+  "ignorePatterns": [
+    "**/dist/**",
+    "pnpm-lock.yaml",
+    "**/__snapshots__/**",
+    "**/test/.output/**",
+    "**/brumate-routes.d.ts"
+  ]
 }
