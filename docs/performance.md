@@ -61,8 +61,3 @@ brumate can also help on its side. `isRaw` matches on a symbol key, so every pla
 - The idle preload already loads only the entry and the handler parts, and `update` only for a handler that writes a slot that an update reads. `$client` parts wait for their trigger. The dashboard handlers all write such slots, so a split widget still preloads all of its parts.
 - Components too big to merge still take two round trips on a cold first event: the entry, then the part. Merged components take one, so the cold dashboard click is now 1 RT. Putting part URLs in the loader's registry would fix the rest, but it grows the loader with each part.
 - The loader is 2.1 kB gzip. Vite's preload helper is about 0.8 kB of that, because Vite 8 wraps every dynamic import in it. Replacing the helper for the whole app would break CSS preloading in user code.
-
-## Tooling
-
-- Vitest 5 caches transformed modules in `node_modules/.vitest-cache`, and the cache is not cleared when the built `brumate` package changes. The examples then run old output until `pnpm vitest --clearCache`. The Vite plugin could add a cache key.
-- The breaking changes in `e8a92a1`, `434c536` and `32761f6` have no changeset yet.

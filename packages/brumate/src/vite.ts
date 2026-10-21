@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isRunnableDevEnvironment, normalizePath, transformWithOxc } from 'vite';
 import type { EnvironmentModuleNode, Plugin, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
@@ -202,6 +204,39 @@ function fileFunctions(
       .filter(([, value]) => typeof value === 'function')
       .map(([name, value]) => [functionId(id, name, hideNames), value]),
   );
+}
+
+/** What Vitest passes to `configureVitest`, the part that this plugin uses. */
+interface VitestContext {
+  defineCacheKeyGenerator?: (generate: () => string) => void;
+  experimental_defineCacheKeyGenerator?: (generate: () => string) => void;
+}
+
+let fingerprint: string | undefined;
+
+/**
+ * A hash of the code of this build of brumate. A new build can compile the
+ * same `.brm` file to other code, so the hash is part of Vitest's cache key.
+ */
+function buildFingerprint(): string {
+  if (fingerprint === undefined) {
+    const digest = createHash('sha1');
+    const visit = (directory: string): void => {
+      for (const entry of readdirSync(directory, { withFileTypes: true }).toSorted((a, b) =>
+        a.name < b.name ? -1 : 1,
+      )) {
+        const file = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          visit(file);
+        } else if (/\.[jt]s$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
+          digest.update(entry.name).update(readFileSync(file));
+        }
+      }
+    };
+    visit(path.dirname(fileURLToPath(import.meta.url)));
+    fingerprint = digest.digest('hex').slice(0, 16);
+  }
+  return fingerprint;
 }
 
 /** The Vite plugin for `.brm` files. */
@@ -581,7 +616,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let loaderChunk: string | undefined;
   let coreChunk: string | undefined;
 
-  return {
+  const plugin: Plugin & { configureVitest(context: VitestContext): void } = {
     name: 'brumate',
     enforce: 'pre',
 
@@ -627,6 +662,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return {
         build: { ssr: true, rolldownOptions: { input: { ...entries, [PRERENDER_ENTRY]: ROUTES } } },
       };
+    },
+
+    // Vitest keeps transformed modules between runs. Its cache key does not
+    // cover the compiler, so a new build of brumate would reuse old output.
+    configureVitest(context: VitestContext) {
+      const define =
+        context.defineCacheKeyGenerator ?? context.experimental_defineCacheKeyGenerator;
+      define?.(buildFingerprint);
     },
 
     configResolved(config) {
@@ -962,6 +1005,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return [];
     },
   };
+  return plugin;
 }
 export { errorPage } from './dev-error.ts';
 export type { ManifestChunk, PrerenderOptions } from './prerender.ts';

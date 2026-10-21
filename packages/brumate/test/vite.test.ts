@@ -355,3 +355,24 @@ describe('prerendering', () => {
     expect(() => read('hidden/index.html')).toThrow('ENOENT');
   });
 });
+
+describe('vitest cache key', () => {
+  it('adds a hash of the build of brumate to the cache key of Vitest', () => {
+    const keys: string[] = [];
+    type Define = (generate: () => string) => void;
+    const plugin = brumate() as ReturnType<typeof brumate> & {
+      configureVitest(context: {
+        defineCacheKeyGenerator?: Define;
+        experimental_defineCacheKeyGenerator?: Define;
+      }): void;
+    };
+    plugin.configureVitest({ defineCacheKeyGenerator: (generate) => keys.push(generate()) });
+    // Older versions of Vitest name it as experimental.
+    plugin.configureVitest({
+      experimental_defineCacheKeyGenerator: (generate) => keys.push(generate()),
+    });
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toMatch(/^[0-9a-f]{16}$/);
+    expect(keys[1]).toBe(keys[0]);
+  });
+});
