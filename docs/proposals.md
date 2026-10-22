@@ -13,6 +13,17 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
+| [Transitions](#transitions)                                           | Syntax  | High   | Medium |
+| [Element behaviors](#element-behaviors)                               | Syntax  | High   | Small  |
+| [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
+| [Timing helpers](#timing-helpers)                                     | Data    | Low    | Small  |
+| [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
+| [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
+| [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
+| [Observability](#observability)                                       | Runtime | Medium | Medium |
+| [Early hints](#early-hints)                                           | Runtime | Medium | Small  |
+| [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
+| [Budgets for one event](#budgets-for-one-event)                       | Tooling | Medium | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
@@ -40,6 +51,63 @@ A `bind:` attribute writes it once:
 
 - `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
 - The target must be a signal, so the compiler checks the write.
+
+### Transitions
+
+View transitions animate a change of page. Inside a page, an `#if` or `#for` body shows and goes at once, because the node is gone before CSS can animate it.
+
+```html
+#if (open) {
+  <div class="panel" transition=fade(200)>…</div>
+}
+#for (todo of todos by todo.id) {
+  <li animate=flip(150)>{todo.title}</li>
+}
+```
+
+- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles. A transition that CSS does alone can be a class: `transition="fade"` adds `fade-in` and `fade-out`, as the `Transition` of Terracotta does.
+- `animate=fn` on the element of a list item moves it from its old place to its new one when the list changes order.
+- The server renders the elements as they are. A transition runs only for a change in the browser, so the first render shows no animation, and the code loads with the update that changes the block.
+- `brumate/transition` brings `fade`, `slide`, `scale` and `flip`, with the Web Animations API. `prefers-reduced-motion` turns them off.
+- The `Transition` of the UI components, in phase 2, builds on it.
+
+Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
+
+### Element behaviors
+
+A behavior that belongs to an element, such as a tooltip, a click outside, a field that grows with its text, or a chart library, needs a `ref` signal and an `$effect` in each component that uses it.
+
+```html
+<script>
+  import { autosize, clickOutside } from './behaviors';
+</script>
+
+<textarea use=autosize></textarea>
+<div use=(clickOutside(() => (open = false)))>…</div>
+```
+
+- `use=fn` calls `fn(element)` in the browser, and the function it returns when the element goes. A behavior with an argument is a function that returns one.
+- It is a client root, as a `$client` callback is, with the same triggers: it loads when the element comes into view by default, or with `use:idle` and `use:load`.
+- The server renders the element, so a behavior only adds to it. Without scripts, the element works as plain HTML.
+
+Cost: a few days. It is `$client` with an element.
+
+### Long lists
+
+A long list renders every item on the server and in the browser. A windowed list renders only the items in view, and the browser renders the rest as the user scrolls.
+
+```html
+#for (row of rows by row.id) window(48) {
+  <tr>…</tr>
+}
+```
+
+- `window(height)` gives the height of an item, so the list knows which items are in view. The server renders the first items and a spacer for the rest, so the page has the right height and the first items show without scripts.
+- The browser renders the items that come into view from the render module, and removes those that leave. Items keep their scopes while they are in the list, so state inside them stays.
+- Items of different heights measure themselves once rendered.
+- The `Virtualizer` of the UI components, in phase 6, becomes this block.
+
+Cost: about 2 weeks, most of it for scrolling, focus and the items of different heights.
 
 ## Data
 
@@ -132,6 +200,45 @@ Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nea
 
 Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
 
+### Timing helpers
+
+A search field that waits for a pause in typing needs a timer, an `$effect` and a second signal, written by hand each time.
+
+```html
+<script>
+  import { $debounced, $memo, $signal } from 'brumate/signals';
+
+  let query = $signal('');
+  const settled = $debounced(query, 300);
+  const results = $memo(search(settled));
+</script>
+```
+
+- `$debounced(value, ms)` is a memo that takes the value after it stops changing for `ms`. `$throttled(value, ms)` takes it at most once every `ms`.
+- On the server, both are the value itself, so the page renders the results for the query it has.
+- They are client roots of their own, so their timers load with the first change.
+
+Cost: a few days.
+
+### Persisted signals
+
+Preferences such as the theme, a dismissed banner or the width of a panel are written to `localStorage` or a cookie by hand, and read back in `$client`, so the page renders the default first and then changes.
+
+```html
+<script>
+  import { $persisted } from 'brumate/signals';
+
+  let theme = $persisted('theme', 'light', { in: 'cookie' });
+</script>
+```
+
+- `$persisted(key, initial, { in })` is a signal whose writes go to `localStorage`, `sessionStorage` or a cookie.
+- With a cookie, the server reads the value from the request, so the page renders the right theme at once, with no flash.
+- With storage, the server renders `initial`, and the browser reads the stored value when the page resumes.
+- A write in another tab updates the signal, through the `storage` event.
+
+Cost: a few days.
+
 ## Runtime
 
 ### Errors in client code
@@ -153,6 +260,56 @@ What it needs:
 - `reset()` renders the `#try` body again, as it does now.
 
 Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
+
+### Worker functions
+
+Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler.
+
+```ts
+// search.worker.ts
+export function buildIndex(documents: Document[]) {
+  'use worker';
+  return createIndex(documents);
+}
+```
+
+- A worker function runs in a Web Worker. The browser calls it like a server function, and gets a promise of its result.
+- It uses the calls and the serializer of server functions, and the stubs of [two-way realtime](#two-way-realtime): functions in its arguments and its result become stubs, so a worker can report its progress or return an object with methods that stay in the worker.
+- The worker loads on the first call, with only the code of its functions.
+- On the server, a worker function runs in place, or in a worker thread with an option.
+
+Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a few days for calls with values only.
+
+### Offline pages
+
+A resumed page needs the network only for the parts that its handlers load. The idle preload already knows which parts a page can reach.
+
+- A generated service worker caches the page, the loader, the core and those parts, so a page that was loaded once works offline, and its handlers run.
+- A server function call made offline waits in a queue with an option, and goes when the connection comes back. Its result settles the same promise.
+- `$online` is a signal of the connection, for a page that shows that it is offline.
+- A page that was never loaded shows the offline page of the app.
+
+Cost: about 2 weeks, most of it for updates of the service worker and for which calls are safe to queue.
+
+### Observability
+
+The benchmarks measure renders and loads, but an app cannot see them.
+
+- On the server, `onTrace(span)` receives the time of each render, each memo load, each server function call and each `#defer` request, with the component and the route. A small adapter turns them into OpenTelemetry spans.
+- In the browser, `onTrace` receives the time from an event to its handler, split into the parts it loaded and the run, so a slow first click shows where its time went.
+- The traces are off unless the option is set, and cost nothing then.
+
+Cost: about 1 week.
+
+### Early hints
+
+A first click after `load` waits for the core and the part of its handler. The server knows the loader and the core before it renders the page.
+
+- The server sends `103 Early Hints` with `modulepreload` links for the loader and the core, or the same links at the start of the HTML where a host does not pass early hints on.
+- With the build report, it can also hint the parts of the handlers that are most likely to run first, such as those of the first viewport.
+- It cuts a round trip from the cold click of the benchmark: 243 ms for brumate against 55 ms for Marko 6, which ships its code in the page.
+
+Cost: a few days.
 
 ## Routing
 
@@ -303,6 +460,32 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 - A content mapper from `toTypeScript` would let `tsc` and the editor of TypeScript 7 check `.brm` files.
 - It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
 - This waits for the API to be stable, and for its documentation.
+
+### Testing routes
+
+`brumate/testing` mounts a component: it renders it on the server, resumes it in the DOM and clicks like a user. A route also has its layouts, its middleware, its endpoints, client navigation and `#defer` requests, which a test cannot reach.
+
+```ts
+const app = await visit(routes, '/issues', { cookies: { session } });
+app.click('a[href="/issues/3"]');
+await app.waitFor(() => expect(app.url).toBe('/issues/3'));
+```
+
+- `visit(routes, path, options)` answers the request with the route tree of `virtual:brumate/routes`, puts the page in the document and starts the loader with navigation.
+- Links, forms, server function calls and `#defer` requests go to the same tree, in the test, without a server.
+- It keeps the cookies between requests, so a test can sign in and go on.
+
+Cost: a few days. The tests of this repository already answer routes and navigation in a DOM.
+
+### Budgets for one event
+
+`budget` fails the build when the loader, or the most that a route loads, goes over a size. A component can still grow one handler past what a first click should load, under the route's total.
+
+- `budget.event` limits what one event loads: the part of its handler and the updates it runs, with what they import.
+- `budget.component` limits the client code of one component.
+- The error names the component, the handler and the imports that make it large, from the data that `brumate inspect` shows.
+
+Cost: a few days.
 
 ## Build
 
@@ -602,7 +785,9 @@ Cost: a few days for the adapter, a guide and an example.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 4. Routing in the browser. It is small, and filters and tabs in the URL are common.
-5. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
-6. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
-7. Caching pages and data, now that `#defer` can render the parts of a cached page for each user.
-8. Compiled messages, Markdown with components, two-way realtime and embedding when an app or the website needs them.
+5. Element behaviors, testing routes and budgets for one event. Each is small.
+6. Transitions, which the UI components need in phase 2.
+7. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
+8. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
+9. Caching pages and data, now that `#defer` can render the parts of a cached page for each user.
+10. Compiled messages, Markdown with components, two-way realtime, embedding, worker functions, offline pages, long lists and the rest when an app or the website needs them.
