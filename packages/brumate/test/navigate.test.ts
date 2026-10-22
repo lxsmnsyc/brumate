@@ -525,3 +525,14 @@ describe('navigate', () => {
     delete (document as { startViewTransition?: unknown }).startViewTransition;
   });
 });
+
+describe('navigate of brumate/routes', () => {
+  it('refuses a URL that is not a web page, such as javascript:', async () => {
+    const { navigate: go } = await import('../src/runtime/routes.ts');
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await expect(go('javascript:alert(1)')).rejects.toThrow('not javascript:');
+    await expect(go('data:text/html,<p>hi</p>')).rejects.toThrow('not data:');
+    expect(assign).not.toHaveBeenCalled();
+    assign.mockRestore();
+  });
+});

@@ -59,6 +59,10 @@ export interface NavigateOptions {
  */
 export function navigate(to: string, options: NavigateOptions = {}): Promise<void> {
   const url = new URL(to, location.href);
+  // A `javascript:` URL would run its script, so only web pages load.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return Promise.reject(new TypeError(`navigate loads http and https URLs, not ${url.protocol}`));
+  }
   if (url.origin !== location.origin) {
     location.assign(url.href);
     return new Promise(() => {});
