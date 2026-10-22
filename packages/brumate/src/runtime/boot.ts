@@ -265,7 +265,12 @@ export function boot(
         client
           ? run(template, ref)
           : void import('./defer.ts').then((module) => module.loadDeferred(template));
-      const next = template.nextElementSibling;
+      // The element that a `$client` callback reads through `ref`, or the one after the marker.
+      const near = template.getAttribute('b-near');
+      const next =
+        (near &&
+          (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
+        template.nextElementSibling;
       if (trigger === 'idle') {
         idle(go);
       } else if (trigger === 'visible' && next && visible) {
