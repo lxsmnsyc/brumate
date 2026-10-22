@@ -13,7 +13,7 @@ import {
 } from './html.ts';
 import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
-import { disabledFeatures, plugins } from './serial.ts';
+import { disabledFeatures, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   CHILDREN,
@@ -1341,7 +1341,7 @@ function serializeState(
     let code: string | undefined;
     try {
       code = crossSerialize(packed, {
-        plugins,
+        plugins: syncPlugins,
         disabledFeatures,
         refs,
         assignSharedRefsOnly: true,

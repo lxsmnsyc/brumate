@@ -17,3 +17,4 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - seroval@1.7.0
+  - seroval-plugins@1.7.0

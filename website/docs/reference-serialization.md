@@ -1,6 +1,6 @@
 # Serializable values
 
-Values cross from the server to the browser in two ways: in the page, for the state that client code reads, and through server function calls. Both use [seroval](https://github.com/lxsmnsyc/seroval), so they accept the same values.
+Values cross from the server to the browser in two ways: in the page, for the state that client code reads, and through server function calls. Both use [seroval](https://github.com/lxsmnsyc/seroval), with the web plugins of `seroval-plugins`, so they accept the same values.
 
 - The page state is code in inline scripts, which the core runs when it starts. See [Page format](./page-format.md#state).
 - Server function calls and their answers are seroval JSON. See [Server function protocol](./server-protocol.md).
@@ -13,7 +13,12 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | `bigint`                                           |                                                                                                    |
 | Plain objects and arrays                           | Shared and cyclic references are kept. Objects with a `null` prototype are kept.                   |
 | `Date`, `Map`, `Set`                               |                                                                                                    |
-| `URL`, `URLSearchParams`                           |                                                                                                    |
+| `URL`, `URLSearchParams`, `Headers`                |                                                                                                    |
+| `FormData`                                         | Its text fields. A field that holds a file is sent only in the arguments of a call.                |
+| `Request`, `Response`                              | With their body, which is read to send it.                                                         |
+| `ReadableStream`                                   | Each chunk streams as it is ready.                                                                 |
+| `AbortSignal`                                      | Whether it aborted, and its reason.                                                                |
+| `Event`, `CustomEvent`, `DOMException`             | The type and the options of an event, and the name and the message of an exception.                |
 | Typed arrays, `ArrayBuffer`                        |                                                                                                    |
 | `Error` and its subclasses                         | The name and the message only. The stack trace stays on the server.                                |
 | Promises                                           | Sent as pending, and settled when the value is ready.                                              |
@@ -24,11 +29,11 @@ Values cross from the server to the browser in two ways: in the page, for the st
 
 ## Only through server functions
 
-| Value           | Direction              | Notes                                                                                      |
-| --------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `File`, `Blob`  | Arguments              | As parts of multipart form data. They can be in arrays and plain objects in the arguments. |
-| Async iterables | Answers                | Each value streams as it is ready. In the page, a memo of a stream holds its first value.  |
-| `FormData`      | Arguments, from a form | A form that posts to a server function sends its `FormData`.                               |
+| Value           | Direction              | Notes                                                                                                                       |
+| --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `File`, `Blob`  | Arguments              | As parts of multipart form data, in arrays and plain objects. In other values, such as a `Map`, their bytes go in the JSON. |
+| Async iterables | Answers                | Each value streams as it is ready. In the page, a memo of a stream holds its first value.                                   |
+| `FormData`      | Arguments, from a form | A form that posts to a server function sends its `FormData`.                                                                |
 
 ## Not sent
 

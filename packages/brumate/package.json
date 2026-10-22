@@ -101,7 +101,8 @@
     "oxc-parser": "^0.154.0",
     "postcss": "^8.5.31",
     "postcss-selector-parser": "^7.1.6",
-    "seroval": "^1.7.0"
+    "seroval": "^1.7.0",
+    "seroval-plugins": "^1.7.0"
   },
   "devDependencies": {
     "@oxc-project/types": "^0.154.0",

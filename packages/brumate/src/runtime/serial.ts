@@ -5,6 +5,22 @@
 // browser only with the first server function call.
 
 import { Feature, createPlugin } from 'seroval';
+import {
+  AbortSignalPlugin,
+  BlobPlugin,
+  CustomEventPlugin,
+  DOMExceptionPlugin,
+  EventPlugin,
+  FilePlugin,
+  FormDataPlugin,
+  HeadersPlugin,
+  ImageDataPlugin,
+  ReadableStreamPlugin,
+  RequestPlugin,
+  ResponsePlugin,
+  URLPlugin,
+  URLSearchParamsPlugin,
+} from 'seroval-plugins/web';
 import type {
   Plugin,
   SerovalNode,
@@ -96,24 +112,6 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.c(ctx.deserialize<string>(node.c)),
 });
 
-/** A value that its string makes again, such as a `URL` from its `href`. */
-function stringPlugin<T extends { toString(): string }>(
-  tag: string,
-  type: new (text: string) => T,
-): Plugin<T, { v: SerovalNode }> {
-  return createPlugin<T, { v: SerovalNode }>({
-    tag,
-    skipPlainObjects: true,
-    test: (value) => value instanceof type,
-    parse: parsers((value) => ({ v: value.toString() })),
-    serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
-    deserialize: (node, ctx) => new type(ctx.deserialize<string>(node.v)),
-  });
-}
-
-const URLPlugin = stringPlugin('brumate/url', URL);
-const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams);
-
 /** A file in the arguments of a server function call. It is never in the page state. */
 const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
   tag: 'brumate/upload',
@@ -133,8 +131,53 @@ export const plugins: Plugin<any, any>[] = [
   RawPlugin,
   ComponentPlugin,
   UploadPlugin,
+  // The web values of seroval-plugins. Blobs, files, form data, requests and responses need
+  // the async or stream modes, so a page state or a call result that holds one streams.
+  AbortSignalPlugin,
+  BlobPlugin,
+  CustomEventPlugin,
+  DOMExceptionPlugin,
+  EventPlugin,
+  FilePlugin,
+  FormDataPlugin,
+  HeadersPlugin,
+  ImageDataPlugin,
+  ReadableStreamPlugin,
+  RequestPlugin,
+  ResponsePlugin,
   URLPlugin,
-  SearchParamsPlugin,
+  URLSearchParamsPlugin,
+];
+
+/**
+ * Stops a sync mode at a value that only streams: an async iterable, such
+ * as a `ReadableStream`. seroval writes one in a sync mode as a stream that
+ * never gets its values, without an error.
+ */
+const StreamGuardPlugin = createPlugin<object, Record<string, never>>({
+  tag: 'brumate/stream-guard',
+  skipPlainObjects: true,
+  test: (value) =>
+    (typeof ReadableStream !== 'undefined' && value instanceof ReadableStream) ||
+    (typeof value === 'object' && value !== null && Symbol.asyncIterator in value),
+  parse: {
+    sync: () => {
+      throw new Error('A stream needs the async or stream mode');
+    },
+  },
+  serialize: () => '',
+  deserialize: () => ({}),
+});
+
+/**
+ * The plugins for the sync modes, which must throw for a value that only
+ * streams, so the page state streams instead, and a call with a stream in
+ * its arguments is not shared with another.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export const syncPlugins: Plugin<any, any>[] = [
+  StreamGuardPlugin,
+  ...plugins.filter((plugin) => plugin !== ReadableStreamPlugin),
 ];
 
 /**

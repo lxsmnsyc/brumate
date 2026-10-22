@@ -1,7 +1,7 @@
 import { toJSON } from 'seroval';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
-import { disabledFeatures, plugins } from './serial.ts';
+import { disabledFeatures, syncPlugins } from './serial.ts';
 
 /**
  * What a request is for. A form post to a server function is a call, and a
@@ -288,7 +288,7 @@ export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string)
     }
     let key: string;
     try {
-      key = `${id} ${JSON.stringify(toJSON(args, { plugins, disabledFeatures }))}`;
+      key = `${id} ${JSON.stringify(toJSON(args, { plugins: syncPlugins, disabledFeatures }))}`;
     } catch {
       // Arguments that cannot be compared, such as a promise.
       return fn(...args);

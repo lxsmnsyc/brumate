@@ -58,7 +58,7 @@ declare function $$on<T extends string, K extends string>(tag: T, event: K, hand
 declare function $$onWindow<K extends string>(event: K, handler: (event: $$Event<K, WindowEventMap> & { currentTarget: Window }) => unknown): void;
 declare function $$onDocument<K extends string>(event: K, handler: (event: $$Event<K, DocumentEventMap> & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;
-type $$Plain = string | number | boolean | bigint | null | undefined | Date | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Blob | Headers | FormData | Request | Response;
+type $$Plain = string | number | boolean | bigint | null | undefined | Date | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Headers | FormData | Request | Response | ReadableStream<any> | AbortSignal | Event | DOMException;
 type $$Sendable<T> = T extends $$Plain ? T : T extends { brumateId: string } ? T : T extends RegExp ? { 'A regular expression cannot be sent to the client. Send its source and flags': never } : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
 /** Checks a value that the page state sends to the client. */
 declare function $$sendable<T>(value: T & $$Sendable<T>): void;

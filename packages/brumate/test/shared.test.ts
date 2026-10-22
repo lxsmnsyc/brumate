@@ -12,8 +12,9 @@ import {
 import type { SerovalNode } from 'seroval';
 import { describe, expect, it } from 'vitest';
 import { raw, rawHTML, spread } from '../src/runtime/html.ts';
-import { disabledFeatures, plugins } from '../src/runtime/serial.ts';
+import { disabledFeatures, plugins, syncPlugins } from '../src/runtime/serial.ts';
 import { stateScript, streamState } from '../src/runtime/server.ts';
+import { dedupe, withEvent } from '../src/runtime/request.ts';
 import { Upload, functionReferences } from '../src/runtime/calls.ts';
 import { ElementReference, FunctionReference, stateValues } from '../src/runtime/shared.ts';
 
@@ -32,6 +33,8 @@ function sample(): unknown {
     upload: new Upload(3),
     url: new URL('https://example.com/a?b=c'),
     params: new URLSearchParams('x=1&y=2'),
+    headers: new Headers({ 'x-a': '1' }),
+    exception: new DOMException('Gone', 'AbortError'),
     list: [new ElementReference(5, 6), raw('<i>one</i>')],
   };
 }
@@ -64,6 +67,11 @@ function summary(value: unknown): unknown {
     upload: result.upload,
     url: String(result.url),
     params: String(result.params),
+    headers: Object.fromEntries(result.headers as Headers),
+    exception: [
+      (result.exception as DOMException).name,
+      (result.exception as DOMException).message,
+    ],
   };
 }
 
@@ -75,6 +83,8 @@ const expected = {
   upload: new Upload(3),
   url: 'https://example.com/a?b=c',
   params: 'x=1&y=2',
+  headers: { 'x-a': '1' },
+  exception: ['AbortError', 'Gone'],
 };
 
 // The server, the stream of a call and the browser read each other's output, so the nodes stay the same.
@@ -214,5 +224,49 @@ describe('spread attributes', () => {
         '': 'g',
       }),
     ).toBe(' title="a" data-x="b"');
+  });
+});
+
+/** A stream of the given chunks. */
+function chunks(...values: string[]): ReadableStream<string> {
+  return new ReadableStream({
+    start(controller) {
+      values.forEach((value) => controller.enqueue(value));
+      controller.close();
+    },
+  });
+}
+
+async function readAll(stream: ReadableStream<string>): Promise<string[]> {
+  const read: string[] = [];
+  for await (const chunk of stream) {
+    read.push(chunk);
+  }
+  return read;
+}
+
+describe('streams', () => {
+  it('are left out of the sync modes, which would write an empty stream', () => {
+    expect(() => toJSON(chunks('a'), { plugins: syncPlugins, disabledFeatures })).toThrow(
+      'A stream needs the async or stream mode',
+    );
+  });
+
+  it('stream their chunks in the page state', async () => {
+    const codes: string[] = [];
+    await streamState({ 0: { s: [chunks('a', 'b')] } }, (code) => codes.push(code));
+    const refs: unknown[] = [];
+    const state = runRecord(codes[0]!, refs) as Record<number, { s: [ReadableStream<string>] }>;
+    for (const code of codes.slice(1)) {
+      runRecord(code, refs);
+    }
+    expect(await readAll(state[0]!.s[0])).toEqual(['a', 'b']);
+  });
+
+  it('keep calls with a stream in their arguments apart', () => {
+    let count = 0;
+    const read = dedupe((_stream: ReadableStream<string>) => ++count, 'read');
+    const results = withEvent(undefined, () => [read(chunks('a')), read(chunks('b'))], new Map());
+    expect(results).toEqual([1, 2]);
   });
 });
