@@ -458,12 +458,34 @@ describe('resume', () => {
   // The `Select` spike of the headless UI components: a select made of generic parts that read
   // its context. `it.fails` marks what brumate cannot do yet, so a fix turns it into a failure.
   describe('Select spike', () => {
-    it.fails('gives parts that a caller passes as children the contexts of the component', async () => {
+    it('gives parts that a caller passes as children the contexts of the component', async () => {
       const server = await import(file('spikePage.brm.ts'));
       const { html } = await renderParts(server.default, {});
-      // Children render in the caller's scope before the select provides its context.
+      // Children render where the select inserts them, after it provides its context.
       expect(html).toMatch(/<span class="label" id="[^"]+"/);
       expect(html).toContain('aria-expanded="false"');
+      // In the browser, the trigger opens the popover of its select, and the list chooses.
+      await resume('spikePage', {});
+      click(document.querySelector('.select .trigger')!);
+      await waitFor(() => expect(document.querySelector('.popover')).not.toBeNull());
+      expect(document.querySelector('.select .trigger')!.getAttribute('aria-expanded')).toBe(
+        'true',
+      );
+      click(document.querySelectorAll('.option')[1]!);
+      await waitFor(() => expect(text('.value')).toBe('Dog'));
+      expect(document.querySelector('.popover')).toBeNull();
+    });
+
+    it('gives children the contexts of the component in markup that the browser renders', async () => {
+      await resume('spikeLater', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.label')).not.toBeNull());
+      expect(document.querySelector('.label')!.id).not.toBe('');
+      expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('false');
+      click(document.querySelector('.trigger')!);
+      await waitFor(() => expect(document.querySelector('.popover')).not.toBeNull());
+      click(document.querySelectorAll('.option')[0]!);
+      await waitFor(() => expect(text('.value')).toBe('Cat'));
     });
 
     it('gives a part on its own the default value of the context', async () => {

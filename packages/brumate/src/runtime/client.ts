@@ -3,7 +3,6 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
-  rawHTML,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -72,6 +71,8 @@ export interface Scope {
   c?: Record<number, ScopeId>;
   /** The scope that rendered a component's root scope. */
   o?: Scope;
+  /** For children that a component inserted, the scope where they are, for contexts. */
+  t?: Scope;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
@@ -333,6 +334,9 @@ function addScopes(state: PageState, root: string): Scope[] {
     }
     if (record.o !== undefined) {
       scope.o = scopes.get(record.o);
+    }
+    if (record.t !== undefined) {
+      scope.t = scopes.get(record.t);
     }
   }
   const seen = new Set<object>();
@@ -1888,7 +1892,12 @@ export function setVar(scope: Scope, name: string, value: unknown): void {
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
-  for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+  // Children that a component inserted find their contexts where they are, through `t`.
+  for (
+    let current: Scope | undefined = scope;
+    current;
+    current = current.t ?? current.p ?? current.o
+  ) {
     if (current.v && key in current.v) {
       return current;
     }
@@ -1981,9 +1990,45 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 
 // Rendering on the client
 
-/** Renders a value inserted in markup. */
-export function insert(value: unknown): string {
-  return insertValue(value);
+/** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
+export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
+  return value instanceof Children ? value.render(resolveScope(scope)) : insertValue(value);
+}
+
+/** Children that render where they are inserted, and the scopes that they find contexts from. */
+const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
+
+/**
+ * Children of a component that the client renders. They render where the
+ * component inserts them, so they read the contexts that it provides. `from`
+ * is the scope of the markup that wrote them.
+ */
+class Children {
+  private readonly from: Scope | undefined;
+  private readonly html: () => string;
+
+  constructor(from: Scope | ScopeId | undefined, html: () => string) {
+    this.from = resolveScope(from);
+    this.html = html;
+  }
+
+  render(at: Scope | undefined): string {
+    if (!at) {
+      return this.html();
+    }
+    const entry = { from: this.from, at };
+    insertedChildren.push(entry);
+    try {
+      return this.html();
+    } finally {
+      insertedChildren.splice(insertedChildren.indexOf(entry), 1);
+    }
+  }
+}
+
+/** The children of a component that the client renders. See `Children`. */
+export function children(from: Scope | ScopeId | undefined, html: () => string): Children {
+  return new Children(from, html);
 }
 
 /** A component's client render function, from its `?brumate-render` module. */
@@ -2019,21 +2064,23 @@ export function component<P>(
 export function dynamic(
   tag: unknown,
   attributes: Record<string, unknown>,
-  children: Raw | undefined,
+  inner: Raw | Children | undefined,
   _ctx?: unknown,
   scope?: Scope | number,
 ): string {
   if (typeof tag === 'function') {
     return component(
       tag as Component,
-      children ? { ...attributes, children } : attributes,
+      inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,
     );
   }
   const name = String(tag);
   const open = `<${name}${spreadText(attributes)}>`;
-  return VOID_ELEMENTS.has(name) ? open : `${open}${children ? rawHTML(children) : ''}</${name}>`;
+  return VOID_ELEMENTS.has(name)
+    ? open
+    : `${open}${inner ? insert(inner, undefined, scope) : ''}</${name}>`;
 }
 
 /** Work that waits until rendered markup is in the page. */
@@ -2053,6 +2100,12 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   if (module !== undefined && owner) {
     created.o = owner;
     owner = undefined;
+  }
+  // A scope at the top of children that are inserted elsewhere finds its contexts there.
+  const up = created.o ?? parentScope;
+  const inserted = insertedChildren.findLast((entry) => entry.from === up);
+  if (inserted) {
+    created.t = inserted.at;
   }
   parentScope?.children.add(created);
   treeChanges++;

@@ -9,11 +9,11 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
   const $$s1 = $$ctx.scope(1, undefined, "Parent_4bs4t8");
   let count = (1);
   const label = 'Count';
-  const $$children0 = await (async () => {
+  const $$children0 = $$b.children($$s1, async ($$ctx) => {
     let $$html = '';
     $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</em>";
-    return $$b.raw($$html);
-  })();
+    return $$html;
+  });
   $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
@@ -61,11 +61,11 @@ export default function Parent($$props: Record<string, never>): string {
   const $$s1 = $$b.createScope(1, undefined, "Parent_4bs4t8");
   let count = (1);
   const label = 'Count';
-  const $$children0 = (() => {
+  const $$children0 = $$b.children($$s1, () => {
     let $$html = '';
     $$html += "<em>" + $$b.insert((label)) + "</em>";
-    return $$b.raw($$html);
-  })();
+    return $$html;
+  });
   $$html += $$b.component(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0) + $$b.component(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1);
   $$b.setSlots($$s1, [count]);
   return $$html;

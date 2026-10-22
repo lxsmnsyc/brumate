@@ -191,7 +191,9 @@ Markup between the tags of a component is its `children` prop. Insert it with `{
 </section>
 ```
 
-- The server renders the children with the page.
+- The children render where the component inserts them, so they read the contexts that the component provides. A `Tab` passed into a `Tabs` reads the context of the `Tabs`, as if `Tabs` rendered it.
+- Their values and handlers stay the caller's: `{count}` in the children is the caller's `count`.
+- The server renders the children with the page, also when the component does not insert them yet.
 - When the component inserts them later, such as when the `#if` opens, they show the current values. Their event handlers work.
 
 ### Templates as props

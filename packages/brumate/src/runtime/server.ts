@@ -177,6 +177,11 @@ export class Context {
   private readonly tree = new Map<ScopeId, { parent?: ScopeId; values?: Map<string, unknown> }>();
   /** The scope that renders the next component, which becomes its owner. */
   private owner: ScopeId | undefined;
+  /**
+   * Children that render where they are inserted: the scope of the markup
+   * that wrote them, and the scope where they are, for their contexts.
+   */
+  private readonly inserted: { from: ScopeId; at: ScopeId }[] = [];
   /** Takes back what this context added to the page, from the newest, for `restore`. */
   private readonly undo: (() => void)[] = [];
 
@@ -290,8 +295,30 @@ export class Context {
         root.owner = undefined;
       }
     }
+    // A scope at the top of children that are inserted elsewhere finds its contexts there.
+    const inserted = root.inserted.findLast((entry) => entry.from === up);
+    if (inserted) {
+      up = inserted.at;
+      record.t = inserted.at;
+    }
     root.tree.set(id, { parent: up });
     return id;
+  }
+
+  /**
+   * Renders children where a component inserts them, at `at`. Their scopes
+   * keep `from`, the scope of the markup that wrote them, for their values,
+   * and find their contexts from `at`.
+   */
+  async children(from: ScopeId, at: ScopeId, renderBody: () => Promise<string>): Promise<string> {
+    const entry = { from, at };
+    const { inserted } = this.root;
+    inserted.push(entry);
+    try {
+      return await renderBody();
+    } finally {
+      inserted.splice(inserted.indexOf(entry), 1);
+    }
   }
 
   /**
@@ -720,11 +747,47 @@ const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
 /** Markup that renders where it is inserted, so it can read the contexts there. */
 export interface Lazy {
-  [LAZY]: (ctx: Context, scope: number | undefined) => Promise<string>;
+  [LAZY]: (ctx: Context, scope: ScopeId | undefined) => Promise<string>;
+}
+
+/**
+ * The children of a component, which render where the component inserts
+ * them, so they read the contexts that the component provides. `from` is the
+ * scope of the markup that wrote them.
+ */
+export function children(from: ScopeId, renderBody: (ctx: Context) => Promise<string>): Lazy {
+  return new Children(from, renderBody);
+}
+
+/** The symbol of raw HTML. See `html.ts`. */
+const RAW: unique symbol = Symbol.for('brumate.raw') as never;
+
+/**
+ * Children of a component. The first render keeps its HTML as raw HTML, so
+ * the page state sends it for the browser to insert, such as when a block
+ * that holds the children opens. A class, since the serializer tests only
+ * class instances.
+ */
+class Children implements Lazy {
+  readonly [LAZY]: (ctx: Context, at: ScopeId | undefined) => Promise<string>;
+  /** The HTML of the first render, under the symbol of raw HTML. */
+  [RAW]?: string;
+
+  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>) {
+    this[LAZY] = async (ctx, at) => {
+      const html = await (at === undefined
+        ? renderBody(ctx)
+        : ctx.children(from, at, () => renderBody(ctx)));
+      this[RAW] ??= html;
+      return html;
+    };
+  }
 }
 
 /** Makes markup that renders where it is inserted, such as the children of a layout. */
-export function lazy(renderAt: (ctx: Context, scope: number | undefined) => Promise<string>): Lazy {
+export function lazy(
+  renderAt: (ctx: Context, scope: ScopeId | undefined) => Promise<string>,
+): Lazy {
   return { [LAZY]: renderAt };
 }
 
@@ -755,7 +818,7 @@ export function actionResult(ctx: Context, fn: unknown): unknown {
  * Renders a value inserted in markup. `ctx` and `scope` are where it is
  * inserted, for markup that renders there.
  */
-export function insert(value: unknown, ctx?: Context, scope?: number): string | Promise<string> {
+export function insert(value: unknown, ctx?: Context, scope?: ScopeId): string | Promise<string> {
   // A value that is ready renders without a promise, because most inserts are plain text.
   if (
     value !== null &&
@@ -801,14 +864,26 @@ export function component<P>(
   if (scope !== undefined) {
     ctx.own(scope);
   }
-  return Child(props, ctx);
+  const given = (props as { children?: unknown } | undefined)?.children;
+  if (!(given instanceof Children)) {
+    return Child(props, ctx);
+  }
+  // Children that the component did not insert render after it, inside its root scope, so the
+  // page state has their HTML for the browser.
+  const root = ctx.peek();
+  return Child(props, ctx).then(async (html) => {
+    if (given[RAW] === undefined) {
+      await given[LAZY](ctx, root);
+    }
+    return html;
+  });
 }
 
 /** Renders a dynamic tag, which can be an element name or a component. */
 export function dynamic(
   tag: string | Component,
   attributes: Record<string, unknown>,
-  children: Raw | undefined,
+  content: Raw | Lazy | undefined,
   ctx: Context,
   scope?: ScopeId,
 ): string | Promise<string> {
@@ -826,7 +901,7 @@ export function dynamic(
               .join(' '),
           }
         : attributes;
-    return component(tag, children ? { ...props, children } : props, ctx, scope);
+    return component(tag, content ? { ...props, children: content } : props, ctx, scope);
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
   const on: string[] = [];
@@ -834,7 +909,10 @@ export function dynamic(
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
-  return `${open}${children && isRaw(children) ? rawHTML(children) : ''}</${tag}>`;
+  if (isLazy(content)) {
+    return Promise.resolve(content[LAZY](ctx, scope)).then((html) => `${open}${html}</${tag}>`);
+  }
+  return `${open}${content && isRaw(content) ? rawHTML(content) : ''}</${tag}>`;
 }
 
 /** True when `value` is `target`, or holds it in plain objects, arrays, maps or sets. */
@@ -1852,7 +1930,7 @@ async function renderView(
   view: ResolvedView,
   props: Record<string, unknown>,
   ctx: Context,
-  scope: number | undefined,
+  scope: ScopeId | undefined,
 ): Promise<string> {
   if (!view.loading) {
     return component(viewComponent(view, props), {}, ctx, scope);

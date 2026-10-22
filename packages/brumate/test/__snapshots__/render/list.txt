@@ -45,11 +45,11 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
     $$html += "<!--b" + $$s1 + ":3:0-->";
     const $$s4 = $$ctx.scope(4, $$s1);
     $$html += "<section>";
-    const $$children4 = await (async () => {
+    const $$children4 = $$b.children($$s4, async ($$ctx) => {
       let $$html = '';
       $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</em>";
-      return $$b.raw($$html);
-    })();
+      return $$html;
+    });
     $$html += await $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children4 }, $$ctx, $$s4, 0) + "</section><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
@@ -163,11 +163,11 @@ export function r4($$p) {
   let label = $$b.get($$p, 2);
   const $$s4 = $$b.createScope(4, $$p);
   $$html += "<section>";
-  const $$children0 = (() => {
+  const $$children0 = $$b.children($$s4, () => {
     let $$html = '';
     $$html += "<em>" + $$b.insert((label)) + "</em>";
-    return $$b.raw($$html);
-  })();
+    return $$html;
+  });
   $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0) + "</section>";
   return $$html;
 }
@@ -213,11 +213,11 @@ export default function List($$props: Record<string, never>): string {
     $$html += "<!--b" + $$s1 + ":3:0-->";
     const $$s4 = $$b.createScope(4, $$s1);
     $$html += "<section>";
-    const $$children3 = (() => {
+    const $$children3 = $$b.children($$s4, () => {
       let $$html = '';
       $$html += "<em>" + $$b.insert((label)) + "</em>";
-      return $$b.raw($$html);
-    })();
+      return $$html;
+    });
     $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children3 }, undefined, $$s4, 0) + "</section><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";

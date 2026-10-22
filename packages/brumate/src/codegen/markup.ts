@@ -596,9 +596,12 @@ export class Emitter {
       case 'insert': {
         const anchor = this.anchor(scope, node);
         // On the server, the insert knows where it is, for markup that renders there, such as children.
+        // In the browser, only a prop can hold children, which render where they are inserted.
+        const ast = node.expression.ast;
+        const kind = ast.type === 'Identifier' ? lookup(scope, ast.name)?.kind : undefined;
         const at =
-          this.options.mode === 'server'
-            ? `, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))}`
+          this.options.mode === 'server' || kind === 'prop' || kind === 'props-rest'
+            ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
         const value = this.isPrimitiveInsert(node.expression)
@@ -917,12 +920,26 @@ export class Emitter {
       return undefined;
     }
     const name = this.unique('children');
-    this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
+    if (this.options.mode === 'server') {
+      // The children render where the component inserts them, so they read its contexts.
+      this.line(
+        `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, async ($$ctx) => {`,
+      );
+      this.line(`let $$html = '';`);
+      this.atTopLevel(() => this.emitNodes(nodes, scope));
+      this.flush();
+      this.line('return $$html;');
+      this.close('});');
+      return name;
+    }
+    this.line(
+      `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, () => {`,
+    );
     this.line(`let $$html = '';`);
     this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
-    this.line('return $$b.raw($$html);');
-    this.close('})();');
+    this.line('return $$html;');
+    this.close('});');
     return name;
   }
 
