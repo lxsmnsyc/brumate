@@ -7,7 +7,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
-| [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Small  |
+| [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
@@ -41,35 +41,59 @@ A `bind:` attribute writes it once:
 
 ### Blocking async memos
 
-The server awaits an async memo where it is declared only when markup outside every `#loading` body reads it. A memo that only client code reads, such as a handler, goes into the page state as a promise. The page sends it pending, and a later state record settles it:
+`await` says where the server waits. A read with `await` gives the value, never a promise, so the page state holds the value and needs no later record for it:
 
 ```html
 <script>
-  import { $memo } from 'brumate/signals';
-  import { listTags } from './tags.server';
+  import { $memo, $props } from 'brumate/signals';
+  import { fetchSettings, fetchUser, listTags } from './data.server';
 
-  // Only the handler reads it, so the page sends a promise.
+  const { id } = $props<{ id: string }>();
+  // The server waits here. A constant: it does not load again on the client.
+  const settings = await fetchSettings();
+  // A memo that the page waits for. It loads again when `id` changes.
+  const user = await $memo(fetchUser(id));
+  // A memo that streams: the page sends a promise, and a later record settles it.
   const tags = $memo(listTags());
 </script>
 
+<p>{user.name} · {settings.theme}</p>
+#loading {
+  <!-- The body waits for the tags, and the page does not. -->
+  <p>{(await tags).join(', ')}</p>
+} #else {
+  <p>Loading tags…</p>
+}
 <button onClick=(() => console.log(tags))>Log tags</button>
 ```
 
-A blocking memo makes the server wait for the value before it sends the state:
+Where `await` can be, and what it waits for:
 
-```html
-const tags = $memo(listTags(), { wait: true });
-```
+- In a script, `await` of a promise or of a call that returns one, as in JavaScript. The script runs only on the server, so the value is a constant that the state sends when client code reads it. This works today, except in the browser.
+- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. It is a memo like any other on the client: it loads again when what it reads changes. Its value is in the first state record, even when only client code reads it.
+- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo there. Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record. Inside a body, that body waits.
+- `$memo(await value)` keeps its meaning: a memo whose value loads. Without an `await` of the memo itself, it streams when only client code or a `#loading` body reads it, as now.
 
-- The state record holds the value, so the page needs no later record for it, and the client never sees it pending.
-- A page with no other promise and no `#loading` body then has one state record. It gets the smaller state that assigns only shared references.
-- The first byte comes later by the time of the load. That is the trade-off, so it is opt-in.
-- A blocking memo inside a `#loading` body waits for the body, not the page.
-- The option is a literal object, so the compiler reads it. `$memo` takes one argument today, so this adds a second.
+In the browser:
 
-Other names to weigh: `$memo.wait(value)` or a separate `$await(value)`.
+- The value of a memo is already settled when the code that reads it runs, so `await name` of a memo compiles to a plain read. An insert shows the last value while the memo loads again, and `$isPending` tells when it does.
+- A render module runs without waiting, so it cannot wait for a promise. Code that the browser renders, such as a branch of an `#if` that changes, cannot `await` anything other than a memo. The compiler reports it in the same file. A component whose script awaits a promise renders only on the server, and throws a clear error when the browser renders it, such as from another file.
 
-Cost: a few days. The server already awaits blocking memos where markup reads them. This adds the option to the analyzer and to `blockingMemos`, with tests and docs.
+Order:
+
+- Awaits in a script run in order, as in JavaScript, so two awaits of independent loads wait one after the other.
+- `await $memo(…)` starts its load where it is declared. The server could start every such memo of a script first and wait for them together, since a memo depends only on what it reads. This is the main open question.
+
+What it needs:
+
+- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await` outside every body, as blocking. `blockingMemos` already decides which memos the server awaits where they are declared.
+- The client codegen removes `await` from reads of memos, and reports `await` of anything else in code that runs in the browser.
+- The type checker types `await name` of a memo as its value.
+- With every promise awaited, a page with no `#loading` or `#defer` body has one state record, and gets the smaller state that assigns only shared references.
+
+Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
+
+Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
 
 ## Runtime
 
@@ -385,7 +409,7 @@ Cost: a few days for the adapter, a guide and an example.
 
 ### Order
 
-1. Blocking async memos. They are small, and they make the state of more pages one record.
+1. Blocking async memos. They fix `await` in components that the browser renders, and they make the state of more pages one record.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 4. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
