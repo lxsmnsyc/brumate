@@ -234,6 +234,16 @@ export class Rewriter {
           }
           return;
         }
+        case 'AwaitExpression': {
+          // `await name` of a memo is a plain read of its value, which is settled in the browser.
+          const reference = target(node.argument);
+          if (reference?.await) {
+            const value = this.value(reference.declaration, scopeVar, base);
+            patch.replace(node.start, node.end, value ?? reference.declaration.name);
+            return;
+          }
+          break;
+        }
         case 'Property':
           if (node.shorthand && node.value.type === 'Identifier') {
             const reference = target(node.value);

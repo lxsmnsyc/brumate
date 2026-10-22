@@ -1,0 +1,13 @@
+<script>
+  import { capture, prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+
+  let log = $signal<string[]>([]);
+  const add = (entry: string) => (log = [...log, entry]);
+</script>
+
+<div class="outer" onClick=(capture(() => add('outer capture'))) onFocus=(() => add('outer focus'))>
+  <button class="inner" onClick=(() => add('inner'))>Go</button>
+  <div class="wheel" onWheel=(prevent(() => add('wheel')))></div>
+</div>
+<p class="log">{log.join(', ')}</p>

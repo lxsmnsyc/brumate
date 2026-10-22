@@ -70,6 +70,97 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** A page with a head and a body. */
+function html(body: string, head = '<title>Page</title>'): Response {
+  return new Response(`<!doctype html><html><head>${head}</head><body>${body}</body></html>`, {
+    headers: { 'content-type': 'text/html' },
+  });
+}
+
+describe('accessible navigation', () => {
+  it('announces the page, and moves the focus to its heading, or to its main', async () => {
+    document.body.innerHTML = '<a href="/a">A</a>';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => html('<main><h2>Sub</h2><h1>Issues</h1></main>')),
+    );
+    await navigate({
+      url: '/issues',
+      push: true,
+      focus: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(document.querySelector('[b-announcer]')?.textContent).toBe('Page');
+    expect(document.querySelector('[b-announcer]')?.getAttribute('aria-live')).toBe('assertive');
+    const heading = document.querySelector('h1')!;
+    expect(document.activeElement).toBe(heading);
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+    heading.blur();
+    expect(heading.hasAttribute('tabindex')).toBe(false);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        html(
+          '<main><p>No heading</p></main>',
+          '<title>Same</title><meta name="brumate-announce" content="Search results">',
+        ),
+      ),
+    );
+    await navigate({
+      url: '/search',
+      push: true,
+      focus: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(document.querySelector('[b-announcer]')?.textContent).toBe('Search results');
+    expect(document.activeElement).toBe(document.querySelector('main'));
+    history.replaceState({}, '', '/');
+  });
+
+  it('keeps the focus and announces nothing when only the query string changes', async () => {
+    history.replaceState({}, '', '/search');
+    document.body.innerHTML = '<input class="query">';
+    const input = document.querySelector<HTMLInputElement>('.query')!;
+    input.focus();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => html('<input class="query"><h1>Results</h1>')),
+    );
+    await navigate({
+      url: '/search?q=a',
+      push: false,
+      focus: true,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(document.querySelector('[b-announcer]')).toBeNull();
+    expect(document.activeElement?.tagName).not.toBe('H1');
+    history.replaceState({}, '', '/');
+  });
+
+  it('keeps the scroll position when asked', async () => {
+    document.body.innerHTML = '<p>Long</p>';
+    const scrollTo = vi.fn<(x: number, y: number) => void>();
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => html('<p>Next</p>')),
+    );
+    await navigate({
+      url: '/next',
+      push: true,
+      scroll: false,
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(scrollTo).toHaveBeenCalledWith(0, window.scrollY);
+    history.replaceState({}, '', '/');
+  });
+});
+
 describe('navigate', () => {
   it('swaps in the first render, then streams later markup into the body', async () => {
     document.head.innerHTML = '<title>Old</title><style b-style="Old">a{}</style>';
@@ -432,5 +523,16 @@ describe('navigate', () => {
     ]);
     expect(document.body.textContent).toBe('/c');
     delete (document as { startViewTransition?: unknown }).startViewTransition;
+  });
+});
+
+describe('navigate of brumate/routes', () => {
+  it('refuses a URL that is not a web page, such as javascript:', async () => {
+    const { navigate: go } = await import('../src/runtime/routes.ts');
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await expect(go('javascript:alert(1)')).rejects.toThrow('not javascript:');
+    await expect(go('data:text/html,<p>hi</p>')).rejects.toThrow('not data:');
+    expect(assign).not.toHaveBeenCalled();
+    assign.mockRestore();
   });
 });

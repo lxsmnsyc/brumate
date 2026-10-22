@@ -6,6 +6,7 @@
 // `<template b-l>`, the script that swaps it in, and its state records.
 // This module adds that markup to the page and runs its scripts, in order.
 
+import { trustedHTML, trustedScript } from './trusted.ts';
 /** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
 function nonceOf(script: HTMLScriptElement): string | null {
   return script.nonce || script.getAttribute('nonce');
@@ -44,7 +45,7 @@ export async function loadDeferred(template: Element): Promise<void> {
     return;
   }
   const parsed = document.createElement('template');
-  parsed.innerHTML = await response.text();
+  parsed.innerHTML = trustedHTML(await response.text());
   const nonce = pageNonce();
   // A copy, because appending moves nodes out of the live list.
   for (const node of Array.from(parsed.content.childNodes)) {
@@ -63,7 +64,7 @@ export async function loadDeferred(template: Element): Promise<void> {
     if (nonce) {
       copy.nonce = nonce;
     }
-    copy.textContent = script.textContent;
+    copy.textContent = trustedScript(script.textContent ?? '');
     document.body.append(copy);
   }
 }

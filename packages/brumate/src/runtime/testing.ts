@@ -5,7 +5,10 @@
 import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
 import { handleRequest, render } from './server.ts';
-import type { Component, RenderOptions } from './server.ts';
+import type { Component, EntryMiddleware, RenderOptions } from './server.ts';
+
+/** The middleware of files of server functions, by function ID. */
+type FileMiddleware = Record<string, EntryMiddleware>;
 
 export interface TestingOptions {
   /** Imports the client module of a component, by component ID. */
@@ -176,6 +179,13 @@ export interface AnswerOptions {
   rpc?: string;
   /** Called with the ID of each call, such as `issues_1a2b#toggleStar`, before it runs. */
   onCall?: (id: string) => void;
+  /** The middleware of the entry, which runs before each call. `virtual:brumate/testing` passes the app's. */
+  middleware?: EntryMiddleware;
+  /**
+   * The middleware of each `'use server'` file, by function ID, or a
+   * function that imports them. `virtual:brumate/testing` passes them.
+   */
+  fileMiddleware?: FileMiddleware | (() => Promise<FileMiddleware>);
 }
 
 /** What `run` of `AsyncLocalStorage` looks like, the part that `answerCalls` uses. */
@@ -238,7 +248,10 @@ export function answerCalls(
     loaded ??= Promise.resolve(typeof functions === 'function' ? functions() : functions);
     const registry = await loaded;
     const request = input instanceof Request ? new Request(input, init) : new Request(url, init);
-    const handle = (): Promise<Response | undefined> => handleRequest(registry, request, prefix);
+    const guards = options.fileMiddleware;
+    const fileMiddleware = typeof guards === 'function' ? await guards() : guards;
+    const handle = (): Promise<Response | undefined> =>
+      handleRequest(registry, request, prefix, { middleware: options.middleware, fileMiddleware });
     const response = await (calls ? calls.run(id, handle) : handle());
     if (failure) {
       const error = failure;

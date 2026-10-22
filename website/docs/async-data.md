@@ -46,12 +46,47 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - `await` works in the expression: `$memo(await load(id))`.
 - The type of the memo is the value, not the promise. `$memo(getUser(id))` has the type of the user.
 
+## `await`
+
+`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback:
+
+```brm
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { fetchSettings, fetchUser, listTags } from './data.server';
+
+  const { id } = $props<{ id: string }>();
+  // The server waits here. A constant: it does not load again in the browser.
+  const settings = await fetchSettings();
+  // A memo that the page waits for. It loads again when `id` changes.
+  const user = await $memo(fetchUser(id));
+  // A memo that streams, unless an `await` reads it.
+  const tags = $memo(listTags());
+</script>
+
+<p>{settings.theme}</p>
+#loading {
+  <!-- The page waits for the user. The tags can show the fallback. -->
+  <h1>{user.name}</h1>
+  <p>{tags.join(', ')}</p>
+} #else {
+  <p>Loading…</p>
+}
+```
+
+- In a script, `await` of a promise works as in JavaScript. The script runs on the server only, so the value is a constant. A component whose script awaits a promise renders only on the server: the browser throws when it renders the component, such as inside a block of a parent that changes.
+- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. In the browser it is a memo like any other: it loads again when what it reads changes.
+- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it. Outside every `#loading` body, the page waits. Inside a `#loading` body, the render around the block waits before it reaches the block: the page, or the body of a `#loading` around it. Inside a `#defer` body, the request for the body waits.
+- In the browser, the value of a memo is settled when the code that reads it runs, so `await name` is a plain read. Code that the browser renders or updates, such as a branch of an `#if` that changes, can await nothing other than a memo. The compiler reports it in the same file.
+- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time. Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript. A memo that reads another one waits for it by itself, so in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` runs when `foo()` settles. When a memo fails, the error comes where the run waits.
+
 ## On the server
 
 The server renders the page once, so it waits for the values that the page needs:
 
 - Markup outside every `#loading` block waits for the memos it reads. The page starts to stream after they settle.
-- Markup inside a `#loading` block does not hold up the page. Its fallback goes out with the first render, and the content streams in when its values settle.
+- Markup inside a `#loading` block does not hold up the page. When the values that the body reads are ready as the block renders, the body renders in place. Otherwise the fallback goes out with the first render, and the body streams in when its values settle.
+- A page that waits for every value it loads has one state record, and nothing streams after it.
 
 ### Pages for readers without scripts
 
@@ -117,6 +152,7 @@ const user = $memo(getUser(id));
 
 - The heading shows at once. The quote streams in after a second and a half.
 - Without `#loading`, the whole page waits for the quote.
+- When the values that the body reads are ready as the block renders, such as a value the page waited for with `await`, the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
 
 ## On the client
