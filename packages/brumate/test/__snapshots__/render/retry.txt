@@ -132,4 +132,4 @@ export default function Retry($$props: Record<string, never>): string {
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Retry_pyus3c"},"0.0":$R[2]={k:3,p:0,s:$R[3]=[$R[4]=new Error("Not ready")]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Retry_pyus3c"},"0.0":{k:3,p:0,s:[new Error("Not ready")]}})))</script>

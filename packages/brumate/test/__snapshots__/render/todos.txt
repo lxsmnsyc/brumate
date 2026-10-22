@@ -201,4 +201,4 @@ export default function Todos($$props: { initial: Todo[] }): string {
 <!--t0:3-->1<!--/t--> left</p>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Todos_t3g9lr",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Write the docs",done:!0,at:$R[5]=new Date("2026-10-01T00:00:00.000Z")},$R[6]={id:"2",title:"Build \x3Cthe> compiler",done:!1,at:$R[7]=new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:$R[8]=[$R[9]=[2,0,97,1,0,0,"0.",0,1]]})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Todos_t3g9lr",s:[[{id:"1",title:"Write the docs",done:!0,at:new Date("2026-10-01T00:00:00.000Z")},{id:"2",title:"Build \x3Cthe> compiler",done:!1,at:new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:[[2,0,97,1,0,0,"0.",0,1]]})))</script>

@@ -255,4 +255,4 @@ export default function List($$props: Record<string, never>): string {
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"List_12rwm68",s:$R[2]=[$R[3]=[1,2],!1,"Item"]},g:$R[4]=[$R[5]=[3,0,101,2,0,0,"0.",0,0,$R[6]={2:"0.2"},3,1,$R[7]={2:"0.5"}],$R[8]=[2,0,64,1,"0.",1,0,3,1],$R[9]=[1,2,88,2,"Child_108vasc","0.",2,1,$R[10]=$b.f("List_12rwm68#h11","0.0"),3,2,$R[11]=$b.f("List_12rwm68#h11","0.3")]]})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"List_12rwm68",s:[[1,2],!1,"Item"]},g:[[3,0,101,2,0,0,"0.",0,0,{2:"0.2"},3,1,{2:"0.5"}],[2,0,64,1,"0.",1,0,3,1],[1,2,88,2,"Child_108vasc","0.",2,1,$b.f("List_12rwm68#h11","0.0"),3,2,$b.f("List_12rwm68#h11","0.3")]]})))</script>

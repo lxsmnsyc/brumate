@@ -93,4 +93,4 @@ export default function ClientElse($$props: Record<string, never>): string {
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"ClientElse_1w4g5uu",s:$R[2]=[0]},1:$R[3]={k:3,p:0}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"ClientElse_1w4g5uu",s:[0]},1:{k:3,p:0}})))</script>

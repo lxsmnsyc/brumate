@@ -433,4 +433,4 @@ export default function Offscreen($$props: Record<string, any>): string {
 <!--/P-->
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Offscreen_1oupne3",s:$R[2]=["a",0,!0,!0,"color: red"]},"0.0":$R[3]={k:2,p:0,c:$R[4]={8:"0.2"},s:$R[5]=[""]},"0.0.0":$R[6]={k:3,p:"0.0"},0.1:$R[7]={k:5,p:"0.0"},0.2:$R[8]={k:1,m:"OffscreenChild_1uvc7y5",o:"0.0",s:$R[9]=[0]},"2.0":$R[10]={k:7,p:0},"2.0.0":$R[11]={k:8,p:"2.0"}})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Offscreen_1oupne3",s:["a",0,!0,!0,"color: red"]},"0.0":{k:2,p:0,c:{8:"0.2"},s:[""]},"0.0.0":{k:3,p:"0.0"},0.1:{k:5,p:"0.0"},0.2:{k:1,m:"OffscreenChild_1uvc7y5",o:"0.0",s:[0]},"2.0":{k:7,p:0},"2.0.0":{k:8,p:"2.0"}})))</script>
