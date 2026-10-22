@@ -1,6 +1,6 @@
 # Testing
 
-`brumate/testing` renders a component on the server and resumes it in the DOM of a test, the same way a page does. A test clicks and types like a user, and checks what the user would see, with the code that ships.
+`brumate/testing` renders a component on the server and resumes it in the DOM of a test, the same way a page does. A test clicks and types like a user, and checks what the user would see, with the code that ships. `visit` does the same for a route of the app, with its layouts, middleware and client navigation.
 
 ## Set up
 
@@ -121,6 +121,49 @@ it('saves a new todo', async () => {
 A DOM test gets the browser version of a file by default, so a `'use server'` file that the test imports is the stubs, which call `fetch`. The server version of a component imports the server code of `'use server'` files instead, and so does `virtual:brumate/server`. Other modules, such as `src/db.ts`, are the same copy for the test and for the server code.
 
 `brumate/testing` exports `answerCalls(functions, options)` too, for functions of your own by ID. A server function that calls a stub throws an error that names it. Without the error, the call would answer itself through `fetch` without end.
+
+## Routes
+
+`visit(path)` answers a path with the routes of the app, puts the page in the document and starts the loader with client navigation. Every request of the page goes to the same routes, in the test, without a server:
+
+```ts
+import { afterEach, expect, it } from 'vitest';
+import { visit } from 'virtual:brumate/testing';
+
+let page: Awaited<ReturnType<typeof visit>> | undefined;
+
+afterEach(() => {
+  page?.close();
+});
+
+it('signs in and opens a new issue', async () => {
+  page = await visit('/issues/new');
+  // The middleware sent the visitor to the sign-in page.
+  expect(page.url).toBe('/sign-in?next=%2Fissues%2Fnew');
+
+  page.input('input[name=name]', 'Ada');
+  page.submit('form');
+  await page.waitFor(() => expect(page!.url).toBe('/issues/new'));
+  expect(page.text('header .user span')).toBe('Ada');
+});
+```
+
+- The page renders with its layouts and middleware, as on a server. A redirect is followed, and `url` is where it ended.
+- Links use client navigation. Forms, server function calls and requests for `#defer` bodies go to the routes and to `virtual:brumate/server`.
+- The cookies that the answers set are kept and sent with the next requests, so a test can sign in and go on. `cookies` has them by name.
+- `visit(path, { cookies })` starts with cookies, such as those of an earlier visit. `headers` are sent with every request.
+- Call `close()` at the end. It stops the loader, puts `fetch` back and empties the document. A new visit closes the one before.
+
+| Member    | What it does                                                       |
+| --------- | ------------------------------------------------------------------ |
+| `url`     | The path and query of the page. It changes with client navigation. |
+| `status`  | The status of the first page.                                      |
+| `cookies` | The cookies that the browser has now, by name.                     |
+| `close()` | Stops the loader, puts `fetch` back and empties the document.      |
+
+`get`, `text`, `click`, `input`, `submit` and `waitFor` work as they do for `mount`, on the whole document.
+
+Requests to other origins go to the `fetch` from before. Use `visit` or `mount` in a test, not both, since each starts a loader.
 
 ## Type-checking tests
 

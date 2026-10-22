@@ -30,7 +30,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
 | [Early hints](#early-hints)                                           | Runtime | Medium | Small  |
-| [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
@@ -571,22 +570,6 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 - It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
 - This waits for the API to be stable, and for its documentation.
 
-### Testing routes
-
-`brumate/testing` mounts a component: it renders it on the server, resumes it in the DOM and clicks like a user. A route also has its layouts, its middleware, its endpoints, client navigation and `#defer` requests, which a test cannot reach.
-
-```ts
-const app = await visit(routes, '/issues', { cookies: { session } });
-app.click('a[href="/issues/3"]');
-await app.waitFor(() => expect(app.url).toBe('/issues/3'));
-```
-
-- `visit(routes, path, options)` answers the request with the route tree of `virtual:brumate/routes`, puts the page in the document and starts the loader with navigation.
-- Links, forms, server function calls and `#defer` requests go to the same tree, in the test, without a server.
-- It keeps the cookies between requests, so a test can sign in and go on.
-
-Cost: a few days. The tests of this repository already answer routes and navigation in a DOM.
-
 ### Devtools
 
 The panel has four tabs today: the scopes and their values, the graph of a component, a log of handlers, loads, writes and calls, and the report of a component. It shows the browser after the page resumed, and little of what makes a brumate page what it is: what the server sent, why code loaded, and the blocks that render later.
@@ -939,7 +922,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-3. **Small conveniences**: testing routes, batched reads and titles in markup. Budgets for one event are done. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+3. **Small conveniences**: batched reads and titles in markup. Testing routes and budgets for one event are done. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
 4. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
 5. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.

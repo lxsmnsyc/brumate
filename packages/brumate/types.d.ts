@@ -12,6 +12,11 @@ declare module 'virtual:brumate/testing' {
    * the app, until the returned function restores `fetch`.
    */
   export function answerCalls(options?: import('brumate/testing').AnswerOptions): () => void;
+  /**
+   * Visits a path of the app, as a browser that runs scripts does. The
+   * routes of the app answer the page and every request that it makes.
+   */
+  export const visit: import('brumate/testing').Visit;
 }
 
 declare module '*.brm' {

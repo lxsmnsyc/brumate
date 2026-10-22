@@ -1992,6 +1992,21 @@ function unknownAnswer(id: string): Response {
 }
 
 /**
+ * A response with `init`. A DOM environment such as happy-dom drops
+ * `set-cookie` from the headers that a response is made with, but keeps the
+ * ones added after, so a page in `brumate/testing` keeps its cookies.
+ */
+function respond(body: BodyInit | null, init: ResponseInit & { headers: Headers }): Response {
+  const result = new Response(body, init);
+  if (result.headers.getSetCookie().length === 0) {
+    for (const cookie of init.headers.getSetCookie()) {
+      result.headers.append('set-cookie', cookie);
+    }
+  }
+  return result;
+}
+
+/**
  * True when a request names a build other than the server's, so its page is
  * from before a deploy. Calls send the build in `x-brumate-build`, and forms
  * without scripts in `__build` of their URL.
@@ -2055,11 +2070,11 @@ async function callWithForm(
 function formFailure(error: unknown, headers: Headers, base?: string): Response {
   if (error instanceof Redirect) {
     headers.set('location', base ? new URL(error.location, base).href : error.location);
-    return new Response(null, { status: error.status, headers });
+    return respond(null, { status: error.status, headers });
   }
   const { message, status } = errorAnswer(error, 'The server function failed');
   headers.set('content-type', 'text/plain; charset=utf-8');
-  return new Response(message, { status, headers });
+  return respond(message, { status, headers });
 }
 
 /**
@@ -2074,7 +2089,7 @@ async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<R
     return outcome.answer;
   }
   headers.set('location', event.request.headers.get('referer') ?? '/');
-  return new Response(null, { status: 303, headers });
+  return respond(null, { status: 303, headers });
 }
 
 /**
@@ -2256,7 +2271,7 @@ async function answerCall(
       }
     }
     headers.set('content-type', STREAM_TYPE);
-    return new Response(
+    return respond(
       toChunkStream(result, (reason) => event.abort(reason)),
       { headers },
     );
@@ -2269,11 +2284,11 @@ async function answerCall(
 function callFailure(error: unknown, headers: Headers): Response {
   if (error instanceof Redirect) {
     headers.set('x-brumate-redirect', error.location);
-    return new Response(null, { status: 204, headers });
+    return respond(null, { status: 204, headers });
   }
   const { message, status } = errorAnswer(error, 'The server function failed');
   headers.set('content-type', 'application/json');
-  return new Response(JSON.stringify({ error: message }), { status, headers });
+  return respond(JSON.stringify({ error: message }), { status, headers });
 }
 
 interface ResolvedView {
@@ -2435,7 +2450,7 @@ async function renderPage(
   // The same URL answers the request for a `#defer` body with that body only.
   headers.append('vary', 'x-brumate-defer');
   const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
-  return new Response(body, { status: extra.status ?? parts.status, headers });
+  return respond(body, { status: extra.status ?? parts.status, headers });
 }
 
 /**
@@ -2478,7 +2493,7 @@ async function renderDeferred(
   const headers = new Headers(parts.headers);
   headers.append('vary', 'x-brumate-defer');
   if (parts.defer !== 'found') {
-    return new Response(null, { status: parts.defer === 'moved' ? 409 : 404, headers });
+    return respond(null, { status: parts.defer === 'moved' ? 409 : 404, headers });
   }
   headers.set('content-type', 'text/html; charset=utf-8');
   headers.set('x-brumate-defer', String(defer.boundary));
@@ -2496,7 +2511,7 @@ async function renderDeferred(
       }
     },
   }).pipeThrough(new TextEncoderStream());
-  return new Response(body, { status: parts.status, headers });
+  return respond(body, { status: parts.status, headers });
 }
 
 /**
@@ -2609,7 +2624,7 @@ function withHeaders(answer: Response, headers: Headers): Response {
     return answer;
   }
   // A response can have headers that cannot change, such as one from `Response.redirect`.
-  const result = new Response(answer.body, answer);
+  const result = respond(answer.body, answer);
   for (const cookie of cookies) {
     result.headers.append('set-cookie', cookie);
   }

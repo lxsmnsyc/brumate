@@ -657,11 +657,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return routeFiles(paths);
   };
 
-  const routeTree = (): string => {
+  /** The route tree module. A DOM test gets the server version of each component in it. */
+  const routeTree = (server = false): string => {
     const env = envFile();
     const code = routeModule(
       currentRoutes(),
-      (file) => `${routesDirectory()}/${file}`,
+      (file) =>
+        `${routesDirectory()}/${file}${server && file.endsWith('.brm') ? SERVER_QUERY : ''}`,
       rpc,
       options.origins,
       isServe,
@@ -1113,7 +1115,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (
         resolveOptions?.ssr ||
         !importer ||
-        (!importer.includes(SERVER_QUERY) && importer !== `\0${SERVER}`) ||
+        (!importer.includes(SERVER_QUERY) &&
+          importer !== `\0${SERVER}` &&
+          importer !== `\0${ROUTES}`) ||
         id.includes(SERVER_QUERY)
       ) {
         return undefined;
@@ -1170,15 +1174,22 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return serverRegistry(!loadOptions?.ssr);
       }
       if (id === `\0${ROUTES}`) {
-        return routeTree();
+        return routeTree(!loadOptions?.ssr);
       }
       if (id === `\0${TESTING}`) {
         const entry = middlewareFile();
         return [
-          "import { answerCalls as answer, createMount } from 'brumate/testing';",
+          "import { answerCalls as answer, createMount, createVisit } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
+          // The routes and the server code load on the first visit, so a test of components skips them.
+          'export const visit = createVisit({',
+          '  load,',
+          `  rpc: ${JSON.stringify(rpc)},`,
+          `  routes: async () => (await import(${JSON.stringify(ROUTES)})).handle,`,
+          `  calls: async () => (await import(${JSON.stringify(SERVER)})).handle,`,
+          '});',
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
           `  const server = import(${JSON.stringify(SERVER)});`,
