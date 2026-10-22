@@ -207,7 +207,9 @@ export const VOID_ELEMENTS: Set<string> = new Set([
 /**
  * Renders the attributes of a form that posts to a server function, such as
  * ` action="/_brumate/App_1abc%23save" method="post"`. `method` is the name of
- * the method attribute to add, if the element has none.
+ * the method attribute to add, if the element has none. `build` is the ID
+ * of the build of the page, which the URL carries as `__build`, so the
+ * server can tell a post from before a deploy without scripts.
  */
 export function actionAttributes(
   prefix: string,
@@ -215,13 +217,16 @@ export function actionAttributes(
   id: string,
   method?: string,
   result?: string,
+  build?: string,
 ): string {
   const methodText = method ? ` ${method}="post"` : '';
+  const query = build === undefined ? '' : `__build=${encodeURIComponent(build)}`;
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.
-    return ` ${name}="?__action=${encodeURIComponent(id)}"${methodText} b-action="${escapeAttribute(id)}" b-result="${escapeAttribute(result)}"`;
+    const url = `?__action=${encodeURIComponent(id)}${query ? `&${query}` : ''}`;
+    return ` ${name}="${escapeAttribute(url)}"${methodText} b-action="${escapeAttribute(id)}" b-result="${escapeAttribute(result)}"`;
   }
-  const url = `${prefix}/${encodeURIComponent(id)}`;
+  const url = `${prefix}/${encodeURIComponent(id)}${query ? `?${query}` : ''}`;
   return ` ${name}="${escapeAttribute(url)}"${methodText}`;
 }

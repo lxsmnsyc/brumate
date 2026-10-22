@@ -219,12 +219,14 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 ```
 
 - An error in a component inside the body is caught too.
+- An error in the client code of the body is caught too: a handler that throws, or whose promise rejects, an effect, a `$client` callback, or a memo that fails to load. The `#catch` body renders in the browser, with the error and `reset`. The error goes to the nearest `#try` around the scope of the code, through the parents of scopes and the components that rendered them. Both bodies ship when the body holds client code.
+- An error in client code outside every `#try` goes to a `brumate:error` event on `window`, with `error` and `scope` in `detail`, and is logged. A memo that fails keeps its value. See [Errors in the browser](./effects.md#errors-in-the-browser).
 - When the body throws on the server, nothing it rendered reaches the page: not its markup, its `#portal` and `#head` blocks, its title, its `#loading` bodies, or the state of its components. A component's stylesheet that only the body rendered is sent with the next copy of the component, such as one in `#catch`.
 - `reset` runs in the browser. If the body throws again, `#catch` renders again.
 
 ## `#loading`
 
-`#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them:
+`#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them. When the values are ready as the block renders, the body renders in place, without the `#else` body:
 
 ```brm live
 <script>

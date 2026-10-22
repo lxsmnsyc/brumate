@@ -6,6 +6,8 @@
 // `<template b-l>`, the script that swaps it in, and its state records.
 // This module adds that markup to the page and runs its scripts, in order.
 
+import { build, skew } from './client.ts';
+import { trustedHTML, trustedScript } from './trusted.ts';
 /** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
 function nonceOf(script: HTMLScriptElement): string | null {
   return script.nonce || script.getAttribute('nonce');
@@ -38,13 +40,19 @@ export async function loadDeferred(template: Element): Promise<void> {
     headers: {
       'x-brumate-defer': `${boundary} ${template.getAttribute('b-b')}`,
       'x-brumate-base': base,
+      ...(build === undefined ? {} : { 'x-brumate-build': build }),
     },
   });
+  if (response.status === 409 && response.headers.get('x-brumate-build')) {
+    // The site changed since the page loaded. The fallback stays, and the next page loads in full.
+    skew('defer');
+    return;
+  }
   if (!response.ok || response.headers.get('x-brumate-defer') !== boundary) {
     return;
   }
   const parsed = document.createElement('template');
-  parsed.innerHTML = await response.text();
+  parsed.innerHTML = trustedHTML(await response.text());
   const nonce = pageNonce();
   // A copy, because appending moves nodes out of the live list.
   for (const node of Array.from(parsed.content.childNodes)) {
@@ -63,7 +71,7 @@ export async function loadDeferred(template: Element): Promise<void> {
     if (nonce) {
       copy.nonce = nonce;
     }
-    copy.textContent = script.textContent;
+    copy.textContent = trustedScript(script.textContent ?? '');
     document.body.append(copy);
   }
 }
