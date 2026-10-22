@@ -107,6 +107,8 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 
 If the body fails, the fallback stays.
 
+A body whose values are ready when the block renders, and that renders no component, dynamic tag, template or prop, renders in place: no markers, no `<template>` and no swap script. Its scopes get the IDs of the boundary, such as `0.0`, as they would in a stream, and they are in the page state.
+
 The body renders with the values of the server. If a value changed in the browser before the body arrived, the core runs the updates of the body's scopes once, so the body shows the current values. Effects do not run.
 
 A `#loading` body that sets the head after the first render also sends `<template b-h="<id>">` with its head markup. `$bH(id, title)` moves it into the head and sets the title.
@@ -178,6 +180,7 @@ The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-re
 - A page that never gets an event never builds its state. The records wait in `self.$brm`.
 - A record whose script is no longer in the page when the core starts is skipped, such as a record of a page that navigation replaced.
 - A record with `b-scopes` holds scopes: the page state, or the state of a `#loading` body.
+- The first record of a route has `b-params`, the params of the route as JSON, for `$route` in the browser.
 - Any other record settles a promise of an earlier record.
 - seroval writes every `<` in a string as `\x3C`, and U+2028 and U+2029 as escapes, so a value cannot end the script or open a comment. The server refuses a record that holds `</` or `<!`.
 - A script added with `innerHTML` does not run, so its record is not read. Markup that streams in through the parser, or that the client router adds, runs its records.

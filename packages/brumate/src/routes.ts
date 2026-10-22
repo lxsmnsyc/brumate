@@ -147,12 +147,12 @@ export function routeModule(
   return [
     "import { handleRoute } from 'brumate/server';",
     // Forms without scripts post to their page, which runs the server function.
-    "import { functions } from 'virtual:brumate/server';",
+    "import { functions, fileMiddleware } from 'virtual:brumate/server';",
     ...(middleware ? [`import middleware from ${JSON.stringify(middleware)};`] : []),
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}, ...options });`,
     '}',
   ].join('\n');
 }

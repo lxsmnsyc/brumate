@@ -27,6 +27,7 @@ const config: InlineConfig = {
       'brumate/loader': runtime('loader'),
       'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
+      'brumate/events': runtime('events'),
     },
   },
 };

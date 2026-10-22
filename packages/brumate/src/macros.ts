@@ -22,6 +22,8 @@ export const MACROS: Set<string> = new Set([
   '$isPending',
   '$setContext',
   '$getContext',
+  '$route',
+  '$navigation',
   '$id',
   '$title',
   '$action',

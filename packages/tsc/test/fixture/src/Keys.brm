@@ -1,0 +1,9 @@
+<script>
+  import { prevent } from 'brumate/events';
+
+  function move(event: KeyboardEvent) {
+    console.log(event.key);
+  }
+</script>
+
+<ul tabindex="0" onKeyDown=(prevent(move, 'ArrowDown', 'ArowUp'))></ul>

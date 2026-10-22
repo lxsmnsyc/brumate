@@ -391,6 +391,32 @@ describe('entry middleware', () => {
     expect((call!.args[0] as FormData).get('title')).toBe('Write the docs');
   });
 
+  it("runs the middleware of the function's file before a form post to a page", async () => {
+    const ran: string[] = [];
+    const post = (user: string) =>
+      handleRoute(
+        tree,
+        new Request('http://localhost/?__action=reset', {
+          method: 'POST',
+          headers: { 'x-user': user },
+          body: new FormData(),
+        }),
+        {
+          functions: { reset: () => ran.push('reset') },
+          fileMiddleware: {
+            reset: (event, next) =>
+              event.request.headers.get('x-user') === 'admin'
+                ? next()
+                : new Response('Forbidden', { status: 403 }),
+          },
+        },
+      );
+    expect((await post('ada'))?.status).toBe(403);
+    expect(ran).toEqual([]);
+    expect((await post('admin'))?.status).toBe(200);
+    expect(ran).toEqual(['reset']);
+  });
+
   it('passes the promises of waitUntil to the host, or runs them and logs their errors', async () => {
     const kept: Promise<unknown>[] = [];
     await handleRoute(tree, new Request('http://localhost/'), {
@@ -427,7 +453,7 @@ describe('entry middleware', () => {
       '/src/middleware.ts',
     );
     expect(code).toContain('import middleware from "/src/middleware.ts";');
-    expect(code).toContain('functions, middleware, ...options');
+    expect(code).toContain('functions, fileMiddleware, middleware, ...options');
   });
 });
 

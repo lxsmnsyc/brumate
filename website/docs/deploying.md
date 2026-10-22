@@ -246,7 +246,7 @@ const hashes = prerendered.scripts.map((hash) => `'${hash}'`).join(' ');
 const policy = `script-src 'self' ${hashes}`;
 ```
 
-Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it.
+Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it. A policy that requires Trusted Types adds `trusted-types brumate`. See [Trusted Types](./reference-security.md#trusted-types).
 
 A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page:
 
