@@ -74,6 +74,8 @@ export const middleware: Middleware = async (request, next) => {
 
 `_middleware.ts` exports `middleware(request, next)`. It answers the request itself, or calls `next()` for the answer of the route, and returns it changed or not.
 
+The entry middleware, `src/middleware.ts`, runs before it, for every request of the app, server function calls included. Its default export takes the `RequestEvent` and `next`. See [Middleware](./routing.md#middleware).
+
 ## Errors
 
 - A `ServerError` gives the error file its message and status. Any other error gives status 500 and a generic message, and is logged on the server.

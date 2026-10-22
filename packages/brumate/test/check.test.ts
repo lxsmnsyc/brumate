@@ -81,3 +81,23 @@ describe('toTypeScript', () => {
     expect(result.code).toContain('const a: number = 1;');
   });
 });
+
+describe('await', () => {
+  it('keeps await of a memo, so its type is the value, and makes templates async', () => {
+    const code = body(`<script>
+  import { $memo, $signal } from 'brumate/signals';
+  let id = $signal(1);
+  const user = await $memo(Promise.resolve({ name: 'Ada', id }));
+  const tags = $memo(Promise.resolve(['a']));
+</script>
+
+#template row(n: number) {
+  <td>{(await tags)[n]}</td>
+}
+<p>{user.name} {(await tags).length} {row(0)}</p>`);
+    expect(code).toContain("const user = await $memo(Promise.resolve({ name: 'Ada', id }));");
+    expect(code).toContain('$$use((user.name));');
+    expect(code).toContain('$$use(((await tags).length));');
+    expect(code).toContain('async function row(n: number) {');
+  });
+});

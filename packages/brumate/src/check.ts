@@ -278,7 +278,8 @@ class Generator {
   private templates(templates: TemplateDecl[]): void {
     const { out } = this;
     for (const template of templates) {
-      out.text('function ');
+      // Templates can await memos, as the component function can.
+      out.text('async function ');
       out.copy(template.nameRange);
       out.text('(');
       if (template.params.length > 0) {

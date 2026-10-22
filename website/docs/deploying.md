@@ -68,14 +68,18 @@ import client from './client.ts?assets=client';
 const scripts = `${import.meta.env.DEV ? '<script type="module" src="/@vite/client"></script>' : ''}<script type="module" async src="${client.entry}"></script>`;
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  // Nitro's request has `ip`, the address of the socket, for rate limits.
+  async fetch(request: Request & { ip?: string }): Promise<Response> {
+    const address = request.ip;
     if (request.method === 'POST') {
-      const answer = await handleCall(request);
+      const answer = await handleCall(request, { address });
       if (answer) {
         return answer;
       }
     }
-    return (await handle(request, { scripts })) ?? new Response('Not found', { status: 404 });
+    return (
+      (await handle(request, { scripts, address })) ?? new Response('Not found', { status: 404 })
+    );
   },
 };
 ```
@@ -83,10 +87,35 @@ export default {
 - `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
+- Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./server-functions.md#rate-limiting).
+- A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
 [`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
+
+## Skew protection
+
+A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
+
+- Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
+- The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.
+- A form that posts to a server function carries the ID in its URL, as `__build`, so a post without scripts is checked too. A post from another build to a function that is gone answers 303 to its page, from `Referer`, or to `/` when the page is on another site. The page then loads with the new build.
+- When the code of a handler fails to load, the browser asks the server for its build. When it differs, the files of the old build may be gone, and the page loads again. Any other error, such as a module that throws when it loads, goes to the nearest `#try`, as the error of a handler does.
+- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, because the layouts that it would keep are code of the old build.
+- A page loads again, or in full, once for each build in a tab. The tab keeps the builds in session storage. So a deploy whose files are broken, a cache that still serves the old page, or two builds that answer in turn during a deploy cannot load pages in a loop. The next time, the error goes to `#try`, or client navigation swaps the page in. Without session storage, the page does not load again.
+- The page gets a `brumate:skew` event when it notices a deploy, with `'call'`, `'code'` or `'defer'` in `detail`, before anything loads again. An app can save a draft in it.
+
+The files of the client build have hashes in their names, so the files of earlier builds can stay next to the new ones for the pages that are still open. `skew: { keep: 2 }` keeps the files of the two builds before the last one: the build does not empty `dist/client`, lists its builds in `.brumate/builds.json`, and removes the files of older builds itself. A host that serves the directory as it is then serves old pages their code for two deploys.
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  plugins: [brumate({ skew: { keep: 2 } })],
+});
+```
+
+The dev server has no build ID, so nothing is checked there.
 
 ## A production server
 
@@ -107,10 +136,11 @@ const entry = `/${manifest['src/client.ts'].file}`;
 createServer(async (incoming, outgoing) => {
   const request = await toRequest(incoming);
   const { pathname } = new URL(request.url);
+  const address = incoming.socket.remoteAddress;
 
   // Server function calls.
   if (request.method === 'POST') {
-    const answer = await server.handle(request);
+    const answer = await server.handle(request, { address });
     if (answer) {
       return send(answer, outgoing);
     }
@@ -125,6 +155,7 @@ createServer(async (incoming, outgoing) => {
   send(
     await server.route(request, {
       scripts: `<script type="module" async src="${entry}"></script>`,
+      address,
       earlyHints: (link) => outgoing.writeEarlyHints({ link }),
     }),
     outgoing,
@@ -253,7 +284,7 @@ const hashes = prerendered.scripts.map((hash) => `'${hash}'`).join(' ');
 const policy = `script-src 'self' ${hashes}`;
 ```
 
-Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it.
+Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it. A policy that requires Trusted Types adds `trusted-types brumate`. See [Trusted Types](./reference-security.md#trusted-types).
 
 A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page:
 

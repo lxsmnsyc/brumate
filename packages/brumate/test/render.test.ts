@@ -338,6 +338,50 @@ describe('#try', () => {
   });
 });
 
+describe('await', () => {
+  it('starts every memo of a run before it waits, and renders a #loading body in place', async () => {
+    const module = await import(new URL('awaited.brm.ts', output).href);
+    const render = renderParts(module.default, {});
+    let done = false;
+    void render.then(() => {
+      done = true;
+    });
+    await Promise.resolve();
+    // The two memos of the run load at the same time. The third, without the keyword, waits for the run.
+    expect(module.calls).toEqual(['first', 'second']);
+    module.release('second', 'Grace');
+    module.release('first', 'Ada');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(module.calls).toEqual(['first', 'second', 'third']);
+    expect(done).toBe(false);
+    module.release('third', 'Alan');
+    const { html, state, pending } = await render;
+    expect(html).toContain('<p class="names">Ada Grace</p>');
+    // The body is in the page, in the ID space of its boundary, with no fallback and no markers.
+    expect(html).toContain('<p class="third">Alan <!--t0.0:0-->0 users<!--/t--></p>');
+    expect(html).not.toContain('<!--l');
+    expect(html).not.toContain('fallback');
+    // Its scopes are in the page state, which is the only record.
+    expect(state).toContain('"0.0":');
+    expect(await pending[Symbol.asyncIterator]().next()).toEqual({ done: true, value: undefined });
+  });
+
+  it('streams a #loading body whose other memos are not ready', async () => {
+    const module = await import(new URL('awaitedStream.brm.ts', output).href);
+    const { html, state, pending } = await renderParts(module.default, {});
+    expect(html).toContain('<p class="name">Ada</p>');
+    expect(html).toContain('<!--l0--><p class="fallback">Loading</p><!--/l-->');
+    // The page state is one record: nothing in it loads.
+    expect(state).toContain('b-next="1"');
+    module.release(['one', 'two']);
+    let rest = '';
+    for await (const chunk of pending) {
+      rest += chunk;
+    }
+    expect(rest).toContain('<template b-l="0"><p class="tags">Ada: one, two</p></template>');
+  });
+});
+
 describe('memos that read memos', () => {
   it('does not wait for a memo that only a #loading body reads, through another memo', async () => {
     const module = await import(new URL('loadingChain.brm.ts', output).href);
