@@ -7,7 +7,7 @@ Language support for `.brm` files.
 - Completion, hover and errors for styles in CSS, SCSS and Less.
 - The errors and warnings of the compiler, such as a compile-time function that is not imported, or a value that is changed in place.
 
-TypeScript features need the TypeScript version of VS Code or of the workspace, 5.0 or newer. TypeScript 7 does not load plugins.
+TypeScript features need the TypeScript version of VS Code or of the workspace, 5.0 or newer. TypeScript 7 does not load plugins. With TypeScript 7.1, use `@brumate/content-mapper` instead.
 
 ## Development
 
