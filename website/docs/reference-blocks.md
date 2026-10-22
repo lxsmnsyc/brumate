@@ -19,7 +19,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `#offscreen (visible) { … }`                         | Its body while `visible` is true. When it turns false, the body stays in the page, hidden, with its state.                |
 | `#try { … } #catch { … }`                            | Its body, or the `#catch` body when the body throws.                                                                      |
 | `#try { … } #catch (error, reset) { … }`             | The same. `error` is the error, and `reset()` renders the `#try` body again in the browser.                               |
-| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body.                                         |
+| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body. The body at once when they are ready.   |
 | `#portal { … }`                                      | Its body at the end of the page.                                                                                          |
 | `#portal (target) { … }`                             | Its body inside `target`, an element or a selector, in the browser.                                                       |
 | `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                 |
@@ -68,21 +68,20 @@ Expressions cannot contain markup. Use a block or a `#template` instead.
 
 ## Events
 
-| Form                      | Meaning                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `onClick=handler`         | Calls `handler` with the event. Any name `on` and a capital letter is an event. |
-| `onClick=(() => count++)` | An inline handler.                                                              |
-| `onSubmit:prevent=save`   | A handler with modifiers.                                                       |
+| Form                       | Meaning                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `onClick=handler`          | Calls `handler` with the event. Any name `on` and a capital letter is an event. |
+| `onClick=(() => count++)`  | An inline handler.                                                              |
+| `onSubmit=(prevent(save))` | A handler with a wrapper of `brumate/events`.                                   |
 
-| Modifier   | Effect                                     |
-| ---------- | ------------------------------------------ |
-| `:prevent` | Calls `event.preventDefault()`.            |
-| `:stop`    | Calls `event.stopPropagation()`.           |
-| `:passive` | Adds the listener as passive.              |
-| `:once`    | Removes the handler after the first event. |
-| `:capture` | Listens in the capture phase.              |
+| Wrapper                     | Effect                                                       |
+| --------------------------- | ------------------------------------------------------------ |
+| `prevent(handler, ...keys)` | Calls `event.preventDefault()`, for the keys named, if any.  |
+| `stop(handler)`             | Stops the event at this element.                             |
+| `once(handler)`             | Runs the handler for the first event only.                   |
+| `capture(handler)`          | Runs the handler before the handlers of the elements inside. |
 
-Modifiers apply before the handler's code loads, so they work on the first event.
+Wrappers apply before the handler's code loads, so they work on the first event. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, still works, with a warning.
 
 ## Reserved attributes
 

@@ -35,6 +35,10 @@ describe('prerender', () => {
   '/about': '<p>About</p><script b-state>$bR("about")</script><script>$bS(1)</script>',
 };
 export async function handle(request, document) {
+  // Rate limits read it, so the pages of the build do not count.
+  if (document.prerender !== true) {
+    throw new Error('The build did not say that it prerenders');
+  }
   const page = pages[new URL(request.url).pathname];
   const html = page === undefined ? '<p>Missing</p><script>$bR(404)</script>' : page + document.scripts;
   return new Response(html, {

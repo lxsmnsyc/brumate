@@ -11,8 +11,8 @@
     $optimistic,
     $props,
     $signal,
-    $title,
   } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import IssueLink from '../../IssueLink.brm';
   import Labels from '../../Labels.brm';
   import { getIssue, listIssues } from '../../issues.ts';
@@ -26,7 +26,6 @@
 
   // A missing issue throws a 404, and _error.brm renders in place of the page.
   const issue = $memo(getIssue(params.id));
-  $title(`#${issue.id} ${issue.title}`);
 
   async function toggle(form: FormData) {
     'use server';
@@ -72,6 +71,10 @@
   });
 </script>
 
+#head {
+  <title>{`#${issue.id} ${issue.title}`}</title>
+}
+
 <window onKeyDown=((event) => event.key === 'Escape' && (confirming = false)) />
 
 <p class="back"><a href="/">All issues</a></p>
@@ -96,7 +99,7 @@
     <!-- Without scripts the button deletes at once. With them, it asks first. -->
     <form action=remove>
       <input type="hidden" name="id" value=issue.id>
-      <button class="danger" onClick:prevent=(() => (confirming = true))>Delete</button>
+      <button class="danger" onClick=(prevent(() => (confirming = true)))>Delete</button>
     </form>
   }
 </div>

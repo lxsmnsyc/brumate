@@ -53,6 +53,14 @@ describe('forms', () => {
     expect(html).toMatch(/<form class="sign" action="\/api\//);
   });
 
+  it('names the build of the render in the URL of the form', async () => {
+    const { html } = await render(guestbook.default, {}, { build: 'b1' });
+    expect(html).toMatch(
+      /<form class="sign" action="\/_brumate\/[^"?]+\?__build=b1" method="post">/,
+    );
+    expect(html).toMatch(/formaction="\/_brumate\/[^"?]+\?__build=b1"/);
+  });
+
   it('renders the action in a form that the client renders', () => {
     expect(compiled.render).toMatch(/\$\$b\.action\("action", "Guestbook_\w+#sign", "method"\)/);
   });

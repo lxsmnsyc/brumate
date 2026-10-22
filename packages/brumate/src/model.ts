@@ -78,10 +78,17 @@ export interface Declaration {
    * a guess, until the source changes or the server calls of the page finish.
    */
   optimistic?: Declaration;
+  /**
+   * For `$debounced(value, ms)` and `$throttled(value, ms)`, how the browser
+   * writes the memo: after the value stops changing for `ms`, or at most once every `ms`.
+   */
+  timing?: { kind: 'debounced' | 'throttled'; ms: number };
   /** For `let name = $signal(value)`, the value. */
   init?: oxc.Node;
   /** True for a memo declared with `$optimistic`, before its source is known. */
   writable?: boolean;
+  /** True for `const name = await $memo(value)`: the render waits for the memo where it is declared. */
+  awaited?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** Elements whose `ref` targets this declaration. */
@@ -96,6 +103,12 @@ export interface Reference {
   tracked: boolean;
   /** True inside a function that the site contains, such as an inline arrow function. */
   inFunction: boolean;
+  /**
+   * For `await name` of a memo, the range of the whole `await` expression.
+   * The render around the read waits for the memo, and the read compiles to
+   * a plain read of its value.
+   */
+  await?: Range;
 }
 
 export type SiteKind =
@@ -139,6 +152,11 @@ export interface Site {
   /** The element, component or listener of an attribute or event site. */
   owner?: ElementNode | ComponentNode | DynamicTagNode | GlobalListenerNode;
   event?: EventAttribute;
+  /**
+   * For a handler wrapped by `brumate/events`, such as `prevent(move, 'Enter')`,
+   * the modifiers that `b-on` holds, such as `prevent(Enter)`.
+   */
+  modifiers?: string[];
   /** The block whose header this site is. */
   block?: Block;
   /** The trigger of a `$client` site. */

@@ -1,0 +1,9 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { getProfiles } from './profiles.ts';
+
+  const { id } = $props<{ id: string }>();
+  const profiles = $memo(getProfiles([id]));
+</script>
+
+<li>{profiles[id]}</li>

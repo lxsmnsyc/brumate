@@ -8,6 +8,7 @@ import type {
   RepeatBlock,
   SFCFile,
 } from '../ast.ts';
+import { tryCatchesClient } from '../graph.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
@@ -142,8 +143,8 @@ class ClientGenerator {
   }
 
   generate(): ClientOutput {
-    this.checkSupport();
     this.collectRenders();
+    this.checkSupport();
     this.placeCode();
 
     this.emitFunctions();
@@ -184,11 +185,13 @@ class ClientGenerator {
       }
     }
     const refresh = this.refreshTable();
+    const tries = this.triesTable();
     const table = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
+      ...(tries ? [`export const t = ${tries};`] : []),
     ];
     const clientCode = names.length > 0;
     if (merged || !clientCode) {
@@ -492,10 +495,26 @@ class ClientGenerator {
   // Checks
 
   private checkSupport(): void {
+    const rendered = this.renderedScopes();
     for (const site of this.model.sites) {
       const live = this.live.has(site);
       if (live && site.kind === 'tag' && !(site.owner as DynamicTagNode | undefined)?.keyed) {
         this.error('A dynamic tag that changes on the client is not supported yet', site.range);
+      }
+      // A render function or an update runs without waiting, so it can await only a memo, whose
+      // value is settled in the browser. A memo that awaits a promise loads it instead.
+      if (
+        site.awaits &&
+        site.kind !== 'memo' &&
+        !DEFERRED_SITES.has(site.kind) &&
+        (live || rendered.some((scope) => isWithin(site.scope, scope)))
+      ) {
+        this.error(
+          live
+            ? 'Code that the browser updates can await only a memo. Load the promise in a memo instead'
+            : 'Markup that the browser renders can await only a memo. Load the promise in a memo instead',
+          site.range,
+        );
       }
     }
   }
@@ -771,9 +790,12 @@ class ClientGenerator {
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
             const value = site.awaits ? `(async () => (${expression()}))()` : expression();
-            this.emit(
-              `export function ${name('m')}($$s) {\n  $$b.memo($$s, ${slot}, () => ${value});\n}`,
-            );
+            const timing = node.declaration.timing;
+            // A debounced or throttled memo computes after its wait, with the values of then.
+            const call = timing
+              ? `$$b.timed($$s, ${slot}, ${timing.ms}, ${timing.kind === 'throttled'}, () => ${value})`
+              : `$$b.memo($$s, ${slot}, () => ${value})`;
+            this.emit(`export function ${name('m')}($$s) {\n  ${call};\n}`);
           }
           break;
         }
@@ -1206,6 +1228,36 @@ class ClientGenerator {
    * The memos to load again when a server function calls `refresh(fn)`:
    * by the ID of `fn`, the scope kind and the update of each memo.
    */
+  /**
+   * The `#try` blocks that catch errors of client code, by the scope kinds
+   * inside their bodies: the kind of the scope that holds the block, the
+   * anchor of the block, the render functions of the body and the `#catch`
+   * body, and the kinds of both bodies.
+   */
+  private triesTable(): string | undefined {
+    const entries: string[] = [];
+    for (const scope of this.model.scopes) {
+      const block = scope.block;
+      if (
+        block?.kind !== 'try' ||
+        scope.body !== block.body ||
+        !this.plan.anchors.has(block) ||
+        !tryCatchesClient(this.model, block)
+      ) {
+        continue;
+      }
+      const owner = instanceScope(this.plan, scope.parent!);
+      const fallback = this.plan.bodyScopes.get(block.fallback)!;
+      const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]]`;
+      for (const inside of this.model.scopes) {
+        if (isWithin(inside, scope)) {
+          entries.push(`${inside.id}: ${entry}`);
+        }
+      }
+    }
+    return entries.length > 0 ? `{ ${entries.join(', ')} }` : undefined;
+  }
+
   private refreshTable(): string | undefined {
     const table = new Map<string, [number, string][]>();
     for (const node of this.plan.graph.nodes) {

@@ -5,6 +5,7 @@ import type {
   ComponentNode,
   DynamicTagNode,
   ElementNode,
+  EventAttribute,
   Expression,
   Markup,
   Range,
@@ -13,6 +14,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { lookup, upstreamMemos } from './model.ts';
+import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
   DeclarationKind,
@@ -55,6 +57,13 @@ const REACTIVE = new Set<string>([
   'action',
 ]);
 
+/** The module of the wrappers of event handlers, which the compiler reads. */
+const EVENTS_MODULE = 'brumate/events';
+/** The wrappers that `brumate/events` exports. */
+const WRAPPERS = new Set(['prevent', 'stop', 'once', 'capture']);
+/** The events whose `prevent` can name keys. */
+const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
+
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
 const MISPLACED: Record<string, string> = {
@@ -63,9 +72,15 @@ const MISPLACED: Record<string, string> = {
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
+  $route: 'Read the route with "const name = $route()" at the top level of a script',
+  $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $debounced:
+    'Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script',
+  $throttled:
+    'Declare a throttled value with "const name = $throttled(value, ms)" at the top level of a script',
   $optimistic:
     'Declare an optimistic value with "let name = $optimistic(source)" at the top level of a script',
   $action:
@@ -316,6 +331,72 @@ class Analyzer {
     return site;
   }
 
+  /**
+   * Reads the wrappers of `brumate/events` around a handler, such as
+   * `prevent(move, 'Enter')`, into the modifiers that `b-on` holds, so the
+   * loader applies them before the handler's code loads. A modifier in the
+   * attribute name, such as `onSubmit:prevent`, still works, with a warning.
+   */
+  private readWrappers(site: Site, attribute: EventAttribute, scope: Scope): void {
+    if (attribute.modifiers.length > 0) {
+      const [first] = attribute.modifiers;
+      this.report(
+        'warning',
+        `${attribute.name}:${first} is replaced by ${attribute.name}=(${first === 'passive' ? 'handler' : `${first}(handler)`}) from brumate/events${first === 'passive' ? ', since listeners are passive unless a handler prevents' : ''}`,
+        attribute,
+      );
+    }
+    const modifiers: string[] = [];
+    let node: oxc.Node = attribute.handler.ast;
+    for (;;) {
+      while (node.type === 'ParenthesizedExpression') {
+        node = node.expression;
+      }
+      if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') {
+        break;
+      }
+      const imported = lookup(scope, node.callee.name)?.imported;
+      const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
+      if (name === undefined || !WRAPPERS.has(name)) {
+        break;
+      }
+      const [handler, ...rest]: oxc.Node[] = node.arguments;
+      if (!handler || (name !== 'prevent' && rest.length > 0)) {
+        this.report('error', `${name} takes a handler`, node);
+        break;
+      }
+      if (rest.length > 0) {
+        const keys = rest.map((key) =>
+          key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
+        );
+        const wrong = rest.find((_, index) => {
+          const key = keys[index];
+          return key === undefined || !(KEY_NAMES.includes(key) || /^[A-Za-z0-9]$/.test(key));
+        });
+        if (!KEY_EVENTS.has(attribute.event)) {
+          this.report(
+            'error',
+            'Only prevent of a keyboard event takes keys, such as onKeyDown',
+            node,
+          );
+        } else if (wrong) {
+          this.report(
+            'error',
+            "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a'",
+            wrong,
+          );
+        }
+        modifiers.push(`prevent(${keys.join(',')})`);
+      } else {
+        modifiers.push(name);
+      }
+      node = handler;
+    }
+    if (modifiers.length > 0) {
+      site.modifiers = modifiers;
+    }
+  }
+
   private declareFunction(name: string, fn: Fn, scope: Scope, at: Range): void {
     const server = hasUseServer(fn);
     const kind = server ? 'server-function' : 'function';
@@ -473,6 +554,11 @@ class Analyzer {
             if (call.arguments.length !== 1) {
               this.report('error', '$title takes one argument, the title', call);
             } else {
+              this.report(
+                'warning',
+                '$title is replaced by <title> in #head, such as #head { <title>{`${count} left`}</title> }, and goes in a later version',
+                call,
+              );
               this.createSite('title', scope, call.arguments[0]!, 'title');
             }
           } else if (name === '$setContext') {
@@ -505,8 +591,19 @@ class Analyzer {
     scope: Scope,
     isComponent: boolean,
   ): void {
-    const init = declarator.init;
     const id = declarator.id;
+    // `const name = await $memo(value)` declares a memo that the render waits for.
+    const awaited = declarator.init?.type === 'AwaitExpression' ? declarator.init : undefined;
+    const awaitedName = awaited && calleeName(awaited.argument);
+    if (
+      awaited &&
+      awaitedName !== undefined &&
+      MACROS.has(awaitedName) &&
+      awaitedName !== '$memo'
+    ) {
+      this.report('error', `await works with $memo, not ${awaitedName}`, awaited);
+    }
+    const init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
     const name = calleeName(init);
     const call = init as oxc.CallExpression;
 
@@ -562,6 +659,25 @@ class Analyzer {
       return;
     }
 
+    if (name === '$route' || name === '$navigation') {
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report('error', MISPLACED[name]!, declarator);
+        return;
+      }
+      if (name === '$navigation' ? call.arguments.length > 0 : call.arguments.length > 1) {
+        this.report(
+          'error',
+          name === '$navigation'
+            ? '$navigation takes no arguments'
+            : '$route takes at most one argument, the path of the route',
+          call,
+        );
+      }
+      // A context that the runtime provides, so it changes when navigation changes the page.
+      this.addDeclaration(scope, id.name, 'context', id);
+      return;
+    }
+
     if (name === '$getContext') {
       if (kind !== 'const' || id.type !== 'Identifier') {
         this.report('error', 'Read a context with "const name = $getContext(Context)"', declarator);
@@ -601,6 +717,36 @@ class Analyzer {
       return;
     }
 
+    if (name === '$debounced' || name === '$throttled') {
+      if (kind !== 'const') {
+        this.report('error', `Declare ${name} with const`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      const [argument, wait] = call.arguments;
+      const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (!argument || call.arguments.length !== 2) {
+        this.report('error', `${name} takes a value and a wait in milliseconds`, call);
+        return;
+      }
+      const ms = wait?.type === 'Literal' && typeof wait.value === 'number' ? wait.value : NaN;
+      // A timer cannot wait longer than 2^31 - 1 ms, and fires at once for a longer wait.
+      if (!(ms >= 0 && ms <= 2147483647)) {
+        this.report(
+          'error',
+          `The wait of ${name} must be a number of milliseconds, such as 300`,
+          wait!,
+        );
+      }
+      declaration.timing = { kind: name === '$debounced' ? 'debounced' : 'throttled', ms };
+      declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
+        declaration,
+      });
+      return;
+    }
+
     if (name === '$signal' || name === '$memo' || name === '$optimistic') {
       const expected = name === '$memo' ? 'const' : 'let';
       if (kind !== expected) {
@@ -623,6 +769,9 @@ class Analyzer {
         return;
       }
       const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (awaited && name === '$memo') {
+        declaration.awaited = true;
+      }
       if (!argument) {
         this.report('error', `${name} needs a value`, call);
         return;
@@ -836,7 +985,7 @@ class Analyzer {
         break;
       case 'listener':
         for (const attribute of node.attributes) {
-          this.createExpressionSite(
+          const site = this.createExpressionSite(
             'event',
             scope,
             attribute.handler,
@@ -846,6 +995,7 @@ class Analyzer {
               event: attribute,
             },
           );
+          this.readWrappers(site, attribute, scope);
         }
         break;
       default:
@@ -883,15 +1033,19 @@ class Analyzer {
             { owner: node },
           );
           break;
-        case 'event':
-          this.createExpressionSite(
+        case 'event': {
+          const site = this.createExpressionSite(
             isComponent ? 'prop' : 'event',
             scope,
             attribute.handler,
             isComponent ? `prop ${tag}.${attribute.name}` : `event ${tag}.${attribute.event}`,
             { owner: node, event: isComponent ? undefined : attribute },
           );
+          if (!isComponent) {
+            this.readWrappers(site, attribute, scope);
+          }
           break;
+        }
         case 'ref':
           if (node.kind === 'element') {
             this.refs.push({ attribute, element: node, scope });
@@ -1191,15 +1345,15 @@ class Resolver {
   private reference(
     identifier: oxc.Node & { name: string },
     mode: 'read' | 'write' | 'update',
-  ): void {
+  ): Reference | undefined {
     if (this.isLocal(identifier.name)) {
-      return;
+      return undefined;
     }
     const declaration = lookup(this.site.scope, identifier.name);
     if (!declaration) {
-      return;
+      return undefined;
     }
-    const reference = {
+    const reference: Reference = {
       range: range(identifier),
       declaration,
       site: this.site,
@@ -1224,6 +1378,7 @@ class Resolver {
         this.site.trackedCalls.add(declaration);
       }
     }
+    return reference;
   }
 
   private visitChildren(node: oxc.Node): void {
@@ -1359,12 +1514,28 @@ class Resolver {
       case 'ContinueStatement':
       case 'MetaProperty':
         return;
-      case 'AwaitExpression':
+      case 'AwaitExpression': {
+        // `await name` of a memo waits for its value in the render around the read, and is a
+        // plain read of the value in the browser. Every other await waits for a promise.
+        const argument = node.argument;
+        if (argument.type === 'Identifier') {
+          const declaration = this.isLocal(argument.name)
+            ? undefined
+            : lookup(this.site.scope, argument.name);
+          if (declaration?.kind === 'memo' || declaration?.kind === 'async-memo') {
+            const reference = this.reference(argument, 'read');
+            if (reference) {
+              reference.await = range(node);
+            }
+            return;
+          }
+        }
         if (this.functionDepth === 0) {
           this.site.awaits = true;
         }
-        this.visit(node.argument);
+        this.visit(argument);
         return;
+      }
       case 'CallExpression': {
         // `event.refresh(fn)` in a server function: memos that call `fn` load again.
         if (

@@ -101,3 +101,87 @@ describe('reserved attributes', () => {
     expect(() => compile('<p data-on="click">Hi</p>', { filename: 'Test.brm' })).not.toThrow();
   });
 });
+
+describe('timing helpers', () => {
+  const compileScript = (script: string) =>
+    compile(
+      `<script>\nimport { $debounced, $signal, $throttled } from 'brumate/signals';\nlet query = $signal('');\n${script}\n</script>\n<p>{query}</p>`,
+      { filename: 'Test.brm' },
+    );
+
+  it('needs a const, a value and a wait in milliseconds', () => {
+    expect(() => compileScript('let a = $debounced(query, 300);')).toThrow(
+      'Declare $debounced with const',
+    );
+    expect(() => compileScript('const a = $throttled(query);')).toThrow(
+      '$throttled takes a value and a wait in milliseconds',
+    );
+    expect(() => compileScript('const wait = 300;\nconst a = $debounced(query, wait);')).toThrow(
+      'The wait of $debounced must be a number of milliseconds, such as 300',
+    );
+    expect(() => compileScript('const a = $throttled(query, 1e10);')).toThrow(
+      'The wait of $throttled must be a number of milliseconds',
+    );
+  });
+
+  it('renders the value itself on the server', () => {
+    const { server } = compileScript('const a = $debounced(query, 300);');
+    expect(server).toContain('const a = (query);');
+    expect(server).not.toContain('300');
+  });
+});
+
+/** Compiles markup with the wrappers of `brumate/events` imported. */
+const compileMarkup = (markup: string, imports = 'capture, once, prevent, stop') =>
+  compile(
+    `<script>\nimport { $signal } from 'brumate/signals';\nimport { ${imports} } from 'brumate/events';\nlet n = $signal(0);\nfunction save() { n++; }\n</script>\n${markup}\n<p>{n}</p>`,
+    { filename: 'Test.brm' },
+  );
+/** The `b-on` values of the server render. */
+const bOn = (markup: string): string[] =>
+  [...compileMarkup(markup).server.matchAll(/b-on=\\"([^"\\\\]*)/g)].map((match) => match[1]!);
+
+describe('wrappers of event handlers', () => {
+  it('writes the wrappers into b-on, so the loader applies them before the code loads', () => {
+    expect(bOn('<button onClick=(once(stop(save)))>Save</button>')[0]).toMatch(
+      /^click:once:stop=Test_\w+#h\d+$/,
+    );
+    expect(bOn("<ul onKeyDown=(prevent(save, 'ArrowDown', 'Space'))></ul>")[0]).toMatch(
+      /^keydown:prevent\(ArrowDown,Space\)=/,
+    );
+    expect(bOn('<div onClick=(capture(save))></div>')[0]).toMatch(/^click:capture=/);
+    expect(compileMarkup("<window onKeyDown=(prevent(save, 'Escape')) />").server).toContain(
+      'b-on=\\"keydown:prevent(Escape)=',
+    );
+  });
+
+  it('leaves a function of the same name that does not come from brumate/events', () => {
+    const { server } = compile(
+      `<script>\nfunction prevent(fn) { return fn; }\nfunction save() {}\n</script>\n<button onClick=(prevent(save))>Save</button>`,
+      { filename: 'Test.brm' },
+    );
+    expect(server).toMatch(/b-on=\\"click=/);
+  });
+
+  it('reports keys that are not literal names, and keys on other events', () => {
+    expect(() => compileMarkup("<ul onKeyDown=(prevent(save, 'ArowDown'))></ul>")).toThrow(
+      "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a'",
+    );
+    expect(() => compileMarkup('<ul onKeyDown=(prevent(save, key))></ul>')).toThrow(
+      'Name each key of prevent',
+    );
+    expect(() => compileMarkup("<button onClick=(prevent(save, 'Enter'))>x</button>")).toThrow(
+      'Only prevent of a keyboard event takes keys, such as onKeyDown',
+    );
+    expect(() => compileMarkup("<button onClick=(stop(save, 'Enter'))>x</button>")).toThrow(
+      'stop takes a handler',
+    );
+  });
+
+  it('warns about a modifier in the attribute name', () => {
+    const { warnings: found } = compileMarkup('<form onSubmit:prevent=save></form>');
+    expect(found.map((warning) => warning.message)).toContain(
+      'onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events',
+    );
+  });
+});
