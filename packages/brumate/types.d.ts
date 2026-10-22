@@ -29,7 +29,10 @@ declare module 'virtual:brumate/manifest' {
 
 declare module 'virtual:brumate/server' {
   export const functions: Record<string, (...args: any[]) => unknown>;
-  export function handle(request: Request): Promise<Response | undefined>;
+  export function handle(
+    request: Request,
+    options?: import('brumate/server').RequestOptions,
+  ): Promise<Response | undefined>;
 }
 
 declare module 'virtual:brumate/routes' {

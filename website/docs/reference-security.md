@@ -37,7 +37,15 @@ export async function POST(request: Request): Promise<Response> {
 }
 ```
 
+## Rate limits
+
+Server functions and endpoints answer anyone. `rateLimit` counts the calls of each key and refuses the ones over the limit with 429. A sign-in counts by the account that it guesses at, and an action of a signed-in user by the user. Otherwise it counts by the address of the client, which comes from the server, or from `X-Forwarded-For` when the server saw one of the proxies that the app names, never from a header alone. Without a key or an address, a limit throws in production rather than count every caller together. See [Rate limiting](./server-functions.md#rate-limiting).
+
 `same-site` counts as another site, because a page on another subdomain can be run by someone else.
+
+## Secrets
+
+The server variables of `src/env.ts` never ship. The browser gets the file without them, and only components import it in code that the browser loads. The compiler reports code that runs in the browser reading one, or a value made from one that the page state would send. The server refuses to send a page whose state holds the value of one, from any code, such as a helper. See [Environment variables](./environment.md).
 
 ## Errors
 

@@ -13,6 +13,7 @@ import {
 } from './html.ts';
 import type { Raw } from './html.ts';
 import { disabledFeatures, plugins } from './serial.ts';
+import { serverSecrets } from './secrets.ts';
 import {
   CHILDREN,
   ElementReference,
@@ -88,6 +89,15 @@ export type {
   RequestKind,
 } from './request.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
+export { RateLimitError, clientAddress, configureRateLimit, rateLimit } from './rate-limit.ts';
+export type {
+  RateLimit,
+  RateLimitConfig,
+  RateLimitMiddleware,
+  RateLimitOptions,
+  RateLimitStore,
+  Window,
+} from './rate-limit.ts';
 export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
@@ -957,7 +967,8 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
  * browser, which names the value and its component.
  */
 function unsendable(error: unknown, ctx: Context): Error {
-  const target = (error as { value?: unknown }).value;
+  const secret = secretErrors.get(error as Error);
+  const target = secret ?? (error as { value?: unknown }).value;
   if (target === undefined) {
     return error instanceof Error ? error : new Error(String(error));
   }
@@ -971,6 +982,11 @@ function unsendable(error: unknown, ctx: Context): Error {
       owner = ctx.state[owner.p];
     }
     const name = ctx.slotNames.get(parseId(id))?.[index] ?? `slot ${index}`;
+    if (secret !== undefined) {
+      return new Error(
+        `The value of "${name}" in ${owner?.m ?? 'a component'} is the value of a server environment variable, and code that runs in the browser reads it. Read the variable in a server function, and send the browser only what it needs.`,
+      );
+    }
     const kind = (target as object)?.constructor?.name ?? typeof target;
     return new Error(
       `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
@@ -978,6 +994,35 @@ function unsendable(error: unknown, ctx: Context): Error {
     );
   }
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/** The secret that each error of `secretError` found. The error does not hold it, so a log does not show it. */
+const secretErrors = new WeakMap<Error, string>();
+
+/** The code of each secret as seroval writes a string: in double quotes, escaped. */
+const secretCode = new Map<string, string>();
+
+/**
+ * An error for a record of the page state that holds the value of a server
+ * environment variable as a string, or undefined. A record holds a string
+ * as its code in quotes, so this is one search of the code per secret.
+ */
+function secretError(code: string): Error | undefined {
+  for (const secret of serverSecrets()) {
+    let literal = secretCode.get(secret);
+    if (literal === undefined) {
+      literal = crossSerialize(secret);
+      secretCode.set(secret, literal);
+    }
+    if (code.includes(literal)) {
+      const error = new Error(
+        'The page state holds the value of a server environment variable, which is not sent to the browser',
+      );
+      secretErrors.set(error, secret);
+      return error;
+    }
+  }
+  return undefined;
 }
 
 /** JSON that is safe in a `<script>`, with each `<` escaped. */
@@ -1174,6 +1219,17 @@ function serializeState(
   last = false,
 ): void {
   const packed = packState(state, sources);
+  // A record that holds the value of a server variable is not sent, nor any after it.
+  let leaked = false;
+  const send = (code: string, initial: boolean): void => {
+    const error = leaked ? undefined : secretError(code);
+    if (error) {
+      leaked = true;
+      onError(error);
+    } else if (!leaked) {
+      onRecord(code, initial);
+    }
+  };
   if (last) {
     let code: string | undefined;
     try {
@@ -1188,7 +1244,7 @@ function serializeState(
       refs.clear();
     }
     if (code !== undefined) {
-      onRecord(code, true);
+      send(code, true);
       onDone();
       return;
     }
@@ -1197,7 +1253,7 @@ function serializeState(
     plugins,
     disabledFeatures,
     refs,
-    onSerialize: onRecord,
+    onSerialize: send,
     onError,
     onDone,
   });
@@ -1428,6 +1484,13 @@ export interface RenderOptions {
    */
   build?: string;
   /**
+   * The address of the client as the server saw it, such as the remote
+   * address of the socket, for `clientAddress` and rate limits.
+   */
+  address?: string;
+  /** True while the build prerenders the page. Rate limits do not count then. */
+  prerender?: boolean;
+  /**
    * Renders only the body of this `#defer` block, for the request that the
    * browser sends when the block's trigger fires. Pass the `base` of the
    * page too, so the IDs of the page come out the same. The body comes from
@@ -1470,6 +1533,8 @@ export async function render<P>(
       ? new RequestEvent(options.request, {
           kind: options.defer ? 'defer' : 'page',
           waitUntil: options.waitUntil,
+          address: options.address,
+          prerender: options.prerender,
         })
       : undefined);
   ctx.event = event;
@@ -1499,15 +1564,15 @@ export async function render<P>(
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
   const serialize = (
-    { state, sources }: Context,
+    target: Context,
     onScopes: (script: string) => void,
     route?: string,
-    onError: (error: unknown) => void = (error) => pending().fail(error),
+    onError: (error: unknown) => void = (error) => pending().fail(unsendable(error, target)),
     last = false,
   ): void => {
     open++;
     serializeState(
-      state,
+      target.state,
       refs,
       (code, initial) => {
         if (initial) {
@@ -1530,7 +1595,7 @@ export async function render<P>(
       },
       onError,
       finish,
-      sources,
+      target.sources,
       last,
     );
   };
@@ -2062,6 +2127,10 @@ export interface RequestOptions {
    * function that still exists runs. The Vite plugin sets it in builds.
    */
   build?: string;
+  /** The address of the client as the server saw it, for `clientAddress` and rate limits. */
+  address?: string;
+  /** True while the build prerenders the pages. Rate limits do not count then. */
+  prerender?: boolean;
 }
 
 /**
@@ -2139,7 +2208,12 @@ export async function handleRequest(
     }
     return posted ? backAnswer(request) : skewAnswer(options.build!);
   }
-  const event = new RequestEvent(request, { kind: 'call', waitUntil: options.waitUntil });
+  const event = new RequestEvent(request, {
+    kind: 'call',
+    waitUntil: options.waitUntil,
+    address: options.address,
+    prerender: options.prerender,
+  });
   // The arguments are read before the middleware runs, so a check can depend on them. Arguments
   // that fail to read, such as a regular expression, answer as an error of the call.
   let args: unknown[];
@@ -2497,7 +2571,11 @@ export async function handleRoute(
     new RequestEvent(request, {
       kind: await requestKind(request, match),
       waitUntil: options.waitUntil,
+      address: options.address,
+      prerender: options.prerender,
     });
+  // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
+  event.route = match?.route;
   const answer = await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
 }
