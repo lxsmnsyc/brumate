@@ -1961,8 +1961,10 @@ async function renderPage(
   );
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
-  // The same URL answers the request for a `#defer` body with that body only.
+  // The same URL answers the request for a `#defer` body with that body only, and a navigation,
+  // which sends `x-brumate-base`, without the links of the core.
   headers.append('vary', 'x-brumate-defer');
+  headers.append('vary', 'x-brumate-base');
   for (const link of links) {
     headers.append('link', link);
   }

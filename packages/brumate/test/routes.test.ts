@@ -209,6 +209,8 @@ describe('rendering', () => {
     ];
     expect(seen).toEqual([links]);
     expect(response.headers.get('link')).toBe(links.join(', '));
+    // A cache keeps the page apart from the answer to a navigation, which has no links.
+    expect(response.headers.get('vary')).toContain('x-brumate-base');
     const html = await response.text();
     expect(html).toContain(
       '<link rel="modulepreload" href="/assets/client.js"><link rel="modulepreload" href="/assets/core.js?v=1&amp;x=&quot;">',
