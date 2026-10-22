@@ -6,7 +6,12 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
+| [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
+| [Titles in markup](#titles-in-markup)                                 | Syntax  | Low    | Small  |
+| [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
+| [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
+| [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
+| [Taint](#taint)                                                       | Server  | High   | Small  |
 | [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
@@ -53,6 +58,59 @@ A `bind:` attribute writes it once:
 
 - `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
 - The target must be a signal, so the compiler checks the write.
+
+#### Bindable props
+
+A component such as a dialog, a tab list or a select has state that its parent sometimes wants to own, and sometimes not. Svelte 4 said so with `export let`, a prop that the child can write. Svelte 5 kept the idea inside its props, with `$bindable`, which fits `$props` here too:
+
+```html
+<!-- Dialog.brm -->
+<script>
+  import { $bindable, $props } from 'brumate/signals';
+
+  let { open = $bindable(false), title } = $props<{ open?: boolean; title: string }>();
+</script>
+
+<button onClick=(() => (open = !open))>{title}</button>
+#if (open) {
+  <div role="dialog">…</div>
+}
+```
+
+```html
+<!-- A parent that owns the state, and one that does not. -->
+<Dialog title="Settings" bind:open=settingsOpen />
+<Dialog title="Help" />
+```
+
+- `let { name = $bindable(initial) } = $props()` declares a prop that the component can write. Other props stay `const`, so a write to them is a compile error, as now.
+- With `bind:name=signal`, the parent owns the value: a write in the child writes the parent's signal, and the parent's change reaches the child as any prop does. The target must be a signal of the parent.
+- With a plain `name=value`, or no attribute, the child owns it: a write changes the child's copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes.
+- `initial` is the value when the parent passes nothing.
+- On the server, nothing writes, so a bindable prop is its value. A bound child keeps its parent's scope and slot in the page state, so its writes in the browser go up without a request.
+- The type checker types `bind:name` as the prop's type, and reports it on a prop that is not bindable.
+
+`export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
+
+### Titles in markup
+
+`$title(value)` sets the title from a script. The title is markup, and HTML writes it as `<title>`, so a component could too:
+
+```html
+<title>{`${left} left | Todos`}</title>
+
+#if (draft) {
+  <title>Unsaved changes | Todos</title>
+}
+```
+
+- A `<title>` outside `<head>` goes to the head of the page, as `$title` does now, and the last one that renders wins. Blocks decide which one renders, so a title in an `#if` needs no expression in a script.
+- Its content is text. It can change in the browser, as a title that `$title` sets can.
+- A `<title>` inside an `<svg>` is the SVG element, which names a shape, and stays where it is.
+- A document component that renders `<head>` keeps its own `<title>` there.
+- `$title` stays for a while with a warning that points to `<title>`, then goes, since brumate is at 0.x.
+
+React 19 hoists `<title>`, `<meta>` and `<link>` from any component in the same way. `#head` already covers the other two, and could follow later.
 
 ### Transitions
 
@@ -201,6 +259,34 @@ What it needs:
 Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
 
 Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
+
+### Serialization entry
+
+The page state and server function calls hold the values that seroval and brumate's plugins can write. A class of the app, such as `Money`, a `Decimal` or a Temporal value, has to be sent as a plain object and made again by hand, and the serializer options are fixed.
+
+```ts
+// src/serial.ts
+import { definePlugin } from 'brumate/serial';
+import { Money } from './money';
+
+export const plugins = [
+  definePlugin({
+    tag: 'app/money',
+    test: (value) => value instanceof Money,
+    toData: (money: Money) => [money.amount, money.currency],
+    fromData: ([amount, currency]) => new Money(amount, currency),
+  }),
+];
+```
+
+- An entry file, `src/serial.ts` by default and set with the `serial` option of the plugin, as SolidStart reads its own entries, exports `plugins` and the options that it changes.
+- `definePlugin` makes a seroval plugin from `toData` and `fromData`. In the page state, a value is written as `$b.u('app/money', data)`, so the record does not need the class in scope.
+- The browser makes the value with `fromData` when the core reads the record. The entry loads with the core, not with the loader, so a page that is never used does not load the class.
+- `disabledFeatures` and `depthLimit` can change. Turning on a feature that brumate turns off, such as `RegExp`, warns, because brumate turns it off on purpose.
+- The type checker accepts a value of a class with a plugin in the state.
+- The same plugins write server function calls and their answers, and the stubs of two-way realtime.
+
+Cost: about 1 week, most of it for loading the entry with the core and for the types.
 
 ### Batched reads
 
@@ -409,6 +495,51 @@ export const listIssues = cached(async (status: string) => db.issues(status), {
 - Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
 
 Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
+
+### Streaming without scripts
+
+A `#loading` body that is ready streams in a `<template b-l>`, and a script swaps it in for the fallback. Without scripts, such as for a crawler, a reader with JavaScript turned off, or a script that failed, the fallback stays and the content never shows.
+
+- The server can render `#loading` bodies in place, in the order of the page: it waits for each body where it is, and writes its markup there, with no `<template>` and no swap. The page arrives later, and complete.
+- An option sets when: `inOrder: 'bots'` by default, for requests whose `User-Agent` is a known crawler, or `true`, or a function of the request.
+- The state is the same either way, so a page that the browser gets in order resumes as it does now.
+- `#defer` bodies render in place too, in the same request, since a crawler does not run their triggers.
+- `#client` bodies have no server markup, so their `#else` is what a crawler sees.
+
+Cost: a few days. The server already renders each body. This writes it in place instead of later.
+
+### Prerendering with holes
+
+A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
+
+- A prerendered page keeps its `#defer` blocks as holes. The build writes the HTML of the shell, and the boundary of each hole.
+- For a request, the server sends the shell from the file or a cache at once, then renders every hole in defer mode and streams each body as a ready `#loading` body, in the same response.
+- The render of the holes is the one that `#defer` requests make: the route again, with the bodies around each target, and no other body. One render can give all the holes of a page.
+- Without a server, on a static host, the shell is the whole answer, and each hole asks for its body when its trigger fires, as now.
+- It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
+
+Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
+
+### Taint
+
+The page state refuses a value that it cannot send, such as a function. It sends any value that it can, so a user object with a password hash, or a token in a prop, reaches the page if client code reads it.
+
+```ts
+import { taint, taintValue } from 'brumate/server';
+
+const user = await db.user(id);
+taint(user, 'A user record holds the password hash. Send the fields that the page needs.');
+taintValue(process.env.API_TOKEN!, 'The API token stays on the server.');
+```
+
+- `taint(object, message)` marks an object, and `taintValue(value, message)` a string or a bigint, such as a token. A tainted value in the page state, or in the answer of a server function, fails the render with the message and the name of the slot, as a value that cannot be sent does now.
+- The serializer finds them with a plugin whose test reads a `WeakSet` of objects and a `Set` of values. The plugin is active only for a render after `taint` has been called, so pages without taints pay nothing.
+- `opaque(value, replacement)` is the other half: a value that the page should not get, but may hold, such as a client of a third-party service. It wraps seroval's `OpaqueReference`, so the serializer writes `replacement`, or `undefined`, in its place. The server code reads `.value`.
+- Taint is a check, not a guarantee: a copy of a tainted object, such as `{ ...user }`, is not tainted, and the docs say so.
+
+Prior art: React's `experimental_taintObjectReference` and `experimental_taintUniqueValue`, and Qwik's `noSerialize`.
+
+Cost: a few days.
 
 ### Rate limiting
 
@@ -861,9 +992,10 @@ Cost: a few days for the adapter, a guide and an example.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 4. Routing in the browser. It is small, and filters and tabs in the URL are common.
-5. Element behaviors, testing routes, budgets for one event, rate limiting and batched reads. Each is small. Rate limiting protects the server functions that every app has, and batched reads take a list of rows from one request per row to one request.
-6. Transitions, which the UI components need in phase 2.
-7. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
-8. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
-9. Caching pages and data, now that `#defer` can render the parts of a cached page for each user.
-10. Compiled messages, Markdown with components, two-way realtime, embedding, worker functions, offline pages, long lists and the rest when an app or the website needs them.
+5. Streaming without scripts and taint, so crawlers see `#loading` content and secrets stay on the server.
+6. Element behaviors, testing routes, budgets for one event, rate limiting and batched reads. Each is small. Rate limiting protects the server functions that every app has, and batched reads take a list of rows from one request per row to one request.
+7. Transitions and bindable props, which the UI components need in phase 2.
+8. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
+9. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
+10. Caching pages and data, and prerendering with holes, now that `#defer` can render the parts of a cached page for each user. The serialization entry with them, for the classes that cached data holds.
+11. Compiled messages, Markdown with components, two-way realtime, embedding, worker functions, offline pages, long lists and the rest when an app or the website needs them.
