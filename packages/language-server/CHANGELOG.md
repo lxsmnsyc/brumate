@@ -1,5 +1,13 @@
 # @brumate/language-server
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [96c35be]
+  - brumate@0.1.1
+  - @brumate/language-core@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
