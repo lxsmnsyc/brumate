@@ -407,7 +407,7 @@ function tryPage(body: string): string {
 describe('#try with client code', () => {
   it('ships both bodies and lists the block for the scopes inside its body', () => {
     const { client, server } = compile(
-      page('<button onClick=(() => { throw new Error("x"); })>Go</button>'),
+      tryPage('<button onClick=(() => { throw new Error("x"); })>Go</button>'),
       {
         filename: 'T.brm',
       },
