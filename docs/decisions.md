@@ -88,6 +88,8 @@
   - The portals of the body are hidden with it, so a dialog of a hidden tab does not stay on the page.
   - `#defer` is reserved for a block that renders on the server later, so the name stays free.
 
+- Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
+
 ## Open
 
 - **Reusable logic.** Done as `.brm.ts` modules, compiled with the same rules as components. See [Reactive logic in modules](../website/docs/reactive-modules.md).
