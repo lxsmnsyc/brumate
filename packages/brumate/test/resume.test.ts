@@ -1439,41 +1439,48 @@ describe('$optimistic', () => {
   });
 });
 
+/**
+ * Resumes a page whose child reads a promise that its parent passes, and
+ * loads the next one. The new promise settles after 50 ms, so the pending
+ * state can come and go between two polls of `waitFor`. An observer records
+ * it when it shows, with the name that shows then.
+ */
+async function loadNextUser(name: string): Promise<void> {
+  const server = await import(file(`${name}.brm.ts`));
+  const { html, state, pending } = await renderParts(server.default, {});
+  show(html + state);
+  for await (const chunk of pending) {
+    appendChunk(chunk);
+  }
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  expect(text('.name')).toBe('User 1');
+  let whilePending: string | undefined;
+  const observer = new MutationObserver(() => {
+    if (whilePending === undefined && document.querySelector('.pending')) {
+      whilePending = text('.name');
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  try {
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.name')).toBe('User 2'));
+  } finally {
+    observer.disconnect();
+  }
+  // The child showed that it loads, with the old value, and then the new value without it.
+  expect(whilePending).toBe('User 1');
+  expect(document.querySelector('.pending')).toBeNull();
+}
+
 describe('a promise passed as a prop', () => {
   it('loads a memo of the prop again when the parent passes a new promise', async () => {
-    const server = await import(file('promiseParent.brm.ts'));
-    const { html, state, pending } = await renderParts(server.default, {});
-    show(html + state);
-    for await (const chunk of pending) {
-      appendChunk(chunk);
-    }
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
-    expect(text('.name')).toBe('User 1');
-    click(document.querySelector('.next')!);
-    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
-    expect(text('.name')).toBe('User 1');
-    await waitFor(() => expect(text('.name')).toBe('User 2'));
-    expect(document.querySelector('.pending')).toBeNull();
+    await loadNextUser('promiseParent');
   });
 
   it('does the same for a destructured prop', async () => {
-    const server = await import(file('promiseParentDestructured.brm.ts'));
-    const { html, state, pending } = await renderParts(server.default, {});
-    show(html + state);
-    for await (const chunk of pending) {
-      appendChunk(chunk);
-    }
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
-    expect(text('.name')).toBe('User 1');
-    click(document.querySelector('.next')!);
-    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
-    expect(text('.name')).toBe('User 1');
-    await waitFor(() => expect(text('.name')).toBe('User 2'));
-    expect(document.querySelector('.pending')).toBeNull();
+    await loadNextUser('promiseParentDestructured');
   });
 });
 

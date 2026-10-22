@@ -55,7 +55,7 @@ it('starts the list with the search of the URL', async () => {
 it('renders an issue, and the #catch of a related issue that is gone', async () => {
   const { html } = await get('/issues/3');
   expect(html).toContain('Document the keyboard shortcuts');
-  expect(html).toMatch(/#<!--t[\d:]+-->2<!--\/t--> <!--t[\d:]+-->Add a dark theme/);
+  expect(html).toMatch(/#<!--t[\d.:]+-->2<!--\/t--> <!--t[\d.:]+-->Add a dark theme/);
   expect(html).toContain('was deleted</li>');
 });
 
