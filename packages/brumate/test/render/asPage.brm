@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import AsButton from './AsButton.brm';
+  import AsLink from './AsLink.brm';
+
+  let outer = $signal(0);
+</script>
+
+<div class="plain-box"><AsButton class="plain" onClick=(() => outer++)>Plain</AsButton></div>
+<div class="link-box"><AsButton as=AsLink class="link" href="/away" onClick=(prevent(() => outer++))>Link</AsButton></div>
+<p class="outer">{outer}</p>

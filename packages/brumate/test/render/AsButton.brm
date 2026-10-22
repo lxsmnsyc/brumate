@@ -1,0 +1,9 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { as, children, ...rest } = $props();
+  let own = $signal(0);
+</script>
+
+<{as ?? 'button'} onClick=(() => own++) {...rest}>{children}</>
+<span class="own">{own}</span>

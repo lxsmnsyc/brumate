@@ -442,6 +442,19 @@ describe('resume', () => {
     expect(target.hasAttribute('data-kind')).toBe(false);
   });
 
+  it('passes handlers through a dynamic tag, also when it names a component', async () => {
+    await resume('asPage', {});
+    click(document.querySelector('.plain')!);
+    await waitFor(() => expect(text('.outer')).toBe('1'));
+    await waitFor(() => expect(text('.plain-box .own')).toBe('1'));
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('.link')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.outer')).toBe('2'));
+    // The tag's own handler runs in the component that wrote it, not in the link.
+    await waitFor(() => expect(text('.link-box .own')).toBe('1'));
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');

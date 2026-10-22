@@ -813,9 +813,24 @@ export function dynamic(
   scope?: ScopeId,
 ): string | Promise<string> {
   if (typeof tag === 'function') {
-    return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
+    // The handlers of the tag belong to this component, so they name its scope for the
+    // component that renders the element.
+    const entries = attributes['b-on'];
+    const props =
+      typeof entries === 'string' && scope !== undefined
+        ? {
+            ...attributes,
+            'b-on': entries
+              .split(' ')
+              .map((entry) => (entry.includes('@') ? entry : `${entry}@${scope}`))
+              .join(' '),
+          }
+        : attributes;
+    return component(tag, children ? { ...props, children } : props, ctx, scope);
   }
-  const open = `<${tag}${spreadAttributes(attributes)}>`;
+  // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
+  const on: string[] = [];
+  const open = `<${tag}${spread(attributes, on)}${onAttribute(on, '')}>`;
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
@@ -2177,6 +2192,14 @@ async function answerRoute(
  * refers to nothing in the browser is left out.
  */
 export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
+  // its handlers come first, as the element's own.
+  const entries = on && attributes['b-on'];
+  if (typeof entries === 'string') {
+    on!.unshift(entries);
+    const { 'b-on': _, ...rest } = attributes;
+    return spread(rest, on);
+  }
   for (const [name, value] of Object.entries(attributes)) {
     const reference =
       on && /^on[A-Z]/.test(name) && typeof value === 'function'
