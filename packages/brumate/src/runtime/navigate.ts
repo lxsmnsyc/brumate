@@ -293,6 +293,12 @@ function shiftIds(root: Node, shift: Shift): void {
         element.setAttribute(name, add(value));
       }
     }
+    // A `#defer` block: `<trigger>:<boundary>:<base>`. The page now renders from the new base.
+    const defer = element.getAttribute('b-defer');
+    if (defer) {
+      const [trigger, boundary, from] = defer.split(':') as [string, string, string];
+      element.setAttribute('b-defer', `${trigger}:${add(boundary)}:${add(from)}`);
+    }
     // Only a script can match the state selector, so other elements skip it. The text of a
     // record is not changed: the core moves the IDs in its value when it reads it.
     if (element.localName === 'script' && element.matches(STATE)) {

@@ -236,6 +236,18 @@ export interface ClientBlock extends Range {
 }
 
 /**
+ * `#defer (trigger) { … } #else { … }`: a body that the server renders in a
+ * later request, when the trigger fires in the browser. The page has the
+ * fallback until then.
+ */
+export interface DeferBlock extends Range {
+  kind: 'defer';
+  trigger: ClientTrigger;
+  body: Body;
+  fallback?: Body;
+}
+
+/**
  * `#offscreen (visible) { … }`: a body that stays in the page while it is
  * hidden, with its markup and state, but does not run its effects.
  */
@@ -256,6 +268,7 @@ export type Block =
   | PortalBlock
   | HeadBlock
   | ClientBlock
+  | DeferBlock
   | OffscreenBlock;
 
 export interface TemplateDecl extends Range {

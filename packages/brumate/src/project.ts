@@ -51,6 +51,7 @@ export function childrenOf(node: Markup): Markup[] {
     case 'repeat':
     case 'loading':
     case 'client':
+    case 'defer':
       return [...node.body.children, ...(node.fallback?.children ?? [])];
     case 'try':
       return [...node.body.children, ...node.fallback.children];

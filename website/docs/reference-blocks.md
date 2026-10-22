@@ -25,6 +25,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                 |
 | `#client { … }`, `#client ('idle') { … }`            | Nothing on the server. The browser renders its body when the trigger fires: `'visible'` by default, `'idle'` or `'load'`. |
 | `#client { … } #else { … }`                          | The `#else` body on the server, until the browser renders the body in its place.                                          |
+| `#defer { … } #else { … }`, `#defer ('idle') { … }`  | The `#else` body, until the trigger fires. The browser then asks the server for the body, which replaces it.              |
 | `#template name(parameters) { … }`                   | Nothing. It declares markup that `{name(arguments)}` inserts.                                                             |
 
 - `#else`, `#else if` and `#catch` come right after the body of their block. Only whitespace and comments can be in between.
@@ -33,7 +34,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 - A body can start with a `<script>`. It runs for each instance of the body, such as each item of a `#for`. It cannot export and cannot call `$props()`.
 - A `#template` at the top level of a file can be used anywhere in the file. One inside a body can be used in that body.
 - `#` starts a block only before one of these keywords followed by `(` or `{`, and not right after a letter or a digit. Any other `#` is text.
-- `#defer` is reserved for a future block. Using it is a compile error.
+- `#defer` cannot be inside a `#client`, `#defer` or `#loading` body, or in markup that the browser renders, such as a branch of an `#if` that changes. See [`#defer`](./control-flow.md#defer).
 - A hidden `#offscreen` body gets `display: none !important` on each element at its top level, and its text at the top level is emptied. Its effects, `$client` callbacks and `<window>` and `<document>` listeners do not run. See [`#offscreen`](./control-flow.md#offscreen).
 
 ## Inserts

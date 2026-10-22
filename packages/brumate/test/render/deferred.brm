@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { getEvent } from 'brumate/server';
+
+  let count = $signal(1);
+</script>
+
+<button class="count" onClick=(() => count++)>{count}</button>
+#for (n of [1, 2]) {
+  <i>{n}</i>
+}
+#defer ('idle') {
+  <p class="greeting">Hello {getEvent().request.headers.get('x-user') ?? 'guest'}</p>
+  <button class="inner" onClick=(() => count++)>{count}</button>
+} #else {
+  <p class="fallback">Loading</p>
+}

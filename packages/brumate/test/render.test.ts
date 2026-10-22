@@ -36,6 +36,7 @@ const props: Record<string, unknown> = {
   'template-update': {},
   offscreen: {},
   clientElse: {},
+  deferred: {},
   memos: {},
   compact: {
     initial: [

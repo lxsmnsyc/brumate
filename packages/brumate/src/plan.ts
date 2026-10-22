@@ -414,6 +414,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
       block.kind === 'client' ||
+      // The browser asks for the body of a `#defer` block by its anchor.
+      block.kind === 'defer' ||
       portalTarget ||
       (block.kind === 'try' && resetUsed(model, block, graph.reached)) ||
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
@@ -544,6 +546,7 @@ export function blockBodies(block: Block): Body[] {
     case 'repeat':
     case 'loading':
     case 'client':
+    case 'defer':
       return [block.body, ...(block.fallback ? [block.fallback] : [])];
     case 'try':
       return [block.body, block.fallback];

@@ -316,6 +316,29 @@ An `#else` body renders on the server in place of the body, until the body rende
 - With `'visible'`, the block renders when the fallback comes into view.
 - Without scripts, the fallback stays.
 
+## `#defer`
+
+`#defer` renders its body on the server later, in a request of its own. The page has the `#else` body until the trigger fires, with the same triggers as `#client`. The browser then asks the server for the body, which replaces the fallback:
+
+```brm
+#defer ('visible') {
+  <Recommendations user=user />
+} #else {
+  <p>Loading recommendations…</p>
+}
+```
+
+Use it for markup that the server renders but that the first response does not need, such as content far below the fold, or the parts of a cached page that depend on the user.
+
+- The body renders on the server, with the same route, request, cookies and values as the page. It can call server functions and read the database.
+- The request goes to the URL of the page, so middleware runs for it as it does for the page. The answer has `vary: x-brumate-defer`, and so does the page.
+- The server renders the route again for the request, up to the block, but no other `#loading` or `#defer` body. Data that the page loads before the block loads again. Data that only the body needs is not loaded for the page: put it in the body, such as in a component inside it.
+- If the page's data changed since it loaded, and the block is not where the browser has it, the fallback stays.
+- Without scripts, the fallback stays. A prerendered page needs a server for the request.
+- `#defer` cannot be inside a `#client`, `#defer` or `#loading` body, or in markup that the browser renders, such as a branch of an `#if` that changes.
+
+`#client` renders its body in the browser, for markup that needs the browser. `#defer` renders it on the server, for markup that needs the server.
+
 ## `#template`
 
 `#template name(parameters)` declares a piece of markup that takes arguments. Call it in an expression:

@@ -124,6 +124,7 @@ LoadingBlock    = "#loading" [ "(" TS<Expression> ")" ] Body [ "#else" Body ] ;
 PortalBlock     = "#portal" [ "(" TS<Expression> ")" ] Body ;
 HeadBlock       = "#head" Body ;
 ClientBlock     = "#client" [ "(" Trigger ")" ] Body [ "#else" Body ] ;
+DeferBlock      = "#defer" [ "(" Trigger ")" ] Body [ "#else" Body ] ;
 Trigger         = '"visible"' | '"idle"' | '"load"'
                 | "'visible'" | "'idle'" | "'load'" ;
 OffscreenBlock  = "#offscreen" "(" TS<Expression> ")" Body ;
@@ -136,7 +137,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 - Only `#case`, `#default`, whitespace and comments are allowed directly inside `#switch`. `#default` is last.
 - A `BlockScript` cannot export and cannot call `$props()`.
 - A `TemplateDecl` at the top level can be used anywhere in the file. In a body, it can be used in that body.
-- `#defer` is reserved for a future block. `#defer` followed by `(` or `{` is a syntax error.
+- A `DeferBlock` cannot be inside the body of a `ClientBlock`, a `DeferBlock` or a `LoadingBlock`, or in markup that the client renders.
 
 ## `#` in text
 

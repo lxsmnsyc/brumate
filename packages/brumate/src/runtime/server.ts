@@ -88,6 +88,19 @@ interface Boundary {
   cancelled?: boolean;
 }
 
+/** The `#defer` body that a render renders, for the request of the browser that asks for it. */
+export interface DeferTarget {
+  /** The boundary ID of the block. */
+  boundary: ScopeId;
+  /** The scope and the anchor of the block, as `<scope>:<anchor>`, which the render checks. */
+  at: string;
+  /**
+   * `found` once the render reaches the block at `at`. `moved` when it reaches the boundary
+   * elsewhere, such as after the data of the page changed and moved the IDs before it.
+   */
+  status?: 'found' | 'moved';
+}
+
 /** A point in a render that `restore` goes back to. */
 export interface Mark {
   scope: number;
@@ -133,6 +146,11 @@ export class Context {
   readonly state: PageState = {};
   private readonly root: Context;
   private readonly space: IdSpace;
+  private readonly baseId: number;
+  /** The `#defer` body to render, in the request for it. The rest of the page renders no body. */
+  target: DeferTarget | undefined;
+  /** True in the context of the target body and the bodies inside it. */
+  private inTarget = false;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
   /** Markup of `#portal` blocks, written at the end of the page. */
@@ -188,6 +206,12 @@ export class Context {
     this.space = prefix
       ? { prefix, scope: 0, boundary: 0 }
       : { prefix, scope: base, boundary: base };
+    this.baseId = base;
+  }
+
+  /** The base of the render, which the browser sends back to ask for a `#defer` body. */
+  base(): number {
+    return this.root.baseId;
   }
 
   /**
@@ -441,7 +465,38 @@ export class Context {
 
   /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
   defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
+    // The request for a `#defer` body renders no other body.
+    if (this.root.target && !this.inTarget) {
+      return;
+    }
+    this.register(id, renderBody, this.inTarget);
+  }
+
+  /**
+   * Renders the body of a `#defer` block, in the request for it. `at` is
+   * the scope and the anchor of the block. A page renders only the
+   * fallback, so it does nothing then.
+   */
+  deferBlock(id: ScopeId, at: string, renderBody: (ctx: Context) => Promise<string>): void {
+    const target = this.root.target;
+    if (!target || this.inTarget || id !== target.boundary) {
+      return;
+    }
+    if (at !== target.at) {
+      target.status = 'moved';
+      return;
+    }
+    target.status = 'found';
+    this.register(id, renderBody, true);
+  }
+
+  private register(
+    id: ScopeId,
+    renderBody: (ctx: Context) => Promise<string>,
+    inTarget: boolean,
+  ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
+    child.inTarget = inTarget;
     const boundary: Boundary = {
       id,
       render: renderBody(child).then((html) => ({ html, ctx: child })),
@@ -975,8 +1030,8 @@ export interface StateAttributes {
   define?: boolean;
   /** The route of the page. */
   route?: string;
-  /** The base of the render, when it is above 0. */
-  root?: number;
+  /** The base of the render, when it is above 0, or the key of a `#defer` body's records. */
+  root?: number | string;
   /** The Content Security Policy nonce of the script. */
   nonce?: string;
 }
@@ -1042,6 +1097,12 @@ export interface RenderResult {
   next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
+  /**
+   * With the `defer` option, whether the render found the block: `found`,
+   * `moved` when the boundary is at another place, such as after the data
+   * of the page changed, or `missing`.
+   */
+  defer?: 'found' | 'moved' | 'missing';
 }
 
 /** The `pending` of a render that has nothing left to send. */
@@ -1127,6 +1188,13 @@ export interface RenderOptions {
    * records, and the scripts that swap in `#loading` bodies.
    */
   nonce?: string;
+  /**
+   * Renders only the body of this `#defer` block, for the request that the
+   * browser sends when the block's trigger fires. Pass the `base` of the
+   * page too, so the IDs of the page come out the same. The body comes from
+   * `pending`, and `html` and `state` are empty.
+   */
+  defer?: { boundary: ScopeId; at: string };
 }
 
 /**
@@ -1147,6 +1215,9 @@ export async function render<P>(
   if (options.actions) {
     ctx.actions = options.actions;
   }
+  if (options.defer) {
+    ctx.target = { ...options.defer };
+  }
   const event = options.event ?? (options.request ? new RequestEvent(options.request) : undefined);
   ctx.event = event;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
@@ -1158,7 +1229,9 @@ export async function render<P>(
   const pending = (): Queue<string> => (queue ??= createQueue<string>());
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
-  const { nonce, base: root } = options;
+  const { nonce } = options;
+  // The records of a `#defer` body have references of their own, apart from those of the page.
+  const root = options.defer ? `d${options.defer.boundary}` : options.base;
   // The first record, the page state, defines `$bR` for the others.
   let first = true;
   let open = 0;
@@ -1232,6 +1305,20 @@ export async function render<P>(
       },
     );
   });
+
+  if (options.defer) {
+    // The browser has the page. It gets only the body, from `pending`.
+    return {
+      html: '',
+      state: '',
+      pending: queue === undefined && open === 0 ? NOTHING_PENDING : pending().iterable,
+      headers: event?.headers ?? new Headers(),
+      status: event?.status ?? 200,
+      next: () => ctx.next(),
+      head: '',
+      defer: ctx.target!.status ?? 'missing',
+    };
+  }
 
   let state = '';
   // The state of the page is serialized before this returns, so a value that cannot be sent
@@ -1729,6 +1816,10 @@ async function renderPage(
 ): Promise<Response> {
   // A page that the client loads in place of another starts above its IDs.
   const base = Number(request.headers.get('x-brumate-base'));
+  const defer = deferTarget(request);
+  if (defer) {
+    return renderDeferred(view, props, request, options, defer, base);
+  }
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -1742,8 +1833,70 @@ async function renderPage(
   );
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
+  // The same URL answers the request for a `#defer` body with that body only.
+  headers.append('vary', 'x-brumate-defer');
   const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
   return new Response(body, { status: extra.status ?? parts.status, headers });
+}
+
+/**
+ * The `#defer` block that a request asks for, from `x-brumate-defer:
+ * <boundary> <scope>:<anchor>`, which the browser sends when the block's
+ * trigger fires.
+ */
+function deferTarget(request: Request): { boundary: ScopeId; at: string } | undefined {
+  const match = /^([\d.]+) (-?[\d.]+:\d+)$/.exec(request.headers.get('x-brumate-defer') ?? '');
+  return match ? { boundary: parseId(match[1]!), at: match[2]! } : undefined;
+}
+
+/**
+ * Renders the route again and answers with the body of one `#defer` block:
+ * its markup in a `<template b-l>`, the script that swaps it in, and its
+ * state. The page renders with the base it had, so its IDs come out the
+ * same. When the block is not where the browser has it, such as after the
+ * data of the page changed, the answer is 409 and the fallback stays.
+ */
+async function renderDeferred(
+  view: ResolvedView,
+  props: Record<string, unknown>,
+  request: Request,
+  options: RouteOptions,
+  defer: { boundary: ScopeId; at: string },
+  base: number,
+): Promise<Response> {
+  const parts = await render(
+    viewComponent(view, props),
+    {},
+    {
+      ...options,
+      request,
+      route: view.key,
+      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
+      defer,
+    },
+  );
+  const headers = new Headers(parts.headers);
+  headers.append('vary', 'x-brumate-defer');
+  if (parts.defer !== 'found') {
+    return new Response(null, { status: parts.defer === 'moved' ? 409 : 404, headers });
+  }
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('x-brumate-defer', String(defer.boundary));
+  const body = new ReadableStream<string>({
+    async start(controller) {
+      try {
+        if (parts.pending !== NOTHING_PENDING) {
+          for await (const chunk of parts.pending) {
+            controller.enqueue(chunk);
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  }).pipeThrough(new TextEncoderStream());
+  return new Response(body, { status: parts.status, headers });
 }
 
 /**

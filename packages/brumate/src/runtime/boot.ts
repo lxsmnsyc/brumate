@@ -255,9 +255,16 @@ export function boot(
         });
       }
     }
-    for (const template of select(root, 'template[b-client]')) {
-      const [trigger, ref] = template.getAttribute('b-client')!.split('=') as [string, string];
-      const go = (): void => run(template, ref);
+    for (const template of select(root, 'template[b-client],template[b-defer]')) {
+      const client = template.getAttribute('b-client');
+      const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
+        client ? '=' : ':',
+      ) as [string, string];
+      // A `#defer` block asks the server for its body, with a module that only it needs.
+      const go = (): void =>
+        client
+          ? run(template, ref)
+          : void import('./defer.ts').then((module) => module.loadDeferred(template));
       const next = template.nextElementSibling;
       if (trigger === 'idle') {
         idle(go);

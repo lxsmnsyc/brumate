@@ -354,5 +354,33 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     }
   }
 
+  // The server renders a `#defer` body again in a request of its own, with the rest of the page,
+  // so the block must be in markup that only the server renders, and not in a body that renders later.
+  for (const scope of model.scopes) {
+    const block = scope.block;
+    if (block?.kind !== 'defer' || scope.body !== block.body) {
+      continue;
+    }
+    let message: string | undefined;
+    for (let outer = scope.parent; outer && !message; outer = outer.parent) {
+      const around = outer.block;
+      if (
+        (around?.kind === 'client' || around?.kind === 'defer' || around?.kind === 'loading') &&
+        outer.body === around.body
+      ) {
+        message = `#defer cannot be inside a #${around.kind} body`;
+      } else if (created.has(outer)) {
+        message = '#defer cannot be in markup that the browser renders';
+      }
+    }
+    if (message) {
+      diagnostics.push({
+        severity: 'error',
+        message,
+        range: { start: block.start, end: block.start + '#defer'.length },
+      });
+    }
+  }
+
   return { model, nodes, edges, live, reached, created, diagnostics };
 }

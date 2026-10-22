@@ -1110,6 +1110,48 @@ export class Emitter {
     this.close('});');
   }
 
+  /**
+   * Renders the fallback of a `#defer` block between the markers of a
+   * boundary, and a template that the loader starts when the trigger fires.
+   * The body renders only in the request for it, and replaces the fallback
+   * as a `#loading` body does.
+   */
+  private emitDefer(block: Block & { kind: 'defer' }, scope: Scope): void {
+    const boundary = this.unique('boundary');
+    const anchor = this.anchor(scope, block)!;
+    const body = this.plan.bodyScopes.get(block.body)!;
+    this.line(`const ${boundary} = $$ctx.boundary();`);
+    this.html('<template b-b="');
+    this.code(anchor.scope);
+    this.html(`:${anchor.index}" b-defer="${block.trigger}:`);
+    this.code(boundary);
+    this.html(':');
+    this.code('$$ctx.base()');
+    this.html('"></template><!--l');
+    this.code(boundary);
+    this.html('-->');
+    if (block.fallback) {
+      this.line('{');
+      this.emitBody(block.fallback);
+      this.close();
+    }
+    this.html('<!--/l-->');
+    this.line(
+      `$$ctx.deferBlock(${boundary}, ${anchor.scope} + ${JSON.stringify(`:${anchor.index}`)}, async ($$ctx) => {`,
+    );
+    this.line(`let $$html = '';`);
+    for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
+      if (this.inline.has(declaration)) {
+        continue;
+      }
+      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+    }
+    this.emitBody(block.body);
+    this.flush();
+    this.line('return $$html;');
+    this.close('});');
+  }
+
   private open(scope: Scope, block: Block, suffix?: string): void {
     const anchor = this.anchor(scope, block);
     if (anchor) {
@@ -1235,6 +1277,16 @@ export class Emitter {
         this.end(block);
         return;
       }
+      case 'defer':
+        if (this.options.mode === 'server') {
+          this.emitDefer(block, scope);
+        } else if (block.fallback) {
+          // Markup that the browser renders cannot be rendered again on the server, so it keeps the fallback.
+          this.line('{');
+          this.emitBody(block.fallback);
+          this.close();
+        }
+        return;
       case 'loading':
         if (this.options.mode === 'server') {
           this.emitLoading(block, scope);

@@ -105,6 +105,25 @@ The body renders with the values of the server. If a value changed in the browse
 
 A `#loading` body that sets the head after the first render also sends `<template b-h="<id>">` with its head markup. `$bH(id, title)` moves it into the head and sets the title.
 
+### `#defer`
+
+```html
+<template b-b="0:1" b-defer="visible:2:0"></template><!--l2--><p>Loading…</p><!--/l-->
+```
+
+- `b-defer` is `<trigger>:<boundary>:<base>`. The base is the base of the render, which the server needs to number the page the same way again.
+- `b-b` is the anchor of the block, in the scope that holds it.
+- The fallback is between the markers of a `#loading` boundary.
+
+When the trigger fires, the browser asks for the URL of the page with two headers:
+
+```
+x-brumate-defer: 2 0:1
+x-brumate-base: 0
+```
+
+The server renders the route again with that base and answers with the markup that it streams for a `#loading` body, with the header `x-brumate-defer: 2`. The browser adds it to the page and runs its scripts with the page's nonce. Its state records have `b-root="d<boundary>"`, so their references are apart from the page's. The answer is 409 when the render puts boundary 2 at another anchor, and 404 when it has no such boundary.
+
 ### `#portal`
 
 ```html
@@ -228,7 +247,7 @@ Values with plugins of their own, and the call of `$b` that makes each one in a 
 | `b-scopes` | Records with scopes                            | The record adds scopes.                                                                                |
 | `b-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                              |
 | `b-route`  | The first record of a page from routes         | The key of the root route.                                                                             |
-| `b-root`   | Every record of a render with a `base` above 0 | The base. The core keeps a `refs` map for each root.                                                   |
+| `b-root`   | Every record of a render with a `base` above 0 | The base, or `d<boundary>` for a `#defer` body. The core keeps a `refs` map for each root.             |
 | `b-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record. |
 | `b-drop`   | Set by the client on navigation                | The route scopes that the new page replaces. The core drops them and the scopes inside them.           |
 | `b-roots`  | Set by the client on navigation                | The route scopes of the new page. The core adds only them and the scopes inside them.                  |

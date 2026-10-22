@@ -1015,6 +1015,7 @@ class Analyzer {
         this.visitBody(block.body, scope, block);
         break;
       case 'client':
+      case 'defer':
         this.visitBody(block.body, scope, block);
         if (block.fallback) {
           this.visitBody(block.fallback, scope, block);

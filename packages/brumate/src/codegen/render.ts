@@ -40,6 +40,7 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
       case 'repeat':
       case 'loading':
       case 'client':
+      case 'defer':
         componentNames(node.body.children, names);
         componentNames(node.fallback?.children ?? [], names);
         break;

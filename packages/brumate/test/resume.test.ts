@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
-import { render as renderParts, stateScript } from '../src/runtime/server.ts';
+import { handleRoute, render as renderParts, stateScript } from '../src/runtime/server.ts';
 import type { PageState } from '../src/runtime/server.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
@@ -861,6 +861,105 @@ describe('resume', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
     await new Promise((done) => setTimeout(done, 50));
     expect(text('body > p')).toBe('B');
+  });
+});
+
+/** Collects what a render sends after the page. */
+async function allPending(pending: AsyncIterable<string>): Promise<string> {
+  let result = '';
+  for await (const chunk of pending) {
+    result += chunk;
+  }
+  return result;
+}
+
+describe('#defer', () => {
+  it('renders the fallback in the page, and the body in a request of its own', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const page = await renderParts(server.default, {});
+    expect(page.html).toContain('<template b-b="0:1" b-defer="idle:0:0"></template><!--l0-->');
+    expect(page.html).toContain('<p class="fallback">Loading</p><!--/l-->');
+    expect(page.html).not.toContain('greeting');
+
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const parts = await renderParts(
+      server.default,
+      {},
+      { request, defer: { boundary: 0, at: '0:1' } },
+    );
+    expect(parts.defer).toBe('found');
+    expect(parts.html).toBe('');
+    const body = await allPending(parts.pending);
+    expect(body).toContain('<template b-l="0"><p class="greeting">Hello Ada</p>');
+    expect(body).toContain('$bS(0)');
+    // The body's scopes are inside the boundary, and its records have references of their own.
+    expect(body).toMatch(/<script b-state b-scopes b-next="\d+" b-root="d0">/);
+    expect(body).toContain('0.0');
+
+    const elsewhere = await renderParts(
+      server.default,
+      {},
+      {
+        defer: { boundary: 0, at: '0:2' },
+      },
+    );
+    expect(elsewhere.defer).toBe('moved');
+    const missing = await renderParts(server.default, {}, { defer: { boundary: 4, at: '0:1' } });
+    expect(missing.defer).toBe('missing');
+  });
+
+  it('answers the request for a body from the route, and 409 when the block moved', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const ask = (at: string): Promise<Response | undefined> =>
+      handleRoute(
+        tree,
+        new Request('http://localhost/', { headers: { 'x-brumate-defer': `0 ${at}` } }),
+      );
+    const found = (await ask('0:1'))!;
+    expect(found.status).toBe(200);
+    expect(found.headers.get('x-brumate-defer')).toBe('0');
+    expect(found.headers.get('vary')).toContain('x-brumate-defer');
+    expect(await found.text()).toContain('Hello guest');
+    expect((await ask('0:7'))!.status).toBe(409);
+    const page = (await handleRoute(tree, new Request('http://localhost/')))!;
+    expect(page.headers.get('vary')).toContain('x-brumate-defer');
+  });
+
+  it('puts the body in place of the fallback when its trigger fires', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+      async (url, init) =>
+        (await handleRoute(tree, new Request(new URL(url, 'http://localhost/'), init)))!,
+    );
+    vi.stubGlobal('fetch', fetch);
+    // jsdom does not run scripts that are added to the page, so this runs them, in order.
+    const scripts = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeName === 'SCRIPT') {
+            run(node as Element);
+          }
+        }
+      }
+    });
+    scripts.observe(document.body, { childList: true });
+    try {
+      await resume('deferred', {});
+      expect(text('.fallback')).toBe('Loading');
+      await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+      expect(document.querySelector('.fallback')).toBeNull();
+      const headers = new Headers(fetch.mock.calls[0]![1].headers);
+      expect(headers.get('x-brumate-defer')).toBe('0 0:1');
+      expect(headers.get('x-brumate-base')).toBe('0');
+      // The body reads the signal of its component, which the page has.
+      click(document.querySelector('.inner')!);
+      await waitFor(() => expect(text('.inner')).toBe('2'));
+      expect(text('.count')).toBe('2');
+    } finally {
+      scripts.disconnect();
+    }
   });
 });
 
