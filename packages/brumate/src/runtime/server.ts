@@ -53,7 +53,9 @@ export {
 } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
-export { createContext } from './context.ts';
+export { createContext, navigationContext, routeContext } from './context.ts';
+export type { NavigationState, Route } from './context.ts';
+import { ROUTE_KEY } from './context.ts';
 import { matchRoute, missingPage, notFound } from './router.ts';
 import type { MiddlewareLoader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
@@ -212,6 +214,8 @@ export class Context {
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
+  /** The params of the route of the page, for `$route`. */
+  params: Record<string, string> = {};
   /** The request of the page, when it renders with one. */
   event: RequestEvent | undefined;
   /** Results of server function calls in this render, so the same call runs once. */
@@ -361,6 +365,11 @@ export class Context {
         return node.values.get(context.key) as T;
       }
       id = node?.parent;
+    }
+    // The route of the page comes from its request and the params of its route.
+    if (context.key === ROUTE_KEY) {
+      const url = new URL(this.root.event?.request.url ?? 'http://localhost/');
+      return { url, search: url.searchParams, params: this.root.params } as T;
     }
     return context.defaultValue;
   }
@@ -1201,6 +1210,8 @@ export interface StateAttributes {
   root?: number | string;
   /** The Content Security Policy nonce of the script. */
   nonce?: string;
+  /** The params of the route of the page, on its first record, for `$route` in the browser. */
+  params?: Record<string, string>;
 }
 
 /**
@@ -1233,6 +1244,9 @@ export function stateScript(
   }
   if (attributes.route !== undefined) {
     extra += ` b-route="${escapeAttribute(attributes.route)}"`;
+  }
+  if (attributes.params !== undefined) {
+    extra += ` b-params="${escapeAttribute(JSON.stringify(attributes.params))}"`;
   }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
@@ -1340,6 +1354,8 @@ export interface RenderOptions {
   base?: number;
   /** Names the route of the page, so the client knows which layouts it can keep. */
   route?: string;
+  /** The params of the route of the page, for `$route`. `handleRoute` sets them. */
+  params?: Record<string, string>;
   /** Results of server functions that a form posted to this page, by function, for `$action`. */
   actions?: Map<unknown, unknown>;
   /**
@@ -1387,6 +1403,9 @@ export async function render<P>(
   const ctx = new Context(undefined, options.rpc, options.base);
   if (options.actions) {
     ctx.actions = options.actions;
+  }
+  if (options.params) {
+    ctx.params = options.params;
   }
   if (options.defer) {
     ctx.target = { ...options.defer };
@@ -1439,7 +1458,15 @@ export async function render<P>(
       (code, initial) => {
         if (initial) {
           onScopes(
-            stateScript(code, true, { next: ctx.next(), route, root, nonce, define: first }),
+            stateScript(code, true, {
+              next: ctx.next(),
+              route,
+              root,
+              nonce,
+              define: first,
+              // The params go with the route, so the browser reads them after a navigation.
+              params: route === undefined ? undefined : options.params,
+            }),
           );
           first = false;
         } else {
@@ -2066,6 +2093,7 @@ async function renderPage(
       request,
       actions: extra.actions,
       route: view.key,
+      params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
     },
   );
@@ -2109,6 +2137,7 @@ async function renderDeferred(
       ...options,
       request,
       route: view.key,
+      params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       defer,
     },

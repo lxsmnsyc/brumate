@@ -62,14 +62,24 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 type Part = { static: string } | { code: string };
 
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
-function specialCall(declarator: oxc.VariableDeclarator): '$getContext' | '$id' | undefined {
+function specialCall(
+  declarator: oxc.VariableDeclarator,
+): '$getContext' | '$id' | '$route' | '$navigation' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
-  return name === '$getContext' || name === '$id' ? name : undefined;
+  return name === '$getContext' || name === '$id' || name === '$route' || name === '$navigation'
+    ? name
+    : undefined;
 }
+
+/** The contexts that the runtime provides, by the compile-time function that reads them. */
+const BUILT_IN_CONTEXTS: Record<string, string> = {
+  $route: '$$b.routeContext',
+  $navigation: '$$b.navigationContext',
+};
 
 export interface EmitterOptions {
   mode: 'server' | 'client';
@@ -458,7 +468,13 @@ export class Emitter {
         );
         continue;
       }
-      if (call !== '$getContext' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
+      const context =
+        call && BUILT_IN_CONTEXTS[call]
+          ? BUILT_IN_CONTEXTS[call]
+          : call === '$getContext' && init.arguments[0]
+            ? this.source(init.arguments[0])
+            : undefined;
+      if (!context || declarator.id.type !== 'Identifier') {
         this.line(`${statement.kind} ${this.source(declarator)};`);
         continue;
       }
@@ -466,7 +482,7 @@ export class Emitter {
       // The slot is recorded, so a change to the provided value reaches it on the client.
       const record = slot === -1 ? '' : `, ${slot}`;
       this.line(
-        `const ${declarator.id.name} = ${this.helper('consume')}(${this.source(init.arguments[0])}, ${target}${record});`,
+        `const ${declarator.id.name} = ${this.helper('consume')}(${context}, ${target}${record});`,
       );
     }
     return true;

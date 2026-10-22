@@ -381,6 +381,31 @@ function compileBlock(markup: string): void {
   );
 }
 
+describe('$route and $navigation', () => {
+  it('read contexts that the runtime provides', () => {
+    const { server, render } = compile(
+      "<script>\n  import { $navigation, $route } from 'brumate/signals';\n  const route = $route('/issues/[id]');\n  const navigation = $navigation();\n</script>\n<p>{route.params.id} {navigation.pending}</p>",
+      { filename: 'T.brm' },
+    );
+    // Each has a slot, so the browser updates what reads it when navigation changes it.
+    expect(server).toContain('const route = $$ctx.consume($$b.routeContext, $$s1, 0);');
+    expect(server).toContain('const navigation = $$ctx.consume($$b.navigationContext, $$s1, 1);');
+    expect(render).toContain('const route = $$b.consumeContext($$b.routeContext, $$s1, 0);');
+  });
+
+  it.each([
+    ['let route = $route();', 'Read the route with "const name = $route()"'],
+    ['const navigation = $navigation(1);', '$navigation takes no arguments'],
+  ])('report a wrong declaration: %s', (declaration, message) => {
+    expect(() =>
+      compile(
+        `<script>\n  import { $navigation, $route } from 'brumate/signals';\n  ${declaration}\n</script>\n<p>Hi</p>`,
+        { filename: 'T.brm' },
+      ),
+    ).toThrow(message);
+  });
+});
+
 describe('#defer', () => {
   it.each([
     ['#client { #defer { <p>x</p> } }', '#defer cannot be inside a #client body'],

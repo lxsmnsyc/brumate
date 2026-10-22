@@ -537,6 +537,72 @@ describe('resume', () => {
     }
   });
 
+  it('reads the route and the navigation, on the server and after the browser changes them', async () => {
+    const server = await import(file('where.brm.ts'));
+    const request = new Request('http://localhost:3000/issues/7?q=bug');
+    const { html, state } = await renderParts(
+      server.default,
+      {},
+      { request, params: { id: '7' }, route: 'r' },
+    );
+    expect(html).toContain('<p class="where"');
+    expect(state).toContain('b-params="{&quot;id&quot;:&quot;7&quot;}"');
+    show(html + state);
+    expect(text('.where')).toBe('/issues/7 bug 7');
+    expect(text('.pending')).toBe('idle');
+    await startLoader();
+    // The browser changes them: the core reads the new route, and the navigation that loads.
+    const client = await import('../src/runtime/client.ts');
+    client.loader.init({ load: (id) => import(modules.get(id)!), listen: () => {} });
+    client.setGlobal('brumate.navigation', {
+      pending: true,
+      from: 'http://localhost:3000/issues/7?q=bug',
+      to: 'http://localhost:3000/issues/8',
+    });
+    await waitFor(() => expect(text('.pending')).toBe('to /issues/8'));
+    history.pushState({}, '', '/issues/8?q=open');
+    client.updateRoute();
+    await waitFor(() => expect(text('.where')).toBe('/issues/8 open 7'));
+    history.replaceState({}, '', '/');
+    // This copy of the core was started by hand, so it stops by hand.
+    client.loader.dispose();
+  });
+
+  it('loads a page from navigate(), and marks the page while it loads', async () => {
+    document.body.innerHTML = '<p class="old">Old</p>';
+    let finish: ((response: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      () =>
+        new Promise<Response>((answer) => {
+          finish = answer;
+        }),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    const { navigate } = await import('../src/runtime/routes.ts');
+    const done = navigate('/next', { replace: true });
+    await waitFor(() => expect(finish).toBeDefined());
+    expect(document.documentElement.hasAttribute('data-navigating')).toBe(true);
+    finish!(
+      new Response(
+        '<!doctype html><html><head><title>Next</title></head><body><h1>Next</h1></body></html>',
+        {
+          headers: { 'content-type': 'text/html' },
+        },
+      ),
+    );
+    await done;
+    expect(text('h1')).toBe('Next');
+    expect(location.pathname).toBe('/next');
+    expect(document.documentElement.hasAttribute('data-navigating')).toBe(false);
+    // A screen reader hears the title, and the focus starts at the heading.
+    expect(text('[b-announcer]')).toBe('Next');
+    expect(document.activeElement).toBe(document.querySelector('h1'));
+    history.replaceState({}, '', '/');
+  });
+
   it('calls server functions with errors and redirects', async () => {
     vi.resetModules();
     // The component and the test use the same copy of the runtime, so they share the request.
