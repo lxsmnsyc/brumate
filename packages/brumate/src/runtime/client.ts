@@ -1,3 +1,4 @@
+import { trustedHTML } from './trusted.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -1291,7 +1292,7 @@ function clear(start: Node, end: Node): void {
  */
 function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const template = document.createElement('template');
-  template.innerHTML = html;
+  template.innerHTML = trustedHTML(html);
   const fragment = template.content;
   // Markers that others inserted first, so the new markers win over them.
   if (markerObserver) {

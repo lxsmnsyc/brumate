@@ -143,8 +143,8 @@ class ClientGenerator {
   }
 
   generate(): ClientOutput {
-    this.checkSupport();
     this.collectRenders();
+    this.checkSupport();
     this.placeCode();
 
     this.emitFunctions();
@@ -495,10 +495,26 @@ class ClientGenerator {
   // Checks
 
   private checkSupport(): void {
+    const rendered = this.renderedScopes();
     for (const site of this.model.sites) {
       const live = this.live.has(site);
       if (live && site.kind === 'tag' && !(site.owner as DynamicTagNode | undefined)?.keyed) {
         this.error('A dynamic tag that changes on the client is not supported yet', site.range);
+      }
+      // A render function or an update runs without waiting, so it can await only a memo, whose
+      // value is settled in the browser. A memo that awaits a promise loads it instead.
+      if (
+        site.awaits &&
+        site.kind !== 'memo' &&
+        !DEFERRED_SITES.has(site.kind) &&
+        (live || rendered.some((scope) => isWithin(site.scope, scope)))
+      ) {
+        this.error(
+          live
+            ? 'Code that the browser updates can await only a memo. Load the promise in a memo instead'
+            : 'Markup that the browser renders can await only a memo. Load the promise in a memo instead',
+          site.range,
+        );
       }
     }
   }
