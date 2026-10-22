@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -161,6 +161,8 @@ const RENDER_QUERY = '?brumate-render';
 const SERVER_QUERY = '?brumate-server';
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
 const TESTING = 'virtual:brumate/testing';
+/** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
+const HINTS_FILE = '.brumate/hints.json';
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
 
@@ -657,6 +659,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return routeFiles(paths);
   };
 
+  /**
+   * The modules that every page loads early, which the client build wrote,
+   * or none before a client build or in development.
+   */
+  const clientHints = (): string[] => {
+    const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
+    return !isServe && existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as string[]) : [];
+  };
+
   /** The route tree module. A DOM test gets the server version of each component in it. */
   const routeTree = (server = false): string => {
     const env = envFile();
@@ -669,6 +680,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       isServe,
       middlewareFile(),
       buildId,
+      clientHints(),
     );
     // The variables are checked when the server starts, before any route loads.
     return env ? `import ${JSON.stringify(env)};\n${code}` : code;
@@ -1038,11 +1050,34 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async writeBundle(_output, bundle) {
-      if (!isSsrBuild && buildId !== undefined) {
-        const written = Object.values(bundle).map((item) => item.fileName);
-        const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
-        if (removed.length > 0) {
-          this.info(`Removed the files of ${removed.length} older builds`);
+      if (!isSsrBuild) {
+        // The modules that every page loads early, for the `Link` headers of the server build.
+        const chunks = new Map(
+          Object.values(bundle).flatMap((item) =>
+            item.type === 'chunk' ? [[item.fileName, item] as const] : [],
+          ),
+        );
+        const hints = new Set<string>();
+        const add = (name: string | undefined): void => {
+          const chunk = name === undefined ? undefined : chunks.get(name);
+          if (chunk && !hints.has(chunk.fileName)) {
+            hints.add(chunk.fileName);
+            chunk.imports.forEach(add);
+          }
+        };
+        add(loaderChunk);
+        add(coreChunk);
+        await mkdir(path.join(outDir, '.brumate'), { recursive: true });
+        await writeFile(
+          path.join(outDir, HINTS_FILE),
+          JSON.stringify([...hints].map((name) => `${base}${name}`)),
+        );
+        if (buildId !== undefined) {
+          const written = Object.values(bundle).map((item) => item.fileName);
+          const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
+          if (removed.length > 0) {
+            this.info(`Removed the files of ${removed.length} older builds`);
+          }
         }
         return;
       }

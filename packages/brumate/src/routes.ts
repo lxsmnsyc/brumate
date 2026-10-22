@@ -104,6 +104,8 @@ export function routeModule(
   middleware?: string,
   /** The ID of the build, for skew protection. */
   build?: string,
+  /** The modules that every page loads early, from the client build. */
+  hints: string[] = [],
 ): string {
   // Static imports, because the server registry of server functions imports every file anyway.
   const imports: string[] = [];
@@ -154,7 +156,7 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

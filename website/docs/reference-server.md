@@ -119,7 +119,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, `prerender`, which the build sets so rate limits do not count, and `build`, the ID of the build, for skew protection. `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address`, `prerender` and `build` in its options: a call from a page of another build to a function that is gone answers 409 with `x-brumate-build`.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, `prerender`, which the build sets so rate limits do not count, `build`, the ID of the build, for skew protection, `hints`, the URLs of the modules that every page loads, and `earlyHints`, a callback that receives them as `Link` values before the page renders. See [Early hints](./deploying.md#early-hints). `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address`, `prerender` and `build` in its options: a call from a page of another build to a function that is gone answers 409 with `x-brumate-build`.
 
 ### `RenderResult`
 
