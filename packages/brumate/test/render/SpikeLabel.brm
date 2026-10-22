@@ -1,0 +1,9 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { SelectContext } from './selectContext.ts';
+
+  const { children } = $props();
+  const select = $getContext(SelectContext);
+</script>
+
+<span class="label" id=(select?.labelId)>{children}</span>

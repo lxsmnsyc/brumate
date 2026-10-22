@@ -1,0 +1,22 @@
+<script>
+  import { $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { SelectContext } from './selectContext.ts';
+
+  const { children } = $props();
+  let open = $signal(false);
+  let value = $signal<string | null>(null);
+  const labelId = $id();
+
+  $setContext(SelectContext, {
+    open,
+    value,
+    labelId,
+    toggle: () => (open = !open),
+    choose: (next: string) => {
+      value = next;
+      open = false;
+    },
+  });
+</script>
+
+<div class="select" data-open=(open ? '' : undefined)>{children}</div>

@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { SelectContext } from './selectContext.ts';
+
+  const { children } = $props();
+  const select = $getContext(SelectContext);
+</script>
+
+#if (select?.open) {
+  <div class="popover">{children}</div>
+}

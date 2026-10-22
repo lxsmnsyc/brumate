@@ -1,0 +1,8 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { SelectContext } from './selectContext.ts';
+
+  const select = $getContext(SelectContext);
+</script>
+
+<span class="value">{select?.value ?? 'Choose'}</span>

@@ -1,0 +1,12 @@
+<script>
+  import SpikeListBox from './SpikeListBox.brm';
+  import SpikeSelect from './SpikeSelect.brm';
+</script>
+
+<SpikeSelect>
+  <SpikeListBox items=(['Cat', 'Dog']) item=option />
+</SpikeSelect>
+
+#template option({ option, selected }: { option: string; selected: boolean }) {
+  <b class="choice">{option}{selected ? ' (picked)' : ''}</b>
+}
