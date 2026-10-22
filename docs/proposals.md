@@ -1265,14 +1265,22 @@ Cost: a few days for the adapter, a guide and an example.
 
 ### Order
 
-1. Blocking async memos. They fix `await` in components that the browser renders, and they make the state of more pages one record.
-2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
-3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-4. Routing in the browser. It is small, and filters and tabs in the URL are common.
-5. Streaming without scripts and taint, so crawlers see `#loading` content and secrets stay on the server.
-6. Element behaviors, testing routes, budgets for one event, rate limiting and batched reads. Each is small. Rate limiting protects the server functions that every app has, and batched reads take a list of rows from one request per row to one request.
-7. Transitions and bindable props, which the UI components need in phase 2.
-8. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
-9. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
-10. Caching pages and data, and prerendering with holes, now that `#defer` can render the parts of a cached page for each user. The serialization entry with them, for the classes that cached data holds.
-11. Compiled messages, Markdown with components, two-way realtime, embedding, worker functions, offline pages, long lists and the rest when an app or the website needs them.
+Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
+
+1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
+2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
+3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
+4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
+6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
+7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
+8. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+9. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 14.
+10. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+11. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+
+Content mappers for TypeScript 7 are done in #3, so they are in no step.
