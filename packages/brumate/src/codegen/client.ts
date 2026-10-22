@@ -8,6 +8,7 @@ import type {
   RepeatBlock,
   SFCFile,
 } from '../ast.ts';
+import { tryCatchesClient } from '../graph.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
@@ -184,11 +185,13 @@ class ClientGenerator {
       }
     }
     const refresh = this.refreshTable();
+    const tries = this.triesTable();
     const table = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
+      ...(tries ? [`export const t = ${tries};`] : []),
     ];
     const clientCode = names.length > 0;
     if (merged || !clientCode) {
@@ -1206,6 +1209,36 @@ class ClientGenerator {
    * The memos to load again when a server function calls `refresh(fn)`:
    * by the ID of `fn`, the scope kind and the update of each memo.
    */
+  /**
+   * The `#try` blocks that catch errors of client code, by the scope kinds
+   * inside their bodies: the kind of the scope that holds the block, the
+   * anchor of the block, the render functions of the body and the `#catch`
+   * body, and the kinds of both bodies.
+   */
+  private triesTable(): string | undefined {
+    const entries: string[] = [];
+    for (const scope of this.model.scopes) {
+      const block = scope.block;
+      if (
+        block?.kind !== 'try' ||
+        scope.body !== block.body ||
+        !this.plan.anchors.has(block) ||
+        !tryCatchesClient(this.model, block)
+      ) {
+        continue;
+      }
+      const owner = instanceScope(this.plan, scope.parent!);
+      const fallback = this.plan.bodyScopes.get(block.fallback)!;
+      const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]]`;
+      for (const inside of this.model.scopes) {
+        if (isWithin(inside, scope)) {
+          entries.push(`${inside.id}: ${entry}`);
+        }
+      }
+    }
+    return entries.length > 0 ? `{ ${entries.join(', ')} }` : undefined;
+  }
+
   private refreshTable(): string | undefined {
     const table = new Map<string, [number, string][]>();
     for (const node of this.plan.graph.nodes) {
