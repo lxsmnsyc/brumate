@@ -46,7 +46,7 @@ const SENDABLE = new Set([
 ]);
 
 /** Compile-time functions whose argument is the value, such as `$signal(new Foo())`. */
-const WRAPPERS = new Set(['$signal', '$memo']);
+const WRAPPERS = new Set(['$signal', '$memo', '$debounced', '$throttled']);
 
 /** The value that a declaration holds, by the offset of its name. */
 function initializers(file: SFCFile): Map<number, oxc.Node> {

@@ -516,6 +516,10 @@ export function leavePage(): void {
     memoController.abort();
   }
   memoControllers.clear();
+  for (const { timer } of timers.values()) {
+    clearTimeout(timer);
+  }
+  timers.clear();
   // The next page reuses scope IDs, so a guess left here would match its memos.
   guesses?.map.clear();
   nextId = -1;
@@ -732,6 +736,45 @@ function startLoading(scope: Scope, slot: number, key: string): void {
     loadingSlots.add(key);
     trigger(scope, slot);
   }
+}
+
+/** The timers of debounced and throttled memos, by `scope:slot`, with when each last computed. */
+const timers = new Map<string, { timer?: ReturnType<typeof setTimeout>; last: number }>();
+
+/**
+ * Computes a memo of `$debounced` after its value stops changing for `ms`,
+ * or one of `$throttled` at most once every `ms`, with the last value after
+ * the wait. The memo is pending while it waits.
+ */
+export function timed(
+  scope: Scope,
+  slot: number,
+  ms: number,
+  throttle: boolean,
+  compute: () => unknown,
+): void {
+  const key = `${scope.id}:${slot}`;
+  const state = timers.get(key) ?? { last: -Infinity };
+  timers.set(key, state);
+  const run = (): void => {
+    state.timer = undefined;
+    state.last = Date.now();
+    // A scope that left the page computes no more.
+    if (scopes.get(scope.id) === scope) {
+      memo(scope, slot, compute);
+    }
+  };
+  const since = Date.now() - state.last;
+  if (throttle && state.timer === undefined && since >= ms) {
+    run();
+    return;
+  }
+  if (!throttle) {
+    clearTimeout(state.timer);
+    state.timer = undefined;
+  }
+  state.timer ??= setTimeout(run, throttle ? ms - since : ms);
+  startLoading(scope, slot, key);
 }
 
 /** True for a promise, or any object with a `then` method. */

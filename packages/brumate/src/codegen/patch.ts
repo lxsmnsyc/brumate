@@ -42,6 +42,9 @@ export class Patch {
 }
 
 /** The variable that holds a memo on the server, which can be a promise. */
+/** The compile-time functions that declare a memo of their first argument. The others are options. */
+const MEMOS = new Set(['$memo', '$optimistic', '$debounced', '$throttled']);
+
 export function promiseName(name: string): string {
   return `$$p_${name}`;
 }
@@ -97,13 +100,12 @@ export function addValueEdits(
         }
         return;
       }
-      if (name === '$signal' || name === '$memo' || name === '$optimistic' || name === '$untrack') {
+      if (MEMOS.has(name!) || name === '$signal' || name === '$untrack') {
         if (!argument) {
           patch.replace(node.start, node.end, 'undefined');
           return;
         }
-        const site =
-          name === '$memo' || name === '$optimistic' ? sitesByNode.get(argument) : undefined;
+        const site = MEMOS.has(name!) ? sitesByNode.get(argument) : undefined;
         const declaration =
           site?.declaration && !inline.has(site.declaration) ? site.declaration : undefined;
         if (declaration && mode === 'server') {

@@ -18,6 +18,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$props<T>()`                 | `T`                        | `const` in the component script        | [Components](./components.md)                      |
 | `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script     | [State](./state.md)                                |
 | `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script   | [State](./state.md), [Async data](./async-data.md) |
+| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script   | [State](./state.md#waiting-for-a-pause)            |
+| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script   | [State](./state.md#waiting-for-a-pause)            |
 | `$isPending(memo)`            | `boolean`                  | Any expression                         | [Async data](./async-data.md)                      |
 | `$effect(callback)`           | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
 | `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
@@ -194,6 +196,20 @@ let shown = $optimistic(names);
 - A write shows a guess. The guess stays until `source` changes, or until every server call of the page finishes.
 - Write it with `=`. `++` and `--` are compile errors.
 - `source` is a name. A signal is a compile error, because a handler can write a signal directly.
+
+## `$debounced` and `$throttled`
+
+```ts
+function $debounced<T>(value: T, ms: number): MemoValue<T>;
+function $throttled<T>(value: T, ms: number): MemoValue<T>;
+```
+
+Memos of `value` that the browser writes after a wait.
+
+- `$debounced` takes the value once it stops changing for `ms` milliseconds.
+- `$throttled` takes it at most once every `ms` milliseconds: the first change at once, and the last one after the wait.
+- Server: the value itself. Client: pending while it waits.
+- `ms` is a number literal. Any other value is a compile error.
 
 ## Not supported
 

@@ -33,6 +33,24 @@ export function $memo<T>(_value: T): MemoValue<T> {
 }
 
 /**
+ * Declares a memo that takes the value once it stops changing for `ms`
+ * milliseconds, such as a search query while the user types. On the server,
+ * and until the value first changes, it is the value.
+ */
+export function $debounced<T>(_value: T, _ms: number): MemoValue<T> {
+  return compileTimeOnly('$debounced');
+}
+
+/**
+ * Declares a memo that takes the value at most once every `ms`
+ * milliseconds, and the last value after the wait, such as a position while
+ * the pointer moves. On the server, and until the value first changes, it is the value.
+ */
+export function $throttled<T>(_value: T, _ms: number): MemoValue<T> {
+  return compileTimeOnly('$throttled');
+}
+
+/**
  * Declares a value that follows a memo, and that handlers can write. A write
  * shows a guess, such as a new item while the form that adds it posts. The
  * value goes back to the memo when the memo changes, or when the server
