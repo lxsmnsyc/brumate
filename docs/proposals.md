@@ -219,32 +219,80 @@ Cost: about 2 weeks. Most of it is the rules for what is safe to share between u
 
 ### Two-way realtime
 
-Server functions can stream values to the browser, which covers updates that only go one way, such as an activity feed. Chat, presence and shared editing need messages both ways, on one connection.
+Server functions can stream values to the browser, which covers updates that only go one way, such as an activity feed. Chat, presence and shared editing need calls both ways, on one connection.
+
+A socket function is a server function that keeps a connection open. Functions in what it returns, and functions in its arguments, are not serialized. Each one becomes a stub on the other side: a function that calls its counterpart over the connection, as a small server function would.
+
+```ts
+// chat.server.ts
+import { getSocket } from 'brumate/server';
+
+export async function room(name: string, client: { message(message: Message): void }) {
+  'use socket';
+  const user = currentUser();
+  // `client.message` is a stub: calling it calls the function that the browser passed.
+  const leave = rooms.join(name, (message) => client.message(message));
+  getSocket().onClose(leave);
+  // These functions stay on the server. The browser gets a stub of each one.
+  return {
+    send(text: string) {
+      rooms.post(name, { user, text });
+    },
+    history(): Promise<Message[]> {
+      return rooms.history(name);
+    },
+  };
+}
+```
 
 ```html
 <script>
-  import { $channel, $signal } from 'brumate/signals';
+  import { $client, $signal } from 'brumate/signals';
   import { room } from './chat.server';
 
-  const chat = $channel(room('general'));
+  let messages = $signal<Message[]>([]);
   let draft = $signal('');
+  let chat = $signal<Awaited<ReturnType<typeof room>>>();
+
+  $client(() => {
+    const open = room('general', { message: (message) => (messages = [...messages, message]) });
+    void open.then(async (stubs) => {
+      chat = stubs;
+      messages = await stubs.history();
+    });
+    return () => void open.then((stubs) => stubs.close());
+  }, 'visible');
 </script>
 
-#for (message of chat.messages by message.id) {
+#for (message of messages by message.id) {
   <p><b>{message.user}</b> {message.text}</p>
 }
-<form onSubmit:prevent=(() => { chat.send(draft); draft = ''; })>
+<form onSubmit:prevent=(() => { void chat?.send(draft); draft = ''; })>
   <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
 </form>
 ```
 
-- A channel is a server function that returns a handler: it receives the messages of the browser and sends values back. It runs with the event of the request that opened it, so it knows the user.
-- `$channel` opens the connection when client code first reads it, not with the page, so a page that never uses it loads nothing. The server renders the first value, as for a memo.
-- The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each message. It reconnects with a backoff, and sends again what was not received.
-- Messages are values that the page state can hold, written by the same serializer.
-- Deployment adapters need to support WebSocket. Nitro does on most hosts.
+Stubs:
 
-Cost: about 2 to 3 weeks, most of it for reconnection, the fallback and the adapters.
+- A call of a stub sends its arguments over the connection, runs the counterpart, and settles with its result. Every stub returns a promise, and the types say so: a function that returns `T` becomes a stub that returns `Promise<Awaited<T>>`.
+- Arguments and results go through the same serializer as server functions: values, promises, async iterables that stream, and functions again, which become stubs in turn. A stub can return a stub, so a socket can hand out more functions as the conversation goes on.
+- It works both ways. The server calls the browser's functions through their stubs, such as to push a message, and the browser calls the server's.
+- A stub belongs to its connection. Its ID means nothing on another connection, and a side can only call the functions that the other side gave it, so there is no route to guess, as there is for a server function.
+- A call that throws rejects the caller's promise with the error's name and message, as a server function call does.
+- Calls on one connection arrive in the order they were made. A caller can await a call, or not.
+
+The connection:
+
+- The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close`.
+- The browser opens the connection when client code calls the socket function, not with the page, so a page that never calls it loads nothing.
+- `stubs.close()`, or the end of the connection, rejects the calls that are in flight and every later call. A stub that the other side drops, such as when it is garbage collected, is released on both sides.
+- When the connection drops, the browser does not open it again by itself: the stubs of the old connection are gone. A `reconnect` option can call the socket function again with the same arguments, and give the new stubs.
+- On the server, while a page renders, calling a socket function calls it directly, with the functions as they are. A component can render its first value without a connection.
+- The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. Deployment adapters need WebSocket for the first. Nitro has it on most hosts.
+
+Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. Cap'n Proto calls them capabilities.
+
+Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the stubs on both sides, their release, reconnection, the fallback and the adapters.
 
 ## Tooling
 
