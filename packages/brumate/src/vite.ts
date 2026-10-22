@@ -963,10 +963,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (!isServe) {
         if (isSsrBuild) {
           // The server build names the build of the client, which must come first.
-          buildId = readBuildId(clientBuildDirectory(root, options.prerender));
+          const client = clientBuildDirectory(root, options.prerender);
+          buildId = process.env.BRUMATE_BUILD || readBuildId(client);
           if (buildId === undefined) {
             this.warn(
-              `No ${BUILD_FILE} in the client build, so the server does not know its build ID. Build the client first for skew protection`,
+              `No ${BUILD_FILE} in ${path.relative(root, client)}, so the server does not know its build ID. Build the client first, or set BRUMATE_BUILD, for skew protection`,
             );
           }
         } else {

@@ -209,6 +209,8 @@ export class Context {
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
+  /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
+  build: string | undefined;
   /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
   readonly slotNames: Map<ScopeId, string[]> = new Map();
 
@@ -295,6 +297,11 @@ export class Context {
   /** Returns the URL prefix of server function calls. */
   rpc(): string {
     return this.root.rpcPrefix;
+  }
+
+  /** Returns the ID of the build, when the render has one. */
+  buildId(): string | undefined {
+    return this.root.build;
   }
 
   /**
@@ -843,7 +850,7 @@ export function action(
   method?: string,
   result?: string,
 ): string {
-  return actionAttributes(ctx.rpc(), name, id, method, result);
+  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId());
 }
 
 /**
@@ -1450,6 +1457,7 @@ export async function render<P>(
   if (options.params) {
     ctx.params = options.params;
   }
+  ctx.build = options.build;
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
@@ -1918,10 +1926,36 @@ function unknownAnswer(id: string): Response {
   return new Response(`Unknown server function "${id}"`, { status: 404 });
 }
 
-/** True when a request names a build other than the server's, so its page is from before a deploy. */
+/**
+ * True when a request names a build other than the server's, so its page is
+ * from before a deploy. Calls send the build in `x-brumate-build`, and forms
+ * without scripts in `__build` of their URL.
+ */
 function isSkewed(request: Request, build: string | undefined): boolean {
-  const sent = request.headers.get('x-brumate-build');
+  const sent =
+    request.headers.get('x-brumate-build') ?? new URL(request.url).searchParams.get('__build');
   return build !== undefined && sent !== null && sent !== build;
+}
+
+/**
+ * The answer to a form without scripts, from a page of another build, that
+ * posts to a function that is gone. It goes back to its page, which loads
+ * with the new build, or to `/` when the page is on another site.
+ */
+function backAnswer(request: Request): Response {
+  let location = '/';
+  const referer = request.headers.get('referer');
+  if (referer) {
+    try {
+      const page = new URL(referer);
+      if (page.origin === new URL(request.url).origin) {
+        location = `${page.pathname}${page.search}`;
+      }
+    } catch {
+      // A referer that is not a URL goes to `/`.
+    }
+  }
+  return new Response(null, { status: 303, headers: { location } });
 }
 
 /** The answer to a request from a page of another build that the server cannot serve. */
@@ -2087,16 +2121,25 @@ export async function handleRequest(
     return crossSiteAnswer();
   }
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
-  const fn = functions[id];
-  if (!fn) {
-    return isSkewed(request, options.build) ? skewAnswer(options.build!) : unknownAnswer(id);
+  // The browser asks for the build of the server when the code of its page fails to load.
+  if (id === '') {
+    const headers: Record<string, string> =
+      options.build === undefined ? {} : { 'x-brumate-build': options.build };
+    return new Response(null, { status: 204, headers });
   }
-  const event = new RequestEvent(request, { kind: 'call', waitUntil: options.waitUntil });
   // A call with files sends its arguments as form data, with this header.
   const form = isFormPost(request) && !request.headers.has('x-brumate-args');
   // A form without scripts posts to the function, and wants a page back, not the result. The
   // loader sends a form of an `$action` with this header, and wants the result.
   const posted = form && !request.headers.has('x-brumate-result');
+  const fn = functions[id];
+  if (!fn) {
+    if (!isSkewed(request, options.build)) {
+      return unknownAnswer(id);
+    }
+    return posted ? backAnswer(request) : skewAnswer(options.build!);
+  }
+  const event = new RequestEvent(request, { kind: 'call', waitUntil: options.waitUntil });
   // The arguments are read before the middleware runs, so a check can depend on them. Arguments
   // that fail to read, such as a regular expression, answer as an error of the call.
   let args: unknown[];
@@ -2276,7 +2319,8 @@ async function readAction(
     return crossSiteAnswer();
   }
   if (!options.functions?.[id]) {
-    return unknownAnswer(id);
+    // A form from a page of another build goes back to its page, which loads with the new build.
+    return isSkewed(request, options.build) ? backAnswer(request) : unknownAnswer(id);
   }
   try {
     event.call = { id, args: [await request.formData()] };

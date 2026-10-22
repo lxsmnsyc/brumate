@@ -157,9 +157,13 @@ export function boot(
   listen(document, 'brumate:core', () => void loadCore());
 
   // Starts loading the module of a handler and its part, as one step when the module holds them.
+  // The core reports an error of the load when it runs the handler.
   const warm = (ref: string): void => {
     const [id, name] = ref.split('#') as [string, string];
-    void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
+    void options
+      .load(id)
+      ?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'))
+      .catch(() => {});
   };
 
   const run = (element: Element, ref: string, event?: Event): void => {

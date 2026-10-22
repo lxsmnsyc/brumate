@@ -2,7 +2,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
@@ -176,6 +176,58 @@ function press(key: string): KeyboardEvent {
 
 function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
+}
+
+/**
+ * Shows `boom.brm` of build `b1`, with a server of `server`, and starts the
+ * loader with handler parts that fail to load. Returns the calls to
+ * `location.reload` and the `brumate:skew` events.
+ */
+async function failingHandlers(server: string): Promise<{
+  reload: Mock<() => void>;
+  skews: string[];
+  reported: unknown[];
+  restart: () => Promise<void>;
+}> {
+  const component = await import(file('boom.brm.ts'));
+  const runtime = await import('../src/runtime/server.ts');
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    runtime.handleRequest({}, new Request(`http://localhost${url}`, init), '/_brumate', {
+      build: server,
+    }),
+  );
+  const reload = vi.fn<() => void>();
+  const { href, origin } = window.location;
+  vi.stubGlobal('location', { href, origin, reload, assign: vi.fn<(url: string) => void>() });
+  const skews: string[] = [];
+  const reported: unknown[] = [];
+  const onSkew = (event: Event): void => {
+    skews.push((event as CustomEvent<string>).detail);
+  };
+  document.addEventListener('brumate:skew', onSkew);
+  const restart = async (): Promise<void> => {
+    stop?.();
+    const { html, state } = await runtime.render(component.default, {}, { build: 'b1' });
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      build: 'b1',
+      onError: (error) => reported.push(String(error)),
+      load: async (id) => {
+        const module = await import(modules.get(id)!);
+        return {
+          ...module,
+          // The handlers fail to load, as a module that throws or a file that is gone does.
+          load: (part: string) =>
+            part.startsWith('h') ? Promise.reject(new Error('Top level')) : module.load(part),
+        };
+      },
+    });
+  };
+  await restart();
+  onTestFinished(() => document.removeEventListener('brumate:skew', onSkew));
+  return { reload, skews, reported, restart };
 }
 
 describe('resume', () => {
@@ -678,6 +730,31 @@ describe('resume', () => {
     // The next link is a full page load, with the code of the new build.
     click(document.querySelector('.next')!);
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
+  });
+
+  it('sends the error of a handler that fails to load to #try when the build is the same', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported } = await failingHandlers('b1');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    expect(reported).toEqual(['Error: Top level']);
+    expect(reload).not.toHaveBeenCalled();
+    expect(skews).toEqual([]);
+  });
+
+  it('loads the page again once for each build when the code of a handler is gone', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported, restart } = await failingHandlers('b2');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(skews).toEqual(['code']);
+    // The page loads again, from a cache that still serves the page of the old build. Its code
+    // is gone too, and the page does not load again for the same build.
+    await restart();
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reported).toEqual(['Error: Top level']);
   });
 
   it('loads async memos again when their inputs change', async () => {

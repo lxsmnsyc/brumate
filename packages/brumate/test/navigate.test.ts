@@ -537,8 +537,20 @@ describe('navigate of brumate/routes', () => {
   });
 });
 
+/** Navigates from a page of build `from` to a page of build `to`. */
+async function visitBuild(from: string, to: string): Promise<void> {
+  document.body.innerHTML = `<p>${from}</p>${pageState(1)}`;
+  const markup = `<!doctype html><html><body><p>${to}</p>${pageState(1).replace('b-route="root"', `b-route="root" b-build="${to}"`)}</body></html>`;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(markup, { headers: { 'content-type': 'text/html' } })),
+  );
+  await navigate({ url: '/next', push: true, build: from, leave: async () => {}, enter: () => {} });
+}
+
 describe('builds', () => {
   it('loads a page of another build in full, and swaps in one of the same build', async () => {
+    sessionStorage.clear();
     document.body.innerHTML = `<p>old</p>${pageState(1)}`;
     const assign = vi.fn<(url: string) => void>();
     const { href, origin } = window.location;
@@ -568,5 +580,30 @@ describe('builds', () => {
     });
     expect(assign).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).toContain('new');
+  });
+
+  it('loads a page of another build in full once for each build', async () => {
+    sessionStorage.clear();
+    const assign = vi.fn<(url: string) => void>();
+    const { href, origin } = window.location;
+    vi.stubGlobal('location', { href, origin, assign });
+    await visitBuild('b1', 'b2');
+    expect(assign).toHaveBeenCalledTimes(1);
+    // During a deploy, the old build answers again, and then the new one: each loads in full once.
+    await visitBuild('b2', 'b1');
+    expect(assign).toHaveBeenCalledTimes(2);
+    await visitBuild('b1', 'b2');
+    expect(assign).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).toContain('b2');
+    // Without session storage, the page cannot tell a loop, and swaps the page in.
+    vi.stubGlobal('sessionStorage', {
+      getItem: () => {
+        throw new Error('Denied');
+      },
+    });
+    await visitBuild('b1', 'b3');
+    expect(assign).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).toContain('b3');
+    history.replaceState({}, '', '/');
   });
 });

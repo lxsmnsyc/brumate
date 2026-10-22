@@ -1,6 +1,7 @@
 // Client navigation. The loader imports it on the first navigation, so pages
 // that never navigate do not load it.
 
+import { loadOnce } from './skew.ts';
 import { trustedScript } from './trusted.ts';
 export interface Visit {
   url: string;
@@ -643,9 +644,15 @@ export async function navigate(visit: Visit): Promise<void> {
   }
   const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
   const state = next.body.querySelector(`${STATE}[b-route]`);
-  // A page of another build: the site was deployed since this page loaded, so it loads in full.
-  const nextBuild = state?.getAttribute('b-build');
-  if (visit.build !== undefined && nextBuild !== null && nextBuild !== visit.build) {
+  // A page of another build: the site was deployed since this page loaded, so it loads in full,
+  // once for each build. When two builds answer in turn during a deploy, the page swaps in.
+  const nextBuild = state?.getAttribute('b-build') ?? undefined;
+  if (
+    visit.build !== undefined &&
+    nextBuild !== undefined &&
+    nextBuild !== visit.build &&
+    loadOnce(nextBuild)
+  ) {
     stop();
     location.assign(url.href);
     return;

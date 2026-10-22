@@ -1,4 +1,5 @@
 import { trustedHTML } from './trusted.ts';
+import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -631,6 +632,9 @@ export function loadPart(module: ClientModule, name: string): Promise<Part> {
 
 type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 
+/** Waits forever once the page loads again, so no error shows before it goes. */
+let reloading: Promise<never> | undefined;
+
 async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
@@ -638,12 +642,39 @@ async function resolve(ref: string): Promise<Handler> {
     const part = await loadPart(module, partOf(name));
     return part[name] as Handler;
   } catch (error) {
-    // After a deploy, the files of a build can be gone. The page loads again, with the new code.
-    if (build !== undefined) {
+    // After a deploy, the files of a build can be gone. The page loads again, with the new code,
+    // once for each build. Any other error, such as a module that throws, goes to `#try`.
+    const next = await serverBuild();
+    if (!reloading && next !== undefined && loadOnce(next)) {
       skew('code');
       location.reload();
+      reloading = new Promise(() => {});
+    }
+    if (reloading) {
+      return reloading;
     }
     throw error;
+  }
+}
+
+/**
+ * Asks the server for its build, after the code of a handler failed to
+ * load. Returns it when it is not the build of the page. Undefined without
+ * a build, when the request fails, or when the builds are the same.
+ */
+async function serverBuild(): Promise<string | undefined> {
+  if (build === undefined) {
+    return undefined;
+  }
+  try {
+    const response = await fetch(`${rpcPrefix}/`, {
+      method: 'POST',
+      headers: { 'x-brumate-build': build },
+    });
+    const current = response.headers.get('x-brumate-build');
+    return current !== null && current !== build ? current : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -2041,7 +2072,7 @@ function noop(): void {}
 
 /** Renders the attributes of a form or button that posts to a server function. */
 export function action(name: string, id: string, method?: string, result?: string): string {
-  return actionAttributes(rpcPrefix, name, id, method, result);
+  return actionAttributes(rpcPrefix, name, id, method, result, build);
 }
 
 /**

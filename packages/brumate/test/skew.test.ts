@@ -27,6 +27,18 @@ function deferRequest(build: string): Request {
   });
 }
 
+/** A form that a browser without scripts posts, from the page in `referer`. */
+function post(url: string, referer?: string): Request {
+  return new Request(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      ...(referer === undefined ? {} : { referer }),
+    },
+    body: 'name=Ada',
+  });
+}
+
 describe('calls from another build', () => {
   const functions = { greet: (name: string) => `Hello ${name}` };
   const call = (id: string, build?: string): Promise<Response | undefined> =>
@@ -59,6 +71,80 @@ describe('calls from another build', () => {
   it('answer 404 to an unknown function of the same build, or of no build', async () => {
     expect((await call('gone', 'b2'))?.status).toBe(404);
     expect((await call('gone'))?.status).toBe(404);
+  });
+
+  it('tell the browser the build of the server', async () => {
+    const response = await handleRequest(
+      functions,
+      new Request('http://localhost/_brumate/', {
+        method: 'POST',
+        headers: { 'x-brumate-build': 'b1' },
+      }),
+      '/_brumate',
+      { build: 'b2' },
+    );
+    expect(response?.status).toBe(204);
+    expect(response?.headers.get('x-brumate-build')).toBe('b2');
+  });
+
+  it('send a form without scripts to a function that is gone back to its page', async () => {
+    const back = await handleRequest(
+      functions,
+      post('http://localhost/_brumate/gone?__build=b1', 'http://localhost/todos?page=2'),
+      '/_brumate',
+      { build: 'b2' },
+    );
+    expect(back?.status).toBe(303);
+    expect(back?.headers.get('location')).toBe('/todos?page=2');
+    // A page on another site goes to the root.
+    const other = await handleRequest(
+      functions,
+      post('http://localhost/_brumate/gone?__build=b1', 'https://elsewhere.example/'),
+      '/_brumate',
+      { build: 'b2', origins: ['https://elsewhere.example'] },
+    );
+    expect(other?.headers.get('location')).toBe('/');
+    // A form of the same build gets the 404 of an unknown function.
+    const same = await handleRequest(
+      functions,
+      post('http://localhost/_brumate/gone?__build=b2'),
+      '/_brumate',
+      {
+        build: 'b2',
+      },
+    );
+    expect(same?.status).toBe(404);
+    // A form of another build to a function that still exists runs it.
+    const runs = await handleRequest(
+      { greet: () => 'Hi' },
+      post('http://localhost/_brumate/greet?__build=b1', 'http://localhost/'),
+      '/_brumate',
+      { build: 'b2' },
+    );
+    expect(runs?.status).not.toBe(404);
+    expect(runs?.status).not.toBe(409);
+    // A form that posts to its page, for `$action`.
+    const tree: RouteNode = { page: () => Promise.resolve({ default: Page }) };
+    const page = await handleRoute(
+      tree,
+      post('http://localhost/?__action=gone&__build=b1', 'http://localhost/'),
+      { build: 'b2', functions },
+    );
+    expect(page?.status).toBe(303);
+    expect(page?.headers.get('location')).toBe('/');
+  });
+
+  it('name the build in the URL of forms that post to them', async () => {
+    const { actionAttributes } = await import('../src/runtime/html.ts');
+    expect(actionAttributes('/_brumate', 'action', 'App#save', 'method', undefined, 'b1')).toBe(
+      ' action="/_brumate/App%23save?__build=b1" method="post"',
+    );
+    expect(actionAttributes('/_brumate', 'action', 'App#save', undefined, '1:0', 'b1')).toBe(
+      ' action="?__action=App%23save&amp;__build=b1" b-action="App#save" b-result="1:0"',
+    );
+    expect(actionAttributes('/_brumate', 'action', 'App#save')).toBe(
+      ' action="/_brumate/App%23save"',
+    );
   });
 
   it('answer 409 to the request for a #defer body from another build', async () => {
