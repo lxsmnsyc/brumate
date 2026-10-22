@@ -99,6 +99,11 @@ export interface ScopeState {
   i?: unknown;
   /** The scope that rendered a component's root scope, for finding contexts. */
   o?: ScopeId;
+  /**
+   * For a scope of children that a component inserted, the scope where they
+   * are, which contexts are found from in place of `p` and `o`.
+   */
+  t?: ScopeId;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */

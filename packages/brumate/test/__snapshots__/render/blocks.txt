@@ -88,11 +88,11 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$ctx.scope(12, $$s1);
-    const $$children13 = await (async () => {
+    const $$children13 = $$b.children($$s12, async ($$ctx) => {
       let $$html = '';
       $$html += "Dynamic";
-      return $$b.raw($$html);
-    })();
+      return $$html;
+    });
     $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children13, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
   }
   $$html += "<p>&lt;escaped&gt;   " + (typeof ($$t = $$b.insert(([1, 2]), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
@@ -269,11 +269,11 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
-    const $$children11 = (() => {
+    const $$children11 = $$b.children($$s12, () => {
       let $$html = '';
       $$html += "Dynamic";
-      return $$b.raw($$html);
-    })();
+      return $$html;
+    });
     $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children11, undefined, $$s12);
   }
   $$html += "<p>&lt;escaped&gt;   " + $$b.insert(([1, 2])) + "</p>";
