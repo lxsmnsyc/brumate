@@ -400,6 +400,31 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('runs capture handlers first, keeps events that do not bubble on their target, and listens passively', async () => {
+    const flags = new Map<string, unknown>();
+    const add = document.addEventListener.bind(document);
+    vi.spyOn(document, 'addEventListener').mockImplementation((type, listener, options) => {
+      flags.set(type, options);
+      add(type, listener, options);
+    });
+    await resume('delegation', {});
+    vi.mocked(document.addEventListener).mockRestore();
+    // Only the type with prevent needs a listener that is not passive.
+    expect(flags.get('click')).toEqual({ capture: true, passive: true });
+    expect(flags.get('focus')).toEqual({ capture: true, passive: true });
+    expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner'));
+    // Focus does not bubble, so the focus of the button does not reach the handler around it.
+    document.querySelector('.inner')!.dispatchEvent(new FocusEvent('focus'));
+    document.querySelector('.outer')!.dispatchEvent(new FocusEvent('focus'));
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true });
+    document.querySelector('.wheel')!.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
   it('prevents only the keys that :prevent names, before the handler loads', async () => {
     const server = await import(file('preventKeys.brm.ts'));
     const { html } = await renderParts(server.default, {});
