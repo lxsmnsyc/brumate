@@ -15,6 +15,8 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
+| [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
+| [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
@@ -453,6 +455,18 @@ What it needs:
 
 Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
 
+### Trusted Types
+
+A site whose Content Security Policy has `require-trusted-types-for 'script'` blocks `innerHTML` with a string, to stop script injection through the DOM. The core puts rendered markup into the page with `innerHTML` in four places, such as a body that an `#if` renders, so it breaks on such a site.
+
+- The core makes a Trusted Types policy named `brumate`, and passes the markup that it inserts through it. The markup is what brumate's own render code made, with every value escaped, so the policy passes it as it is.
+- The policy is made only where the browser has Trusted Types, and only once, when the core first inserts markup.
+- The CSP needs `trusted-types brumate`. The docs on the Content Security Policy show it next to the nonce, and the CSP helper for prerendered pages adds it.
+- Raw HTML that an app inserts, with `raw`, goes through the policy too, so the app stays responsible for what it holds, as now.
+- `#defer` bodies and pages that navigation loads are parsed from a response, which goes through the policy as well.
+
+Cost: a few days.
+
 ### Worker functions
 
 Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler.
@@ -532,8 +546,24 @@ Client navigation follows links and forms, but code cannot start it, and the bro
 - `$route(path)` gives `{ params, search }` for the route at `path`, typed from the route files as `href` is. The server reads the request, and the browser reads `location`, so both render the same value.
 - `$route` is a memo on the client. It changes when navigation changes the URL, so code that reads it updates, without the server.
 - A change of only the query string, with `replace`, can skip the server when no route reads anything but `$route`. The compiler knows which routes read data, so it can tell.
+- `$navigation` is a signal of the navigation that is loading: `{ pending, from, to }`, with `pending` false when none is. A page can show a progress bar, or dim the old page, while the next one loads.
+- The loader sets `data-navigating` on `<html>` while a navigation loads, so a progress bar can be CSS alone, with no client code in the page.
 
-Cost: a few days for `navigate` and `$route`, which reuse client navigation. Skipping the server for a query string change is a week more, and can come later.
+Cost: a few days for `navigate`, `$route` and `$navigation`, which reuse client navigation. Skipping the server for a query string change is a week more, and can come later.
+
+### Accessible navigation
+
+A full page load tells a screen reader that the page changed, and starts the keyboard focus at the top. Client navigation swaps the content in place, so nothing is announced, and the focus stays on the link that was clicked, which may be gone.
+
+- After a navigation, the loader writes the title of the new page into an `aria-live` region of its own, which is visually hidden, so a screen reader reads it.
+- The focus moves to the first `<h1>` of the routes that changed, or to their `<main>`, with `tabindex="-1"` for the move only, so the next Tab starts there. The `focus` option of `navigate` in the plugin sets another target, or turns it off.
+- A navigation that keeps the page and changes only the query string, such as a filter, moves no focus, so typing in a search field goes on.
+- The back and forward buttons move the focus as a full page load would, and scroll as they do now.
+- A route can set its own text to announce, for a page whose title is the same for many URLs.
+
+Prior art: the route announcers of Next.js, SvelteKit and Astro's view transitions.
+
+Cost: a few days.
 
 ## Server
 
