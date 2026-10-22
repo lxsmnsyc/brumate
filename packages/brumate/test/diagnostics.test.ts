@@ -119,6 +119,9 @@ describe('timing helpers', () => {
     expect(() => compileScript('const wait = 300;\nconst a = $debounced(query, wait);')).toThrow(
       'The wait of $debounced must be a number of milliseconds, such as 300',
     );
+    expect(() => compileScript('const a = $throttled(query, 1e10);')).toThrow(
+      'The wait of $throttled must be a number of milliseconds',
+    );
   });
 
   it('renders the value itself on the server', () => {

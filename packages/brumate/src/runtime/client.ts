@@ -1142,6 +1142,8 @@ export function removeScope(scope: Scope): void {
     const key = `${scope.id}:${slot}`;
     memoControllers.get(key)?.abort();
     memoControllers.delete(key);
+    clearTimeout(timers.get(key)?.timer);
+    timers.delete(key);
     loads.delete(key);
     loadingSlots.delete(key);
     guesses?.map.delete(key);

@@ -620,7 +620,8 @@ class Analyzer {
         return;
       }
       const ms = wait?.type === 'Literal' && typeof wait.value === 'number' ? wait.value : NaN;
-      if (!(ms >= 0)) {
+      // A timer cannot wait longer than 2^31 - 1 ms, and fires at once for a longer wait.
+      if (!(ms >= 0 && ms <= 2147483647)) {
         this.report(
           'error',
           `The wait of ${name} must be a number of milliseconds, such as 300`,
