@@ -12,7 +12,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Taint](#taint)                                                       | Server  | High   | Small  |
-| [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
 | [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
@@ -242,95 +241,6 @@ Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0'
 Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
 
 ## Data
-
-### Blocking async memos
-
-`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback, so the state holds the value and needs no later record for it:
-
-```html
-<script>
-  import { $memo, $props } from 'brumate/signals';
-  import { fetchSettings, fetchUser, listTags } from './data.server';
-
-  const { id } = $props<{ id: string }>();
-  // The server waits here. A constant: it does not load again on the client.
-  const settings = await fetchSettings();
-  // A memo that the page waits for. It loads again when `id` changes.
-  const user = $memo(fetchUser(id));
-  // A memo that streams, unless an `await` reads it.
-  const tags = $memo(listTags());
-</script>
-
-<p>{settings.theme}</p>
-#loading {
-  <!-- The page waits for the user. The tags can show the fallback. -->
-  <h1>{(await user).name}</h1>
-  <p>{tags.join(', ')}</p>
-} #else {
-  <p>Loading…</p>
-}
-<button onClick=(() => console.log(tags))>Log tags</button>
-```
-
-The page waits for `user`. Then, if `tags` is ready too, the body renders in place, with no fallback and no swap. If `tags` is still loading, the page shows the fallback, and the body streams in when `tags` arrives.
-
-Where `await` can be, and what it waits for:
-
-- In a script, `await` of a promise or of a call that returns one, as in JavaScript. The script runs only on the server, so the value is a constant that the state sends when client code reads it. This works today, except in the browser.
-- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. It is a memo like any other on the client: it loads again when what it reads changes. Its value is in the first state record, even when only client code reads it.
-- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it:
-  - Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record.
-  - Inside a `#loading` body, the render around the block waits for the memo before it reaches the block: the page, for a block at the top, or the body of a `#loading` around it.
-  - Inside a `#defer` body, the request for the body waits.
-- `$memo(await value)` keeps its meaning: a memo whose value loads. Without an `await` of the memo itself, it streams when only client code or a `#loading` body reads it, as now.
-
-Reads without `await`:
-
-- Inside a `#loading` body, a read of a memo that is still loading shows the fallback, and the body streams in when the memo arrives.
-- Outside every body there is no fallback, so a read still makes the page wait, as now. A lint can suggest `await` there, so the wait shows in the code.
-
-A `#loading` body renders in place when it can:
-
-- After the memos that it reads with `await` settle, the server checks the other memos that the body reads. When all of them are ready, the body renders where the block is, with no fallback, no `<template>` and no swap.
-- It renders in its own ID space, such as `5.0`, as a body that streams does, so its IDs are the same either way. Its scopes are in the first state record.
-- Otherwise the block renders as now: the fallback, and the body later.
-- This also changes the HTML of a `#loading` block today whose data happens to be ready: it renders in place.
-
-In the browser:
-
-- The value of a memo is already settled when the code that reads it runs, so `await name` of a memo compiles to a plain read. An insert shows the last value while the memo loads again, and `$isPending` tells when it does.
-- A render module runs without waiting, so it cannot wait for a promise. Code that the browser renders, such as a branch of an `#if` that changes, cannot `await` anything other than a memo. The compiler reports it in the same file. A component whose script awaits a promise renders only on the server, and throws a clear error when the browser renders it, such as from another file.
-
-Order:
-
-- Awaits of promises in a script run in order, as in JavaScript.
-- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time.
-- A memo that reads another one waits for it by itself. On the server, the read of a memo that is still loading throws `NotReady` with its load, and `wait` computes the memo again once that load settles. So in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` starts when `foo()` settles:
-
-```js
-const $$p_a = $$b.memo(() => foo(), $$ctx);
-const $$p_b = $$b.memo(() => bar($$b.read($$p_a)), $$ctx);
-// The end of the run: every memo of it loads, and the render waits for all of them.
-await Promise.all([$$b.wait($$p_a), $$b.wait($$p_b)]);
-const a = $$b.read($$p_a);
-const b = $$b.read($$p_b);
-```
-
-- Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript.
-- When a memo fails, the memos that read it do not run, and the error comes where the run waits.
-- In the browser nothing changes: `b` reads `a`, so it loads again when `a` changes, as any memo that reads another.
-
-What it needs:
-
-- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await`, as blocking for the render around their read. `blockingMemos` already decides which memos the server awaits where they are declared.
-- The `#loading` emitter awaits the memos that its body reads with `await` before the block, checks whether the other memos are ready, and renders the body in place or streams it.
-- The client codegen removes `await` from reads of memos, and reports `await` of anything else in code that runs in the browser.
-- The type checker types `await name` of a memo as its value.
-- With every promise awaited, a page with no `#loading` or `#defer` body has one state record, and gets the smaller state that assigns only shared references.
-
-Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
-
-Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
 
 ### Serialization entry
 
@@ -1267,20 +1177,19 @@ Cost: a few days for the adapter, a guide and an example.
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
-2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
-3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
-4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
-7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
-8. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-9. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 14.
-10. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-11. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+1. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
+2. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
+3. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+4. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
+5. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
+6. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
+7. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+8. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 13.
+9. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+10. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+11. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+12. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+13. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+14. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

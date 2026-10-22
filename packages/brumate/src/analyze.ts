@@ -505,8 +505,19 @@ class Analyzer {
     scope: Scope,
     isComponent: boolean,
   ): void {
-    const init = declarator.init;
     const id = declarator.id;
+    // `const name = await $memo(value)` declares a memo that the render waits for.
+    const awaited = declarator.init?.type === 'AwaitExpression' ? declarator.init : undefined;
+    const awaitedName = awaited && calleeName(awaited.argument);
+    if (
+      awaited &&
+      awaitedName !== undefined &&
+      MACROS.has(awaitedName) &&
+      awaitedName !== '$memo'
+    ) {
+      this.report('error', `await works with $memo, not ${awaitedName}`, awaited);
+    }
+    const init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
     const name = calleeName(init);
     const call = init as oxc.CallExpression;
 
@@ -623,6 +634,9 @@ class Analyzer {
         return;
       }
       const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (awaited && name === '$memo') {
+        declaration.awaited = true;
+      }
       if (!argument) {
         this.report('error', `${name} needs a value`, call);
         return;
@@ -1191,15 +1205,15 @@ class Resolver {
   private reference(
     identifier: oxc.Node & { name: string },
     mode: 'read' | 'write' | 'update',
-  ): void {
+  ): Reference | undefined {
     if (this.isLocal(identifier.name)) {
-      return;
+      return undefined;
     }
     const declaration = lookup(this.site.scope, identifier.name);
     if (!declaration) {
-      return;
+      return undefined;
     }
-    const reference = {
+    const reference: Reference = {
       range: range(identifier),
       declaration,
       site: this.site,
@@ -1224,6 +1238,7 @@ class Resolver {
         this.site.trackedCalls.add(declaration);
       }
     }
+    return reference;
   }
 
   private visitChildren(node: oxc.Node): void {
@@ -1359,12 +1374,28 @@ class Resolver {
       case 'ContinueStatement':
       case 'MetaProperty':
         return;
-      case 'AwaitExpression':
+      case 'AwaitExpression': {
+        // `await name` of a memo waits for its value in the render around the read, and is a
+        // plain read of the value in the browser. Every other await waits for a promise.
+        const argument = node.argument;
+        if (argument.type === 'Identifier') {
+          const declaration = this.isLocal(argument.name)
+            ? undefined
+            : lookup(this.site.scope, argument.name);
+          if (declaration?.kind === 'memo' || declaration?.kind === 'async-memo') {
+            const reference = this.reference(argument, 'read');
+            if (reference) {
+              reference.await = range(node);
+            }
+            return;
+          }
+        }
         if (this.functionDepth === 0) {
           this.site.awaits = true;
         }
-        this.visit(node.argument);
+        this.visit(argument);
         return;
+      }
       case 'CallExpression': {
         // `event.refresh(fn)` in a server function: memos that call `fn` load again.
         if (

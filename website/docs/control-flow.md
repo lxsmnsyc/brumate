@@ -224,7 +224,7 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 
 ## `#loading`
 
-`#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them:
+`#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them. When the values are ready as the block renders, the body renders in place, without the `#else` body:
 
 ```brm live
 <script>
