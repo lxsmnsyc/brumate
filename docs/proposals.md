@@ -11,7 +11,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Taint](#taint)                                                       | Server  | High   | Small  |
 | [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
@@ -619,27 +618,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
 
-### Taint
-
-The page state refuses a value that it cannot send, such as a function. It sends any value that it can, so a user object with a password hash, or a token in a prop, reaches the page if client code reads it.
-
-```ts
-import { taint, taintValue } from 'brumate/server';
-
-const user = await db.user(id);
-taint(user, 'A user record holds the password hash. Send the fields that the page needs.');
-taintValue(process.env.API_TOKEN!, 'The API token stays on the server.');
-```
-
-- `taint(object, message)` marks an object, and `taintValue(value, message)` a string or a bigint, such as a token. A tainted value in the page state, or in the answer of a server function, fails the render with the message and the name of the slot, as a value that cannot be sent does now.
-- The serializer finds them with a plugin whose test reads a `WeakSet` of objects and a `Set` of values. The plugin is active only for a render after `taint` has been called, so pages without taints pay nothing.
-- `opaque(value, replacement)` is the other half: a value that the page should not get, but may hold, such as a client of a third-party service. It wraps seroval's `OpaqueReference`, so the serializer writes `replacement`, or `undefined`, in its place. The server code reads `.value`.
-- Taint is a check, not a guarantee: a copy of a tainted object, such as `{ ...user }`, is not tainted, and the docs say so.
-
-Prior art: React's `experimental_taintObjectReference` and `experimental_taintUniqueValue`, and Qwik's `noSerialize`.
-
-Cost: a few days.
-
 ### Rate limiting
 
 Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
@@ -777,7 +755,7 @@ export default defineEnv({
 - `import { env } from 'brumate/env'` gives the values with their types.
 - Public values are written into the client build. Server values never are.
 - The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
+- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses.
 
 Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
 
@@ -1259,7 +1237,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
 2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
-3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
+3. **Security**: rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
 4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
 5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
