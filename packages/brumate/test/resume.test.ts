@@ -1151,6 +1151,22 @@ describe('children', () => {
     await waitFor(() => expect(text('.inner')).toBe('Hello'));
   });
 
+  it('inserts markup through the Trusted Types policy of the page, when the browser has one', async () => {
+    const html: string[] = [];
+    const policies: string[] = [];
+    vi.stubGlobal('trustedTypes', {
+      createPolicy(name: string, rules: { createHTML(value: string): string }) {
+        policies.push(name);
+        return { createHTML: (value: string) => (html.push(value), rules.createHTML(value)) };
+      },
+    });
+    await resume('cards', {});
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(text('.inner')).toBe('Hello'));
+    expect(policies).toEqual(['brumate']);
+    expect(html.some((value) => value.includes('Hello'))).toBe(true);
+  });
+
   it('keeps the handlers and updates of children that the client renders', async () => {
     await resume('cards', {});
     click(document.querySelectorAll('.open')[1]!);

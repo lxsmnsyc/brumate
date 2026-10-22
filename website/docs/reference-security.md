@@ -92,3 +92,13 @@ A policy from a header stays for the whole visit, so the client router gives the
 A policy with hashes instead of a nonce does not work for the state records. Their code holds the values of the page, so each page has other hashes, and the records that stream later are not known when the headers are sent. Use a nonce, or `'unsafe-inline'`.
 
 A prerendered page is the exception. Its scripts are known at build time, and the build writes their hashes. See [Content Security Policy for prerendered pages](./deploying.md#content-security-policy-for-prerendered-pages).
+
+### Trusted Types
+
+A policy with `require-trusted-types-for 'script'` refuses a string in `innerHTML` and in the text of a script. The core inserts the markup that it renders, such as a body that an `#if` opens, and copies the scripts of a `#defer` body or of a page that the client router loads, so it needs a Trusted Types policy. It makes one named `brumate`, once, when it first inserts markup, and only where the browser has Trusted Types. Allow it next to the nonce:
+
+```
+script-src 'self' 'nonce-…'; require-trusted-types-for 'script'; trusted-types brumate
+```
+
+The policy passes markup and scripts as they are: the markup is what brumate's own render code made, with every value escaped, and the scripts came from the server with the page. HTML that an app inserts with `raw` goes through it too, so the app stays responsible for what it holds. Without `trusted-types brumate`, the core logs which directive is missing, and the inserts fail as the browser refuses them.

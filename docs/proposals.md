@@ -14,7 +14,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
 | [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
-| [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
@@ -362,18 +361,6 @@ What it needs:
 - `reset()` renders the `#try` body again, as it does now.
 
 Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
-
-### Trusted Types
-
-A site whose Content Security Policy has `require-trusted-types-for 'script'` blocks `innerHTML` with a string, to stop script injection through the DOM. The core puts rendered markup into the page with `innerHTML` in four places, such as a body that an `#if` renders, so it breaks on such a site.
-
-- The core makes a Trusted Types policy named `brumate`, and passes the markup that it inserts through it. The markup is what brumate's own render code made, with every value escaped, so the policy passes it as it is.
-- The policy is made only where the browser has Trusted Types, and only once, when the core first inserts markup.
-- The CSP needs `trusted-types brumate`. The docs on the Content Security Policy show it next to the nonce, and the CSP helper for prerendered pages adds it.
-- Raw HTML that an app inserts, with `raw`, goes through the policy too, so the app stays responsible for what it holds, as now.
-- `#defer` bodies and pages that navigation loads are parsed from a response, which goes through the policy as well.
-
-Cost: a few days.
 
 ### Worker functions
 
@@ -1146,7 +1133,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Environment variables.** They are what middleware hands on, with the request locals, which are done.
-2. **Security**: rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
+2. **Security**: rate limiting. It is small, and it protects every app. It starts with the in-memory store, and moves to the shared store with caching. Trusted Types are done.
 3. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
 4. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 5. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
