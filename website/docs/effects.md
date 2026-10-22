@@ -134,15 +134,16 @@ The effect depends on `saves`, so each save runs the effect again. Call such fun
 <p>The window is {width ?? 'not measured yet'} pixels wide.</p>
 ```
 
-| Trigger     | Runs when                                                                    |
-| ----------- | ---------------------------------------------------------------------------- |
-| `'visible'` | The first element of the component enters the viewport. This is the default. |
-| `'idle'`    | The browser is idle after the page loads.                                    |
-| `'load'`    | The page loads.                                                              |
+| Trigger     | Runs when                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `'visible'` | The element that the callback reads through `ref` enters the viewport, or else the first element of the component. This is the default. |
+| `'idle'`    | The browser is idle after the page loads.                                                                                               |
+| `'load'`    | The page loads.                                                                                                                         |
 
 - The callback can return a cleanup function. It runs when the component is removed from the page.
 - `'load'` makes the browser load the code with the page, before anyone interacts with it. The compiler warns about it: prefer `'visible'` or `'idle'`.
 - Use `$client` for browser APIs that the server does not have, such as `window`, `localStorage` or a chart library.
+- With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so the code of a chart low on the page loads when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
 
 ## Errors in the browser
 
@@ -203,6 +204,45 @@ Use it for markup that needs the browser, such as a map or a value from `localSt
 - On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
 - An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
 
+## Behaviors of an element
+
+A behavior that belongs to an element, such as a click outside, a field that grows with its text, or a chart, is a plain function that takes the element and returns its cleanup. A component gives it the element with `ref` and runs it with `$client`:
+
+```ts
+// behaviors.ts
+export function clickOutside(element: HTMLElement, onOutside: () => void): () => void {
+  const listener = (event: PointerEvent) => {
+    if (!element.contains(event.target as Node)) {
+      onOutside();
+    }
+  };
+  document.addEventListener('pointerdown', listener);
+  return () => document.removeEventListener('pointerdown', listener);
+}
+```
+
+```brm
+<script>
+  import { $client, $signal } from 'brumate/signals';
+  import { autosize, clickOutside } from './behaviors.ts';
+
+  let open = $signal(true);
+  let menu = $signal<HTMLElement>();
+  let field = $signal<HTMLTextAreaElement>();
+
+  $client(() => clickOutside(menu!, () => (open = false)));
+  $client(() => autosize(field!));
+</script>
+
+<div class="menu" ref=menu hidden=(!open)>…</div>
+<textarea ref=field></textarea>
+```
+
+- Each `$client` is a client root of its own, so the code of each behavior loads when its element comes into view.
+- The cleanup runs when the component leaves the page.
+- An element of each item of a `#for` gets its own behavior from a script in the body of the `#for`.
+- The server renders the element, so a behavior only adds to it, and the element works as plain HTML without scripts.
+
 ## Which one to use
 
 | You want to                                              | Use                          |
@@ -212,5 +252,6 @@ Use it for markup that needs the browser, such as a map or a value from `localSt
 | Run code when the page loads, or when it comes into view | `$client`                    |
 | Render markup that needs the browser                     | `#client`                    |
 | Reach an element from browser code                       | `ref=name`                   |
+| Add a behavior to an element                             | `ref=name` and `$client`     |
 
 Handlers are often enough. A value that a handler writes updates the page by itself, so an effect is only needed for work outside the page, such as saving to `localStorage` or talking to a library.

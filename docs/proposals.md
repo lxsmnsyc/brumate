@@ -16,7 +16,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
-| [Element behaviors](#element-behaviors)                               | Syntax  | High   | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
@@ -106,25 +105,6 @@ View transitions animate a change of page. Inside a page, an `#if` or `#for` bod
 - The `Transition` of the UI components, in phase 2, builds on it.
 
 Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
-
-### Element behaviors
-
-A behavior that belongs to an element, such as a tooltip, a click outside, a field that grows with its text, or a chart library, needs a `ref` signal and an `$effect` in each component that uses it.
-
-```html
-<script>
-  import { autosize, clickOutside } from './behaviors';
-</script>
-
-<textarea use=autosize></textarea>
-<div use=(clickOutside(() => (open = false)))>…</div>
-```
-
-- `use=fn` calls `fn(element)` in the browser, and the function it returns when the element goes. A behavior with an argument is a function that returns one.
-- It is a client root, as a `$client` callback is, with the same triggers: it loads when the element comes into view by default, or with `use:idle` and `use:load`.
-- The server renders the element, so a behavior only adds to it. Without scripts, the element works as plain HTML.
-
-Cost: a few days. It is `$client` with an element.
 
 ### Long lists
 
@@ -855,7 +835,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
-3. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+3. **What the UI components need first**: handlers in spreads, bindable props and transitions. Element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
 4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.

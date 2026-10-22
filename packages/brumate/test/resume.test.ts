@@ -483,6 +483,39 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('runs a visible $client callback when the element that it reads through ref comes into view', async () => {
+    const observed: Element[] = [];
+    let report: (() => void) | undefined;
+    class InView {
+      readonly callback: IntersectionObserverCallback;
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element): void {
+        observed.push(target);
+        report = () =>
+          this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', InView);
+    const server = await import(file('refVisible.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(
+      /<template b-b="[\d:]+" b-client="visible=[^"]+" b-near="[\d:]+"><\/template>/,
+    );
+    await resume('refVisible', {});
+    expect(observed).toEqual([document.querySelector('.chart')]);
+    expect(text('.status')).toBe('Waiting');
+    report!();
+    await waitFor(() => expect(text('.status')).toBe('Drawn'));
+    expect(document.querySelector<HTMLElement>('.chart')!.dataset.drawn).toBe('yes');
+  });
+
   it('runs capture handlers first, keeps events that do not bubble on their target, and listens passively', async () => {
     const flags = new Map<string, unknown>();
     const add = document.addEventListener.bind(document);

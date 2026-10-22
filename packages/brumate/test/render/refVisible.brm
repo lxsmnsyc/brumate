@@ -1,0 +1,16 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let chart = $signal<HTMLElement>();
+  let drawn = $signal(false);
+
+  // Waits for the chart, not the heading at the top.
+  $client(() => {
+    chart!.dataset.drawn = 'yes';
+    drawn = true;
+  });
+</script>
+
+<h1 class="top">Report</h1>
+<p class="status">{drawn ? 'Drawn' : 'Waiting'}</p>
+<div class="chart" ref=chart></div>

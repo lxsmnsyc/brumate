@@ -541,9 +541,31 @@ export class Emitter {
       this.html('<template b-b="');
       this.code(anchor.scope);
       this.html(
-        `:${anchor.index}" b-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"></template>`,
+        `:${anchor.index}" b-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"`,
       );
+      // A callback that reads an element of this scope through `ref` runs when that element
+      // comes into view, instead of the first element of the scope.
+      const near = site.trigger === 'visible' ? this.refElement(site, scope) : undefined;
+      if (near !== undefined) {
+        this.html(' b-near="');
+        this.code(anchor.scope);
+        this.html(`:${near}"`);
+      }
+      this.html('></template>');
     }
+  }
+
+  /** The anchor of the first element of `scope` that a site reads through `ref`. */
+  private refElement(site: Site, scope: Scope): number | undefined {
+    for (const read of site.reads) {
+      for (const ref of read.declaration.refs) {
+        const index = ref.scope === scope ? this.plan.anchors.get(ref.element) : undefined;
+        if (index !== undefined) {
+          return index;
+        }
+      }
+    }
+    return undefined;
   }
 
   /** Emits the content of the component, without creating its scope. */
