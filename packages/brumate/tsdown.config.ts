@@ -12,6 +12,7 @@ export default defineConfig({
     'src/runtime/signals.ts',
     'src/runtime/testing.ts',
     'src/runtime/routes.ts',
+    'src/runtime/batch.ts',
     'src/runtime/devtools.ts',
     'src/runtime/hot.ts',
     'src/vite.ts',

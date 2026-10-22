@@ -79,6 +79,11 @@ let current: RequestEvent | undefined;
 /** The results of server function calls of the render that runs now, by function and arguments. */
 let currentCalls: Map<string, unknown> | undefined;
 
+// `batched` of `brumate/batch` reads at once while the server answers, also in a test that
+// runs server code in a DOM. A symbol of the registry, so the browser code needs no import.
+(globalThis as Record<symbol, unknown>)[Symbol.for('brumate.inRequest')] = (): boolean =>
+  current !== undefined || currentCalls !== undefined;
+
 /**
  * Runs a callback with an event, so `getEvent()` in its code before its first
  * `await` returns it. Returns what the callback returns, such as its promise.

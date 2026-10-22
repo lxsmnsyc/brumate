@@ -92,6 +92,8 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- `batched` of `brumate/batch` gathers calls only in the browser. The server renders the rows of a list one after another, and a row waits for its data before the next starts, so a batch there would hold one key and add a wait. Rendering rows at the same time would change the order in which scopes get their IDs, which the browser must match. On the server, each call reads its key at once, inside the render, so it reads the event and shares the result of equal calls.
+- A memo of a component that the browser renders takes the promise that the render made for its slot, the first time it computes. The render module calls the memo's code to render, so computing it again called each server function twice per row.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

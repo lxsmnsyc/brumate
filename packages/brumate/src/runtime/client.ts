@@ -516,6 +516,7 @@ export function leavePage(): void {
     memoController.abort();
   }
   memoControllers.clear();
+  renderedLoads.clear();
   // The next page reuses scope IDs, so a guess left here would match its memos.
   guesses?.map.clear();
   nextId = -1;
@@ -836,6 +837,11 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   // A guess stays while its source has not changed, such as when a value the server streamed arrives.
   if (guesses?.same(key)) {
+    return;
+  }
+  const rendered = scope.s[slot];
+  if (renderedLoads.delete(key) && isThenable(rendered)) {
+    asyncMemo(scope, slot, Promise.resolve(rendered));
     return;
   }
   let value: unknown;
@@ -2065,8 +2071,20 @@ export function consumeContext<T>(
   return provider ? (provider.v![context.key] as T) : context.defaultValue;
 }
 
+/**
+ * Slots that the render of a component in the browser filled with a promise,
+ * by `scope:slot`. The first compute of their memo takes that promise
+ * instead of calling again, so a server function is called once per row.
+ */
+const renderedLoads = new Set<string>();
+
 export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
+  values.forEach((value, slot) => {
+    if (isThenable(value)) {
+      renderedLoads.add(`${id}:${slot}`);
+    }
+  });
 }
 
 export function setItem(id: ScopeId, value: unknown): void {

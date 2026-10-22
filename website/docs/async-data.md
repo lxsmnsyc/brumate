@@ -67,6 +67,43 @@ const user = $memo(getUser(id));
 - Each render starts with no results, so a new request loads fresh data.
 - Calls from the browser, such as from a handler, always run. A function that changes something, such as `save(todo)`, runs each time it is called.
 
+### One call for many keys
+
+A list whose rows each load one thing, such as the profile of each player, makes one call per row. `batched` from `brumate/batch` turns the calls of one moment in the browser into one call with every key:
+
+```ts
+// profiles.ts
+'use server';
+
+export async function getProfiles(ids: string[]): Promise<Map<string, Profile>> {
+  return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
+}
+```
+
+```ts
+// profile.ts, a plain module, since a 'use server' file exports only server functions
+import { batched } from 'brumate/batch';
+import { getProfiles } from './profiles.ts';
+
+export const getProfile = batched(getProfiles, (found, id: string) => found.get(id) ?? null, {
+  limit: 50,
+});
+```
+
+```html
+<!-- Row.brm: each row asks for one profile. -->
+<script>
+  const profile = $memo(getProfile(id));
+</script>
+```
+
+- `batched(readMany, lookup, options)` gives a function of one key. The calls made before the next task, such as the rows of a list that the browser renders, become one call of `readMany` with every distinct key. Each call gets its value from `lookup`.
+- `key` says what makes two keys the same, for keys that are objects. `limit` splits a large batch into several calls. `wait` gathers for that many milliseconds.
+- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
+- On the server, each call reads its own key at once. The server renders the rows of a list one after another, so their calls never happen at the same time, and calls of one key in a render still share one result. A page that renders many rows on the server reads faster with one call in the list, such as `$memo(getProfiles(ids))`, whose result it hands to the rows.
+- `refresh(getProfiles)` does not load the memos that call `getProfile` again, since the compiler sees only `getProfile`. Refresh the memo of the list instead, or load the page again.
+- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. Read many keys with one query there.
+
 ## `#loading`
 
 `#loading` shows a fallback while the values that its body reads load:
