@@ -483,6 +483,31 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('writes a debounced value after a pause, and a throttled one at most once a wait', async () => {
+    await resume('timing', {});
+    const field = document.querySelector<HTMLInputElement>('.query')!;
+    const type = (value: string): void => {
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    // The server renders the value itself.
+    expect(text('.settled')).toBe('');
+    type('a');
+    // The throttled value takes the first change at once, and the debounced one waits.
+    await waitFor(() => expect(text('.sampled')).toBe('a'));
+    expect(text('.settled')).toBe('');
+    expect(text('.pending')).toBe('waiting');
+    type('ab');
+    type('abc');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(text('.sampled')).toBe('a');
+    expect(text('.settled')).toBe('');
+    // After the wait, both have the last value.
+    await waitFor(() => expect(text('.sampled')).toBe('abc'));
+    await waitFor(() => expect(text('.settled')).toBe('abc'));
+    expect(text('.pending')).toBe('idle');
+  });
+
   it('runs a visible $client callback when the element that it reads through ref comes into view', async () => {
     const observed: Element[] = [];
     let report: (() => void) | undefined;

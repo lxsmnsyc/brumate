@@ -790,9 +790,12 @@ class ClientGenerator {
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
             const value = site.awaits ? `(async () => (${expression()}))()` : expression();
-            this.emit(
-              `export function ${name('m')}($$s) {\n  $$b.memo($$s, ${slot}, () => ${value});\n}`,
-            );
+            const timing = node.declaration.timing;
+            // A debounced or throttled memo computes after its wait, with the values of then.
+            const call = timing
+              ? `$$b.timed($$s, ${slot}, ${timing.ms}, ${timing.kind === 'throttled'}, () => ${value})`
+              : `$$b.memo($$s, ${slot}, () => ${value})`;
+            this.emit(`export function ${name('m')}($$s) {\n  ${call};\n}`);
           }
           break;
         }

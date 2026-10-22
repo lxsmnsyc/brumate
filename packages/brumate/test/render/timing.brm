@@ -1,0 +1,12 @@
+<script>
+  import { $debounced, $isPending, $signal, $throttled } from 'brumate/signals';
+
+  let query = $signal('');
+  const settled = $debounced(query, 200);
+  const sampled = $throttled(query, 200);
+</script>
+
+<input class="query" value=query onInput=((event) => (query = event.currentTarget.value))>
+<p class="settled">{settled}</p>
+<p class="pending">{$isPending(settled) ? 'waiting' : 'idle'}</p>
+<p class="sampled">{sampled}</p>

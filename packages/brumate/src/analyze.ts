@@ -77,6 +77,10 @@ const MISPLACED: Record<string, string> = {
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $debounced:
+    'Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script',
+  $throttled:
+    'Declare a throttled value with "const name = $throttled(value, ms)" at the top level of a script',
   $optimistic:
     'Declare an optimistic value with "let name = $optimistic(source)" at the top level of a script',
   $action:
@@ -710,6 +714,36 @@ class Analyzer {
       }
       const declaration = this.addDeclaration(scope, id.name, 'action', id);
       declaration.action = argument.name;
+      return;
+    }
+
+    if (name === '$debounced' || name === '$throttled') {
+      if (kind !== 'const') {
+        this.report('error', `Declare ${name} with const`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      const [argument, wait] = call.arguments;
+      const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (!argument || call.arguments.length !== 2) {
+        this.report('error', `${name} takes a value and a wait in milliseconds`, call);
+        return;
+      }
+      const ms = wait?.type === 'Literal' && typeof wait.value === 'number' ? wait.value : NaN;
+      // A timer cannot wait longer than 2^31 - 1 ms, and fires at once for a longer wait.
+      if (!(ms >= 0 && ms <= 2147483647)) {
+        this.report(
+          'error',
+          `The wait of ${name} must be a number of milliseconds, such as 300`,
+          wait!,
+        );
+      }
+      declaration.timing = { kind: name === '$debounced' ? 'debounced' : 'throttled', ms };
+      declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
+        declaration,
+      });
       return;
     }
 

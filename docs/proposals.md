@@ -21,7 +21,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Timing helpers](#timing-helpers)                                     | Data    | Low    | Small  |
 | [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
 | [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
@@ -213,26 +212,6 @@ export const plugins = [
 - The same plugins write server function calls and their answers, and the stubs of two-way realtime.
 
 Cost: about 1 week, most of it for loading the entry with the core and for the types.
-
-### Timing helpers
-
-A search field that waits for a pause in typing needs a timer, an `$effect` and a second signal, written by hand each time.
-
-```html
-<script>
-  import { $debounced, $memo, $signal } from 'brumate/signals';
-
-  let query = $signal('');
-  const settled = $debounced(query, 300);
-  const results = $memo(search(settled));
-</script>
-```
-
-- `$debounced(value, ms)` is a memo that takes the value after it stops changing for `ms`. `$throttled(value, ms)` takes it at most once every `ms`.
-- On the server, both are the value itself, so the page renders the results for the query it has.
-- They are client roots of their own, so their timers load with the first change.
-
-Cost: a few days.
 
 ### Persisted signals
 
@@ -839,6 +818,6 @@ Each step lists what it holds and why it comes there. A step can start before th
 4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, timing helpers and persisted signals.
+7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability and persisted signals. Timing helpers are done.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

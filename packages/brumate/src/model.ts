@@ -78,6 +78,11 @@ export interface Declaration {
    * a guess, until the source changes or the server calls of the page finish.
    */
   optimistic?: Declaration;
+  /**
+   * For `$debounced(value, ms)` and `$throttled(value, ms)`, how the browser
+   * writes the memo: after the value stops changing for `ms`, or at most once every `ms`.
+   */
+  timing?: { kind: 'debounced' | 'throttled'; ms: number };
   /** For `let name = $signal(value)`, the value. */
   init?: oxc.Node;
   /** True for a memo declared with `$optimistic`, before its source is known. */
