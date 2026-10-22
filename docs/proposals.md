@@ -744,6 +744,42 @@ From Terracotta:
 - An `as` prop on every part, so it can render another element or component. It compiles to a dynamic tag, `<{as ?? 'button'} …>`.
 - Render props, so the caller's markup can read the state of a part. A part calls a `#template` prop with its state, such as `{content({ open, close })}`.
 - State as `data-*` attributes, such as `data-open` and `data-selected`, for styling with CSS or class objects.
+- The split between controlled and uncontrolled state, below.
+
+#### Controlled and uncontrolled
+
+Each part that has state comes in two shapes, as in Terracotta, and the prop that the caller passes picks one:
+
+| Uncontrolled     | Controlled | Parts                                                                                           |
+| ---------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| `defaultOpen`    | `open`     | `Disclosure`, `Dialog`, `Modal`, `Sheet`, `Popover`, `Tooltip`, `Menu`, `Select`, `ComboBox`    |
+| `defaultValue`   | `value`    | `Select`, `ComboBox`, `ListBox`, `RadioGroup`, `Tabs`, `Slider`, `NumberField`, the date fields |
+| `defaultChecked` | `checked`  | `Checkbox`, `Switch`                                                                            |
+| `defaultPressed` | `pressed`  | `ToggleButton`                                                                                  |
+
+```html
+<!-- Uncontrolled: the dialog keeps its own state, and onChange only reports it. -->
+<Dialog defaultOpen=(false) onChange=((open) => log(open))>…</Dialog>
+
+<!-- Controlled: the dialog never writes. Nothing moves until the parent passes a new value. -->
+<Dialog open=settingsOpen onChange=((open) => (settingsOpen = open))>…</Dialog>
+
+<!-- The same, with a bindable prop. -->
+<Dialog bind:open=settingsOpen>…</Dialog>
+```
+
+- **Uncontrolled**: the part owns a signal that starts at the default, and writes it. `onChange` tells the caller what happened.
+- **Controlled**: the part never writes its state. It calls `onChange` with the value it wants, and shows the value that the caller passes. A caller that does not write it back gets a part that does not move, and the docs say so, as Terracotta's do.
+- `bind:open=signal` is the controlled shape with an `onChange` that writes the signal, from [bindable props](#bindable-props). The parts declare `open` as bindable, so both spellings work.
+- The props type is a union of the two shapes, so passing `open` and `defaultOpen` together is a type error, as Terracotta's types do.
+- The shape is chosen once, by which prop is there: `'open' in props`, as Terracotta's `isDisclosureUncontrolled` checks `'defaultOpen' in props`. A part does not switch shape after it renders.
+- One helper in the shared `.brm.ts` module gives every part the same rule: `controllable(props, 'open', 'defaultOpen')` returns a value to read and a `set` that writes the part's own signal when it is uncontrolled, and calls `onChange` either way.
+
+What brumate adds to the split:
+
+- The caller's attributes are in its markup, so the compiler usually knows the shape of each use. A part that is only ever used uncontrolled does not need the code that waits for the caller, and the reverse, so the shape can decide what ships.
+- The state of an uncontrolled part is a slot of the part's own scope, which the page state sends. A controlled part's state is a slot of the caller, so the part sends nothing of its own.
+- On the server, nothing writes, so both shapes render the value that they start with: the default, or the caller's value.
 
 #### How it maps to brumate
 
@@ -755,6 +791,7 @@ From Terracotta:
 | `triggerRef` for positioning        | CSS anchor positioning: `anchor-name` on the trigger and `position-anchor` on the popover. It needs no ref and no script. |
 | Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                      |
 | Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                            |
+| `defaultOpen` and `isOpen`          | `defaultOpen`, and `open` or `bind:open`, through one `controllable` helper                                               |
 | Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                              |
 | Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.   |
 | `@internationalized/date`, `number` | Used as they are                                                                                                          |
