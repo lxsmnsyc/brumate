@@ -143,6 +143,7 @@ export function attributeText(name: string, value: unknown): string | undefined 
  * data, so a name with a space, a quote, `>`, `/` or `=` could write other
  * attributes or markup.
  */
+// oxlint-disable-next-line no-control-regex -- HTML reads no control character in a name.
 const ATTRIBUTE_NAME = /^[^\s"'>/=\x00-\x1f\x7f]+$/;
 
 /** Renders one attribute, with a leading space. A name that is not one attribute renders nothing. */
