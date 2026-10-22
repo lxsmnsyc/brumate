@@ -92,6 +92,10 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- There is no taint, as React's `experimental_taintObjectReference`, to stop a value from reaching the page.
+  - It is a check, not a guarantee. A copy of a tainted object, such as `{ ...user }`, is not tainted, so it would give a sense of safety that it does not deliver.
+  - Any package can call it, also on values it does not own, and fail the renders of an app with errors that the app cannot fix.
+  - The page state only holds what client code reads, so a value stays on the server unless the browser needs it. Server code picks the fields it sends.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 
