@@ -39,3 +39,43 @@ export function href<P extends RoutePath>(path: P, ...[params]: ParamsArgument<P
       : encodeURIComponent(String(value));
   });
 }
+
+export interface NavigateOptions {
+  /** Replaces the current entry of the history instead of adding one. */
+  replace?: boolean;
+  /** Scrolls to the top of the new page, or to its hash. Defaults to true. False keeps the place. */
+  scroll?: boolean;
+}
+
+/**
+ * Loads a page as a link does: the layouts that stay keep their state. It
+ * returns when the page shows. A URL of another origin, or a page without
+ * the loader, loads in full.
+ *
+ * ```ts
+ * await navigate(href('/issues/[id]', { id: issue.id }));
+ * navigate(`?q=${query}`, { replace: true });
+ * ```
+ */
+export function navigate(to: string, options: NavigateOptions = {}): Promise<void> {
+  const url = new URL(to, location.href);
+  if (url.origin !== location.origin) {
+    location.assign(url.href);
+    return new Promise(() => {});
+  }
+  return new Promise((resolve) => {
+    const event = new CustomEvent('brumate:navigate', {
+      cancelable: true,
+      detail: {
+        url: url.href,
+        replace: options.replace === true,
+        scroll: options.scroll !== false,
+        done: resolve,
+      },
+    });
+    // The loader answers the event. Without it, the page loads in full.
+    if (document.dispatchEvent(event)) {
+      location.assign(url.href);
+    }
+  });
+}

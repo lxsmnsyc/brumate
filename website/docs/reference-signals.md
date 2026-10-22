@@ -25,6 +25,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$produce(signal, recipe)`    | `void`                     | Where a signal can be written          | [State](./state.md)                                |
 | `$setContext(context, value)` | `void`                     | Statement at the top level of a script | [Context](./context.md)                            |
 | `$getContext(context)`        | the value                  | `const` at the top level of a script   | [Context](./context.md)                            |
+| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script   | [Navigation](./navigation.md#the-route)            |
+| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script   | [Navigation](./navigation.md#while-a-page-loads)   |
 | `$id()`                       | `string`                   | `const` at the top level of a script   | [Page metadata](./page-metadata.md)                |
 | `$title(value)`               | `void`                     | Statement at the top level of a script | [Page metadata](./page-metadata.md)                |
 | `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script   | [Forms](./forms.md)                                |

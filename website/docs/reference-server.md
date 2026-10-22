@@ -126,6 +126,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `RouteParams<'/todos/[id]'>` | The type of the params of a route path.                                                                                                           |
 | `RoutePath`                  | The type of a route path. Any string until the plugin writes the route types.                                                                     |
 | `Routes`                     | The interface that the generated declaration file fills with the paths of the routes.                                                             |
+| `navigate(href, options?)`   | Loads a page as a link does, and returns when it shows. `replace` replaces the entry of the history, and `scroll: false` keeps the place.         |
 
 ## `brumate/context`
 

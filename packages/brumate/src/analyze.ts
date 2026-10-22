@@ -63,6 +63,8 @@ const MISPLACED: Record<string, string> = {
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
+  $route: 'Read the route with "const name = $route()" at the top level of a script',
+  $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
@@ -559,6 +561,25 @@ class Analyzer {
       declaration.idIndex = [...scope.declarations.values()].filter(
         (item) => item.idIndex !== undefined,
       ).length;
+      return;
+    }
+
+    if (name === '$route' || name === '$navigation') {
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report('error', MISPLACED[name]!, declarator);
+        return;
+      }
+      if (name === '$navigation' ? call.arguments.length > 0 : call.arguments.length > 1) {
+        this.report(
+          'error',
+          name === '$navigation'
+            ? '$navigation takes no arguments'
+            : '$route takes at most one argument, the path of the route',
+          call,
+        );
+      }
+      // A context that the runtime provides, so it changes when navigation changes the page.
+      this.addDeclaration(scope, id.name, 'context', id);
       return;
     }
 

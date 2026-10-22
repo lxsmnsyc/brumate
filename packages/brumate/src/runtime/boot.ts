@@ -38,6 +38,12 @@ export interface NavigateOptions {
    * function has the type `form`.
    */
   transition?: boolean;
+  /**
+   * After a navigation, moves the focus to the first `<h1>` of the routes
+   * that changed, or to `<main>`, as a full page load starts it at the top.
+   * Defaults to true.
+   */
+  focus?: boolean;
 }
 
 interface Entry {
@@ -96,6 +102,8 @@ export interface Navigation {
     flags?: AddEventListenerOptions | boolean,
   ) => void;
   core: () => Promise<Core> | undefined;
+  /** Starts the core, or returns the one that runs. */
+  start: () => Promise<Core>;
   scan: (root: ParentNode) => void;
 }
 
@@ -316,7 +324,7 @@ export function boot(
   });
 
   if (navigate) {
-    load = navigate({ options, listen, core: () => core, scan });
+    load = navigate({ options, listen, core: () => core, start: loadCore, scan });
   } else {
     // A hot update whose markup changed loads the page again.
     listen(document, 'brumate:reload', () => location.reload());

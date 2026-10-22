@@ -14,8 +14,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Taint](#taint)                                                       | Server  | High   | Small  |
 | [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
-| [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
-| [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
 | [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
@@ -518,52 +516,6 @@ A first click after `load` waits for the core and the part of its handler. The s
 Cost: a few days.
 
 ## Routing
-
-### Routing in the browser
-
-Client navigation follows links and forms, but code cannot start it, and the browser cannot read the route. The params and the query string are only on the server, through `getEvent().request.url`. A filter, a tab or a page number that lives in the URL needs a link for every change, and the browser cannot read it back.
-
-```html
-<script>
-  import { $signal } from 'brumate/signals';
-  import { $route, href, navigate } from 'brumate/routes';
-  import { createIssue } from '../issues.server';
-
-  const route = $route('/issues');
-  let query = $signal(route.search.get('q') ?? '');
-
-  async function save() {
-    const issue = await createIssue(query);
-    await navigate(href('/issues/[id]', { id: issue.id }));
-  }
-</script>
-
-<input value=query onInput=((event) => navigate(`?q=${event.currentTarget.value}`, { replace: true }))>
-<p>Page {route.search.get('page') ?? '1'}</p>
-```
-
-- `navigate(href, { replace, scroll })` loads a page as a link does: layouts that stay keep their state. It returns when the page shows. A URL on another origin loads the page.
-- `$route(path)` gives `{ params, search }` for the route at `path`, typed from the route files as `href` is. The server reads the request, and the browser reads `location`, so both render the same value.
-- `$route` is a memo on the client. It changes when navigation changes the URL, so code that reads it updates, without the server.
-- A change of only the query string, with `replace`, can skip the server when no route reads anything but `$route`. The compiler knows which routes read data, so it can tell.
-- `$navigation` is a signal of the navigation that is loading: `{ pending, from, to }`, with `pending` false when none is. A page can show a progress bar, or dim the old page, while the next one loads.
-- The loader sets `data-navigating` on `<html>` while a navigation loads, so a progress bar can be CSS alone, with no client code in the page.
-
-Cost: a few days for `navigate`, `$route` and `$navigation`, which reuse client navigation. Skipping the server for a query string change is a week more, and can come later.
-
-### Accessible navigation
-
-A full page load tells a screen reader that the page changed, and starts the keyboard focus at the top. Client navigation swaps the content in place, so nothing is announced, and the focus stays on the link that was clicked, which may be gone.
-
-- After a navigation, the loader writes the title of the new page into an `aria-live` region of its own, which is visually hidden, so a screen reader reads it.
-- The focus moves to the first `<h1>` of the routes that changed, or to their `<main>`, with `tabindex="-1"` for the move only, so the next Tab starts there. The `focus` option of `navigate` in the plugin sets another target, or turns it off.
-- A navigation that keeps the page and changes only the query string, such as a filter, moves no focus, so typing in a search field goes on.
-- The back and forward buttons move the focus as a full page load would, and scroll as they do now.
-- A route can set its own text to announce, for a page whose title is the same for many URLs.
-
-Prior art: the route announcers of Next.js, SvelteKit and Astro's view transitions.
-
-Cost: a few days.
 
 ## Server
 
@@ -1272,7 +1224,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
 4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
 5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
+6. **Routing in the browser** and **accessible navigation.** Done. Skipping the server for a change of only the query string can come later.
 7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
 8. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 9. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 14.

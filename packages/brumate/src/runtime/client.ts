@@ -23,7 +23,9 @@ import {
   stateValues,
 } from './shared.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
-import type { Context as ContextValue } from './context.ts';
+import { ROUTE_KEY } from './context.ts';
+export { navigationContext, routeContext } from './context.ts';
+import type { Context as ContextValue, Route } from './context.ts';
 
 export { affix, attribute, classAttribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
@@ -2062,7 +2064,43 @@ export function consumeContext<T>(
     target.x[context.key] = slot;
   }
   const provider = findProvider(target, context.key);
-  return provider ? (provider.v![context.key] as T) : context.defaultValue;
+  if (provider) {
+    return provider.v![context.key] as T;
+  }
+  if (context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
+    globals.set(ROUTE_KEY, currentRoute());
+  }
+  return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;
+}
+
+/** The values of the contexts that the runtime provides to the whole page, by key. */
+const globals = new Map<string, unknown>();
+
+/** The route of the page: `location`, and the params of the route from the last page state. */
+function currentRoute(): Route {
+  const records = document.querySelectorAll('script[b-state][b-params]');
+  const params = records[records.length - 1]?.getAttribute('b-params');
+  const url = new URL(location.href);
+  return { url, search: url.searchParams, params: params ? JSON.parse(params) : {} };
+}
+
+/**
+ * Writes a context that the runtime provides to the whole page, and the
+ * slot of every scope that reads it without a provider above it.
+ */
+export function setGlobal(key: string, value: unknown): void {
+  globals.set(key, value);
+  for (const target of scopes.values()) {
+    const slot = target.x?.[key];
+    if (slot !== undefined && !findProvider(target, key)) {
+      set(target, slot, value);
+    }
+  }
+}
+
+/** Reads the route of the page again, after navigation changed it. */
+export function updateRoute(): void {
+  setGlobal(ROUTE_KEY, currentRoute());
 }
 
 export function setSlots(id: ScopeId, values: unknown[]): void {
@@ -2129,4 +2167,6 @@ export const loader: {
   handle: typeof handle;
   dispose: typeof dispose;
   submitAction: typeof submitAction;
-} = { init, handle, dispose, submitAction };
+  setGlobal: typeof setGlobal;
+  updateRoute: typeof updateRoute;
+} = { init, handle, dispose, submitAction, setGlobal, updateRoute };
