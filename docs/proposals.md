@@ -17,6 +17,12 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
+| [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
+| [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
+| [Cancelled work](#cancelled-work)                                     | Server  | High   | Small  |
+| [Request locals](#request-locals)                                     | Server  | Medium | Small  |
+| [Environment variables](#environment-variables)                       | Server  | Medium | Small  |
+| [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
@@ -644,6 +650,117 @@ export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
 Prior art: Better Auth limits its own routes this way. It keys by the address and the path, reads the address behind trusted proxies, gives sign-in and sign-up 3 requests in 10 seconds and the rest 100, answers 429 with `X-Retry-After`, keeps its counts in memory, the database or a secondary store such as Redis, and is on only in production. It counts from the last request rather than a sliding window, so a steady stream of requests never resets.
 
 Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
+
+### Skew protection
+
+A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, from file names that the new build may not have, and calls server functions whose IDs or arguments may have changed. A page that hydrates loads all of its code at the start, so it is less exposed than brumate.
+
+- Each build has an ID, which the page and its state records carry. Part loads and server function calls send it.
+- The client files have hashes in their names, so the files of older builds can stay next to the new ones. The build keeps a manifest of the files of the last builds, and a host that serves `dist/client` keeps them for a time that an option sets, such as a day.
+- A call from an older build to a function that still exists, with the same ID, runs. A call to a function that is gone answers 409 with the build ID of the server.
+- On a 409, or a part that fails to load, the browser does a full page load at the next navigation, or at once when the call cannot wait, such as a form post, which then posts again. The state of the page is lost then, and `onSkew` lets an app save a draft first.
+- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, since the kept layouts are code of the old build.
+- Prerendered pages carry the ID of their build too.
+
+Prior art: Vercel's skew protection, which keeps the deployments of the last hours and routes each request to the build that made its page.
+
+Cost: about 1 to 2 weeks, most of it in what the build keeps and in testing a deploy in the middle of a session.
+
+### Middleware entry
+
+`_middleware.ts` runs before the routes of its folder, pages and endpoints. Server function calls, at `/_brumate/<id>`, go past it, so each server function checks the user itself, and a function that forgets is open.
+
+```ts
+// src/middleware.ts
+import { defineMiddleware, redirect } from 'brumate/server';
+
+export default defineMiddleware(async (event, next) => {
+  event.locals.user = await readUser(event);
+  if (event.kind === 'call' && event.call.id.startsWith('admin') && !event.locals.user?.admin) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  return next();
+});
+```
+
+- An entry file, `src/middleware.ts` by default and set with the `middleware` option of the plugin, runs for every request: pages, endpoints, server function calls, form posts, `#defer` bodies and `?__action` posts.
+- `event.kind` says which one it is: `'page'`, `'endpoint'`, `'call'` or `'defer'`. For a call, `event.call` has the ID of the function and its arguments, after they are read, so a check can depend on them.
+- It runs first, before the `_middleware.ts` of the folders. Those stay for what belongs to one part of the site.
+- A `'use server'` file can export `middleware` too, which runs before each of its functions only, for a group of functions with the same rule.
+- Cross-site calls are refused before any middleware runs, as now.
+
+Cost: a few days. The routes already run middleware in a chain, and calls get the same chain.
+
+### Cancelled work
+
+Server functions see `request.signal` abort when their call is cancelled. A page does not: when the browser leaves while the page streams, its `#loading` bodies, the memos that they load and the server functions that those call go on until they finish.
+
+- `getEvent().signal` aborts when the connection of the response closes, for a page, a call and a `#defer` request.
+- The render of a page stops the boundaries that have not been sent, and the memos that only they read.
+- Server functions that the render calls run with the same signal, so `fetch(url, { signal })` and a database client that takes a signal stop too.
+- Work that must finish, such as writing to a log, runs in a function that does not read the signal, or with `after`.
+- It depends on the host reporting a closed connection. Node does, and Nitro passes it on for most presets.
+
+Cost: a few days.
+
+### Request locals
+
+Middleware has no typed way to hand what it finds, such as the user or a client of the database, to the components and server functions of the request.
+
+```ts
+// src/locals.d.ts
+declare module 'brumate/server' {
+  interface Locals {
+    user?: { id: string; name: string; admin: boolean };
+  }
+}
+```
+
+- `event.locals` is an object for the request. Middleware writes it, and components, server functions and endpoints read it with `getEvent().locals`.
+- Its type comes from the `Locals` interface, which the app adds to by declaration merging, as SvelteKit's `App.Locals`.
+- It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
+
+Cost: a few days.
+
+### Environment variables
+
+Secrets come from `process.env`, and values for the browser from Vite's `import.meta.env.VITE_*`. Nothing checks that a secret is set, or that browser code does not read one.
+
+```ts
+// src/env.ts
+import { defineEnv } from 'brumate/env';
+import * as v from 'valibot';
+
+export default defineEnv({
+  server: {
+    DATABASE_URL: v.pipe(v.string(), v.url()),
+    SESSION_SECRET: v.pipe(v.string(), v.minLength(32)),
+  },
+  public: {
+    SITE_NAME: v.optional(v.string(), 'Tracker'),
+  },
+});
+```
+
+- `defineEnv` takes a Standard Schema for each variable, split into `server` and `public`, as SolidStart's split between server and client variables and Astro's `astro:env` do.
+- The server checks the variables when it starts, and fails with every missing or wrong one, so a deploy without a secret does not start.
+- `import { env } from 'brumate/env'` gives the values with their types.
+- Public values are written into the client build. Server values never are.
+- The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
+- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
+
+Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
+
+### Idempotent calls
+
+A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
+
+- `idempotent(fn)` wraps a server function. The browser sends a key with each call, and sends the same key when it sends that call again.
+- The server keeps the result of a key for a time, in the store of [caching pages and data](#caching-pages-and-data), and answers a call with a key that it has seen with the result that it kept, without running the function.
+- A call with a key that is still running waits for that run.
+- Form posts without scripts get a key in a hidden field, so a second post of the same form is the same call.
+
+Cost: a few days, after the store of caching.
 
 ### Two-way realtime
 
