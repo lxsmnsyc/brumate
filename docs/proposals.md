@@ -9,6 +9,10 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
 | [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
+| [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
+| [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
+| [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
@@ -150,6 +154,98 @@ What it needs:
 
 Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
 
+## Routing
+
+### Routing in the browser
+
+Client navigation follows links and forms, but code cannot start it, and the browser cannot read the route. The params and the query string are only on the server, through `getEvent().request.url`. A filter, a tab or a page number that lives in the URL needs a link for every change, and the browser cannot read it back.
+
+```html
+<script>
+  import { $signal } from 'brumate/signals';
+  import { $route, href, navigate } from 'brumate/routes';
+  import { createIssue } from '../issues.server';
+
+  const route = $route('/issues');
+  let query = $signal(route.search.get('q') ?? '');
+
+  async function save() {
+    const issue = await createIssue(query);
+    await navigate(href('/issues/[id]', { id: issue.id }));
+  }
+</script>
+
+<input value=query onInput=((event) => navigate(`?q=${event.currentTarget.value}`, { replace: true }))>
+<p>Page {route.search.get('page') ?? '1'}</p>
+```
+
+- `navigate(href, { replace, scroll })` loads a page as a link does: layouts that stay keep their state. It returns when the page shows. A URL on another origin loads the page.
+- `$route(path)` gives `{ params, search }` for the route at `path`, typed from the route files as `href` is. The server reads the request, and the browser reads `location`, so both render the same value.
+- `$route` is a memo on the client. It changes when navigation changes the URL, so code that reads it updates, without the server.
+- A change of only the query string, with `replace`, can skip the server when no route reads anything but `$route`. The compiler knows which routes read data, so it can tell.
+
+Cost: a few days for `navigate` and `$route`, which reuse client navigation. Skipping the server for a query string change is a week more, and can come later.
+
+## Server
+
+### Caching pages and data
+
+A response can set its own headers, through `event.headers`, but there is nothing between one request and the next. Each request renders the page and loads its data again. `#defer` makes caching more useful: the page can be cached for everyone, and its parts for one user render later.
+
+- A route sets how long its page can be cached, with an export of its file:
+
+```html
+<script module>
+  export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
+</script>
+```
+
+The server sends `cache-control` from it, and a page cache in the server, or a CDN, keeps the HTML. A page that reads the session, or sets a cookie, is never cached for everyone: the server sends `private` for it.
+
+- A server function can cache its result across requests, by its arguments, with a time and tags:
+
+```ts
+export const listIssues = cached(async (status: string) => db.issues(status), {
+  maxAge: 30,
+  tags: (status) => ['issues', `issues:${status}`],
+});
+```
+
+- `revalidate(tag)` drops the results and the pages that used that tag, such as after a server function changes the data. It works with `refresh(fn)`, which loads the memos of the page again in the browser.
+- The cache is an interface, with an in-memory store as the default and room for Redis or a platform cache. Deployment adapters can bring their own.
+- Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
+
+Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
+
+### Two-way realtime
+
+Server functions can stream values to the browser, which covers updates that only go one way, such as an activity feed. Chat, presence and shared editing need messages both ways, on one connection.
+
+```html
+<script>
+  import { $channel, $signal } from 'brumate/signals';
+  import { room } from './chat.server';
+
+  const chat = $channel(room('general'));
+  let draft = $signal('');
+</script>
+
+#for (message of chat.messages by message.id) {
+  <p><b>{message.user}</b> {message.text}</p>
+}
+<form onSubmit:prevent=(() => { chat.send(draft); draft = ''; })>
+  <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
+</form>
+```
+
+- A channel is a server function that returns a handler: it receives the messages of the browser and sends values back. It runs with the event of the request that opened it, so it knows the user.
+- `$channel` opens the connection when client code first reads it, not with the page, so a page that never uses it loads nothing. The server renders the first value, as for a memo.
+- The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each message. It reconnects with a backoff, and sends again what was not received.
+- Messages are values that the page state can hold, written by the same serializer.
+- Deployment adapters need to support WebSocket. Nitro does on most hosts.
+
+Cost: about 2 to 3 weeks, most of it for reconnection, the fallback and the adapters.
+
 ## Tooling
 
 ### Content mappers for TypeScript 7
@@ -167,6 +263,18 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 The server runtime uses only web APIs, and Nitro builds for each host. See `examples/nitro`.
 
 - Nitro covers Node, Deno, Bun, Cloudflare Workers and others. Only its Node preset is tested.
+
+### Embedding in other sites
+
+A brumate component cannot go into a page that brumate did not render, such as a widget on a marketing site or a component in an app of another framework.
+
+- A build target writes a component as a custom element, `<brumate-widget src="…">`, or as a script that renders it into an element.
+- The element asks the server for its markup and state, as a `#defer` body does, and resumes it. The page around it needs no brumate code, only the loader, which stays under 3 kB gzip.
+- Without a server, the element renders in the browser from the render module, with props from its attributes.
+- Styles are scoped already. In a shadow root they stay apart from the page around them.
+- Server functions answer from the brumate server, so the element works across origins with the `origins` option and CORS.
+
+Cost: about 2 weeks. The request for markup reuses `#defer`, and most of the work is the build target and the cross-origin rules.
 
 ## Library
 
@@ -445,6 +553,8 @@ Cost: a few days for the adapter, a guide and an example.
 1. Blocking async memos. They fix `await` in components that the browser renders, and they make the state of more pages one record.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-4. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
-5. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
-6. Compiled messages and Markdown with components when an app or the website needs them.
+4. Routing in the browser. It is small, and filters and tabs in the URL are common.
+5. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
+6. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
+7. Caching pages and data, now that `#defer` can render the parts of a cached page for each user.
+8. Compiled messages, Markdown with components, two-way realtime and embedding when an app or the website needs them.
