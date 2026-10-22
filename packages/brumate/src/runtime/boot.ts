@@ -163,7 +163,7 @@ export function boot(
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
     void options
       .load(id)
-      ?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'))
+      ?.then((module) => module.load?.(/^[hct]\d/.test(name) ? name : 'update'))
       .catch(() => {});
   };
 

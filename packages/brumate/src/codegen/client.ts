@@ -66,7 +66,7 @@ export const DEFAULT_MERGE = 4096;
 
 /** The part that holds an export of a client module. */
 export function partOf(name: string): string {
-  return /^[hc]\d/.test(name) ? name : 'update';
+  return /^[hct]\d/.test(name) ? name : 'update';
 }
 
 // Sites whose code does not run while a body renders.
@@ -702,7 +702,8 @@ class ClientGenerator {
         continue;
       }
       const base = instanceScope(this.plan, site.scope);
-      let code = this.rewriter.rewrite(site, '$$s', base);
+      // A template passed as a prop, such as `item=option`, renders in the browser with its code.
+      let code = this.withTemplates(site, this.rewriter.rewrite(site, '$$s', base));
       // A method of a provided object, such as `reset() {}`, has no `function` keyword of its own.
       if (site.node.type === 'FunctionExpression' && unmarked(code).trimStart().startsWith('(')) {
         code = `function ${code}`;
@@ -1163,7 +1164,12 @@ class ClientGenerator {
    */
   private withTemplates(site: Site, code: string): string {
     const templates: Scope[] = [];
-    for (const callee of site.calls) {
+    // The templates that the code calls, and those that it passes on, such as a prop `item=option`.
+    const used = [
+      ...site.calls,
+      ...site.reads.map((read) => read.declaration).filter((item) => item.kind === 'template'),
+    ];
+    for (const callee of used) {
       if (callee.kind !== 'template') {
         continue;
       }
