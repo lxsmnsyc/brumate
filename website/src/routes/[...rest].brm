@@ -5,7 +5,9 @@
   getEvent().setStatus(404);
 </script>
 
-<title>Not found | brumate</title>
+#head {
+  <title>Not found | brumate</title>
+}
 
 <main class="not-found">
   <h1>Not found</h1>

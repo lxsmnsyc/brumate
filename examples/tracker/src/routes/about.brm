@@ -4,7 +4,9 @@
   const user = $getContext(CurrentUser);
 </script>
 
-<title>About</title>
+#head {
+  <title>About</title>
+}
 
 <h1>About</h1>
 <p>

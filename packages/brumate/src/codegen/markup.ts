@@ -161,8 +161,8 @@ export class Emitter {
   private depth = 0;
   /** How many of this component's elements contain the current node. */
   private nesting = 0;
-  /** How many `<head>` and `<svg>` elements contain the current node, where a `<title>` stays. */
-  private titleHosts = 0;
+  /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
+  private headBlocks = 0;
   private counter = 0;
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
@@ -780,11 +780,11 @@ export class Emitter {
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
-    // A `<title>` outside `<head>` and `<svg>` sets the title of the page. The core sets it from
-    // the last one in the page, so a block that renders one decides the title.
-    const pageTitle = node.tag === 'title' && this.titleHosts === 0;
+    // A `<title>` in `#head` sets the title of the page. The core sets it from the last one in
+    // the page, so a block that renders one decides the title. The plan reports the others.
+    const pageTitle = node.tag === 'title' && this.headBlocks > 0;
     if (pageTitle && this.options.mode === 'server') {
-      this.line(`${this.helper('title')}(${this.titleText(node)});`);
+      this.line(`${this.helper('title')}(${this.titleText(node)}, true);`);
     }
     this.html(`<${node.tag}`);
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
@@ -868,11 +868,8 @@ export class Emitter {
     if (VOID_ELEMENTS.has(node.tag)) {
       return;
     }
-    const host = node.tag === 'head' || node.tag === 'svg';
     this.nesting++;
-    this.titleHosts += host ? 1 : 0;
     this.emitNodes(node.children, scope);
-    this.titleHosts -= host ? 1 : 0;
     this.nesting--;
     this.html(`</${node.tag}>`);
   }
@@ -1126,7 +1123,9 @@ export class Emitter {
     this.html('<!--P');
     this.code(this.scopeVar(body));
     this.html('-->');
+    this.headBlocks += block.kind === 'head' ? 1 : 0;
     this.atTopLevel(() => this.emitBody(block.body, false));
+    this.headBlocks -= block.kind === 'head' ? 1 : 0;
     this.html('<!--/P-->');
     this.flush();
     this.line('return $$html;');

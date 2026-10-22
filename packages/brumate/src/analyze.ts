@@ -475,7 +475,7 @@ class Analyzer {
             } else {
               this.report(
                 'warning',
-                '$title is replaced by <title> in markup, such as <title>{`${count} left`}</title>, and goes in a later version',
+                '$title is replaced by <title> in #head, such as #head { <title>{`${count} left`}</title> }, and goes in a later version',
                 call,
               );
               this.createSite('title', scope, call.arguments[0]!, 'title');

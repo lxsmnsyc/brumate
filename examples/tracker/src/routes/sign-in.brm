@@ -20,7 +20,9 @@
   const result = $action(signIn);
 </script>
 
-<title>Sign in</title>
+#head {
+  <title>Sign in</title>
+}
 
 <h1>Sign in</h1>
 <p>There is no password. The name is only kept in a signed cookie.</p>

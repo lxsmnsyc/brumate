@@ -9,7 +9,9 @@
   const { count: visits, increment: visit } = counter(10);
 </script>
 
-<title>Kit</title>
+#head {
+  <title>Kit</title>
+}
 
 <h1>Components from a package</h1>
 <button class="rename" onClick=(() => (label = 'Pressed'))>Rename</button>

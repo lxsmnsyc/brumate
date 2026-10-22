@@ -17,7 +17,9 @@
   const notes = $memo(listNotes());
 </script>
 
-<title>Notes</title>
+#head {
+  <title>Notes</title>
+}
 
 <h1>Notes</h1>
 <button class="count" onClick=(() => count++)>Clicked {count} times</button>

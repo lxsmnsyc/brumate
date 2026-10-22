@@ -5,10 +5,14 @@
   let draft = $signal(false);
 </script>
 
-<title>{`${count} left | Todos`}</title>
+#head {
+  <title>{`${count} left | Todos`}</title>
+}
 <button class="add" onClick=(() => count++)>Add</button>
 <button class="edit" onClick=(() => (draft = !draft))>Edit</button>
 #if (draft) {
-  <title>Unsaved changes &amp; more | Todos</title>
+  #head {
+    <title>Unsaved changes &amp; more | Todos</title>
+  }
 }
 <svg><title>Icon</title></svg>

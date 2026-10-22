@@ -15,7 +15,9 @@
   const contents = (page?.headings ?? []).filter((heading) => heading.level === 2 || heading.level === 3);
 </script>
 
-<title>{page ? `${page.title} | brumate` : 'Not found | brumate'}</title>
+#head {
+  <title>{page ? `${page.title} | brumate` : 'Not found | brumate'}</title>
+}
 
 #if (page) {
   <Meta

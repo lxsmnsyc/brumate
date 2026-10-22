@@ -28,7 +28,9 @@
   }
 </script>
 
-<title>{`${left} left`}</title>
+#head {
+  <title>{`${left} left`}</title>
+}
 
 <h1>Todos</h1>
 <form onSubmit:prevent=add>

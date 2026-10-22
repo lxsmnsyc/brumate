@@ -32,7 +32,9 @@
   const names = $memo(list());
 </script>
 
-<title>Guestbook</title>
+#head {
+  <title>Guestbook</title>
+}
 
 <h1>Guestbook</h1>
 <form action=sign>

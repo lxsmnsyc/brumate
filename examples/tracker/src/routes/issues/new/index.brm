@@ -27,7 +27,9 @@
   const result = $action(create);
 </script>
 
-<title>New issue</title>
+#head {
+  <title>New issue</title>
+}
 
 <h1>New issue</h1>
 <form action=create>

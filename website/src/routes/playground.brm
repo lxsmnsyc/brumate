@@ -29,7 +29,9 @@
 
 </script>
 
-<title>Playground | brumate</title>
+#head {
+  <title>Playground | brumate</title>
+}
 
 <Meta
   title="Playground | brumate"

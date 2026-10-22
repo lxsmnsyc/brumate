@@ -4,7 +4,9 @@
   const { error } = $props<{ error: { message: string; status: number } }>();
 </script>
 
-<title>{`Error ${error.status}`}</title>
+#head {
+  <title>{`Error ${error.status}`}</title>
+}
 
 <h1>Something went wrong</h1>
 <p class="error">{error.status}: {error.message}</p>

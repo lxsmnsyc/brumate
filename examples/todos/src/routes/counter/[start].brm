@@ -5,6 +5,8 @@
   const { params } = $props<{ params: { start: string } }>();
 </script>
 
-<title>Counter</title>
+#head {
+  <title>Counter</title>
+}
 
 <Counter start=(Number(params.start)) />

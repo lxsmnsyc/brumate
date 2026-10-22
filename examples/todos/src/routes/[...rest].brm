@@ -6,6 +6,8 @@
   getEvent().setStatus(404);
 </script>
 
-<title>Not found</title>
+#head {
+  <title>Not found</title>
+}
 
 <h1>No page at /{params.rest}</h1>

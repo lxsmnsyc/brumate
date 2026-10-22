@@ -129,7 +129,9 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
   const { error } = $props<{ error: { message: string; status: number } }>();
 </script>
 
-<title>{`Error ${error.status}`}</title>
+#head {
+  <title>{`Error ${error.status}`}</title>
+}
 
 <h1>Something went wrong</h1>
 <p>{error.status}: {error.message}</p>

@@ -1,10 +1,10 @@
 # Page metadata
 
-A `<title>` in markup sets the title of the page, `#head` adds tags to the `<head>`, and `$id` makes IDs for attributes such as `for` and `aria-describedby`.
+`#head` adds tags to the `<head>` of the page, such as its `<title>`, and `$id` makes IDs for attributes such as `for` and `aria-describedby`.
 
 ## `<title>`
 
-A `<title>` anywhere in the markup of a component, also in `#head`, sets the title of the page:
+A `<title>` in `#head` sets the title of the page, as `<meta>` and `<link>` in `#head` add to the head:
 
 ```brm
 <script>
@@ -15,22 +15,26 @@ A `<title>` anywhere in the markup of a component, also in `#head`, sets the tit
   const left = $memo(todos.filter((todo) => !todo.done).length);
 </script>
 
-<title>{`${left} left | Todos`}</title>
+#head {
+  <title>{`${left} left | Todos`}</title>
+}
 
 #if (editing) {
-  <title>Unsaved changes | Todos</title>
+  #head {
+    <title>Unsaved changes | Todos</title>
+  }
 }
 ```
 
 - Its content is text, or one value such as a template string.
-- The server writes the title into the head of the page. The `<title>` stays where it is too, hidden, as browsers hide every `<title>`.
 - When several titles render, the last one in the page wins. A layout can set a default title, and its page can set its own.
 - Blocks decide which title renders, so a title in an `#if` needs no code in a script. When a block removes its title, the last one that is left wins. With none left, the title stays as it was.
 - When the value changes in the browser, the title changes too.
 - A component in a `#loading` block sets the title when its content streams in.
-- A `<title>` inside an `<svg>` names the shape, and a `<title>` inside the `<head>` of a document component stays the head's own. Neither sets the title.
+- With one title, the head has that `<title>`. With several, the server also puts the last one first in the head, so a reader without scripts, such as a crawler, sees it.
+- A `<title>` anywhere else in the markup is an error, except inside an `<svg>`, where it names the shape, and inside the `<head>` of a document component, where it is the head's own.
 
-`$title(value)` in a script does the same, and is replaced by `<title>`. The compiler warns about it, and it goes in a later version.
+`$title(value)` in a script does the same, and is replaced by a `<title>` in `#head`. The compiler warns about it, and it goes in a later version.
 
 ## `#head`
 
@@ -56,7 +60,7 @@ A `<title>` anywhere in the markup of a component, also in `#head`, sets the tit
 - The server puts the content into the head of the page, after the title.
 - Attributes can change in the browser, like any other attribute.
 - Inside a block that the browser renders, such as an `#if` that opens, the content is added to the head, and removed with the block.
-- A `<title>` in `#head` sets the title as one anywhere else in the markup does.
+- A `<title>` sets the title of the page. See [`<title>`](#title).
 
 ## On navigation
 
