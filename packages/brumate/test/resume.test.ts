@@ -414,6 +414,34 @@ describe('resume', () => {
     await waitFor(() => expect(text('.last')).toBe('a'));
   });
 
+  it('runs a handler that a component passes on with a spread, in the scope of its owner', async () => {
+    const server = await import(file('spreadHandlers.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    // The element's own handler, then the parent's, with the parent's scope and its wrapper.
+    expect(html).toMatch(/b-on="click=Forward_\w+#h\d+ click:prevent=SpreadHandlers_\w+#h\d+@\d+"/);
+    expect(html).toContain('title="Hello"');
+    await resume('spreadHandlers', {});
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('.forward')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('parent'));
+    await waitFor(() => expect(text('.forward')).toBe('Go 1'));
+  });
+
+  it('removes the attributes that a spread drops, and keeps the element own', async () => {
+    await resume('spreadUpdate', {});
+    const target = document.querySelector('.target')!;
+    expect(target.getAttribute('title')).toBe('Tip');
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(target.getAttribute('data-kind')).toBe('b'));
+    expect(target.hasAttribute('title')).toBe(false);
+    expect(target.id).toBe('fixed');
+    expect(target.className).toBe('target');
+    click(document.querySelector('.back')!);
+    await waitFor(() => expect(target.getAttribute('title')).toBe('Again'));
+    expect(target.hasAttribute('data-kind')).toBe(false);
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');

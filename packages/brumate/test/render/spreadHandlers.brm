@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Forward from './Forward.brm';
+
+  let log = $signal<string[]>([]);
+</script>
+
+<Forward label="Go" title="Hello" onClick=(prevent(() => (log = [...log, 'parent'])))  />
+<p class="log">{log.join(', ')}</p>

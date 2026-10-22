@@ -8,9 +8,10 @@ import {
   insertValue,
   isRaw,
   rawHTML,
-  spread,
+  spread as spreadAttributes,
   styleElement,
 } from './html.ts';
+import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 import {
@@ -32,16 +33,7 @@ import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export {
-  affix,
-  attribute,
-  classAttribute,
-  escape,
-  escapeAttribute,
-  raw,
-  spread,
-  vars,
-} from './html.ts';
+export { affix, attribute, classAttribute, escape, escapeAttribute, raw, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext } from './context.ts';
@@ -823,7 +815,7 @@ export function dynamic(
   if (typeof tag === 'function') {
     return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
   }
-  const open = `<${tag}${spread(attributes)}>`;
+  const open = `<${tag}${spreadAttributes(attributes)}>`;
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
@@ -2175,4 +2167,33 @@ async function answerRoute(
     }
     throw error;
   }
+}
+
+/**
+ * Renders an object of attributes. A handler in it, such as an `onClick`
+ * that a component passes on with `...rest`, goes into `on` as a `b-on`
+ * entry: the client function that it refers to, with the scope that the
+ * function belongs to and the modifiers of its wrappers. A function that
+ * refers to nothing in the browser is left out.
+ */
+export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  for (const [name, value] of Object.entries(attributes)) {
+    const reference =
+      on && /^on[A-Z]/.test(name) && typeof value === 'function'
+        ? functionReferences.get(value)
+        : undefined;
+    if (reference) {
+      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS] ?? [];
+      on!.push(
+        `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${reference.ref}@${reference.scope}`,
+      );
+    }
+  }
+  return spreadAttributes(attributes);
+}
+
+/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
+export function onAttribute(on: string[], own: string): string {
+  const value = [own, ...on].filter(Boolean).join(' ');
+  return value ? ` b-on="${escapeAttribute(value)}"` : '';
 }

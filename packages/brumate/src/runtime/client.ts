@@ -633,9 +633,11 @@ function withTarget(event: Event, element: Element): Event {
  * `b-b` anchor, or from the nearest element around it that has one, which
  * the compiler checks is in the same scope.
  */
-export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
-  const anchor = element.closest('[b-b]')?.getAttribute('b-b');
-  const scope = anchor ? scopes.get(parseId(anchor.split(':')[0]!)) : undefined;
+export function handle(element: Element, entry: string, event?: Event): Promise<unknown> {
+  // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
+  const [ref, owner] = entry.split('@') as [string, string | undefined];
+  const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
+  const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
@@ -1373,14 +1375,42 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
   }
 }
 
-export function attrs(scope: Scope, anchor: number, values: Record<string, unknown>): void {
+/** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
+const spreadNames = new WeakMap<Element, Set<string>>();
+
+export function attrs(
+  scope: Scope,
+  anchor: number,
+  values: Record<string, unknown>,
+  own: string[] = [],
+): void {
   const element = findElement(scope.id, anchor);
   if (element) {
+    // The first update in the browser takes the attributes that are not the element's own, nor
+    // those of brumate, as the ones that the server's spread wrote.
+    if (!spreadNames.has(element)) {
+      spreadNames.set(
+        element,
+        new Set(
+          element
+            .getAttributeNames()
+            .filter((name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name)),
+        ),
+      );
+    }
+    const names = new Set<string>();
     for (const [name, value] of Object.entries(values)) {
       if (name !== 'children' && !/^on[A-Z]/.test(name)) {
+        names.add(name);
         setAttribute(element, name, value);
       }
     }
+    for (const name of spreadNames.get(element) ?? []) {
+      if (!names.has(name)) {
+        setAttribute(element, name, undefined);
+      }
+    }
+    spreadNames.set(element, names);
   }
 }
 

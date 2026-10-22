@@ -135,7 +135,8 @@ export function boot(
 
   // Starts loading the module of a handler and its part, as one step when the module holds them.
   const warm = (ref: string): void => {
-    const [id, name] = ref.split('#') as [string, string];
+    // A handler that a spread passed on names its scope after `@`.
+    const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
     void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
   };
 

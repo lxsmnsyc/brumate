@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let extra = $signal<Record<string, string>>({ title: 'Tip', 'data-kind': 'a' });
+</script>
+
+<p class="target" id="fixed" {...extra}>Text</p>
+<button class="drop" onClick=(() => (extra = { 'data-kind': 'b' }))>Drop</button>
+<button class="back" onClick=(() => (extra = { title: 'Again' }))>Back</button>

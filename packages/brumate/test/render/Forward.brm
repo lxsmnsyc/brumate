@@ -1,0 +1,8 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { label, ...rest } = $props();
+  let clicks = $signal(0);
+</script>
+
+<a class="forward" href="/away" onClick=(() => clicks++) {...rest}>{label} {clicks}</a>

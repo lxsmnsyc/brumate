@@ -758,6 +758,15 @@ export class Emitter {
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
+    // On the server, a spread can pass on handlers, such as the `onClick` of `...rest`.
+    let spreadHandlers: string | undefined;
+    if (
+      this.options.mode === 'server' &&
+      node.attributes.some((attribute) => attribute.kind === 'spread')
+    ) {
+      spreadHandlers = this.unique('on');
+      this.line(`const ${spreadHandlers}: string[] = [];`);
+    }
     this.html(`<${node.tag}`);
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
@@ -802,7 +811,9 @@ export class Emitter {
           break;
         }
         case 'spread':
-          this.code(`$$b.spread(${this.expression(attribute.value)})`);
+          this.code(
+            `$$b.spread(${this.expression(attribute.value)}${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+          );
           break;
         case 'computed':
           this.code(
@@ -827,11 +838,14 @@ export class Emitter {
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
     }
-    if (events.length > 0) {
+    if (spreadHandlers) {
+      // One `b-on` for the handlers of the element and those that its spreads pass on.
+      this.code(`$$b.onAttribute(${spreadHandlers}, ${JSON.stringify(events.join(' '))})`);
+    } else if (events.length > 0) {
       this.html(` b-on="${events.join(' ')}"`);
-      if (prefetch) {
-        this.html(` data-prefetch="${prefetch}"`);
-      }
+    }
+    if (events.length > 0 && prefetch) {
+      this.html(` data-prefetch="${prefetch}"`);
     }
     this.html('>');
     if (VOID_ELEMENTS.has(node.tag)) {

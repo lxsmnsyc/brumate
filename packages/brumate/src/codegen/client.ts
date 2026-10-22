@@ -881,8 +881,15 @@ class ClientGenerator {
       return;
     }
     if (attribute.kind === 'spread') {
+      // The attributes that are the element's own, which the spread does not remove.
+      const own = owner.attributes.flatMap((item) =>
+        item.kind === 'static' || item.kind === 'value' ? [item.name] : [],
+      );
+      if (this.plan.styles.css) {
+        own.push(this.plan.styles.attribute, 'style');
+      }
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${expression()}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
       const value =
