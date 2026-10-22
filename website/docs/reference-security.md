@@ -17,7 +17,7 @@ A request comes from another site when:
 1. Its `Origin` header is `null`, or names a host other than the host of the request. The host of the request is read from its URL, and from the `Host` and `X-Forwarded-Host` headers, so a server behind a proxy matches its public name.
 2. It has no `Origin`, and `Sec-Fetch-Site` is `cross-site` or `same-site`. Older browsers send only this header.
 
-A request with neither header does not come from a page in a browser, so it is allowed. Origins in the `origins` option of the plugin are always allowed:
+A request with neither header does not come from a page in a browser, so it is allowed. The check runs before any middleware, so a refused call never reaches `src/middleware.ts`. Origins in the `origins` option of the plugin are always allowed:
 
 ```ts
 brumate({ origins: ['https://app.example.com'] });

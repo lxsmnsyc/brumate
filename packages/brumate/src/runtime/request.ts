@@ -4,12 +4,55 @@ import type { CookieOptions } from './cookies.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 
 /**
+ * What a request is for. A form post to a server function is a call, and a
+ * form post to a page with `?__action=<id>` is a page.
+ */
+export type RequestKind = 'page' | 'endpoint' | 'call' | 'defer';
+
+/**
+ * Values that middleware hands to the components, server functions and
+ * endpoints of a request, such as the user. An app adds fields to it:
+ *
+ * ```ts
+ * declare module 'brumate/server' {
+ *   interface Locals {
+ *     user?: { id: string; name: string };
+ *   }
+ * }
+ * ```
+ */
+// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type -- Apps add the fields.
+export interface Locals {}
+
+/** The server function that a request calls, with its arguments as they were read. */
+export interface RequestCall {
+  id: string;
+  args: unknown[];
+}
+
+export interface RequestEventOptions {
+  kind?: RequestKind;
+  /**
+   * Keeps work going after the response ends, such as the `waitUntil` of
+   * Cloudflare Workers. Without it, the promise runs on its own and its
+   * error is logged.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+/**
  * A request that the server handles: a server function call, a form post,
  * a page render, or a call of middleware or an endpoint. Its methods read
  * the request and change the response. Get it with `getEvent()`.
  */
 export class RequestEvent {
   readonly request: Request;
+  /** What the request is for. */
+  readonly kind: RequestKind;
+  /** For a call, and a page that a form posted to, the server function and its arguments. */
+  call?: RequestCall;
+  /** Values for this request, which middleware writes and the rest of the request reads. */
+  readonly locals: Locals = {};
   /** Headers to add to the response, such as `cache-control`. */
   readonly headers: Headers = new Headers();
   /** The status that `setStatus` set. */
@@ -18,9 +61,26 @@ export class RequestEvent {
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
+  private readonly keepGoing?: (promise: Promise<unknown>) => void;
 
-  constructor(request: Request) {
+  constructor(request: Request, options: RequestEventOptions = {}) {
     this.request = request;
+    this.kind = options.kind ?? 'page';
+    this.keepGoing = options.waitUntil;
+  }
+
+  /**
+   * Keeps work going after the response ends, such as a log line or
+   * analytics. On a host that stops a function when its response ends, the
+   * server passes the promise to the host, through the `waitUntil` option.
+   * Elsewhere the promise runs on its own, and its error is logged.
+   */
+  waitUntil(promise: Promise<unknown>): void {
+    if (this.keepGoing) {
+      this.keepGoing(promise);
+    } else {
+      promise.catch((error: unknown) => console.error(error));
+    }
   }
 
   /**
@@ -124,6 +184,47 @@ export function getEvent(): RequestEvent {
     );
   }
   return current;
+}
+
+/**
+ * Middleware that runs for every request of the app: pages, endpoints,
+ * server function calls, form posts and the requests for `#defer` bodies.
+ * It answers the request itself, or calls `next` for the answer and returns
+ * it, changed or not. `event.kind` says what the request is for.
+ */
+export type EntryMiddleware = (
+  event: RequestEvent,
+  next: () => Promise<Response>,
+) => Response | Promise<Response>;
+
+/**
+ * Types the middleware of the entry file, `src/middleware.ts`, which the
+ * Vite plugin runs for every request:
+ *
+ * ```ts
+ * export default defineMiddleware(async (event, next) => {
+ *   event.locals.user = await readUser(event);
+ *   return next();
+ * });
+ * ```
+ */
+export function defineMiddleware(middleware: EntryMiddleware): EntryMiddleware {
+  return middleware;
+}
+
+/**
+ * Runs the middleware of the entry, when there is one, around an answer.
+ * `getEvent()` works in the middleware before its first `await`.
+ */
+export function runEntry(
+  middleware: EntryMiddleware | undefined,
+  event: RequestEvent,
+  answer: () => Promise<Response>,
+): Promise<Response> {
+  if (!middleware) {
+    return answer();
+  }
+  return Promise.resolve(withEvent(event, () => middleware(event, answer)));
 }
 
 /**
