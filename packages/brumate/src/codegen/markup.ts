@@ -5,6 +5,7 @@ import type {
   ComponentNode,
   DynamicTagNode,
   ElementNode,
+  EventAttribute,
   Expression,
   ForBlock,
   Markup,
@@ -22,6 +23,7 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
+  mayWait,
   plainValues,
   instanceScope,
   isMemo,
@@ -287,8 +289,10 @@ export class Emitter {
   emitSlots(scope: Scope): void {
     const slots = this.plan.scopes.get(scope)?.slots ?? [];
     if (slots.length > 0) {
+      // A memo that the render did not wait for is in the state as its value when it is ready,
+      // such as one that a `#loading` body rendered in place, and as a promise while it loads.
       const values = slots.map((slot) =>
-        this.isPromise(slot) ? `$$b.wait(${promiseName(slot.name)})` : slot.name,
+        this.isPromise(slot) ? `$$b.stateValue(${promiseName(slot.name)})` : slot.name,
       );
       // The server also passes the names, so an error can say which value cannot be sent.
       const names =
@@ -320,28 +324,79 @@ export class Emitter {
     );
   }
 
-  /** Awaits the async memos of a statement that markup outside `#loading` reads. */
-  private awaitMemos(statement: oxc.Node): void {
+  /**
+   * The memos of a statement that the server waits for where they are
+   * declared. `awaited` is true when every one of them is declared with
+   * `await $memo(…)`. Such statements in a row form a run: every memo of
+   * the run starts, and the render waits for all of them where the run
+   * ends, so independent memos load at the same time. A memo that the
+   * markup makes the page wait for, without the keyword, is awaited on its
+   * own, as the code reads.
+   */
+  private blockingDeclarations(
+    statement: oxc.Node,
+  ): { declarations: Declaration[]; awaited: boolean } | undefined {
     if (this.options.mode !== 'server' || statement.type !== 'VariableDeclaration') {
-      return;
+      return undefined;
     }
+    const declarations: Declaration[] = [];
+    let awaited = true;
     for (const declarator of statement.declarations) {
-      const init = declarator.init;
+      let init = declarator.init;
+      if (init?.type === 'AwaitExpression') {
+        init = init.argument;
+      }
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
-      if (
-        declaration &&
-        isMemo(declaration) &&
-        this.blocking.has(declaration) &&
-        !this.inline.has(declaration)
-      ) {
-        this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      if (!declaration || !isMemo(declaration) || !this.blocking.has(declaration)) {
+        awaited = false;
+        continue;
       }
+      awaited &&= declaration.awaited === true;
+      if (!this.inline.has(declaration)) {
+        declarations.push(declaration);
+      }
+    }
+    return declarations.length === 0 ? undefined : { declarations, awaited };
+  }
+
+  /** Waits for the memos of a run of declarations, and gives each its value. */
+  private awaitRun(run: Declaration[]): void {
+    if (run.length === 1) {
+      const [declaration] = run as [Declaration];
+      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      return;
+    }
+    const names = run.map((declaration) => promiseName(declaration.name));
+    this.line(`if (($$t = $$b.waitAll([${names.join(', ')}])) !== undefined) await $$t;`);
+    for (const declaration of run) {
+      this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
     }
   }
 
   emitStatements(statements: oxc.Node[], scope: Scope): void {
+    let run: Declaration[] = [];
+    const endRun = (): void => {
+      if (run.length > 0) {
+        this.awaitRun(run);
+        run = [];
+      }
+    };
     for (const statement of statements) {
+      const blocking = this.blockingDeclarations(statement);
+      if (blocking?.awaited) {
+        this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        run.push(...blocking.declarations);
+        continue;
+      }
+      endRun();
+      if (blocking) {
+        this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        for (const declaration of blocking.declarations) {
+          this.awaitRun([declaration]);
+        }
+        continue;
+      }
       if (statement.type === 'ExpressionStatement') {
         const expression = statement.expression;
         const name =
@@ -383,8 +438,8 @@ export class Emitter {
         }
       }
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
-      this.awaitMemos(statement);
     }
+    endRun();
   }
 
   private source(node: { start: number; end: number }): string {
@@ -648,9 +703,7 @@ export class Emitter {
         return;
       case 'listener': {
         const anchor = this.anchor(scope, node)!;
-        const events = node.attributes.map((attribute) =>
-          this.eventEntry(attribute.event, attribute.modifiers, attribute.handler),
-        );
+        const events = node.attributes.map((attribute) => this.eventEntry(attribute));
         this.html('<template b-b="');
         this.code(anchor.scope);
         this.html(
@@ -670,10 +723,11 @@ export class Emitter {
     }
   }
 
-  private eventEntry(event: string, modifiers: string[], handler: Expression): string {
+  private eventEntry({ event, modifiers, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
-    const name = [event, ...modifiers].join(':');
-    return `${name}=${this.plan.id}#${this.plan.symbols.get(site)}`;
+    // The modifiers of the attribute name, and those of the wrappers of `brumate/events`.
+    const all = [...new Set([...modifiers, ...(site.modifiers ?? [])])];
+    return `${[event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}`;
   }
 
   private emitRef(
@@ -826,7 +880,7 @@ export class Emitter {
           );
           break;
         case 'event':
-          events.push(this.eventEntry(attribute.event, attribute.modifiers, attribute.handler));
+          events.push(this.eventEntry(attribute));
           break;
         case 'ref':
           if (anchor) {
@@ -1037,9 +1091,7 @@ export class Emitter {
       extra.push(`"b-b": \`\${${anchor.scope}}:${anchor.index}\``);
     }
     const events = node.attributes.flatMap((attribute) =>
-      attribute.kind === 'event'
-        ? [this.eventEntry(attribute.event, attribute.modifiers, attribute.handler)]
-        : [],
+      attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
     );
     if (events.length > 0) {
       extra.push(`"b-on": ${JSON.stringify(events.join(' '))}`);
@@ -1108,13 +1160,40 @@ export class Emitter {
   }
 
   /**
-   * Writes the fallback of `#loading` and renders its body after the rest of
-   * the page, so data that the body waits for does not hold up the page.
+   * Renders a `#loading` block. When the memos that its body reads are
+   * ready, and the body waits for nothing else, the body renders in place,
+   * in the ID space of its boundary. Otherwise the fallback renders, and the
+   * body renders after the rest of the page, so data that the body waits
+   * for does not hold up the page. The memos that the body reads with
+   * `await` are ready here, because the render around the block waited for
+   * them.
    */
   private emitLoading(block: Block & { kind: 'loading' }, scope: Scope): void {
     const boundary = this.unique('boundary');
     const body = this.plan.bodyScopes.get(block.body)!;
+    const memos = awaitedMemos(this.plan, body, this.blocking).filter(
+      (declaration) => !this.inline.has(declaration),
+    );
+    const names = memos.map((declaration) => promiseName(declaration.name));
+    const inPlace = !mayWait(this.plan, block.body.children);
+    if (inPlace && memos.length === 0) {
+      // Nothing can hold the body up, so it always renders in place.
+      this.line('$$ctx.enter();');
+      this.emitBody(block.body);
+      this.line('$$ctx.leave();');
+      return;
+    }
     this.line(`const ${boundary} = $$ctx.boundary();`);
+    if (inPlace) {
+      this.line(`if ($$b.settled([${names.join(', ')}])) {`);
+      this.line(`$$ctx.enter(${boundary});`);
+      for (const declaration of memos) {
+        this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
+      }
+      this.emitBody(block.body);
+      this.line('$$ctx.leave();');
+      this.close('} else {');
+    }
     this.open(scope, block);
     this.html('<!--l');
     this.code(boundary);
@@ -1128,16 +1207,16 @@ export class Emitter {
     this.end(block);
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
-    for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
-      if (this.inline.has(declaration)) {
-        continue;
-      }
+    for (const declaration of memos) {
       this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
     }
     this.emitBody(block.body);
     this.flush();
     this.line('return $$html;');
     this.close('});');
+    if (inPlace) {
+      this.close();
+    }
   }
 
   /**

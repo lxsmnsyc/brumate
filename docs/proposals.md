@@ -11,10 +11,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Taint](#taint)                                                       | Server  | High   | Small  |
-| [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
-| [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
-| [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
@@ -45,7 +41,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
 
 ## Syntax
 
@@ -241,95 +236,6 @@ Cost: about 1 week, most of it in the server's handling of boundaries and the `$
 
 ## Data
 
-### Blocking async memos
-
-`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback, so the state holds the value and needs no later record for it:
-
-```html
-<script>
-  import { $memo, $props } from 'brumate/signals';
-  import { fetchSettings, fetchUser, listTags } from './data.server';
-
-  const { id } = $props<{ id: string }>();
-  // The server waits here. A constant: it does not load again on the client.
-  const settings = await fetchSettings();
-  // A memo that the page waits for. It loads again when `id` changes.
-  const user = $memo(fetchUser(id));
-  // A memo that streams, unless an `await` reads it.
-  const tags = $memo(listTags());
-</script>
-
-<p>{settings.theme}</p>
-#loading {
-  <!-- The page waits for the user. The tags can show the fallback. -->
-  <h1>{(await user).name}</h1>
-  <p>{tags.join(', ')}</p>
-} #else {
-  <p>Loading…</p>
-}
-<button onClick=(() => console.log(tags))>Log tags</button>
-```
-
-The page waits for `user`. Then, if `tags` is ready too, the body renders in place, with no fallback and no swap. If `tags` is still loading, the page shows the fallback, and the body streams in when `tags` arrives.
-
-Where `await` can be, and what it waits for:
-
-- In a script, `await` of a promise or of a call that returns one, as in JavaScript. The script runs only on the server, so the value is a constant that the state sends when client code reads it. This works today, except in the browser.
-- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. It is a memo like any other on the client: it loads again when what it reads changes. Its value is in the first state record, even when only client code reads it.
-- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it:
-  - Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record.
-  - Inside a `#loading` body, the render around the block waits for the memo before it reaches the block: the page, for a block at the top, or the body of a `#loading` around it.
-  - Inside a `#defer` body, the request for the body waits.
-- `$memo(await value)` keeps its meaning: a memo whose value loads. Without an `await` of the memo itself, it streams when only client code or a `#loading` body reads it, as now.
-
-Reads without `await`:
-
-- Inside a `#loading` body, a read of a memo that is still loading shows the fallback, and the body streams in when the memo arrives.
-- Outside every body there is no fallback, so a read still makes the page wait, as now. A lint can suggest `await` there, so the wait shows in the code.
-
-A `#loading` body renders in place when it can:
-
-- After the memos that it reads with `await` settle, the server checks the other memos that the body reads. When all of them are ready, the body renders where the block is, with no fallback, no `<template>` and no swap.
-- It renders in its own ID space, such as `5.0`, as a body that streams does, so its IDs are the same either way. Its scopes are in the first state record.
-- Otherwise the block renders as now: the fallback, and the body later.
-- This also changes the HTML of a `#loading` block today whose data happens to be ready: it renders in place.
-
-In the browser:
-
-- The value of a memo is already settled when the code that reads it runs, so `await name` of a memo compiles to a plain read. An insert shows the last value while the memo loads again, and `$isPending` tells when it does.
-- A render module runs without waiting, so it cannot wait for a promise. Code that the browser renders, such as a branch of an `#if` that changes, cannot `await` anything other than a memo. The compiler reports it in the same file. A component whose script awaits a promise renders only on the server, and throws a clear error when the browser renders it, such as from another file.
-
-Order:
-
-- Awaits of promises in a script run in order, as in JavaScript.
-- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time.
-- A memo that reads another one waits for it by itself. On the server, the read of a memo that is still loading throws `NotReady` with its load, and `wait` computes the memo again once that load settles. So in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` starts when `foo()` settles:
-
-```js
-const $$p_a = $$b.memo(() => foo(), $$ctx);
-const $$p_b = $$b.memo(() => bar($$b.read($$p_a)), $$ctx);
-// The end of the run: every memo of it loads, and the render waits for all of them.
-await Promise.all([$$b.wait($$p_a), $$b.wait($$p_b)]);
-const a = $$b.read($$p_a);
-const b = $$b.read($$p_b);
-```
-
-- Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript.
-- When a memo fails, the memos that read it do not run, and the error comes where the run waits.
-- In the browser nothing changes: `b` reads `a`, so it loads again when `a` changes, as any memo that reads another.
-
-What it needs:
-
-- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await`, as blocking for the render around their read. `blockingMemos` already decides which memos the server awaits where they are declared.
-- The `#loading` emitter awaits the memos that its body reads with `await` before the block, checks whether the other memos are ready, and renders the body in place or streams it.
-- The client codegen removes `await` from reads of memos, and reports `await` of anything else in code that runs in the browser.
-- The type checker types `await name` of a memo as its value.
-- With every promise awaited, a page with no `#loading` or `#defer` body has one state record, and gets the smaller state that assigns only shared references.
-
-Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
-
-Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
-
 ### Serialization entry
 
 The page state and server function calls hold the values that seroval and brumate's plugins can write. A class of the app, such as `Money`, a `Decimal` or a Temporal value, has to be sent as a plain object and made again by hand, and the serializer options are fixed.
@@ -432,38 +338,6 @@ Preferences such as the theme, a dismissed banner or the width of a panel are wr
 Cost: a few days.
 
 ## Runtime
-
-### Errors in client code
-
-A `#try` catches an error while its body renders, on the server or on the client. An error in code that runs later in the browser does not reach it. A handler that throws leaves an unhandled rejection, and an async memo that fails logs the error and becomes `undefined`.
-
-Errors in client code would go to the component that owns the code:
-
-- Event handlers, `$effect` and `$client` callbacks, the functions that they call, and the loads of async memos.
-- The error goes to the nearest `#try` around the scope that the code belongs to, through the parents and the owners of scopes, as contexts are found. That `#try` renders its `#catch` body in the browser, with the error and `reset`.
-- Without a `#try` around it, the core dispatches a `brumate:error` event on `window` with the error and the scope, and logs it. An app can report it from there.
-- A loader option, `onError(error, info)`, receives every error first, such as for a reporting service.
-
-What it needs:
-
-- The client render code of each `#catch` body that client code inside its `#try` can reach. Today a `#catch` body ships only when its `#try` can fail while it renders on the client. Every `#try` with a handler inside would ship its `#catch` body.
-- A `#try` that catches from client code needs a marker in the page even when its body never renders on the client.
-- Async handlers: the error of the promise that a handler returns counts too.
-- `reset()` renders the `#try` body again, as it does now.
-
-Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
-
-### Trusted Types
-
-A site whose Content Security Policy has `require-trusted-types-for 'script'` blocks `innerHTML` with a string, to stop script injection through the DOM. The core puts rendered markup into the page with `innerHTML` in four places, such as a body that an `#if` renders, so it breaks on such a site.
-
-- The core makes a Trusted Types policy named `brumate`, and passes the markup that it inserts through it. The markup is what brumate's own render code made, with every value escaped, so the policy passes it as it is.
-- The policy is made only where the browser has Trusted Types, and only once, when the core first inserts markup.
-- The CSP needs `trusted-types brumate`. The docs on the Content Security Policy show it next to the nonce, and the CSP helper for prerendered pages adds it.
-- Raw HTML that an app inserts, with `raw`, goes through the policy too, so the app stays responsible for what it holds, as now.
-- `#defer` bodies and pages that navigation loads are parsed from a response, which goes through the policy as well.
-
-Cost: a few days.
 
 ### Worker functions
 
@@ -571,27 +445,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 - It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
-### Taint
-
-The page state refuses a value that it cannot send, such as a function. It sends any value that it can, so a user object with a password hash, or a token in a prop, reaches the page if client code reads it.
-
-```ts
-import { taint, taintValue } from 'brumate/server';
-
-const user = await db.user(id);
-taint(user, 'A user record holds the password hash. Send the fields that the page needs.');
-taintValue(process.env.API_TOKEN!, 'The API token stays on the server.');
-```
-
-- `taint(object, message)` marks an object, and `taintValue(value, message)` a string or a bigint, such as a token. A tainted value in the page state, or in the answer of a server function, fails the render with the message and the name of the slot, as a value that cannot be sent does now.
-- The serializer finds them with a plugin whose test reads a `WeakSet` of objects and a `Set` of values. The plugin is active only for a render after `taint` has been called, so pages without taints pay nothing.
-- `opaque(value, replacement)` is the other half: a value that the page should not get, but may hold, such as a client of a third-party service. It wraps seroval's `OpaqueReference`, so the serializer writes `replacement`, or `undefined`, in its place. The server code reads `.value`.
-- Taint is a check, not a guarantee: a copy of a tainted object, such as `{ ...user }`, is not tainted, and the docs say so.
-
-Prior art: React's `experimental_taintObjectReference` and `experimental_taintUniqueValue`, and Qwik's `noSerialize`.
-
-Cost: a few days.
 
 ### Rate limiting
 
@@ -730,7 +583,7 @@ export default defineEnv({
 - `import { env } from 'brumate/env'` gives the values with their types.
 - Public values are written into the client build. Server values never are.
 - The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
+- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses.
 
 Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
 
@@ -861,7 +714,7 @@ What it should show:
 - **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.
 - **Server.** For the request of the page: the render time, each memo load and server function call with its time, and each boundary, from the traces of [observability](#observability) in development.
 - **Navigation.** For the last client navigation: the layouts that stayed, the routes that were replaced, and the IDs that moved.
-- **Errors.** Errors of client code with their scope and component, once [errors in client code](#errors-in-client-code) gives them a place.
+- **Errors.** Errors of client code with their scope and component, from `onError` of the loader.
 - **History.** The writes of the log can be undone one by one, and a session of writes can be exported and replayed, to share how a bug happens.
 
 How it ships:
@@ -992,7 +845,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 
 #### What the compiler needs first
 
-1. Conditional `preventDefault`. Handlers run after their code loads, so `event.preventDefault()` in a handler is too late, and `:prevent` applies to every event of its type. Arrow keys in a list, and Enter in a combobox, need a modifier that the loader applies by key, such as `onKeyDown:prevent(ArrowDown ArrowUp Enter Escape)`, or handlers that run at once when their code is loaded.
+1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
 2. Handlers in spreads. `spread()` and `attrs()` drop `on*` keys, so a part cannot put merged handlers on its element, and a wrapper cannot forward `onClick` through `...rest`. `attrs()` also keeps keys that are gone from the new object.
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
@@ -1206,33 +1059,21 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Compiled messages for i18n
-
-[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) compiles each translated message to its own function, so a page ships only the messages it uses. That matches how brumate ships only the code an event needs.
-
-- Paraglide works with any framework, so this is a guide and a small adapter, not a port: the locale of a request on the server, the same locale on the client, and links that keep it.
-- Messages that the server renders cost no client code. Only messages in client code, such as a handler that shows a toast, ship.
-
-Cost: a few days for the adapter, a guide and an example.
-
 ### Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
-2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
-3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
-4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-6. **Routing in the browser** and **accessible navigation.** Done. Skipping the server for a change of only the query string can come later.
-7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
-8. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-9. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 14.
-10. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-11. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+1. **Environment variables.** They are what middleware hands on, with the request locals, which are done.
+2. **Security**: rate limiting. It is small, and it protects every app. It starts with the in-memory store, and moves to the shared store with caching. Trusted Types are done.
+3. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+4. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
+5. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+6. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 11.
+7. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+8. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+9. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+10. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+11. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+12. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

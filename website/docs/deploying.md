@@ -83,6 +83,7 @@ export default {
 - `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
+- A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
@@ -240,7 +241,7 @@ const hashes = prerendered.scripts.map((hash) => `'${hash}'`).join(' ');
 const policy = `script-src 'self' ${hashes}`;
 ```
 
-Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it.
+Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it. A policy that requires Trusted Types adds `trusted-types brumate`. See [Trusted Types](./reference-security.md#trusted-types).
 
 A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page:
 

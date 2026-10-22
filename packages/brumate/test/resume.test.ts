@@ -167,6 +167,13 @@ function moved(record: string): string {
   return record.replace('<script ', '<script b-offset="5" b-root="5" ');
 }
 
+/** Presses a key on the list of the page, and returns the event. */
+function press(key: string): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  document.querySelector('.list')!.dispatchEvent(event);
+  return event;
+}
+
 function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
@@ -281,6 +288,25 @@ describe('resume', () => {
     expect(text('.outer')).toBe('1');
   });
 
+  it('resumes a #loading body that rendered in place, with the rest of the page', async () => {
+    const server = await import(file('awaited.brm.ts'));
+    const render = renderParts(server.default, {});
+    server.release('first', 'Ada');
+    server.release('second', 'Grace');
+    // The third memo starts once the run of the first two has settled.
+    await new Promise((done) => setTimeout(done, 0));
+    server.release('third', 'Alan');
+    const { html, state } = await render;
+    show(html + state);
+    await startLoader();
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.third')).toBe('Alan 0 users');
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.third')).toBe('Alan 1 users');
+  });
+
   it('scopes styles and updates style variables', async () => {
     await resume('styled', {});
     expect(document.querySelectorAll('style[b-style]')).toHaveLength(1);
@@ -393,6 +419,45 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('runs capture handlers first, keeps events that do not bubble on their target, and listens passively', async () => {
+    const flags = new Map<string, unknown>();
+    const add = document.addEventListener.bind(document);
+    vi.spyOn(document, 'addEventListener').mockImplementation((type, listener, options) => {
+      flags.set(type, options);
+      add(type, listener, options);
+    });
+    await resume('delegation', {});
+    vi.mocked(document.addEventListener).mockRestore();
+    // Only the type with prevent needs a listener that is not passive.
+    expect(flags.get('click')).toEqual({ capture: true, passive: true });
+    expect(flags.get('focus')).toEqual({ capture: true, passive: true });
+    expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner'));
+    // Focus does not bubble, so the focus of the button does not reach the handler around it.
+    document.querySelector('.inner')!.dispatchEvent(new FocusEvent('focus'));
+    document.querySelector('.outer')!.dispatchEvent(new FocusEvent('focus'));
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true });
+    document.querySelector('.wheel')!.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
+  it('prevents only the keys that :prevent names, before the handler loads', async () => {
+    const server = await import(file('preventKeys.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space)=');
+    await resume('preventKeys', {});
+    // The first press is prevented at once, while the handler's code still loads.
+    expect(press('ArrowDown').defaultPrevented).toBe(true);
+    expect(press(' ').defaultPrevented).toBe(true);
+    expect(press('Tab').defaultPrevented).toBe(false);
+    expect(press('a').defaultPrevented).toBe(false);
+    // The handler still runs for every key.
+    await waitFor(() => expect(text('.last')).toBe('a'));
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');
@@ -407,6 +472,69 @@ describe('resume', () => {
     click(document.querySelector('.retry')!);
     await waitFor(() => expect(text('.ok')).toBe('Ready'));
     expect(document.querySelector('.error')).toBeNull();
+  });
+
+  it('renders the #catch body when a handler in the #try body throws, and resets', async () => {
+    await resume('boom', {});
+    expect(text('.count')).toBe('0');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+    expect(document.querySelector('.count')).toBeNull();
+    // The body renders again, with the current values.
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.count')).toBe('0'));
+    expect(document.querySelector('.caught')).toBeNull();
+    // The error of the promise that an async handler returns counts too.
+    click(document.querySelector('.async')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Later'));
+  });
+
+  it('catches the error of a memo that loads, and of an effect, in the #try around them', async () => {
+    await resume('boom', {});
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 0'));
+    click(document.querySelector('.load')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Load 1 failed'));
+    // Once the load works, the body renders again with the current values.
+    const shared = await import(file('boom.brm.client.shared.ts'));
+    shared.heal();
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 1'));
+    expect(text('.count')).toBe('1');
+    click(document.querySelector('.count-up')!);
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
+  });
+
+  it('reports an error outside every #try with an event, and to onError first', async () => {
+    const server = await import(file('boom.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + state);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const reported: unknown[] = [];
+    window.addEventListener('brumate:error', (event) =>
+      seen.push(String((event as CustomEvent<{ error: unknown }>).detail.error)),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      load: (id) => import(modules.get(id)!),
+      onError: (error, info) => reported.push(`${String(error)} in ${info.scope}`),
+    });
+    try {
+      click(document.querySelector('.outside')!);
+      await waitFor(() => expect(seen).toEqual(['Error: Outside']));
+      expect(reported).toEqual(['Error: Outside in 0']);
+      expect(errors).toHaveBeenCalledWith(new Error('Outside'));
+      // An error that a `#try` catches is reported too, without the event.
+      click(document.querySelector('.throw')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+      expect(reported).toHaveLength(2);
+      expect(seen).toHaveLength(1);
+    } finally {
+      errors.mockRestore();
+    }
   });
 
   it('reads the route and the navigation, on the server and after the browser changes them', async () => {
@@ -1150,6 +1278,22 @@ describe('children', () => {
     await waitFor(() => expect(document.querySelector('.inner')).toBeNull());
     click(document.querySelectorAll('.open')[0]!);
     await waitFor(() => expect(text('.inner')).toBe('Hello'));
+  });
+
+  it('inserts markup through the Trusted Types policy of the page, when the browser has one', async () => {
+    const html: string[] = [];
+    const policies: string[] = [];
+    vi.stubGlobal('trustedTypes', {
+      createPolicy(name: string, rules: { createHTML(value: string): string }) {
+        policies.push(name);
+        return { createHTML: (value: string) => (html.push(value), rules.createHTML(value)) };
+      },
+    });
+    await resume('cards', {});
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(text('.inner')).toBe('Hello'));
+    expect(policies).toEqual(['brumate']);
+    expect(html.some((value) => value.includes('Hello'))).toBe(true);
   });
 
   it('keeps the handlers and updates of children that the client renders', async () => {

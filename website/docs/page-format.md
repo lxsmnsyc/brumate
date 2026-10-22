@@ -107,6 +107,8 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 
 If the body fails, the fallback stays.
 
+A body whose values are ready when the block renders, and that renders no component, dynamic tag, template or prop, renders in place: no markers, no `<template>` and no swap script. Its scopes get the IDs of the boundary, such as `0.0`, as they would in a stream, and they are in the page state.
+
 The body renders with the values of the server. If a value changed in the browser before the body arrived, the core runs the updates of the body's scopes once, so the body shows the current values. Effects do not run.
 
 A `#loading` body that sets the head after the first render also sends `<template b-h="<id>">` with its head markup. `$bH(id, title)` moves it into the head and sets the title.

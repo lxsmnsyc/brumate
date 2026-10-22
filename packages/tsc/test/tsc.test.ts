@@ -19,6 +19,8 @@ it('reports type errors in .brm files at their place in the file', () => {
     "App.brm(10,1): error TS2345: Argument of type '{ label: string; }' is not assignable to parameter of type '{ label: string; count: number; }'.",
     // An expression in the markup.
     "App.brm(11,10): error TS2551: Property 'toFixed' does not exist on type 'string'. Did you mean 'fixed'?",
+    // A key of `prevent` that is not a key name.
+    "Keys.brm(9,56): error TS2345: Argument of type '\"ArowUp\"' is not assignable to parameter of type 'KeyName'.",
     // Values that the page state sends to the client, which it cannot serialize.
     "Sent.brm(18,7): error TS2345: Argument of type 'Point' is not assignable to parameter of type 'Point & { x: number; move: { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }; }'.",
     "Sent.brm(19,7): error TS2345: Argument of type '(value: number) => string' is not assignable to parameter of type '((value: number) => string) & { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }'.",

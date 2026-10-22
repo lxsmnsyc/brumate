@@ -463,6 +463,13 @@ class Parser {
           this.fail(`Unknown event modifier ":${modifier}"`, start);
         }
       }
+      // A component gets the handler as a prop, and nothing would apply the modifiers.
+      if (owner === 'component' && modifiers.length > 0) {
+        this.fail(
+          `Modifiers apply to elements. Put ":${modifiers[0]}" on the element that the component renders`,
+          start,
+        );
+      }
       if (this.peek() !== '=') {
         this.fail('Expected an event handler', this.pos);
       }

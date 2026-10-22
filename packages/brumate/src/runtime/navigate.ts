@@ -1,6 +1,7 @@
 // Client navigation. The loader imports it on the first navigation, so pages
 // that never navigate do not load it.
 
+import { trustedScript } from './trusted.ts';
 export interface Visit {
   url: string;
   /** For a form that posts to a server function. */
@@ -354,9 +355,11 @@ function shiftIds(root: Node, shift: Shift): void {
       element.setAttribute('b-root', shift.root);
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
       // The scripts that swap in `#loading` bodies and their head name the boundary.
-      element.textContent = element.textContent!.replace(
-        /\$b([SH])\(("?)([\d.]+)/g,
-        (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
+      element.textContent = trustedScript(
+        element.textContent!.replace(
+          /\$b([SH])\(("?)([\d.]+)/g,
+          (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
+        ),
       );
     }
     for (const child of element.tagName === 'TEMPLATE'
@@ -414,7 +417,7 @@ function runnable(script: HTMLScriptElement): HTMLScriptElement {
     // A DOM without the property, such as in tests, reads the attribute.
     copy.setAttribute('nonce', copy.nonce);
   }
-  copy.textContent = script.textContent;
+  copy.textContent = trustedScript(script.textContent ?? '');
   return copy;
 }
 
