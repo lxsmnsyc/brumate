@@ -1,4 +1,4 @@
-import { crossSerializeStream, fromJSON } from 'seroval';
+import { crossSerialize, crossSerializeStream, fromJSON } from 'seroval';
 import type { SerovalJSON } from 'seroval';
 import {
   VOID_ELEMENTS,
@@ -849,6 +849,11 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
  * Serializes the page state as seroval cross-reference code, one record at
  * a time. The first record holds the state, and each later record settles a
  * promise in it. Records that share `refs` can refer to each other's values.
+ *
+ * With `last`, no later record of the render reads this one, so a state
+ * without promises is one record that assigns only the references that it
+ * uses twice. That record is smaller, and faster to write. A state with a
+ * promise makes `crossSerialize` throw, and then it streams as usual.
  */
 function serializeState(
   state: PageState,
@@ -857,8 +862,29 @@ function serializeState(
   onError: (error: unknown) => void,
   onDone: () => void,
   sources?: Map<number, ItemSource>,
+  last = false,
 ): void {
-  crossSerializeStream(packState(state, sources), {
+  const packed = packState(state, sources);
+  if (last) {
+    let code: string | undefined;
+    try {
+      code = crossSerialize(packed, {
+        plugins,
+        disabledFeatures,
+        refs,
+        assignSharedRefsOnly: true,
+      });
+    } catch {
+      // The stream gives the same error for a value that cannot be sent, with the same references.
+      refs.clear();
+    }
+    if (code !== undefined) {
+      onRecord(code, true);
+      onDone();
+      return;
+    }
+  }
+  crossSerializeStream(packed, {
     plugins,
     disabledFeatures,
     refs,
@@ -1091,11 +1117,14 @@ export async function render<P>(
       queue?.close();
     }
   };
+  // The page state is the only record when no `#loading` body is pending.
+  let boundaries = 0;
   const serialize = (
     { state, sources }: Context,
     onScopes: (script: string) => void,
     route?: string,
     onError: (error: unknown) => void = (error) => pending().fail(error),
+    last = false,
   ): void => {
     open++;
     serializeState(
@@ -1114,10 +1143,12 @@ export async function render<P>(
       onError,
       finish,
       sources,
+      last,
     );
   };
 
   ctx.watch((boundary) => {
+    boundaries++;
     open++;
     boundary.render.then(
       (result) => {
@@ -1165,6 +1196,7 @@ export async function render<P>(
     (error) => {
       failure = error;
     },
+    boundaries === 0,
   );
   if (failure !== undefined) {
     throw unsendable(failure, ctx);

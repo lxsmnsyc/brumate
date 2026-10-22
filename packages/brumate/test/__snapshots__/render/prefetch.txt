@@ -62,4 +62,4 @@ export default function Prefetch($$props: Record<string, never>): string {
 <button class="none" b-b="0:1" b-on="click=Prefetch_okfwof#h3" data-prefetch="none">-</button>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Prefetch_okfwof",s:$R[2]=[0]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Prefetch_okfwof",s:[0]}})))</script>

@@ -29,7 +29,10 @@ The prototypes for these are in a scratch profile run. Gains are renders per CPU
 
 Done in brumate with seroval 1.7.0, which has [seroval#249](https://github.com/lxsmnsyc/seroval/pull/249). Every plugin in `src/runtime/serial.ts` sets `skipPlainObjects`, and raw HTML is a class instance, so seroval tests no plugin on a plain object.
 
-`assignSharedRefsOnly` works only with `crossSerialize`, not `crossSerializeStream`. brumate could use it for a page with nothing pending, where no later record refers back. That record would be about 21% smaller.
+`assignSharedRefsOnly` works only with `crossSerialize`, not `crossSerializeStream`. Done in brumate for a page with no pending `#loading` body: its state is serialized with `crossSerialize` and `assignSharedRefsOnly`, because no later record refers back. A state with a promise makes `crossSerialize` throw, and then it streams as before. On the benchmark it gave:
+
+- Todos: 3 todos went from about 102k to 121k renders per second, and 100 todos from about 9.7k to 11.0k. The 100-todo page went from 2.3 kB to 2.0 kB gzip, and each extra todo from 18 B to 15 B gzip.
+- Dashboard: the page went from 6.7 kB to 6.1 kB gzip. Renders per second stayed about the same.
 
 ### Ideas
 
