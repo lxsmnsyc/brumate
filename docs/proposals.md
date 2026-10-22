@@ -1057,7 +1057,7 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
 
 - **Children read the contexts of the component they are passed to.** Done: the compiler renders `children` where the component inserts them, as layout routes render theirs. Their scopes keep the caller's for their values, and find contexts from the insert, which the page state sends as `t`.
 - **Without a provider, `$getContext` gives the default value of the context,** on the server and in the browser, so a part on its own works. A default of `null` lets a part tell that it is alone.
-- **A `#template` prop cannot render in the browser.** A part that calls it in markup that changes in the browser, such as a list item whose selection changes, fails the render, because the template is a function of the server. Render props need the template sent to the browser as a reference, as handlers are, with a render module that the browser can call.
+- **A `#template` prop renders in the browser.** Done: the server sends it as a reference, `Page#t3`, to an export with its code, and the core calls it at once. The code starts to load when the page state is read, and updates wait for it.
 - **An `as` component gets the handlers of the part and of the caller,** once handlers pass through spreads and dynamic tags (#31). ARIA attributes pass as attributes. Two gaps are left: a `class` of a spread and the `class` of the element are written as two attributes, and the browser keeps the first, and focus through `as` was not checked, since it needs a ref to the element of another component.
 
 #### Plan

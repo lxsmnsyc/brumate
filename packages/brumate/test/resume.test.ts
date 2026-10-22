@@ -496,10 +496,26 @@ describe('resume', () => {
       await waitFor(() => expect(text('.alone')).toBe('Alone 1'));
     });
 
-    it.fails('renders a #template prop again when the state it was given changes', async () => {
+    it('renders a #template prop with the values of the component that wrote it', async () => {
+      await resume('spikeTemplateState', {});
+      expect(text('.option:nth-child(1) .choice')).toBe('Pet Cat');
+      click(document.querySelectorAll('.option')[0]!);
+      await waitFor(() => expect(text('.option:nth-child(1) .choice')).toBe('Pet Cat *'));
+      // The markup of the template updates with the values of the page too.
+      click(document.querySelector('.mark')!);
+      await waitFor(() => expect(text('.option:nth-child(1) .choice')).toBe('Pet Cat +'));
+    });
+
+    it('renders a #template prop again when the state it was given changes', async () => {
       const server = await import(file('spikeTemplate.brm.ts'));
-      // The list calls the template in markup that changes in the browser, which then needs the template.
-      await expect(renderParts(server.default, {})).resolves.toBeDefined();
+      const { html } = await renderParts(server.default, {});
+      expect(html).toContain('<b class="choice">');
+      await resume('spikeTemplate', {});
+      expect(text('.option:nth-child(2) .choice')).toBe('Dog');
+      // The list calls the template of the page again, in the browser, with the new selection.
+      click(document.querySelectorAll('.option')[1]!);
+      await waitFor(() => expect(text('.option:nth-child(2) .choice')).toBe('Dog (picked)'));
+      expect(text('.option:nth-child(1) .choice')).toBe('Cat');
     });
 
     it('gives the element of an as component the handlers of the part and of the caller', async () => {

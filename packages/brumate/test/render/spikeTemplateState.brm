@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import SpikeListBox from './SpikeListBox.brm';
+  import SpikeSelect from './SpikeSelect.brm';
+
+  let mark = $signal('*');
+  const prefix = 'Pet';
+</script>
+
+<button class="mark" onClick=(() => (mark = '+'))>Mark</button>
+<SpikeSelect>
+  <SpikeListBox items=(['Cat', 'Dog']) item=option />
+</SpikeSelect>
+
+#template option({ option, selected }: { option: string; selected: boolean }) {
+  <b class="choice">{prefix} {option}{selected ? ` ${mark}` : ''}</b>
+}

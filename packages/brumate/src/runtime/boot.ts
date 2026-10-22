@@ -137,7 +137,7 @@ export function boot(
   const warm = (ref: string): void => {
     // A handler that a spread passed on names its scope after `@`.
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-    void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
+    void options.load(id)?.then((module) => module.load?.(/^[hct]\d/.test(name) ? name : 'update'));
   };
 
   const run = (element: Element, ref: string, event?: Event): void => {

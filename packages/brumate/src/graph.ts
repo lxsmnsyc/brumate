@@ -92,6 +92,11 @@ export function resetUsed(model: SemanticModel, block: Block, reached: Set<Site>
 }
 
 /** True if a site's expression is a function, such as a function passed as a prop. */
+/** True for a site whose value is a `#template`, such as the prop `item=option`. */
+export function isTemplateValue(site: Site): boolean {
+  return site.node.type === 'Identifier' && lookup(site.scope, site.node.name)?.kind === 'template';
+}
+
 export function isFunctionValue(site: Site): boolean {
   let node: oxc.Node = site.node;
   // A wrapper of `brumate/events`, such as `prevent(save)`, returns the handler that it wraps.
@@ -114,7 +119,8 @@ export function isFunctionValue(site: Site): boolean {
   }
   if (node.type === 'Identifier') {
     const kind = lookup(site.scope, node.name)?.kind;
-    return kind === 'function' || kind === 'server-function';
+    // A template passed as a prop renders in the browser too, such as in a list that changes.
+    return kind === 'function' || kind === 'server-function' || kind === 'template';
   }
   return false;
 }

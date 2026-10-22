@@ -54,7 +54,7 @@ export type Part = Record<string, unknown>;
 
 /** The part that holds an export: `h<n>` and `c<n>` have their own, the rest are in `update`. */
 function partOf(name: string): string {
-  return /^[hc]\d/.test(name) ? name : 'update';
+  return /^[hct]\d/.test(name) ? name : 'update';
 }
 
 /** The instance of a scope in the page. */
@@ -553,7 +553,9 @@ export function init(value: CoreOptions): void {
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof FunctionReference) {
-    return (...args: unknown[]) => call(value.ref, scopes.get(value.scope), args);
+    return isTemplate(value.ref)
+      ? templateReference(value.ref, scopes.get(value.scope))
+      : (...args: unknown[]) => call(value.ref, scopes.get(value.scope), args);
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
@@ -611,6 +613,28 @@ async function resolve(ref: string): Promise<Handler> {
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
   return (await resolve(ref))(scope, ...args);
+}
+
+/** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
+function isTemplate(ref: string): boolean {
+  return /#t\d/.test(ref);
+}
+
+/** The code of templates that is still loading. Updates wait for it, since a render cannot. */
+const loadingTemplates = new Set<Promise<unknown>>();
+
+/**
+ * A `#template` of another component, which renders at once, as markup does.
+ * Its code starts to load when the page state is read, and updates wait for it.
+ */
+function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
+  let render: Handler | undefined;
+  const code = resolve(ref).then((handler) => {
+    render = handler;
+    loadingTemplates.delete(code);
+  });
+  loadingTemplates.add(code);
+  return (...args) => (render ? render(scope, ...args) : '');
 }
 
 // The handler of the previous event, once it has started.
@@ -982,14 +1006,17 @@ function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
-  if (module && updates) {
+  if (module && updates && loadingTemplates.size === 0) {
     run(module, updates, scope, slot);
     return;
   }
-  // The first write to a component loads its update code. Later writes wait in order.
+  // The first write to a component loads its update code. Later writes wait in order, and
+  // for the templates that the updates can render.
   void loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
-      run(loaded, await loadPart(loaded, 'update'), scope, slot);
+      const code = await loadPart(loaded, 'update');
+      await Promise.all(loadingTemplates);
+      run(loaded, code, scope, slot);
     }
   });
 }
@@ -2196,7 +2223,8 @@ export function addStyle(id: string, css: string): string {
 
 /** A function prop rendered on the client calls the parent's exported handler. */
 export function handlerProp(value: unknown, ref: string, scope: Scope | number): unknown {
-  if (typeof value !== 'function') {
+  // A template renders at once, and the client has its code already.
+  if (typeof value !== 'function' || isTemplate(ref)) {
     return value;
   }
   const instance = resolveScope(scope);

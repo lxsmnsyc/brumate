@@ -1,6 +1,6 @@
 import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
-import { isFunctionValue, resetUsed } from './graph.ts';
+import { isFunctionValue, isTemplateValue, resetUsed } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
 import type { StyleOutput } from './css.ts';
@@ -240,7 +240,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
 
   const symbols = new Map<Site, string>();
   for (const site of model.sites) {
-    if (site.kind === 'event' || (site.kind === 'prop' && isFunctionValue(site))) {
+    if (site.kind === 'prop' && isTemplateValue(site)) {
+      // A template that a component renders in the browser, which the core calls at once.
+      symbols.set(site, `t${site.id}`);
+    } else if (site.kind === 'event' || (site.kind === 'prop' && isFunctionValue(site))) {
       symbols.set(site, `h${site.id}`);
     } else if (site.kind === 'client') {
       symbols.set(site, `c${site.id}`);
