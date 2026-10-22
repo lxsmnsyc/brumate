@@ -1,0 +1,32 @@
+<script module>
+  export function label(value: number): Promise<string> {
+    return Promise.resolve(`#${value}`);
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(3);
+  let items = $signal(['a', 'b']);
+  // Plain values on the server: each gives a primitive and calls nothing.
+  const double = $memo(count * 2);
+  const quad = $memo(double * 2);
+  const parity = $memo(count % 2 ? 'odd' : 'even');
+  const size = $memo(items.length * 1);
+  const text = $memo(`${quad} and ${size}`);
+  // Memos on the server: one calls a function, and one reads a memo that does.
+  const named = $memo(label(count));
+  const both = $memo(`${named} ${quad}`);
+  // Read only in #loading, and reads a property, so it stays lazy.
+  const late = $memo(items.length + double);
+</script>
+
+<button onClick=(() => count++)>{count}</button>
+<p class="plain">{double} {quad} {parity} {size} {text}</p>
+<p class="memo">{named} {both}</p> <p class="literals">{`<i>`} {1.5} {10n} {true} {-1}</p>
+#loading {
+  <p class="late">{late}</p>
+} #else {
+  <p>Loading</p>
+}

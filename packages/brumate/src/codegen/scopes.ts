@@ -1,4 +1,6 @@
-import type { Declaration, Scope } from '../model.ts';
+import type { Declaration, Scope, Site } from '../model.ts';
+import { children } from '../oxc.ts';
+import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
 
 /** Returns the nearest scope, from `scope` outwards, that gets an ID at render time. */
@@ -109,4 +111,123 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
     }
   }
   return [...result];
+}
+
+/** Expressions that run code the compiler cannot see, or that a memo should not hold. */
+const UNSAFE_NODES = new Set([
+  'CallExpression',
+  'NewExpression',
+  'TaggedTemplateExpression',
+  'AwaitExpression',
+  'YieldExpression',
+  'ImportExpression',
+  'AssignmentExpression',
+  'UpdateExpression',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+  'ClassExpression',
+]);
+
+/**
+ * True if an expression always gives a primitive, so it is never a promise
+ * or an async iterable. A name is a primitive when `plain` says that it reads
+ * a declaration that holds one.
+ */
+export function isPrimitive(
+  node: oxc.Node,
+  plain: (name: oxc.Node) => boolean = () => false,
+): boolean {
+  switch (node.type) {
+    case 'Identifier':
+      return plain(node);
+    case 'Literal':
+      return !('regex' in node && node.regex);
+    case 'TemplateLiteral':
+    case 'BinaryExpression':
+    case 'UnaryExpression':
+      return true;
+    case 'LogicalExpression':
+      return isPrimitive(node.left, plain) && isPrimitive(node.right, plain);
+    case 'ConditionalExpression':
+      return isPrimitive(node.consequent, plain) && isPrimitive(node.alternate, plain);
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+      return isPrimitive(node.expression, plain);
+    default:
+      return false;
+  }
+}
+
+/** True if an expression calls no code and, unless `members`, reads no property. */
+function isSafe(node: oxc.Node, members: boolean): boolean {
+  if (UNSAFE_NODES.has(node.type)) {
+    return false;
+  }
+  if (!members && (node.type === 'MemberExpression' || node.type === 'ChainExpression')) {
+    return false;
+  }
+  for (const [, child] of children(node)) {
+    if (!isSafe(child, members)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** True if a name in the code of a site reads a memo that the server computes as a plain value. */
+export function readsInline(
+  site: Site | undefined,
+  name: oxc.Node,
+  inline: (declaration: Declaration) => boolean,
+): boolean {
+  return (
+    site?.reads.some(
+      (read) =>
+        read.range.start === name.start &&
+        read.range.end === name.end &&
+        inline(read.declaration),
+    ) ?? false
+  );
+}
+
+/**
+ * Returns the memos that the server computes as plain values where they are
+ * declared. Such a memo gives a primitive and calls nothing, so it is never a
+ * promise and needs no render context. Each memo that it reads is one too, so
+ * no read waits for a load. A memo that the server would not compute where it
+ * is declared reads no property, because computing it early must not throw.
+ */
+export function inlineMemos(plan: Plan, blocking: Set<Declaration>): Set<Declaration> {
+  const result = new Set<Declaration>();
+  const visiting = new Set<Declaration>();
+  const check = (declaration: Declaration): boolean => {
+    if (result.has(declaration)) {
+      return true;
+    }
+    const site = declaration.site;
+    if (
+      declaration.kind !== 'memo' ||
+      declaration.writable ||
+      declaration.optimistic ||
+      !site ||
+      visiting.has(declaration)
+    ) {
+      return false;
+    }
+    visiting.add(declaration);
+    const inline =
+      isPrimitive(site.node, (name) => readsInline(site, name, check)) &&
+      isSafe(site.node, blocking.has(declaration)) &&
+      site.reads.every((read) => !isMemo(read.declaration) || check(read.declaration));
+    visiting.delete(declaration);
+    if (inline) {
+      result.add(declaration);
+    }
+    return inline;
+  };
+  for (const declaration of plan.graph.model.declarations) {
+    check(declaration);
+  }
+  return result;
 }
