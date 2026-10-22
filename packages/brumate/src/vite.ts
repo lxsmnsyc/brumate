@@ -746,7 +746,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const answer: Response = await handle(webRequest);
+      const answer: Response = await handle(webRequest, {
+        address: request.socket.remoteAddress,
+      });
       response.statusCode = answer.status;
       // Each cookie stays apart, as `forEach` would set only the last one.
       for (const [name, value] of Object.entries(toNodeHeaders(answer.headers))) {

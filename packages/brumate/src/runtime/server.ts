@@ -89,6 +89,15 @@ export type {
   RequestKind,
 } from './request.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
+export { RateLimitError, clientAddress, configureRateLimit, rateLimit } from './rate-limit.ts';
+export type {
+  RateLimit,
+  RateLimitConfig,
+  RateLimitMiddleware,
+  RateLimitOptions,
+  RateLimitStore,
+  Window,
+} from './rate-limit.ts';
 export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
@@ -1457,6 +1466,13 @@ export interface RenderOptions {
    */
   nonce?: string;
   /**
+   * The address of the client as the server saw it, such as the remote
+   * address of the socket, for `clientAddress` and rate limits.
+   */
+  address?: string;
+  /** True while the build prerenders the page. Rate limits do not count then. */
+  prerender?: boolean;
+  /**
    * Renders only the body of this `#defer` block, for the request that the
    * browser sends when the block's trigger fires. Pass the `base` of the
    * page too, so the IDs of the page come out the same. The body comes from
@@ -1498,6 +1514,8 @@ export async function render<P>(
       ? new RequestEvent(options.request, {
           kind: options.defer ? 'defer' : 'page',
           waitUntil: options.waitUntil,
+          address: options.address,
+          prerender: options.prerender,
         })
       : undefined);
   ctx.event = event;
@@ -2042,6 +2060,10 @@ export interface RequestOptions {
   fileMiddleware?: Record<string, EntryMiddleware>;
   /** Keeps work going after the response ends, for `event.waitUntil`. See `RenderOptions`. */
   waitUntil?: (promise: Promise<unknown>) => void;
+  /** The address of the client as the server saw it, for `clientAddress` and rate limits. */
+  address?: string;
+  /** True while the build prerenders the pages. Rate limits do not count then. */
+  prerender?: boolean;
 }
 
 /**
@@ -2105,7 +2127,12 @@ export async function handleRequest(
   if (!fn) {
     return unknownAnswer(id);
   }
-  const event = new RequestEvent(request, { kind: 'call', waitUntil: options.waitUntil });
+  const event = new RequestEvent(request, {
+    kind: 'call',
+    waitUntil: options.waitUntil,
+    address: options.address,
+    prerender: options.prerender,
+  });
   // A call with files sends its arguments as form data, with this header.
   const form = isFormPost(request) && !request.headers.has('x-brumate-args');
   // A form without scripts posts to the function, and wants a page back, not the result. The
@@ -2467,7 +2494,11 @@ export async function handleRoute(
     new RequestEvent(request, {
       kind: await requestKind(request, match),
       waitUntil: options.waitUntil,
+      address: options.address,
+      prerender: options.prerender,
     });
+  // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
+  event.route = match?.route;
   const answer = await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
 }

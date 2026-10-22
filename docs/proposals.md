@@ -11,7 +11,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
@@ -430,46 +429,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 - It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
-### Rate limiting
-
-Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
-
-```ts
-import { clientAddress, rateLimit } from 'brumate/server';
-import { session } from './session';
-
-export const signIn = rateLimit(
-  async (name: string, password: string) => {
-    'use server';
-    // …
-  },
-  // A user who is signed in counts by name, anyone else by address.
-  { max: 5, window: '1m', key: (event) => session.get(event)?.name ?? clientAddress(event) },
-);
-```
-
-```ts
-// src/routes/api/_middleware.ts
-export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
-```
-
-- `rateLimit(fn, options)` wraps a server function. `max` calls in `window` for each key, and then the call answers 429 with `Retry-After`, without running the function.
-- The key defaults to the address of the client and the ID of the function, so each function has its own count. A key from the session limits a user instead, wherever they sign in from.
-- `clientAddress(event)`, a new helper, reads the address from the server, or from `X-Forwarded-For` behind proxies that the app names as trusted, by CIDR. It reads that header from the right and skips the trusted proxies, since a client can write anything at its left. IPv6 addresses count by their `/64`, since one client often holds a whole subnet.
-- When no address can be read, the limit warns once and counts every such caller in one shared bucket, rather than not limiting at all.
-- `rateLimit.middleware(options)` limits every request under a folder of routes, endpoints and pages included.
-- In the browser, the call rejects with a `RateLimitError`, a `ServerError` with status 429 and the time to wait, so a form can show it. A form posted without scripts gets the message, as for other errors.
-- The calls of [two-way realtime](#two-way-realtime) count too, per connection and per key.
-- The counters live in a store with the same interface as the cache of [caching pages and data](#caching-pages-and-data): in memory by default, which counts per process, and Redis or a platform store for an app with more than one server.
-- The algorithm is a sliding window, which does not let a burst through at the edge of a fixed window. It keeps two counters per key, this window and the last, so a store needs one atomic increment and no list of times.
-- A store that has no atomic increment, such as a database table, uses a compare-and-set on the counter and tries again when another server wrote first.
-- The limit is off in development by default, so reloading a page while working does not lock anyone out.
-- `rateLimit.strict`, 3 calls in 10 seconds, is a preset for functions that guess at secrets, such as a sign-in or a code check.
-
-Prior art: Better Auth limits its own routes this way. It keys by the address and the path, reads the address behind trusted proxies, gives sign-in and sign-up 3 requests in 10 seconds and the rest 100, answers 429 with `X-Retry-After`, keeps its counts in memory, the database or a secondary store such as Redis, and is on only in production. It counts from the last request rather than a sliding window, so a steady stream of requests never resets.
-
-Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
 
 ### Skew protection
 
@@ -1007,15 +966,14 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Security**: rate limiting. It is small, and it protects every app. It starts with the in-memory store, and moves to the shared store with caching. Trusted Types are done.
-2. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-3. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-4. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 9.
-5. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-6. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-7. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-8. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-9. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-10. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+1. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+2. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 8.
+4. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+5. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+6. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+7. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+8. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+9. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

@@ -38,6 +38,14 @@ export interface RequestEventOptions {
    * error is logged.
    */
   waitUntil?: (promise: Promise<unknown>) => void;
+  /**
+   * The address of the client as the server saw it, such as the remote
+   * address of the socket. `clientAddress` reads it, and looks past the
+   * trusted proxies in `X-Forwarded-For` when it is one of them.
+   */
+  address?: string;
+  /** True while the build prerenders the page. Rate limits do not count then. */
+  prerender?: boolean;
 }
 
 /**
@@ -53,6 +61,16 @@ export class RequestEvent {
   call?: RequestCall;
   /** Values for this request, which middleware writes and the rest of the request reads. */
   readonly locals: Locals = {};
+  /** The address of the client as the server saw it, when the server passed it. */
+  readonly address?: string;
+  /** True while the build prerenders the page. */
+  readonly prerender: boolean;
+  /**
+   * The pattern of the route files that matched the path, such as
+   * `/todos/[id]`. `handleRoute` sets it. Undefined for a path that no route
+   * matches.
+   */
+  route?: string;
   /** Headers to add to the response, such as `cache-control`. */
   readonly headers: Headers = new Headers();
   /** The status that `setStatus` set. */
@@ -75,6 +93,8 @@ export class RequestEvent {
     this.request = request;
     this.kind = options.kind ?? 'page';
     this.keepGoing = options.waitUntil;
+    this.address = options.address;
+    this.prerender = options.prerender ?? false;
     const outer = request.signal;
     if (outer?.aborted) {
       this.controller.abort(outer.reason);
