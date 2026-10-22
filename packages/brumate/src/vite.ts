@@ -49,7 +49,7 @@ import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
-import type { Budget, ReportChunk } from './report.ts';
+import type { Budget, ReportChunk, ReportEvent } from './report.ts';
 import type { PrerenderOptions } from './prerender.ts';
 import { routeFiles, routeModule, routeTypes } from './routes.ts';
 import type { RouteFiles } from './routes.ts';
@@ -998,18 +998,34 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             isEntry: item.isEntry,
             imports: item.imports,
             moduleIds: item.moduleIds,
+            modules: Object.fromEntries(
+              Object.entries(item.modules).map(([id, module]) => [id, module.renderedLength]),
+            ),
           });
         }
       }
       const list = [...files.values()];
       const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+      // Each handler of a component, by the label that `brumate inspect` shows.
+      const events: ReportEvent[] = [];
+      for (const [file, { source, result }] of compiled) {
+        for (const [site, symbol] of result.plan.symbols) {
+          const loads = result.loaders[symbol];
+          if (loads) {
+            const { line, column } = getLocation(source, site.range.start);
+            events.push({ file, label: `${site.label} (${line}:${column})`, parts: loads });
+          }
+        }
+      }
       const measured = buildReport({
         chunks,
         sources: new Map(list.map((file, index) => [file, contents[index]!])),
         routes: existsSync(routesDirectory())
           ? { tree: currentRoutes(), resolve: (file) => `${routesDirectory()}/${file}` }
           : undefined,
+        events,
         budget: options.budget,
+        relative: nameOf,
       });
       if (options.report) {
         this.info(`\n${formatBuildReport(measured, nameOf)}`);

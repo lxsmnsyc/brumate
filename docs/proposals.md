@@ -31,7 +31,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
 | [Early hints](#early-hints)                                           | Runtime | Medium | Small  |
 | [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
-| [Budgets for one event](#budgets-for-one-event)                       | Tooling | Medium | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
@@ -622,18 +621,6 @@ An exploration, not a plan yet. A page in the dev server that lists the componen
 
 Questions to answer first: whether props from controls are enough without story files, how to show components that need a context or a route, and whether it belongs in the dev server or in its own command.
 
-### Budgets for one event
-
-`budget` fails the build when the loader, or the most that a route loads, goes over a size. A component can still grow one handler past what a first click should load, under the route's total.
-
-- `budget.event` limits what one event loads: the part of its handler and the updates it runs, with what they import.
-- `budget.component` limits the client code of one component.
-- The error names the component, the handler and the imports that make it large, from the data that `brumate inspect` shows.
-
-Cost: a few days.
-
-## Build
-
 ### Embedding in other sites
 
 A brumate component cannot go into a page that brumate did not render, such as a widget on a marketing site or a component in an app of another framework.
@@ -952,7 +939,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-3. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+3. **Small conveniences**: testing routes, batched reads and titles in markup. Budgets for one event are done. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
 4. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
 5. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
