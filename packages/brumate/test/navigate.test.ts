@@ -76,11 +76,11 @@ describe('builds', () => {
     const assign = vi.fn<(url: string) => void>();
     const { href, origin } = window.location;
     vi.stubGlobal('location', { href, origin, assign });
-    const page = (build: string): string =>
+    const built = (build: string): string =>
       `<!doctype html><html><body><p>new</p>${pageState(1).replace('b-route="root"', `b-route="root" b-build="${build}"`)}</body></html>`;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(page('b2'), { headers: { 'content-type': 'text/html' } })),
+      vi.fn(async () => new Response(built('b2'), { headers: { 'content-type': 'text/html' } })),
     );
     await navigate({
       url: '/next',
