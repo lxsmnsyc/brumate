@@ -1443,9 +1443,12 @@ describe('$optimistic', () => {
  * Resumes a page whose child reads a promise that its parent passes, and
  * loads the next one. The new promise settles after 50 ms, so the pending
  * state can come and go between two polls of `waitFor`. An observer records
- * it when it shows, with the name that shows then.
+ * it when it shows. Returns the name that showed while it was pending, and
+ * whether it still shows at the end.
  */
-async function loadNextUser(name: string): Promise<void> {
+async function loadNextUser(
+  name: string,
+): Promise<{ whilePending?: string; pendingAfter: boolean }> {
   const server = await import(file(`${name}.brm.ts`));
   const { html, state, pending } = await renderParts(server.default, {});
   show(html + state);
@@ -1469,18 +1472,23 @@ async function loadNextUser(name: string): Promise<void> {
   } finally {
     observer.disconnect();
   }
-  // The child showed that it loads, with the old value, and then the new value without it.
-  expect(whilePending).toBe('User 1');
-  expect(document.querySelector('.pending')).toBeNull();
+  return { whilePending, pendingAfter: document.querySelector('.pending') !== null };
 }
 
 describe('a promise passed as a prop', () => {
+  // The child shows that it loads, with the old value, and then the new value without it.
   it('loads a memo of the prop again when the parent passes a new promise', async () => {
-    await loadNextUser('promiseParent');
+    expect(await loadNextUser('promiseParent')).toEqual({
+      whilePending: 'User 1',
+      pendingAfter: false,
+    });
   });
 
   it('does the same for a destructured prop', async () => {
-    await loadNextUser('promiseParentDestructured');
+    expect(await loadNextUser('promiseParentDestructured')).toEqual({
+      whilePending: 'User 1',
+      pendingAfter: false,
+    });
   });
 });
 
