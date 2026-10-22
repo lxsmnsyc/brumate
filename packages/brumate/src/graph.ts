@@ -247,7 +247,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       const blockLive =
         scope.kind === 'body' &&
         block !== undefined &&
-        (block.kind === 'client' ||
+        // The client renders the body of a `#client` block. The server renders its fallback.
+        ((block.kind === 'client' && scope.body === block.body) ||
           // A portal into a target renders on the client, where the target is.
           (block.kind === 'portal' && block.target !== undefined) ||
           // Client code can call `reset` to render a `#try` body again.

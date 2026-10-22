@@ -1016,6 +1016,9 @@ class Analyzer {
         break;
       case 'client':
         this.visitBody(block.body, scope, block);
+        if (block.fallback) {
+          this.visitBody(block.fallback, scope, block);
+        }
         break;
       case 'offscreen':
         this.header(block, scope, block.visible, 'offscreen');

@@ -125,6 +125,9 @@ export function printAST(file: SFCFile): string {
       case 'client':
         write(depth, `client (${item.trigger})`);
         body(item.body, depth + 1, 'body');
+        if (item.fallback) {
+          body(item.fallback, depth + 1, 'else');
+        }
         break;
     }
   };

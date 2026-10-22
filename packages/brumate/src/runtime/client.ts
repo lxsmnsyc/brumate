@@ -1461,16 +1461,21 @@ export async function reset(
   insertHTML(end, html);
 }
 
-/** Renders the body of a `#client` block once. */
-export function fill(scope: Scope, anchor: number, render: Render): void {
+/**
+ * Renders the body of a `#client` block once, in place of its fallback.
+ * `kinds` are the scope IDs inside the fallback, whose instances go.
+ */
+export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
   const start = findComment(`b${scope.id}:${anchor}`);
-  if (!start) {
+  // A block that rendered its body has a third number.
+  if (!start || start.data.split(':').length > 2) {
     return;
   }
+  start.data += ':1';
   const end = rangeEnd(start);
-  if (start.nextSibling === end) {
-    insertHTML(end, render(scope));
-  }
+  disposeKinds(scope, kinds);
+  clear(start, end);
+  insertHTML(end, render(scope));
 }
 
 /**

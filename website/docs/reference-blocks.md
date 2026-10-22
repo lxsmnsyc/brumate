@@ -24,6 +24,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `#portal (target) { … }`                             | Its body inside `target`, an element or a selector, in the browser.                                                       |
 | `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                 |
 | `#client { … }`, `#client ('idle') { … }`            | Nothing on the server. The browser renders its body when the trigger fires: `'visible'` by default, `'idle'` or `'load'`. |
+| `#client { … } #else { … }`                          | The `#else` body on the server, until the browser renders the body in its place.                                          |
 | `#template name(parameters) { … }`                   | Nothing. It declares markup that `{name(arguments)}` inserts.                                                             |
 
 - `#else`, `#else if` and `#catch` come right after the body of their block. Only whitespace and comments can be in between.

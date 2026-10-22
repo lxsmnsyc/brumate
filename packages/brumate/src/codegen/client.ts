@@ -1062,7 +1062,7 @@ class ClientGenerator {
     for (const scope of this.model.scopes) {
       const block = scope.block;
       const clientOnly =
-        block?.kind === 'client' ||
+        (block?.kind === 'client' && scope.body === block.body) ||
         (block?.kind === 'portal' && block.target !== undefined) ||
         (block?.kind === 'try' && this.plan.anchors.has(block));
       if (scope.kind === 'body' && block && clientOnly && scope.body) {
@@ -1118,8 +1118,10 @@ class ClientGenerator {
       }
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
+        // The fallback's scopes go when the body renders in its place.
+        const fallback = block.fallback ? `, [${this.kinds([block.fallback]).join(', ')}]` : '';
         this.emit(
-          `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id});\n}`,
+          `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );
       }
     }

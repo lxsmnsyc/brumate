@@ -123,7 +123,7 @@ TryBlock        = "#try" Body "#catch" [ "(" Ident [ "," Ident ] ")" ] Body ;
 LoadingBlock    = "#loading" [ "(" TS<Expression> ")" ] Body [ "#else" Body ] ;
 PortalBlock     = "#portal" [ "(" TS<Expression> ")" ] Body ;
 HeadBlock       = "#head" Body ;
-ClientBlock     = "#client" [ "(" Trigger ")" ] Body ;
+ClientBlock     = "#client" [ "(" Trigger ")" ] Body [ "#else" Body ] ;
 Trigger         = '"visible"' | '"idle"' | '"load"'
                 | "'visible'" | "'idle'" | "'load'" ;
 OffscreenBlock  = "#offscreen" "(" TS<Expression> ")" Body ;

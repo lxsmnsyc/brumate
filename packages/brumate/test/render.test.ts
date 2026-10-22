@@ -35,6 +35,7 @@ const props: Record<string, unknown> = {
   'uses-counter': {},
   'template-update': {},
   offscreen: {},
+  clientElse: {},
   memos: {},
   compact: {
     initial: [

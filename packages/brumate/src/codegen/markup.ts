@@ -1227,6 +1227,11 @@ export class Emitter {
           `:${anchor.index}" b-client="${block.trigger}=${this.plan.id}#k${body.id}"></template>`,
         );
         this.open(scope, block);
+        if (block.fallback) {
+          this.line('{');
+          this.emitBody(block.fallback);
+          this.close();
+        }
         this.end(block);
         return;
       }

@@ -302,6 +302,20 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 
 Use it for markup that needs the browser, such as a map or a chart. [Effects and browser code](./effects.md) compares it with `$client` and `$effect`.
 
+An `#else` body renders on the server in place of the body, until the body renders:
+
+```brm live
+#client ('idle') {
+  <p>Your time zone is {Intl.DateTimeFormat().resolvedOptions().timeZone}.</p>
+} #else {
+  <p>Finding your time zone…</p>
+}
+```
+
+- The fallback can keep the space of the body, so the page does not move when the body renders.
+- With `'visible'`, the block renders when the fallback comes into view.
+- Without scripts, the fallback stays.
+
 ## `#template`
 
 `#template name(parameters)` declares a piece of markup that takes arguments. Call it in an expression:

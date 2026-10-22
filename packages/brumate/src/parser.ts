@@ -875,7 +875,9 @@ class Parser {
           }
           trigger = value as ClientTrigger;
         }
-        return { kind: 'client', start, end: this.pos, trigger, body: this.parseBody('client') };
+        const body = this.parseBody('client');
+        const fallback = this.parseBranch('else') ? this.parseBody('else') : undefined;
+        return { kind: 'client', start, end: this.pos, trigger, body, fallback };
       }
       case 'offscreen': {
         const header = this.parseHeader('offscreen', true)!;

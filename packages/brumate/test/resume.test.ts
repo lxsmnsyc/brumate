@@ -840,6 +840,17 @@ describe('resume', () => {
     await waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
   });
 
+  it('renders a client block in place of its fallback', async () => {
+    await resume('clientElse', {});
+    expect(text('.fallback')).toBe('Loading 0');
+    expect(document.querySelector('.body')).toBeNull();
+    await waitFor(() => expect(text('.body')).toBe('Client 0'));
+    expect(document.querySelector('.fallback')).toBeNull();
+    click(document.querySelector('.outer')!);
+    await waitFor(() => expect(text('.body')).toBe('Client 1'));
+    expect(text('.outer')).toBe('1');
+  });
+
   it('stops the window listeners of markup that is gone, such as a page that navigation left', async () => {
     await resume('blocks', { items: ['one', 'two'], tab: 'b' });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));

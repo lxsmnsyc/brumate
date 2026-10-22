@@ -231,6 +231,8 @@ export interface ClientBlock extends Range {
   kind: 'client';
   trigger: ClientTrigger;
   body: Body;
+  /** Markup that the server renders in place of the body, until the body renders. */
+  fallback?: Body;
 }
 
 /**

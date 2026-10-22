@@ -162,7 +162,7 @@ A `#client` block skips its body on the server. The browser renders it when the 
 }
 ```
 
-Use it for markup that needs the browser, such as a map or a value from `localStorage`. The page shows nothing in its place until the block renders.
+Use it for markup that needs the browser, such as a map or a value from `localStorage`. The page shows nothing in its place until the block renders, unless the block has an `#else` body, which the server renders in its place. See [`#client`](./control-flow.md#client).
 
 ## Element references
 

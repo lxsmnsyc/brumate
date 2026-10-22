@@ -543,6 +543,7 @@ export function blockBodies(block: Block): Body[] {
     case 'for':
     case 'repeat':
     case 'loading':
+    case 'client':
       return [block.body, ...(block.fallback ? [block.fallback] : [])];
     case 'try':
       return [block.body, block.fallback];
