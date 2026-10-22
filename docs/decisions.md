@@ -38,6 +38,8 @@
 - Styles are scoped with an `s-<hash>` attribute. Style variables are custom properties on the component's top-level elements, and the stylesheet is inlined once per page.
 - There is no `$store`. Objects and arrays in signals change by assigning a new value, or with `$produce`, which changes a draft and shares what it does not change. Reads stay per signal, so the graph stays static and nothing extra is resumed. A keyed `#for` compares the old and new lists and updates only the items that changed.
 - Server functions read the request with `getEvent()`, and answer with `ServerError` and `redirect`. Other errors reach the browser as a generic message.
+- For readers that run no scripts, crawlers by default, the server renders `#loading` and `#defer` bodies in place, in the order of the page, with the same state as when they stream. `inOrder` decides per request.
+- `getEvent().signal` aborts when the request's signal does, or when the reader of the response goes away, for pages, calls and `#defer` requests. A page that is left sends no more bodies.
 - `getEvent()` works before the first `await` of a server function, middleware or endpoint, and anywhere in a component while it renders. The runtime sets the event while it starts a call and clears it right after, so it never needs `AsyncLocalStorage`, and never returns the event of another request. Code keeps the event in a variable and passes it to helpers.
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.

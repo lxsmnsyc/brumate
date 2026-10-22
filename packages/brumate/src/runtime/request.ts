@@ -18,9 +18,30 @@ export class RequestEvent {
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
+  private readonly controller = new AbortController();
+  /**
+   * Aborts when the request no longer needs an answer: the request's own
+   * signal aborts, or the reader of the response went away, such as a
+   * browser that left the page while it streamed. Pass it on, such as to
+   * `fetch(url, { signal })`, so work that nobody waits for stops.
+   */
+  readonly signal: AbortSignal = this.controller.signal;
 
   constructor(request: Request) {
     this.request = request;
+    const outer = request.signal;
+    if (outer?.aborted) {
+      this.controller.abort(outer.reason);
+    } else {
+      outer?.addEventListener('abort', () => this.abort(outer.reason), { once: true });
+    }
+  }
+
+  /** Aborts `signal`, such as when the response's reader went away. The server calls it. */
+  abort(reason?: unknown): void {
+    if (!this.signal.aborted) {
+      this.controller.abort(reason);
+    }
   }
 
   /**
