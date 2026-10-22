@@ -1,15 +1,17 @@
 <script>
-  import { $signal, $title } from 'brumate/signals';
+  import { $signal } from 'brumate/signals';
   import Card from 'example-ui-kit/Card.brm';
   import Counter from 'example-ui-kit/Counter.brm';
   import Greeter from 'example-ui-kit/Greeter.brm';
   import { counter } from 'example-ui-kit/counter.brm.ts';
-
-  $title('Kit');
   // The label is a signal of the app, so the kit's Counter gets a prop that changes.
   let label = $signal('Clicked');
   const { count: visits, increment: visit } = counter(10);
 </script>
+
+#head {
+  <title>Kit</title>
+}
 
 <h1>Components from a package</h1>
 <button class="rename" onClick=(() => (label = 'Pressed'))>Rename</button>

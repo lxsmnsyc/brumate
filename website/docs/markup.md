@@ -142,6 +142,8 @@ A handler runs once its code has loaded, which is after the browser has acted on
 | `once(handler)`             | Runs the handler for the first event only.                                                       |
 | `capture(handler)`          | Runs the handler before the handlers of the elements inside, as a listener in the capture phase. |
 
+Handlers run as if each element had its own listener. Those wrapped by `capture` run first, from the outside in, and then the others, from the target outwards. An event that does not bubble, such as `focus`, `blur`, `mouseenter` or `scroll`, runs only the handlers of its target and the `capture` handlers around it. Listeners are passive unless a handler of the event prevents, so there is no `passive` wrapper.
+
 ```brm
 <script>
   import { prevent, stop } from 'brumate/events';

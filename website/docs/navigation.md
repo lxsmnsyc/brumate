@@ -72,6 +72,80 @@ A response that is not a page, such as a file or JSON, opens in the browser as a
 
 To turn client navigation off for the whole site, set `navigate: false` in the plugin options.
 
+## Navigating from code
+
+`navigate(href, options)` from `brumate/routes` loads a page as a link does: the layouts that stay keep their state. It returns when the page shows.
+
+```brm
+<script>
+  import { $signal } from 'brumate/signals';
+  import { href, navigate } from 'brumate/routes';
+  import { createIssue } from '../issues.server';
+
+  let title = $signal('');
+
+  async function save() {
+    const issue = await createIssue(title);
+    await navigate(href('/issues/[id]', { id: issue.id }));
+  }
+</script>
+```
+
+- `replace: true` replaces the current entry of the history instead of adding one, such as for a filter.
+- `scroll: false` keeps the place on the page.
+- A URL of another origin, or a site with `navigate: false`, loads the page in full.
+
+## The route
+
+`$route()` from `brumate/signals` gives the route of the page: `url`, `search`, which is `url.searchParams`, and the `params` of the route. `$route('/issues/[id]')` types the params from the route files, as `href` does.
+
+```brm
+<script>
+  import { $route } from 'brumate/signals';
+  import { navigate } from 'brumate/routes';
+
+  const route = $route('/issues');
+</script>
+
+<input value=(route.search.get('q') ?? '') onInput=((event) => navigate(`?q=${event.currentTarget.value}`, { replace: true }))>
+<p>Page {route.search.get('page') ?? '1'}</p>
+```
+
+- The server reads the request and the params of the route. The browser reads `location`, and the params from the page state. Both render the same value.
+- When navigation changes the URL, code that reads the route updates, such as in a layout that stays.
+- A change of the query string still asks the server for the page.
+
+## While a page loads
+
+`$navigation()` gives the navigation that loads: `{ pending, from, to }`, with `pending` false when none does. It is `{ pending: false }` on the server.
+
+```brm
+<script>
+  import { $navigation } from 'brumate/signals';
+
+  const navigation = $navigation();
+</script>
+
+<div class={ bar: true, active: navigation.pending }></div>
+```
+
+The loader also sets `data-navigating` on `<html>` while a page loads, so a progress bar can be CSS alone, with no client code in the page:
+
+```css
+html[data-navigating] .bar {
+  opacity: 1;
+}
+```
+
+## Accessibility
+
+A full page load tells a screen reader that the page changed, and starts the keyboard focus at the top. Client navigation does the same:
+
+- The loader writes the title of the new page into a live region of its own, which is visually hidden, so a screen reader reads it. A page whose title is the same for many URLs sets its own text with `<meta name="brumate-announce" content="…">`, such as in `#head`.
+- The focus moves to the first `<h1>` of the routes that changed, or to `<main>`, with `tabindex="-1"` until it leaves, so the next Tab starts there. `navigate: { focus: false }` in the plugin turns it off.
+- A navigation that changes only the query string, such as a filter, moves no focus and announces nothing, so typing in a search field goes on.
+- The back and forward buttons move the focus too, and scroll as they do.
+
 ## Scroll and history
 
 - A new page scrolls to the top, or to the element that the hash of the link names.

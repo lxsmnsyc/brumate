@@ -1,5 +1,6 @@
 import type * as Routes from './client-routes.ts';
 import { boot, importCore, strategy } from './boot.ts';
+import { NAVIGATION_KEY, ROUTE_KEY } from './context.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
 
 export type { LoaderOptions, NavigateOptions } from './boot.ts';
@@ -36,35 +37,97 @@ const routes = (): (typeof Routes)['ready'] =>
  * from server functions to the same origin. Returns how the loader imports
  * the core.
  */
-function navigation({ options, listen, core, scan }: Navigation): () => Promise<Core> {
+function navigation({
+  options,
+  listen,
+  core,
+  start: startCore,
+  scan,
+}: Navigation): () => Promise<Core> {
   const rpc = `${options.rpc ?? '/_brumate'}/`;
+  const settings = typeof options.navigate === 'object' ? options.navigate : {};
   // The page without its hash, to tell a change of the hash from a change of the page.
   let page = String(location.href).split('#')[0];
-  const go = (url: string, init?: RequestInit, push = true, reload = false): void => {
+  // True once the site changed since the page loaded: the next page loads in full, with new code.
+  let skewed = false;
+  listen(document, 'brumate:skew', () => {
+    skewed = true;
+  });
+  // The core when the page reads a context of navigation, which it starts for them, or when it runs.
+  const reader = (key: string): Promise<Core> | undefined =>
+    core() ??
+    ([...document.querySelectorAll('script[b-state]')].some((script) =>
+      script.textContent?.includes(key),
+    )
+      ? startCore()
+      : undefined);
+  const state = (value: { pending: boolean; from?: string; to?: string }): void => {
+    void reader(NAVIGATION_KEY)?.then((client) => client.setGlobal(NAVIGATION_KEY, value));
+  };
+  const go = (
+    url: string,
+    init?: RequestInit,
+    push = true,
+    reload = false,
+    scroll = true,
+  ): Promise<void> => {
+    const from = location.href;
+    if (skewed) {
+      // A form post cannot be a full page load: the page loads again, and the form is lost with
+      // the rest of the state of the page.
+      if (init) {
+        location.reload();
+      } else {
+        location.assign(url);
+      }
+      return Promise.resolve();
+    }
     page = url.split('#')[0]!;
     if (core()) {
       void routes();
     }
-    void import('./navigate.ts').then((module) =>
-      module.navigate({
-        url,
-        init,
-        push,
-        reload,
-        transition: typeof options.navigate === 'object' && options.navigate.transition === true,
-        // The core forgets the old page, or only stops reading, when layouts stay.
-        leave: async (partial) => {
-          if (core()) {
-            (await routes())(partial);
-          }
-        },
-        enter: () => {
-          void core()?.then((client) => client.init({ ...options, listen: scan }));
-          page = location.href.split('#')[0]!;
-        },
-      }),
-    );
+    // CSS can show a progress bar while a page loads, with no client code in the page.
+    document.documentElement.setAttribute('data-navigating', '');
+    state({ pending: true, from, to: new URL(url, from).href });
+    const done = (): void => {
+      document.documentElement.removeAttribute('data-navigating');
+      state({ pending: false });
+    };
+    return import('./navigate.ts')
+      .then((module) =>
+        module.navigate({
+          url,
+          init,
+          push,
+          reload,
+          scroll,
+          build: options.build,
+          focus: settings.focus !== false,
+          transition: settings.transition === true,
+          // The core forgets the old page, or only stops reading, when layouts stay.
+          leave: async (partial) => {
+            if (core()) {
+              (await routes())(partial);
+            }
+          },
+          enter: () => {
+            void core()?.then((client) => client.init({ ...options, listen: scan }));
+            // Code that reads the route, such as in a layout that stays, gets the new one.
+            void reader(ROUTE_KEY)?.then((client) => client.updateRoute());
+            page = location.href.split('#')[0]!;
+          },
+        }),
+      )
+      .finally(done);
   };
+  // `navigate(href, options)` from `brumate/routes`.
+  listen(document, 'brumate:navigate', (event) => {
+    const detail = (
+      event as CustomEvent<{ url: string; replace: boolean; scroll: boolean; done: () => void }>
+    ).detail;
+    event.preventDefault();
+    void go(detail.url, undefined, !detail.replace, false, detail.scroll).then(detail.done);
+  });
   // A link to another page of this site, which the loader loads itself.
   const pageLink = (target: EventTarget | null): HTMLAnchorElement | undefined => {
     const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
@@ -92,7 +155,7 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
       return;
     }
     event.preventDefault();
-    go(link.href);
+    void go(link.href);
   });
   // A page loads when the pointer rests on its link, or the link gets focus, so a click finds it loading.
   let resting: ReturnType<typeof setTimeout> | undefined;
@@ -115,27 +178,33 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
     const submitter = (event as SubmitEvent).submitter;
     const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
     const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
-    if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
+    if (
+      event.defaultPrevented ||
+      method?.toLowerCase() !== 'post' ||
+      !action.startsWith(rpc) ||
+      // After a deploy, the browser posts the form itself, and the page that answers is new.
+      skewed
+    ) {
       return;
     }
     event.preventDefault();
-    go(action, { method: 'POST', body: new FormData(form, submitter) });
+    void go(action, { method: 'POST', body: new FormData(form, submitter) });
   });
   // A server function that redirects, from `rpc.ts`. Another site loads in full.
   listen(document, 'brumate:redirect', (event) => {
     const url = new URL((event as CustomEvent<string>).detail, location.href);
     if (url.origin === location.origin) {
       event.preventDefault();
-      go(url.href, undefined, true, true);
+      void go(url.href, undefined, true, true);
     }
   });
   // A hot update whose markup changed loads the page again, in place. With `init`, the whole
   // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.
-  listen(document, 'brumate:reload', () => go(location.href, { method: 'GET' }, false));
+  listen(document, 'brumate:reload', () => void go(location.href, { method: 'GET' }, false));
   listen(window, 'popstate', () => {
     // A change of the hash only stays on the page.
     if (location.href.split('#')[0] !== page) {
-      go(location.href, undefined, false);
+      void go(location.href, undefined, false);
     }
   });
   return () =>

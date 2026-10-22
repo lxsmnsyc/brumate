@@ -91,6 +91,27 @@ export function resetUsed(model: SemanticModel, block: Block, reached: Set<Site>
   );
 }
 
+/** Sites whose code runs in the browser after the page renders, and can throw there. */
+const CLIENT_CODE = new Set(['event', 'effect', 'client']);
+
+/**
+ * True if the body of a `#try` holds code that runs in the browser: a
+ * handler, an effect, a `$client` callback or a memo that loads. An error
+ * in it renders the `#catch` body in the browser, so both bodies ship.
+ */
+export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 'try' }): boolean {
+  const body = model.scopes.find((scope) => scope.block === block && scope.body === block.body);
+  return (
+    body !== undefined &&
+    model.sites.some(
+      (site) =>
+        (CLIENT_CODE.has(site.kind) ||
+          (site.kind === 'memo' && site.declaration?.kind === 'async-memo')) &&
+        isWithin(site.scope, body),
+    )
+  );
+}
+
 /** True if a site's expression is a function, such as a function passed as a prop. */
 export function isFunctionValue(site: Site): boolean {
   let node: oxc.Node = site.node;
@@ -267,8 +288,10 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         ((block.kind === 'client' && scope.body === block.body) ||
           // A portal into a target renders on the client, where the target is.
           (block.kind === 'portal' && block.target !== undefined) ||
-          // Client code can call `reset` to render a `#try` body again.
-          (block.kind === 'try' && resetUsed(model, block, reached)) ||
+          // Client code can call `reset` to render a `#try` body again, and an error in the
+          // client code of the body renders the `#catch` body.
+          (block.kind === 'try' &&
+            (resetUsed(model, block, reached) || tryCatchesClient(model, block))) ||
           (headers.get(block) ?? []).some((node) => live.has(node)) ||
           (block.kind === 'try' && scope.body === block.fallback && tryChanges(block)));
       const templateUsed = scope.kind === 'template' && templateCallChanges(scope);

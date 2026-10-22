@@ -138,10 +138,18 @@ export function attributeText(name: string, value: unknown): string | undefined 
   return name === 'style' ? styleValue(value) : String(value);
 }
 
-/** Renders one attribute, with a leading space. */
+/**
+ * A name that HTML reads as one attribute. A spread takes its names from
+ * data, so a name with a space, a quote, `>`, `/` or `=` could write other
+ * attributes or markup.
+ */
+// oxlint-disable-next-line no-control-regex -- HTML reads no control character in a name.
+const ATTRIBUTE_NAME = /^[^\s"'>/=\x00-\x1f\x7f]+$/;
+
+/** Renders one attribute, with a leading space. A name that is not one attribute renders nothing. */
 export function attribute(name: string, value: unknown): string {
   const text = attributeText(name, value);
-  if (text === undefined) {
+  if (text === undefined || !ATTRIBUTE_NAME.test(name)) {
     return '';
   }
   return value === true ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
@@ -207,7 +215,9 @@ export const VOID_ELEMENTS: Set<string> = new Set([
 /**
  * Renders the attributes of a form that posts to a server function, such as
  * ` action="/_brumate/App_1abc%23save" method="post"`. `method` is the name of
- * the method attribute to add, if the element has none.
+ * the method attribute to add, if the element has none. `build` is the ID
+ * of the build of the page, which the URL carries as `__build`, so the
+ * server can tell a post from before a deploy without scripts.
  */
 export function actionAttributes(
   prefix: string,
@@ -215,13 +225,16 @@ export function actionAttributes(
   id: string,
   method?: string,
   result?: string,
+  build?: string,
 ): string {
   const methodText = method ? ` ${method}="post"` : '';
+  const query = build === undefined ? '' : `__build=${encodeURIComponent(build)}`;
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.
-    return ` ${name}="?__action=${encodeURIComponent(id)}"${methodText} b-action="${escapeAttribute(id)}" b-result="${escapeAttribute(result)}"`;
+    const url = `?__action=${encodeURIComponent(id)}${query ? `&${query}` : ''}`;
+    return ` ${name}="${escapeAttribute(url)}"${methodText} b-action="${escapeAttribute(id)}" b-result="${escapeAttribute(result)}"`;
   }
-  const url = `${prefix}/${encodeURIComponent(id)}`;
+  const url = `${prefix}/${encodeURIComponent(id)}${query ? `?${query}` : ''}`;
   return ` ${name}="${escapeAttribute(url)}"${methodText}`;
 }

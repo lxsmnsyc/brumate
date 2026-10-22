@@ -23,6 +23,14 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `RequestEvent` member                   | What it does                                                                                                    |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `request`                               | The web `Request`.                                                                                              |
+| `address`                               | The address of the client as the server saw it, when the server passed it.                                      |
+| `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                         |
+| `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                  |
+| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.       |
+| `prerender`                             | True while the build prerenders the page.                                                                       |
+| `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                         |
+| `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.        |
+| `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.   |
 | `headers`                               | Headers to add to the response.                                                                                 |
 | `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                     |
 | `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                    |
@@ -30,14 +38,22 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
 | `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
 
-| Export                                       | What it does                                                                                                      |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `getEvent(): RequestEvent`                   | The event of the request being handled.                                                                           |
-| `redirect(location, status = 303): never`    | Stops and sends the browser to `location`.                                                                        |
-| `isRedirect(error): boolean`                 | True for the error that `redirect` throws.                                                                        |
-| `new ServerError(message, { status = 400 })` | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.  |
-| `createSession<T>({ secret, name, maxAge })` | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.  |
-| `withEvent(event, callback)`                 | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests. |
+| Export                                            | What it does                                                                                                                            |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `getEvent(): RequestEvent`                        | The event of the request being handled.                                                                                                 |
+| `redirect(location, status = 303): never`         | Stops and sends the browser to `location`.                                                                                              |
+| `isRedirect(error): boolean`                      | True for the error that `redirect` throws.                                                                                              |
+| `new ServerError(message, { status = 400 })`      | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.                        |
+| `createSession<T>({ secret, name, maxAge })`      | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.                        |
+| `withEvent(event, callback)`                      | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests.                       |
+| `rateLimit({ max, window, key? })`                | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./server-functions.md#rate-limiting). |
+| `rateLimit.middleware(options)`                   | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                                       |
+| `rateLimit.strict`                                | 3 calls in 10 seconds, for functions that guess at secrets.                                                                             |
+| `configureRateLimit({ store, proxies, enabled })` | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.          |
+| `clientAddress(event)`                            | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                              |
+| `RateLimitError`                                  | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                                  |
+| `defineMiddleware(middleware)`                    | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                                     |
+| `Locals`                                          | The type of `event.locals`. An app adds fields to it with declaration merging.                                                          |
 
 See [Server functions](./server-functions.md) and [Cookies and sessions](./server-functions.md#cookies-and-sessions).
 
@@ -80,14 +96,17 @@ These work anywhere:
 
 The options of `render`, and of every function that renders.
 
-| Option    | Type                    | Meaning                                                                                                              |
-| --------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `request` | `Request`               | The request of the page, so `getEvent()` works while it renders.                                                     |
-| `rpc`     | `string`                | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.                                         |
-| `nonce`   | `string`                | A Content Security Policy nonce for the inline scripts: the state records and the swap scripts of `#loading` bodies. |
-| `base`    | `number`                | The first ID of the render, for a second root on the same page.                                                      |
-| `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`.                             |
-| `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                                                  |
+| Option      | Type                                        | Meaning                                                                                                              |
+| ----------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `request`   | `Request`                                   | The request of the page, so `getEvent()` works while it renders.                                                     |
+| `rpc`       | `string`                                    | The URL prefix of server function calls, for forms. Defaults to `/_brumate`.                                         |
+| `nonce`     | `string`                                    | A Content Security Policy nonce for the inline scripts: the state records and the swap scripts of `#loading` bodies. |
+| `inOrder`   | `boolean \| 'bots' \| (request) => boolean` | Renders `#loading` and `#defer` bodies in place, for readers without scripts. `'bots'` by default.                   |
+| `base`      | `number`                                    | The first ID of the render, for a second root on the same page.                                                      |
+| `actions`   | `Map<unknown, unknown>`                     | Results of server functions that a form posted to this page, by function, for `$action`.                             |
+| `route`     | `string`                                    | Names the route of the page. `handleRoute` sets it.                                                                  |
+| `waitUntil` | `(promise) => void`                         | Keeps work going after the response ends, for `event.waitUntil`, such as `ctx.waitUntil` of Cloudflare Workers.      |
+| `build`     | `string`                                    | The ID of the build, for skew protection. The page state carries it. The Vite plugin sets it in builds.              |
 
 ### `DocumentOptions`
 
@@ -100,14 +119,14 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, and `origins`.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, `prerender`, which the build sets so rate limits do not count, `build`, the ID of the build, for skew protection, `hints`, the URLs of the modules that every page loads, and `earlyHints`, a callback that receives them as `Link` values before the page renders. See [Early hints](./deploying.md#early-hints). `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address`, `prerender` and `build` in its options: a call from a page of another build to a function that is gone answers 409 with `x-brumate-build`.
 
 ### `RenderResult`
 
 | Field     | Type                    | Meaning                                                                                              |
 | --------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
 | `html`    | `string`                | The markup. A `#loading` body that is not ready shows its fallback.                                  |
-| `head`    | `string`                | Markup for the head: the `$title` and the `#head` blocks.                                            |
+| `head`    | `string`                | Markup for the head: the title and the `#head` blocks.                                               |
 | `state`   | `string`                | The script that holds the page state.                                                                |
 | `pending` | `AsyncIterable<string>` | Markup to send after the page as it is ready: `#loading` bodies and the values that settle promises. |
 | `headers` | `Headers`               | Headers and cookies that the page set on its event while it rendered.                                |
@@ -116,7 +135,11 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 
 ### Route types
 
-`Handler`, `Middleware`, `RouteNode` and the other types of the route tree are exported too. See [Route files](./reference-routes.md).
+`Handler`, `Middleware`, `EntryMiddleware`, `RouteNode` and the other types of the route tree are exported too. See [Route files](./reference-routes.md).
+
+## `brumate/env`
+
+`defineEnv(schema, options?)` checks the environment variables of the app when the server starts, and returns their values with their types. The browser gets the public ones only. See [Environment variables](./environment.md).
 
 ## `brumate/routes`
 
@@ -126,6 +149,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `RouteParams<'/todos/[id]'>` | The type of the params of a route path.                                                                                                           |
 | `RoutePath`                  | The type of a route path. Any string until the plugin writes the route types.                                                                     |
 | `Routes`                     | The interface that the generated declaration file fills with the paths of the routes.                                                             |
+| `navigate(href, options?)`   | Loads a page as a link does, and returns when it shows. `replace` replaces the entry of the history, and `scroll: false` keeps the place.         |
 
 ## `brumate/context`
 
@@ -142,6 +166,8 @@ See [Context](./context.md).
 | `raw(html)` | Marks a string as HTML, so `{raw(html)}` inserts it without escaping. Insert only HTML you trust. |
 
 ## `brumate/loader`
+
+`start(options)` takes `onError(error, info)`, which receives every error of client code first, before the nearest `#try` renders its `#catch` body or the page gets a `brumate:error` event. See [Errors in the browser](./effects.md#errors-in-the-browser).
 
 ```ts
 import { start } from 'brumate/loader';

@@ -1,0 +1,20 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import DirectRow from './DirectRow.brm';
+  import Row from './Row.brm';
+
+  // `batch` picks rows that read through `batched`, or rows that call the server function.
+  const { batch } = $props<{ batch: boolean }>();
+  let ids = $signal(['1']);
+</script>
+
+<button class="more" onClick=(() => (ids = [...ids, '2', '3', '4']))>More</button>
+<ul>
+  #for (id of ids by id) {
+    #if (batch) {
+      <Row id=id />
+    } #else {
+      <DirectRow id=id />
+    }
+  }
+</ul>
