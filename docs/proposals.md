@@ -32,7 +32,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
 | [Budgets for one event](#budgets-for-one-event)                       | Tooling | Medium | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
-| [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
@@ -491,7 +490,7 @@ export const listIssues = cached(async (status: string) => db.issues(status), {
 ```
 
 - `revalidate(tag)` drops the results and the pages that used that tag, such as after a server function changes the data. It works with `refresh(fn)`, which loads the memos of the page again in the browser.
-- The cache is an interface, with an in-memory store as the default and room for Redis or a platform cache. Deployment adapters can bring their own.
+- The cache is an interface, with an in-memory store as the default. With Nitro, it uses Nitro's storage layer, unstorage, whose drivers cover Redis, Cloudflare KV and the stores of other hosts.
 - Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
 
 Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
@@ -652,11 +651,11 @@ The connection:
 - `stubs.close()`, or the end of the connection, rejects the calls that are in flight and every later call. A stub that the other side drops, such as when it is garbage collected, is released on both sides.
 - When the connection drops, the browser does not open it again by itself: the stubs of the old connection are gone. A `reconnect` option can call the socket function again with the same arguments, and give the new stubs.
 - On the server, while a page renders, calling a socket function calls it directly, with the functions as they are. A component can render its first value without a connection.
-- The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. Deployment adapters need WebSocket for the first. Nitro has it on most hosts.
+- The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. With Nitro, the WebSocket side uses its crossws support, which runs on Node, Bun, Deno and Cloudflare. A server of the app's own passes the upgrade to a handler that brumate exports.
 
 Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. Cap'n Proto calls them capabilities.
 
-Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the stubs on both sides, their release, reconnection, the fallback and the adapters.
+Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the stubs on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
 
 ## Tooling
 
@@ -695,12 +694,6 @@ Cost: a few days. The tests of this repository already answer routes and navigat
 Cost: a few days.
 
 ## Build
-
-### Deployment adapters
-
-The server runtime uses only web APIs, and Nitro builds for each host. See `examples/nitro`.
-
-- Nitro covers Node, Deno, Bun, Cloudflare Workers and others. Only its Node preset is tested.
 
 ### Embedding in other sites
 
