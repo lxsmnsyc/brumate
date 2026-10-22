@@ -21,12 +21,14 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PREFIX,
   SOURCE,
   isAsyncIterable,
+  parseId,
 } from './shared.ts';
 import { Upload, functionReferences, replaceDeep } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, ScopeState } from './shared.ts';
+import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -72,14 +74,14 @@ export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
-export type { PageState, ScopeState };
+export type { PageState, ScopeId, ScopeState };
 
 /** The scope and the slot that hold the list of a list item. */
-export type ItemSource = readonly [scope: number, slot: number];
+export type ItemSource = readonly [scope: ScopeId, slot: number];
 
 /** A `#loading` body that renders after the rest of the page. */
 interface Boundary {
-  id: number;
+  id: ScopeId;
   /** Resolves to the body's markup, and its scopes in `ctx.state`. */
   render: Promise<{ html: string; ctx: Context }>;
   /** True when a `#try` body around it failed, so its markers were never sent. */
@@ -90,7 +92,37 @@ interface Boundary {
 export interface Mark {
   scope: number;
   undo: number;
-  owner: number | undefined;
+  owner: ScopeId | undefined;
+}
+
+/**
+ * Where a render takes its scope and boundary IDs from. The page takes
+ * numbers from its base. Each `#loading` body has its own, whose IDs are the
+ * ID of its boundary, a dot and a number, such as `5.0`. A body resumes when
+ * its data arrives, so with one counter for the page its IDs, and those of
+ * the markup after it, would depend on that order.
+ */
+interface IdSpace {
+  /** `''` for the page, or the boundary ID and a dot. */
+  prefix: string;
+  scope: number;
+  boundary: number;
+}
+
+function spaceId(space: IdSpace, n: number): ScopeId {
+  return space.prefix ? `${space.prefix}${n}` : n;
+}
+
+/** The number of an ID within its space, or -1 for an ID of another space. */
+function localNumber(space: IdSpace, id: ScopeId): number {
+  if (!space.prefix) {
+    return typeof id === 'number' ? id : -1;
+  }
+  if (typeof id !== 'string' || !id.startsWith(space.prefix)) {
+    return -1;
+  }
+  const rest = id.slice(space.prefix.length);
+  return /^\d+$/.test(rest) ? Number(rest) : -1;
 }
 
 /**
@@ -100,8 +132,7 @@ export interface Mark {
 export class Context {
   readonly state: PageState = {};
   private readonly root: Context;
-  private nextScope = 0;
-  private nextBoundary = 0;
+  private readonly space: IdSpace;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
   /** Markup of `#portal` blocks, written at the end of the page. */
@@ -111,16 +142,16 @@ export class Context {
   private pageTitle: string | undefined;
   private onBoundary: ((boundary: Boundary) => void) | undefined;
   /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
-  private readonly tree = new Map<number, { parent?: number; values?: Map<string, unknown> }>();
+  private readonly tree = new Map<ScopeId, { parent?: ScopeId; values?: Map<string, unknown> }>();
   /** The scope that renders the next component, which becomes its owner. */
-  private owner: number | undefined;
+  private owner: ScopeId | undefined;
   /** Takes back what this context added to the page, from the newest, for `restore`. */
   private readonly undo: (() => void)[] = [];
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
   /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
-  readonly slotNames: Map<number, string[]> = new Map();
+  readonly slotNames: Map<ScopeId, string[]> = new Map();
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -148,18 +179,24 @@ export class Context {
     return this.root.actions.get(unwrap(fn));
   }
 
-  constructor(root?: Context, rpc?: string, base = 0) {
+  /** `prefix` is the boundary ID and a dot, for the context of a `#loading` body. */
+  constructor(root?: Context, rpc?: string, base = 0, prefix = '') {
     this.root = root ?? this;
     if (rpc) {
       this.rpcPrefix = rpc;
     }
-    this.nextScope = base;
-    this.nextBoundary = base;
+    this.space = prefix
+      ? { prefix, scope: 0, boundary: 0 }
+      : { prefix, scope: base, boundary: base };
   }
 
-  /** A number above every scope and boundary ID so far, so a later render can start there. */
+  /**
+   * A number above every scope and boundary ID of the page so far, so a
+   * later render can start there. The IDs inside boundaries start with one.
+   */
   next(): number {
-    return Math.max(this.root.nextScope, this.root.nextBoundary);
+    const space = this.root.space;
+    return Math.max(space.scope, space.boundary);
   }
 
   /** Returns the URL prefix of server function calls. */
@@ -172,9 +209,9 @@ export class Context {
    * component, `parent` is the scope that contains it, and `module` is the
    * component ID of a component's root scope.
    */
-  scope(kind: number, parent?: number, module?: string): number {
+  scope(kind: number, parent?: ScopeId, module?: string): ScopeId {
     const root = this.root;
-    const id = root.nextScope++;
+    const id = spaceId(this.space, this.space.scope++);
     const record = this.record(id);
     record.k = kind;
     if (parent !== undefined) {
@@ -194,18 +231,22 @@ export class Context {
     return id;
   }
 
-  /** The ID that `$id()` makes: the scope's ID and the position of the call. */
-  id(scope: number, index: number): string {
-    return `b${scope}-${index}`;
+  /**
+   * The ID that `$id()` makes: the scope's ID and the position of the call.
+   * A dot in a scope ID inside a `#loading` body becomes `_`, so the ID also
+   * works as a CSS selector, such as `#b5_1-0`.
+   */
+  id(scope: ScopeId, index: number): string {
+    return `b${String(scope).replace(/\./g, '_')}-${index}`;
   }
 
   /** Sets the owner of the next component's root scope. */
-  own(scope: number): void {
+  own(scope: ScopeId): void {
     this.root.owner = scope;
   }
 
   /** Provides a value of a context to the scopes inside `scope`. */
-  provide<T>(context: ContextValue<T>, value: T, scope: number): void {
+  provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
     const node = this.root.tree.get(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
@@ -219,13 +260,13 @@ export class Context {
    * `scope`. With `slot`, records which slot holds it, so the client can
    * update it when the provided value changes.
    */
-  consume<T>(context: ContextValue<T>, scope: number, slot?: number): T {
+  consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
     if (slot !== undefined) {
       const record = this.record(scope);
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    for (let id: number | undefined = scope; id !== undefined;) {
+    for (let id: ScopeId | undefined = scope; id !== undefined;) {
       const node = this.root.tree.get(id);
       if (node?.values?.has(context.key)) {
         return node.values.get(context.key) as T;
@@ -236,13 +277,13 @@ export class Context {
   }
 
   /** The ID that the next call to `scope()` returns. */
-  peek(): number {
-    return this.root.nextScope;
+  peek(): ScopeId {
+    return spaceId(this.space, this.space.scope);
   }
 
   /** Marks the render so far, such as before a `#try` body, for `restore`. */
   mark(): Mark {
-    return { scope: this.root.nextScope, undo: this.undo.length, owner: this.root.owner };
+    return { scope: this.space.scope, undo: this.undo.length, owner: this.root.owner };
   }
 
   /**
@@ -267,8 +308,8 @@ export class Context {
    */
   private drop(from: number): void {
     for (const key of Object.keys(this.state)) {
-      const id = Number(key);
-      if (id >= from) {
+      const id = parseId(key);
+      if (localNumber(this.space, id) >= from) {
         delete this.state[id];
         this.root.slotNames.delete(id);
         this.root.tree.delete(id);
@@ -277,12 +318,12 @@ export class Context {
     }
   }
 
-  private record(scope: number): ScopeState {
+  private record(scope: ScopeId): ScopeState {
     this.state[scope] ??= {};
     return this.state[scope];
   }
 
-  slots(scope: number, values: unknown[], names?: string[]): void {
+  slots(scope: ScopeId, values: unknown[], names?: string[]): void {
     this.record(scope).s = values;
     if (names) {
       this.root.slotNames.set(scope, names);
@@ -293,14 +334,14 @@ export class Context {
    * The list of each list item scope whose list is a slot of an enclosing
    * scope, as `[scope, slot]`. The items of a list share one array.
    */
-  readonly sources: Map<number, ItemSource> = new Map();
+  readonly sources: Map<ScopeId, ItemSource> = new Map();
 
   /**
    * Records the item of a list that can change on the client. `source` is
    * the scope and slot that hold the list, when the compiler found one, so
    * the client can take the item from there.
    */
-  item(scope: number, value: unknown, source?: ItemSource): void {
+  item(scope: ScopeId, value: unknown, source?: ItemSource): void {
     this.record(scope).i = value;
     if (source) {
       this.sources.set(scope, source);
@@ -308,7 +349,7 @@ export class Context {
   }
 
   /** Records the scope of a child component at an anchor of its parent. */
-  link(scope: number, anchor: number, child: number): void {
+  link(scope: ScopeId, anchor: number, child: ScopeId): void {
     const record = this.record(scope);
     const links = (record.c ??= {});
     links[anchor] = child;
@@ -320,12 +361,12 @@ export class Context {
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */
-  element(scope: number, anchor: number): ElementReference {
+  element(scope: ScopeId, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
   }
 
   /** Marks a function as a client function, so it serializes as a reference. */
-  fn<T>(value: T, ref: string, scope: number): T {
+  fn<T>(value: T, ref: string, scope: ScopeId): T {
     if (typeof value === 'function') {
       functionReferences.set(value, new FunctionReference(ref, scope));
     }
@@ -394,13 +435,13 @@ export class Context {
   }
 
   /** Returns the ID of a new `#loading` boundary. */
-  boundary(): number {
-    return this.root.nextBoundary++;
+  boundary(): ScopeId {
+    return spaceId(this.space, this.space.boundary++);
   }
 
-  /** Renders a `#loading` body after the rest of the page, in its own context. */
-  defer(id: number, renderBody: (ctx: Context) => Promise<string>): void {
-    const child = new Context(this.root);
+  /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
+  defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
+    const child = new Context(this.root, undefined, 0, `${id}.`);
     const boundary: Boundary = {
       id,
       render: renderBody(child).then((html) => ({ html, ctx: child })),
@@ -699,7 +740,7 @@ function unsendable(error: unknown, ctx: Context): Error {
     while (owner && owner.m === undefined && owner.p !== undefined) {
       owner = ctx.state[owner.p];
     }
-    const name = ctx.slotNames.get(Number(id))?.[index] ?? `slot ${index}`;
+    const name = ctx.slotNames.get(parseId(id))?.[index] ?? `slot ${index}`;
     const kind = (target as object)?.constructor?.name ?? typeof target;
     return new Error(
       `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
@@ -720,11 +761,24 @@ const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
 /** A group of `PackedState` while `packState` collects it. */
 interface PackGroup {
   k: number;
-  base: number;
+  base: ScopeId;
   flags: number;
   count: number;
   m: string | undefined;
-  ids: number[];
+  /** The prefix of the IDs inside a `#loading` body, or `''`. */
+  prefix: string;
+  ids: ScopeId[];
+  /** The number of each ID after its prefix. */
+  numbers: number[];
+}
+
+/** The prefix of an ID and its number after it, such as `['', 3]` or `['5.', 1]`. */
+function splitId(id: ScopeId): [prefix: string, n: number] {
+  if (typeof id === 'number') {
+    return ['', id];
+  }
+  const dot = id.lastIndexOf('.');
+  return [id.slice(0, dot + 1), Number(id.slice(dot + 1))];
 }
 
 /**
@@ -736,7 +790,7 @@ interface PackGroup {
  */
 function groupSource(
   state: PageState,
-  sources: Map<number, ItemSource>,
+  sources: Map<ScopeId, ItemSource>,
   group: PackGroup,
 ): ItemSource | undefined {
   const source = sources.get(group.ids[0]!);
@@ -764,15 +818,21 @@ function groupSource(
  * to the ID before it. The items of a list whose list is in `sources` and in
  * the state are not written. See `PackedState`.
  */
-export function packState(state: PageState, sources?: Map<number, ItemSource>): PackedState {
+export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>): PackedState {
   const result: PackedState = {};
   const groups = new Map<string, PackGroup>();
-  // Integer keys come in ascending order, so the gaps are positive.
+  // Integer keys come in ascending order, and the keys inside a `#loading` body in the order
+  // the body made them, so the gaps are positive.
   for (const [key, record] of Object.entries(state)) {
-    const id = Number(key);
+    const id = parseId(key);
+    const [prefix, n] = splitId(id);
     // The root scope of a component in a list item has its own owner, the item, at the same
     // distance before it in each item. The parent of other scopes is the same for the group.
-    const base = record.p ?? (record.o === undefined ? undefined : id - record.o);
+    let base: ScopeId | undefined = record.p;
+    if (base === undefined && record.o !== undefined) {
+      const [ownerPrefix, owner] = splitId(record.o);
+      base = ownerPrefix === prefix ? n - owner : undefined;
+    }
     if (
       record.k === undefined ||
       base === undefined ||
@@ -793,12 +853,22 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
     if (record.m !== undefined) {
       flags |= MODULE;
     }
-    const name = `${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
+    const name = `${prefix}:${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
     const group = groups.get(name);
     if (group) {
       group.ids.push(id);
+      group.numbers.push(n);
     } else {
-      groups.set(name, { k: record.k, base, flags, count: slots.length, m: record.m, ids: [id] });
+      groups.set(name, {
+        k: record.k,
+        base,
+        flags,
+        count: slots.length,
+        m: record.m,
+        prefix,
+        ids: [id],
+        numbers: [n],
+      });
     }
   }
   const packed: unknown[][] = [];
@@ -810,7 +880,10 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
       continue;
     }
     const source = sources && sources.size > 0 ? groupSource(state, sources, group) : undefined;
-    const flags = source ? group.flags | SOURCE : group.flags;
+    let flags = source ? group.flags | SOURCE : group.flags;
+    if (group.prefix) {
+      flags |= PREFIX;
+    }
     const values: unknown[] = [group.k, group.base, flags, group.count];
     if (group.m !== undefined) {
       values.push(group.m);
@@ -818,13 +891,19 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
     if (source) {
       values.push(source[0], source[1]);
     }
+    if (group.prefix) {
+      values.push(group.prefix);
+    }
     // With a source, the client takes the item, and the first slot when it is the item.
     const from = source && flags & ITEM_SLOT ? 1 : 0;
     const item = !source && flags & ITEM;
-    let last = flags & OWNER ? 0 : group.base;
-    for (const id of ids) {
+    // Inside a `#loading` body, and for component root scopes, the first gap is from 0.
+    let last = flags & (OWNER | PREFIX) ? 0 : (group.base as number);
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index]!;
+      const number = group.numbers[index]!;
       const record = state[id]!;
-      values.push(id - last);
+      values.push(number - last);
       const slots = record.s ?? [];
       for (let n = from; n < slots.length; n++) {
         values.push(slots[n]);
@@ -835,7 +914,7 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
       if (flags & CHILDREN) {
         values.push(record.c);
       }
-      last = id;
+      last = number;
     }
     packed.push(values);
   }
@@ -856,7 +935,7 @@ function serializeState(
   onRecord: (code: string, initial: boolean) => void,
   onError: (error: unknown) => void,
   onDone: () => void,
-  sources?: Map<number, ItemSource>,
+  sources?: Map<ScopeId, ItemSource>,
 ): void {
   crossSerializeStream(packState(state, sources), {
     plugins,
@@ -1127,14 +1206,16 @@ export async function render<P>(
           return;
         }
         serialize(result.ctx, (script) => {
-          let call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
+          // An ID inside a boundary, such as `5.1`, is a string.
+          const id = scriptJSON(boundary.id);
+          let call = `${swap ? '' : SWAP}$bS(${id})`;
           swap = true;
           const late = result.ctx.lateHead();
           let head = '';
           if (late.html || late.title !== undefined) {
             head = `<template b-h="${boundary.id}">${late.html}</template>`;
             const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
-            call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
+            call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
             headSwap = true;
           }
           pending().push(

@@ -1310,9 +1310,10 @@ async function clientRecords(ids: string[], by = 0): Promise<Record<number, unkn
   const client = await import('../src/runtime/client.ts');
   return Object.fromEntries(
     ids.map((id) => {
-      const scope = client.scopeOf(Number(id) + by)!;
-      const back = (value: number | undefined): number | undefined =>
-        value === undefined ? undefined : value - by;
+      // An ID inside a `#loading` body, such as `0.1`, is a string. Only page IDs move.
+      const scope = client.scopeOf(/^-?\d+$/.test(id) ? Number(id) + by : id)!;
+      const back = (value: number | string | undefined): number | string | undefined =>
+        typeof value === 'number' ? value - by : value;
       return [
         id,
         {
@@ -1595,7 +1596,7 @@ async function lists(
   name: string,
   props: unknown,
   state?: PageState,
-  sources?: Map<number, readonly [number, number]>,
+  sources?: Map<number | string, readonly [number | string, number]>,
 ): Promise<Record<string, string>> {
   const { plan } = compile(readFileSync(join(input, `${name}.brm`), 'utf8'), {
     filename: `${name}.brm`,

@@ -11,13 +11,27 @@
 
 import type * as Client from './client.ts';
 import type { Scope } from './client.ts';
-import type { PageState, ScopeState } from './shared.ts';
+import type { PageState, ScopeId, ScopeState } from './shared.ts';
 
 /** The parts of the core that this module uses. */
 type Core = Pick<
   typeof Client,
   'ElementReference' | 'FunctionReference' | 'hooks' | 'removeScope' | 'scopes'
 >;
+
+/** Reads an ID, as `parseId` in `shared.ts` does. This module imports no code of its own. */
+function readId(text: string): ScopeId {
+  return /^-?\d+$/.test(text) ? Number(text) : text;
+}
+
+/** Adds a number to an ID, as `shiftId` in `shared.ts` does. */
+function shiftId(id: ScopeId, by: number): ScopeId {
+  if (typeof id === 'number') {
+    return id + by;
+  }
+  const dot = id.indexOf('.');
+  return `${Number(id.slice(0, dot)) + by}${id.slice(dot)}`;
+}
 
 /** Adds a number to the scope IDs of a state record. */
 function shiftState(core: Core, state: PageState, by: number): PageState {
@@ -26,10 +40,10 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
   // References to elements and client functions name the scope of their markup.
   const shiftValue = (value: unknown): unknown => {
     if (value instanceof ElementReference) {
-      return new ElementReference(value.scope + by, value.anchor);
+      return new ElementReference(shiftId(value.scope, by), value.anchor);
     }
     if (value instanceof FunctionReference) {
-      return new FunctionReference(value.ref, value.scope + by);
+      return new FunctionReference(value.ref, shiftId(value.scope, by));
     }
     // A later record settles it, with a value whose IDs move too.
     if (value instanceof Promise) {
@@ -51,13 +65,15 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
   };
   const result: PageState = {};
   for (const [key, record] of Object.entries(state)) {
-    result[Number(key) + by] = {
+    result[shiftId(readId(key), by)] = {
       ...record,
-      p: record.p === undefined ? undefined : record.p + by,
-      o: record.o === undefined ? undefined : record.o + by,
+      p: record.p === undefined ? undefined : shiftId(record.p, by),
+      o: record.o === undefined ? undefined : shiftId(record.o, by),
       c:
         record.c &&
-        Object.fromEntries(Object.entries(record.c).map(([anchor, id]) => [anchor, id + by])),
+        Object.fromEntries(
+          Object.entries(record.c).map(([anchor, id]) => [anchor, shiftId(id, by)]),
+        ),
       s: record.s?.map(shiftValue),
     };
   }
@@ -65,7 +81,7 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
 }
 
 /** Removes scopes and the scopes inside them, and runs their cleanups. */
-function dropScopes(core: Core, roots: Set<number>): void {
+function dropScopes(core: Core, roots: Set<ScopeId>): void {
   const inside = (scope: Scope): boolean => {
     for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
       if (roots.has(current.id)) {
@@ -96,20 +112,20 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
   const value = offset ? shiftState(core, state, offset) : state;
   const drop = script.getAttribute('b-drop');
   if (drop) {
-    dropScopes(core, new Set(drop.split(',').map(Number)));
+    dropScopes(core, new Set(drop.split(',').map(readId)));
   }
   const list = script.getAttribute('b-roots');
   if (list === null) {
     return value;
   }
-  const roots = new Set(list.split(',').filter(Boolean).map(Number));
-  const alias = new Map<number, number>();
+  const roots = new Set(list.split(',').filter(Boolean).map(readId));
+  const alias = new Map<ScopeId, ScopeId>();
   for (const pair of (script.getAttribute('b-alias') ?? '').split(',').filter(Boolean)) {
-    const [from, to] = pair.split(':').map(Number) as [number, number];
+    const [from, to] = pair.split(':').map(readId) as [ScopeId, ScopeId];
     alias.set(from, to);
   }
-  const kept = (id: number): boolean => {
-    for (let current: number | undefined = id; current !== undefined;) {
+  const kept = (id: ScopeId): boolean => {
+    for (let current: ScopeId | undefined = id; current !== undefined;) {
       if (roots.has(current)) {
         return true;
       }
@@ -118,13 +134,14 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
     }
     return false;
   };
-  const resolve = (id: number | undefined): number | undefined =>
+  const resolve = (id: ScopeId | undefined): ScopeId | undefined =>
     id === undefined ? undefined : (alias.get(id) ?? id);
   const result: PageState = {};
   for (const [key, record] of Object.entries(value)) {
     // The new page renders the kept layouts again. Their scopes are not added.
-    if (kept(Number(key))) {
-      result[Number(key)] = { ...record, p: resolve(record.p), o: resolve(record.o) };
+    const id = readId(key);
+    if (kept(id)) {
+      result[id] = { ...record, p: resolve(record.p), o: resolve(record.o) };
     }
   }
   return result;

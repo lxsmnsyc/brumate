@@ -5,12 +5,34 @@
 import { raw } from './html.ts';
 import type { Raw } from './html.ts';
 
+/**
+ * The ID of a scope or of a `#loading` boundary. The rest of the page numbers
+ * its scopes from the base of the render, such as `3`. A `#loading` body
+ * numbers its own from 0 after the ID of its boundary and a dot, such as
+ * `5.0` and `5.1`, so its IDs do not depend on when its data arrives.
+ */
+export type ScopeId = number | string;
+
+/** Reads a scope or boundary ID from markup. */
+export function parseId(text: string): ScopeId {
+  return /^-?\d+$/.test(text) ? Number(text) : text;
+}
+
+/** Adds a number to an ID. An ID inside a boundary moves with its boundary. */
+export function shiftId(id: ScopeId, by: number): ScopeId {
+  if (typeof id === 'number') {
+    return id + by;
+  }
+  const dot = id.indexOf('.');
+  return `${Number(id.slice(0, dot)) + by}${id.slice(dot)}`;
+}
+
 /** An element that the server rendered. The client finds it by its anchor. */
 export class ElementReference {
-  readonly scope: number;
+  readonly scope: ScopeId;
   readonly anchor: number;
 
-  constructor(scope: number, anchor: number) {
+  constructor(scope: ScopeId, anchor: number) {
     this.scope = scope;
     this.anchor = anchor;
   }
@@ -20,9 +42,9 @@ export class ElementReference {
 export class FunctionReference {
   /** `<component id>#<export name>`. */
   readonly ref: string;
-  readonly scope: number;
+  readonly scope: ScopeId;
 
-  constructor(ref: string, scope: number) {
+  constructor(ref: string, scope: ScopeId) {
     this.ref = ref;
     this.scope = scope;
   }
@@ -38,9 +60,9 @@ export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: stri
  */
 export const stateValues: {
   /** An element that the server rendered, by its scope and anchor. */
-  e: (scope: number, anchor: number) => ElementReference;
+  e: (scope: ScopeId, anchor: number) => ElementReference;
   /** A client function, by its reference and scope. */
-  f: (ref: string, scope: number) => FunctionReference;
+  f: (ref: string, scope: ScopeId) => FunctionReference;
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
   /**
@@ -70,13 +92,13 @@ export interface ScopeState {
   /** The scope's ID in the compiled component. */
   k?: number;
   /** The ID of the scope that contains this one. Component root scopes have none. */
-  p?: number;
+  p?: ScopeId;
   /** The component ID of a component's root scope. */
   m?: string;
   /** The item of a list item scope. */
   i?: unknown;
   /** The scope that rendered a component's root scope, for finding contexts. */
-  o?: number;
+  o?: ScopeId;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
@@ -84,11 +106,11 @@ export interface ScopeState {
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */
-  c?: Record<number, number>;
+  c?: Record<number, ScopeId>;
 }
 
 /** The state of a page, by scope ID. */
-export type PageState = Record<number, ScopeState>;
+export type PageState = Record<ScopeId, ScopeState>;
 
 /**
  * The flags of a group of scope records in `PackedState`:
@@ -100,9 +122,11 @@ export type PageState = Record<number, ScopeState>;
  *   parent, `p`, of every scope.
  * - `MODULE`: the group has the component ID of its scopes after its header.
  * - `SOURCE`: the scopes are the items of a list whose list is a slot of an enclosing scope.
- *   The header ends with that scope's ID and the slot's index, and the items are not written:
+ *   The header then has that scope's ID and the slot's index, and the items are not written:
  *   the item of the scope at position `n` in the group is the value at `n` of the list, or of
  *   `Array.from` of a Set. With `ITEM_SLOT`, each scope writes its slots after the first.
+ * - `PREFIX`: the scopes are inside a `#loading` body. The header ends with the prefix of
+ *   their IDs, such as `5.`, and the gaps count the numbers after it.
  */
 export const ITEM_SLOT = 1;
 export const ITEM = 2;
@@ -110,12 +134,13 @@ export const CHILDREN = 4;
 export const OWNER = 8;
 export const MODULE = 16;
 export const SOURCE = 32;
+export const PREFIX = 64;
 
 /**
  * The page state as the server writes it. Records of scopes that share their
  * kind, their parent or owner, and their shape are in one group of `g`,
  * such as the items of a list, instead of one object each. A group is a flat
- * array: `[kind, base, flags, slotCount, module?, source?, sourceSlot?, ...scopes]`, and each scope
+ * array: `[kind, base, flags, slotCount, module?, source?, sourceSlot?, prefix?, ...scopes]`, and each scope
  * is its ID as the gap from the one before it (the first from `base`), its
  * slots, and then its item and its child components, as `flags` says.
  */

@@ -159,7 +159,7 @@ Reads a context from the nearest component above that provides it, or its defaul
 function $id(): string;
 ```
 
-Returns an ID that is unique in the page, for attributes such as `for` and `aria-describedby`. Assign it to a `const` at the top level of a script. Server and client make the same ID. In the script of a block, such as the body of a `#for`, each instance gets its own.
+Returns an ID that is unique in the page, for attributes such as `for` and `aria-describedby`. Assign it to a `const` at the top level of a script. Server and client make the same ID. In the script of a block, such as the body of a `#for`, each instance gets its own. It has only letters, digits, `-` and `_`, so it works as a CSS selector too.
 
 ## `$title`
 

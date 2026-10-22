@@ -6,13 +6,15 @@ The attributes that brumate writes start with `b-`, like the `s-<hash>` attribut
 
 ## Scope IDs
 
-Every scope that client code needs gets an integer ID at render time. The server gives IDs in order, from the `base` of the render, which is 0 for a normal page. Scopes that the client creates get negative IDs, so they never match IDs that the server sends later.
+Every scope that client code needs gets an ID at render time. The server gives IDs in order, from the `base` of the render, which is 0 for a normal page. Scopes that the client creates get negative IDs, so they never match IDs that the server sends later.
+
+A `#loading` body has IDs of its own. Its scopes and the boundaries inside it are numbered from 0, after the ID of its boundary and a dot: the scopes of boundary `5` are `5.0`, `5.1` and so on, and a body inside it numbers its scopes `5.0.0` and on. A body resumes when its data arrives, so its IDs, and the IDs of the rest of the page, do not depend on that order. In the state, an ID with a dot is a string, and other IDs are numbers.
 
 - A component instance always gets an ID.
 - A body scope gets an ID when it has slots or anchors, or when it is an item of a `#for` or `#repeat` whose list can change.
 - A `#template` call gets an ID when its body has slots or anchors.
 
-`#loading` bodies get boundary IDs from a second counter, which also starts at the base.
+`#loading` bodies get boundary IDs from a second counter, which also starts at the base. A boundary inside a `#loading` body gets an ID with a dot, from that body's counter.
 
 ## Anchors
 
@@ -94,7 +96,7 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 ```
 
 - The `<template>` holds the body.
-- The script moves the body in, in place of the fallback and the markers. The first swap script of a page also defines `$bS`.
+- The script moves the body in, in place of the fallback and the markers. The first swap script of a page also defines `$bS`. An ID with a dot is a string, as in `$bS("5.0")`.
 - The state record holds the scopes of the body. It comes after the swap, so the markup of its scopes is in the page when the core reads it.
 
 If the body fails, the fallback stays.
@@ -189,10 +191,11 @@ g: [[2, 0, 1, 1, 1, $R[4], 1, $R[5], 1, $R[6]]]
 g: [[2, 0, 33, 1, 0, 0, 1, 1, 1]]
 ```
 
-- A group is `[kind, base, flags, slotCount, module?, source?, sourceSlot?, ...scopes]`.
+- A group is `[kind, base, flags, slotCount, module?, source?, sourceSlot?, prefix?, ...scopes]`.
 - Each scope is the gap from the ID before it, then its slots, then its item and its child components when the flags say so. The first gap is from `base`.
 - `base` is the parent, `p`, of every scope of the group. For the root scopes of components, flag 8, it is the distance from the scope that rendered each one, `o`, to its ID, and the first gap is from 0.
-- The flags are 1 when the item is the first slot, 2 when the item comes after the slots, 4 when the child components `c` come after that, 8 for component root scopes, 16 when `module` is in the header, and 32 when the items are not written.
+- The flags are 1 when the item is the first slot, 2 when the item comes after the slots, 4 when the child components `c` come after that, 8 for component root scopes, 16 when `module` is in the header, 32 when the items are not written, and 64 when the scopes are inside a `#loading` body.
+- With flag 64, `prefix` is the part of their IDs up to the last dot, such as `5.`. The gaps count the number after it, and the first gap is from 0.
 - With flag 32, `source` and `sourceSlot` name the scope and the slot that hold the list. The item of the scope at position `n` in the group is the value at `n` of that list, or of `Array.from` of a Set. With flag 1, each scope writes its slots after the first, and the core sets the first slot to the item. `slotCount` still counts the first slot.
 - The server uses flag 32 for a `#for` whose list is a signal, memo or prop of a scope around it, when that scope's record is in the same state record and each item is the value at its position in the list. Otherwise it writes the items.
 - A group holds the fields `k`, `p`, `o`, `m`, `s`, `i` and `c`. A record with other fields, a record without a parent or an owner, and the only record of its shape keep their own object.
@@ -251,7 +254,7 @@ The client keeps the layouts only when the root route of both pages is the same,
 
 A prerendered file on a static host starts its IDs at 0, whatever the request asks. Before it reads such a page, the client moves its IDs up by the difference:
 
-- In the markup: `b-b`, `b-v`, `b-result`, `b-l`, `b-h`, and the `t`, `b`, `i`, `l`, `P` and `R` comments.
+- In the markup: `b-b`, `b-v`, `b-result`, `b-l`, `b-h`, and the `t`, `b`, `i`, `l`, `P` and `R` comments. An ID with a dot moves its first number, so `1.0` becomes `3.0`.
 - In the swap scripts: the numbers of `$bS(…)` and `$bH(…)`.
 - In `b-next` and `b-root`.
 - In the state: each record with scopes gets `b-offset`, and the core moves the scope IDs, the parent and child IDs, and the element and function references in its value. The code of the record does not change. Promises in it are moved when they settle.

@@ -239,7 +239,8 @@ function shiftFor(state: Element | null, requested: number): Shift | undefined {
   return root === requested ? undefined : { by: requested - root, root: String(requested) };
 }
 
-const COMMENT_IDS = /^([tb])(\d+)(:.*)$|^([ilP])(\d+)$/;
+// An ID inside a `#loading` body is the boundary's ID, a dot and more, such as `5.1`.
+const COMMENT_IDS = /^([tb])([\d.]+)(:.*)$|^([ilP])([\d.]+)$/;
 /** Attributes that hold a scope ID, then `:` and more. */
 const SCOPED = ['b-b', 'b-result'];
 /** Attributes that hold only a scope or boundary ID. */
@@ -251,7 +252,13 @@ const IDS = ['b-v', 'b-l', 'b-h', 'b-next'];
  * the IDs inside a state record when it reads one with `b-offset`.
  */
 function shiftIds(root: Node, shift: Shift): void {
-  const add = (value: string): string => String(Number(value) + shift.by);
+  // An ID inside a boundary moves with its boundary, the number before the first dot.
+  const add = (value: string): string => {
+    const dot = value.indexOf('.');
+    return dot === -1
+      ? String(Number(value) + shift.by)
+      : `${Number(value.slice(0, dot)) + shift.by}${value.slice(dot)}`;
+  };
   const visit = (node: Node): void => {
     if (node.nodeType === 8) {
       const comment = node as Comment;
@@ -294,8 +301,8 @@ function shiftIds(root: Node, shift: Shift): void {
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
       // The scripts that swap in `#loading` bodies and their head name the boundary.
       element.textContent = element.textContent!.replace(
-        /\$b([SH])\((\d+)/g,
-        (_, kind: string, id: string) => `$b${kind}(${add(id)}`,
+        /\$b([SH])\(("?)([\d.]+)/g,
+        (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
       );
     }
     for (const child of element.tagName === 'TEMPLATE'
