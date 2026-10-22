@@ -5,6 +5,7 @@
 
 import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
+import { wholeNodes } from './nodes.ts';
 import { handleRequest, render } from './server.ts';
 import type { Component, RenderOptions } from './server.ts';
 
@@ -387,7 +388,12 @@ export function createVisit(options: VisitorOptions): Visit {
           throw new TypeError(`Too many redirects from ${path}`);
         }
         url = new URL(location, url);
-        if (response.status === 303 || (method === 'POST' && response.status !== 307)) {
+        // As in fetch: 303 asks for the page with GET, and so do 301 and 302 after a POST.
+        // 307 and 308 send the request again as it was.
+        if (
+          (response.status === 303 && method !== 'HEAD') ||
+          (method === 'POST' && (response.status === 301 || response.status === 302))
+        ) {
           method = 'GET';
           body = undefined;
           extra.delete('content-type');
@@ -456,8 +462,8 @@ export function createVisit(options: VisitorOptions): Visit {
         const chunk = await reader.read();
         done = chunk.done;
         rest += chunk.value ?? '';
-        // A chunk can end inside a tag, so only whole nodes move in, as a browser parses them.
-        const last = done ? rest.length : rest.lastIndexOf('>') + 1;
+        // A chunk can end inside a tag, a script or a template, so only whole nodes move in.
+        const last = done ? rest.length : wholeNodes(rest);
         if (last > 0 && open) {
           // The observer runs its scripts.
           const template = document.createElement('template');
