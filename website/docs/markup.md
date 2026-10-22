@@ -133,13 +133,15 @@ The handler is a name of a function, or an arrow function in parentheses. It loa
 
 Modifiers follow the event name, as in `onSubmit:prevent`. They apply before the handler loads:
 
-| Modifier   | Effect                                     |
-| ---------- | ------------------------------------------ |
-| `:prevent` | Calls `event.preventDefault()`.            |
-| `:stop`    | Calls `event.stopPropagation()`.           |
-| `:passive` | Adds the listener as passive.              |
-| `:once`    | Removes the handler after the first event. |
-| `:capture` | Listens in the capture phase.              |
+| Modifier   | Effect                                                                       |
+| ---------- | ---------------------------------------------------------------------------- |
+| `:prevent` | Calls `event.preventDefault()`.                                              |
+| `:stop`    | Calls `event.stopPropagation()`.                                             |
+| `:passive` | Nothing: listeners are passive unless a handler of the event has `:prevent`. |
+| `:once`    | Removes the handler after the first event.                                   |
+| `:capture` | Runs the handler before the handlers of the elements inside.                 |
+
+Handlers run as if each element had its own listener. Those with `:capture` run first, from the outside in, and then the others, from the target outwards. An event that does not bubble, such as `focus`, `blur`, `mouseenter` or `scroll`, runs only the handlers of its target and the `:capture` handlers around it.
 
 Use `:prevent` rather than calling `event.preventDefault()` in the handler. The browser decides on the default action as soon as the event fires, before the handler's code has loaded.
 
