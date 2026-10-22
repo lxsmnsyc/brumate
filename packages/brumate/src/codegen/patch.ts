@@ -1,6 +1,6 @@
 import type { SFCFile } from '../ast.ts';
 import { copy } from '../sourcemap.ts';
-import type { SemanticModel, Site } from '../model.ts';
+import type { Declaration, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 
@@ -51,12 +51,14 @@ export function promiseName(name: string): string {
  * `$signal(x)` and `$memo(x)` become `(x)`, `$props()` becomes `$$props`
  * and `$untrack(x)` becomes `(x)`. On the server, a memo is renamed to
  * `$$p_<name>`, because it can hold a promise that is awaited where it is read.
+ * The memos in `inline` are plain values on the server too.
  */
 export function addValueEdits(
   patch: Patch,
   file: SFCFile,
   sites: Site[],
   mode: 'server' | 'client' = 'server',
+  inline: Set<Declaration> = new Set(),
 ): void {
   const sitesByNode = new Map<object, Site>();
   for (const site of sites) {
@@ -102,7 +104,8 @@ export function addValueEdits(
         }
         const site =
           name === '$memo' || name === '$optimistic' ? sitesByNode.get(argument) : undefined;
-        const declaration = site?.declaration;
+        const declaration =
+          site?.declaration && !inline.has(site.declaration) ? site.declaration : undefined;
         if (declaration && mode === 'server') {
           // Any memo can be a promise, so the server holds it as one and awaits it where it is read.
           patch.replace(
@@ -118,6 +121,7 @@ export function addValueEdits(
             if (
               read.range.start !== read.range.end &&
               read.declaration !== declaration &&
+              !inline.has(read.declaration) &&
               (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
             ) {
               patch.replace(

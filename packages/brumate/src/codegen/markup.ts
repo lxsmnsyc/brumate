@@ -22,13 +22,17 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
+  plainValues,
   instanceScope,
   isMemo,
+  isPrimitive,
+  readsPlain,
   scopePath,
   slotIndex,
 } from './scopes.ts';
 import { needsScope } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
+import { insertValue } from '../runtime/html.ts';
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -99,6 +103,17 @@ const CLIENT_HELPERS: Record<string, string> = {
   title: 'title',
 };
 
+/** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
+function literalText(node: oxc.Node): string | undefined {
+  if (node.type === 'Literal') {
+    return 'regex' in node && node.regex ? undefined : insertValue(node.value);
+  }
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return insertValue(node.quasis[0]!.value.cooked);
+  }
+  return undefined;
+}
+
 export class Emitter {
   readonly lines: string[] = [];
   private readonly file: SFCFile;
@@ -113,6 +128,8 @@ export class Emitter {
   private readonly ctxArgument: string;
   /** Async memos that the server awaits where they are declared. */
   private readonly blocking: Set<Declaration>;
+  /** Memos and signals that hold a primitive on the server, so it awaits none of them. */
+  private readonly inline: Set<Declaration>;
   private parts: Part[] = [];
   private depth = 0;
   /** How many of this component's elements contain the current node. */
@@ -128,6 +145,7 @@ export class Emitter {
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
     this.blocking = blockingMemos(plan);
+    this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
     }
@@ -264,9 +282,25 @@ export class Emitter {
     }
   }
 
+  /** True if the server inserts a primitive, such as a memo that it computes as a plain value. */
+  private isPrimitiveInsert(expression: Expression): boolean {
+    if (this.options.mode !== 'server') {
+      return false;
+    }
+    const site = this.sitesByNode.get(expression.ast);
+    return isPrimitive(expression.ast, (name) =>
+      readsPlain(site, name, (declaration) => this.inline.has(declaration)),
+    );
+  }
+
   /** True for an async memo that is a promise where its scope ends, on the server. */
   private isPromise(declaration: Declaration): boolean {
-    return this.options.mode === 'server' && isMemo(declaration) && !this.blocking.has(declaration);
+    return (
+      this.options.mode === 'server' &&
+      isMemo(declaration) &&
+      !this.blocking.has(declaration) &&
+      !this.inline.has(declaration)
+    );
   }
 
   /** Awaits the async memos of a statement that markup outside `#loading` reads. */
@@ -278,7 +312,12 @@ export class Emitter {
       const init = declarator.init;
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
-      if (declaration && isMemo(declaration) && this.blocking.has(declaration)) {
+      if (
+        declaration &&
+        isMemo(declaration) &&
+        this.blocking.has(declaration) &&
+        !this.inline.has(declaration)
+      ) {
         this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
       }
     }
@@ -553,16 +592,22 @@ export class Emitter {
           this.options.mode === 'server'
             ? `, $$ctx, ${this.scopeVar(instanceScope(this.plan, scope))}`
             : '';
-        const value = this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
+        // A primitive renders as text, so it needs neither the place of the insert nor an await.
+        const value = this.isPrimitiveInsert(node.expression)
+          ? `$$b.insert(${this.expression(node.expression)})`
+          : this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
+        // A literal renders when the component compiles.
+        const text = literalText(node.expression.ast);
+        const emitValue = (): void => (text === undefined ? this.code(value) : this.html(text));
         // An insert that is the whole content of its element updates through the element's anchor.
         if (anchor && !this.plan.contents.has(node)) {
           this.html('<!--t');
           this.code(anchor.scope);
           this.html(`:${anchor.index}-->`);
-          this.code(value);
+          emitValue();
           this.html('<!--/t-->');
         } else {
-          this.code(value);
+          emitValue();
         }
         return;
       }
@@ -1054,6 +1099,9 @@ export class Emitter {
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
+      if (this.inline.has(declaration)) {
+        continue;
+      }
       this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
     }
     this.emitBody(block.body);

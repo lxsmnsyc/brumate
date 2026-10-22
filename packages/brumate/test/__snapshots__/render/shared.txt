@@ -12,7 +12,7 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + ": <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p>";
+  $$html += "<button class=\"one\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count], ["count"]);
   return $$html;
 }

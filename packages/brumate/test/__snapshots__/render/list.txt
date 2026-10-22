@@ -16,7 +16,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
   async function row(index: number): Promise<$$b.Raw> {
     let $$html = '';
     const $$s2 = $$ctx.scope(2, $$s1);
-    $$html += "<span>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + " <!--t" + $$s2 + ":0-->" + (typeof ($$t = $$b.insert((index + 1), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></span>";
+    $$html += "<span>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
     $$ctx.slots($$s2, [index], ["index"]);
     return $$b.raw($$html);
   }
