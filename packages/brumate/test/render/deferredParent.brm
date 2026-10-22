@@ -1,0 +1,9 @@
+<script>
+  import Deferred from './deferred.brm';
+</script>
+
+#loading {
+  <Deferred />
+} #else {
+  <p class="waiting">Waiting</p>
+}

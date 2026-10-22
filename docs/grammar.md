@@ -137,7 +137,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 - Only `#case`, `#default`, whitespace and comments are allowed directly inside `#switch`. `#default` is last.
 - A `BlockScript` cannot export and cannot call `$props()`.
 - A `TemplateDecl` at the top level can be used anywhere in the file. In a body, it can be used in that body.
-- A `DeferBlock` cannot be inside the body of a `ClientBlock`, a `DeferBlock` or a `LoadingBlock`, or in markup that the client renders.
+- A `DeferBlock` cannot be inside the body of a `ClientBlock`, or in markup that the client renders.
 
 ## `#` in text
 

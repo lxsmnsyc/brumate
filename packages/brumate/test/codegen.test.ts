@@ -383,16 +383,18 @@ function compileBlock(markup: string): void {
 
 describe('#defer', () => {
   it.each([
-    ['#loading { #defer { <p>x</p> } }', '#defer cannot be inside a #loading body'],
     ['#client { #defer { <p>x</p> } }', '#defer cannot be inside a #client body'],
-    ['#defer { #defer { <p>x</p> } }', '#defer cannot be inside a #defer body'],
     ['#if (open) { #defer { <p>x</p> } }', '#defer cannot be in markup that the browser renders'],
   ])('reports a block that the server cannot render again: %s', (markup, message) => {
     expect(() => compileBlock(markup)).toThrow(message);
   });
 
-  it('accepts a block in markup that only the server renders, and in a fallback', () => {
-    expect(() => compileBlock('#defer { <p>x</p> } #else { <p>…</p> }')).not.toThrow();
-    expect(() => compileBlock('#loading { <p>x</p> } #else { #defer { <p>y</p> } }')).not.toThrow();
+  it.each([
+    '#defer { <p>x</p> } #else { <p>…</p> }',
+    '#loading { #defer { <p>x</p> } }',
+    '#loading { <p>x</p> } #else { #defer { <p>y</p> } }',
+    '#defer { #defer { <p>x</p> } }',
+  ])('accepts a block in markup that the server renders: %s', (markup) => {
+    expect(() => compileBlock(markup)).not.toThrow();
   });
 });

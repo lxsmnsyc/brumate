@@ -86,6 +86,13 @@ interface Boundary {
   render: Promise<{ html: string; ctx: Context }>;
   /** True when a `#try` body around it failed, so its markers were never sent. */
   cancelled?: boolean;
+  /** A body around the target of a request for a `#defer` body, which renders but is not sent. */
+  around?: boolean;
+}
+
+/** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
+function holdsBoundary(id: ScopeId, target: ScopeId): boolean {
+  return typeof target === 'string' && target.startsWith(`${id}.`);
 }
 
 /** The `#defer` body that a render renders, for the request of the browser that asks for it. */
@@ -465,11 +472,13 @@ export class Context {
 
   /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
   defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
-    // The request for a `#defer` body renders no other body.
-    if (this.root.target && !this.inTarget) {
-      return;
+    const target = this.root.target;
+    if (!target || this.inTarget) {
+      this.register(id, renderBody, this.inTarget);
+    } else if (holdsBoundary(id, target.boundary)) {
+      // The request for a `#defer` body renders the bodies around it, without sending them.
+      this.register(id, renderBody, false, true);
     }
-    this.register(id, renderBody, this.inTarget);
   }
 
   /**
@@ -479,7 +488,14 @@ export class Context {
    */
   deferBlock(id: ScopeId, at: string, renderBody: (ctx: Context) => Promise<string>): void {
     const target = this.root.target;
-    if (!target || this.inTarget || id !== target.boundary) {
+    if (!target || this.inTarget) {
+      return;
+    }
+    if (holdsBoundary(id, target.boundary)) {
+      this.register(id, renderBody, false, true);
+      return;
+    }
+    if (id !== target.boundary) {
       return;
     }
     if (at !== target.at) {
@@ -494,12 +510,14 @@ export class Context {
     id: ScopeId,
     renderBody: (ctx: Context) => Promise<string>,
     inTarget: boolean,
+    around = false,
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
     const boundary: Boundary = {
       id,
       render: renderBody(child).then((html) => ({ html, ctx: child })),
+      around,
     };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
@@ -1273,8 +1291,9 @@ export async function render<P>(
     open++;
     boundary.render.then(
       (result) => {
-        // A `#try` body around it failed, so the page has no markers for it.
-        if (boundary.cancelled) {
+        // A `#try` body around it failed, so the page has no markers for it. A body around the
+        // target of a `#defer` request is in the page already.
+        if (boundary.cancelled || boundary.around) {
           finish();
           return;
         }

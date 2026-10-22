@@ -90,6 +90,7 @@
   - The request is the URL of the page and the boundary ID, so nothing comes from the browser that needs signing. The server renders the route again, with the base of the page, and sends only that body.
   - The scopes of `#loading` and `#defer` bodies are numbered after their boundary ID, such as `5.0`, so the second render numbers the page the same way, whatever order the data arrives in.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
+  - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
 
 ## Open
 

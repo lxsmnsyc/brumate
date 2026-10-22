@@ -873,6 +873,38 @@ async function allPending(pending: AsyncIterable<string>): Promise<string> {
   return result;
 }
 
+/**
+ * Answers the requests of the browser with the route of a fixture, and runs the scripts
+ * that are added to the page, in order, as a browser does. jsdom does not run them.
+ */
+async function withRoute(
+  name: string,
+  test: (fetch: Mock<(url: string, init: RequestInit) => Promise<Response>>) => Promise<void>,
+): Promise<void> {
+  const server = await import(file(`${name}.brm.ts`));
+  const tree = { page: async () => server };
+  const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+    async (url, init) =>
+      (await handleRoute(tree, new Request(new URL(url, 'http://localhost/'), init)))!,
+  );
+  vi.stubGlobal('fetch', fetch);
+  const scripts = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeName === 'SCRIPT') {
+          run(node as Element);
+        }
+      }
+    }
+  });
+  scripts.observe(document.body, { childList: true });
+  try {
+    await test(fetch);
+  } finally {
+    scripts.disconnect();
+  }
+}
+
 describe('#defer', () => {
   it('renders the fallback in the page, and the body in a request of its own', async () => {
     const server = await import(file('deferred.brm.ts'));
@@ -926,26 +958,27 @@ describe('#defer', () => {
     expect(page.headers.get('vary')).toContain('x-brumate-defer');
   });
 
-  it('puts the body in place of the fallback when its trigger fires', async () => {
-    const server = await import(file('deferred.brm.ts'));
-    const tree = { page: async () => server };
-    const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
-      async (url, init) =>
-        (await handleRoute(tree, new Request(new URL(url, 'http://localhost/'), init)))!,
+  it('renders a block of a component inside a #loading body of its parent', async () => {
+    const server = await import(file('deferredParent.brm.ts'));
+    const request = new Request('http://localhost/');
+    const page = await renderParts(server.default, {}, { request });
+    const chunks = await allPending(page.pending);
+    // The block is inside boundary 0, so its own boundary is 0.0.
+    expect(chunks).toContain('<template b-b="0.0:1" b-defer="idle:0.0:0">');
+    const parts = await renderParts(
+      server.default,
+      {},
+      { request, defer: { boundary: '0.0', at: '0.0:1' } },
     );
-    vi.stubGlobal('fetch', fetch);
-    // jsdom does not run scripts that are added to the page, so this runs them, in order.
-    const scripts = new MutationObserver((records) => {
-      for (const record of records) {
-        for (const node of record.addedNodes) {
-          if (node.nodeName === 'SCRIPT') {
-            run(node as Element);
-          }
-        }
-      }
-    });
-    scripts.observe(document.body, { childList: true });
-    try {
+    expect(parts.defer).toBe('found');
+    const body = await allPending(parts.pending);
+    expect(body).toContain('<template b-l="0.0"><p class="greeting">Hello guest</p>');
+    // Only the target body is sent, not the #loading body around it.
+    expect(body).not.toContain('b-l="0"');
+  });
+
+  it('puts the body in place of the fallback when its trigger fires', async () => {
+    await withRoute('deferred', async (fetch) => {
       await resume('deferred', {});
       expect(text('.fallback')).toBe('Loading');
       await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
@@ -957,9 +990,55 @@ describe('#defer', () => {
       click(document.querySelector('.inner')!);
       await waitFor(() => expect(text('.inner')).toBe('2'));
       expect(text('.count')).toBe('2');
-    } finally {
-      scripts.disconnect();
-    }
+    });
+  });
+
+  it('loads a block of a component that a #loading body of its parent renders', async () => {
+    await withRoute('deferredParent', async (fetch) => {
+      const server = await import(file('deferredParent.brm.ts'));
+      const { html, state, pending } = await renderParts(
+        server.default,
+        {},
+        {
+          request: new Request('http://localhost/'),
+        },
+      );
+      document.body.innerHTML = html;
+      document.body.insertAdjacentHTML('beforeend', state);
+      for await (const chunk of pending) {
+        document.body.insertAdjacentHTML('beforeend', chunk);
+      }
+      await startLoader();
+      await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(new Headers(fetch.mock.calls[0]![1].headers).get('x-brumate-defer')).toBe('0.0 0.0:1');
+      click(document.querySelector('.inner')!);
+      await waitFor(() => expect(text('.inner')).toBe('2'));
+      expect(text('.count')).toBe('2');
+    });
+  });
+
+  it('keeps the fallback of a block that the browser renders, and asks for nothing', async () => {
+    await withRoute('deferredClient', async (fetch) => {
+      await resume('deferredClient', {});
+      await waitFor(() => expect(text('.fallback')).toBe('Loading'));
+      await new Promise((done) => setTimeout(done, 50));
+      expect(document.querySelector('.greeting')).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  it('loads a block inside the body of another block, after it', async () => {
+    await withRoute('deferredNested', async (fetch) => {
+      await resume('deferredNested', {});
+      await waitFor(() => expect(text('.inner')).toBe('Inner'));
+      expect(text('.outer')).toBe('Outer');
+      expect(document.querySelector('.outer-wait')).toBeNull();
+      expect(document.querySelector('.inner-wait')).toBeNull();
+      expect(
+        fetch.mock.calls.map(([, init]) => new Headers(init.headers).get('x-brumate-defer')),
+      ).toEqual(['0 0:0', '0.0 0.0:0']);
+    });
   });
 });
 

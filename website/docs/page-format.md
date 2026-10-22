@@ -122,7 +122,7 @@ x-brumate-defer: 2 0:1
 x-brumate-base: 0
 ```
 
-The server renders the route again with that base and answers with the markup that it streams for a `#loading` body, with the header `x-brumate-defer: 2`. The browser adds it to the page and runs its scripts with the page's nonce. Its state records have `b-root="d<boundary>"`, so their references are apart from the page's. The answer is 409 when the render puts boundary 2 at another anchor, and 404 when it has no such boundary.
+The server renders the route again with that base, and the `#loading` and `#defer` bodies whose IDs the boundary's ID starts with, such as boundary `0` for `0.0`. It answers with the markup that it streams for a `#loading` body, with the header `x-brumate-defer: 2`. The browser adds it to the page and runs its scripts with the page's nonce. Its state records have `b-root="d<boundary>"`, so their references are apart from the page's. The answer is 409 when the render puts boundary 2 at another anchor, and 404 when it has no such boundary.
 
 ### `#portal`
 
