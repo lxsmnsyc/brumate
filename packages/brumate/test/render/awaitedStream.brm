@@ -1,0 +1,25 @@
+<script module>
+  let open: (value: string[]) => void = () => {};
+
+  export const ready = new Promise<string[]>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(tags: string[]): void {
+    open(tags);
+  }
+</script>
+
+<script>
+  import { $memo } from 'brumate/signals';
+
+  const user = await $memo(Promise.resolve({ name: 'Ada' }));
+  const tags = $memo(ready);
+</script>
+
+<p class="name">{user.name}</p>
+#loading {
+  <p class="tags">{(await user).name}: {tags.join(', ')}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

@@ -120,6 +120,17 @@ export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
   return result;
 }
 
+/** True if the render of the component awaits a promise, outside memos and the code of handlers. */
+export function awaitsPromise(plan: Plan): boolean {
+  return plan.graph.model.sites.some(
+    (site) =>
+      site.awaits &&
+      site.kind !== 'memo' &&
+      site.kind !== 'function' &&
+      !SKIPPED_SITES.has(site.kind),
+  );
+}
+
 /**
  * Generates the render module: the component's render function for the
  * client, used when a parent renders it inside a block that changes.
@@ -204,6 +215,15 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   emitter.line(
     `export default function ${plan.name}${generics}($$props: ${propsType(file)}): string {`,
   );
+  // A render function cannot wait, so a component whose render awaits a promise renders only
+  // on the server. Its memos can await: they load in the browser.
+  if (awaitsPromise(plan)) {
+    emitter.line(
+      `throw new Error(${JSON.stringify(`${plan.name} awaits a promise in its script or markup, so only the server can render it`)});`,
+    );
+    emitter.close();
+    return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
+  }
   emitter.line(`let $$html = '';`);
   emitter.line(
     `const ${emitter.scopeVar(model.component)} = $$b.createScope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,

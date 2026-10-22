@@ -41,6 +41,7 @@ A second signal holds the text of the field. Submitting the form adds a todo wit
 ```brm live
 <script>
   import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   interface Todo {
     id: number;
@@ -64,7 +65,7 @@ A second signal holds the text of the field. Submitting the form adds a todo wit
 </script>
 
 <h2>Todos</h2>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <label>
     New todo
     <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
@@ -80,7 +81,7 @@ A second signal holds the text of the field. Submitting the form adds a todo wit
 </ul>
 ```
 
-- `onSubmit:prevent=add` runs `add` when the form is submitted. `:prevent` stops the browser from loading a new page.
+- `onSubmit=(prevent(add))` runs `add` when the form is submitted. `prevent` from `brumate/events` stops the browser from loading a new page, before the code of `add` loads.
 - Assigning to a signal writes it: `draft = ''` empties the field, because the field reads `value=draft`.
 - `todos = [...todos, …]` writes a new array. Changing the array in place, such as with `todos.push(…)`, would not update the page, and the compiler warns about it.
 - `#else` renders when the list is empty.
@@ -93,6 +94,7 @@ A checkbox on each item marks it done. `$produce` changes one item in place on a
 ```brm live
 <script>
   import { $produce, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   interface Todo {
     id: number;
@@ -125,7 +127,7 @@ A checkbox on each item marks it done. `$produce` changes one item in place on a
 </script>
 
 <h2>Todos</h2>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <label>
     New todo
     <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
@@ -156,6 +158,7 @@ A memo computes a value from other values. It updates when they change:
 ```brm live
 <script>
   import { $memo, $produce, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   interface Todo {
     id: number;
@@ -196,7 +199,7 @@ A memo computes a value from other values. It updates when they change:
 </style>
 
 <h2>Todos</h2>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <label>
     New todo
     <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
@@ -237,6 +240,7 @@ A function with `'use server'` runs on the server. In the browser, calling it se
 
 <script>
   import { $memo, $produce, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   interface Todo {
     id: number;
@@ -288,7 +292,7 @@ A function with `'use server'` runs on the server. In the browser, calling it se
 </style>
 
 <h2>Todos</h2>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <label>
     New todo
     <input value=draft onInput=((event) => (draft = event.currentTarget.value))>

@@ -20,6 +20,7 @@ This repository holds the compiler and its runtime, the type checker and editor 
 ```html
 <script>
   import { $memo, $props, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import { persist } from './todos.server';
 
   const { initial } = $props<{ initial: Todo[] }>();
@@ -35,7 +36,7 @@ This repository holds the compiler and its runtime, the type checker and editor 
 </script>
 
 <h1>Todos</h1>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
 </form>
 <ul>
