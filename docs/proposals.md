@@ -21,7 +21,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
 | [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
@@ -212,27 +211,6 @@ export const plugins = [
 - The same plugins write server function calls and their answers, and the stubs of two-way realtime.
 
 Cost: about 1 week, most of it for loading the entry with the core and for the types.
-
-### Persisted signals
-
-Preferences such as the theme, a dismissed banner or the width of a panel are written to `localStorage` or a cookie by hand, and read back in `$client`, so the page renders the default first and then changes.
-
-```html
-<script>
-  import { $persisted } from 'brumate/signals';
-
-  let theme = $persisted('theme', 'light', { in: 'cookie' });
-</script>
-```
-
-- `$persisted(key, initial, { in })` is a signal whose writes go to `localStorage`, `sessionStorage` or a cookie.
-- With a cookie, the server reads the value from the request, so the page renders the right theme at once, with no flash.
-- With storage, the server renders `initial`, and the browser reads the stored value when the page resumes.
-- A write in another tab updates the signal, through the `storage` event.
-
-Cost: a few days.
-
-## Runtime
 
 ### Worker functions
 
@@ -818,6 +796,6 @@ Each step lists what it holds and why it comes there. A step can start before th
 4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability and persisted signals. Timing helpers are done.
+7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Timing helpers are done, and persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.
