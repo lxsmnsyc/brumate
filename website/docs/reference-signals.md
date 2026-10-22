@@ -13,22 +13,26 @@ import { $memo, $signal } from 'brumate/signals';
 
 ## Summary
 
-| Function                      | Returns                    | Where                                  | Guide                                              |
-| ----------------------------- | -------------------------- | -------------------------------------- | -------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` in the component script        | [Components](./components.md)                      |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script     | [State](./state.md)                                |
-| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script   | [State](./state.md), [Async data](./async-data.md) |
-| `$isPending(memo)`            | `boolean`                  | Any expression                         | [Async data](./async-data.md)                      |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
-| `$untrack(value)`             | the value                  | Any expression                         | [State](./state.md)                                |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written          | [State](./state.md)                                |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script | [Context](./context.md)                            |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script   | [Context](./context.md)                            |
-| `$id()`                       | `string`                   | `const` at the top level of a script   | [Page metadata](./page-metadata.md)                |
-| `$title(value)`               | `void`                     | Statement at the top level of a script | [Page metadata](./page-metadata.md)                |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script   | [Forms](./forms.md)                                |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script     | [Forms](./forms.md#showing-a-guess-while-it-posts) |
+| Function                      | Returns                    | Where                                                                    | Guide                                              |
+| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
+| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                      |
+| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                |
+| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md) |
+| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md#waiting-for-a-pause)            |
+| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md#waiting-for-a-pause)            |
+| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                      |
+| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
+| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
+| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                |
+| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                |
+| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                            |
+| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                            |
+| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)            |
+| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)   |
+| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                |
+| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                |
+| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                |
+| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts) |
 
 ## `$props`
 
@@ -69,8 +73,9 @@ Declares a read-only value computed from other values.
 
 - Declare it with `const`, as a single name. It needs one argument. `await` can be used in it.
 - A promise is awaited where the memo is read. An async iterable gives each of its values in turn.
+- `const name = await $memo(value)` makes the server wait for the memo where it is declared. `await name` of a memo, in a script or in markup, makes the render around the read wait for it. In the browser both are plain reads. See [Async data](./async-data.md#await).
 - Assigning to it is a compile error.
-- Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders after the rest of the page.
+- Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
 
 ## `$isPending`
@@ -167,7 +172,7 @@ Returns an ID that is unique in the page, for attributes such as `for` and `aria
 function $title(value: unknown): void;
 ```
 
-Sets the title of the page. A statement at the top level of a script, with one argument.
+Sets the title of the page. A statement at the top level of a script, with one argument. It is replaced by a `<title>` in `#head`, the compiler warns about it, and it goes in a later version. See [Page metadata](./page-metadata.md).
 
 - Server: writes `<title>` into the head. If several components set it, the last one that renders wins.
 - Client: when the value changes, the title changes.
@@ -194,6 +199,20 @@ let shown = $optimistic(names);
 - A write shows a guess. The guess stays until `source` changes, or until every server call of the page finishes.
 - Write it with `=`. `++` and `--` are compile errors.
 - `source` is a name. A signal is a compile error, because a handler can write a signal directly.
+
+## `$debounced` and `$throttled`
+
+```ts
+function $debounced<T>(value: T, ms: number): MemoValue<T>;
+function $throttled<T>(value: T, ms: number): MemoValue<T>;
+```
+
+Memos of `value` that the browser writes after a wait.
+
+- `$debounced` takes the value once it stops changing for `ms` milliseconds.
+- `$throttled` takes it at most once every `ms` milliseconds: the first change at once, and the last one after the wait.
+- Server: the value itself. Client: pending while it waits.
+- `ms` is a number literal. Any other value is a compile error.
 
 ## Not supported
 

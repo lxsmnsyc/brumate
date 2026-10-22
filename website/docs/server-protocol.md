@@ -67,6 +67,8 @@ The size in the header lets the reader wait for exactly the bytes of one chunk. 
 
 An `$action` form carries `b-action="<ID>"` and `b-result="<scope>:<slot>"`, the slot of its `$action`.
 
+In a build, the URL of each form also carries `__build=<build ID>`. A post from another build to a function that is gone answers 303 to the `Referer` when it is on the same site, or to `/`. A post to `<prefix>/`, with no ID, answers 204 with the build of the server in `x-brumate-build`. The browser asks it when the code of a handler fails to load. See [Skew protection](./deploying.md#skew-protection).
+
 A form post checks where it comes from, as a call does. See [Security](./reference-security.md).
 
 ## Navigation requests

@@ -96,7 +96,46 @@ export function serverExports(source: string, filename: string): string[] {
       `A 'use server' file exports only functions, because the browser calls them on the server. ${[...values].join(', ')} of ${filename} is not one`,
     );
   }
+  // The middleware of the file runs before its functions. The browser cannot call it.
+  functions.delete(MIDDLEWARE);
   return [...functions];
+}
+
+/** The export of a file of server functions that runs before each of them. */
+export const MIDDLEWARE = 'middleware';
+
+/** True if a file of server functions exports `middleware`. */
+export function hasServerMiddleware(source: string, filename: string): boolean {
+  const { program } = parseSync(filename, source, { lang: 'ts' });
+  for (const statement of program.body) {
+    if (statement.type !== 'ExportNamedDeclaration' || statement.exportKind === 'type') {
+      continue;
+    }
+    const declaration = statement.declaration;
+    if (declaration?.type === 'FunctionDeclaration' && declaration.id?.name === MIDDLEWARE) {
+      return true;
+    }
+    if (
+      declaration?.type === 'VariableDeclaration' &&
+      declaration.declarations.some(
+        (declarator) => declarator.id.type === 'Identifier' && declarator.id.name === MIDDLEWARE,
+      )
+    ) {
+      return true;
+    }
+    if (
+      statement.specifiers.some(
+        (specifier) =>
+          specifier.exportKind !== 'type' &&
+          (specifier.exported.type === 'Identifier'
+            ? specifier.exported.name
+            : specifier.exported.value) === MIDDLEWARE,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The module that the browser gets in place of a file of server functions. */

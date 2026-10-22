@@ -4,10 +4,8 @@
 </script>
 
 <script>
-  import { $action, $isPending, $memo, $title } from 'brumate/signals';
+  import { $action, $isPending, $memo } from 'brumate/signals';
   import { getEvent } from 'brumate/server';
-
-  $title('Guestbook');
 
   async function list() {
     'use server';
@@ -33,6 +31,10 @@
   const result = $action(sign);
   const names = $memo(list());
 </script>
+
+#head {
+  <title>Guestbook</title>
+}
 
 <h1>Guestbook</h1>
 <form action=sign>

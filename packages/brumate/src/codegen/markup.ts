@@ -23,6 +23,7 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
+  mayWait,
   plainValues,
   instanceScope,
   isMemo,
@@ -61,14 +62,24 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 type Part = { static: string } | { code: string };
 
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
-function specialCall(declarator: oxc.VariableDeclarator): '$getContext' | '$id' | undefined {
+function specialCall(
+  declarator: oxc.VariableDeclarator,
+): '$getContext' | '$id' | '$route' | '$navigation' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
-  return name === '$getContext' || name === '$id' ? name : undefined;
+  return name === '$getContext' || name === '$id' || name === '$route' || name === '$navigation'
+    ? name
+    : undefined;
 }
+
+/** The contexts that the runtime provides, by the compile-time function that reads them. */
+const BUILT_IN_CONTEXTS: Record<string, string> = {
+  $route: '$$b.routeContext',
+  $navigation: '$$b.navigationContext',
+};
 
 export interface EmitterOptions {
   mode: 'server' | 'client';
@@ -104,17 +115,57 @@ const CLIENT_HELPERS: Record<string, string> = {
   title: 'title',
 };
 
+/** The named character references that markup reads. Others stay as they are written. */
+const NAMED: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+  copy: '\u00a9',
+  reg: '\u00ae',
+  trade: '\u2122',
+  hellip: '\u2026',
+  mdash: '\u2014',
+  ndash: '\u2013',
+  lsquo: '\u2018',
+  rsquo: '\u2019',
+  ldquo: '\u201c',
+  rdquo: '\u201d',
+  laquo: '\u00ab',
+  raquo: '\u00bb',
+  middot: '\u00b7',
+  bull: '\u2022',
+  times: '\u00d7',
+  euro: '\u20ac',
+};
+
+/**
+ * Markup text or a static attribute value, with its character references
+ * read. A number that is no character, such as one past 0x10FFFF, reads as
+ * U+FFFD, as the browser reads it.
+ */
+function decodeReferences(html: string): string {
+  return html.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
+    if (name[0] === '#') {
+      const code =
+        name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1));
+      const valid = code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+      return valid ? String.fromCodePoint(code) : '\ufffd';
+    }
+    return NAMED[name.toLowerCase()] ?? match;
+  });
+}
+
 /** The value of a static attribute, with its character references read. */
 export function decodeAttribute(text: string): string {
-  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
-  return text.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
-    if (name[0] === '#') {
-      return String.fromCodePoint(
-        name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1)),
-      );
-    }
-    return named[name.toLowerCase()] ?? match;
-  });
+  return decodeReferences(text);
+}
+
+/** The text that markup text shows, with its character references read. */
+function decodeText(html: string): string {
+  return decodeReferences(html);
 }
 
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
@@ -155,6 +206,8 @@ export class Emitter {
   private depth = 0;
   /** How many of this component's elements contain the current node. */
   private nesting = 0;
+  /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
+  private headBlocks = 0;
   private counter = 0;
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
@@ -291,8 +344,10 @@ export class Emitter {
   emitSlots(scope: Scope): void {
     const slots = this.plan.scopes.get(scope)?.slots ?? [];
     if (slots.length > 0) {
+      // A memo that the render did not wait for is in the state as its value when it is ready,
+      // such as one that a `#loading` body rendered in place, and as a promise while it loads.
       const values = slots.map((slot) =>
-        this.isPromise(slot) ? `$$b.wait(${promiseName(slot.name)})` : slot.name,
+        this.isPromise(slot) ? `$$b.stateValue(${promiseName(slot.name)})` : slot.name,
       );
       // The server also passes the names, so an error can say which value cannot be sent.
       const names =
@@ -324,28 +379,79 @@ export class Emitter {
     );
   }
 
-  /** Awaits the async memos of a statement that markup outside `#loading` reads. */
-  private awaitMemos(statement: oxc.Node): void {
+  /**
+   * The memos of a statement that the server waits for where they are
+   * declared. `awaited` is true when every one of them is declared with
+   * `await $memo(…)`. Such statements in a row form a run: every memo of
+   * the run starts, and the render waits for all of them where the run
+   * ends, so independent memos load at the same time. A memo that the
+   * markup makes the page wait for, without the keyword, is awaited on its
+   * own, as the code reads.
+   */
+  private blockingDeclarations(
+    statement: oxc.Node,
+  ): { declarations: Declaration[]; awaited: boolean } | undefined {
     if (this.options.mode !== 'server' || statement.type !== 'VariableDeclaration') {
-      return;
+      return undefined;
     }
+    const declarations: Declaration[] = [];
+    let awaited = true;
     for (const declarator of statement.declarations) {
-      const init = declarator.init;
+      let init = declarator.init;
+      if (init?.type === 'AwaitExpression') {
+        init = init.argument;
+      }
       const argument = init?.type === 'CallExpression' ? init.arguments[0] : undefined;
       const declaration = argument && this.sitesByNode.get(argument)?.declaration;
-      if (
-        declaration &&
-        isMemo(declaration) &&
-        this.blocking.has(declaration) &&
-        !this.inline.has(declaration)
-      ) {
-        this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      if (!declaration || !isMemo(declaration) || !this.blocking.has(declaration)) {
+        awaited = false;
+        continue;
       }
+      awaited &&= declaration.awaited === true;
+      if (!this.inline.has(declaration)) {
+        declarations.push(declaration);
+      }
+    }
+    return declarations.length === 0 ? undefined : { declarations, awaited };
+  }
+
+  /** Waits for the memos of a run of declarations, and gives each its value. */
+  private awaitRun(run: Declaration[]): void {
+    if (run.length === 1) {
+      const [declaration] = run as [Declaration];
+      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      return;
+    }
+    const names = run.map((declaration) => promiseName(declaration.name));
+    this.line(`if (($$t = $$b.waitAll([${names.join(', ')}])) !== undefined) await $$t;`);
+    for (const declaration of run) {
+      this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
     }
   }
 
   emitStatements(statements: oxc.Node[], scope: Scope): void {
+    let run: Declaration[] = [];
+    const endRun = (): void => {
+      if (run.length > 0) {
+        this.awaitRun(run);
+        run = [];
+      }
+    };
     for (const statement of statements) {
+      const blocking = this.blockingDeclarations(statement);
+      if (blocking?.awaited) {
+        this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        run.push(...blocking.declarations);
+        continue;
+      }
+      endRun();
+      if (blocking) {
+        this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        for (const declaration of blocking.declarations) {
+          this.awaitRun([declaration]);
+        }
+        continue;
+      }
       if (statement.type === 'ExpressionStatement') {
         const expression = statement.expression;
         const name =
@@ -387,8 +493,8 @@ export class Emitter {
         }
       }
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
-      this.awaitMemos(statement);
     }
+    endRun();
   }
 
   private source(node: { start: number; end: number }): string {
@@ -417,7 +523,13 @@ export class Emitter {
         );
         continue;
       }
-      if (call !== '$getContext' || declarator.id.type !== 'Identifier' || !init.arguments[0]) {
+      const context =
+        call && BUILT_IN_CONTEXTS[call]
+          ? BUILT_IN_CONTEXTS[call]
+          : call === '$getContext' && init.arguments[0]
+            ? this.source(init.arguments[0])
+            : undefined;
+      if (!context || declarator.id.type !== 'Identifier') {
         this.line(`${statement.kind} ${this.source(declarator)};`);
         continue;
       }
@@ -425,7 +537,7 @@ export class Emitter {
       // The slot is recorded, so a change to the provided value reaches it on the client.
       const record = slot === -1 ? '' : `, ${slot}`;
       this.line(
-        `const ${declarator.id.name} = ${this.helper('consume')}(${this.source(init.arguments[0])}, ${target}${record});`,
+        `const ${declarator.id.name} = ${this.helper('consume')}(${context}, ${target}${record});`,
       );
     }
     return true;
@@ -462,9 +574,31 @@ export class Emitter {
       this.html('<template b-b="');
       this.code(anchor.scope);
       this.html(
-        `:${anchor.index}" b-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"></template>`,
+        `:${anchor.index}" b-client="${site.trigger}=${this.plan.id}#${this.plan.symbols.get(site)}"`,
       );
+      // A callback that reads an element of this scope through `ref` runs when that element
+      // comes into view, instead of the first element of the scope.
+      const near = site.trigger === 'visible' ? this.refElement(site, scope) : undefined;
+      if (near !== undefined) {
+        this.html(' b-near="');
+        this.code(anchor.scope);
+        this.html(`:${near}"`);
+      }
+      this.html('></template>');
     }
+  }
+
+  /** The anchor of the first element of `scope` that a site reads through `ref`. */
+  private refElement(site: Site, scope: Scope): number | undefined {
+    for (const read of site.reads) {
+      for (const ref of read.declaration.refs) {
+        const index = ref.scope === scope ? this.plan.anchors.get(ref.element) : undefined;
+        if (index !== undefined) {
+          return index;
+        }
+      }
+    }
+    return undefined;
   }
 
   /** Emits the content of the component, without creating its scope. */
@@ -774,6 +908,12 @@ export class Emitter {
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
+    // A `<title>` in `#head` sets the title of the page. The core sets it from the last one in
+    // the page, so a block that renders one decides the title. The plan reports the others.
+    const pageTitle = node.tag === 'title' && this.headBlocks > 0;
+    if (pageTitle && this.options.mode === 'server') {
+      this.line(`${this.helper('title')}(${this.titleText(node)}, true);`);
+    }
     // On the server, a spread can pass on handlers, such as the `onClick` of `...rest`.
     let spreadHandlers: string | undefined;
     if (
@@ -867,6 +1007,9 @@ export class Emitter {
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
     }
+    if (pageTitle) {
+      this.html(' b-t');
+    }
     if (spreadHandlers) {
       // One `b-on` for the handlers of the element and those that its spreads pass on.
       this.code(`$$b.onAttribute(${spreadHandlers}, ${JSON.stringify(events.join(' '))})`);
@@ -920,6 +1063,24 @@ export class Emitter {
       default:
         return false;
     }
+  }
+
+  /**
+   * The text of a `<title>`, as code: its one insert, or its text and the
+   * inserts in it joined, such as `Items ({count})`.
+   */
+  private titleText(node: ElementNode): string {
+    const [only] = node.children;
+    if (only?.kind === 'insert' && node.children.length === 1) {
+      return this.expression(only.expression);
+    }
+    const parts = node.children.flatMap((child) => {
+      if (child.kind === 'insert') {
+        return [`(${this.expression(child.expression)} ?? '')`];
+      }
+      return child.kind === 'text' ? [JSON.stringify(decodeText(cleanText(child.value)))] : [];
+    });
+    return parts.length === 0 ? '""' : parts.join(' + ');
   }
 
   /**
@@ -1173,7 +1334,9 @@ export class Emitter {
     this.html('<!--P');
     this.code(this.scopeVar(body));
     this.html('-->');
+    this.headBlocks += block.kind === 'head' ? 1 : 0;
     this.atTopLevel(() => this.emitBody(block.body, false));
+    this.headBlocks -= block.kind === 'head' ? 1 : 0;
     this.html('<!--/P-->');
     this.flush();
     this.line('return $$html;');
@@ -1183,13 +1346,40 @@ export class Emitter {
   }
 
   /**
-   * Writes the fallback of `#loading` and renders its body after the rest of
-   * the page, so data that the body waits for does not hold up the page.
+   * Renders a `#loading` block. When the memos that its body reads are
+   * ready, and the body waits for nothing else, the body renders in place,
+   * in the ID space of its boundary. Otherwise the fallback renders, and the
+   * body renders after the rest of the page, so data that the body waits
+   * for does not hold up the page. The memos that the body reads with
+   * `await` are ready here, because the render around the block waited for
+   * them.
    */
   private emitLoading(block: Block & { kind: 'loading' }, scope: Scope): void {
     const boundary = this.unique('boundary');
     const body = this.plan.bodyScopes.get(block.body)!;
+    const memos = awaitedMemos(this.plan, body, this.blocking).filter(
+      (declaration) => !this.inline.has(declaration),
+    );
+    const names = memos.map((declaration) => promiseName(declaration.name));
+    const inPlace = !mayWait(this.plan, block.body.children);
+    if (inPlace && memos.length === 0) {
+      // Nothing can hold the body up, so it always renders in place.
+      this.line('$$ctx.enter();');
+      this.emitBody(block.body);
+      this.line('$$ctx.leave();');
+      return;
+    }
     this.line(`const ${boundary} = $$ctx.boundary();`);
+    if (inPlace) {
+      this.line(`if ($$b.settled([${names.join(', ')}])) {`);
+      this.line(`$$ctx.enter(${boundary});`);
+      for (const declaration of memos) {
+        this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
+      }
+      this.emitBody(block.body);
+      this.line('$$ctx.leave();');
+      this.close('} else {');
+    }
     this.open(scope, block);
     this.html('<!--l');
     this.code(boundary);
@@ -1203,16 +1393,16 @@ export class Emitter {
     this.end(block);
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
-    for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
-      if (this.inline.has(declaration)) {
-        continue;
-      }
+    for (const declaration of memos) {
       this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
     }
     this.emitBody(block.body);
     this.flush();
     this.line('return $$html;');
     this.close('});');
+    if (inPlace) {
+      this.close();
+    }
   }
 
   /**
