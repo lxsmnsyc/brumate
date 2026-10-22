@@ -874,14 +874,22 @@ export class Emitter {
     this.html(`</${node.tag}>`);
   }
 
-  /** The text of a `<title>`: its one insert, or its text. */
+  /**
+   * The text of a `<title>`, as code: its one insert, or its text and the
+   * inserts in it joined, such as `Items ({count})`.
+   */
   private titleText(node: ElementNode): string {
-    const insert = node.children.find((child) => child.kind === 'insert');
-    if (insert) {
-      return this.expression(insert.expression);
+    const [only] = node.children;
+    if (only?.kind === 'insert' && node.children.length === 1) {
+      return this.expression(only.expression);
     }
-    const text = node.children.map((child) => (child.kind === 'text' ? child.value : '')).join('');
-    return JSON.stringify(decodeText(cleanText(text)));
+    const parts = node.children.flatMap((child) => {
+      if (child.kind === 'insert') {
+        return [`(${this.expression(child.expression)} ?? '')`];
+      }
+      return child.kind === 'text' ? [JSON.stringify(decodeText(cleanText(child.value)))] : [];
+    });
+    return parts.length === 0 ? '""' : parts.join(' + ');
   }
 
   /**

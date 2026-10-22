@@ -1,6 +1,10 @@
+<script>
+  const site = 'Site';
+</script>
+
 #head {
   <title>Site</title>
 }
 #head {
-  <title>Page | Site</title>
+  <title>Page | {site}</title>
 }
