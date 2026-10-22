@@ -47,7 +47,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
 
 ## Syntax
 
@@ -1254,15 +1253,6 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Compiled messages for i18n
-
-[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) compiles each translated message to its own function, so a page ships only the messages it uses. That matches how brumate ships only the code an event needs.
-
-- Paraglide works with any framework, so this is a guide and a small adapter, not a port: the locale of a request on the server, the same locale on the client, and links that keep it.
-- Messages that the server renders cost no client code. Only messages in client code, such as a handler that shows a toast, ship.
-
-Cost: a few days for the adapter, a guide and an example.
-
 ### Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
@@ -1281,6 +1271,6 @@ Each step lists what it holds and why it comes there. A step can start before th
 12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+15. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.
