@@ -127,9 +127,16 @@ describe('route files', () => {
     expect(code).toContain('page: () => Promise.resolve(m0)');
     expect(code).toContain('dynamic: { name: "id", node: { page: () => Promise.resolve(m1) } }');
     expect(code).not.toContain('hints');
-    const hinted = routeModule(routeFiles(['index.brm']), (file) => file, '/_b', [], false, [
-      '/assets/client.js',
-    ]);
+    const hinted = routeModule(
+      routeFiles(['index.brm']),
+      (file) => file,
+      '/_b',
+      [],
+      false,
+      undefined,
+      undefined,
+      ['/assets/client.js'],
+    );
     expect(hinted).toContain(', hints: ["/assets/client.js"], ...options');
   });
 
