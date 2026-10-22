@@ -285,7 +285,7 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 }
 ```
 
-[Page metadata](./page-metadata.md) describes `#head` and `$title`.
+[Page metadata](./page-metadata.md) describes `#head` and `<title>`.
 
 ## `#client`
 

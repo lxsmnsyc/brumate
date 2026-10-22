@@ -38,7 +38,7 @@ const cookieOf = (response: Response) => response.headers.getSetCookie()[0]!.spl
 it('renders the open issues, and streams the activity after them', async () => {
   const { response, html } = await get('/');
   expect(response.status).toBe(200);
-  expect(html).toContain('<title>Issues</title>');
+  expect(html).toMatch(/<title[^>]* b-t>Issues<\/title>/);
   expect(list(html)).toContain('Add a dark theme');
   expect(list(html)).not.toContain('Links break on phones');
   expect(html).toContain('Loading the activity…');

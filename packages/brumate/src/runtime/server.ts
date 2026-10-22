@@ -209,6 +209,8 @@ export class Context {
   /** Markup of `#head` blocks. */
   private readonly heads: string[] = [];
   private pageTitle: string | undefined;
+  /** The titles that this render set, and whether they all came from a `<title>` in `#head`. */
+  private titles = { count: 0, markup: true };
   private onBoundary: ((boundary: Boundary) => void) | undefined;
   /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
   private readonly tree = new Map<ScopeId, { parent?: ScopeId; values?: Map<string, unknown> }>();
@@ -517,15 +519,21 @@ export class Context {
     this.undo.push(() => removeLast(heads, html));
   }
 
-  /** Sets the title of the page. The last call wins. */
-  title(value: unknown): void {
+  /**
+   * Sets the title of the page. The last call wins. `markup` is true for a
+   * `<title>` in `#head`, which is in the head already.
+   */
+  title(value: unknown, markup = false): void {
     const target = this.root.sent ? this : this.root;
     const previous = target.pageTitle;
+    const titles = { ...target.titles };
     const title = value === null || value === undefined ? '' : String(value);
     target.pageTitle = title;
+    target.titles = { count: titles.count + 1, markup: titles.markup && markup };
     this.undo.push(() => {
       if (target.pageTitle === title) {
         target.pageTitle = previous;
+        target.titles = titles;
       }
     });
   }
@@ -548,8 +556,13 @@ export class Context {
 
   /** The markup for the document's head: the title and the `#head` blocks. */
   headHTML(): string {
+    // One `<title>` in `#head` is the title of the head itself. With more, the head gets the
+    // last one first, so a reader without scripts sees it.
+    const { count, markup } = this.root.titles;
     const title =
-      this.root.pageTitle === undefined ? '' : `<title>${escape(this.root.pageTitle)}</title>`;
+      this.root.pageTitle === undefined || (count === 1 && markup)
+        ? ''
+        : `<title>${escape(this.root.pageTitle)}</title>`;
     return title + this.root.heads.join('');
   }
 
@@ -1338,7 +1351,8 @@ export function stateScript(
 }
 
 // Moves the head markup of a `#loading` body into the head, and sets the title.
-const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+'"]');e&&(document.head.append(e.content),e.remove());t!=null&&(document.title=t)}`;
+// A `<title>` of `#head` keeps its text: the head gets a title of its own for `document.title`.
+const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+'"]'),h=document.head;e&&(h.append(e.content),e.remove());t!=null&&(h.querySelector('title:not([b-t])')||h.prepend(document.createElement('title')),document.title=t)}`;
 
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;

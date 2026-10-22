@@ -13,24 +13,24 @@ import { $memo, $signal } from 'brumate/signals';
 
 ## Summary
 
-| Function                      | Returns                    | Where                                  | Guide                                              |
-| ----------------------------- | -------------------------- | -------------------------------------- | -------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` in the component script        | [Components](./components.md)                      |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script     | [State](./state.md)                                |
-| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script   | [State](./state.md), [Async data](./async-data.md) |
-| `$isPending(memo)`            | `boolean`                  | Any expression                         | [Async data](./async-data.md)                      |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script | [Effects](./effects.md)                            |
-| `$untrack(value)`             | the value                  | Any expression                         | [State](./state.md)                                |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written          | [State](./state.md)                                |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script | [Context](./context.md)                            |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script   | [Context](./context.md)                            |
-| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script   | [Navigation](./navigation.md#the-route)            |
-| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script   | [Navigation](./navigation.md#while-a-page-loads)   |
-| `$id()`                       | `string`                   | `const` at the top level of a script   | [Page metadata](./page-metadata.md)                |
-| `$title(value)`               | `void`                     | Statement at the top level of a script | [Page metadata](./page-metadata.md)                |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script   | [Forms](./forms.md)                                |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script     | [Forms](./forms.md#showing-a-guess-while-it-posts) |
+| Function                      | Returns                    | Where                                                                    | Guide                                              |
+| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
+| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                      |
+| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                |
+| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md) |
+| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                      |
+| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
+| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
+| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                |
+| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                |
+| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                            |
+| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                            |
+| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)            |
+| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)   |
+| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                |
+| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                |
+| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                |
+| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts) |
 
 ## `$props`
 
@@ -170,7 +170,7 @@ Returns an ID that is unique in the page, for attributes such as `for` and `aria
 function $title(value: unknown): void;
 ```
 
-Sets the title of the page. A statement at the top level of a script, with one argument.
+Sets the title of the page. A statement at the top level of a script, with one argument. It is replaced by a `<title>` in `#head`, the compiler warns about it, and it goes in a later version. See [Page metadata](./page-metadata.md).
 
 - Server: writes `<title>` into the head. If several components set it, the last one that renders wins.
 - Client: when the value changes, the title changes.

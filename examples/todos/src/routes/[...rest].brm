@@ -1,10 +1,13 @@
 <script>
-  import { $props, $title } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
   import { getEvent } from 'brumate/server';
 
   const { params } = $props<{ params: { rest: string } }>();
   getEvent().setStatus(404);
-  $title('Not found');
 </script>
+
+#head {
+  <title>Not found</title>
+}
 
 <h1>No page at /{params.rest}</h1>

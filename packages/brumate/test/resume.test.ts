@@ -942,6 +942,58 @@ describe('resume', () => {
     document.head.innerHTML = '';
   });
 
+  it('sets the title from the last <title> of #head, also one that a block renders', async () => {
+    vi.resetModules();
+    const server = await import(file('markupTitle.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const { html, state, head } = await runtime.render(server.default, {});
+    // The one title is the title of the head, with no copy of the server. A <title> of an <svg> stays.
+    expect(head).toMatch(
+      /^<!--P[\d.]+--><title b-b="[\d.:]+" b-t>0 left \| Todos<\/title><!--\/P-->$/,
+    );
+    expect(html).toContain('<svg><title>Icon</title></svg>');
+    document.head.innerHTML = head;
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(document.title).toBe('0 left | Todos');
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.title).toBe('1 left | Todos'));
+    // The last one in the page wins, so the title of the #if body does.
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('Unsaved changes & more | Todos'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('title[b-t]')).toBe('2 left | Todos'));
+    expect(document.title).toBe('Unsaved changes & more | Todos');
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('2 left | Todos'));
+    // The title of the markup keeps its text.
+    expect(text('title[b-t]')).toBe('2 left | Todos');
+    expect(text('svg title')).toBe('Icon');
+    document.head.innerHTML = '';
+  });
+
+  it('puts the last title first in the head, when several render', async () => {
+    const server = await import(file('twoTitles.brm.ts'));
+    const { head } = await renderParts(server.default, {});
+    expect(head.startsWith('<title>Page | Site</title>')).toBe(true);
+    expect(head.match(/<title b-t>/g)).toHaveLength(2);
+  });
+
+  it('reports a <title> outside #head, and keeps those of <head> and <svg>', () => {
+    const compileMarkup = (markup: string) => compile(markup, { filename: 'Title.brm' });
+    expect(() => compileMarkup('<title>Home</title>')).toThrow('Put <title> in #head');
+    expect(() => compileMarkup('#if (true) { <title>Home</title> }')).toThrow(
+      'Put <title> in #head',
+    );
+    const document = compileMarkup(
+      '<html><head><title>Site</title></head><body><svg><title>Icon</title></svg></body></html>',
+    );
+    expect(document.server).not.toContain('$$ctx.title');
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

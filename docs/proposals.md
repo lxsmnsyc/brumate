@@ -7,7 +7,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
-| [Titles in markup](#titles-in-markup)                                 | Syntax  | Low    | Small  |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
@@ -87,26 +86,6 @@ A component such as a dialog, a tab list or a select has state that its parent s
 - The type checker types `bind:name` as the prop's type, and reports it on a prop that is not bindable.
 
 `export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
-
-### Titles in markup
-
-`$title(value)` sets the title from a script. The title is markup, and HTML writes it as `<title>`, so a component could too:
-
-```html
-<title>{`${left} left | Todos`}</title>
-
-#if (draft) {
-  <title>Unsaved changes | Todos</title>
-}
-```
-
-- A `<title>` outside `<head>` goes to the head of the page, as `$title` does now, and the last one that renders wins. Blocks decide which one renders, so a title in an `#if` needs no expression in a script.
-- Its content is text. It can change in the browser, as a title that `$title` sets can.
-- A `<title>` inside an `<svg>` is the SVG element, which names a shape, and stays where it is.
-- A document component that renders `<head>` keeps its own `<title>` there.
-- `$title` stays for a while with a warning that points to `<title>`, then goes, since brumate is at 0.x.
-
-React 19 hoists `<title>`, `<meta>` and `<link>` from any component in the same way. `#head` already covers the other two, and could follow later.
 
 ### Transitions
 
@@ -886,12 +865,11 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-3. **Small conveniences**: titles in markup. Testing routes and budgets for one event are done, and batched reads, in the browser only. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-4. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-5. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-7. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-8. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
+3. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.
