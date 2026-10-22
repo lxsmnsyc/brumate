@@ -106,6 +106,7 @@ The options of `render`, and of every function that renders.
 | `actions`   | `Map<unknown, unknown>`                     | Results of server functions that a form posted to this page, by function, for `$action`.                             |
 | `route`     | `string`                                    | Names the route of the page. `handleRoute` sets it.                                                                  |
 | `waitUntil` | `(promise) => void`                         | Keeps work going after the response ends, for `event.waitUntil`, such as `ctx.waitUntil` of Cloudflare Workers.      |
+| `build`     | `string`                                    | The ID of the build, for skew protection. The page state carries it. The Vite plugin sets it in builds.              |
 
 ### `DocumentOptions`
 
@@ -118,7 +119,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, and `prerender`, which the build sets so rate limits do not count. `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address` and `prerender` in its options.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, `prerender`, which the build sets so rate limits do not count, and `build`, the ID of the build, for skew protection. `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address`, `prerender` and `build` in its options: a call from a page of another build to a function that is gone answers 409 with `x-brumate-build`.
 
 ### `RenderResult`
 

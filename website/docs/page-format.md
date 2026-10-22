@@ -181,6 +181,7 @@ The state is a stream of [seroval](https://github.com/lxsmnsyc/seroval) cross-re
 - A record whose script is no longer in the page when the core starts is skipped, such as a record of a page that navigation replaced.
 - A record with `b-scopes` holds scopes: the page state, or the state of a `#loading` body.
 - The first record of a route has `b-params`, the params of the route as JSON, for `$route` in the browser.
+- The first record of a page has `b-build`, the ID of the build that rendered it, when the server knows it. The browser sends it with calls, and client navigation loads a page of another build in full. See [Skew protection](./deploying.md#skew-protection).
 - Any other record settles a promise of an earlier record.
 - seroval writes every `<` in a string as `\x3C`, and U+2028 and U+2029 as escapes, so a value cannot end the script or open a comment. The server refuses a record that holds `</` or `<!`.
 - A script added with `innerHTML` does not run, so its record is not read. Markup that streams in through the parser, or that the client router adds, runs its records.

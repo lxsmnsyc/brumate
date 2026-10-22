@@ -29,6 +29,12 @@ export interface LoaderOptions {
    */
   preload?: boolean;
   /**
+   * The ID of the build of the page, for skew protection. The Vite plugin
+   * sets it. Calls send it, and a page of another build, or a call that
+   * answers 409 after a deploy, makes the next navigation a full page load.
+   */
+  build?: string;
+  /**
    * Receives every error of client code first: of a handler, an effect, a
    * `$client` callback or a memo that loads, such as for a reporting
    * service. `scope` is the ID of the scope that the code belongs to. The
@@ -151,9 +157,13 @@ export function boot(
   listen(document, 'brumate:core', () => void loadCore());
 
   // Starts loading the module of a handler and its part, as one step when the module holds them.
+  // The core reports an error of the load when it runs the handler.
   const warm = (ref: string): void => {
     const [id, name] = ref.split('#') as [string, string];
-    void options.load(id)?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'));
+    void options
+      .load(id)
+      ?.then((module) => module.load?.(/^[hc]\d/.test(name) ? name : 'update'))
+      .catch(() => {});
   };
 
   const run = (element: Element, ref: string, event?: Event): void => {

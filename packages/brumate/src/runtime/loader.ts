@@ -48,6 +48,11 @@ function navigation({
   const settings = typeof options.navigate === 'object' ? options.navigate : {};
   // The page without its hash, to tell a change of the hash from a change of the page.
   let page = String(location.href).split('#')[0];
+  // True once the site changed since the page loaded: the next page loads in full, with new code.
+  let skewed = false;
+  listen(document, 'brumate:skew', () => {
+    skewed = true;
+  });
   // The core when the page reads a context of navigation, which it starts for them, or when it runs.
   const reader = (key: string): Promise<Core> | undefined =>
     core() ??
@@ -67,6 +72,16 @@ function navigation({
     scroll = true,
   ): Promise<void> => {
     const from = location.href;
+    if (skewed) {
+      // A form post cannot be a full page load: the page loads again, and the form is lost with
+      // the rest of the state of the page.
+      if (init) {
+        location.reload();
+      } else {
+        location.assign(url);
+      }
+      return Promise.resolve();
+    }
     page = url.split('#')[0]!;
     if (core()) {
       void routes();
@@ -86,6 +101,7 @@ function navigation({
           push,
           reload,
           scroll,
+          build: options.build,
           focus: settings.focus !== false,
           transition: settings.transition === true,
           // The core forgets the old page, or only stops reading, when layouts stay.
@@ -162,7 +178,13 @@ function navigation({
     const submitter = (event as SubmitEvent).submitter;
     const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
     const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
-    if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
+    if (
+      event.defaultPrevented ||
+      method?.toLowerCase() !== 'post' ||
+      !action.startsWith(rpc) ||
+      // After a deploy, the browser posts the form itself, and the page that answers is new.
+      skewed
+    ) {
       return;
     }
     event.preventDefault();

@@ -11,7 +11,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
@@ -429,21 +428,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 - It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
-### Skew protection
-
-A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, from file names that the new build may not have, and calls server functions whose IDs or arguments may have changed. A page that hydrates loads all of its code at the start, so it is less exposed than brumate.
-
-- Each build has an ID, which the page and its state records carry. Part loads and server function calls send it.
-- The client files have hashes in their names, so the files of older builds can stay next to the new ones. The build keeps a manifest of the files of the last builds, and a host that serves `dist/client` keeps them for a time that an option sets, such as a day.
-- A call from an older build to a function that still exists, with the same ID, runs. A call to a function that is gone answers 409 with the build ID of the server.
-- On a 409, or a part that fails to load, the browser does a full page load at the next navigation, or at once when the call cannot wait, such as a form post, which then posts again. The state of the page is lost then, and `onSkew` lets an app save a draft first.
-- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, since the kept layouts are code of the old build.
-- Prerendered pages carry the ID of their build too.
-
-Prior art: Vercel's skew protection, which keeps the deployments of the last hours and routes each request to the build that made its page.
-
-Cost: about 1 to 2 weeks, most of it in what the build keeps and in testing a deploy in the middle of a session.
 
 ### Middleware entry
 
@@ -966,14 +950,13 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-2. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 8.
-4. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-5. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-6. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-7. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-8. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-9. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
+3. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+4. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+5. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+7. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+8. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

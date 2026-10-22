@@ -219,6 +219,8 @@ export class Context {
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
+  /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
+  build: string | undefined;
   /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
   readonly slotNames: Map<ScopeId, string[]> = new Map();
 
@@ -305,6 +307,11 @@ export class Context {
   /** Returns the URL prefix of server function calls. */
   rpc(): string {
     return this.root.rpcPrefix;
+  }
+
+  /** Returns the ID of the build, when the render has one. */
+  buildId(): string | undefined {
+    return this.root.build;
   }
 
   /**
@@ -853,7 +860,7 @@ export function action(
   method?: string,
   result?: string,
 ): string {
-  return actionAttributes(ctx.rpc(), name, id, method, result);
+  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId());
 }
 
 /**
@@ -1286,6 +1293,8 @@ export interface StateAttributes {
   nonce?: string;
   /** The params of the route of the page, on its first record, for `$route` in the browser. */
   params?: Record<string, string>;
+  /** The ID of the build that rendered the page, on its first record, for skew protection. */
+  build?: string;
 }
 
 /**
@@ -1321,6 +1330,9 @@ export function stateScript(
   }
   if (attributes.params !== undefined) {
     extra += ` b-params="${escapeAttribute(JSON.stringify(attributes.params))}"`;
+  }
+  if (attributes.build !== undefined) {
+    extra += ` b-build="${escapeAttribute(attributes.build)}"`;
   }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
@@ -1466,6 +1478,12 @@ export interface RenderOptions {
    */
   nonce?: string;
   /**
+   * The ID of the build, for skew protection. The page state carries it,
+   * and the browser sends it with each call. The Vite plugin sets it in
+   * builds. See `handleRequest`.
+   */
+  build?: string;
+  /**
    * The address of the client as the server saw it, such as the remote
    * address of the socket, for `clientAddress` and rate limits.
    */
@@ -1502,6 +1520,7 @@ export async function render<P>(
   if (options.params) {
     ctx.params = options.params;
   }
+  ctx.build = options.build;
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
@@ -1566,6 +1585,7 @@ export async function render<P>(
               define: first,
               // The params go with the route, so the browser reads them after a navigation.
               params: route === undefined ? undefined : options.params,
+              build: first ? options.build : undefined,
             }),
           );
           first = false;
@@ -1972,6 +1992,46 @@ function unknownAnswer(id: string): Response {
 }
 
 /**
+ * True when a request names a build other than the server's, so its page is
+ * from before a deploy. Calls send the build in `x-brumate-build`, and forms
+ * without scripts in `__build` of their URL.
+ */
+function isSkewed(request: Request, build: string | undefined): boolean {
+  const sent =
+    request.headers.get('x-brumate-build') ?? new URL(request.url).searchParams.get('__build');
+  return build !== undefined && sent !== null && sent !== build;
+}
+
+/**
+ * The answer to a form without scripts, from a page of another build, that
+ * posts to a function that is gone. It goes back to its page, which loads
+ * with the new build, or to `/` when the page is on another site.
+ */
+function backAnswer(request: Request): Response {
+  let location = '/';
+  const referer = request.headers.get('referer');
+  if (referer) {
+    try {
+      const page = new URL(referer);
+      if (page.origin === new URL(request.url).origin) {
+        location = `${page.pathname}${page.search}`;
+      }
+    } catch {
+      // A referer that is not a URL goes to `/`.
+    }
+  }
+  return new Response(null, { status: 303, headers: { location } });
+}
+
+/** The answer to a request from a page of another build that the server cannot serve. */
+function skewAnswer(build: string): Response {
+  return new Response(JSON.stringify({ error: 'The site changed. Load the page again' }), {
+    status: 409,
+    headers: { 'content-type': 'application/json', 'x-brumate-build': build },
+  });
+}
+
+/**
  * Calls a server function with the data of a form that the browser sent.
  * Returns its result, or the response that answers the post instead: a
  * `redirect` in the function sends the browser there, and an error answers
@@ -2060,6 +2120,13 @@ export interface RequestOptions {
   fileMiddleware?: Record<string, EntryMiddleware>;
   /** Keeps work going after the response ends, for `event.waitUntil`. See `RenderOptions`. */
   waitUntil?: (promise: Promise<unknown>) => void;
+  /**
+   * The ID of the build, for skew protection. A call from a page of another
+   * build to a function that is gone answers 409 with this ID in
+   * `x-brumate-build`, and the browser loads the page again. A call to a
+   * function that still exists runs. The Vite plugin sets it in builds.
+   */
+  build?: string;
   /** The address of the client as the server saw it, for `clientAddress` and rate limits. */
   address?: string;
   /** True while the build prerenders the pages. Rate limits do not count then. */
@@ -2123,9 +2190,23 @@ export async function handleRequest(
     return crossSiteAnswer();
   }
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
+  // The browser asks for the build of the server when the code of its page fails to load.
+  if (id === '') {
+    const headers: Record<string, string> =
+      options.build === undefined ? {} : { 'x-brumate-build': options.build };
+    return new Response(null, { status: 204, headers });
+  }
+  // A call with files sends its arguments as form data, with this header.
+  const form = isFormPost(request) && !request.headers.has('x-brumate-args');
+  // A form without scripts posts to the function, and wants a page back, not the result. The
+  // loader sends a form of an `$action` with this header, and wants the result.
+  const posted = form && !request.headers.has('x-brumate-result');
   const fn = functions[id];
   if (!fn) {
-    return unknownAnswer(id);
+    if (!isSkewed(request, options.build)) {
+      return unknownAnswer(id);
+    }
+    return posted ? backAnswer(request) : skewAnswer(options.build!);
   }
   const event = new RequestEvent(request, {
     kind: 'call',
@@ -2133,11 +2214,6 @@ export async function handleRequest(
     address: options.address,
     prerender: options.prerender,
   });
-  // A call with files sends its arguments as form data, with this header.
-  const form = isFormPost(request) && !request.headers.has('x-brumate-args');
-  // A form without scripts posts to the function, and wants a page back, not the result. The
-  // loader sends a form of an `$action` with this header, and wants the result.
-  const posted = form && !request.headers.has('x-brumate-result');
   // The arguments are read before the middleware runs, so a check can depend on them. Arguments
   // that fail to read, such as a regular expression, answer as an error of the call.
   let args: unknown[];
@@ -2317,7 +2393,8 @@ async function readAction(
     return crossSiteAnswer();
   }
   if (!options.functions?.[id]) {
-    return unknownAnswer(id);
+    // A form from a page of another build goes back to its page, which loads with the new build.
+    return isSkewed(request, options.build) ? backAnswer(request) : unknownAnswer(id);
   }
   try {
     event.call = { id, args: [await request.formData()] };
@@ -2547,6 +2624,10 @@ async function routeAnswer(
 ): Promise<Response | undefined> {
   const event = options.event!;
   const { request } = event;
+  // The body of a `#defer` block from a page of another build: its boundaries may differ.
+  if (deferTarget(request) && isSkewed(request, options.build)) {
+    return skewAnswer(options.build!);
+  }
   if (!match) {
     const missing = notFound(tree);
     if (missing.errors.length === 0 && missing.middleware.length === 0 && !options.middleware) {
