@@ -2,7 +2,8 @@
 // call and removes the import, so this module only gives them their types.
 // A call outside a `.brm` file throws.
 
-import type { Context } from './context.ts';
+import type { Context, NavigationState, Route } from './context.ts';
+import type { RoutePath, RouteParams } from './routes.ts';
 
 function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
@@ -96,6 +97,20 @@ export function $setContext<T>(_context: Context<T>, _value: T): void {
 /** Reads a context from the nearest component above that provides it, or its default value. */
 export function $getContext<T>(_context: Context<T>): T {
   return compileTimeOnly('$getContext');
+}
+
+/**
+ * The route of the page: its URL, its query string and its params, typed
+ * from the route files as `href` is. The server reads the request, and the
+ * browser reads `location`. It changes when navigation changes the URL.
+ */
+export function $route<P extends RoutePath = RoutePath>(_path?: P): Route<RouteParams<P>> {
+  return compileTimeOnly('$route');
+}
+
+/** The navigation that loads, with `pending` false when none does. Always `{ pending: false }` on the server. */
+export function $navigation(): NavigationState {
+  return compileTimeOnly('$navigation');
 }
 
 /** Changes an object or an array in a signal through a draft, and writes the signal with the result. */

@@ -1,6 +1,6 @@
 import type { SFCFile } from '../ast.ts';
 import { copy } from '../sourcemap.ts';
-import type { Declaration, SemanticModel, Site } from '../model.ts';
+import type { Declaration, Reference, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 
@@ -41,6 +41,11 @@ export class Patch {
   }
 }
 
+/** The name of the function that a call expression calls, when it is a plain name. */
+function calleeName(node: oxc.CallExpression): string | undefined {
+  return node.callee.type === 'Identifier' ? node.callee.name : undefined;
+}
+
 /** The variable that holds a memo on the server, which can be a promise. */
 /** The compile-time functions that declare a memo of their first argument. The others are options. */
 const MEMOS = new Set(['$memo', '$optimistic', '$debounced', '$throttled']);
@@ -64,10 +69,34 @@ export function addValueEdits(
   inline: Set<Declaration> = new Set(),
 ): void {
   const sitesByNode = new Map<object, Site>();
+  // Reads of memos with `await`, by the start of the `await` expression.
+  const awaits = new Map<number, Reference>();
+  // Reads that the edits of a memo replace, which the visit must leave alone.
+  const replaced = new Set<Reference>();
   for (const site of sites) {
     sitesByNode.set(site.node, site);
+    for (const read of site.reads) {
+      if (read.await) {
+        awaits.set(read.await.start, read);
+      }
+    }
   }
   const visit = (node: oxc.Node): void => {
+    if (node.type === 'AwaitExpression') {
+      const argument = node.argument;
+      if (argument.type === 'CallExpression' && calleeName(argument) === '$memo') {
+        // `await $memo(x)` waits where the memo is declared. The wait is in the render around.
+        patch.replace(node.start, argument.start, '');
+        visit(argument);
+        return;
+      }
+      const read = awaits.get(node.start);
+      if (read && !replaced.has(read)) {
+        // `await name` of a memo is a read of its value, which the render around it waited for.
+        patch.replace(node.start, node.end, read.declaration.name);
+        return;
+      }
+    }
     if (node.type === 'CallExpression' && node.callee.type === 'Identifier') {
       const name = node.callee.name;
       const argument = node.arguments[0];
@@ -126,11 +155,14 @@ export function addValueEdits(
               !inline.has(read.declaration) &&
               (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
             ) {
+              // A read with `await` is the read: the value throws when it is still loading.
+              const range = read.await ?? read.range;
               patch.replace(
-                read.range.start,
-                read.range.end,
+                range.start,
+                range.end,
                 `$$b.read(${promiseName(read.declaration.name)})`,
               );
+              replaced.add(read);
             }
           }
           patch.replace(

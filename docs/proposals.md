@@ -7,46 +7,28 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
-| [Titles in markup](#titles-in-markup)                                 | Syntax  | Low    | Small  |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
-| [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Taint](#taint)                                                       | Server  | High   | Small  |
-| [Blocking async memos](#blocking-async-memos)                         | Data    | Medium | Medium |
-| [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
-| [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
-| [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
-| [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
-| [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
-| [Cancelled work](#cancelled-work)                                     | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
-| [Environment variables](#environment-variables)                       | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
-| [Element behaviors](#element-behaviors)                               | Syntax  | High   | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Batched reads](#batched-reads)                                       | Data    | High   | Small  |
 | [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
 | [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
-| [Early hints](#early-hints)                                           | Runtime | Medium | Small  |
-| [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
-| [Budgets for one event](#budgets-for-one-event)                       | Tooling | Medium | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
 
 ## Syntax
 
@@ -102,26 +84,6 @@ A component such as a dialog, a tab list or a select has state that its parent s
 
 `export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
 
-### Titles in markup
-
-`$title(value)` sets the title from a script. The title is markup, and HTML writes it as `<title>`, so a component could too:
-
-```html
-<title>{`${left} left | Todos`}</title>
-
-#if (draft) {
-  <title>Unsaved changes | Todos</title>
-}
-```
-
-- A `<title>` outside `<head>` goes to the head of the page, as `$title` does now, and the last one that renders wins. Blocks decide which one renders, so a title in an `#if` needs no expression in a script.
-- Its content is text. It can change in the browser, as a title that `$title` sets can.
-- A `<title>` inside an `<svg>` is the SVG element, which names a shape, and stays where it is.
-- A document component that renders `<head>` keeps its own `<title>` there.
-- `$title` stays for a while with a warning that points to `<title>`, then goes, since brumate is at 0.x.
-
-React 19 hoists `<title>`, `<meta>` and `<link>` from any component in the same way. `#head` already covers the other two, and could follow later.
-
 ### Transitions
 
 View transitions animate a change of page. Inside a page, an `#if` or `#for` body shows and goes at once, because the node is gone before CSS can animate it.
@@ -142,25 +104,6 @@ View transitions animate a change of page. Inside a page, an `#if` or `#for` bod
 - The `Transition` of the UI components, in phase 2, builds on it.
 
 Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
-
-### Element behaviors
-
-A behavior that belongs to an element, such as a tooltip, a click outside, a field that grows with its text, or a chart library, needs a `ref` signal and an `$effect` in each component that uses it.
-
-```html
-<script>
-  import { autosize, clickOutside } from './behaviors';
-</script>
-
-<textarea use=autosize></textarea>
-<div use=(clickOutside(() => (open = false)))>…</div>
-```
-
-- `use=fn` calls `fn(element)` in the browser, and the function it returns when the element goes. A behavior with an argument is a function that returns one.
-- It is a client root, as a `$client` callback is, with the same triggers: it loads when the element comes into view by default, or with `use:idle` and `use:load`.
-- The server renders the element, so a behavior only adds to it. Without scripts, the element works as plain HTML.
-
-Cost: a few days. It is `$client` with an element.
 
 ### Long lists
 
@@ -231,7 +174,7 @@ How it fits:
 
 - Each body renders in its own ID space, such as `5.0`, so holding one back changes no other ID.
 - A `#reveal` inside a `#loading` body orders the bodies of that body, as nested lists do in React.
-- [Streaming without scripts](#streaming-without-scripts) renders bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
+- Rendering in order, for readers without scripts, puts bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
 - Pages that client navigation loads stream through the same path, so they keep the order.
 - `#defer` blocks in a `#reveal` can follow the same order in the browser: the module that loads them waits to put a body in until the ones before it are in.
 - Without `#reveal`, nothing changes.
@@ -241,95 +184,6 @@ Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0'
 Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
 
 ## Data
-
-### Blocking async memos
-
-`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback, so the state holds the value and needs no later record for it:
-
-```html
-<script>
-  import { $memo, $props } from 'brumate/signals';
-  import { fetchSettings, fetchUser, listTags } from './data.server';
-
-  const { id } = $props<{ id: string }>();
-  // The server waits here. A constant: it does not load again on the client.
-  const settings = await fetchSettings();
-  // A memo that the page waits for. It loads again when `id` changes.
-  const user = $memo(fetchUser(id));
-  // A memo that streams, unless an `await` reads it.
-  const tags = $memo(listTags());
-</script>
-
-<p>{settings.theme}</p>
-#loading {
-  <!-- The page waits for the user. The tags can show the fallback. -->
-  <h1>{(await user).name}</h1>
-  <p>{tags.join(', ')}</p>
-} #else {
-  <p>Loading…</p>
-}
-<button onClick=(() => console.log(tags))>Log tags</button>
-```
-
-The page waits for `user`. Then, if `tags` is ready too, the body renders in place, with no fallback and no swap. If `tags` is still loading, the page shows the fallback, and the body streams in when `tags` arrives.
-
-Where `await` can be, and what it waits for:
-
-- In a script, `await` of a promise or of a call that returns one, as in JavaScript. The script runs only on the server, so the value is a constant that the state sends when client code reads it. This works today, except in the browser.
-- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. It is a memo like any other on the client: it loads again when what it reads changes. Its value is in the first state record, even when only client code reads it.
-- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it:
-  - Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record.
-  - Inside a `#loading` body, the render around the block waits for the memo before it reaches the block: the page, for a block at the top, or the body of a `#loading` around it.
-  - Inside a `#defer` body, the request for the body waits.
-- `$memo(await value)` keeps its meaning: a memo whose value loads. Without an `await` of the memo itself, it streams when only client code or a `#loading` body reads it, as now.
-
-Reads without `await`:
-
-- Inside a `#loading` body, a read of a memo that is still loading shows the fallback, and the body streams in when the memo arrives.
-- Outside every body there is no fallback, so a read still makes the page wait, as now. A lint can suggest `await` there, so the wait shows in the code.
-
-A `#loading` body renders in place when it can:
-
-- After the memos that it reads with `await` settle, the server checks the other memos that the body reads. When all of them are ready, the body renders where the block is, with no fallback, no `<template>` and no swap.
-- It renders in its own ID space, such as `5.0`, as a body that streams does, so its IDs are the same either way. Its scopes are in the first state record.
-- Otherwise the block renders as now: the fallback, and the body later.
-- This also changes the HTML of a `#loading` block today whose data happens to be ready: it renders in place.
-
-In the browser:
-
-- The value of a memo is already settled when the code that reads it runs, so `await name` of a memo compiles to a plain read. An insert shows the last value while the memo loads again, and `$isPending` tells when it does.
-- A render module runs without waiting, so it cannot wait for a promise. Code that the browser renders, such as a branch of an `#if` that changes, cannot `await` anything other than a memo. The compiler reports it in the same file. A component whose script awaits a promise renders only on the server, and throws a clear error when the browser renders it, such as from another file.
-
-Order:
-
-- Awaits of promises in a script run in order, as in JavaScript.
-- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time.
-- A memo that reads another one waits for it by itself. On the server, the read of a memo that is still loading throws `NotReady` with its load, and `wait` computes the memo again once that load settles. So in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` starts when `foo()` settles:
-
-```js
-const $$p_a = $$b.memo(() => foo(), $$ctx);
-const $$p_b = $$b.memo(() => bar($$b.read($$p_a)), $$ctx);
-// The end of the run: every memo of it loads, and the render waits for all of them.
-await Promise.all([$$b.wait($$p_a), $$b.wait($$p_b)]);
-const a = $$b.read($$p_a);
-const b = $$b.read($$p_b);
-```
-
-- Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript.
-- When a memo fails, the memos that read it do not run, and the error comes where the run waits.
-- In the browser nothing changes: `b` reads `a`, so it loads again when `a` changes, as any memo that reads another.
-
-What it needs:
-
-- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await`, as blocking for the render around their read. `blockingMemos` already decides which memos the server awaits where they are declared.
-- The `#loading` emitter awaits the memos that its body reads with `await` before the block, checks whether the other memos are ready, and renders the body in place or streams it.
-- The client codegen removes `await` from reads of memos, and reports `await` of anything else in code that runs in the browser.
-- The type checker types `await name` of a memo as its value.
-- With every promise awaited, a page with no `#loading` or `#defer` body has one state record, and gets the smaller state that assigns only shared references.
-
-Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
-
-Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
 
 ### Serialization entry
 
@@ -359,40 +213,6 @@ export const plugins = [
 
 Cost: about 1 week, most of it for loading the entry with the core and for the types.
 
-### Batched reads
-
-A list whose rows each load one thing, such as the profile of each player in a lobby, makes one server function call per row. On the server, the calls of one render with the same arguments share a result, but twenty rows with twenty IDs are twenty reads. In the browser, a list that renders twenty rows sends twenty requests.
-
-```ts
-// profiles.server.ts
-export const getProfile = batched(
-  async (ids: string[]) => {
-    'use server';
-    return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
-  },
-  (found, id: string) => found.get(id) ?? null,
-  { limit: 50 },
-);
-```
-
-```html
-<!-- Row.brm: each row asks for one profile. -->
-<script>
-  const profile = $memo(getProfile(id));
-</script>
-```
-
-- `batched(readMany, lookup, options)` gives a function of one key. The calls made in the same moment wait for each other, become one call of `readMany` with every distinct key, and each gets its value from `lookup`.
-- `key` says what makes two calls the same key, for keys that are objects. `limit` splits a large batch into several calls, since a server function checks the length of what it is sent. `wait` gathers for longer than one tick.
-- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
-- In the browser, the calls of one moment, such as the rows of a list that renders, become one request.
-- On the server, a batch belongs to one render, like the shared results of calls with the same arguments. It never gathers the calls of different requests: they rarely arrive in the same moment, so the batch would mostly add a wait, and when they do, one failed read would fail the pages of other users.
-- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. The docs say to read many keys with one query there, where the code can be handed a list.
-
-Prior art: the `batchedQuery` helper of the Overwander game, which batches the reads of list rows in the browser and keeps a skill that says where it belongs and where it does not. DataLoader does the same for GraphQL servers, per request.
-
-Cost: a few days. The calls of a render already share results by arguments, which a batch extends from equal arguments to many keys.
-
 ### Persisted signals
 
 Preferences such as the theme, a dismissed banner or the width of a panel are written to `localStorage` or a cookie by hand, and read back in `$client`, so the page renders the default first and then changes.
@@ -413,38 +233,6 @@ Preferences such as the theme, a dismissed banner or the width of a panel are wr
 Cost: a few days.
 
 ## Runtime
-
-### Errors in client code
-
-A `#try` catches an error while its body renders, on the server or on the client. An error in code that runs later in the browser does not reach it. A handler that throws leaves an unhandled rejection, and an async memo that fails logs the error and becomes `undefined`.
-
-Errors in client code would go to the component that owns the code:
-
-- Event handlers, `$effect` and `$client` callbacks, the functions that they call, and the loads of async memos.
-- The error goes to the nearest `#try` around the scope that the code belongs to, through the parents and the owners of scopes, as contexts are found. That `#try` renders its `#catch` body in the browser, with the error and `reset`.
-- Without a `#try` around it, the core dispatches a `brumate:error` event on `window` with the error and the scope, and logs it. An app can report it from there.
-- A loader option, `onError(error, info)`, receives every error first, such as for a reporting service.
-
-What it needs:
-
-- The client render code of each `#catch` body that client code inside its `#try` can reach. Today a `#catch` body ships only when its `#try` can fail while it renders on the client. Every `#try` with a handler inside would ship its `#catch` body.
-- A `#try` that catches from client code needs a marker in the page even when its body never renders on the client.
-- Async handlers: the error of the promise that a handler returns counts too.
-- `reset()` renders the `#try` body again, as it does now.
-
-Cost: about 1 to 2 weeks. The scope tree and the `#try` swap exist. Most of the work is deciding which `#catch` bodies ship, and testing the order of errors and cleanups.
-
-### Trusted Types
-
-A site whose Content Security Policy has `require-trusted-types-for 'script'` blocks `innerHTML` with a string, to stop script injection through the DOM. The core puts rendered markup into the page with `innerHTML` in four places, such as a body that an `#if` renders, so it breaks on such a site.
-
-- The core makes a Trusted Types policy named `brumate`, and passes the markup that it inserts through it. The markup is what brumate's own render code made, with every value escaped, so the policy passes it as it is.
-- The policy is made only where the browser has Trusted Types, and only once, when the core first inserts markup.
-- The CSP needs `trusted-types brumate`. The docs on the Content Security Policy show it next to the nonce, and the CSP helper for prerendered pages adds it.
-- Raw HTML that an app inserts, with `raw`, goes through the policy too, so the app stays responsible for what it holds, as now.
-- `#defer` bodies and pages that navigation loads are parsed from a response, which goes through the policy as well.
-
-Cost: a few days.
 
 ### Worker functions
 
@@ -486,63 +274,7 @@ The benchmarks measure renders and loads, but an app cannot see them.
 
 Cost: about 1 week.
 
-### Early hints
-
-A first click after `load` waits for the core and the part of its handler. The server knows the loader and the core before it renders the page.
-
-- The server sends `103 Early Hints` with `modulepreload` links for the loader and the core, or the same links at the start of the HTML where a host does not pass early hints on.
-- With the build report, it can also hint the parts of the handlers that are most likely to run first, such as those of the first viewport.
-- It cuts a round trip from the cold click of the benchmark: 243 ms for brumate against 55 ms for Marko 6, which ships its code in the page.
-
-Cost: a few days.
-
 ## Routing
-
-### Routing in the browser
-
-Client navigation follows links and forms, but code cannot start it, and the browser cannot read the route. The params and the query string are only on the server, through `getEvent().request.url`. A filter, a tab or a page number that lives in the URL needs a link for every change, and the browser cannot read it back.
-
-```html
-<script>
-  import { $signal } from 'brumate/signals';
-  import { $route, href, navigate } from 'brumate/routes';
-  import { createIssue } from '../issues.server';
-
-  const route = $route('/issues');
-  let query = $signal(route.search.get('q') ?? '');
-
-  async function save() {
-    const issue = await createIssue(query);
-    await navigate(href('/issues/[id]', { id: issue.id }));
-  }
-</script>
-
-<input value=query onInput=((event) => navigate(`?q=${event.currentTarget.value}`, { replace: true }))>
-<p>Page {route.search.get('page') ?? '1'}</p>
-```
-
-- `navigate(href, { replace, scroll })` loads a page as a link does: layouts that stay keep their state. It returns when the page shows. A URL on another origin loads the page.
-- `$route(path)` gives `{ params, search }` for the route at `path`, typed from the route files as `href` is. The server reads the request, and the browser reads `location`, so both render the same value.
-- `$route` is a memo on the client. It changes when navigation changes the URL, so code that reads it updates, without the server.
-- A change of only the query string, with `replace`, can skip the server when no route reads anything but `$route`. The compiler knows which routes read data, so it can tell.
-- `$navigation` is a signal of the navigation that is loading: `{ pending, from, to }`, with `pending` false when none is. A page can show a progress bar, or dim the old page, while the next one loads.
-- The loader sets `data-navigating` on `<html>` while a navigation loads, so a progress bar can be CSS alone, with no client code in the page.
-
-Cost: a few days for `navigate`, `$route` and `$navigation`, which reuse client navigation. Skipping the server for a query string change is a week more, and can come later.
-
-### Accessible navigation
-
-A full page load tells a screen reader that the page changed, and starts the keyboard focus at the top. Client navigation swaps the content in place, so nothing is announced, and the focus stays on the link that was clicked, which may be gone.
-
-- After a navigation, the loader writes the title of the new page into an `aria-live` region of its own, which is visually hidden, so a screen reader reads it.
-- The focus moves to the first `<h1>` of the routes that changed, or to their `<main>`, with `tabindex="-1"` for the move only, so the next Tab starts there. The `focus` option of `navigate` in the plugin sets another target, or turns it off.
-- A navigation that keeps the page and changes only the query string, such as a filter, moves no focus, so typing in a search field goes on.
-- The back and forward buttons move the focus as a full page load would, and scroll as they do now.
-- A route can set its own text to announce, for a page whose title is the same for many URLs.
-
-Prior art: the route announcers of Next.js, SvelteKit and Astro's view transitions.
-
-Cost: a few days.
 
 ## Server
 
@@ -575,18 +307,6 @@ export const listIssues = cached(async (status: string) => db.issues(status), {
 
 Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
 
-### Streaming without scripts
-
-A `#loading` body that is ready streams in a `<template b-l>`, and a script swaps it in for the fallback. Without scripts, such as for a crawler, a reader with JavaScript turned off, or a script that failed, the fallback stays and the content never shows.
-
-- The server can render `#loading` bodies in place, in the order of the page: it waits for each body where it is, and writes its markup there, with no `<template>` and no swap. The page arrives later, and complete.
-- An option sets when: `inOrder: 'bots'` by default, for requests whose `User-Agent` is a known crawler, or `true`, or a function of the request.
-- The state is the same either way, so a page that the browser gets in order resumes as it does now.
-- `#defer` bodies render in place too, in the same request, since a crawler does not run their triggers.
-- `#client` bodies have no server markup, so their `#else` is what a crawler sees.
-
-Cost: a few days. The server already renders each body. This writes it in place instead of later.
-
 ### Prerendering with holes
 
 A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
@@ -598,82 +318,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 - It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
-### Taint
-
-The page state refuses a value that it cannot send, such as a function. It sends any value that it can, so a user object with a password hash, or a token in a prop, reaches the page if client code reads it.
-
-```ts
-import { taint, taintValue } from 'brumate/server';
-
-const user = await db.user(id);
-taint(user, 'A user record holds the password hash. Send the fields that the page needs.');
-taintValue(process.env.API_TOKEN!, 'The API token stays on the server.');
-```
-
-- `taint(object, message)` marks an object, and `taintValue(value, message)` a string or a bigint, such as a token. A tainted value in the page state, or in the answer of a server function, fails the render with the message and the name of the slot, as a value that cannot be sent does now.
-- The serializer finds them with a plugin whose test reads a `WeakSet` of objects and a `Set` of values. The plugin is active only for a render after `taint` has been called, so pages without taints pay nothing.
-- `opaque(value, replacement)` is the other half: a value that the page should not get, but may hold, such as a client of a third-party service. It wraps seroval's `OpaqueReference`, so the serializer writes `replacement`, or `undefined`, in its place. The server code reads `.value`.
-- Taint is a check, not a guarantee: a copy of a tainted object, such as `{ ...user }`, is not tainted, and the docs say so.
-
-Prior art: React's `experimental_taintObjectReference` and `experimental_taintUniqueValue`, and Qwik's `noSerialize`.
-
-Cost: a few days.
-
-### Rate limiting
-
-Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
-
-```ts
-import { clientAddress, rateLimit } from 'brumate/server';
-import { session } from './session';
-
-export const signIn = rateLimit(
-  async (name: string, password: string) => {
-    'use server';
-    // …
-  },
-  // A user who is signed in counts by name, anyone else by address.
-  { max: 5, window: '1m', key: (event) => session.get(event)?.name ?? clientAddress(event) },
-);
-```
-
-```ts
-// src/routes/api/_middleware.ts
-export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
-```
-
-- `rateLimit(fn, options)` wraps a server function. `max` calls in `window` for each key, and then the call answers 429 with `Retry-After`, without running the function.
-- The key defaults to the address of the client and the ID of the function, so each function has its own count. A key from the session limits a user instead, wherever they sign in from.
-- `clientAddress(event)`, a new helper, reads the address from the server, or from `X-Forwarded-For` behind proxies that the app names as trusted, by CIDR. It reads that header from the right and skips the trusted proxies, since a client can write anything at its left. IPv6 addresses count by their `/64`, since one client often holds a whole subnet.
-- When no address can be read, the limit warns once and counts every such caller in one shared bucket, rather than not limiting at all.
-- `rateLimit.middleware(options)` limits every request under a folder of routes, endpoints and pages included.
-- In the browser, the call rejects with a `RateLimitError`, a `ServerError` with status 429 and the time to wait, so a form can show it. A form posted without scripts gets the message, as for other errors.
-- The calls of [two-way realtime](#two-way-realtime) count too, per connection and per key.
-- The counters live in a store with the same interface as the cache of [caching pages and data](#caching-pages-and-data): in memory by default, which counts per process, and Redis or a platform store for an app with more than one server.
-- The algorithm is a sliding window, which does not let a burst through at the edge of a fixed window. It keeps two counters per key, this window and the last, so a store needs one atomic increment and no list of times.
-- A store that has no atomic increment, such as a database table, uses a compare-and-set on the counter and tries again when another server wrote first.
-- The limit is off in development by default, so reloading a page while working does not lock anyone out.
-- `rateLimit.strict`, 3 calls in 10 seconds, is a preset for functions that guess at secrets, such as a sign-in or a code check.
-
-Prior art: Better Auth limits its own routes this way. It keys by the address and the path, reads the address behind trusted proxies, gives sign-in and sign-up 3 requests in 10 seconds and the rest 100, answers 429 with `X-Retry-After`, keeps its counts in memory, the database or a secondary store such as Redis, and is on only in production. It counts from the last request rather than a sliding window, so a steady stream of requests never resets.
-
-Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
-
-### Skew protection
-
-A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, from file names that the new build may not have, and calls server functions whose IDs or arguments may have changed. A page that hydrates loads all of its code at the start, so it is less exposed than brumate.
-
-- Each build has an ID, which the page and its state records carry. Part loads and server function calls send it.
-- The client files have hashes in their names, so the files of older builds can stay next to the new ones. The build keeps a manifest of the files of the last builds, and a host that serves `dist/client` keeps them for a time that an option sets, such as a day.
-- A call from an older build to a function that still exists, with the same ID, runs. A call to a function that is gone answers 409 with the build ID of the server.
-- On a 409, or a part that fails to load, the browser does a full page load at the next navigation, or at once when the call cannot wait, such as a form post, which then posts again. The state of the page is lost then, and `onSkew` lets an app save a draft first.
-- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, since the kept layouts are code of the old build.
-- Prerendered pages carry the ID of their build too.
-
-Prior art: Vercel's skew protection, which keeps the deployments of the last hours and routes each request to the build that made its page.
-
-Cost: about 1 to 2 weeks, most of it in what the build keeps and in testing a deploy in the middle of a session.
 
 ### Middleware entry
 
@@ -700,18 +344,6 @@ export default defineMiddleware(async (event, next) => {
 
 Cost: a few days. The routes already run middleware in a chain, and calls get the same chain.
 
-### Cancelled work
-
-Server functions see `request.signal` abort when their call is cancelled. A page does not: when the browser leaves while the page streams, its `#loading` bodies, the memos that they load and the server functions that those call go on until they finish.
-
-- `getEvent().signal` aborts when the connection of the response closes, for a page, a call and a `#defer` request.
-- The render of a page stops the boundaries that have not been sent, and the memos that only they read.
-- Server functions that the render calls run with the same signal, so `fetch(url, { signal })` and a database client that takes a signal stop too.
-- Work that must finish, such as writing to a log, does not read the signal, and passes its promise to `getEvent().waitUntil` from [request locals](#request-locals), so a host does not stop it either.
-- It depends on the host reporting a closed connection. Node does, and Nitro passes it on for most presets.
-
-Cost: a few days.
-
 ### Request locals
 
 Middleware has no typed way to hand what it finds, such as the user or a client of the database, to the components and server functions of the request.
@@ -731,35 +363,6 @@ declare module 'brumate/server' {
 - `getEvent().waitUntil(promise)` keeps work going after the response ends, such as analytics or a log line. On a host that stops a function when its response ends, such as Cloudflare Workers or Vercel's functions, it passes the promise to the platform's `waitUntil`, which Nitro exposes. On Node, or on a server of the app's own, it keeps the promise and logs its error. An app that wants `after(fn)` writes it on top in two lines.
 
 Cost: a few days.
-
-### Environment variables
-
-Secrets come from `process.env`, and values for the browser from Vite's `import.meta.env.VITE_*`. Nothing checks that a secret is set, or that browser code does not read one.
-
-```ts
-// src/env.ts
-import { defineEnv } from 'brumate/env';
-import * as v from 'valibot';
-
-export default defineEnv({
-  server: {
-    DATABASE_URL: v.pipe(v.string(), v.url()),
-    SESSION_SECRET: v.pipe(v.string(), v.minLength(32)),
-  },
-  public: {
-    SITE_NAME: v.optional(v.string(), 'Tracker'),
-  },
-});
-```
-
-- `defineEnv` takes a Standard Schema for each variable, split into `server` and `public`, as SolidStart's split between server and client variables and Astro's `astro:env` do.
-- The server checks the variables when it starts, and fails with every missing or wrong one, so a deploy without a secret does not start.
-- `import { env } from 'brumate/env'` gives the values with their types.
-- Public values are written into the client build. Server values never are.
-- The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
-
-Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
 
 ### Idempotent calls
 
@@ -859,22 +462,6 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 - It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
 - This waits for the API to be stable, and for its documentation.
 
-### Testing routes
-
-`brumate/testing` mounts a component: it renders it on the server, resumes it in the DOM and clicks like a user. A route also has its layouts, its middleware, its endpoints, client navigation and `#defer` requests, which a test cannot reach.
-
-```ts
-const app = await visit(routes, '/issues', { cookies: { session } });
-app.click('a[href="/issues/3"]');
-await app.waitFor(() => expect(app.url).toBe('/issues/3'));
-```
-
-- `visit(routes, path, options)` answers the request with the route tree of `virtual:brumate/routes`, puts the page in the document and starts the loader with navigation.
-- Links, forms, server function calls and `#defer` requests go to the same tree, in the test, without a server.
-- It keeps the cookies between requests, so a test can sign in and go on.
-
-Cost: a few days. The tests of this repository already answer routes and navigation in a DOM.
-
 ### Devtools
 
 The panel has four tabs today: the scopes and their values, the graph of a component, a log of handlers, loads, writes and calls, and the report of a component. It shows the browser after the page resumed, and little of what makes a brumate page what it is: what the server sent, why code loaded, and the blocks that render later.
@@ -888,7 +475,7 @@ What it should show:
 - **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.
 - **Server.** For the request of the page: the render time, each memo load and server function call with its time, and each boundary, from the traces of [observability](#observability) in development.
 - **Navigation.** For the last client navigation: the layouts that stayed, the routes that were replaced, and the IDs that moved.
-- **Errors.** Errors of client code with their scope and component, once [errors in client code](#errors-in-client-code) gives them a place.
+- **Errors.** Errors of client code with their scope and component, from `onError` of the loader.
 - **History.** The writes of the log can be undone one by one, and a session of writes can be exported and replayed, to share how a bug happens.
 
 How it ships:
@@ -908,18 +495,6 @@ An exploration, not a plan yet. A page in the dev server that lists the componen
 - The website's live samples already compile, render and resume components in a page, so most of the pieces exist.
 
 Questions to answer first: whether props from controls are enough without story files, how to show components that need a context or a route, and whether it belongs in the dev server or in its own command.
-
-### Budgets for one event
-
-`budget` fails the build when the loader, or the most that a route loads, goes over a size. A component can still grow one handler past what a first click should load, under the route's total.
-
-- `budget.event` limits what one event loads: the part of its handler and the updates it runs, with what they import.
-- `budget.component` limits the client code of one component.
-- The error names the component, the handler and the imports that make it large, from the data that `brumate inspect` shows.
-
-Cost: a few days.
-
-## Build
 
 ### Embedding in other sites
 
@@ -1019,7 +594,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 
 #### What the compiler needs first
 
-1. Conditional `preventDefault`. Handlers run after their code loads, so `event.preventDefault()` in a handler is too late, and `:prevent` applies to every event of its type. Arrow keys in a list, and Enter in a combobox, need a modifier that the loader applies by key, such as `onKeyDown:prevent(ArrowDown ArrowUp Enter Escape)`, or handlers that run at once when their code is loaded.
+1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
 2. Handlers in spreads. `spread()` and `attrs()` drop `on*` keys, so a part cannot put merged handlers on its element, and a wrapper cannot forward `onClick` through `...rest`. `attrs()` also keeps keys that are gone from the new object.
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
@@ -1233,33 +808,16 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Compiled messages for i18n
-
-[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) compiles each translated message to its own function, so a page ships only the messages it uses. That matches how brumate ships only the code an event needs.
-
-- Paraglide works with any framework, so this is a guide and a small adapter, not a port: the locale of a request on the server, the same locale on the client, and links that keep it.
-- Messages that the server renders cost no client code. Only messages in client code, such as a handler that shows a toast, ship.
-
-Cost: a few days for the adapter, a guide and an example.
-
 ### Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
-2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
-3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
-4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
-6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
-7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
-8. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-9. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 14.
-10. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-11. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints and persisted signals. Timing helpers are done.
+1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
+3. **What the UI components need first**: handlers in spreads, bindable props and transitions. Element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
+4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability and persisted signals. Timing helpers are done.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

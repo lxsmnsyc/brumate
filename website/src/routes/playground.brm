@@ -1,11 +1,9 @@
 <script>
-  import { $client, $effect, $memo, $signal, $title, $untrack } from 'brumate/signals';
+  import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';
   import { decode, encode, measure, run } from '../playground/compile.ts';
   import { examples } from '../playground/examples.ts';
   import { highlight } from '../playground/highlight.ts';
   import Meta from '../components/Meta.brm';
-
-  $title('Playground | brumate');
 
   let source = $signal(examples[0]!.source);
   let tab = $signal('server');
@@ -30,6 +28,10 @@
   });
 
 </script>
+
+#head {
+  <title>Playground | brumate</title>
+}
 
 <Meta
   title="Playground | brumate"
