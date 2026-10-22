@@ -477,7 +477,7 @@ describe('resume', () => {
     it.fails('renders a #template prop again when the state it was given changes', async () => {
       const server = await import(file('spikeTemplate.brm.ts'));
       // The list calls the template in markup that changes in the browser, which then needs the template.
-      await renderParts(server.default, {});
+      await expect(renderParts(server.default, {})).resolves.toBeDefined();
     });
 
     it('gives the element of an as component the handlers of the part and of the caller', async () => {
