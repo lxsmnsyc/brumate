@@ -14,7 +14,7 @@ import 'virtual:brumate/start';
 The loader:
 
 - Listens on `document` to the events named in `b-on` attributes, and walks from the target outwards to find a handler.
-- Applies event modifiers, such as `:prevent`, before anything loads.
+- Applies the wrappers of `brumate/events`, such as `prevent`, before anything loads.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
 - Preloads the code of an element's handlers according to its `prefetch` attribute.
 - After the page loads, when the browser is idle, preloads the core and the code of the handlers of elements in or near the viewport. See [Idle preload](#idle-preload).

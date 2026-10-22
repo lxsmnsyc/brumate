@@ -398,3 +398,199 @@ describe('#defer', () => {
     expect(() => compileBlock(markup)).not.toThrow();
   });
 });
+
+describe('await', () => {
+  const header = `<script>\n  import { $memo, $signal } from 'brumate/signals';\n  import { load, loadTags } from './data.ts';\n  let id = $signal(1);\n`;
+
+  it('starts every memo of a run of awaited declarations, then waits for all of them', () => {
+    const { server, parts: modules } = compile(
+      `${header}  const user = await $memo(load(id));\n  const tags = await $memo(loadTags(user));\n</script>\n<p>{user.name} {tags.length}</p>\n<button onClick=(() => id++)>+</button>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain('const $$p_user = $$b.memo(() => (load(id)), $$ctx);');
+    expect(server).toContain(
+      'const $$p_tags = $$b.memo(() => (loadTags($$b.read($$p_user))), $$ctx);',
+    );
+    expect(server).toContain(
+      'if (($$t = $$b.waitAll([$$p_user, $$p_tags])) !== undefined) await $$t;',
+    );
+    expect(server).toContain('const user = $$b.read($$p_user);');
+    expect(server).toContain('const tags = $$b.read($$p_tags);');
+    // The browser runs the memos as any other.
+    expect(modules.update).toContain('$$b.memo($$s, 1, () => load($$b.get($$s, 0)));');
+    expect(modules.update).toContain('$$b.memo($$s, 2, () => loadTags($$b.get($$s, 1)));');
+    expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
+  });
+
+  it('does not put a declaration without the keyword in a run', () => {
+    const { server } = compile(
+      `${header}  const user = await $memo(load(id));\n  const tags = $memo(loadTags(id));\n</script>\n<p>{user.name} {tags.length}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain(
+      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);\n  const $$p_tags',
+    );
+    expect(server).toContain(
+      'const tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t);',
+    );
+    expect(server).not.toContain('$$b.waitAll(');
+  });
+
+  it('waits for one awaited declaration where it is, and reads it after other statements', () => {
+    const { server } = compile(
+      `${header}  const user = await $memo(load(id));\n  let count = $signal(0);\n  const tags = await $memo(loadTags(user));\n</script>\n<p>{user.name} {tags.length} {count}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain(
+      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);\n  let count = (0);',
+    );
+    expect(server).not.toContain('$$b.waitAll(');
+  });
+
+  it('reads a memo with await as a plain value, in a memo, in markup and in a handler', () => {
+    const {
+      server,
+      parts: modules,
+      render,
+    } = compile(
+      `${header}  const user = $memo(load(id));\n  const upper = $memo((await user).name.toUpperCase());\n</script>\n<p>{(await user).name} {upper}</p>\n<button onClick=(async () => console.log((await user).name, id++))>+</button>`,
+      { filename: 'T.brm' },
+    );
+    // The page waits for the memos where they are declared, one after the other: no keyword, no run.
+    expect(server).toContain(
+      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
+    );
+    expect(server).toContain('$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx)');
+    expect(server).not.toContain('$$b.waitAll(');
+    expect(server).toContain('$$b.insert(((user).name)');
+    // In the browser the value is settled, so the memo and the update code do not wait.
+    expect(modules.update).toContain(
+      '$$b.memo($$s, 2, () => ($$b.get($$s, 1)).name.toUpperCase());',
+    );
+    expect(modules.update).toContain('$$b.text($$s, 0, ($$b.get($$s, 1)).name);');
+    expect(modules.h5).toContain(
+      'console.log(($$b.get($$s, 1)).name, $$b.update($$s, 0, 1, false))',
+    );
+    expect(render).toContain('$$b.insert(((user).name))');
+    for (const code of [...Object.values(modules), render]) {
+      expect(parseSync('code.ts', code).errors).toEqual([]);
+    }
+  });
+
+  it('waits for a memo that a #loading body awaits before the block, and streams the rest', () => {
+    const { server } = compile(
+      `${header}  const user = $memo(load(id));\n  const tags = $memo(loadTags(id));\n</script>\n#loading {\n  <p>{(await user).name} {tags.length}</p>\n} #else {\n  <p>…</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain(
+      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
+    );
+    // The body renders in place when the tags are ready too, and streams otherwise.
+    expect(server).toContain('if ($$b.settled([$$p_tags])) {');
+    expect(server).toContain('$$ctx.enter($$boundary0);');
+    expect(server).toContain('const tags = $$b.read($$p_tags);');
+    expect(server).toContain('$$ctx.defer($$boundary0, async ($$ctx) => {');
+    expect(server).toContain(
+      'const tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t);',
+    );
+  });
+
+  it('waits for a memo that a nested #loading body awaits in the body around it', () => {
+    const { server } = compile(
+      `${header}  const user = $memo(load(id));\n  const tags = $memo(loadTags(id));\n</script>\n#loading {\n  <p>{tags.length}</p>\n  #loading {\n    <p>{(await user).name}</p>\n  }\n}`,
+      { filename: 'T.brm' },
+    );
+    // The page does not wait: the outer body does, before it reaches the inner block.
+    expect(server.indexOf('const user = (($$t = $$b.ready($$p_user))')).toBeGreaterThan(
+      server.indexOf('$$ctx.defer($$boundary0'),
+    );
+    expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user])) {');
+    expect(server).toMatch(
+      /defer\(\$\$boundary0, async \(\$\$ctx\) => \{\n\s+let \$\$html = '';\n\s+const tags = .*\n\s+const user = /,
+    );
+    // The inner body waits for nothing of its own, so it always renders in place.
+    expect(server).toContain('$$ctx.enter();');
+    expect(server).not.toContain('$$b.settled([])');
+  });
+
+  it.each([
+    ['a child component', '<Child />'],
+    ['a dynamic tag', '<{tag} />'],
+    ['an insert of a prop', '{children}'],
+    ['a template', '{row(1)}'],
+  ])('always streams a #loading body that renders %s', (_, markup) => {
+    const { server } = compile(
+      `<script>\n  import { $memo, $props } from 'brumate/signals';\n  import Child from './Child.brm';\n  import { load } from './data.ts';\n  const { children, tag } = $props();\n  const user = $memo(load(1));\n</script>\n#template row(n) { <td>{n}</td> }\n#loading {\n  <p>{user.name}</p>\n  ${markup}\n} #else {\n  <p>…</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    expect(server).not.toContain('$$b.settled(');
+    expect(server).toContain('$$ctx.defer($$boundary0');
+  });
+
+  it('renders a #loading body in place when it reads no memo that can load', () => {
+    const { server } = compile(
+      `${header}  const double = $memo(id * 2);\n</script>\n#loading {\n  <p>{double}</p>\n} #else {\n  <p>…</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain('$$ctx.enter();');
+    expect(server).not.toContain('$$b.settled(');
+    expect(server).not.toContain('$$ctx.defer(');
+  });
+
+  it('throws in the render module of a component whose script awaits a promise', () => {
+    const { render, server } = compile(
+      `${header}  const settings = await load(0);\n</script>\n<p>{settings.theme} {id}</p>\n<button onClick=(() => id++)>+</button>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain('const settings = await load(0);');
+    expect(render).toMatch(
+      /export default function T\(\$\$props: [^)]*\): string \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
+    );
+    expect(parseSync('render.ts', render).errors).toEqual([]);
+  });
+
+  it('renders a component whose memos await promises, and whose handlers await', () => {
+    const { render } = compile(
+      `${header}  const user = $memo(await load(id));\n</script>\n<p>{user.name}</p>\n<button onClick=(async () => { await load(id); id++; })>+</button>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).not.toContain('throw new Error');
+    expect(render).toContain('const user = (async () => (await load(id)))();');
+  });
+
+  it.each([
+    [
+      'a body that the browser renders',
+      '#if (id > 1) {\n  <script>\n    const settings = await load(id);\n  </script>\n  <p>{settings.theme}</p>\n}',
+      'Markup that the browser renders can await only a memo. Load the promise in a memo instead',
+    ],
+    [
+      'an insert that the browser updates',
+      '<p>{(await load(id)).theme}</p>',
+      'Code that the browser updates can await only a memo. Load the promise in a memo instead',
+    ],
+  ])('reports an await of a promise in %s', (_, markup, message) => {
+    expect(() =>
+      compile(`${header}</script>\n<button onClick=(() => id++)>+</button>\n${markup}`, {
+        filename: 'T.brm',
+      }),
+    ).toThrow(message);
+  });
+
+  it('accepts an await of a memo in a body that the browser renders', () => {
+    const { parts: modules } = compile(
+      `${header}  const user = $memo(load(id));\n</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <p>{(await user).name}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    expect(modules.update).toContain('$$b.insert(((user).name))');
+    expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
+  });
+
+  it('reports await of a compile-time function other than $memo', () => {
+    expect(() =>
+      compile(`${header}  let count = await $signal(0);\n</script>\n<p>{count}</p>`, {
+        filename: 'T.brm',
+      }),
+    ).toThrow('await works with $memo, not $signal');
+  });
+});
