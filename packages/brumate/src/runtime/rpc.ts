@@ -108,7 +108,13 @@ async function answer(id: string, response: Response): Promise<unknown> {
     } catch {
       // The body is not the error of a server function.
     }
-    throw Object.assign(new Error(message), { name: 'ServerError', status: response.status });
+    const retryAfter = Number(response.headers.get('retry-after'));
+    throw Object.assign(new Error(message), {
+      name: 'ServerError',
+      status: response.status,
+      // The seconds to wait, for a call that a rate limit refused.
+      ...(retryAfter > 0 ? { retryAfter } : {}),
+    });
   }
   // Promises and async iterables in the result settle as the rest of the answer arrives.
   return fromChunkStream(response.body!);

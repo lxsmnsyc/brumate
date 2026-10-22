@@ -83,6 +83,7 @@ export default {
 - `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
+- Pass the address of the client as `address`, such as the remote address of the socket on Node, or the `cf-connecting-ip` header on Cloudflare, for rate limits and `clientAddress`. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./server-functions.md#rate-limiting).
 - A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
@@ -108,10 +109,11 @@ const entry = `/${manifest['src/client.ts'].file}`;
 createServer(async (incoming, outgoing) => {
   const request = await toRequest(incoming);
   const { pathname } = new URL(request.url);
+  const address = incoming.socket.remoteAddress;
 
   // Server function calls.
   if (request.method === 'POST') {
-    const answer = await server.handle(request);
+    const answer = await server.handle(request, { address });
     if (answer) {
       return send(answer, outgoing);
     }
@@ -124,7 +126,10 @@ createServer(async (incoming, outgoing) => {
   }
   // Pages, streamed.
   send(
-    await server.route(request, { scripts: `<script type="module" async src="${entry}"></script>` }),
+    await server.route(request, {
+      scripts: `<script type="module" async src="${entry}"></script>`,
+      address,
+    }),
     outgoing,
   );
 }).listen(3000);

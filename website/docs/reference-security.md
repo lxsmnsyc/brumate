@@ -37,6 +37,10 @@ export async function POST(request: Request): Promise<Response> {
 }
 ```
 
+## Rate limits
+
+Server functions and endpoints answer anyone. `rateLimit` counts the calls of each client and refuses the ones over the limit with 429. The address of a client is read from the server, or from `X-Forwarded-For` behind the proxies that the app names, never from a header that a client can write. See [Rate limiting](./server-functions.md#rate-limiting).
+
 `same-site` counts as another site, because a page on another subdomain can be run by someone else.
 
 ## Errors
