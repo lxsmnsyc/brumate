@@ -13,6 +13,7 @@ import {
 } from './html.ts';
 import type { Raw } from './html.ts';
 import { disabledFeatures, plugins } from './serial.ts';
+import { serverSecrets } from './secrets.ts';
 import {
   CHILDREN,
   ElementReference,
@@ -950,7 +951,8 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
  * browser, which names the value and its component.
  */
 function unsendable(error: unknown, ctx: Context): Error {
-  const target = (error as { value?: unknown }).value;
+  const secret = secretErrors.get(error as Error);
+  const target = secret ?? (error as { value?: unknown }).value;
   if (target === undefined) {
     return error instanceof Error ? error : new Error(String(error));
   }
@@ -964,6 +966,11 @@ function unsendable(error: unknown, ctx: Context): Error {
       owner = ctx.state[owner.p];
     }
     const name = ctx.slotNames.get(parseId(id))?.[index] ?? `slot ${index}`;
+    if (secret !== undefined) {
+      return new Error(
+        `The value of "${name}" in ${owner?.m ?? 'a component'} is the value of a server environment variable, and code that runs in the browser reads it. Read the variable in a server function, and send the browser only what it needs.`,
+      );
+    }
     const kind = (target as object)?.constructor?.name ?? typeof target;
     return new Error(
       `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
@@ -971,6 +978,35 @@ function unsendable(error: unknown, ctx: Context): Error {
     );
   }
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/** The secret that each error of `secretError` found. The error does not hold it, so a log does not show it. */
+const secretErrors = new WeakMap<Error, string>();
+
+/** The code of each secret as seroval writes a string: in double quotes, escaped. */
+const secretCode = new Map<string, string>();
+
+/**
+ * An error for a record of the page state that holds the value of a server
+ * environment variable as a string, or undefined. A record holds a string
+ * as its code in quotes, so this is one search of the code per secret.
+ */
+function secretError(code: string): Error | undefined {
+  for (const secret of serverSecrets()) {
+    let literal = secretCode.get(secret);
+    if (literal === undefined) {
+      literal = crossSerialize(secret);
+      secretCode.set(secret, literal);
+    }
+    if (code.includes(literal)) {
+      const error = new Error(
+        'The page state holds the value of a server environment variable, which is not sent to the browser',
+      );
+      secretErrors.set(error, secret);
+      return error;
+    }
+  }
+  return undefined;
 }
 
 /** JSON that is safe in a `<script>`, with each `<` escaped. */
@@ -1167,6 +1203,17 @@ function serializeState(
   last = false,
 ): void {
   const packed = packState(state, sources);
+  // A record that holds the value of a server variable is not sent, nor any after it.
+  let leaked = false;
+  const send = (code: string, initial: boolean): void => {
+    const error = leaked ? undefined : secretError(code);
+    if (error) {
+      leaked = true;
+      onError(error);
+    } else if (!leaked) {
+      onRecord(code, initial);
+    }
+  };
   if (last) {
     let code: string | undefined;
     try {
@@ -1181,7 +1228,7 @@ function serializeState(
       refs.clear();
     }
     if (code !== undefined) {
-      onRecord(code, true);
+      send(code, true);
       onDone();
       return;
     }
@@ -1190,7 +1237,7 @@ function serializeState(
     plugins,
     disabledFeatures,
     refs,
-    onSerialize: onRecord,
+    onSerialize: send,
     onError,
     onDone,
   });
@@ -1480,15 +1527,15 @@ export async function render<P>(
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
   const serialize = (
-    { state, sources }: Context,
+    target: Context,
     onScopes: (script: string) => void,
     route?: string,
-    onError: (error: unknown) => void = (error) => pending().fail(error),
+    onError: (error: unknown) => void = (error) => pending().fail(unsendable(error, target)),
     last = false,
   ): void => {
     open++;
     serializeState(
-      state,
+      target.state,
       refs,
       (code, initial) => {
         if (initial) {
@@ -1510,7 +1557,7 @@ export async function render<P>(
       },
       onError,
       finish,
-      sources,
+      target.sources,
       last,
     );
   };
