@@ -2,6 +2,7 @@
   import { href } from 'brumate/routes';
   import { getEvent } from 'brumate/server';
   import { $getContext, $memo, $optimistic, $produce, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import Labels from '../Labels.brm';
   import { issueFilter } from '../filter.brm.ts';
   import type { Status } from '../filter.brm.ts';
@@ -50,7 +51,7 @@
 <window onKeyDown=shortcut />
 
 <h1>Issues</h1>
-<form class="filters" role="search" onSubmit:prevent=(() => field?.blur())>
+<form class="filters" role="search" onSubmit=(prevent(() => field?.blur()))>
   <input
     ref=field
     type="search"

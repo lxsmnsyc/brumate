@@ -1,0 +1,43 @@
+<script module>
+  let failing = true;
+
+  export function heal(): void {
+    failing = false;
+  }
+
+  export function load(step: number): Promise<string> {
+    return failing && step > 0
+      ? Promise.reject(new Error(`Load ${step} failed`))
+      : Promise.resolve(`Loaded ${step}`);
+  }
+</script>
+
+<script>
+  import { $effect, $memo, $signal } from 'brumate/signals';
+
+  let step = $signal(0);
+  let count = $signal(0);
+</script>
+
+<button class="outside" onClick=(() => { throw new Error('Outside'); })>Outside</button>
+#try {
+  <p class="count">{count}</p>
+  <button class="throw" onClick=(() => { throw new Error('Clicked'); })>Throw</button>
+  <button class="async" onClick=(async () => { await Promise.resolve(); throw new Error('Later'); })>Throw later</button>
+  <button class="count-up" onClick=(() => count++)>+</button>
+  #if (count > 0) {
+    <script>
+      const text = $memo(load(step));
+      $effect(() => {
+        if (count === 3) {
+          throw new Error('Effect at 3');
+        }
+      });
+    </script>
+    <p class="loaded">{text}</p>
+    <button class="load" onClick=(() => step++)>Load</button>
+  }
+} #catch (error, reset) {
+  <p class="caught">{String(error)}</p>
+  <button class="reset" onClick=reset>Reset</button>
+}

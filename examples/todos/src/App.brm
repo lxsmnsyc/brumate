@@ -1,5 +1,6 @@
 <script>
   import { $memo, $props, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import Counter from './Counter.brm';
   import { save } from './store.ts';
   import type { Todo } from './store.ts';
@@ -33,7 +34,7 @@
 }
 
 <h1>Todos</h1>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <input value=draft placeholder="What needs doing?" aria-label="New todo" onInput=((event) => (draft = event.currentTarget.value))>
   <button>Add</button>
 </form>

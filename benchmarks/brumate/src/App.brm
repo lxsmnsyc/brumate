@@ -1,5 +1,6 @@
 <script>
   import { $memo, $props, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import Counter from './Counter.brm';
 
   interface Todo { id: string; title: string; done: boolean }
@@ -20,7 +21,7 @@
 </script>
 
 <h1>Todos</h1>
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <input value=draft placeholder="What needs doing?" onInput=((event) => (draft = event.currentTarget.value))>
   <button>Add</button>
 </form>

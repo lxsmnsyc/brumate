@@ -12,6 +12,7 @@
     $props,
     $signal,
   } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import IssueLink from '../../IssueLink.brm';
   import Labels from '../../Labels.brm';
   import { getIssue, listIssues } from '../../issues.ts';
@@ -98,7 +99,7 @@
     <!-- Without scripts the button deletes at once. With them, it asks first. -->
     <form action=remove>
       <input type="hidden" name="id" value=issue.id>
-      <button class="danger" onClick:prevent=(() => (confirming = true))>Delete</button>
+      <button class="danger" onClick=(prevent(() => (confirming = true)))>Delete</button>
     </form>
   }
 </div>

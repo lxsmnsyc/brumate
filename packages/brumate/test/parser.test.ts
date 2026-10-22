@@ -42,6 +42,10 @@ describe('syntax errors', () => {
     ],
     ['<button onClick:later=go>x</button>', 'Unknown event modifier ":later" (Test.brm:1:9)'],
     [
+      '<Item onKeyDown:prevent=go />',
+      'Modifiers apply to elements. Put ":prevent" on the element that the component renders (Test.brm:1:7)',
+    ],
+    [
       '<button onClick="go()">x</button>',
       'An event handler must be an expression, not a string (Test.brm:1:9)',
     ],

@@ -1,6 +1,6 @@
 import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
-import { isFunctionValue, resetUsed } from './graph.ts';
+import { isFunctionValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
 import type { StyleOutput } from './css.ts';
@@ -417,7 +417,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       // The browser asks for the body of a `#defer` block by its anchor.
       block.kind === 'defer' ||
       portalTarget ||
-      (block.kind === 'try' && resetUsed(model, block, graph.reached)) ||
+      (block.kind === 'try' &&
+        (resetUsed(model, block, graph.reached) || tryCatchesClient(model, block))) ||
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);
