@@ -334,9 +334,10 @@ async function currentTheme() {
 ```ts
 // src/session.ts
 import { createSession } from 'brumate/server';
+import env from './env.ts';
 
 export const session = createSession<{ userId: string }>({
-  secret: process.env.SESSION_SECRET!,
+  secret: env.SESSION_SECRET,
 });
 ```
 

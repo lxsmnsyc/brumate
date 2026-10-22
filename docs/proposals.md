@@ -14,7 +14,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
-| [Environment variables](#environment-variables)                       | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
@@ -490,35 +489,6 @@ declare module 'brumate/server' {
 - `getEvent().waitUntil(promise)` keeps work going after the response ends, such as analytics or a log line. On a host that stops a function when its response ends, such as Cloudflare Workers or Vercel's functions, it passes the promise to the platform's `waitUntil`, which Nitro exposes. On Node, or on a server of the app's own, it keeps the promise and logs its error. An app that wants `after(fn)` writes it on top in two lines.
 
 Cost: a few days.
-
-### Environment variables
-
-Secrets come from `process.env`, and values for the browser from Vite's `import.meta.env.VITE_*`. Nothing checks that a secret is set, or that browser code does not read one.
-
-```ts
-// src/env.ts
-import { defineEnv } from 'brumate/env';
-import * as v from 'valibot';
-
-export default defineEnv({
-  server: {
-    DATABASE_URL: v.pipe(v.string(), v.url()),
-    SESSION_SECRET: v.pipe(v.string(), v.minLength(32)),
-  },
-  public: {
-    SITE_NAME: v.optional(v.string(), 'Tracker'),
-  },
-});
-```
-
-- `defineEnv` takes a Standard Schema for each variable, split into `server` and `public`, as SolidStart's split between server and client variables and Astro's `astro:env` do.
-- The server checks the variables when it starts, and fails with every missing or wrong one, so a deploy without a secret does not start.
-- `import { env } from 'brumate/env'` gives the values with their types.
-- Public values are written into the client build. Server values never are.
-- The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses.
-
-Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
 
 ### Idempotent calls
 
@@ -996,15 +966,14 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Environment variables.** They are what middleware hands on, with the request locals, which are done.
-2. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-3. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-4. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 9.
-5. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-6. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-7. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-8. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-9. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-10. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+1. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+2. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 8.
+4. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+5. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+6. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+7. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+8. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+9. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

@@ -136,6 +136,10 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 
 `Handler`, `Middleware`, `EntryMiddleware`, `RouteNode` and the other types of the route tree are exported too. See [Route files](./reference-routes.md).
 
+## `brumate/env`
+
+`defineEnv(schema, options?)` checks the environment variables of the app when the server starts, and returns their values with their types. The browser gets the public ones only. See [Environment variables](./environment.md).
+
 ## `brumate/routes`
 
 | Export                       | What it does                                                                                                                                      |
