@@ -11,6 +11,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
   let rows = (initial);
   let picks = (0);
   $$html += "<button class=\"reverse\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
+  $$ctx.enter();
   {
     const $$list0v = ( rows );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -35,7 +36,9 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ul><ol>";
+  $$ctx.enter();
   {
     const $$list4v = ( rows );
     const $$list4 = Array.isArray($$list4v) ? $$list4v : Array.from($$list4v);
@@ -52,6 +55,7 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ol>";
   $$ctx.slots($$s1, [rows, picks], ["rows","picks"]);
   return $$html;
@@ -239,31 +243,31 @@ export default function Compact($$props: { initial: Row[] }): string {
 <button class="pick" b-b="0:4" b-on="click=Compact_omhyaj#h6">Pick</button>
 <ul>
 <!--b0:5-->
-<li b-b="1:0">
-<span class="label" b-b="1:1">One</span>
-<i class="note" b-b="1:2">
+<li b-b="0.0:0">
+<span class="label" b-b="0.0:1">One</span>
+<i class="note" b-b="0.0:2">
 </i>
 <button class="rename" b-on="click=Compact_omhyaj#h13">Rename</button>
 </li>
-<li b-b="2:0">
-<span class="label" b-b="2:1">Two</span>
-<i class="note" b-b="2:2">2</i>
+<li b-b="0.1:0">
+<span class="label" b-b="0.1:1">Two</span>
+<i class="note" b-b="0.1:2">2</i>
 <button class="rename" b-on="click=Compact_omhyaj#h13">Rename</button>
 </li>
 <!--/b-->
 </ul>
 <ol>
 <!--b0:6-->
-<!--i3-->
-<dt b-b="3:0">1</dt>
-<dd b-b="3:1">One</dd>
+<!--i1.0-->
+<dt b-b="1.0:0">1</dt>
+<dd b-b="1.0:1">One</dd>
 <!--/i-->
-<!--i4-->
-<dt b-b="4:0">2</dt>
-<dd b-b="4:1">Two</dd>
+<!--i1.1-->
+<dt b-b="1.1:0">2</dt>
+<dd b-b="1.1:1">Two</dd>
 <!--/i-->
 <!--/b-->
 </ol>
 
 # State
-<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Compact_omhyaj",s:[[{id:"1",label:"One",note:""},{id:"2",label:"Two",note:2}],0]},g:[[2,0,33,1,0,0,1,1],[4,0,33,1,0,0,3,1]]})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Compact_omhyaj",s:[[{id:"1",label:"One",note:""},{id:"2",label:"Two",note:2}],0]},g:[[2,0,97,1,0,0,"0.",0,1],[4,0,97,1,0,0,"1.",0,1]]})))</script>

@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
-import { render as renderParts, stateScript } from '../src/runtime/server.ts';
+import { handleRoute, render as renderParts, stateScript } from '../src/runtime/server.ts';
 import type { PageState } from '../src/runtime/server.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
@@ -586,7 +586,8 @@ describe('resume', () => {
 
   it('creates unique IDs with $id', async () => {
     await resume('fields', {});
-    expect(inputIds()).toEqual(['b0-0', 'b1-0', 'b2-0']);
+    // The items of the #for are in its block, 0, and their dots are `_` in the IDs.
+    expect(inputIds()).toEqual(['b0-0', 'b0_0-0', 'b0_1-0']);
     expect(document.querySelector('label')!.htmlFor).toBe('b0-0');
     expect(document.querySelector('input')!.getAttribute('aria-describedby')).toBe('b0-1');
 
@@ -840,6 +841,17 @@ describe('resume', () => {
     await waitFor(() => expect(document.activeElement).toBe(document.querySelector('input')));
   });
 
+  it('renders a client block in place of its fallback', async () => {
+    await resume('clientElse', {});
+    expect(text('.fallback')).toBe('Loading 0');
+    expect(document.querySelector('.body')).toBeNull();
+    await waitFor(() => expect(text('.body')).toBe('Client 0'));
+    expect(document.querySelector('.fallback')).toBeNull();
+    click(document.querySelector('.outer')!);
+    await waitFor(() => expect(text('.body')).toBe('Client 1'));
+    expect(text('.outer')).toBe('1');
+  });
+
   it('stops the window listeners of markup that is gone, such as a page that navigation left', async () => {
     await resume('blocks', { items: ['one', 'two'], tab: 'b' });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
@@ -850,6 +862,205 @@ describe('resume', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
     await new Promise((done) => setTimeout(done, 50));
     expect(text('body > p')).toBe('B');
+  });
+});
+
+/** Collects what a render sends after the page. */
+async function allPending(pending: AsyncIterable<string>): Promise<string> {
+  let result = '';
+  for await (const chunk of pending) {
+    result += chunk;
+  }
+  return result;
+}
+
+/**
+ * Answers the requests of the browser with the route of a fixture, and runs the scripts
+ * that are added to the page, in order, as a browser does. jsdom does not run them.
+ */
+async function withRoute(
+  name: string,
+  test: (fetch: Mock<(url: string, init: RequestInit) => Promise<Response>>) => Promise<void>,
+): Promise<void> {
+  const server = await import(file(`${name}.brm.ts`));
+  const tree = { page: async () => server };
+  const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+    async (url, init) =>
+      (await handleRoute(tree, new Request(new URL(url, 'http://localhost/'), init)))!,
+  );
+  vi.stubGlobal('fetch', fetch);
+  const scripts = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeName === 'SCRIPT') {
+          run(node as Element);
+        }
+      }
+    }
+  });
+  scripts.observe(document.body, { childList: true });
+  try {
+    await test(fetch);
+  } finally {
+    scripts.disconnect();
+  }
+}
+
+describe('#defer', () => {
+  it('renders the fallback in the page, and the body in a request of its own', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const page = await renderParts(server.default, {});
+    // The #for before the block takes ID 0, so the block's boundary is 1.
+    expect(page.html).toContain('<template b-b="0:1" b-defer="idle:1:0"></template><!--l1-->');
+    expect(page.html).toContain('<p class="fallback">Loading</p><!--/l-->');
+    expect(page.html).not.toContain('greeting');
+
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const parts = await renderParts(
+      server.default,
+      {},
+      { request, defer: { boundary: 1, at: '0:1' } },
+    );
+    expect(parts.defer).toBe('found');
+    expect(parts.html).toBe('');
+    const body = await allPending(parts.pending);
+    expect(body).toContain('<template b-l="1"><p class="greeting">Hello Ada</p>');
+    expect(body).toContain('$bS(1)');
+    // The body's scopes are inside the boundary, and its records have references of their own.
+    expect(body).toMatch(/<script b-state b-scopes b-next="\d+" b-root="d1">/);
+    expect(body).toContain('1.0');
+
+    const elsewhere = await renderParts(
+      server.default,
+      {},
+      {
+        defer: { boundary: 1, at: '0:2' },
+      },
+    );
+    expect(elsewhere.defer).toBe('moved');
+    const missing = await renderParts(server.default, {}, { defer: { boundary: 4, at: '0:1' } });
+    expect(missing.defer).toBe('missing');
+  });
+
+  it('renders no component after the block in the request for its body', async () => {
+    const server = await import(file('deferredLater.brm.ts'));
+    const { seen } = await import(file('seen.ts'));
+    seen.length = 0;
+    await renderParts(server.default, {});
+    expect(seen).toEqual(['before', 'after']);
+    seen.length = 0;
+    const parts = await renderParts(server.default, {}, { defer: { boundary: 0, at: '0:0' } });
+    expect(parts.defer).toBe('found');
+    expect(await allPending(parts.pending)).toContain('<i>body</i>');
+    expect(seen).toEqual(['before', 'body']);
+  });
+
+  it('answers the request for a body from the route, and 409 when the block moved', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const ask = (at: string): Promise<Response | undefined> =>
+      handleRoute(
+        tree,
+        new Request('http://localhost/', { headers: { 'x-brumate-defer': `1 ${at}` } }),
+      );
+    const found = (await ask('0:1'))!;
+    expect(found.status).toBe(200);
+    expect(found.headers.get('x-brumate-defer')).toBe('1');
+    expect(found.headers.get('vary')).toContain('x-brumate-defer');
+    expect(await found.text()).toContain('Hello guest');
+    expect((await ask('0:7'))!.status).toBe(409);
+    const page = (await handleRoute(tree, new Request('http://localhost/')))!;
+    expect(page.headers.get('vary')).toContain('x-brumate-defer');
+  });
+
+  it('renders a block of a component inside a #loading body of its parent', async () => {
+    const server = await import(file('deferredParent.brm.ts'));
+    const request = new Request('http://localhost/');
+    const page = await renderParts(server.default, {}, { request });
+    const chunks = await allPending(page.pending);
+    // The block is inside boundary 0, after the #for of its component, so its boundary is 0.1.
+    expect(chunks).toContain('<template b-b="0.0:1" b-defer="idle:0.1:0">');
+    const parts = await renderParts(
+      server.default,
+      {},
+      { request, defer: { boundary: '0.1', at: '0.0:1' } },
+    );
+    expect(parts.defer).toBe('found');
+    const body = await allPending(parts.pending);
+    expect(body).toContain('<template b-l="0.1"><p class="greeting">Hello guest</p>');
+    // Only the target body is sent, not the #loading body around it.
+    expect(body).not.toContain('b-l="0"');
+  });
+
+  it('puts the body in place of the fallback when its trigger fires', async () => {
+    await withRoute('deferred', async (fetch) => {
+      await resume('deferred', {});
+      expect(text('.fallback')).toBe('Loading');
+      await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+      expect(document.querySelector('.fallback')).toBeNull();
+      const headers = new Headers(fetch.mock.calls[0]![1].headers);
+      expect(headers.get('x-brumate-defer')).toBe('1 0:1');
+      expect(headers.get('x-brumate-base')).toBe('0');
+      // The body reads the signal of its component, which the page has.
+      click(document.querySelector('.inner')!);
+      await waitFor(() => expect(text('.inner')).toBe('2'));
+      expect(text('.count')).toBe('2');
+    });
+  });
+
+  it('loads a block of a component that a #loading body of its parent renders', async () => {
+    await withRoute('deferredParent', async (fetch) => {
+      const server = await import(file('deferredParent.brm.ts'));
+      const { html, state, pending } = await renderParts(
+        server.default,
+        {},
+        {
+          request: new Request('http://localhost/'),
+        },
+      );
+      document.body.innerHTML = html;
+      document.body.insertAdjacentHTML('beforeend', state);
+      for await (const chunk of pending) {
+        document.body.insertAdjacentHTML('beforeend', chunk);
+      }
+      await startLoader();
+      await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(new Headers(fetch.mock.calls[0]![1].headers).get('x-brumate-defer')).toBe('0.1 0.0:1');
+      click(document.querySelector('.inner')!);
+      await waitFor(() => expect(text('.inner')).toBe('2'));
+      expect(text('.count')).toBe('2');
+    });
+  });
+
+  it('keeps the fallback of a block that the browser renders, and asks for nothing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await withRoute('deferredClient', async (fetch) => {
+      await resume('deferredClient', {});
+      await waitFor(() =>
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining('renders a #defer block in the browser'),
+        ),
+      );
+      await waitFor(() => expect(text('.fallback')).toBe('Loading'));
+      await new Promise((done) => setTimeout(done, 50));
+      expect(document.querySelector('.greeting')).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+    warn.mockRestore();
+  });
+
+  it('loads a block inside the body of another block, after it', async () => {
+    await withRoute('deferredNested', async (fetch) => {
+      await resume('deferredNested', {});
+      await waitFor(() => expect(text('.inner')).toBe('Inner'));
+      expect(text('.outer')).toBe('Outer');
+      expect(document.querySelector('.outer-wait')).toBeNull();
+      expect(document.querySelector('.inner-wait')).toBeNull();
+      expect(
+        fetch.mock.calls.map(([, init]) => new Headers(init.headers).get('x-brumate-defer')),
+      ).toEqual(['0 0:0', '0.0 0.0:0']);
+    });
   });
 });
 
@@ -1037,7 +1248,7 @@ describe('$action', () => {
         actions: new Map([[signUp, { error: 'Enter an email address', email: '' }]]),
       },
     );
-    expect(posted.html).toContain('<p class="error" b-b="1:0">Enter an email address</p>');
+    expect(posted.html).toContain('<p class="error" b-b="1.0:0">Enter an email address</p>');
     expect(posted.html).toContain('Enter an email address');
   });
 
@@ -1228,41 +1439,56 @@ describe('$optimistic', () => {
   });
 });
 
-describe('a promise passed as a prop', () => {
-  it('loads a memo of the prop again when the parent passes a new promise', async () => {
-    const server = await import(file('promiseParent.brm.ts'));
-    const { html, state, pending } = await renderParts(server.default, {});
-    show(html + state);
-    for await (const chunk of pending) {
-      appendChunk(chunk);
+/**
+ * Resumes a page whose child reads a promise that its parent passes, and
+ * loads the next one. The new promise settles after 50 ms, so the pending
+ * state can come and go between two polls of `waitFor`. An observer records
+ * it when it shows. Returns the name that showed while it was pending, and
+ * whether it still shows at the end.
+ */
+async function loadNextUser(
+  name: string,
+): Promise<{ whilePending?: string; pendingAfter: boolean }> {
+  const server = await import(file(`${name}.brm.ts`));
+  const { html, state, pending } = await renderParts(server.default, {});
+  show(html + state);
+  for await (const chunk of pending) {
+    appendChunk(chunk);
+  }
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  expect(text('.name')).toBe('User 1');
+  let whilePending: string | undefined;
+  const observer = new MutationObserver(() => {
+    if (whilePending === undefined && document.querySelector('.pending')) {
+      whilePending = text('.name');
     }
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
-    expect(text('.name')).toBe('User 1');
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  try {
     click(document.querySelector('.next')!);
-    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
-    expect(text('.name')).toBe('User 1');
     await waitFor(() => expect(text('.name')).toBe('User 2'));
-    expect(document.querySelector('.pending')).toBeNull();
+  } finally {
+    observer.disconnect();
+  }
+  return { whilePending, pendingAfter: document.querySelector('.pending') !== null };
+}
+
+describe('a promise passed as a prop', () => {
+  // The child shows that it loads, with the old value, and then the new value without it.
+  it('loads a memo of the prop again when the parent passes a new promise', async () => {
+    expect(await loadNextUser('promiseParent')).toEqual({
+      whilePending: 'User 1',
+      pendingAfter: false,
+    });
   });
 
   it('does the same for a destructured prop', async () => {
-    const server = await import(file('promiseParentDestructured.brm.ts'));
-    const { html, state, pending } = await renderParts(server.default, {});
-    show(html + state);
-    for await (const chunk of pending) {
-      appendChunk(chunk);
-    }
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
-    expect(text('.name')).toBe('User 1');
-    click(document.querySelector('.next')!);
-    await waitFor(() => expect(document.querySelector('.pending')).not.toBeNull());
-    expect(text('.name')).toBe('User 1');
-    await waitFor(() => expect(text('.name')).toBe('User 2'));
-    expect(document.querySelector('.pending')).toBeNull();
+    expect(await loadNextUser('promiseParentDestructured')).toEqual({
+      whilePending: 'User 1',
+      pendingAfter: false,
+    });
   });
 });
 
@@ -1294,14 +1520,25 @@ function toRecords(state: PageState): Record<number, unknown> {
   );
 }
 
+/** Moves an ID by a number. An ID inside a block or a `#loading` body, such as `0.1`, moves by its first number. */
+function shift(value: number | string, amount: number): number | string {
+  if (typeof value === 'number') {
+    return value + amount;
+  }
+  const dot = value.indexOf('.');
+  return dot === -1
+    ? Number(value) + amount
+    : `${Number(value.slice(0, dot)) + amount}${value.slice(dot)}`;
+}
+
 /** The same fields of the scopes that the client read from the page, with IDs moved by `by`. */
 async function clientRecords(ids: string[], by = 0): Promise<Record<number, unknown>> {
   const client = await import('../src/runtime/client.ts');
   return Object.fromEntries(
     ids.map((id) => {
-      const scope = client.scopeOf(Number(id) + by)!;
-      const back = (value: number | undefined): number | undefined =>
-        value === undefined ? undefined : value - by;
+      const scope = client.scopeOf(shift(id, by))!;
+      const back = (value: number | string | undefined): number | string | undefined =>
+        value === undefined ? undefined : shift(value, -by);
       return [
         id,
         {
@@ -1520,7 +1757,8 @@ describe('compact markup', () => {
 
   it('updates, moves and removes items, and finds the scope of handlers', async () => {
     await resume('compact', { initial });
-    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('1:0');
+    // The items are inside the block of the #for, block 0.
+    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('0.0:0');
     await exercise();
   }, 20_000);
 
@@ -1538,8 +1776,8 @@ describe('compact markup', () => {
     await navigate({ url: '/compact', push: true, leave: async () => {}, enter: () => {} });
     expect(fetch).toHaveBeenCalledTimes(1);
     // The anchors of items and of texts in elements moved by 5, as the state does.
-    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('6:0');
-    expect(document.querySelector('ul .label')!.getAttribute('b-b')).toBe('6:1');
+    expect(document.querySelector('ul li')!.getAttribute('b-b')).toBe('5.0:0');
+    expect(document.querySelector('ul .label')!.getAttribute('b-b')).toBe('5.0:1');
     for (const script of document.querySelectorAll('script[b-state]')) {
       run(script);
     }
@@ -1584,7 +1822,7 @@ async function lists(
   name: string,
   props: unknown,
   state?: PageState,
-  sources?: Map<number, readonly [number, number]>,
+  sources?: Map<number | string, readonly [number | string, number]>,
 ): Promise<Record<string, string>> {
   const { plan } = compile(readFileSync(join(input, `${name}.brm`), 'utf8'), {
     filename: `${name}.brm`,

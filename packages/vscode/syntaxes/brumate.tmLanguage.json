@@ -243,7 +243,7 @@
       ]
     },
     "block": {
-      "begin": "(#)(else if|if|else|for|repeat|switch|case|default|try|catch|loading|portal|head|client|offscreen|key|template)\\b",
+      "begin": "(#)(else if|if|else|for|repeat|switch|case|default|try|catch|loading|portal|head|client|defer|offscreen|key|template)\\b",
       "beginCaptures": {
         "1": {
           "name": "keyword.control.block.brumate"

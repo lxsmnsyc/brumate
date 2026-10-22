@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import { see } from './seen.ts';
+
+  const { name } = $props<{ name: string }>();
+</script>
+
+<i>{see(name)}</i>

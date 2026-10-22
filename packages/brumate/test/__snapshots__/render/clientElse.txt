@@ -1,0 +1,96 @@
+# Server module
+import * as $$b from 'brumate/server';
+export const rpc = {  };
+let $$t: any;
+
+export default async function ClientElse($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "ClientElse_1w4g5uu");
+  let count = (0);
+  $$html += "<button class=\"outer\" b-b=\"" + $$s1 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h1\">" + $$b.insert((count)) + "</button><template b-b=\"" + $$s1 + ":1\" b-client=\"idle=ClientElse_1w4g5uu#k2\"></template><!--b" + $$s1 + ":1-->";
+  {
+    const $$s3 = $$ctx.scope(3, $$s1);
+    $$html += "<p class=\"fallback\">Loading <button class=\"inner\" b-b=\"" + $$s3 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h4\">" + $$b.insert((count)) + "</button></p>";
+  }
+  $$html += "<!--/b-->";
+  $$ctx.slots($$s1, [count], ["count"]);
+  return $$html;
+}
+ClientElse.brumateId = "ClientElse_1w4g5uu";
+
+# Client entry
+export const id = "ClientElse_1w4g5uu";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u2"], [2, "u3"], [3, "u5"]] } };
+const update = () => import("./clientElse.brm?brumate-client&part=update");
+const parts = {
+  "h1": () => (update().catch(() => {}), import("./clientElse.brm?brumate-client&part=h1")),
+  "h4": () => (update().catch(() => {}), import("./clientElse.brm?brumate-client&part=h4")),
+  "update": update,
+};
+/** Imports a part of this module. */
+export function load(part) {
+  return parts[part]();
+}
+
+# Client part: h1
+import * as $$b from 'brumate/client';
+
+export const h1 = ($$s) => $$b.update($$s, 0, 1, false);
+
+# Client part: h4
+import * as $$b from 'brumate/client';
+
+export const h4 = ($$s) => $$b.update($$s.p, 0, 1, false);
+
+# Client part: update
+import * as $$b from 'brumate/client';
+
+export function u2($$s) {
+  $$b.content($$s, 0, $$b.get($$s, 0));
+}
+export function u3($$s) {
+  $$b.text($$s, 0, $$b.get($$s.p, 0));
+}
+export function u5($$s) {
+  $$b.content($$s, 0, $$b.get($$s.p, 0));
+}
+export function r2($$p) {
+  let $$html = '';
+  let count = $$b.get($$p, 0);
+  const $$s2 = $$b.createScope(2, $$p);
+  $$html += "<p class=\"body\">Client <!--t" + $$s2 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
+  return $$html;
+}
+export function k2($$s) {
+  $$b.fill($$s, 1, r2, [3]);
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+
+export default function ClientElse($$props: Record<string, never>): string {
+  let $$html = '';
+  const $$s1 = $$b.createScope(1, undefined, "ClientElse_1w4g5uu");
+  let count = (0);
+  $$html += "<button class=\"outer\" b-b=\"" + $$s1 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h1\">" + $$b.insert((count)) + "</button><template b-b=\"" + $$s1 + ":1\" b-client=\"idle=ClientElse_1w4g5uu#k2\"></template><!--b" + $$s1 + ":1-->";
+  {
+    const $$s3 = $$b.createScope(3, $$s1);
+    $$html += "<p class=\"fallback\">Loading <button class=\"inner\" b-b=\"" + $$s3 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h4\">" + $$b.insert((count)) + "</button></p>";
+  }
+  $$html += "<!--/b-->";
+  $$b.setSlots($$s1, [count]);
+  return $$html;
+}
+
+# HTML
+<button class="outer" b-b="0:0" b-on="click=ClientElse_1w4g5uu#h1">0</button>
+<template b-b="0:1" b-client="idle=ClientElse_1w4g5uu#k2">
+</template>
+<!--b0:1-->
+<p class="fallback">Loading <button class="inner" b-b="1:0" b-on="click=ClientElse_1w4g5uu#h4">0</button>
+</p>
+<!--/b-->
+
+# State
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"ClientElse_1w4g5uu",s:[0]},1:{k:3,p:0}})))</script>

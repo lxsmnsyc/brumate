@@ -123,8 +123,12 @@ export function printAST(file: SFCFile): string {
         body(item.body, depth + 1, 'body');
         break;
       case 'client':
-        write(depth, `client (${item.trigger})`);
+      case 'defer':
+        write(depth, `${item.kind} (${item.trigger})`);
         body(item.body, depth + 1, 'body');
+        if (item.fallback) {
+          body(item.fallback, depth + 1, 'else');
+        }
         break;
     }
   };

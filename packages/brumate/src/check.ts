@@ -560,10 +560,16 @@ class Generator {
         out.text('}\n');
         return;
       case 'head':
-      case 'client':
         out.text('{\n');
         this.body(block.body);
         out.text('}\n');
+        return;
+      case 'client':
+      case 'defer':
+        out.text('{\n');
+        this.body(block.body);
+        out.text('}\n');
+        this.fallback(block.fallback);
         return;
     }
   }

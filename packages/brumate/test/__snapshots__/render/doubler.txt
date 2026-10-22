@@ -13,11 +13,13 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
   const $$p_doubled = $$b.memo(() => (double(count)), $$ctx);
   const doubled = (($$t = $$b.ready($$p_doubled)) instanceof Promise ? await $$t : $$t);
   $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Doubler_1bxsryb#h2\">" + $$b.insert((count)) + "</button><p b-b=\"" + $$s1 + ":1\">" + (typeof ($$t = $$b.insert((doubled), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
+  $$ctx.enter();
   if (false) {
     $$html += "<!--b" + $$s1 + ":2:0--><span class=\"pending\">Loading</span><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
+  $$ctx.leave();
   $$ctx.slots($$s1, [count, doubled], ["count","doubled"]);
   return $$html;
 }

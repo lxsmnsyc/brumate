@@ -77,6 +77,7 @@ See [Navigation](./navigation.md).
 
 - The server and the browser make the same ID, so a component that the browser renders later gets the same IDs as it would on the server.
 - Each instance of a component gets its own IDs, so a component can be used many times on a page.
+- An ID has only letters, digits, `-` and `_`, such as `b3-0`, so it also works in a CSS selector, as `#b3-0`.
 - In the script of a block, such as the body of a `#for`, each item gets its own IDs:
 
 ```brm live

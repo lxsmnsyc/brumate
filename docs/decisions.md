@@ -86,7 +86,12 @@
   - Effects and `$client` callbacks of the body run their cleanups when it hides, and wait while it is hidden. When it shows, the ones that ran before or that would have run run once with the current values. `<window>` and `<document>` listeners in the body do not run while it is hidden.
   - Nothing goes to the server when a body hides or shows.
   - The portals of the body are hidden with it, so a dialog of a hidden tab does not stay on the page.
-  - `#defer` is reserved for a block that renders on the server later, so the name stays free.
+- `#defer (trigger) { … } #else { … }` renders its body on the server in a later request, when the trigger fires in the browser.
+  - The request is the URL of the page and the boundary ID, so nothing comes from the browser that needs signing. The server renders the route again, with the base of the page, and sends only that body.
+  - The scopes of `#loading` and `#defer` bodies are numbered after their boundary ID, such as `5.0`, so the second render numbers the page the same way, whatever order the data arrives in.
+  - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
+  - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
+  - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

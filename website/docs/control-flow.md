@@ -302,6 +302,44 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 
 Use it for markup that needs the browser, such as a map or a chart. [Effects and browser code](./effects.md) compares it with `$client` and `$effect`.
 
+An `#else` body renders on the server in place of the body, until the body renders:
+
+```brm live
+#client ('idle') {
+  <p>Your time zone is {Intl.DateTimeFormat().resolvedOptions().timeZone}.</p>
+} #else {
+  <p>Finding your time zone…</p>
+}
+```
+
+- The fallback can keep the space of the body, so the page does not move when the body renders.
+- With `'visible'`, the block renders when the fallback comes into view.
+- Without scripts, the fallback stays.
+
+## `#defer`
+
+`#defer` renders its body on the server later, in a request of its own. The page has the `#else` body until the trigger fires, with the same triggers as `#client`. The browser then asks the server for the body, which replaces the fallback:
+
+```brm
+#defer ('visible') {
+  <Recommendations user=user />
+} #else {
+  <p>Loading recommendations…</p>
+}
+```
+
+Use it for markup that the server renders but that the first response does not need, such as content far below the fold, or the parts of a cached page that depend on the user.
+
+- The body renders on the server, with the same route, request, cookies and values as the page. It can call server functions and read the database.
+- The request goes to the URL of the page, so middleware runs for it as it does for the page. The answer has `vary: x-brumate-defer`, and so does the page.
+- The server renders the route again for the request, up to the block. It renders the `#loading` and `#defer` bodies around the block, without sending them, and no other body. Data that the page loads before the block loads again. Data that only the body needs is not loaded for the page: put it in the body, such as in a component inside it.
+- If the page's data changed since it loaded, and the block is not where the browser has it, the fallback stays.
+- Without scripts, the fallback stays. A prerendered page needs a server for the request.
+- A `#defer` block can be inside a `#loading` or `#defer` body. It cannot be inside a `#client` body, or in markup that the browser renders, such as a branch of an `#if` that changes. The compiler reports it in the same file.
+- A component with a `#defer` block that the browser renders, such as inside the `#client` body of its parent, keeps the fallback. The compiler cannot see this across files.
+
+`#client` renders its body in the browser, for markup that needs the browser. `#defer` renders it on the server, for markup that needs the server.
+
 ## `#template`
 
 `#template name(parameters)` declares a piece of markup that takes arguments. Call it in an expression:

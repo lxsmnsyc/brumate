@@ -29,6 +29,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     await persist(todos);
   }
   $$html += "<h1>Todos</h1><form b-b=\"" + $$s1 + ":0\" b-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s1 + ":1\" b-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
+  $$ctx.enter();
   {
     const $$list0v = ( todos );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -47,6 +48,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + (typeof ($$t = $$b.insert((left), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> left</p>";
   $$ctx.slots($$s1, [todos, draft, left], ["todos","draft","left"]);
   return $$html;
@@ -186,11 +188,11 @@ export default function Todos($$props: { initial: Todo[] }): string {
 </form>
 <ul>
 <!--b0:2-->
-<li class="done" b-b="1:0" b-on="click=Todos_t3g9lr#h12">
-<!--t1:1-->Write the docs<!--/t--> <time b-b="1:2">2026-10-01</time>
+<li class="done" b-b="0.0:0" b-on="click=Todos_t3g9lr#h12">
+<!--t0.0:1-->Write the docs<!--/t--> <time b-b="0.0:2">2026-10-01</time>
 </li>
-<li b-b="2:0" b-on="click=Todos_t3g9lr#h12">
-<!--t2:1-->Build &lt;the&gt; compiler<!--/t--> <time b-b="2:2">2026-10-20</time>
+<li b-b="0.1:0" b-on="click=Todos_t3g9lr#h12">
+<!--t0.1:1-->Build &lt;the&gt; compiler<!--/t--> <time b-b="0.1:2">2026-10-20</time>
 </li>
 <!--/b-->
 </ul>
@@ -199,4 +201,4 @@ export default function Todos($$props: { initial: Todo[] }): string {
 <!--t0:3-->1<!--/t--> left</p>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Todos_t3g9lr",s:[[{id:"1",title:"Write the docs",done:!0,at:new Date("2026-10-01T00:00:00.000Z")},{id:"2",title:"Build \x3Cthe> compiler",done:!1,at:new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:[[2,0,33,1,0,0,1,1]]})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Todos_t3g9lr",s:[[{id:"1",title:"Write the docs",done:!0,at:new Date("2026-10-01T00:00:00.000Z")},{id:"2",title:"Build \x3Cthe> compiler",done:!1,at:new Date("2026-10-20T00:00:00.000Z")}],"",1]},g:[[2,0,97,1,0,0,"0.",0,1]]})))</script>

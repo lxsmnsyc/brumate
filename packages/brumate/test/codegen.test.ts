@@ -372,3 +372,29 @@ describe('literal class values', () => {
     expect(classes(source)).toBeUndefined();
   });
 });
+
+/** Compiles a component whose markup is `markup`, with a signal that a handler changes. */
+function compileBlock(markup: string): void {
+  compile(
+    `<script>\n  import { $signal } from 'brumate/signals';\n  let open = $signal(false);\n</script>\n<button onClick=(() => (open = !open))>Toggle</button>\n${markup}`,
+    { filename: 'T.brm' },
+  );
+}
+
+describe('#defer', () => {
+  it.each([
+    ['#client { #defer { <p>x</p> } }', '#defer cannot be inside a #client body'],
+    ['#if (open) { #defer { <p>x</p> } }', '#defer cannot be in markup that the browser renders'],
+  ])('reports a block that the server cannot render again: %s', (markup, message) => {
+    expect(() => compileBlock(markup)).toThrow(message);
+  });
+
+  it.each([
+    '#defer { <p>x</p> } #else { <p>…</p> }',
+    '#loading { #defer { <p>x</p> } }',
+    '#loading { <p>x</p> } #else { #defer { <p>y</p> } }',
+    '#defer { #defer { <p>x</p> } }',
+  ])('accepts a block in markup that the server renders: %s', (markup) => {
+    expect(() => compileBlock(markup)).not.toThrow();
+  });
+});

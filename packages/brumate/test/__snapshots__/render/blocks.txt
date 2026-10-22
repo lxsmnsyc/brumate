@@ -22,12 +22,15 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   $$html += "<template b-b=\"" + $$s1 + ":0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-b=\"" + $$s1 + ":1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
   input = $$ctx.element($$s1, 2);
   $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
+  $$ctx.enter();
   if (tab === 'a') {
     $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":3:1--><p>B</p><!--/b-->";
   }
+  $$ctx.leave();
   $$html += "<ul>";
+  $$ctx.enter();
   {
     const $$list0v = ( list);
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -47,7 +50,9 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ul>";
+  $$ctx.enter();
   {
     const $$list4v = ( ['x', 'y']);
     const $$list4 = Array.isArray($$list4v) ? $$list4v : Array.from($$list4v);
@@ -57,6 +62,8 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       $$html += "<span>" + (typeof ($$t = $$b.insert((item), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</span>";
     }
   }
+  $$ctx.leave();
+  $$ctx.enter();
   {
     const $$list7 = Array.from({ length: ( 2) }, (_, index) => index);
     for (let $$index9 = 0; $$index9 < $$list7.length; $$index9++) {
@@ -65,6 +72,8 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
       $$html += (typeof ($$t = $$b.insert((row(n)), $$ctx, $$s1)) === 'string' ? $$t : await $$t);
     }
   }
+  $$ctx.leave();
+  $$ctx.enter();
   const $$before10 = $$html;
   const $$mark12 = $$ctx.mark();
   try {
@@ -75,6 +84,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     const error = $$error11;
     $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   }
+  $$ctx.leave();
   $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$ctx.scope(12, $$s1);
@@ -282,11 +292,11 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 <!--/b-->
 <ul>
 <!--b0:4-->
-<li b-b="1:0">
-<!--t1:1-->0<!--/t-->. <!--t1:2-->one<!--/t-->
+<li b-b="1.0:0">
+<!--t1.0:1-->0<!--/t-->. <!--t1.0:2-->one<!--/t-->
 </li>
-<li b-b="2:0">
-<!--t2:1-->1<!--/t-->. <!--t2:2-->two<!--/t-->
+<li b-b="1.1:0">
+<!--t1.1:1-->1<!--/t-->. <!--t1.1:2-->two<!--/t-->
 </li>
 <!--/b-->
 </ul>
@@ -299,8 +309,8 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 </template>
 <!--b0:5-->
 <!--/b-->
-<section style="font-size:12px" b-b="3:0" b-on="click=Blocks_jlmev2#h20">Dynamic</section>
+<section style="font-size:12px" b-b="1:0" b-on="click=Blocks_jlmev2#h20">Dynamic</section>
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},3:{k:12,p:0},g:[[5,0,33,2,0,1,1,0,1,1]]})))</script>
+<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},1:{k:12,p:0},g:[[5,0,97,2,0,1,"1.",0,0,1,1]]})))</script>

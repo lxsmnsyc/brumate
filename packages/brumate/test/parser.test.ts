@@ -36,8 +36,10 @@ describe('syntax errors', () => {
     ],
     ['#offscreen { x }', 'Expected "(" after #offscreen (Test.brm:1:12)'],
     ['#offscreen () { x }', 'Expected an expression after #offscreen (Test.brm:1:13)'],
-    ['#defer { x }', '#defer is reserved for a future block (Test.brm:1:1)'],
-    ['<p>#defer (later) { x }</p>', '#defer is reserved for a future block (Test.brm:1:4)'],
+    [
+      '<p>#defer (later) { x }</p>',
+      'The trigger of #defer must be "visible", "idle" or "load" (Test.brm:1:12)',
+    ],
     ['<button onClick:later=go>x</button>', 'Unknown event modifier ":later" (Test.brm:1:9)'],
     [
       '<button onClick="go()">x</button>',

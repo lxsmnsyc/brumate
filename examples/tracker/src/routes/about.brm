@@ -1,7 +1,9 @@
 <script>
-  import { $title } from 'brumate/signals';
+  import { $getContext, $title } from 'brumate/signals';
+  import { CurrentUser } from '../user.ts';
 
   $title('About');
+  const user = $getContext(CurrentUser);
 </script>
 
 <h1>About</h1>
@@ -13,6 +15,12 @@
   This page has no data, so the build writes it as a static file. The other pages render on
   each request.
 </p>
+<!-- The static file is the same for everyone, so the server renders the line about the user later. -->
+#defer ('load') {
+  <p class="who">{user ? `You are signed in as ${user}.` : 'You are not signed in.'}</p>
+} #else {
+  <p class="who">Checking who you are…</p>
+}
 <h2>Shortcuts</h2>
 <ul>
   <li><kbd>/</kbd> searches the issues.</li>

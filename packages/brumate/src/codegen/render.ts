@@ -39,6 +39,8 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
       case 'for':
       case 'repeat':
       case 'loading':
+      case 'client':
+      case 'defer':
         componentNames(node.body.children, names);
         componentNames(node.fallback?.children ?? [], names);
         break;
@@ -49,7 +51,6 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
       case 'key':
       case 'portal':
       case 'head':
-      case 'client':
       case 'offscreen':
         componentNames(node.body.children, names);
         break;

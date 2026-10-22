@@ -19,11 +19,13 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     ((globalThis as { offscreenLog?: string[] }).offscreenLog ??= []).push(entry);
   }
   $$html += "<button s-1oupne3 class=\"tab-a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Offscreen_1oupne3#h7\">A</button><button s-1oupne3 class=\"tab-b\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Offscreen_1oupne3#h8\">B</button><button s-1oupne3 class=\"bump\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Offscreen_1oupne3#h9\">Bump</button><button s-1oupne3 class=\"toggle-inner\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Offscreen_1oupne3#h10\">Inner</button><button s-1oupne3 class=\"remove\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Offscreen_1oupne3#h11\">Remove</button><button s-1oupne3 class=\"restyle\" b-b=\"" + $$s1 + ":5\" b-on=\"click=Offscreen_1oupne3#h12\">Restyle</button><main s-1oupne3>";
+  $$ctx.enter();
   if (tab === 'a') {
     $$html += "<!--b" + $$s1 + ":6:1-->";
     const $$s2 = $$ctx.scope(2, $$s1);
     let draft = ('');
     $$html += "<template b-b=\"" + $$s2 + ":0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-b=\"" + $$s2 + ":1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section s-1oupne3 class=\"panel-a flex\"><input s-1oupne3 class=\"draft\"" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s2 + ":2\" b-on=\"input=Offscreen_1oupne3#h19\"><p s-1oupne3 class=\"draft-text\" b-b=\"" + $$s2 + ":3\">" + (typeof ($$t = $$b.insert((draft), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
+    $$ctx.enter();
     if (inner) {
       $$html += "<!--b" + $$s2 + ":4:1-->";
       const $$s3 = $$ctx.scope(3, $$s2);
@@ -31,7 +33,9 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     } else {
       $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
     }
+    $$ctx.leave();
     $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
+    $$ctx.enter();
     if (count > 1) {
       $$html += "<!--b" + $$s2 + ":7:0-->";
       const $$s4 = $$ctx.scope(4, $$s2);
@@ -39,6 +43,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     } else {
       $$html += "<!--b" + $$s2 + ":7:-1--><!--/b-->";
     }
+    $$ctx.leave();
     const $$portal0 = await (async () => {
       let $$html = '';
       const $$s5 = $$ctx.scope(5, $$s2);
@@ -52,6 +57,8 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
   } else {
     $$html += "<!--b" + $$s1 + ":6:-1--><!--/b-->";
   }
+  $$ctx.leave();
+  $$ctx.enter();
   if (tab === 'b') {
     $$html += "<!--b" + $$s1 + ":7:1-->";
     const $$s6 = $$ctx.scope(6, $$s1);
@@ -59,9 +66,12 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
   } else {
     $$html += "<!--b" + $$s1 + ":7:-1--><!--/b-->";
   }
+  $$ctx.leave();
+  $$ctx.enter();
   if (exists) {
     $$html += "<!--b" + $$s1 + ":8:0-->";
     const $$s7 = $$ctx.scope(7, $$s1);
+    $$ctx.enter();
     if (tab === 'a') {
       $$html += "<!--b" + $$s7 + ":0:1-->";
       const $$s8 = $$ctx.scope(8, $$s7);
@@ -69,10 +79,12 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     } else {
       $$html += "<!--b" + $$s7 + ":0:-1--><!--/b-->";
     }
+    $$ctx.leave();
     $$html += "<!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":8:-1--><!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</main>";
   $$ctx.slots($$s1, [tab, count, inner, exists, look], ["tab","count","inner","exists","look"]);
   return $$html;
@@ -387,38 +399,38 @@ export default function Offscreen($$props: Record<string, any>): string {
 <button s-1oupne3 class="restyle" b-b="0:5" b-on="click=Offscreen_1oupne3#h12">Restyle</button>
 <main s-1oupne3>
 <!--b0:6:1-->
-<template b-b="1:0" b-client="idle=Offscreen_1oupne3#c16">
+<template b-b="0.0:0" b-client="idle=Offscreen_1oupne3#c16">
 </template>
-<template b-b="1:1" b-listen="window" b-on="keydown=Offscreen_1oupne3#h17">
+<template b-b="0.0:1" b-listen="window" b-on="keydown=Offscreen_1oupne3#h17">
 </template>
 <section s-1oupne3 class="panel-a flex">
-<input s-1oupne3 class="draft" value="" b-b="1:2" b-on="input=Offscreen_1oupne3#h19">
-<p s-1oupne3 class="draft-text" b-b="1:3">
+<input s-1oupne3 class="draft" value="" b-b="0.0:2" b-on="input=Offscreen_1oupne3#h19">
+<p s-1oupne3 class="draft-text" b-b="0.0:3">
 </p>
-<!--b1:4:1-->
-<p s-1oupne3 class="inner">Inner <!--t2:0-->0<!--/t-->
+<!--b0.0:4:1-->
+<p s-1oupne3 class="inner">Inner <!--t0.0.0:0-->0<!--/t-->
 </p>
 <!--/b-->
 </section>
 <p s-1oupne3 class="inline" style="display: grid">Inline</p>
-<p s-1oupne3 class="styled" style="color: red" b-b="1:5">Styled</p>Count <!--t1:6-->0<!--/t-->
-<!--b1:7:-1-->
+<p s-1oupne3 class="styled" style="color: red" b-b="0.0:5">Styled</p>Count <!--t0.0:6-->0<!--/t-->
+<!--b0.0:7:-1-->
 <!--/b-->
-<span class="child">Child <!--t4:0-->0<!--/t-->
+<span class="child">Child <!--t0.2:0-->0<!--/t-->
 </span>
 <!--/b-->
 <!--b0:7:-1-->
 <!--/b-->
 <!--b0:8:0-->
-<!--b5:0:1-->
+<!--b2.0:0:1-->
 <p s-1oupne3 class="removable">Removable</p>
 <!--/b-->
 <!--/b-->
 </main>
-<!--P3-->
-<aside s-1oupne3 class="portal-a">Portal <!--t3:0-->0<!--/t-->
+<!--P0.1-->
+<aside s-1oupne3 class="portal-a">Portal <!--t0.1:0-->0<!--/t-->
 </aside>
 <!--/P-->
 
 # State
-<script b-state b-scopes b-next="7">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Offscreen_1oupne3",s:["a",0,!0,!0,"color: red"]},1:{k:2,p:0,c:{8:4},s:[""]},2:{k:3,p:1},3:{k:5,p:1},4:{k:1,m:"OffscreenChild_1uvc7y5",o:1,s:[0]},5:{k:7,p:0},6:{k:8,p:5}})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Offscreen_1oupne3",s:["a",0,!0,!0,"color: red"]},"0.0":{k:2,p:0,c:{8:"0.2"},s:[""]},"0.0.0":{k:3,p:"0.0"},0.1:{k:5,p:"0.0"},0.2:{k:1,m:"OffscreenChild_1uvc7y5",o:"0.0",s:[0]},"2.0":{k:7,p:0},"2.0.0":{k:8,p:"2.0"}})))</script>

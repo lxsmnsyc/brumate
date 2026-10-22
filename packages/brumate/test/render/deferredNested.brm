@@ -1,0 +1,10 @@
+#defer ('idle') {
+  <p class="outer">Outer</p>
+  #defer ('idle') {
+    <p class="inner">Inner</p>
+  } #else {
+    <p class="inner-wait">Waiting for inner</p>
+  }
+} #else {
+  <p class="outer-wait">Waiting for outer</p>
+}

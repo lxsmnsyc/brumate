@@ -202,7 +202,7 @@ export default function Memos($$props: Record<string, never>): string {
 <!--/l-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Memos_1khoa0p",s:$R[2]=[3,$R[3]=["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",0,3,0,"",3,$R[4]=($R[5]=($R[6]=() => {
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Memos_1khoa0p",s:$R[2]=[3,$R[3]=["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",0,3,0,"",3,$R[4]=($R[5]=($R[6]=() => {
 	const resolver = {
 		p: 0,
 		s: 0,

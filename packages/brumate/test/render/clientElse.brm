@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+</script>
+
+<button class="outer" onClick=(() => count++)>{count}</button>
+#client ('idle') {
+  <p class="body">Client {count}</p>
+} #else {
+  <p class="fallback">Loading <button class="inner" onClick=(() => count++)>{count}</button></p>
+}

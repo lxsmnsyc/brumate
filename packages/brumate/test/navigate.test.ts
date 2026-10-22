@@ -276,7 +276,9 @@ describe('navigate', () => {
       vi.fn(async () => {
         const { response, next } = respond([
           `<!doctype html><html><head><title>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
-          '<template b-l="1"><p b-b="1:0">later</p></template><script>$bS(1)</script>',
+          // The scopes of a `#loading` body, and a body inside it, have the boundary's ID first.
+          '<template b-l="1"><p b-b="1.0:0">later</p><!--l1.0--><!--/l--></template><script>$bS(1)</script>' +
+            '<template b-l="1.0"><i b-b="1.0.0:0">inner</i></template><script>$bS("1.0")</script>',
         ]);
         next();
         next();
@@ -304,11 +306,17 @@ describe('navigate', () => {
     expect(state.getAttribute('b-root')).toBe('2');
     expect(state.getAttribute('b-next')).toBe('4');
     // Markup that streams in later moves too.
-    expect(document.querySelector('template')?.getAttribute('b-l')).toBe('3');
+    const [outer, inner] = document.querySelectorAll('template');
+    expect(outer!.getAttribute('b-l')).toBe('3');
+    expect(outer!.content.querySelector('p')?.getAttribute('b-b')).toBe('3.0:0');
+    expect(outer!.content.childNodes[1]!.textContent).toBe('l3.0');
+    expect(inner!.getAttribute('b-l')).toBe('3.0');
+    expect(inner!.content.querySelector('i')?.getAttribute('b-b')).toBe('3.0.0:0');
     expect(
-      document.querySelector('template')!.content.querySelector('p')?.getAttribute('b-b'),
-    ).toBe('3:0');
-    expect(document.body.querySelector('script:not([b-state])')?.textContent).toBe('$bS(3)');
+      [...document.body.querySelectorAll('script:not([b-state])')].map(
+        (script) => script.textContent,
+      ),
+    ).toEqual(['$bS(3)', '$bS("3.0")']);
   });
 
   it('uses a page that its link started to load', async () => {

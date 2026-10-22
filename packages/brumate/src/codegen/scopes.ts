@@ -40,14 +40,19 @@ export function slotIndex(plan: Plan, declaration: Declaration): number {
 // Sites that do not run while the server renders.
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
-/** Returns the nearest `#loading` body scope that contains a scope, up to `limit`. */
+/**
+ * Returns the nearest `#loading` or `#defer` body scope that contains a
+ * scope, up to `limit`. Both render after the rest of the page, so the
+ * page does not wait for the memos that only they read.
+ */
 export function loadingBody(scope: Scope, limit?: Scope): Scope | undefined {
   for (
     let current: Scope | undefined = scope;
     current && current !== limit;
     current = current.parent
   ) {
-    if (current.block?.kind === 'loading' && current.body === current.block.body) {
+    const block = current.block;
+    if ((block?.kind === 'loading' || block?.kind === 'defer') && current.body === block.body) {
       return current;
     }
   }

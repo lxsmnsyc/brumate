@@ -50,13 +50,14 @@ export function childrenOf(node: Markup): Markup[] {
     case 'for':
     case 'repeat':
     case 'loading':
+    case 'client':
+    case 'defer':
       return [...node.body.children, ...(node.fallback?.children ?? [])];
     case 'try':
       return [...node.body.children, ...node.fallback.children];
     case 'key':
     case 'portal':
     case 'head':
-    case 'client':
     case 'offscreen':
       return node.body.children;
     default:

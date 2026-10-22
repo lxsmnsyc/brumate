@@ -140,7 +140,14 @@ export async function serveBuild(root) {
         return;
       }
       const page = path.join(client, path.normalize(url.pathname), 'index.html');
-      if (!answer && request.method === 'GET' && page.startsWith(client) && existsSync(page)) {
+      // The request for a `#defer` body goes to the routes, also for a prerendered page.
+      if (
+        !answer &&
+        request.method === 'GET' &&
+        !request.headers['x-brumate-defer'] &&
+        page.startsWith(client) &&
+        existsSync(page)
+      ) {
         response.setHeader('content-type', 'text/html; charset=utf-8');
         response.end(await readFile(page));
         return;

@@ -16,11 +16,13 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PREFIX,
   SOURCE,
   isAsyncIterable,
+  parseId,
   stateValues,
 } from './shared.ts';
-import type { PackedState, PageState, ScopeState } from './shared.ts';
+import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export { affix, attribute, classAttribute, escape, raw, spread, vars } from './html.ts';
@@ -58,7 +60,7 @@ function partOf(name: string): string {
 
 /** The instance of a scope in the page. */
 export interface Scope {
-  id: number;
+  id: ScopeId;
   /** The scope's ID in the compiled component. */
   k: number;
   p?: Scope;
@@ -67,7 +69,7 @@ export interface Scope {
   s: unknown[];
   /** The item of a list item scope. */
   i?: unknown;
-  c?: Record<number, number>;
+  c?: Record<number, ScopeId>;
   /** The scope that rendered a component's root scope. */
   o?: Scope;
   /** The values that the scope provides, by context key. */
@@ -106,7 +108,7 @@ let options: CoreOptions;
 /** The URL prefix of server function calls, from the options. */
 export let rpcPrefix = '/_brumate';
 /** The scopes of the page, by ID. */
-export const scopes: Map<number, Scope> = new Map();
+export const scopes: Map<ScopeId, Scope> = new Map();
 
 /** What modules of optional features add to the core. See `client-routes.ts` and `hot`. */
 export const hooks: {
@@ -120,7 +122,7 @@ export const hooks: {
 export interface DevtoolsHooks {
   /** The core started, with the scopes of the page, and a way to write a slot, as a handler does. */
   attach?(core: {
-    scopes: Map<number, Scope>;
+    scopes: Map<ScopeId, Scope>;
     set: (scope: Scope, slot: number, value: unknown) => void;
   }): void;
   /** A handler starts for an event. */
@@ -251,7 +253,7 @@ function refresh(added: Scope[]): void {
 /** Reads the groups of scope records back into one record per scope. See `PackedState`. */
 function unpackState(state: PackedState): PageState {
   // Items to take from the list in a slot of another record, once every record is read.
-  const taken: [records: ScopeState[], source: number, slot: number, first: number][] = [];
+  const taken: [records: ScopeState[], source: ScopeId, slot: number, first: number][] = [];
   for (const group of state.g ?? []) {
     const [k, base, flags] = group as number[];
     const count = group[3] as number;
@@ -259,15 +261,18 @@ function unpackState(state: PackedState): PageState {
     const m = flags & MODULE ? (group[at++] as string) : undefined;
     const source: ScopeState[] | undefined = flags & SOURCE ? [] : undefined;
     if (source) {
-      taken.push([source, group[at++] as number, group[at++] as number, flags & ITEM_SLOT]);
+      taken.push([source, group[at++] as ScopeId, group[at++] as number, flags & ITEM_SLOT]);
     }
+    // Scopes inside a `#loading` body: their IDs are this prefix and a number.
+    const prefix = flags & PREFIX ? (group[at++] as string) : '';
+    const id = (n: number): ScopeId => (prefix ? prefix + n : n);
     // The first slot of a taken item is not written. The gap before the slots holds its place.
     const skip = source && flags & ITEM_SLOT ? 1 : 0;
-    let id = flags & OWNER ? 0 : base;
+    let n = flags & (OWNER | PREFIX) ? 0 : base;
     while (at < group.length) {
-      id += group[at++] as number;
+      n += group[at++] as number;
       const s = group.slice(at - skip, (at += count - skip));
-      const record: ScopeState = flags & OWNER ? { k, o: id - base } : { k, p: base };
+      const record: ScopeState = flags & OWNER ? { k, o: id(n - base) } : { k, p: base };
       record.s = s;
       if (m !== undefined) {
         record.m = m;
@@ -280,9 +285,9 @@ function unpackState(state: PackedState): PageState {
         record.i = group[at++];
       }
       if (flags & CHILDREN) {
-        record.c = group[at++] as Record<number, number>;
+        record.c = group[at++] as Record<number, ScopeId>;
       }
-      state[id] = record;
+      state[id(n)] = record;
     }
   }
   delete state.g;
@@ -303,7 +308,7 @@ function unpackState(state: PackedState): PageState {
 function addScopes(state: PageState, root: string): Scope[] {
   const added: Scope[] = [];
   for (const [key, record] of Object.entries(state)) {
-    const id = Number(key);
+    const id = parseId(key);
     const scope: Scope = {
       id,
       k: record.k ?? 0,
@@ -630,7 +635,7 @@ function withTarget(event: Event, element: Element): Event {
  */
 export function handle(element: Element, ref: string, event?: Event): Promise<unknown> {
   const anchor = element.closest('[b-b]')?.getAttribute('b-b');
-  const scope = anchor ? scopes.get(Number(anchor.split(':')[0])) : undefined;
+  const scope = anchor ? scopes.get(parseId(anchor.split(':')[0]!)) : undefined;
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
@@ -650,7 +655,7 @@ export function handle(element: Element, ref: string, event?: Event): Promise<un
 }
 
 /** Returns the instance of a scope by its ID. */
-export function scopeOf(id: number): Scope | undefined {
+export function scopeOf(id: ScopeId): Scope | undefined {
   return scopes.get(id);
 }
 
@@ -1165,7 +1170,7 @@ function findComment(key: string): Comment | undefined {
   return comment?.isConnected ? comment : undefined;
 }
 
-function findElement(scope: number, anchor: number): Element | null {
+function findElement(scope: ScopeId, anchor: number): Element | null {
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
@@ -1244,15 +1249,15 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
  * rendered, such as the `children` of a component.
  */
 function serverScopes(root: ParentNode): Scope[] {
-  const ids = new Set<number>();
+  const ids = new Set<ScopeId>();
   for (const element of root.querySelectorAll('[b-b]')) {
-    ids.add(Number(element.getAttribute('b-b')!.split(':')[0]));
+    ids.add(parseId(element.getAttribute('b-b')!.split(':')[0]!));
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const match = /^[tb](\d+):/.exec((node as Comment).data);
+    const match = /^[tb]([\d.]+):/.exec((node as Comment).data);
     if (match) {
-      ids.add(Number(match[1]));
+      ids.add(parseId(match[1]!));
     }
   }
   return [...ids].flatMap((id) => {
@@ -1461,16 +1466,21 @@ export async function reset(
   insertHTML(end, html);
 }
 
-/** Renders the body of a `#client` block once. */
-export function fill(scope: Scope, anchor: number, render: Render): void {
+/**
+ * Renders the body of a `#client` block once, in place of its fallback.
+ * `kinds` are the scope IDs inside the fallback, whose instances go.
+ */
+export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
   const start = findComment(`b${scope.id}:${anchor}`);
-  if (!start) {
+  // A block that rendered its body has a third number.
+  if (!start || start.data.split(':').length > 2) {
     return;
   }
+  start.data += ':1';
   const end = rangeEnd(start);
-  if (start.nextSibling === end) {
-    insertHTML(end, render(scope));
-  }
+  disposeKinds(scope, kinds);
+  clear(start, end);
+  insertHTML(end, render(scope));
 }
 
 /**
@@ -1711,7 +1721,7 @@ function createHiding(): Hiding {
           }
           // A `#portal` that renders in a hidden body, whose nodes follow its marker.
           const data = node.nodeType === 8 ? (node as Comment).data : '';
-          const scope = /^P-?\d+$/.test(data) ? scopes.get(Number(data.slice(1))) : undefined;
+          const scope = /^P-?[\d.]+$/.test(data) ? scopes.get(parseId(data.slice(1))) : undefined;
           if (scope && within(scope, record.scope)) {
             record.ranges.push([node as Comment, rangeEnd(node as Comment)]);
           }
@@ -1759,9 +1769,9 @@ export function list(
     const data = node.nodeType === 8 ? (node as Comment).data : undefined;
     // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `b-b` names the scope.
     const id = data
-      ? /^i(-?\d+)$/.exec(data)?.[1]
+      ? /^i(-?[\d.]+)$/.exec(data)?.[1]
       : (node as Element).getAttribute?.('b-b')?.split(':')[0];
-    const item = id === undefined ? undefined : scopes.get(Number(id));
+    const item = id === undefined ? undefined : scopes.get(parseId(id));
     let last: Node = node;
     // The elements of the fallback have scopes of its kinds.
     if (item && (data || (item.p === scope && !fallbackKinds.includes(item.k)))) {
@@ -1950,8 +1960,8 @@ export function insert(value: unknown): string {
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
 export type Component<P = any> = (props: P) => string;
 
-function resolveScope(scope: Scope | number | undefined): Scope | undefined {
-  return typeof scope === 'number' ? scopes.get(scope) : scope;
+function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
+  return typeof scope === 'object' ? scope : scope === undefined ? undefined : scopes.get(scope);
 }
 
 /**
@@ -2006,7 +2016,7 @@ let owner: Scope | undefined;
 // renders. Each is an export of its own, so a build keeps only those that its components call.
 
 /** Creates a scope for markup that the client renders, and returns its ID. */
-export function createScope(kind: number, parent?: Scope | number, module?: string): number {
+export function createScope(kind: number, parent?: Scope | ScopeId, module?: string): number {
   const id = nextId--;
   const parentScope = resolveScope(parent);
   const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
@@ -2020,18 +2030,21 @@ export function createScope(kind: number, parent?: Scope | number, module?: stri
   return id;
 }
 
-/** The ID that `$id()` makes. Client scope IDs are negative, so they differ from the server's. */
-export function makeId(scope: Scope | number, index: number): string {
-  return `b${resolveScope(scope)!.id}-${index}`;
+/**
+ * The ID that `$id()` makes, as the server does. Client scope IDs are
+ * negative, so they differ from the server's.
+ */
+export function makeId(scope: Scope | ScopeId, index: number): string {
+  return `b${String(resolveScope(scope)!.id).replace(/\./g, '_')}-${index}`;
 }
 
 /** Sets the owner of the next component's root scope. */
-export function setOwner(scope: Scope | number): void {
+export function setOwner(scope: Scope | ScopeId): void {
   owner = resolveScope(scope);
 }
 
 /** Provides a value of a context to the scopes inside `scope`. */
-export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | number): void {
+export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | ScopeId): void {
   const target = resolveScope(scope)!;
   target.v ??= {};
   target.v[context.key] = value;
@@ -2040,7 +2053,7 @@ export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope
 /** Reads a context, and records its slot so that changes to the provided value reach it. */
 export function consumeContext<T>(
   context: ContextValue<T>,
-  scope: Scope | number,
+  scope: Scope | ScopeId,
   slot?: number,
 ): T {
   const target = resolveScope(scope)!;
@@ -2052,16 +2065,29 @@ export function consumeContext<T>(
   return provider ? (provider.v![context.key] as T) : context.defaultValue;
 }
 
-export function setSlots(id: number, values: unknown[]): void {
+export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
 }
 
-export function setItem(id: number, value: unknown): void {
+export function setItem(id: ScopeId, value: unknown): void {
   scopes.get(id)!.i = value;
 }
 
-export function elementAt(scope: number, anchor: number): ElementReference {
+export function elementAt(scope: ScopeId, anchor: number): ElementReference {
   return new ElementReference(scope, anchor);
+}
+
+/**
+ * Warns in development that the browser renders a `#defer` block of a
+ * component, such as inside a `#client` body of its parent. Only the server
+ * renders the body, so the fallback stays.
+ */
+export function deferInBrowser(id: string): void {
+  if (DEV) {
+    console.warn(
+      `${id} renders a #defer block in the browser, so it shows its fallback only. Render the component in markup that the server renders.`,
+    );
+  }
 }
 
 /** Adds the markup of a `#head` block to the document's head. */

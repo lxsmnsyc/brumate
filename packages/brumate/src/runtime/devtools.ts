@@ -3,6 +3,7 @@
 // so the page behaves as in production until then.
 
 import type { DevtoolsHooks, Scope } from './client.ts';
+import type { ScopeId } from './shared.ts';
 
 // The same key as the core's, without importing the core.
 const DEVTOOLS = Symbol.for('brumate.devtools');
@@ -13,18 +14,18 @@ export interface DevtoolsEntry {
   kind: 'handler' | 'part' | 'write' | 'call';
   text: string;
   /** The scope of a write, so the panel can mark it. */
-  scope?: number;
+  scope?: ScopeId;
   /** For a write: the component, the scope in the compiled component, and the slot. */
   write?: { component: string; k: number; slot: number };
 }
 
 export interface DevtoolsState {
-  scopes?: Map<number, Scope>;
+  scopes?: Map<ScopeId, Scope>;
   /** Writes a slot, as a handler does, so the page updates. */
   set?: (scope: Scope, slot: number, value: unknown) => void;
   log: DevtoolsEntry[];
   /** The scopes written since the panel last drew, by scope ID. */
-  written: Set<number>;
+  written: Set<ScopeId>;
   /** The URL prefix of the inspect endpoint of the dev server. */
   endpoint: string;
   /** Called after each change, while the panel is open. */

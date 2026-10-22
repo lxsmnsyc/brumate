@@ -45,8 +45,9 @@ const http = createServer(async (request, response) => {
         return;
       }
     }
-    // Built client modules, and pages that the build prerendered, such as /about.
-    if (request.method === 'GET') {
+    // Built client modules, and pages that the build prerendered, such as /about. The request
+    // for a `#defer` body goes to the routes, because only they can render it.
+    if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
       const found = url.pathname.startsWith('/assets/')
         ? await file(url.pathname)
         : await file(path.join(url.pathname, 'index.html'));

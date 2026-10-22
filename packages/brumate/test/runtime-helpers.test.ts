@@ -8,7 +8,7 @@ import {
   escapeAttribute,
 } from '../src/runtime/html.ts';
 import { RequestEvent } from '../src/runtime/request.ts';
-import { render, renderToStream } from '../src/runtime/server.ts';
+import { Context, render, renderToStream } from '../src/runtime/server.ts';
 import type { Component } from '../src/runtime/server.ts';
 
 async function text(stream: ReadableStream<string>): Promise<string> {
@@ -81,6 +81,44 @@ describe('the first render', () => {
     expect(html).toMatch(
       /^<!doctype html><html><head><meta a><\/head><body>x.*<s><\/body><\/html>$/,
     );
+  });
+});
+
+/** Renders two `#loading` bodies whose data arrives in `order`, and returns the scope IDs. */
+async function bodyIds(order: number[]): Promise<unknown[]> {
+  const ctx = new Context();
+  const opens: (() => void)[] = [];
+  const ids: unknown[][] = [[], []];
+  const renders: Promise<unknown>[] = [];
+  ctx.watch((boundary) => renders.push(boundary.render));
+  for (const n of [0, 1]) {
+    const data = new Promise<void>((open) => opens.push(open));
+    ctx.defer(ctx.boundary(), async (body) => {
+      await data;
+      ids[n]!.push(body.scope(1), body.scope(1));
+      return '';
+    });
+  }
+  ids.push([ctx.scope(1)]);
+  for (const n of order) {
+    opens[n]!();
+    // oxlint-disable-next-line no-await-in-loop -- Each body resumes before the next opens.
+    await renders[n];
+  }
+  return ids;
+}
+
+describe('scope IDs', () => {
+  it('numbers the scopes of #loading bodies the same whatever order their data arrives in', async () => {
+    const first = await bodyIds([0, 1]);
+    expect(first).toEqual([['0.0', '0.1'], ['1.0', '1.1'], [0]]);
+    expect(await bodyIds([1, 0])).toEqual(first);
+  });
+
+  it('makes $id IDs inside a #loading body that work as selectors', () => {
+    const ctx = new Context();
+    expect(ctx.id('5.1', 0)).toBe('b5_1-0');
+    expect(ctx.id(3, 2)).toBe('b3-2');
   });
 });
 

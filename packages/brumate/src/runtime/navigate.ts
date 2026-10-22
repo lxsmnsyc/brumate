@@ -46,15 +46,16 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 let controller: AbortController | undefined;
 
 const STATE = 'script[b-state]';
-const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
+// A route that a block of its layout renders has a scope ID with a dot, such as `3.0`.
+const REGION = /^R(-?[\d.]+):([^:]+):([\d.]+):(.*)$/;
 
 /** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
 interface Region {
-  /** The scope of the layout that renders the slot. */
-  layout: number;
+  /** The scope of the layout that renders the slot, as the comment writes it. */
+  layout: string;
   name: string;
   /** The scope of the route in the slot. */
-  root: number;
+  root: string;
   key: string;
   start: Comment;
   end: Comment;
@@ -74,9 +75,9 @@ function regions(root: Node): Region[] {
     const match = REGION.exec(node.data);
     if (match) {
       const region: Region = {
-        layout: Number(match[1]),
+        layout: match[1]!,
         name: match[2]!,
-        root: Number(match[3]),
+        root: match[3]!,
         key: decodeURIComponent(match[4]!),
         start: node,
         end: node,
@@ -94,7 +95,7 @@ function regions(root: Node): Region[] {
 interface Plan {
   /** Old slots and the new slots that replace them. */
   replace: [Region, Region][];
-  alias: Map<number, number>;
+  alias: Map<string, string>;
 }
 
 /**
@@ -239,7 +240,8 @@ function shiftFor(state: Element | null, requested: number): Shift | undefined {
   return root === requested ? undefined : { by: requested - root, root: String(requested) };
 }
 
-const COMMENT_IDS = /^([tb])(\d+)(:.*)$|^([ilP])(\d+)$/;
+// An ID inside a `#loading` body is the boundary's ID, a dot and more, such as `5.1`.
+const COMMENT_IDS = /^([tb])([\d.]+)(:.*)$|^([ilP])([\d.]+)$/;
 /** Attributes that hold a scope ID, then `:` and more. */
 const SCOPED = ['b-b', 'b-result'];
 /** Attributes that hold only a scope or boundary ID. */
@@ -251,13 +253,19 @@ const IDS = ['b-v', 'b-l', 'b-h', 'b-next'];
  * the IDs inside a state record when it reads one with `b-offset`.
  */
 function shiftIds(root: Node, shift: Shift): void {
-  const add = (value: string): string => String(Number(value) + shift.by);
+  // An ID inside a boundary moves with its boundary, the number before the first dot.
+  const add = (value: string): string => {
+    const dot = value.indexOf('.');
+    return dot === -1
+      ? String(Number(value) + shift.by)
+      : `${Number(value.slice(0, dot)) + shift.by}${value.slice(dot)}`;
+  };
   const visit = (node: Node): void => {
     if (node.nodeType === 8) {
       const comment = node as Comment;
       const region = REGION.exec(comment.data);
       if (region) {
-        const layout = Number(region[1]) < 0 ? region[1]! : add(region[1]!);
+        const layout = region[1]!.startsWith('-') ? region[1]! : add(region[1]!);
         comment.data = `R${layout}:${region[2]}:${add(region[3]!)}:${region[4]}`;
         return;
       }
@@ -286,6 +294,12 @@ function shiftIds(root: Node, shift: Shift): void {
         element.setAttribute(name, add(value));
       }
     }
+    // A `#defer` block: `<trigger>:<boundary>:<base>`. The page now renders from the new base.
+    const defer = element.getAttribute('b-defer');
+    if (defer) {
+      const [trigger, boundary, from] = defer.split(':') as [string, string, string];
+      element.setAttribute('b-defer', `${trigger}:${add(boundary)}:${add(from)}`);
+    }
     // Only a script can match the state selector, so other elements skip it. The text of a
     // record is not changed: the core moves the IDs in its value when it reads it.
     if (element.localName === 'script' && element.matches(STATE)) {
@@ -294,8 +308,8 @@ function shiftIds(root: Node, shift: Shift): void {
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
       // The scripts that swap in `#loading` bodies and their head name the boundary.
       element.textContent = element.textContent!.replace(
-        /\$b([SH])\((\d+)/g,
-        (_, kind: string, id: string) => `$b${kind}(${add(id)}`,
+        /\$b([SH])\(("?)([\d.]+)/g,
+        (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
       );
     }
     for (const child of element.tagName === 'TEMPLATE'

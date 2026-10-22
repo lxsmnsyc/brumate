@@ -1,0 +1,7 @@
+#client ('idle') {
+  <Deferred />
+}
+
+<script>
+  import Deferred from './deferred.brm';
+</script>

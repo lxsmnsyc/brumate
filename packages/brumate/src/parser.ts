@@ -864,18 +864,24 @@ class Parser {
         const target = header ? this.expression(header.start, header.end) : undefined;
         return { kind: 'portal', start, end: this.pos, target, body: this.parseBody('portal') };
       }
-      case 'client': {
-        const header = this.parseHeader('client', false);
+      case 'client':
+      case 'defer': {
+        const header = this.parseHeader(keyword, false);
         let trigger: ClientTrigger = 'visible';
         if (header) {
           const code = this.source.slice(header.start, header.end).trim();
           const value = code.slice(1, -1);
           if (!/^(['"]).*\1$/.test(code) || !CLIENT_TRIGGERS.has(value)) {
-            this.fail('The trigger of #client must be "visible", "idle" or "load"', header.start);
+            this.fail(
+              `The trigger of #${keyword} must be "visible", "idle" or "load"`,
+              header.start,
+            );
           }
           trigger = value as ClientTrigger;
         }
-        return { kind: 'client', start, end: this.pos, trigger, body: this.parseBody('client') };
+        const body = this.parseBody(keyword);
+        const fallback = this.parseBranch('else') ? this.parseBody('else') : undefined;
+        return { kind: keyword, start, end: this.pos, trigger, body, fallback };
       }
       case 'offscreen': {
         const header = this.parseHeader('offscreen', true)!;
@@ -883,8 +889,6 @@ class Parser {
         const body = this.parseBody('offscreen');
         return { kind: 'offscreen', start, end: this.pos, visible, body };
       }
-      case 'defer':
-        return this.fail('#defer is reserved for a future block', start);
       default:
         return this.fail(`Unknown block #${keyword}`, start);
     }

@@ -21,12 +21,14 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PREFIX,
   SOURCE,
   isAsyncIterable,
+  parseId,
 } from './shared.ts';
 import { Upload, functionReferences, replaceDeep } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, ScopeState } from './shared.ts';
+import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
@@ -72,25 +74,89 @@ export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
-export type { PageState, ScopeState };
+export type { PageState, ScopeId, ScopeState };
 
 /** The scope and the slot that hold the list of a list item. */
-export type ItemSource = readonly [scope: number, slot: number];
+export type ItemSource = readonly [scope: ScopeId, slot: number];
 
 /** A `#loading` body that renders after the rest of the page. */
 interface Boundary {
-  id: number;
+  id: ScopeId;
   /** Resolves to the body's markup, and its scopes in `ctx.state`. */
   render: Promise<{ html: string; ctx: Context }>;
   /** True when a `#try` body around it failed, so its markers were never sent. */
   cancelled?: boolean;
+  /** A body around the target of a request for a `#defer` body, which renders but is not sent. */
+  around?: boolean;
+}
+
+/** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
+function holdsBoundary(id: ScopeId, target: ScopeId): boolean {
+  return typeof target === 'string' && target.startsWith(`${id}.`);
+}
+
+/** The `#defer` body that a render renders, for the request of the browser that asks for it. */
+export interface DeferTarget {
+  /** The boundary ID of the block. */
+  boundary: ScopeId;
+  /** The scope and the anchor of the block, as `<scope>:<anchor>`, which the render checks. */
+  at: string;
+  /**
+   * `found` once the render reaches the block at `at`. `moved` when it reaches the boundary
+   * elsewhere, such as after the data of the page changed and moved the IDs before it.
+   */
+  status?: 'found' | 'moved';
 }
 
 /** A point in a render that `restore` goes back to. */
 export interface Mark {
+  /** The prefix of the IDs of the block that the render was in, and its counters then. */
+  prefix: string;
   scope: number;
+  boundary: number;
+  /** How many blocks the render was in. */
+  depth: number;
   undo: number;
-  owner: number | undefined;
+  owner: ScopeId | undefined;
+}
+
+/**
+ * Where a render takes its scope and boundary IDs from. The page takes
+ * numbers from its base. Each `#loading` body has its own, whose IDs are the
+ * ID of its boundary, a dot and a number, such as `5.0`. A body resumes when
+ * its data arrives, so with one counter for the page its IDs, and those of
+ * the markup after it, would depend on that order.
+ *
+ * A block whose shape depends on data, such as an `#if` or a `#for`, also
+ * numbers the scopes of its bodies after an ID of its own. The markup after
+ * the block then keeps its IDs, whichever branch rendered and however many
+ * items a list had, so a later request for a `#defer` body numbers the page
+ * the same way even when the user or the data before the block differs.
+ */
+interface IdSpace {
+  /** `''` for the page, or the ID of the boundary or block and a dot. */
+  prefix: string;
+  scope: number;
+  /** The counter of boundary IDs, which blocks take their IDs from too. */
+  boundary: number;
+}
+
+function spaceId(space: IdSpace, n: number): ScopeId {
+  return space.prefix ? `${space.prefix}${n}` : n;
+}
+
+/**
+ * True for an ID that a render made after `mark`: a scope of the same space
+ * from its counter on, or a scope inside a block or boundary from then on.
+ */
+function madeAfter(mark: Mark, id: ScopeId): boolean {
+  const text = String(id);
+  if (!text.startsWith(mark.prefix)) {
+    return false;
+  }
+  const rest = text.slice(mark.prefix.length);
+  const dot = rest.indexOf('.');
+  return dot === -1 ? Number(rest) >= mark.scope : Number(rest.slice(0, dot)) >= mark.boundary;
 }
 
 /**
@@ -100,8 +166,13 @@ export interface Mark {
 export class Context {
   readonly state: PageState = {};
   private readonly root: Context;
-  private nextScope = 0;
-  private nextBoundary = 0;
+  /** The ID spaces of the blocks that the render is in, from the outside in. */
+  private readonly spaces: IdSpace[];
+  private readonly baseId: number;
+  /** The `#defer` body to render, in the request for it. The rest of the page renders no body. */
+  target: DeferTarget | undefined;
+  /** True in the context of the target body and the bodies inside it. */
+  private inTarget = false;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
   /** Markup of `#portal` blocks, written at the end of the page. */
@@ -111,16 +182,16 @@ export class Context {
   private pageTitle: string | undefined;
   private onBoundary: ((boundary: Boundary) => void) | undefined;
   /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
-  private readonly tree = new Map<number, { parent?: number; values?: Map<string, unknown> }>();
+  private readonly tree = new Map<ScopeId, { parent?: ScopeId; values?: Map<string, unknown> }>();
   /** The scope that renders the next component, which becomes its owner. */
-  private owner: number | undefined;
+  private owner: ScopeId | undefined;
   /** Takes back what this context added to the page, from the newest, for `restore`. */
   private readonly undo: (() => void)[] = [];
 
   /** The URL prefix of server function calls. */
   private rpcPrefix = '/_brumate';
   /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
-  readonly slotNames: Map<number, string[]> = new Map();
+  readonly slotNames: Map<ScopeId, string[]> = new Map();
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -148,18 +219,55 @@ export class Context {
     return this.root.actions.get(unwrap(fn));
   }
 
-  constructor(root?: Context, rpc?: string, base = 0) {
+  /** `prefix` is the boundary ID and a dot, for the context of a `#loading` body. */
+  constructor(root?: Context, rpc?: string, base = 0, prefix = '') {
     this.root = root ?? this;
     if (rpc) {
       this.rpcPrefix = rpc;
     }
-    this.nextScope = base;
-    this.nextBoundary = base;
+    this.spaces = [
+      prefix ? { prefix, scope: 0, boundary: 0 } : { prefix, scope: base, boundary: base },
+    ];
+    this.baseId = base;
   }
 
-  /** A number above every scope and boundary ID so far, so a later render can start there. */
+  /** The base of the render, which the browser sends back to ask for a `#defer` body. */
+  base(): number {
+    return this.root.baseId;
+  }
+
+  /** True in a request for a `#defer` body, outside the body, once the body has started. */
+  past(): boolean {
+    return this.root.target?.status === 'found' && !this.inTarget;
+  }
+
+  /**
+   * A number above every scope and boundary ID of the page so far, so a
+   * later render can start there. The IDs inside boundaries start with one.
+   */
   next(): number {
-    return Math.max(this.root.nextScope, this.root.nextBoundary);
+    const space = this.root.spaces[0]!;
+    return Math.max(space.scope, space.boundary);
+  }
+
+  /** The space that the next IDs come from. */
+  private get space(): IdSpace {
+    return this.spaces.at(-1)!;
+  }
+
+  /**
+   * Starts a block whose shape depends on data, such as an `#if` or a
+   * `#for`. The scopes of its bodies are numbered after one ID that the
+   * block takes, until `leave`.
+   */
+  enter(): void {
+    const id = spaceId(this.space, this.space.boundary++);
+    this.spaces.push({ prefix: `${id}.`, scope: 0, boundary: 0 });
+  }
+
+  /** Ends the block that `enter` started. */
+  leave(): void {
+    this.spaces.pop();
   }
 
   /** Returns the URL prefix of server function calls. */
@@ -172,9 +280,9 @@ export class Context {
    * component, `parent` is the scope that contains it, and `module` is the
    * component ID of a component's root scope.
    */
-  scope(kind: number, parent?: number, module?: string): number {
+  scope(kind: number, parent?: ScopeId, module?: string): ScopeId {
     const root = this.root;
-    const id = root.nextScope++;
+    const id = spaceId(this.space, this.space.scope++);
     const record = this.record(id);
     record.k = kind;
     if (parent !== undefined) {
@@ -194,18 +302,22 @@ export class Context {
     return id;
   }
 
-  /** The ID that `$id()` makes: the scope's ID and the position of the call. */
-  id(scope: number, index: number): string {
-    return `b${scope}-${index}`;
+  /**
+   * The ID that `$id()` makes: the scope's ID and the position of the call.
+   * A dot in a scope ID inside a `#loading` body becomes `_`, so the ID also
+   * works as a CSS selector, such as `#b5_1-0`.
+   */
+  id(scope: ScopeId, index: number): string {
+    return `b${String(scope).replace(/\./g, '_')}-${index}`;
   }
 
   /** Sets the owner of the next component's root scope. */
-  own(scope: number): void {
+  own(scope: ScopeId): void {
     this.root.owner = scope;
   }
 
   /** Provides a value of a context to the scopes inside `scope`. */
-  provide<T>(context: ContextValue<T>, value: T, scope: number): void {
+  provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
     const node = this.root.tree.get(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
@@ -219,13 +331,13 @@ export class Context {
    * `scope`. With `slot`, records which slot holds it, so the client can
    * update it when the provided value changes.
    */
-  consume<T>(context: ContextValue<T>, scope: number, slot?: number): T {
+  consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
     if (slot !== undefined) {
       const record = this.record(scope);
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    for (let id: number | undefined = scope; id !== undefined;) {
+    for (let id: ScopeId | undefined = scope; id !== undefined;) {
       const node = this.root.tree.get(id);
       if (node?.values?.has(context.key)) {
         return node.values.get(context.key) as T;
@@ -236,13 +348,21 @@ export class Context {
   }
 
   /** The ID that the next call to `scope()` returns. */
-  peek(): number {
-    return this.root.nextScope;
+  peek(): ScopeId {
+    return spaceId(this.space, this.space.scope);
   }
 
   /** Marks the render so far, such as before a `#try` body, for `restore`. */
   mark(): Mark {
-    return { scope: this.root.nextScope, undo: this.undo.length, owner: this.root.owner };
+    const { prefix, scope, boundary } = this.space;
+    return {
+      prefix,
+      scope,
+      boundary,
+      depth: this.spaces.length,
+      undo: this.undo.length,
+      owner: this.root.owner,
+    };
   }
 
   /**
@@ -252,7 +372,9 @@ export class Context {
    * title, its `#loading` bodies, and its links to child components.
    */
   restore(mark: Mark): void {
-    this.drop(mark.scope);
+    this.drop(mark);
+    // A body that threw left the blocks inside it without `leave`.
+    this.spaces.length = mark.depth;
     for (const undo of this.undo.splice(mark.undo).toReversed()) {
       undo();
     }
@@ -265,10 +387,10 @@ export class Context {
    * never sent. `#loading` bodies render in contexts of their own, so their
    * scopes stay.
    */
-  private drop(from: number): void {
+  private drop(mark: Mark): void {
     for (const key of Object.keys(this.state)) {
-      const id = Number(key);
-      if (id >= from) {
+      const id = parseId(key);
+      if (madeAfter(mark, id)) {
         delete this.state[id];
         this.root.slotNames.delete(id);
         this.root.tree.delete(id);
@@ -277,12 +399,12 @@ export class Context {
     }
   }
 
-  private record(scope: number): ScopeState {
+  private record(scope: ScopeId): ScopeState {
     this.state[scope] ??= {};
     return this.state[scope];
   }
 
-  slots(scope: number, values: unknown[], names?: string[]): void {
+  slots(scope: ScopeId, values: unknown[], names?: string[]): void {
     this.record(scope).s = values;
     if (names) {
       this.root.slotNames.set(scope, names);
@@ -293,14 +415,14 @@ export class Context {
    * The list of each list item scope whose list is a slot of an enclosing
    * scope, as `[scope, slot]`. The items of a list share one array.
    */
-  readonly sources: Map<number, ItemSource> = new Map();
+  readonly sources: Map<ScopeId, ItemSource> = new Map();
 
   /**
    * Records the item of a list that can change on the client. `source` is
    * the scope and slot that hold the list, when the compiler found one, so
    * the client can take the item from there.
    */
-  item(scope: number, value: unknown, source?: ItemSource): void {
+  item(scope: ScopeId, value: unknown, source?: ItemSource): void {
     this.record(scope).i = value;
     if (source) {
       this.sources.set(scope, source);
@@ -308,7 +430,7 @@ export class Context {
   }
 
   /** Records the scope of a child component at an anchor of its parent. */
-  link(scope: number, anchor: number, child: number): void {
+  link(scope: ScopeId, anchor: number, child: ScopeId): void {
     const record = this.record(scope);
     const links = (record.c ??= {});
     links[anchor] = child;
@@ -320,12 +442,12 @@ export class Context {
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */
-  element(scope: number, anchor: number): ElementReference {
+  element(scope: ScopeId, anchor: number): ElementReference {
     return new ElementReference(scope, anchor);
   }
 
   /** Marks a function as a client function, so it serializes as a reference. */
-  fn<T>(value: T, ref: string, scope: number): T {
+  fn<T>(value: T, ref: string, scope: ScopeId): T {
     if (typeof value === 'function') {
       functionReferences.set(value, new FunctionReference(ref, scope));
     }
@@ -394,16 +516,58 @@ export class Context {
   }
 
   /** Returns the ID of a new `#loading` boundary. */
-  boundary(): number {
-    return this.root.nextBoundary++;
+  boundary(): ScopeId {
+    return spaceId(this.space, this.space.boundary++);
   }
 
-  /** Renders a `#loading` body after the rest of the page, in its own context. */
-  defer(id: number, renderBody: (ctx: Context) => Promise<string>): void {
-    const child = new Context(this.root);
+  /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
+  defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
+    const target = this.root.target;
+    if (!target || this.inTarget) {
+      this.register(id, renderBody, this.inTarget);
+    } else if (holdsBoundary(id, target.boundary)) {
+      // The request for a `#defer` body renders the bodies around it, without sending them.
+      this.register(id, renderBody, false, true);
+    }
+  }
+
+  /**
+   * Renders the body of a `#defer` block, in the request for it. `at` is
+   * the scope and the anchor of the block. A page renders only the
+   * fallback, so it does nothing then.
+   */
+  deferBlock(id: ScopeId, at: string, renderBody: (ctx: Context) => Promise<string>): void {
+    const target = this.root.target;
+    if (!target || this.inTarget) {
+      return;
+    }
+    if (holdsBoundary(id, target.boundary)) {
+      this.register(id, renderBody, false, true);
+      return;
+    }
+    if (id !== target.boundary) {
+      return;
+    }
+    if (at !== target.at) {
+      target.status = 'moved';
+      return;
+    }
+    target.status = 'found';
+    this.register(id, renderBody, true);
+  }
+
+  private register(
+    id: ScopeId,
+    renderBody: (ctx: Context) => Promise<string>,
+    inTarget: boolean,
+    around = false,
+  ): void {
+    const child = new Context(this.root, undefined, 0, `${id}.`);
+    child.inTarget = inTarget;
     const boundary: Boundary = {
       id,
       render: renderBody(child).then((html) => ({ html, ctx: child })),
+      around,
     };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
@@ -631,9 +795,14 @@ export function component<P>(
   Child: Component<P>,
   props: P,
   ctx: Context,
-  scope?: number,
+  scope?: ScopeId,
   anchor?: number,
 ): Promise<string> {
+  // A request for a `#defer` body sends only that body, so the rest of the page renders no more
+  // components once the body has started, and loads no more of their data.
+  if (ctx.past()) {
+    return Promise.resolve('');
+  }
   if (scope !== undefined && anchor !== undefined) {
     ctx.link(scope, anchor, ctx.peek());
   }
@@ -649,7 +818,7 @@ export function dynamic(
   attributes: Record<string, unknown>,
   children: Raw | undefined,
   ctx: Context,
-  scope?: number,
+  scope?: ScopeId,
 ): string | Promise<string> {
   if (typeof tag === 'function') {
     return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
@@ -699,7 +868,7 @@ function unsendable(error: unknown, ctx: Context): Error {
     while (owner && owner.m === undefined && owner.p !== undefined) {
       owner = ctx.state[owner.p];
     }
-    const name = ctx.slotNames.get(Number(id))?.[index] ?? `slot ${index}`;
+    const name = ctx.slotNames.get(parseId(id))?.[index] ?? `slot ${index}`;
     const kind = (target as object)?.constructor?.name ?? typeof target;
     return new Error(
       `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
@@ -720,11 +889,24 @@ const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
 /** A group of `PackedState` while `packState` collects it. */
 interface PackGroup {
   k: number;
-  base: number;
+  base: ScopeId;
   flags: number;
   count: number;
   m: string | undefined;
-  ids: number[];
+  /** The prefix of the IDs inside a `#loading` body, or `''`. */
+  prefix: string;
+  ids: ScopeId[];
+  /** The number of each ID after its prefix. */
+  numbers: number[];
+}
+
+/** The prefix of an ID and its number after it, such as `['', 3]` or `['5.', 1]`. */
+function splitId(id: ScopeId): [prefix: string, n: number] {
+  if (typeof id === 'number') {
+    return ['', id];
+  }
+  const dot = id.lastIndexOf('.');
+  return [id.slice(0, dot + 1), Number(id.slice(dot + 1))];
 }
 
 /**
@@ -736,7 +918,7 @@ interface PackGroup {
  */
 function groupSource(
   state: PageState,
-  sources: Map<number, ItemSource>,
+  sources: Map<ScopeId, ItemSource>,
   group: PackGroup,
 ): ItemSource | undefined {
   const source = sources.get(group.ids[0]!);
@@ -764,15 +946,21 @@ function groupSource(
  * to the ID before it. The items of a list whose list is in `sources` and in
  * the state are not written. See `PackedState`.
  */
-export function packState(state: PageState, sources?: Map<number, ItemSource>): PackedState {
+export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>): PackedState {
   const result: PackedState = {};
   const groups = new Map<string, PackGroup>();
-  // Integer keys come in ascending order, so the gaps are positive.
+  // Integer keys come in ascending order, and the keys inside a `#loading` body in the order
+  // the body made them, so the gaps are positive.
   for (const [key, record] of Object.entries(state)) {
-    const id = Number(key);
+    const id = parseId(key);
+    const [prefix, n] = splitId(id);
     // The root scope of a component in a list item has its own owner, the item, at the same
     // distance before it in each item. The parent of other scopes is the same for the group.
-    const base = record.p ?? (record.o === undefined ? undefined : id - record.o);
+    let base: ScopeId | undefined = record.p;
+    if (base === undefined && record.o !== undefined) {
+      const [ownerPrefix, owner] = splitId(record.o);
+      base = ownerPrefix === prefix ? n - owner : undefined;
+    }
     if (
       record.k === undefined ||
       base === undefined ||
@@ -793,12 +981,22 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
     if (record.m !== undefined) {
       flags |= MODULE;
     }
-    const name = `${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
+    const name = `${prefix}:${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
     const group = groups.get(name);
     if (group) {
       group.ids.push(id);
+      group.numbers.push(n);
     } else {
-      groups.set(name, { k: record.k, base, flags, count: slots.length, m: record.m, ids: [id] });
+      groups.set(name, {
+        k: record.k,
+        base,
+        flags,
+        count: slots.length,
+        m: record.m,
+        prefix,
+        ids: [id],
+        numbers: [n],
+      });
     }
   }
   const packed: unknown[][] = [];
@@ -810,7 +1008,10 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
       continue;
     }
     const source = sources && sources.size > 0 ? groupSource(state, sources, group) : undefined;
-    const flags = source ? group.flags | SOURCE : group.flags;
+    let flags = source ? group.flags | SOURCE : group.flags;
+    if (group.prefix) {
+      flags |= PREFIX;
+    }
     const values: unknown[] = [group.k, group.base, flags, group.count];
     if (group.m !== undefined) {
       values.push(group.m);
@@ -818,13 +1019,19 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
     if (source) {
       values.push(source[0], source[1]);
     }
+    if (group.prefix) {
+      values.push(group.prefix);
+    }
     // With a source, the client takes the item, and the first slot when it is the item.
     const from = source && flags & ITEM_SLOT ? 1 : 0;
     const item = !source && flags & ITEM;
-    let last = flags & OWNER ? 0 : group.base;
-    for (const id of ids) {
+    // Inside a `#loading` body, and for component root scopes, the first gap is from 0.
+    let last = flags & (OWNER | PREFIX) ? 0 : (group.base as number);
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index]!;
+      const number = group.numbers[index]!;
       const record = state[id]!;
-      values.push(id - last);
+      values.push(number - last);
       const slots = record.s ?? [];
       for (let n = from; n < slots.length; n++) {
         values.push(slots[n]);
@@ -835,7 +1042,7 @@ export function packState(state: PageState, sources?: Map<number, ItemSource>): 
       if (flags & CHILDREN) {
         values.push(record.c);
       }
-      last = id;
+      last = number;
     }
     packed.push(values);
   }
@@ -861,7 +1068,7 @@ function serializeState(
   onRecord: (code: string, initial: boolean) => void,
   onError: (error: unknown) => void,
   onDone: () => void,
-  sources?: Map<number, ItemSource>,
+  sources?: Map<ScopeId, ItemSource>,
   last = false,
 ): void {
   const packed = packState(state, sources);
@@ -922,8 +1129,8 @@ export interface StateAttributes {
   define?: boolean;
   /** The route of the page. */
   route?: string;
-  /** The base of the render, when it is above 0. */
-  root?: number;
+  /** The base of the render, when it is above 0, or the key of a `#defer` body's records. */
+  root?: number | string;
   /** The Content Security Policy nonce of the script. */
   nonce?: string;
 }
@@ -989,6 +1196,12 @@ export interface RenderResult {
   next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
+  /**
+   * With the `defer` option, whether the render found the block: `found`,
+   * `moved` when the boundary is at another place, such as after the data
+   * of the page changed, or `missing`.
+   */
+  defer?: 'found' | 'moved' | 'missing';
 }
 
 /** The `pending` of a render that has nothing left to send. */
@@ -1074,6 +1287,13 @@ export interface RenderOptions {
    * records, and the scripts that swap in `#loading` bodies.
    */
   nonce?: string;
+  /**
+   * Renders only the body of this `#defer` block, for the request that the
+   * browser sends when the block's trigger fires. Pass the `base` of the
+   * page too, so the IDs of the page come out the same. The body comes from
+   * `pending`, and `html` and `state` are empty.
+   */
+  defer?: { boundary: ScopeId; at: string };
 }
 
 /**
@@ -1094,6 +1314,9 @@ export async function render<P>(
   if (options.actions) {
     ctx.actions = options.actions;
   }
+  if (options.defer) {
+    ctx.target = { ...options.defer };
+  }
   const event = options.event ?? (options.request ? new RequestEvent(options.request) : undefined);
   ctx.event = event;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
@@ -1105,7 +1328,9 @@ export async function render<P>(
   const pending = (): Queue<string> => (queue ??= createQueue<string>());
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
-  const { nonce, base: root } = options;
+  const { nonce } = options;
+  // The records of a `#defer` body have references of their own, apart from those of the page.
+  const root = options.defer ? `d${options.defer.boundary}` : options.base;
   // The first record, the page state, defines `$bR` for the others.
   let first = true;
   let open = 0;
@@ -1152,20 +1377,23 @@ export async function render<P>(
     open++;
     boundary.render.then(
       (result) => {
-        // A `#try` body around it failed, so the page has no markers for it.
-        if (boundary.cancelled) {
+        // A `#try` body around it failed, so the page has no markers for it. A body around the
+        // target of a `#defer` request is in the page already.
+        if (boundary.cancelled || boundary.around) {
           finish();
           return;
         }
         serialize(result.ctx, (script) => {
-          let call = `${swap ? '' : SWAP}$bS(${boundary.id})`;
+          // An ID inside a boundary, such as `5.1`, is a string.
+          const id = scriptJSON(boundary.id);
+          let call = `${swap ? '' : SWAP}$bS(${id})`;
           swap = true;
           const late = result.ctx.lateHead();
           let head = '';
           if (late.html || late.title !== undefined) {
             head = `<template b-h="${boundary.id}">${late.html}</template>`;
             const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
-            call += `;${headSwap ? '' : HEAD}$bH(${boundary.id}${title})`;
+            call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
             headSwap = true;
           }
           pending().push(
@@ -1182,6 +1410,20 @@ export async function render<P>(
       },
     );
   });
+
+  if (options.defer) {
+    // The browser has the page. It gets only the body, from `pending`.
+    return {
+      html: '',
+      state: '',
+      pending: queue === undefined && open === 0 ? NOTHING_PENDING : pending().iterable,
+      headers: event?.headers ?? new Headers(),
+      status: event?.status ?? 200,
+      next: () => ctx.next(),
+      head: '',
+      defer: ctx.target!.status ?? 'missing',
+    };
+  }
 
   let state = '';
   // The state of the page is serialized before this returns, so a value that cannot be sent
@@ -1680,6 +1922,10 @@ async function renderPage(
 ): Promise<Response> {
   // A page that the client loads in place of another starts above its IDs.
   const base = Number(request.headers.get('x-brumate-base'));
+  const defer = deferTarget(request);
+  if (defer) {
+    return renderDeferred(view, props, request, options, defer, base);
+  }
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -1693,8 +1939,70 @@ async function renderPage(
   );
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
+  // The same URL answers the request for a `#defer` body with that body only.
+  headers.append('vary', 'x-brumate-defer');
   const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
   return new Response(body, { status: extra.status ?? parts.status, headers });
+}
+
+/**
+ * The `#defer` block that a request asks for, from `x-brumate-defer:
+ * <boundary> <scope>:<anchor>`, which the browser sends when the block's
+ * trigger fires.
+ */
+function deferTarget(request: Request): { boundary: ScopeId; at: string } | undefined {
+  const match = /^([\d.]+) (-?[\d.]+:\d+)$/.exec(request.headers.get('x-brumate-defer') ?? '');
+  return match ? { boundary: parseId(match[1]!), at: match[2]! } : undefined;
+}
+
+/**
+ * Renders the route again and answers with the body of one `#defer` block:
+ * its markup in a `<template b-l>`, the script that swaps it in, and its
+ * state. The page renders with the base it had, so its IDs come out the
+ * same. When the block is not where the browser has it, such as after the
+ * data of the page changed, the answer is 409 and the fallback stays.
+ */
+async function renderDeferred(
+  view: ResolvedView,
+  props: Record<string, unknown>,
+  request: Request,
+  options: RouteOptions,
+  defer: { boundary: ScopeId; at: string },
+  base: number,
+): Promise<Response> {
+  const parts = await render(
+    viewComponent(view, props),
+    {},
+    {
+      ...options,
+      request,
+      route: view.key,
+      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
+      defer,
+    },
+  );
+  const headers = new Headers(parts.headers);
+  headers.append('vary', 'x-brumate-defer');
+  if (parts.defer !== 'found') {
+    return new Response(null, { status: parts.defer === 'moved' ? 409 : 404, headers });
+  }
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('x-brumate-defer', String(defer.boundary));
+  const body = new ReadableStream<string>({
+    async start(controller) {
+      try {
+        if (parts.pending !== NOTHING_PENDING) {
+          for await (const chunk of parts.pending) {
+            controller.enqueue(chunk);
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  }).pipeThrough(new TextEncoderStream());
+  return new Response(body, { status: parts.status, headers });
 }
 
 /**

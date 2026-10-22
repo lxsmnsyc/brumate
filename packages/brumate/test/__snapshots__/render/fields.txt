@@ -10,6 +10,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
   const hint = $$ctx.id($$s1, 1);
   let names = (['First', 'Last']);
   $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
+  $$ctx.enter();
   {
     const $$list0v = ( names);
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -28,6 +29,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "<button b-b=\"" + $$s1 + ":1\" b-on=\"click=Fields_1cs3w3p#h9\">Add</button>";
   $$ctx.slots($$s1, [names], ["names"]);
   return $$html;
@@ -117,16 +119,16 @@ export default function Fields($$props: Record<string, never>): string {
 <input id="b0-0" aria-describedby="b0-1">
 <p id="b0-1">We never share it.</p>
 <!--b0:0-->
-<!--i1-->
-<label for="b1-0" b-b="1:0">First</label>
-<input id="b1-0">
+<!--i0.0-->
+<label for="b0_0-0" b-b="0.0:0">First</label>
+<input id="b0_0-0">
 <!--/i-->
-<!--i2-->
-<label for="b2-0" b-b="2:0">Last</label>
-<input id="b2-0">
+<!--i0.1-->
+<label for="b0_1-0" b-b="0.1:0">Last</label>
+<input id="b0_1-0">
 <!--/i-->
 <!--/b-->
 <button b-b="0:1" b-on="click=Fields_1cs3w3p#h9">Add</button>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Fields_1cs3w3p",s:[["First","Last"]]},g:[[2,0,33,2,0,0,1,"b1-0",1,"b2-0"]]})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Fields_1cs3w3p",s:[["First","Last"]]},g:[[2,0,97,2,0,0,"0.",0,"b0_0-0",1,"b0_1-0"]]})))</script>

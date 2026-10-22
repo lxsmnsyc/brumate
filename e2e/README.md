@@ -55,6 +55,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Delete opens a dialog that takes the focus. Esc closes it, and confirming deletes the issue.
 - A related issue that is gone shows the `#catch` of its `#try`.
 - Links and the back button load pages without a full page load, and `/about` opens from a link and as a file.
+- The `#defer` line of the prerendered `/about` renders on the server for the user who signed in, after a link and as a file.
 - No page is wider than 320 px on a phone.
 - Without scripts, signing in works, and a short title shows its error with the title kept.
 

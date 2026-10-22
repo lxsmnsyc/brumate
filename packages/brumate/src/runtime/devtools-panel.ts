@@ -11,6 +11,7 @@
 // - Report: the inspect report of a component.
 
 import type { Scope } from './client.ts';
+import type { ScopeId } from './shared.ts';
 import { preview, rootOf } from './devtools.ts';
 import type { DevtoolsEntry, DevtoolsState } from './devtools.ts';
 
@@ -171,8 +172,8 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
   }
   let tab: Tab = 'scopes';
   let selected: string | undefined;
-  let selectedScope: number | undefined;
-  let editing: { scope: number; slot: number } | undefined;
+  let selectedScope: ScopeId | undefined;
+  let editing: { scope: ScopeId; slot: number } | undefined;
   let paused = false;
   const shown = new Set<DevtoolsEntry['kind']>(KINDS);
   // The log as it was when Pause was pressed.
@@ -212,7 +213,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
 
   // Outlines the elements of a scope on the page.
   const outlines: HTMLElement[] = [];
-  const outline = (scope?: number): void => {
+  const outline = (scope?: ScopeId): void => {
     for (const box of outlines.splice(0)) {
       box.remove();
     }
@@ -239,7 +240,8 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     event.preventDefault();
     event.stopImmediatePropagation();
     stopPicking();
-    selectedScope = Number(target.getAttribute('b-b')!.split(':')[0]);
+    const id = target.getAttribute('b-b')!.split(':')[0]!;
+    selectedScope = /^-?\d+$/.test(id) ? Number(id) : id;
     const scope = state.scopes?.get(selectedScope);
     selected = scope ? rootOf(scope).m : selected;
     tab = 'scopes';
