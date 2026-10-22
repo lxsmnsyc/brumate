@@ -17,6 +17,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
 | [Element behaviors](#element-behaviors)                               | Syntax  | High   | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
+| [Batched reads](#batched-reads)                                       | Data    | High   | Small  |
 | [Timing helpers](#timing-helpers)                                     | Data    | Low    | Small  |
 | [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
@@ -200,6 +201,40 @@ What it needs:
 Prior art: Svelte 5 lets `await` appear in `$derived` and in markup, and the nearest boundary shows its pending content.
 
 Cost: about 1 week. The server side exists, and most of the work is the client side of `await` and its errors.
+
+### Batched reads
+
+A list whose rows each load one thing, such as the profile of each player in a lobby, makes one server function call per row. On the server, the calls of one render with the same arguments share a result, but twenty rows with twenty IDs are twenty reads. In the browser, a list that renders twenty rows sends twenty requests.
+
+```ts
+// profiles.server.ts
+export const getProfile = batched(
+  async (ids: string[]) => {
+    'use server';
+    return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
+  },
+  (found, id: string) => found.get(id) ?? null,
+  { limit: 50 },
+);
+```
+
+```html
+<!-- Row.brm: each row asks for one profile. -->
+<script>
+  const profile = $memo(getProfile(id));
+</script>
+```
+
+- `batched(readMany, lookup, options)` gives a function of one key. The calls made in the same moment wait for each other, become one call of `readMany` with every distinct key, and each gets its value from `lookup`.
+- `key` says what makes two calls the same key, for keys that are objects. `limit` splits a large batch into several calls, since a server function checks the length of what it is sent. `wait` gathers for longer than one tick.
+- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
+- In the browser, the calls of one moment, such as the rows of a list that renders, become one request.
+- On the server, a batch belongs to one render, like the shared results of calls with the same arguments. It never gathers the calls of different requests: they rarely arrive in the same moment, so the batch would mostly add a wait, and when they do, one failed read would fail the pages of other users.
+- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. The docs say to read many keys with one query there, where the code can be handed a list.
+
+Prior art: the `batchedQuery` helper of the Overwander game, which batches the reads of list rows in the browser and keeps a skill that says where it belongs and where it does not. DataLoader does the same for GraphQL servers, per request.
+
+Cost: a few days. The calls of a render already share results by arguments, which a batch extends from equal arguments to many keys.
 
 ### Timing helpers
 
@@ -399,12 +434,19 @@ export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
 ```
 
 - `rateLimit(fn, options)` wraps a server function. `max` calls in `window` for each key, and then the call answers 429 with `Retry-After`, without running the function.
-- The key defaults to the address of the client. `clientAddress(event)`, a new helper, reads it from the server, or from `X-Forwarded-For` behind a proxy that the app trusts, as the origin check reads the host. A key from the session limits a user instead, wherever they sign in from.
+- The key defaults to the address of the client and the ID of the function, so each function has its own count. A key from the session limits a user instead, wherever they sign in from.
+- `clientAddress(event)`, a new helper, reads the address from the server, or from `X-Forwarded-For` behind proxies that the app names as trusted, by CIDR. It reads that header from the right and skips the trusted proxies, since a client can write anything at its left. IPv6 addresses count by their `/64`, since one client often holds a whole subnet.
+- When no address can be read, the limit warns once and counts every such caller in one shared bucket, rather than not limiting at all.
 - `rateLimit.middleware(options)` limits every request under a folder of routes, endpoints and pages included.
 - In the browser, the call rejects with a `RateLimitError`, a `ServerError` with status 429 and the time to wait, so a form can show it. A form posted without scripts gets the message, as for other errors.
 - The calls of [two-way realtime](#two-way-realtime) count too, per connection and per key.
 - The counters live in a store with the same interface as the cache of [caching pages and data](#caching-pages-and-data): in memory by default, which counts per process, and Redis or a platform store for an app with more than one server.
-- The algorithm is a sliding window, which does not let a burst through at the edge of a fixed window.
+- The algorithm is a sliding window, which does not let a burst through at the edge of a fixed window. It keeps two counters per key, this window and the last, so a store needs one atomic increment and no list of times.
+- A store that has no atomic increment, such as a database table, uses a compare-and-set on the counter and tries again when another server wrote first.
+- The limit is off in development by default, so reloading a page while working does not lock anyone out.
+- `rateLimit.strict`, 3 calls in 10 seconds, is a preset for functions that guess at secrets, such as a sign-in or a code check.
+
+Prior art: Better Auth limits its own routes this way. It keys by the address and the path, reads the address behind trusted proxies, gives sign-in and sign-up 3 requests in 10 seconds and the rest 100, answers 429 with `X-Retry-After`, keeps its counts in memory, the database or a secondary store such as Redis, and is on only in production. It counts from the last request rather than a sliding window, so a steady stream of requests never resets.
 
 Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
 
@@ -819,7 +861,7 @@ Cost: a few days for the adapter, a guide and an example.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 4. Routing in the browser. It is small, and filters and tabs in the URL are common.
-5. Element behaviors, testing routes, budgets for one event and rate limiting. Each is small, and rate limiting protects the server functions that every app has.
+5. Element behaviors, testing routes, budgets for one event, rate limiting and batched reads. Each is small. Rate limiting protects the server functions that every app has, and batched reads take a list of rows from one request per row to one request.
 6. Transitions, which the UI components need in phase 2.
 7. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
 8. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
