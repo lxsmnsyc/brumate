@@ -13,6 +13,7 @@ export default defineConfig({
     'src/runtime/testing.ts',
     'src/runtime/env.ts',
     'src/runtime/routes.ts',
+    'src/runtime/batch.ts',
     'src/runtime/events.ts',
     'src/runtime/devtools.ts',
     'src/runtime/hot.ts',

@@ -23,7 +23,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Batched reads](#batched-reads)                                       | Data    | High   | Small  |
 | [Timing helpers](#timing-helpers)                                     | Data    | Low    | Small  |
 | [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
@@ -256,40 +255,6 @@ export const plugins = [
 - The same plugins write server function calls and their answers, and the stubs of two-way realtime.
 
 Cost: about 1 week, most of it for loading the entry with the core and for the types.
-
-### Batched reads
-
-A list whose rows each load one thing, such as the profile of each player in a lobby, makes one server function call per row. On the server, the calls of one render with the same arguments share a result, but twenty rows with twenty IDs are twenty reads. In the browser, a list that renders twenty rows sends twenty requests.
-
-```ts
-// profiles.server.ts
-export const getProfile = batched(
-  async (ids: string[]) => {
-    'use server';
-    return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
-  },
-  (found, id: string) => found.get(id) ?? null,
-  { limit: 50 },
-);
-```
-
-```html
-<!-- Row.brm: each row asks for one profile. -->
-<script>
-  const profile = $memo(getProfile(id));
-</script>
-```
-
-- `batched(readMany, lookup, options)` gives a function of one key. The calls made in the same moment wait for each other, become one call of `readMany` with every distinct key, and each gets its value from `lookup`.
-- `key` says what makes two calls the same key, for keys that are objects. `limit` splits a large batch into several calls, since a server function checks the length of what it is sent. `wait` gathers for longer than one tick.
-- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
-- In the browser, the calls of one moment, such as the rows of a list that renders, become one request.
-- On the server, a batch belongs to one render, like the shared results of calls with the same arguments. It never gathers the calls of different requests: they rarely arrive in the same moment, so the batch would mostly add a wait, and when they do, one failed read would fail the pages of other users.
-- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. The docs say to read many keys with one query there, where the code can be handed a list.
-
-Prior art: the `batchedQuery` helper of the Overwander game, which batches the reads of list rows in the browser and keeps a skill that says where it belongs and where it does not. DataLoader does the same for GraphQL servers, per request.
-
-Cost: a few days. The calls of a render already share results by arguments, which a batch extends from equal arguments to many keys.
 
 ### Timing helpers
 
@@ -922,7 +887,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-3. **Small conveniences**: batched reads and titles in markup. Testing routes and budgets for one event are done. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+3. **Small conveniences**: titles in markup. Testing routes and budgets for one event are done, and batched reads, in the browser only. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
 4. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
 5. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
