@@ -629,10 +629,12 @@ const loadingTemplates = new Set<Promise<unknown>>();
  */
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
   let render: Handler | undefined;
-  const code = resolve(ref).then((handler) => {
-    render = handler;
-    loadingTemplates.delete(code);
-  });
+  // A template that fails to load stops holding up updates too, and its error is reported.
+  const code: Promise<unknown> = resolve(ref)
+    .then((handler) => {
+      render = handler;
+    })
+    .finally(() => loadingTemplates.delete(code));
   loadingTemplates.add(code);
   return (...args) => (render ? render(scope, ...args) : '');
 }
@@ -1015,7 +1017,7 @@ function trigger(scope: Scope, slot: number): void {
   void loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.all(loadingTemplates);
+      await Promise.allSettled(loadingTemplates);
       run(loaded, code, scope, slot);
     }
   });
