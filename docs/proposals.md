@@ -380,14 +380,16 @@ Cost: about 2 weeks. Most of it is the rules for what is safe to share between u
 Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
 
 ```ts
-import { rateLimit } from 'brumate/server';
+import { clientAddress, rateLimit } from 'brumate/server';
+import { session } from './session';
 
 export const signIn = rateLimit(
   async (name: string, password: string) => {
     'use server';
     // …
   },
-  { max: 5, window: '1m', key: (event) => event.clientAddress },
+  // A user who is signed in counts by name, anyone else by address.
+  { max: 5, window: '1m', key: (event) => session.get(event)?.name ?? clientAddress(event) },
 );
 ```
 
@@ -397,7 +399,7 @@ export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
 ```
 
 - `rateLimit(fn, options)` wraps a server function. `max` calls in `window` for each key, and then the call answers 429 with `Retry-After`, without running the function.
-- The key defaults to the address of the client, read from the request and from `X-Forwarded-For` behind a proxy that the app trusts, as the origin check reads the host. A key from the session limits a user instead, wherever they sign in from.
+- The key defaults to the address of the client. `clientAddress(event)`, a new helper, reads it from the server, or from `X-Forwarded-For` behind a proxy that the app trusts, as the origin check reads the host. A key from the session limits a user instead, wherever they sign in from.
 - `rateLimit.middleware(options)` limits every request under a folder of routes, endpoints and pages included.
 - In the browser, the call rejects with a `RateLimitError`, a `ServerError` with status 429 and the time to wait, so a form can show it. A form posted without scripts gets the message, as for other errors.
 - The calls of [two-way realtime](#two-way-realtime) count too, per connection and per key.
