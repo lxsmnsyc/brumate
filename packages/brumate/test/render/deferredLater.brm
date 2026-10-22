@@ -1,0 +1,11 @@
+<script>
+  import Seen from './Seen.brm';
+</script>
+
+<Seen name="before" />
+#defer {
+  <Seen name="body" />
+} #else {
+  <p>Loading</p>
+}
+<Seen name="after" />

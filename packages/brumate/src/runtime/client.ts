@@ -2077,6 +2077,19 @@ export function elementAt(scope: ScopeId, anchor: number): ElementReference {
   return new ElementReference(scope, anchor);
 }
 
+/**
+ * Warns in development that the browser renders a `#defer` block of a
+ * component, such as inside a `#client` body of its parent. Only the server
+ * renders the body, so the fallback stays.
+ */
+export function deferInBrowser(id: string): void {
+  if (DEV) {
+    console.warn(
+      `${id} renders a #defer block in the browser, so it shows its fallback only. Render the component in markup that the server renders.`,
+    );
+  }
+}
+
 /** Adds the markup of a `#head` block to the document's head. */
 export function addHead(html: string): void {
   afterInsert.push(() => insertHTML({ parent: document.head }, html));

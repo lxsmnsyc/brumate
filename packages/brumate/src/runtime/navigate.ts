@@ -46,15 +46,16 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 let controller: AbortController | undefined;
 
 const STATE = 'script[b-state]';
-const REGION = /^R(-?\d+):([^:]+):(\d+):(.*)$/;
+// A route that a block of its layout renders has a scope ID with a dot, such as `3.0`.
+const REGION = /^R(-?[\d.]+):([^:]+):([\d.]+):(.*)$/;
 
 /** A route slot in the page, between `<!--R…-->` and `<!--/R-->`. */
 interface Region {
-  /** The scope of the layout that renders the slot. */
-  layout: number;
+  /** The scope of the layout that renders the slot, as the comment writes it. */
+  layout: string;
   name: string;
   /** The scope of the route in the slot. */
-  root: number;
+  root: string;
   key: string;
   start: Comment;
   end: Comment;
@@ -74,9 +75,9 @@ function regions(root: Node): Region[] {
     const match = REGION.exec(node.data);
     if (match) {
       const region: Region = {
-        layout: Number(match[1]),
+        layout: match[1]!,
         name: match[2]!,
-        root: Number(match[3]),
+        root: match[3]!,
         key: decodeURIComponent(match[4]!),
         start: node,
         end: node,
@@ -94,7 +95,7 @@ function regions(root: Node): Region[] {
 interface Plan {
   /** Old slots and the new slots that replace them. */
   replace: [Region, Region][];
-  alias: Map<number, number>;
+  alias: Map<string, string>;
 }
 
 /**
@@ -264,7 +265,7 @@ function shiftIds(root: Node, shift: Shift): void {
       const comment = node as Comment;
       const region = REGION.exec(comment.data);
       if (region) {
-        const layout = Number(region[1]) < 0 ? region[1]! : add(region[1]!);
+        const layout = region[1]!.startsWith('-') ? region[1]! : add(region[1]!);
         comment.data = `R${layout}:${region[2]}:${add(region[3]!)}:${region[4]}`;
         return;
       }

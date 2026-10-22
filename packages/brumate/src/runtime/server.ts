@@ -110,7 +110,12 @@ export interface DeferTarget {
 
 /** A point in a render that `restore` goes back to. */
 export interface Mark {
+  /** The prefix of the IDs of the block that the render was in, and its counters then. */
+  prefix: string;
   scope: number;
+  boundary: number;
+  /** How many blocks the render was in. */
+  depth: number;
   undo: number;
   owner: ScopeId | undefined;
 }
@@ -121,11 +126,18 @@ export interface Mark {
  * ID of its boundary, a dot and a number, such as `5.0`. A body resumes when
  * its data arrives, so with one counter for the page its IDs, and those of
  * the markup after it, would depend on that order.
+ *
+ * A block whose shape depends on data, such as an `#if` or a `#for`, also
+ * numbers the scopes of its bodies after an ID of its own. The markup after
+ * the block then keeps its IDs, whichever branch rendered and however many
+ * items a list had, so a later request for a `#defer` body numbers the page
+ * the same way even when the user or the data before the block differs.
  */
 interface IdSpace {
-  /** `''` for the page, or the boundary ID and a dot. */
+  /** `''` for the page, or the ID of the boundary or block and a dot. */
   prefix: string;
   scope: number;
+  /** The counter of boundary IDs, which blocks take their IDs from too. */
   boundary: number;
 }
 
@@ -133,16 +145,18 @@ function spaceId(space: IdSpace, n: number): ScopeId {
   return space.prefix ? `${space.prefix}${n}` : n;
 }
 
-/** The number of an ID within its space, or -1 for an ID of another space. */
-function localNumber(space: IdSpace, id: ScopeId): number {
-  if (!space.prefix) {
-    return typeof id === 'number' ? id : -1;
+/**
+ * True for an ID that a render made after `mark`: a scope of the same space
+ * from its counter on, or a scope inside a block or boundary from then on.
+ */
+function madeAfter(mark: Mark, id: ScopeId): boolean {
+  const text = String(id);
+  if (!text.startsWith(mark.prefix)) {
+    return false;
   }
-  if (typeof id !== 'string' || !id.startsWith(space.prefix)) {
-    return -1;
-  }
-  const rest = id.slice(space.prefix.length);
-  return /^\d+$/.test(rest) ? Number(rest) : -1;
+  const rest = text.slice(mark.prefix.length);
+  const dot = rest.indexOf('.');
+  return dot === -1 ? Number(rest) >= mark.scope : Number(rest.slice(0, dot)) >= mark.boundary;
 }
 
 /**
@@ -152,7 +166,8 @@ function localNumber(space: IdSpace, id: ScopeId): number {
 export class Context {
   readonly state: PageState = {};
   private readonly root: Context;
-  private readonly space: IdSpace;
+  /** The ID spaces of the blocks that the render is in, from the outside in. */
+  private readonly spaces: IdSpace[];
   private readonly baseId: number;
   /** The `#defer` body to render, in the request for it. The rest of the page renders no body. */
   target: DeferTarget | undefined;
@@ -210,9 +225,9 @@ export class Context {
     if (rpc) {
       this.rpcPrefix = rpc;
     }
-    this.space = prefix
-      ? { prefix, scope: 0, boundary: 0 }
-      : { prefix, scope: base, boundary: base };
+    this.spaces = [
+      prefix ? { prefix, scope: 0, boundary: 0 } : { prefix, scope: base, boundary: base },
+    ];
     this.baseId = base;
   }
 
@@ -221,13 +236,38 @@ export class Context {
     return this.root.baseId;
   }
 
+  /** True in a request for a `#defer` body, outside the body, once the body has started. */
+  past(): boolean {
+    return this.root.target?.status === 'found' && !this.inTarget;
+  }
+
   /**
    * A number above every scope and boundary ID of the page so far, so a
    * later render can start there. The IDs inside boundaries start with one.
    */
   next(): number {
-    const space = this.root.space;
+    const space = this.root.spaces[0]!;
     return Math.max(space.scope, space.boundary);
+  }
+
+  /** The space that the next IDs come from. */
+  private get space(): IdSpace {
+    return this.spaces.at(-1)!;
+  }
+
+  /**
+   * Starts a block whose shape depends on data, such as an `#if` or a
+   * `#for`. The scopes of its bodies are numbered after one ID that the
+   * block takes, until `leave`.
+   */
+  enter(): void {
+    const id = spaceId(this.space, this.space.boundary++);
+    this.spaces.push({ prefix: `${id}.`, scope: 0, boundary: 0 });
+  }
+
+  /** Ends the block that `enter` started. */
+  leave(): void {
+    this.spaces.pop();
   }
 
   /** Returns the URL prefix of server function calls. */
@@ -314,7 +354,15 @@ export class Context {
 
   /** Marks the render so far, such as before a `#try` body, for `restore`. */
   mark(): Mark {
-    return { scope: this.space.scope, undo: this.undo.length, owner: this.root.owner };
+    const { prefix, scope, boundary } = this.space;
+    return {
+      prefix,
+      scope,
+      boundary,
+      depth: this.spaces.length,
+      undo: this.undo.length,
+      owner: this.root.owner,
+    };
   }
 
   /**
@@ -324,7 +372,9 @@ export class Context {
    * title, its `#loading` bodies, and its links to child components.
    */
   restore(mark: Mark): void {
-    this.drop(mark.scope);
+    this.drop(mark);
+    // A body that threw left the blocks inside it without `leave`.
+    this.spaces.length = mark.depth;
     for (const undo of this.undo.splice(mark.undo).toReversed()) {
       undo();
     }
@@ -337,10 +387,10 @@ export class Context {
    * never sent. `#loading` bodies render in contexts of their own, so their
    * scopes stay.
    */
-  private drop(from: number): void {
+  private drop(mark: Mark): void {
     for (const key of Object.keys(this.state)) {
       const id = parseId(key);
-      if (localNumber(this.space, id) >= from) {
+      if (madeAfter(mark, id)) {
         delete this.state[id];
         this.root.slotNames.delete(id);
         this.root.tree.delete(id);
@@ -745,9 +795,14 @@ export function component<P>(
   Child: Component<P>,
   props: P,
   ctx: Context,
-  scope?: number,
+  scope?: ScopeId,
   anchor?: number,
 ): Promise<string> {
+  // A request for a `#defer` body sends only that body, so the rest of the page renders no more
+  // components once the body has started, and loads no more of their data.
+  if (ctx.past()) {
+    return Promise.resolve('');
+  }
   if (scope !== undefined && anchor !== undefined) {
     ctx.link(scope, anchor, ctx.peek());
   }
@@ -763,7 +818,7 @@ export function dynamic(
   attributes: Record<string, unknown>,
   children: Raw | undefined,
   ctx: Context,
-  scope?: number,
+  scope?: ScopeId,
 ): string | Promise<string> {
   if (typeof tag === 'function') {
     return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);

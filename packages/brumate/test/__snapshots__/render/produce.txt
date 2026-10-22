@@ -29,6 +29,7 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
     }));
   }
   $$html += "<button class=\"add\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Produce_9t90yy#h3\">Add</button><ul>";
+  $$ctx.enter();
   {
     const $$list0v = ( todos );
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -44,6 +45,7 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ul><p><!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert((todos.filter((todo) => todo.done).length), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> done</p>";
   $$ctx.slots($$s1, [todos], ["todos"]);
   return $$html;
@@ -170,12 +172,12 @@ export default function Produce($$props: Record<string, never>): string {
 <button class="add" b-b="0:0" b-on="click=Produce_9t90yy#h3">Add</button>
 <ul>
 <!--b0:1-->
-<li b-b="1:0" b-on="click=Produce_9t90yy#h7">Docs</li>
-<li b-b="2:0" b-on="click=Produce_9t90yy#h7">Ship</li>
+<li b-b="0.0:0" b-on="click=Produce_9t90yy#h7">Docs</li>
+<li b-b="0.1:0" b-on="click=Produce_9t90yy#h7">Ship</li>
 <!--/b-->
 </ul>
 <p>
 <!--t0:2-->0<!--/t--> done</p>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Produce_9t90yy",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Docs",done:!1},$R[5]={id:"2",title:"Ship",done:!1}]]},g:$R[6]=[$R[7]=[2,0,33,1,0,0,1,1]]})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Produce_9t90yy",s:$R[2]=[$R[3]=[$R[4]={id:"1",title:"Docs",done:!1},$R[5]={id:"2",title:"Ship",done:!1}]]},g:$R[6]=[$R[7]=[2,0,97,1,0,0,"0.",0,1]]})))</script>

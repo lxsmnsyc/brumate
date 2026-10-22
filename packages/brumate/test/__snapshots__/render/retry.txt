@@ -16,6 +16,7 @@ let $$t: any;
 export default async function Retry($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Retry_pyus3c");
+  $$ctx.enter();
   $$html += "<!--b" + $$s1 + ":0-->";
   const $$before0 = $$html;
   const $$mark2 = $$ctx.mark();
@@ -31,6 +32,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
     $$ctx.slots($$s3, [error], ["error"]);
   }
   $$html += "<!--/b-->";
+  $$ctx.leave();
   return $$html;
 }
 Retry.brumateId = "Retry_pyus3c";
@@ -125,9 +127,9 @@ export default function Retry($$props: Record<string, never>): string {
 
 # HTML
 <!--b0:0-->
-<p class="error" b-b="1:0">Error: Not ready</p>
-<button class="retry" b-b="1:1" b-on="click=Retry_pyus3c#h2">Try again</button>
+<p class="error" b-b="0.0:0">Error: Not ready</p>
+<button class="retry" b-b="0.0:1" b-on="click=Retry_pyus3c#h2">Try again</button>
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Retry_pyus3c"},1:$R[2]={k:3,p:0,s:$R[3]=[$R[4]=new Error("Not ready")]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Retry_pyus3c"},"0.0":$R[2]={k:3,p:0,s:$R[3]=[$R[4]=new Error("Not ready")]}})))</script>

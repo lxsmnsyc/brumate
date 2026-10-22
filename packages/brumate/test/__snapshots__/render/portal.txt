@@ -8,6 +8,7 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
   const $$s1 = $$ctx.scope(1, undefined, "Portal_17ywlhi");
   let open = (false);
   $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
+  $$ctx.enter();
   if (open) {
     $$html += "<!--b" + $$s1 + ":1:0-->";
     const $$portal0 = await (async () => {
@@ -21,6 +22,7 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
   } else {
     $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
   }
+  $$ctx.leave();
   const $$portal1 = await (async () => {
     let $$html = '';
     const $$s4 = $$ctx.scope(4, $$s1);

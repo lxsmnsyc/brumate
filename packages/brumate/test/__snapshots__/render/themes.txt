@@ -12,11 +12,13 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
   let show = (false);
   $$ctx.provide(Theme, theme, $$s1);
   $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div>";
+  $$ctx.enter();
   if (show) {
     $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + await $$b.component(Themed, {  }, $$ctx, $$s1) + "</div><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
   }
+  $$ctx.leave();
   $$ctx.slots($$s1, [theme, show], ["theme","show"]);
   return $$html;
 }

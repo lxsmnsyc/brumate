@@ -8,7 +8,13 @@ The attributes that brumate writes start with `b-`, like the `s-<hash>` attribut
 
 Every scope that client code needs gets an ID at render time. The server gives IDs in order, from the `base` of the render, which is 0 for a normal page. Scopes that the client creates get negative IDs, so they never match IDs that the server sends later.
 
-A `#loading` body has IDs of its own. Its scopes and the boundaries inside it are numbered from 0, after the ID of its boundary and a dot: the scopes of boundary `5` are `5.0`, `5.1` and so on, and a body inside it numbers its scopes `5.0.0` and on. A body resumes when its data arrives, so its IDs, and the IDs of the rest of the page, do not depend on that order. In the state, an ID with a dot is a string, and other IDs are numbers.
+Some bodies have IDs of their own, numbered from 0 after an ID and a dot. The scopes inside them, and the blocks and boundaries inside them, take their IDs from there:
+
+- A `#loading` or `#defer` body, after the ID of its boundary: the scopes of boundary `5` are `5.0`, `5.1` and so on. A body resumes when its data arrives, so its IDs, and the IDs of the rest of the page, do not depend on that order.
+- The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen`, after an ID that the block takes from the counter of boundaries. The markup after the block keeps its IDs whichever branch rendered and however many items the list had, so a request for a `#defer` body numbers the page the same way for another user.
+- These nest: a `#for` inside boundary `5` that takes ID 2 numbers its items `5.2.0` and on.
+
+In the state, an ID with a dot is a string, and other IDs are numbers.
 
 - A component instance always gets an ID.
 - A body scope gets an ID when it has slots or anchors, or when it is an item of a `#for` or `#repeat` whose list can change.

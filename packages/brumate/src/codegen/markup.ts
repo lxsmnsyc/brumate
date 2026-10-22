@@ -114,6 +114,13 @@ function literalText(node: oxc.Node): string | undefined {
   return undefined;
 }
 
+/**
+ * Blocks whose shape on the server depends on data: which branch renders,
+ * how many items a list has, whether a body throws or shows. The server
+ * numbers the scopes of their bodies after an ID of the block's own.
+ */
+const DATA_SHAPED = new Set(['if', 'switch', 'for', 'repeat', 'try', 'offscreen']);
+
 export class Emitter {
   readonly lines: string[] = [];
   private readonly file: SFCFile;
@@ -636,7 +643,14 @@ export class Emitter {
         return;
       }
       default:
-        this.emitBlock(node, scope);
+        if (this.options.mode === 'server' && DATA_SHAPED.has(node.kind)) {
+          // The markup after the block keeps its IDs, whatever the block rendered.
+          this.line('$$ctx.enter();');
+          this.emitBlock(node, scope);
+          this.line('$$ctx.leave();');
+        } else {
+          this.emitBlock(node, scope);
+        }
     }
   }
 
@@ -1280,11 +1294,15 @@ export class Emitter {
       case 'defer':
         if (this.options.mode === 'server') {
           this.emitDefer(block, scope);
-        } else if (block.fallback) {
-          // Markup that the browser renders cannot be rendered again on the server, so it keeps the fallback.
-          this.line('{');
-          this.emitBody(block.fallback);
-          this.close();
+        } else {
+          // Markup that the browser renders cannot be rendered again on the server, so it keeps
+          // the fallback. The compiler cannot see this when a parent in another file renders it.
+          this.line(`$$b.deferInBrowser(${JSON.stringify(this.plan.id)});`);
+          if (block.fallback) {
+            this.line('{');
+            this.emitBody(block.fallback);
+            this.close();
+          }
         }
         return;
       case 'loading':

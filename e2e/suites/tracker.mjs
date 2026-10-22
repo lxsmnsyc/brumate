@@ -207,8 +207,11 @@ export async function run({ browser, url, runner }) {
     await page.click('nav a[href="/about"]');
     await page.waitForFunction(() => document.title === 'About', null, { timeout: TIMEOUT });
     assert(await page.evaluate(() => window.__e2eSamePage === true), 'the link loaded a new page');
+    // The #defer body of the static page renders on the server, for the user who signed in.
+    await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
     await page.goto(`${url}/about`);
     await page.locator('h1', { hasText: 'About' }).waitFor({ timeout: TIMEOUT });
+    await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
   await step('320 px: no page scrolls sideways', async () => {

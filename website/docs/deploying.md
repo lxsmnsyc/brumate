@@ -202,6 +202,19 @@ vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/
 
 Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerenderoptions) lists every prerender option.
 
+### `#defer` on prerendered pages
+
+The body of a [`#defer`](./control-flow.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. The browser asks for it at the URL of the page, with the header `x-brumate-defer`. A server that serves prerendered files sends those requests to the routes instead:
+
+```ts
+if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
+  // Serve the prerendered file, if there is one.
+}
+// Render the route.
+```
+
+A static host without a server answers with the file, and the block keeps its fallback.
+
 ### Content Security Policy for prerendered pages
 
 A prerendered page is rendered once, so its inline scripts have no nonce. The build writes the SHA-256 hashes of each page's inline scripts to `dist/client/.brumate/prerender.json`:

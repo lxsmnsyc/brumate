@@ -18,12 +18,15 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   const $$p_results = $$b.memo(() => (search(query)), $$ctx);
   const results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t);
   $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
+  $$ctx.enter();
   if (false) {
     $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
   }
+  $$ctx.leave();
   $$html += "<ul>";
+  $$ctx.enter();
   {
     const $$list0v = ( results);
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
@@ -38,6 +41,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
     }
     $$html += "<!--/b-->";
   }
+  $$ctx.leave();
   $$html += "</ul>";
   $$ctx.slots($$s1, [query, results], ["query","results"]);
   return $$html;
@@ -143,11 +147,11 @@ export default function Search($$props: Record<string, never>): string {
 <!--/b-->
 <ul>
 <!--b0:2-->
-<li b-b="1:0">apple</li>
-<li b-b="2:0">apricot</li>
-<li b-b="3:0">banana</li>
+<li b-b="1.0:0">apple</li>
+<li b-b="1.1:0">apricot</li>
+<li b-b="1.2:0">banana</li>
 <!--/b-->
 </ul>
 
 # State
-<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},g:$R[4]=[$R[5]=[3,0,1,1,1,"apple",1,"apricot",1,"banana"]]})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Search_s4k9u0",s:$R[2]=["",$R[3]=["apple","apricot","banana"]]},g:$R[4]=[$R[5]=[3,0,65,1,"1.",0,"apple",1,"apricot",1,"banana"]]})))</script>
