@@ -1,3 +1,5 @@
+import { trustedHTML } from './trusted.ts';
+import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -23,7 +25,9 @@ import {
   stateValues,
 } from './shared.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
-import type { Context as ContextValue } from './context.ts';
+import { ROUTE_KEY } from './context.ts';
+export { navigationContext, routeContext } from './context.ts';
+import type { Context as ContextValue, Route } from './context.ts';
 
 export { affix, attribute, classAttribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
@@ -48,6 +52,16 @@ export interface ClientModule {
   load?: (part: string) => Promise<Part>;
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
+  /**
+   * The `#try` blocks that catch errors of client code, by the scope kinds
+   * inside their bodies: the kind of the scope that holds the block, the
+   * anchor of the block, the render functions of the body and the `#catch`
+   * body, and the kinds of both bodies.
+   */
+  t?: Record<
+    number,
+    [owner: number, anchor: number, body: string, fallback: string, kinds: number[]]
+  >;
 }
 
 /** A part of a client module: one client root, or the updates. */
@@ -97,6 +111,14 @@ export interface CoreOptions {
   listen: (root: ParentNode) => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
+  /** The ID of the build of the page, for skew protection. Calls send it, and a deploy is noticed. */
+  build?: string;
+  /**
+   * Receives every error of client code first: of a handler, an effect, a
+   * `$client` callback or a memo that loads. `scope` is the ID of the scope
+   * that the code belongs to, when it has one.
+   */
+  onError?: (error: unknown, info: { scope?: ScopeId }) => void;
 }
 
 // The core keeps only what every page needs: it reads the state, runs handlers and updates.
@@ -107,6 +129,17 @@ export interface CoreOptions {
 let options: CoreOptions;
 /** The URL prefix of server function calls, from the options. */
 export let rpcPrefix = '/_brumate';
+/** The ID of the build of the page, from the loader. Undefined on the dev server. */
+export let build: string | undefined;
+
+/**
+ * Tells the page that the site changed since it loaded: a call answered 409
+ * with another build, or the code of a handler is gone. The loader then
+ * loads the next page in full, and an app can save a draft first.
+ */
+export function skew(reason: 'call' | 'code' | 'defer'): void {
+  document.dispatchEvent(new CustomEvent('brumate:skew', { detail: reason }));
+}
 /** The scopes of the page, by ID. */
 export const scopes: Map<ScopeId, Scope> = new Map();
 
@@ -516,6 +549,11 @@ export function leavePage(): void {
     memoController.abort();
   }
   memoControllers.clear();
+  renderedLoads.clear();
+  for (const { timer } of timers.values()) {
+    clearTimeout(timer);
+  }
+  timers.clear();
   // The next page reuses scope IDs, so a guess left here would match its memos.
   guesses?.map.clear();
   nextId = -1;
@@ -531,6 +569,7 @@ export function leavePage(): void {
 export function init(value: CoreOptions): void {
   options = value;
   rpcPrefix = value.rpc ?? '/_brumate';
+  build = value.build;
   const queue = stateQueue();
   // Records that are still streaming settle their promises when their scripts run.
   queue.push = pushRecords;
@@ -541,6 +580,7 @@ export function init(value: CoreOptions): void {
   markerObserver.observe(document, { childList: true, subtree: true });
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
+  watchTitles(document);
   if (DEV) {
     devtools()?.attach?.({ scopes, set });
   }
@@ -598,11 +638,50 @@ export function loadPart(module: ClientModule, name: string): Promise<Part> {
 
 type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 
+/** Waits forever once the page loads again, so no error shows before it goes. */
+let reloading: Promise<never> | undefined;
+
 async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
-  const module = await loadModule(id);
-  const part = await loadPart(module, partOf(name));
-  return part[name] as Handler;
+  try {
+    const module = await loadModule(id);
+    const part = await loadPart(module, partOf(name));
+    return part[name] as Handler;
+  } catch (error) {
+    // After a deploy, the files of a build can be gone. The page loads again, with the new code,
+    // once for each build. Any other error, such as a module that throws, goes to `#try`.
+    const next = await serverBuild();
+    if (!reloading && next !== undefined && loadOnce(next)) {
+      skew('code');
+      location.reload();
+      reloading = new Promise(() => {});
+    }
+    if (reloading) {
+      return reloading;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Asks the server for its build, after the code of a handler failed to
+ * load. Returns it when it is not the build of the page. Undefined without
+ * a build, when the request fails, or when the builds are the same.
+ */
+async function serverBuild(): Promise<string | undefined> {
+  if (build === undefined) {
+    return undefined;
+  }
+  try {
+    const response = await fetch(`${rpcPrefix}/`, {
+      method: 'POST',
+      headers: { 'x-brumate-build': build },
+    });
+    const current = response.headers.get('x-brumate-build');
+    return current !== null && current !== build ? current : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
@@ -653,7 +732,68 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
     .then(() => loaded)
     .then((handler) => ({ value: handler(scope, ...args) }));
   lastHandler = started.catch(() => {});
-  return started.then((result) => result.value);
+  // An error of the handler, or of the promise that an async one returns, goes to the nearest
+  // `#try` around its scope.
+  return started
+    .then((result) => result.value)
+    .catch((error: unknown) => {
+      fail(scope, error);
+    });
+}
+
+/**
+ * Reports an error of client code: a handler, an effect, a `$client`
+ * callback or a memo that loads. It renders the `#catch` body of the nearest
+ * `#try` around the scope of the code, through the parents and the owners of
+ * scopes. Without one, the page gets a `brumate:error` event on `window`,
+ * with the error and the scope, and the error is logged.
+ */
+export function fail(scope: Scope | undefined, error: unknown): void {
+  options.onError?.(error, { scope: scope?.id });
+  void (async () => {
+    for (let current = scope; current; current = current.p ?? current.o) {
+      const id = rootOf(current).m;
+      if (!id) {
+        continue;
+      }
+      // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
+      const module = await loadModule(id);
+      const entry = module.t?.[current.k];
+      if (!entry) {
+        continue;
+      }
+      // The scope that holds the block, which the anchor of the block counts from.
+      let owner = current.p;
+      while (owner && owner.k !== entry[0]) {
+        owner = owner.p;
+      }
+      if (owner) {
+        // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
+        await catchInto(owner, module, entry, error);
+        return;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('brumate:error', { detail: { error, scope } }));
+    console.error(error);
+  })();
+}
+
+/** Renders the `#catch` body of a `#try` with an error, in place of what the block shows. */
+async function catchInto(
+  owner: Scope,
+  module: ClientModule,
+  [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
+  error: unknown,
+): Promise<void> {
+  const updates = await loadPart(module, 'update');
+  const start = findComment(`b${owner.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
+  const end = rangeEnd(start);
+  disposeKinds(owner, kinds);
+  clear(start, end);
+  insertHTML(end, (updates[fallback] as (parent: Scope, error: unknown) => string)(owner, error));
 }
 
 /** Returns the instance of a scope by its ID. */
@@ -736,6 +876,45 @@ function startLoading(scope: Scope, slot: number, key: string): void {
   }
 }
 
+/** The timers of debounced and throttled memos, by `scope:slot`, with when each last computed. */
+const timers = new Map<string, { timer?: ReturnType<typeof setTimeout>; last: number }>();
+
+/**
+ * Computes a memo of `$debounced` after its value stops changing for `ms`,
+ * or one of `$throttled` at most once every `ms`, with the last value after
+ * the wait. The memo is pending while it waits.
+ */
+export function timed(
+  scope: Scope,
+  slot: number,
+  ms: number,
+  throttle: boolean,
+  compute: () => unknown,
+): void {
+  const key = `${scope.id}:${slot}`;
+  const state = timers.get(key) ?? { last: -Infinity };
+  timers.set(key, state);
+  const run = (): void => {
+    state.timer = undefined;
+    state.last = Date.now();
+    // A scope that left the page computes no more.
+    if (scopes.get(scope.id) === scope) {
+      memo(scope, slot, compute);
+    }
+  };
+  const since = Date.now() - state.last;
+  if (throttle && state.timer === undefined && since >= ms) {
+    run();
+    return;
+  }
+  if (!throttle) {
+    clearTimeout(state.timer);
+    state.timer = undefined;
+  }
+  state.timer ??= setTimeout(run, throttle ? ms - since : ms);
+  startLoading(scope, slot, key);
+}
+
 /** True for a promise, or any object with a `then` method. */
 function isThenable(value: unknown): value is PromiseLike<unknown> {
   return (
@@ -765,10 +944,11 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
       trigger(scope, slot);
     }
   };
-  const fail = (error: unknown): void => {
-    // A newer load of the memo aborted this one.
+  const failed = (error: unknown): void => {
+    // A newer load of the memo aborted this one. The memo keeps its value, and the error goes
+    // to the nearest `#try` around the memo.
     if (loads.get(key) === load) {
-      console.error(error);
+      fail(scope, error);
       settle(undefined, true);
     }
   };
@@ -792,10 +972,10 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
           }
         }
       } catch (error) {
-        fail(error);
+        failed(error);
       }
     })();
-  }, fail);
+  }, failed);
 }
 
 /** Thrown when a memo reads a value that is still loading. */
@@ -838,6 +1018,11 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   // A guess stays while its source has not changed, such as when a value the server streamed arrives.
   if (guesses?.same(key)) {
+    return;
+  }
+  const rendered = scope.s[slot];
+  if (renderedLoads.delete(key) && isThenable(rendered)) {
+    asyncMemo(scope, slot, Promise.resolve(rendered));
     return;
   }
   let value: unknown;
@@ -1101,6 +1286,8 @@ export function removeScope(scope: Scope): void {
     const key = `${scope.id}:${slot}`;
     memoControllers.get(key)?.abort();
     memoControllers.delete(key);
+    clearTimeout(timers.get(key)?.timer);
+    timers.delete(key);
     loads.delete(key);
     loadingSlots.delete(key);
     guesses?.map.delete(key);
@@ -1215,7 +1402,7 @@ function clear(start: Node, end: Node): void {
  */
 function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const template = document.createElement('template');
-  template.innerHTML = html;
+  template.innerHTML = trustedHTML(html);
   const fragment = template.content;
   // Markers that others inserted first, so the new markers win over them.
   if (markerObserver) {
@@ -1223,6 +1410,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   }
   indexMarkers(fragment);
   options.listen(fragment);
+  watchTitles(fragment);
   const server = serverScopes(fragment);
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
   const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
@@ -1910,7 +2098,61 @@ export function updateContext(scope: Scope, context: ContextValue<unknown>, valu
 
 /** Sets the title of the page. */
 export function title(value: unknown): void {
-  document.title = value === null || value === undefined ? '' : String(value);
+  setTitle(value === null || value === undefined ? '' : String(value));
+}
+
+/**
+ * Sets `document.title`, which writes the first `<title>` of the document.
+ * The head gets a `<title>` of its own first, so a `<title>` in markup keeps its text.
+ */
+function setTitle(text: string): void {
+  if (!document.head.querySelector('title:not([b-t])')) {
+    document.head.prepend(document.createElement('title'));
+  }
+  document.title = text;
+}
+
+/** Watches the `<title>` elements of markup, once one is in the page. */
+let titleObserver: MutationObserver | undefined;
+
+const PAGE_TITLE = 'title[b-t]';
+
+/** True when a node is or holds a `<title>` of markup. */
+function holdsTitle(node: Node): boolean {
+  return node instanceof Element && (node.matches(PAGE_TITLE) || !!node.querySelector(PAGE_TITLE));
+}
+
+/** Gives the page the text of its last `<title>` in markup. Without one, the title stays. */
+function syncTitle(): void {
+  const titles = document.querySelectorAll(PAGE_TITLE);
+  const last = titles[titles.length - 1];
+  if (last && document.title !== last.textContent) {
+    setTitle(last.textContent ?? '');
+  }
+}
+
+/**
+ * Starts to follow the `<title>` elements of markup, when `root` has one. A
+ * block that adds or removes one, or a change of its text, sets the title.
+ */
+function watchTitles(root: ParentNode): void {
+  if (titleObserver || !root.querySelector(PAGE_TITLE)) {
+    return;
+  }
+  titleObserver = new MutationObserver((records) => {
+    for (const record of records) {
+      const target = record.target instanceof Element ? record.target : record.target.parentElement;
+      if (
+        target?.closest(PAGE_TITLE) ||
+        [...record.addedNodes].some(holdsTitle) ||
+        [...record.removedNodes].some(holdsTitle)
+      ) {
+        syncTitle();
+        return;
+      }
+    }
+  });
+  titleObserver.observe(document, { childList: true, subtree: true, characterData: true });
 }
 
 /** Writes a prop of a child component. */
@@ -1952,7 +2194,13 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   }
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
-  const cleanup = callback();
+  let cleanup: unknown;
+  try {
+    cleanup = callback();
+  } catch (error) {
+    // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
+    fail(scope, error);
+  }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
   scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
 }
@@ -1961,7 +2209,7 @@ function noop(): void {}
 
 /** Renders the attributes of a form or button that posts to a server function. */
 export function action(name: string, id: string, method?: string, result?: string): string {
-  return actionAttributes(rpcPrefix, name, id, method, result);
+  return actionAttributes(rpcPrefix, name, id, method, result, build);
 }
 
 /**
@@ -2092,11 +2340,62 @@ export function consumeContext<T>(
     target.x[context.key] = slot;
   }
   const provider = findProvider(target, context.key);
-  return provider ? (provider.v![context.key] as T) : context.defaultValue;
+  if (provider) {
+    return provider.v![context.key] as T;
+  }
+  if (context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
+    globals.set(ROUTE_KEY, currentRoute());
+  }
+  return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;
 }
+
+/** The values of the contexts that the runtime provides to the whole page, by key. */
+const globals = new Map<string, unknown>();
+
+/** The route of the page: `location`, and the params of the route from the last page state. */
+function currentRoute(): Route {
+  const records = document.querySelectorAll('script[b-state][b-params]');
+  const params = records[records.length - 1]?.getAttribute('b-params');
+  const url = new URL(location.href);
+  return { url, search: url.searchParams, params: params ? JSON.parse(params) : {} };
+}
+
+/**
+ * Writes a context that the runtime provides to the whole page, and the
+ * slot of every scope that reads it without a provider above it.
+ */
+export function setGlobal(key: string, value: unknown): void {
+  globals.set(key, value);
+  for (const target of scopes.values()) {
+    const slot = target.x?.[key];
+    if (slot !== undefined && !findProvider(target, key)) {
+      set(target, slot, value);
+    }
+  }
+}
+
+/** Reads the route of the page again, after navigation changed it. */
+export function updateRoute(): void {
+  setGlobal(ROUTE_KEY, currentRoute());
+}
+
+/**
+ * Slots that the render of a component in the browser filled with a promise,
+ * by `scope:slot`. The first compute of their memo takes that promise
+ * instead of calling again, so a server function is called once per row.
+ */
+const renderedLoads = new Set<string>();
 
 export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
+  // A render function computes a memo that loads as a promise, which the first compute of the
+  // memo takes. Its failure is the memo's to report, not an unhandled rejection.
+  values.forEach((value, slot) => {
+    if (isThenable(value)) {
+      renderedLoads.add(`${id}:${slot}`);
+      Promise.resolve(value).catch(noop);
+    }
+  });
 }
 
 export function setItem(id: ScopeId, value: unknown): void {
@@ -2159,4 +2458,6 @@ export const loader: {
   handle: typeof handle;
   dispose: typeof dispose;
   submitAction: typeof submitAction;
-} = { init, handle, dispose, submitAction };
+  setGlobal: typeof setGlobal;
+  updateRoute: typeof updateRoute;
+} = { init, handle, dispose, submitAction, setGlobal, updateRoute };

@@ -4,12 +4,73 @@ import type { CookieOptions } from './cookies.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 
 /**
+ * What a request is for. A form post to a server function is a call, and a
+ * form post to a page with `?__action=<id>` is a page.
+ */
+export type RequestKind = 'page' | 'endpoint' | 'call' | 'defer';
+
+/**
+ * Values that middleware hands to the components, server functions and
+ * endpoints of a request, such as the user. An app adds fields to it:
+ *
+ * ```ts
+ * declare module 'brumate/server' {
+ *   interface Locals {
+ *     user?: { id: string; name: string };
+ *   }
+ * }
+ * ```
+ */
+// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type -- Apps add the fields.
+export interface Locals {}
+
+/** The server function that a request calls, with its arguments as they were read. */
+export interface RequestCall {
+  id: string;
+  args: unknown[];
+}
+
+export interface RequestEventOptions {
+  kind?: RequestKind;
+  /**
+   * Keeps work going after the response ends, such as the `waitUntil` of
+   * Cloudflare Workers. Without it, the promise runs on its own and its
+   * error is logged.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
+  /**
+   * The address of the client as the server saw it, such as the remote
+   * address of the socket. `clientAddress` reads it, and looks past the
+   * trusted proxies in `X-Forwarded-For` when it is one of them.
+   */
+  address?: string;
+  /** True while the build prerenders the page. Rate limits do not count then. */
+  prerender?: boolean;
+}
+
+/**
  * A request that the server handles: a server function call, a form post,
  * a page render, or a call of middleware or an endpoint. Its methods read
  * the request and change the response. Get it with `getEvent()`.
  */
 export class RequestEvent {
   readonly request: Request;
+  /** What the request is for. */
+  readonly kind: RequestKind;
+  /** For a call, and a page that a form posted to, the server function and its arguments. */
+  call?: RequestCall;
+  /** Values for this request, which middleware writes and the rest of the request reads. */
+  readonly locals: Locals = {};
+  /** The address of the client as the server saw it, when the server passed it. */
+  readonly address?: string;
+  /** True while the build prerenders the page. */
+  readonly prerender: boolean;
+  /**
+   * The pattern of the route files that matched the path, such as
+   * `/todos/[id]`. `handleRoute` sets it. Undefined for a path that no route
+   * matches.
+   */
+  route?: string;
   /** Headers to add to the response, such as `cache-control`. */
   readonly headers: Headers = new Headers();
   /** The status that `setStatus` set. */
@@ -18,9 +79,49 @@ export class RequestEvent {
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
+  private readonly controller = new AbortController();
+  /**
+   * Aborts when the request no longer needs an answer: the request's own
+   * signal aborts, or the reader of the response went away, such as a
+   * browser that left the page while it streamed. Pass it on, such as to
+   * `fetch(url, { signal })`, so work that nobody waits for stops.
+   */
+  readonly signal: AbortSignal = this.controller.signal;
+  private readonly keepGoing?: (promise: Promise<unknown>) => void;
 
-  constructor(request: Request) {
+  constructor(request: Request, options: RequestEventOptions = {}) {
     this.request = request;
+    this.kind = options.kind ?? 'page';
+    this.keepGoing = options.waitUntil;
+    this.address = options.address;
+    this.prerender = options.prerender ?? false;
+    const outer = request.signal;
+    if (outer?.aborted) {
+      this.controller.abort(outer.reason);
+    } else {
+      outer?.addEventListener('abort', () => this.abort(outer.reason), { once: true });
+    }
+  }
+
+  /** Aborts `signal`, such as when the response's reader went away. The server calls it. */
+  abort(reason?: unknown): void {
+    if (!this.signal.aborted) {
+      this.controller.abort(reason);
+    }
+  }
+
+  /**
+   * Keeps work going after the response ends, such as a log line or
+   * analytics. On a host that stops a function when its response ends, the
+   * server passes the promise to the host, through the `waitUntil` option.
+   * Elsewhere the promise runs on its own, and its error is logged.
+   */
+  waitUntil(promise: Promise<unknown>): void {
+    if (this.keepGoing) {
+      this.keepGoing(promise);
+    } else {
+      promise.catch((error: unknown) => console.error(error));
+    }
   }
 
   /**
@@ -79,6 +180,11 @@ let current: RequestEvent | undefined;
 /** The results of server function calls of the render that runs now, by function and arguments. */
 let currentCalls: Map<string, unknown> | undefined;
 
+// `batched` of `brumate/batch` reads at once while the server answers, also in a test that
+// runs server code in a DOM. A symbol of the registry, so the browser code needs no import.
+(globalThis as Record<symbol, unknown>)[Symbol.for('brumate.inRequest')] = (): boolean =>
+  current !== undefined || currentCalls !== undefined;
+
 /**
  * Runs a callback with an event, so `getEvent()` in its code before its first
  * `await` returns it. Returns what the callback returns, such as its promise.
@@ -124,6 +230,47 @@ export function getEvent(): RequestEvent {
     );
   }
   return current;
+}
+
+/**
+ * Middleware that runs for every request of the app: pages, endpoints,
+ * server function calls, form posts and the requests for `#defer` bodies.
+ * It answers the request itself, or calls `next` for the answer and returns
+ * it, changed or not. `event.kind` says what the request is for.
+ */
+export type EntryMiddleware = (
+  event: RequestEvent,
+  next: () => Promise<Response>,
+) => Response | Promise<Response>;
+
+/**
+ * Types the middleware of the entry file, `src/middleware.ts`, which the
+ * Vite plugin runs for every request:
+ *
+ * ```ts
+ * export default defineMiddleware(async (event, next) => {
+ *   event.locals.user = await readUser(event);
+ *   return next();
+ * });
+ * ```
+ */
+export function defineMiddleware(middleware: EntryMiddleware): EntryMiddleware {
+  return middleware;
+}
+
+/**
+ * Runs the middleware of the entry, when there is one, around an answer.
+ * `getEvent()` works in the middleware before its first `await`.
+ */
+export function runEntry(
+  middleware: EntryMiddleware | undefined,
+  event: RequestEvent,
+  answer: () => Promise<Response>,
+): Promise<Response> {
+  if (!middleware) {
+    return answer();
+  }
+  return Promise.resolve(withEvent(event, () => middleware(event, answer)));
 }
 
 /**

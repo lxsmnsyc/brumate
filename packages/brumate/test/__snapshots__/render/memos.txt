@@ -28,19 +28,27 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
   const $$p_late = $$b.memo(() => (items.length + double), $$ctx);
   $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert((named), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert((both), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + (typeof ($$t = $$b.insert((loaded), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><input" + $$b.attribute("value", (typed)) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
   const $$boundary0 = $$ctx.boundary();
-  $$html += "<!--l" + $$boundary0 + "-->";
-  {
-    $$html += "<p>Loading</p>";
-  }
-  $$html += "<!--/l-->";
-  $$ctx.defer($$boundary0, async ($$ctx) => {
-    let $$html = '';
-    const late = (($$t = $$b.ready($$p_late)) instanceof Promise ? await $$t : $$t);
+  if ($$b.settled([$$p_late])) {
+    $$ctx.enter($$boundary0);
+    const late = $$b.read($$p_late);
     const $$s2 = $$ctx.scope(2, $$s1);
     $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
-    return $$html;
-  });
-  $$ctx.slots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, $$b.wait($$p_late)], ["count","items","double","quad","parity","size","text","named","both","steps","copy","loaded","typed","same","late"]);
+    $$ctx.leave();
+  } else {
+    $$html += "<!--l" + $$boundary0 + "-->";
+    {
+      $$html += "<p>Loading</p>";
+    }
+    $$html += "<!--/l-->";
+    $$ctx.defer($$boundary0, async ($$ctx) => {
+      let $$html = '';
+      const late = (($$t = $$b.ready($$p_late)) instanceof Promise ? await $$t : $$t);
+      const $$s2 = $$ctx.scope(2, $$s1);
+      $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
+      return $$html;
+    });
+  }
+  $$ctx.slots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, $$b.stateValue($$p_late)], ["count","items","double","quad","parity","size","text","named","both","steps","copy","loaded","typed","same","late"]);
   return $$html;
 }
 Memos.brumateId = "Memos_1khoa0p";
@@ -197,20 +205,7 @@ export default function Memos($$props: Record<string, never>): string {
 </button>
 <input value="" b-b="0:12" b-on="input=Memos_1khoa0p#h30">
 <p class="literals">&lt;i&gt; 1.5 10  -1</p>
-<!--l0-->
-<p>Loading</p>
-<!--/l-->
+<p class="late" b-b="0.0:0">8</p>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Memos_1khoa0p",s:$R[2]=[3,$R[3]=["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",0,3,0,"",3,$R[4]=($R[5]=($R[6]=() => {
-	const resolver = {
-		p: 0,
-		s: 0,
-		f: 0
-	};
-	resolver.p = new Promise((resolve, reject) => {
-		resolver.s = resolve;
-		resolver.f = reject;
-	});
-	return resolver;
-})()).p]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Memos_1khoa0p",s:[3,["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",0,3,0,"",3,8]},"0.0":{k:2,p:0}})))</script>

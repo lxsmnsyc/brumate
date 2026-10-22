@@ -11,7 +11,6 @@
     $optimistic,
     $props,
     $signal,
-    $title,
   } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import IssueLink from '../../IssueLink.brm';
@@ -27,7 +26,6 @@
 
   // A missing issue throws a 404, and _error.brm renders in place of the page.
   const issue = $memo(getIssue(params.id));
-  $title(`#${issue.id} ${issue.title}`);
 
   async function toggle(form: FormData) {
     'use server';
@@ -72,6 +70,10 @@
     }
   });
 </script>
+
+#head {
+  <title>{`#${issue.id} ${issue.title}`}</title>
+}
 
 <window onKeyDown=((event) => event.key === 'Escape' && (confirming = false)) />
 

@@ -19,7 +19,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `#offscreen (visible) { … }`                         | Its body while `visible` is true. When it turns false, the body stays in the page, hidden, with its state.                |
 | `#try { … } #catch { … }`                            | Its body, or the `#catch` body when the body throws.                                                                      |
 | `#try { … } #catch (error, reset) { … }`             | The same. `error` is the error, and `reset()` renders the `#try` body again in the browser.                               |
-| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body.                                         |
+| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body. The body at once when they are ready.   |
 | `#portal { … }`                                      | Its body at the end of the page.                                                                                          |
 | `#portal (target) { … }`                             | Its body inside `target`, an element or a selector, in the browser.                                                       |
 | `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                 |

@@ -1,10 +1,13 @@
 <script>
-  import { $props, $title } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
 
   // Renders in place of a page that throws, and for paths that match no route.
   const { error } = $props<{ error: { message: string; status: number } }>();
-  $title(error.status === 404 ? 'Not found' : `Error ${error.status}`);
 </script>
+
+#head {
+  <title>{error.status === 404 ? 'Not found' : `Error ${error.status}`}</title>
+}
 
 <h1>{error.status === 404 ? 'Not found' : 'Something went wrong'}</h1>
 <p class="error">{error.message}</p>

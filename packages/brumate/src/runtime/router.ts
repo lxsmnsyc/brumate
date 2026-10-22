@@ -68,6 +68,8 @@ export interface RouteView {
 export interface RouteMatch {
   view: RouteView;
   params: Record<string, string>;
+  /** The pattern of the route files that matched, such as `/todos/[id]`, or `/` for the root. */
+  route: string;
   /** The endpoint at the path, if the folder has one. */
   endpoint?: EndpointLoader;
   /** The middleware of the folders on the path, from the outside in. */
@@ -168,6 +170,7 @@ function matchNode(
       inner = {
         view: { load: node.page ?? missingPage, key: key(path, 'index', params), slots: {} },
         params,
+        route: path || '/',
         endpoint: node.endpoint,
         middleware: [],
         errors: [],
@@ -211,6 +214,7 @@ function matchNode(
   return {
     view: wrap(content, wrapper),
     params: inner.params,
+    route: inner.route,
     endpoint: inner.endpoint,
     middleware: node.middleware ? [node.middleware, ...inner.middleware] : inner.middleware,
     errors,

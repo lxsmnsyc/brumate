@@ -1,5 +1,4 @@
 <script>
-  import { $title } from 'brumate/signals';
   import Meta from '../components/Meta.brm';
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
@@ -9,8 +8,11 @@
   import * as todos from '../demos/Todos.brm?inspect';
 
   const base = import.meta.env.BASE_URL;
-  $title('brumate: web apps that resume');
 </script>
+
+#head {
+  <title>brumate: web apps that resume</title>
+}
 
 <Meta
   title="brumate: web apps that resume"
