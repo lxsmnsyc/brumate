@@ -1,0 +1,16 @@
+<script>
+  import { getEvent } from 'brumate/server';
+  import { $effect, $signal } from 'brumate/signals';
+
+  // The server reads the cookie, so the first render has the theme.
+  let theme = $signal(getEvent().getCookie('theme') ?? 'light');
+
+  // Runs when the theme changes, not on load.
+  $effect(() => {
+    document.cookie = `theme=${theme}; path=/; max-age=31536000; samesite=lax`;
+  });
+</script>
+
+<div class="page" data-theme=theme>
+  <button class="toggle" onClick=(() => (theme = theme === 'dark' ? 'light' : 'dark'))>Theme</button>
+</div>

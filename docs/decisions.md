@@ -92,6 +92,7 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- There is no `$persisted`. A preference goes in a cookie, which the server reads for the first render, and an `$effect` writes it when it changes, which [State](../website/docs/state.md#values-that-stay-across-visits) shows. That is three lines, and the effect loads with the first change. `localStorage` and `sessionStorage` cannot be read by the server, so a value kept there needs code that runs on load, and the page changes after it shows. A one-line helper for them would make that the easy path, against loading code only when someone interacts.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

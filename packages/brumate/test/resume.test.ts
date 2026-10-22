@@ -393,6 +393,27 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('keeps a preference in a cookie, which the server reads for the first render', async () => {
+    const server = await import(file('preference.brm.ts'));
+    const request = new Request('http://localhost/');
+    // The DOM environment drops `cookie` from the headers that a request is made with.
+    request.headers.set('cookie', 'theme=dark');
+    const { html, state } = await renderParts(server.default, {}, { request });
+    expect(html).toContain('data-theme="dark"');
+    show(html + state);
+    document.cookie = 'theme=; max-age=0; path=/';
+    await startLoader();
+    window.dispatchEvent(new Event('load'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The effect waits for a change, so loading the page writes no cookie.
+    expect(document.cookie).not.toContain('theme=');
+    click(document.querySelector('.toggle')!);
+    await waitFor(() =>
+      expect(document.querySelector('.page')!.getAttribute('data-theme')).toBe('light'),
+    );
+    await waitFor(() => expect(document.cookie).toContain('theme=light'));
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');
