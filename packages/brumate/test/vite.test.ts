@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { createServer as createHTTPServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { inspect } from 'node:util';
 import { toJSON } from 'seroval';
 import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
@@ -27,6 +28,7 @@ const config: InlineConfig = {
       'brumate/loader': runtime('loader'),
       'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
+      'brumate/events': runtime('events'),
     },
   },
 };
@@ -296,10 +298,204 @@ describe('files of server functions', () => {
     }
   });
 
+  it('runs the entry middleware and the middleware of a file before a call', async () => {
+    const directory = fileURLToPath(new URL('./.output/server-middleware/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src`, { recursive: true });
+    writeFileSync(
+      `${directory}src/middleware.ts`,
+      "import { defineMiddleware } from 'brumate/server';\n\nexport default defineMiddleware(async (event, next) => {\n  (event.locals as { user?: string }).user = event.request.headers.get('x-user') ?? 'nobody';\n  const response = await next();\n  response.headers.set('x-entry', event.kind);\n  return response;\n});\n",
+    );
+    writeFileSync(
+      `${directory}admin.ts`,
+      "'use server';\n\nimport { getEvent } from 'brumate/server';\nimport type { EntryMiddleware } from 'brumate/server';\n\nexport const middleware: EntryMiddleware = (event, next) =>\n  (event.locals as { user?: string }).user === 'admin' ? next() : new Response('Forbidden', { status: 403 });\n\nexport async function reset() {\n  return `reset by ${(getEvent().locals as { user?: string }).user}`;\n}\n",
+    );
+    writeFileSync(
+      `${directory}Admin.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import { reset } from './admin.ts';\n  let message = $signal('');\n</script>\n<button onClick=(async () => (message = await reset()))>{message}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      // The middleware of the file is not a server function: the browser gets no stub for it.
+      const stubs = await dev.transformRequest('/admin.ts');
+      expect(stubs?.code).toContain('reset');
+      expect(stubs?.code).not.toContain('middleware');
+      const { functions, fileMiddleware } = await dev.ssrLoadModule('virtual:brumate/server');
+      const reset = Object.keys(functions).find((id) => id.endsWith('#reset'))!;
+      expect(Object.keys(functions).some((id) => id.endsWith('#middleware'))).toBe(false);
+      expect(typeof fileMiddleware[reset]).toBe('function');
+      const routes = await dev.transformRequest('virtual:brumate/routes', { ssr: true });
+      expect(routes?.code).toContain('src/middleware.ts');
+
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const call = (user: string): Promise<Response> =>
+        fetch(`http://localhost:${port}/_brumate/${encodeURIComponent(reset)}`, {
+          method: 'POST',
+          headers: { 'x-user': user },
+          body: JSON.stringify(toJSON([])),
+        });
+      const refused = await call('ada');
+      const allowed = await call('admin');
+      http.close();
+      // The entry runs first and sets the locals that the file's middleware reads.
+      expect(refused.status).toBe(403);
+      expect(refused.headers.get('x-entry')).toBe('call');
+      expect(allowed.status).toBe(200);
+      expect(await fromChunkStream(allowed.body!)).toBe('reset by admin');
+    } finally {
+      await dev.close();
+    }
+  });
+
   it('refuses an export that is not a function', () => {
     expect(() =>
       serverStubs("'use server';\nexport const limit = 5;\n", 'limits.ts', 'limits_1'),
     ).toThrow("A 'use server' file exports only functions");
+  });
+});
+
+describe('environment variables', () => {
+  it('checks them on the server, and gives the browser the public ones only', async () => {
+    const directory = fileURLToPath(new URL('./.output/env-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/env.ts`,
+      "import { defineEnv } from 'brumate/env';\nimport * as v from 'valibot';\n\nexport default defineEnv({\n  server: { SECRET: v.pipe(v.string(), v.minLength(4)) },\n  public: { SITE_NAME: v.optional(v.string(), 'Tracker') },\n});\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import env from '../env.ts';\n  let clicks = $signal(0);\n  const secretLength = env.SECRET.length;\n</script>\n<p>{env.SITE_NAME} {secretLength}</p>\n<button onClick=(() => clicks++)>{clicks}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+      resolve: { alias: { ...config.resolve!.alias, 'brumate/env': runtime('env') } },
+    });
+    try {
+      // The server fails to start its routes without the secret.
+      delete process.env.SECRET;
+      await expect(dev.ssrLoadModule('virtual:brumate/routes')).rejects.toThrow(
+        'Environment variables: SECRET is missing',
+      );
+      process.env.SECRET = 'hunter2';
+      process.env.SITE_NAME = 'Issues';
+      // The failed module stays in the graph until it is invalidated, as a restart would.
+      dev.moduleGraph.invalidateAll();
+      // The browser's copy has the public values, and no server variable.
+      const client = await dev.transformRequest('/src/env.ts');
+      expect(client?.code).toMatch(/"SITE_NAME":\s*"Issues"/);
+      expect(client?.code).not.toContain('SECRET');
+      // The server reads them while the page renders.
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const response = await handle(new Request('http://localhost/'));
+      expect(await response.text()).toContain('<p>Issues 7</p>');
+      // Code that runs in the browser cannot read a server variable.
+      writeFileSync(
+        `${directory}src/Leak.brm`,
+        "<script>\n  import { $signal } from 'brumate/signals';\n  import env from './env.ts';\n  let shown = $signal('');\n</script>\n<button onClick=(() => (shown = env.SECRET))>{shown}</button>\n",
+      );
+      await expect(dev.ssrLoadModule('/src/Leak.brm')).rejects.toThrow(
+        'env.SECRET, a server variable, is read by code that runs in the browser',
+      );
+    } finally {
+      delete process.env.SECRET;
+      delete process.env.SITE_NAME;
+      await dev.close();
+    }
+  });
+
+  it('finds the env file by its resolved path, and keeps its values out of the page', async () => {
+    const directory = fileURLToPath(new URL('./.output/env-leak-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/lib`, { recursive: true });
+    writeFileSync(
+      `${directory}src/env.ts`,
+      "import { defineEnv } from 'brumate/env';\nimport * as v from 'valibot';\n\nexport default defineEnv({\n  server: { TOKEN: v.string(), PORT: v.string() },\n  public: { SITE_NAME: v.optional(v.string(), 'Tracker') },\n});\n",
+    );
+    // A helper that reads a server variable, and a module that passes the env file on.
+    writeFileSync(
+      `${directory}src/lib/token.ts`,
+      "import env from '~/env';\nexport const getToken = (): string => env.TOKEN;\nexport const getPort = (): string => env.PORT;\n",
+    );
+    writeFileSync(`${directory}src/lib/index.ts`, "export { default as env } from '../env.ts';\n");
+    const component = (name: string, script: string, markup: string): string => {
+      writeFileSync(
+        `${directory}src/${name}.brm`,
+        `<script>\n  import { $signal } from 'brumate/signals';\n${script}</script>\n${markup}\n`,
+      );
+      return `/src/${name}.brm`;
+    };
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+      resolve: {
+        alias: {
+          ...config.resolve!.alias,
+          'brumate/env': runtime('env'),
+          '~': `${directory}src`,
+        },
+      },
+    });
+    process.env.TOKEN = 'tok_live_0123456789';
+    process.env.PORT = '3000';
+    try {
+      // An alias of the env file is the env file: a handler cannot read a server variable from it.
+      const alias = component(
+        'Alias',
+        "  import env from '~/env';\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = env.TOKEN))>{shown}</button>',
+      );
+      await expect(dev.ssrLoadModule(alias)).rejects.toThrow(
+        'env.TOKEN, a server variable, is read by code that runs in the browser',
+      );
+      // A script that the browser loads cannot import the env file, by any path.
+      await expect(dev.transformRequest('/src/lib/token.ts')).rejects.toThrow(
+        'src/lib/token.ts imports src/env.ts, and the browser loads it',
+      );
+      await expect(dev.transformRequest('/src/lib/index.ts')).rejects.toThrow(
+        'src/lib/index.ts imports src/env.ts, and the browser loads it',
+      );
+      // A helper that reads a secret gives the value of a signal that the browser reads.
+      const helper = component(
+        'Helper',
+        "  import { getToken } from './lib/token.ts';\n  let token = $signal(getToken());\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = token))>{shown}</button>',
+      );
+      const { default: Helper } = await dev.ssrLoadModule(helper);
+      const error = await render(Helper, {}).then(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+      expect(String(error)).toMatch(
+        /The value of "token" in Helper_\w+ is the value of a server environment variable, and code that runs in the browser reads it/,
+      );
+      // The error, as a log would show it, does not hold the secret.
+      expect(inspect(error)).not.toContain('tok_live_0123456789');
+      // A short value, such as a port, can be in a page for other reasons, so it is sent.
+      const port = component(
+        'Port',
+        "  import { getPort } from './lib/token.ts';\n  let port = $signal(getPort());\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = port))>{shown}</button>',
+      );
+      const { default: Port } = await dev.ssrLoadModule(port);
+      expect((await render(Port, {})).state).toContain('"3000"');
+    } finally {
+      delete process.env.TOKEN;
+      delete process.env.PORT;
+      await dev.close();
+    }
   });
 });
 
@@ -392,6 +588,66 @@ describe('prerendering', () => {
     expect(assets.join('')).not.toContain('installDevtools');
     // A page that no link leads to is not rendered.
     expect(() => read('hidden/index.html')).toThrow('ENOENT');
+  });
+});
+
+describe('skew protection', () => {
+  it('gives the client and the server the ID of the build, and keeps the files of earlier builds', async () => {
+    const app = fileURLToPath(new URL('./.output/skew-app/', import.meta.url));
+    rmSync(app, { recursive: true, force: true });
+    mkdirSync(`${app}src/routes`, { recursive: true });
+    writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
+    writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>\n",
+    );
+    const shared: InlineConfig = {
+      ...config,
+      root: app,
+      plugins: [brumate({ skew: { keep: 1 } })],
+    };
+    const buildClient = (): Promise<unknown> =>
+      build({
+        ...shared,
+        build: {
+          outDir: 'dist/client',
+          manifest: true,
+          rolldownOptions: { input: 'src/client.ts' },
+        },
+      });
+    await buildClient();
+    const first = readFileSync(`${app}dist/client/.brumate/build.json`, 'utf8');
+    const id = (JSON.parse(first) as { build: string }).build;
+    const assets = (): string[] => readdirSync(`${app}dist/client/assets`);
+    const firstAssets = assets();
+    const code = firstAssets.map((name) =>
+      readFileSync(`${app}dist/client/assets/${name}`, 'utf8'),
+    );
+    expect(code.some((chunk) => chunk.includes(id))).toBe(true);
+
+    await build({ ...shared, build: { outDir: 'dist/server', ssr: 'src/server.ts' } });
+    expect(readFileSync(`${app}dist/server/server.js`, 'utf8')).toContain(`build: "${id}"`);
+
+    // A second client build keeps the files of the first, under a new ID.
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(1);\n</script>\n<button onClick=(() => (count += 2))>{count}</button>\n",
+    );
+    await buildClient();
+    const second = (
+      JSON.parse(readFileSync(`${app}dist/client/.brumate/build.json`, 'utf8')) as {
+        build: string;
+      }
+    ).build;
+    expect(second).not.toBe(id);
+    for (const name of firstAssets) {
+      expect(assets()).toContain(name);
+    }
+    const builds = JSON.parse(readFileSync(`${app}dist/client/.brumate/builds.json`, 'utf8')) as {
+      builds: { id: string }[];
+    };
+    expect(builds.builds.map((entry) => entry.id)).toEqual([id, second]);
   });
 });
 

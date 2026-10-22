@@ -2,7 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { toJSON } from 'seroval';
 import { compile } from '../src/index.ts';
-import { handleRequest, isCrossSite, render } from '../src/runtime/server.ts';
+import { getEvent, handleRequest, isCrossSite, render } from '../src/runtime/server.ts';
+import type { RequestCall } from '../src/runtime/server.ts';
 import { fromChunkStream } from '../src/runtime/stream.ts';
 
 const source = readFileSync(new URL('./render/session.brm', import.meta.url), 'utf8');
@@ -69,6 +70,114 @@ describe('server functions and the request', () => {
     const response = await call('login', ['admin']);
     expect(response!.status).toBe(204);
     expect(response!.headers.get('x-brumate-redirect')).toBe('/admin');
+  });
+});
+
+describe('entry middleware for calls', () => {
+  const id = 'Session_1fdcuk2#whoami';
+  const request = (headers: Record<string, string> = {}): Request =>
+    new Request(`http://localhost/_brumate/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(toJSON(['extra'])),
+    });
+
+  it('runs before the function, with the call and its arguments, and hands it locals', async () => {
+    let seen: RequestCall | undefined;
+    const response = await handleRequest(session.rpc, request({ 'x-user': 'Ada' }), '/_brumate', {
+      middleware: async (event, next) => {
+        expect(getEvent()).toBe(event);
+        expect(event.kind).toBe('call');
+        seen = event.call;
+        (event.locals as { user?: string }).user = 'Ada';
+        const answer = await next();
+        answer.headers.set('x-entry', 'yes');
+        return answer;
+      },
+    });
+    expect(seen).toEqual({ id, args: ['extra'] });
+    expect(response?.headers.get('x-entry')).toBe('yes');
+    expect(await fromChunkStream(response!.body!)).toBe('Ada');
+  });
+
+  it('answers the call itself, so the function never runs', async () => {
+    const response = await handleRequest(session.rpc, request(), '/_brumate', {
+      middleware: (event) =>
+        new Response('Forbidden', { status: 403, headers: { 'x-call': event.call!.id } }),
+    });
+    expect(response?.status).toBe(403);
+    expect(response?.headers.get('x-call')).toBe(id);
+  });
+
+  it('runs after the cross-site check, and before the middleware of the file', async () => {
+    const seen: string[] = [];
+    const refused = await handleRequest(
+      session.rpc,
+      request({ origin: 'https://evil.example' }),
+      '/_brumate',
+      {
+        middleware: (_event, next) => {
+          seen.push('entry');
+          return next();
+        },
+      },
+    );
+    expect(refused?.status).toBe(403);
+    expect(seen).toEqual([]);
+    await handleRequest(session.rpc, request(), '/_brumate', {
+      middleware: (_event, next) => {
+        seen.push('entry');
+        return next();
+      },
+      fileMiddleware: {
+        [id]: (_event, next) => {
+          seen.push('file');
+          return next();
+        },
+      },
+    });
+    expect(seen).toEqual(['entry', 'file']);
+  });
+
+  it('runs for a form that posts to a server function without scripts', async () => {
+    const form = new FormData();
+    form.set('name', 'Ada');
+    const seen: string[] = [];
+    const response = await handleRequest(
+      { greet: (data: FormData) => `Hello ${data.get('name')}` },
+      new Request('http://localhost/_brumate/greet', {
+        method: 'POST',
+        headers: { referer: 'http://localhost/form' },
+        body: form,
+      }),
+      '/_brumate',
+      {
+        middleware: (event, next) => {
+          seen.push(
+            `${event.kind} ${event.call!.id} ${(event.call!.args[0] as FormData).get('name')}`,
+          );
+          return next();
+        },
+      },
+    );
+    expect(seen).toEqual(['call greet Ada']);
+    expect(response?.status).toBe(303);
+    expect(response?.headers.get('location')).toBe('http://localhost/form');
+  });
+
+  it('passes the promises of waitUntil in a call to the host', async () => {
+    const kept: Promise<unknown>[] = [];
+    await handleRequest(
+      { log: () => getEvent().waitUntil(Promise.resolve('sent')) },
+      new Request('http://localhost/_brumate/log', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(toJSON([])),
+      }),
+      '/_brumate',
+      { waitUntil: (promise) => kept.push(promise) },
+    );
+    expect(await Promise.all(kept)).toEqual(['sent']);
   });
 });
 

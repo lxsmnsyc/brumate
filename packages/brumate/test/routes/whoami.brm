@@ -1,0 +1,9 @@
+<script>
+  import { getEvent } from 'brumate/server';
+
+  // The entry middleware writes the user into the locals of the request.
+  const event = getEvent();
+  const user = (event.locals as { user?: string }).user ?? 'nobody';
+</script>
+
+<p class="whoami">{event.kind}: {user}</p>

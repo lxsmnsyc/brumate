@@ -8,15 +8,19 @@ import client from './client.ts?assets=client';
 const scripts = `${import.meta.env.DEV ? '<script type="module" src="/@vite/client"></script>' : ''}<script type="module" async src="${client.entry}"></script>`;
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  // Nitro's request has `ip`, the address of the socket, for rate limits.
+  async fetch(request: Request & { ip?: string }): Promise<Response> {
+    const address = request.ip;
     // Server function calls.
     if (request.method === 'POST') {
-      const answer = await handleCall(request);
+      const answer = await handleCall(request, { address });
       if (answer) {
         return answer;
       }
     }
     // Pages and endpoints, from the files under src/routes.
-    return (await handle(request, { scripts })) ?? new Response('Not found', { status: 404 });
+    return (
+      (await handle(request, { scripts, address })) ?? new Response('Not found', { status: 404 })
+    );
   },
 };

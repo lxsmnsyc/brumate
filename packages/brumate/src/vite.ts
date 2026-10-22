@@ -14,17 +14,20 @@ import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'v
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
+import { clientEnvModule, parseEnvFile } from './env-file.ts';
 import {
+  hasServerMiddleware,
   hasUseServer,
   isScriptFile,
   serverExports,
   serverModule,
   serverStubs,
 } from './server-files.ts';
-import type { CompileResult } from './compile.ts';
+import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, resolveRelative } from './project.ts';
+import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
   findPackages,
   packageFileName,
@@ -64,6 +67,20 @@ export interface BrumateOptions {
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
   /**
+   * The entry middleware, relative to the root. Its default export runs for
+   * every request: pages, endpoints, server function calls, form posts and
+   * `#defer` bodies. Defaults to `src/middleware.ts` when the file exists.
+   * `false` runs none.
+   */
+  middleware?: string | false;
+  /**
+   * The file of environment variables, relative to the root, which calls
+   * `defineEnv` from `brumate/env`. The server checks them when it starts,
+   * and the browser gets the file without the server variables. Defaults
+   * to `src/env.ts` when the file exists. `false` uses none.
+   */
+  env?: string | false;
+  /**
    * The declaration file that gives `href` of `brumate/routes` the paths of
    * the routes, relative to the root. The plugin writes it when the routes
    * change. Defaults to `src/brumate-routes.d.ts`. `false` writes none.
@@ -95,6 +112,21 @@ export interface BrumateOptions {
    * the pages that its links lead to.
    */
   prerender?: boolean | PrerenderOptions;
+  /**
+   * Skew protection: a page that was open before a deploy keeps working.
+   * Each build has an ID, which the page carries and sends with its calls.
+   * A call to a function that is gone, or a page of another build, makes
+   * the browser load the page in full. The client build writes its ID to
+   * `.brumate/build.json`, and the server build reads it, so build the
+   * client first. `BRUMATE_BUILD` in the environment names the ID for both.
+   *
+   * `keep` is how many earlier builds keep their files in the client
+   * output, so a page that is open still finds the code of its handlers
+   * after a deploy. The build then does not empty the output directory, and
+   * removes the files of older builds itself. Defaults to 0, which empties
+   * it as Vite does.
+   */
+  skew?: { keep?: number };
   /**
    * Prints what the client build ships: what every page loads before its
    * first event, the core, the most that each route can load, and each
@@ -253,9 +285,52 @@ function buildFingerprint(): string {
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
+  /** The entry middleware, when the app has one. */
+  const middlewareFile = (): string | undefined => {
+    if (options.middleware === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.middleware ?? 'src/middleware.ts'));
+    if (!existsSync(file)) {
+      if (options.middleware !== undefined) {
+        throw new Error(`The middleware file ${options.middleware} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
+  /** The file of environment variables, when the app has one. */
+  const envFile = (): string | undefined => {
+    if (options.env === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.env ?? 'src/env.ts'));
+    if (!existsSync(file)) {
+      if (options.env !== undefined) {
+        throw new Error(`The env file ${options.env} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
+  /** The names of the server variables, read from the env file, by its source. */
+  let envKeys: { source: string; server: string[] } | undefined;
+  const serverEnvKeys = (): string[] | undefined => {
+    const file = envFile();
+    if (!file) {
+      return undefined;
+    }
+    const source = readFileSync(file, 'utf8');
+    if (envKeys?.source !== source) {
+      envKeys = { source, server: parseEnvFile(source, file).server };
+    }
+    return envKeys.server;
+  };
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
   let outDir = '';
+  /** The ID of the build, for skew protection. Undefined on the dev server. */
+  let buildId: string | undefined;
   let base = '/';
   let isSsrBuild = false;
   let isServe = false;
@@ -400,37 +475,76 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     compiled.clear();
   };
 
+  /** The options of the compile of a file. */
+  const compileOptions = (file: string): CompileOptions => ({
+    filename: nameOf(file),
+    liveProps: liveProps.get(file),
+    path: file,
+    merge: options.merge ?? DEFAULT_MERGE,
+    a11y: options.a11y,
+    // A build does not show the names of server functions in their IDs.
+    hideNames: !isServe,
+    serverImport: (specifier, name) => serverImport(file, specifier, name),
+    // A module of reactive logic can come from a package of components.
+    resolveModule: (specifier, importer) => {
+      const local = resolveFromDisk(specifier, importer);
+      const found =
+        local === undefined && isPackageSpecifier(specifier)
+          ? resolvePackageImport(specifier, importer)
+          : undefined;
+      return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
+    },
+  });
+
   // The entry, the parts and the render module of a file come from one compile.
   const compileFile = async (file: string): Promise<{ source: string; result: CompileResult }> => {
     const source = await readFile(file, 'utf8');
     let cached = compiled.get(file);
     if (cached?.source !== source) {
-      cached = {
-        source,
-        result: compile(source, {
-          filename: nameOf(file),
-          liveProps: liveProps.get(file),
-          path: file,
-          merge: options.merge ?? DEFAULT_MERGE,
-          a11y: options.a11y,
-          // A build does not show the names of server functions in their IDs.
-          hideNames: !isServe,
-          serverImport: (specifier, name) => serverImport(file, specifier, name),
-          // A module of reactive logic can come from a package of components.
-          resolveModule: (specifier, importer) => {
-            const local = resolveFromDisk(specifier, importer);
-            const found =
-              local === undefined && isPackageSpecifier(specifier)
-                ? resolvePackageImport(specifier, importer)
-                : undefined;
-            return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
-          },
-        }),
-      };
+      cached = { source, result: compile(source, compileOptions(file)) };
       compiled.set(file, cached);
       shapes.set(file, shapeOf(cached.result));
     }
     return cached;
+  };
+
+  /** The compiles whose imports were checked for the env file. */
+  const envChecked = new WeakSet<CompileResult>();
+  /**
+   * Compiles a component again with the server variables of the env file,
+   * when one of its imports resolves to it, by any specifier, such as an
+   * alias. The compile fails when code that runs in the browser reads one.
+   */
+  const checkEnvReads = async (
+    file: string,
+    { source, result }: { source: string; result: CompileResult },
+    resolve: (specifier: string, importer: string) => Promise<{ id: string } | null>,
+  ): Promise<void> => {
+    const env = envFile();
+    if (!env || envChecked.has(result)) {
+      return;
+    }
+    const specifiers = new Set<string>();
+    for (const declaration of result.plan.graph.model.declarations) {
+      if (declaration.imported) {
+        specifiers.add(declaration.imported.source);
+      }
+    }
+    const resolved = await Promise.all(
+      [...specifiers].map(async (specifier) => {
+        const found = await resolve(specifier, file);
+        return found?.id.split('?')[0] === env ? specifier : undefined;
+      }),
+    );
+    const imports = new Set(resolved.filter((specifier) => specifier !== undefined));
+    if (imports.size > 0) {
+      const server = serverEnvKeys() ?? [];
+      compile(source, {
+        ...compileOptions(file),
+        envImport: (specifier) => (imports.has(specifier) ? server : undefined),
+      });
+    }
+    envChecked.add(result);
   };
 
   const manifest = async (): Promise<string> => {
@@ -483,26 +597,41 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const fileImports = functionFiles.map(
       ([, file], index) => `import * as f${index} from ${JSON.stringify(file + query)};`,
     );
+    // The middleware of a file runs before each of its functions.
+    const guards: string[] = [];
     const fileSpreads = functionFiles.map(([id, file], index) => {
       // The IDs are written here, so a build can hash the names of the functions.
-      const names = serverExports(readFileSync(file, 'utf8'), file);
+      const source = readFileSync(file, 'utf8');
+      const names = serverExports(source, file);
+      const guarded = hasServerMiddleware(source, file);
       return names
-        .map(
-          (name) =>
-            `  ${JSON.stringify(functionId(id, name, !isServe))}: f${index}[${JSON.stringify(name)}],`,
-        )
+        .map((name) => {
+          const key = JSON.stringify(functionId(id, name, !isServe));
+          if (guarded) {
+            guards.push(`  ${key}: f${index}.middleware,`);
+          }
+          return `  ${key}: f${index}[${JSON.stringify(name)}],`;
+        })
         .join('\n');
     });
+    const env = envFile();
+    const entry = middlewareFile();
     return [
+      // The variables are checked when the server starts, before anything else loads.
+      ...(env ? [`import ${JSON.stringify(env)};`] : []),
       "import { handleRequest } from 'brumate/server';",
+      ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
       ...imports,
       ...fileImports,
       'export const functions = {',
       ...spreads,
       ...fileSpreads,
       '};',
-      'export function handle(request) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])} });`,
+      'export const fileMiddleware = {',
+      ...guards,
+      '};',
+      'export function handle(request, options) {',
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
       '}',
     ].join('\n');
   };
@@ -528,14 +657,20 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return routeFiles(paths);
   };
 
-  const routeTree = (): string =>
-    routeModule(
+  const routeTree = (): string => {
+    const env = envFile();
+    const code = routeModule(
       currentRoutes(),
       (file) => `${routesDirectory()}/${file}`,
       rpc,
       options.origins,
       isServe,
+      middlewareFile(),
+      buildId,
     );
+    // The variables are checked when the server starts, before any route loads.
+    return env ? `import ${JSON.stringify(env)};\n${code}` : code;
+  };
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
   const writeRouteTypes = (): void => {
@@ -621,8 +756,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     try {
       // Every server function of the app, as in production, so `event.refresh` can name a
       // function of another file, such as a component's call that refreshes a 'use server' file.
-      const { functions } = await server.ssrLoadModule(SERVER);
-      const { handleRequest } = await server.ssrLoadModule('brumate/server');
+      const { handle } = await server.ssrLoadModule(SERVER);
       // The same path as production, so server functions can read the request.
       const webRequest = new Request(new URL(request.url ?? '/', 'http://localhost'), {
         method: 'POST',
@@ -631,8 +765,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const answer: Response = await handleRequest(functions, webRequest, rpc, {
-        origins: options.origins,
+      const answer: Response = await handle(webRequest, {
+        address: request.socket.remoteAddress,
       });
       response.statusCode = answer.status;
       // Each cookie stays apart, as `forEach` would set only the last one.
@@ -772,13 +906,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const shared = packageConfig(config);
       if (!env.isSsrBuild) {
         const preload = config.build?.modulePreload;
+        // The files of earlier builds stay, and the build removes the ones that are too old itself.
+        const keep = options.skew?.keep ? { build: { emptyOutDir: false } } : {};
         if (preload === false) {
-          return shared;
+          return { ...shared, ...keep };
         }
         const resolve = typeof preload === 'object' ? preload.resolveDependencies : undefined;
         return {
           ...shared,
           build: {
+            ...keep.build,
             modulePreload: {
               // The loader imports the core itself when it imports a component's module, so
               // it needs no list of the chunks to preload with it, which it would ship.
@@ -899,6 +1036,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async writeBundle(_output, bundle) {
+      if (!isSsrBuild && buildId !== undefined) {
+        const written = Object.values(bundle).map((item) => item.fileName);
+        const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
+        if (removed.length > 0) {
+          this.info(`Removed the files of ${removed.length} older builds`);
+        }
+        return;
+      }
       if (!options.prerender || !isSsrBuild) {
         return;
       }
@@ -914,6 +1059,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async buildStart() {
+      if (!isServe) {
+        if (isSsrBuild) {
+          // The server build names the build of the client, which must come first.
+          const client = clientBuildDirectory(root, options.prerender);
+          buildId = process.env.BRUMATE_BUILD || readBuildId(client);
+          if (buildId === undefined) {
+            this.warn(
+              `No ${BUILD_FILE} in ${path.relative(root, client)}, so the server does not know its build ID. Build the client first, or set BRUMATE_BUILD, for skew protection`,
+            );
+          }
+        } else {
+          buildId =
+            process.env.BRUMATE_BUILD || `${Date.now().toString(36)}${hash(String(Math.random()))}`;
+        }
+      }
       coreModule = isServe
         ? undefined
         : (await this.resolve('brumate/client', path.join(root, 'index.html')))?.id;
@@ -924,6 +1084,28 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     async resolveId(id, importer, resolveOptions) {
       if (id === START || id === MANIFEST || id === SERVER || id === ROUTES || id === TESTING) {
         return `\0${id}`;
+      }
+      // In code that the browser loads, only components import the env file, because the
+      // compiler checks that their browser code reads no server variable. It cannot check scripts.
+      const env = resolveOptions?.ssr ? undefined : envFile();
+      const from = importer?.split('?')[0];
+      if (
+        env &&
+        importer &&
+        from &&
+        from !== env &&
+        isScriptFile(from) &&
+        !importer.startsWith('\0') &&
+        !importer.includes(SERVER_QUERY) &&
+        !importer.includes('/node_modules/')
+      ) {
+        const resolved = await this.resolve(id, importer, { ...resolveOptions, skipSelf: true });
+        if (resolved?.id.split('?')[0] === env) {
+          this.error(
+            `${relative(from)} imports ${relative(env)}, and the browser loads it. Only components can import the env file in code that the browser loads, because the compiler checks what they read. Read the variable in a component or a server function, and pass the value on.`,
+          );
+        }
+        return resolved ?? undefined;
       }
       // In a DOM test, the server version of a component, a file of server functions, or the
       // registry imports the server code of a file of server functions, not its stubs. Other
@@ -971,7 +1153,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
@@ -991,13 +1173,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return routeTree();
       }
       if (id === `\0${TESTING}`) {
+        const entry = middlewareFile();
         return [
           "import { answerCalls as answer, createMount } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
+          ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
-          `  return answer(async () => (await import(${JSON.stringify(SERVER)})).functions, { rpc: ${JSON.stringify(rpc)}, ...options });`,
+          `  const server = import(${JSON.stringify(SERVER)});`,
+          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
           '}',
         ].join('\n');
       }
@@ -1014,6 +1199,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       let output: Awaited<ReturnType<typeof compileFile>>;
       try {
         output = await compileFile(file);
+        await checkEnvReads(file, output, (specifier, importer) =>
+          this.resolve(specifier, importer),
+        );
       } catch (error) {
         // The overlay shows the file, the line and the lines around it.
         const { message, frame, loc } = errorPayload(error, root);
@@ -1066,6 +1254,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     async transform(code, id, transformOptions) {
       const [file] = id.split('?');
+      // The browser gets the env file without the server variables, and with the values of the
+      // public ones, read now.
+      if (file && !transformOptions?.ssr && file === envFile()) {
+        try {
+          return { code: clientEnvModule(code, file, process.env), map: null };
+        } catch (error) {
+          this.error((error as Error).message);
+        }
+      }
       // A file of server functions: the browser gets stubs that call the server instead.
       if (file && isScriptFile(file) && hasUseServer(code)) {
         try {
@@ -1119,6 +1316,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       });
       server.watcher.on('all', (event, file) => {
+        // The names of the server variables are part of what each component compiles with.
+        if (normalizePath(file) === envFile()) {
+          compiled.clear();
+        }
         // A stylesheet that a component imports compiles into that component.
         for (const importer of dependents.get(normalizePath(file)) ?? []) {
           compiled.delete(importer);
@@ -1221,7 +1422,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return updateClient(file, server, timestamp);
       }
       const normalized = normalizePath(file);
-      if (!file.endsWith('.brm') && !dependents.has(normalized)) {
+      if (
+        !file.endsWith('.brm') &&
+        !dependents.has(normalized) &&
+        normalized !== middlewareFile() &&
+        normalized !== envFile()
+      ) {
         return undefined;
       }
       const invalidated = new Set<EnvironmentModuleNode>();

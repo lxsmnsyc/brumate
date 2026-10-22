@@ -1,0 +1,38 @@
+<script module>
+  const opens = new Map<string, (value: { name: string }) => void>();
+
+  /** The calls made so far, in order, to show which loads started. */
+  export const calls: string[] = [];
+
+  export function release(key: string, name: string): void {
+    opens.get(key)!({ name });
+  }
+
+  function fetchUser(key: string): Promise<{ name: string }> {
+    calls.push(key);
+    return new Promise((resolve) => {
+      opens.set(key, resolve);
+    });
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+  // A run: both start before the page waits for either.
+  const first = await $memo(fetchUser('first'));
+  const second = await $memo(fetchUser('second'));
+  // Read with await in the #loading body, so the page waits for it, after the run.
+  const third = $memo(fetchUser('third'));
+  // Sync, so it is ready when the block renders.
+  const label = $memo(`${count} users`);
+</script>
+
+<p class="names">{first.name} {second.name}</p>
+#loading {
+  <p class="third">{(await third).name} {label}</p>
+  <button class="inner" onClick=(() => count++)>{count}</button>
+} #else {
+  <p class="fallback">Loading</p>
+}
