@@ -455,6 +455,48 @@ describe('resume', () => {
     await waitFor(() => expect(text('.link-box .own')).toBe('1'));
   });
 
+  // The `Select` spike of the headless UI components: a select made of generic parts that read
+  // its context. `it.fails` marks what brumate cannot do yet, so a fix turns it into a failure.
+  describe('Select spike', () => {
+    it.fails('gives parts that a caller passes as children the contexts of the component', async () => {
+      const server = await import(file('spikePage.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      // Children render in the caller's scope before the select provides its context.
+      expect(html).toMatch(/<span class="label" id="[^"]+"/);
+      expect(html).toContain('aria-expanded="false"');
+    });
+
+    it('gives a part on its own the default value of the context', async () => {
+      await resume('spikePage', {});
+      const alone = document.querySelector('.alone')!;
+      expect(alone.hasAttribute('aria-expanded')).toBe(false);
+      click(alone);
+      await waitFor(() => expect(text('.alone')).toBe('Alone 1'));
+    });
+
+    it.fails('renders a #template prop again when the state it was given changes', async () => {
+      const server = await import(file('spikeTemplate.brm.ts'));
+      // The list calls the template in markup that changes in the browser, which then needs the template.
+      await renderParts(server.default, {});
+    });
+
+    it('gives the element of an as component the handlers of the part and of the caller', async () => {
+      await resume('spikePage', {});
+      const link = document.querySelector('.spike-link')!;
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+      await waitFor(() => expect(text('.spike-link')).toBe('Linked 1'));
+    });
+
+    it.fails('merges a class of a spread with the class of the element', async () => {
+      const server = await import(file('spikePage.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      // SpikeLink writes class="spike-link", and the spread of SpikeButton writes class="trigger".
+      expect(html).toContain('<a class="spike-link trigger"');
+    });
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');

@@ -1,0 +1,25 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import SpikeButton from './SpikeButton.brm';
+  import SpikeLabel from './SpikeLabel.brm';
+  import SpikeLink from './SpikeLink.brm';
+  import SpikeListBox from './SpikeListBox.brm';
+  import SpikePopover from './SpikePopover.brm';
+  import SpikeSelect from './SpikeSelect.brm';
+  import SpikeValue from './SpikeValue.brm';
+
+  let alone = $signal(0);
+  let linked = $signal(0);
+</script>
+
+<SpikeSelect>
+  <SpikeLabel>Animal</SpikeLabel>
+  <SpikeButton><SpikeValue /></SpikeButton>
+  <SpikePopover>
+    <SpikeListBox items=(['Cat', 'Dog']) />
+  </SpikePopover>
+</SpikeSelect>
+
+<SpikeButton class="alone" onClick=(() => alone++)>Alone {alone}</SpikeButton>
+<SpikeButton as=SpikeLink href="/away" onClick=(prevent(() => linked++))>Linked {linked}</SpikeButton>
