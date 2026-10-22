@@ -125,6 +125,11 @@ describe('route files', () => {
     expect(code).toContain('import * as m1 from "/r/todos/[id].brm";');
     expect(code).toContain('page: () => Promise.resolve(m0)');
     expect(code).toContain('dynamic: { name: "id", node: { page: () => Promise.resolve(m1) } }');
+    expect(code).not.toContain('hints');
+    const hinted = routeModule(routeFiles(['index.brm']), (file) => file, '/_b', [], false, [
+      '/assets/client.js',
+    ]);
+    expect(hinted).toContain(', hints: ["/assets/client.js"], ...options');
   });
 
   it('rejects two dynamic segments in one folder', () => {
@@ -189,6 +194,37 @@ describe('rendering', () => {
   it('starts IDs above the base that the client sends', async () => {
     const html = await raw('/todos/3', 200, { 'x-brumate-base': '40' });
     expect(html).toContain('<!--R40:sidebar:41:');
+  });
+
+  it('hints the modules that every page loads, before the page renders', async () => {
+    const hints = ['/assets/client.js', '/assets/core.js?v=1&x="'];
+    const seen: string[][] = [];
+    const response = (await handleRoute(tree, new Request('http://localhost/todos/3'), {
+      hints,
+      earlyHints: (links) => seen.push(links),
+    }))!;
+    const links = [
+      '</assets/client.js>; rel=modulepreload',
+      '</assets/core.js?v=1&x=">; rel=modulepreload',
+    ];
+    expect(seen).toEqual([links]);
+    expect(response.headers.get('link')).toBe(links.join(', '));
+    const html = await response.text();
+    expect(html).toContain(
+      '<link rel="modulepreload" href="/assets/client.js"><link rel="modulepreload" href="/assets/core.js?v=1&amp;x=&quot;">',
+    );
+    expect(html.indexOf('modulepreload')).toBeLessThan(html.indexOf('</head>'));
+
+    // Client navigation and the request for a #defer body have the modules already.
+    seen.length = 0;
+    const navigation = (await handleRoute(
+      tree,
+      new Request('http://localhost/todos/3', { headers: { 'x-brumate-base': '40' } }),
+      { hints, earlyHints: (value) => seen.push(value) },
+    ))!;
+    expect(navigation.headers.get('link')).toBeNull();
+    expect(await navigation.text()).not.toContain('modulepreload');
+    expect(seen).toEqual([]);
   });
 
   it('returns undefined when no route matches', async () => {

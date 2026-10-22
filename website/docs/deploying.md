@@ -123,7 +123,10 @@ createServer(async (incoming, outgoing) => {
   }
   // Pages, streamed.
   send(
-    await server.route(request, { scripts: `<script type="module" async src="${entry}"></script>` }),
+    await server.route(request, {
+      scripts: `<script type="module" async src="${entry}"></script>`,
+      earlyHints: (link) => outgoing.writeEarlyHints({ link }),
+    }),
     outgoing,
   );
 }).listen(3000);
@@ -135,6 +138,16 @@ createServer(async (incoming, outgoing) => {
 - `send` writes the headers with `toNodeHeaders` from `brumate/server`, which keeps each `set-cookie` apart. `Object.fromEntries(answer.headers)` would join them, and the browser would keep only one cookie.
 - Load the client entry with `async`, so it starts while `#loading` content is still streaming.
 - Files under `/assets/` have hashes in their names, so they can be cached for a long time.
+
+### Early hints
+
+The client build writes the URLs of the loader and the core, which every page loads, to `dist/client/.brumate/hints.json`. The routes of the server build read it, so a page gets them three ways:
+
+- A `<link rel="modulepreload">` for each at the start of its head, so the browser loads the core with the page instead of on the first event.
+- `Link` headers with the same URLs. Hosts such as Cloudflare turn them into `103 Early Hints` for the next visits.
+- `earlyHints`, a callback that receives the `Link` values before the page renders. Node's `writeEarlyHints` sends them as a `103` response at once, so the browser loads the modules while the server renders.
+
+Client navigation and requests for `#defer` bodies get none, since the page has the modules already. Development has none. With a client build in another folder, set it with `prerender: { client }` in the plugin options, or pass `hints` to `route` yourself.
 
 The server runtime uses only web APIs, such as `Request`, `Response` and `crypto.subtle`, so it runs on Node, Deno, Bun and edge hosts such as Cloudflare Workers.
 

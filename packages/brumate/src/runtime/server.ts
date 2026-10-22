@@ -1886,6 +1886,19 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
   /** The server functions, by ID, for forms that post to a page. `virtual:brumate/routes` passes them. */
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   functions?: Record<string, (...args: any[]) => unknown>;
+  /**
+   * The URLs of the modules that every page loads early: the loader, and the
+   * core that the first event loads. A page gets them as `Link` headers and
+   * as `<link rel="modulepreload">` in its head. `virtual:brumate/routes`
+   * passes them from the client build.
+   */
+  hints?: string[];
+  /**
+   * Receives the `Link` values of `hints` before the page renders, so a
+   * server can send them as `103 Early Hints`, such as with Node's
+   * `response.writeEarlyHints({ link })`.
+   */
+  earlyHints?: (links: string[]) => void;
 }
 
 /**
@@ -1926,6 +1939,15 @@ async function renderPage(
   if (defer) {
     return renderDeferred(view, props, request, options, defer, base);
   }
+  // Client navigation has the loader and the core already.
+  const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
+  const links = hints.map((url) => `<${url}>; rel=modulepreload`);
+  if (links.length > 0) {
+    options.earlyHints?.(links);
+  }
+  const preload = hints
+    .map((url) => `<link rel="modulepreload" href="${escapeAttribute(url)}">`)
+    .join('');
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -1941,7 +1963,12 @@ async function renderPage(
   headers.set('content-type', 'text/html; charset=utf-8');
   // The same URL answers the request for a `#defer` body with that body only.
   headers.append('vary', 'x-brumate-defer');
-  const body = streamParts(parts, options).pipeThrough(new TextEncoderStream());
+  for (const link of links) {
+    headers.append('link', link);
+  }
+  const body = streamParts(parts, { ...options, head: preload + (options.head ?? '') }).pipeThrough(
+    new TextEncoderStream(),
+  );
   return new Response(body, { status: extra.status ?? parts.status, headers });
 }
 

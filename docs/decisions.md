@@ -92,6 +92,7 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- Early hints name the loader and the core, with what they import, and no handler parts. The client build writes them to `.brumate/hints.json`, and the routes of the server build read the file, since the two builds can run in separate processes. A page gets them as `<link rel="modulepreload">`, as `Link` headers that hosts turn into `103` responses, and through `earlyHints` for a server that sends a `103` itself before it renders. Client navigation and `#defer` requests get none.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

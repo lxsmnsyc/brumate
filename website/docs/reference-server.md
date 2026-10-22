@@ -100,7 +100,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, and `origins`.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, `hints`, the URLs of the modules that every page loads, and `earlyHints`, a callback that receives them as `Link` values before the page renders. See [Early hints](./deploying.md#early-hints).
 
 ### `RenderResult`
 

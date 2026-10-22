@@ -99,6 +99,8 @@ export function routeModule(
   origins: string[] = [],
   /** In development, errors reach the dev server instead of `_error.brm`. */
   dev = false,
+  /** The modules that every page loads early, from the client build. */
+  hints: string[] = [],
 ): string {
   // Static imports, because the server registry of server functions imports every file anyway.
   const imports: string[] = [];
@@ -148,7 +150,7 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions${dev ? ', dev: true' : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions${dev ? ', dev: true' : ''}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

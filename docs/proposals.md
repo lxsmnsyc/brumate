@@ -40,7 +40,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
 | [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
-| [Early hints](#early-hints)                                           | Runtime | Medium | Small  |
 | [Testing routes](#testing-routes)                                     | Tooling | High   | Small  |
 | [Budgets for one event](#budgets-for-one-event)                       | Tooling | Medium | Small  |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
@@ -506,18 +505,6 @@ The benchmarks measure renders and loads, but an app cannot see them.
 - The traces are off unless the option is set, and cost nothing then.
 
 Cost: about 1 week.
-
-### Early hints
-
-A first click after `load` waits for the core and the part of its handler. The server knows the loader and the core before it renders the page.
-
-- The server sends `103 Early Hints` with `modulepreload` links for the loader and the core, or the same links at the start of the HTML where a host does not pass early hints on.
-- With the build report, it can also hint the parts of the handlers that are most likely to run first, such as those of the first viewport.
-- It cuts a round trip from the cold click of the benchmark: 243 ms for brumate against 55 ms for Marko 6, which ships its code in the page.
-
-Cost: a few days.
-
-## Routing
 
 ### Routing in the browser
 
@@ -1281,6 +1268,6 @@ Each step lists what it holds and why it comes there. A step can start before th
 12. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 13. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 14. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+15. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, timing helpers and persisted signals. Early hints are done.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.
