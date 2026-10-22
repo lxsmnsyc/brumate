@@ -1423,6 +1423,8 @@ export interface RenderOptions {
    * address of the socket, for `clientAddress` and rate limits.
    */
   address?: string;
+  /** True while the build prerenders the page. Rate limits do not count then. */
+  prerender?: boolean;
   /**
    * Renders only the body of this `#defer` block, for the request that the
    * browser sends when the block's trigger fires. Pass the `base` of the
@@ -1466,6 +1468,7 @@ export async function render<P>(
           kind: options.defer ? 'defer' : 'page',
           waitUntil: options.waitUntil,
           address: options.address,
+          prerender: options.prerender,
         })
       : undefined);
   ctx.event = event;
@@ -2012,6 +2015,8 @@ export interface RequestOptions {
   waitUntil?: (promise: Promise<unknown>) => void;
   /** The address of the client as the server saw it, for `clientAddress` and rate limits. */
   address?: string;
+  /** True while the build prerenders the pages. Rate limits do not count then. */
+  prerender?: boolean;
 }
 
 /**
@@ -2079,6 +2084,7 @@ export async function handleRequest(
     kind: 'call',
     waitUntil: options.waitUntil,
     address: options.address,
+    prerender: options.prerender,
   });
   // A call with files sends its arguments as form data, with this header.
   const form = isFormPost(request) && !request.headers.has('x-brumate-args');
@@ -2442,7 +2448,10 @@ export async function handleRoute(
       kind: await requestKind(request, match),
       waitUntil: options.waitUntil,
       address: options.address,
+      prerender: options.prerender,
     });
+  // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
+  event.route = match?.route;
   const answer = await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
 }

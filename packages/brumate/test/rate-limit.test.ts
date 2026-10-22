@@ -19,16 +19,40 @@ let restore: () => number;
 beforeEach(() => {
   now = 1_000_000;
   restore = setRateLimitClock(() => now);
-  configureRateLimit({ proxies: [], enabled: true, store: undefined });
+  configureRateLimit({ proxies: [], enabled: undefined, store: undefined });
 });
 
 afterEach(() => {
   setRateLimitClock(restore);
   configureRateLimit({ proxies: [], enabled: undefined, store: undefined });
+  vi.unstubAllEnvs();
 });
 
 function event(address?: string, headers: Record<string, string> = {}): RequestEvent {
   return new RequestEvent(new Request('http://localhost/sign-in', { headers }), { address });
+}
+
+function call(
+  functions: Record<string, (...args: never[]) => unknown>,
+  id: string,
+  args: unknown[],
+  options: { address?: string; headers?: Record<string, string> } = {},
+): Promise<Response | undefined> {
+  return handleRequest(
+    functions as Record<string, (...args: unknown[]) => unknown>,
+    new Request(`http://localhost/_brumate/${id}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...options.headers },
+      body: JSON.stringify(toJSON(args)),
+    }),
+    '/_brumate',
+    { address: options.address },
+  );
+}
+
+/** An endpoint that answers GET. */
+function endpoint(): Promise<{ GET: () => Response }> {
+  return Promise.resolve({ GET: () => new Response('hi') });
 }
 
 describe('windows', () => {
@@ -52,10 +76,37 @@ describe('rateLimit', () => {
     const error = await rateLimit(limit).catch((failure: unknown) => failure);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).status).toBe(429);
-    // The window ends in 10 seconds, and then the three calls weigh out over the next one.
-    expect((error as RateLimitError).retryAfter).toBe(14);
-    expect(limit.event.headers.get('retry-after')).toBe('14');
-    expect((error as Error).message).toBe('Too many requests. Try again in 14 seconds');
+    // The window ends in 10 seconds, and then the four calls weigh out over half of the next one.
+    expect((error as RateLimitError).retryAfter).toBe(15);
+    expect(limit.event.headers.get('retry-after')).toBe('15');
+    expect((error as Error).message).toBe('Too many requests. Try again in 15 seconds');
+  });
+
+  it('admits exactly max of the calls that arrive at the same time', async () => {
+    // A store that answers later, as one over the network does.
+    const memory = createMemoryStore(() => now);
+    const store: RateLimitStore = {
+      increment: async (key, ttl) => {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 5));
+        return memory.increment(key, ttl);
+      },
+      get: async (key) => {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 5));
+        return memory.get(key);
+      },
+    };
+    const caller = event('1.2.3.4');
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, () => rateLimit({ max: 5, window: '1m', event: caller, store })),
+    );
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(5);
+    // The same with the memory store of the configuration.
+    const others = await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        rateLimit({ max: 5, window: '1m', event: event('5.6.7.8') }),
+      ),
+    );
+    expect(others.filter((result) => result.status === 'fulfilled')).toHaveLength(5);
   });
 
   it('slides the window, so a burst at the edge of a window does not get through', async () => {
@@ -70,9 +121,9 @@ describe('rateLimit', () => {
     // Early in the next window, the last one still weighs nearly in full.
     now = 1_011_000;
     await expect(rateLimit({ ...limit, event: caller })).rejects.toThrow(RateLimitError);
-    // Half way through, half of the last window counts: two more calls fit, a third does not.
+    // Half way through, half of the last window counts, and the refused call counts too: one
+    // more call fits, and the next does not.
     now = 1_015_000;
-    await rateLimit({ ...limit, event: caller });
     await rateLimit({ ...limit, event: caller });
     await expect(rateLimit({ ...limit, event: caller })).rejects.toThrow(RateLimitError);
     // A window later, the count is gone.
@@ -90,7 +141,7 @@ describe('rateLimit', () => {
     await rateLimit({ ...limit, event: other });
   });
 
-  it('counts by a key of the app, such as the user', async () => {
+  it('counts by a key of the app, such as the user, and by the address without one', async () => {
     const limit = {
       max: 1,
       window: '1m' as const,
@@ -101,29 +152,60 @@ describe('rateLimit', () => {
       rateLimit({ ...limit, event: event('5.6.7.8', { 'x-user': 'ada' }) }),
     ).rejects.toThrow(RateLimitError);
     await rateLimit({ ...limit, event: event('5.6.7.8', { 'x-user': 'grace' }) });
+    // Without a user, the address counts.
+    await rateLimit({ ...limit, event: event('5.6.7.8') });
+    await expect(rateLimit({ ...limit, event: event('5.6.7.8') })).rejects.toThrow(RateLimitError);
   });
 
-  it('warns once and counts every caller without an address together', async () => {
+  it('throws in production without a key or an address, rather than counting callers together', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const caller = event();
+    caller.call = { id: 'auth#signIn', args: [] };
+    await expect(rateLimit({ max: 1, window: '1m', event: caller })).rejects.toThrow(
+      'rateLimit: the request to "auth#signIn" has no key, because the server did not pass the address of the client. Pass `address` to the handler of the server, or set `key` on the limit.',
+    );
+    // A key of the app needs no address.
+    await rateLimit({ max: 1, window: '1m', event: caller, key: () => 'ada' });
+  });
+
+  it('warns once in development without a key or an address, and does not count', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const limit = { max: 1, window: '1m' } as const;
       await rateLimit({ ...limit, event: event() });
-      await expect(rateLimit({ ...limit, event: event() })).rejects.toThrow(RateLimitError);
+      await rateLimit({ ...limit, event: event() });
+      await rateLimit({ ...limit, event: event() });
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0]![0]).toContain('the address of the client is unknown');
+      expect(warn.mock.calls[0]![0]).toContain('has no key');
     } finally {
       warn.mockRestore();
     }
   });
 
-  it('counts nothing when it is off, as it is outside production', async () => {
+  it('counts by default, and nothing when it is off', async () => {
     const limit = { max: 1, window: '1m', event: event('1.2.3.4') } as const;
     await rateLimit({ ...limit, enabled: false });
     await rateLimit({ ...limit, enabled: false });
-    configureRateLimit({ enabled: undefined });
-    // NODE_ENV is `test` here.
+    configureRateLimit({ enabled: false });
     await rateLimit(limit);
-    await expect(rateLimit(limit)).resolves.toBeUndefined();
+    await rateLimit(limit);
+    configureRateLimit({ enabled: undefined });
+    // On by default, whatever NODE_ENV says, or when a runtime has none.
+    vi.stubEnv('NODE_ENV', undefined);
+    await rateLimit(limit);
+    await expect(rateLimit(limit)).rejects.toThrow(RateLimitError);
+  });
+
+  it('does not count while the build prerenders', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const prerendered = new RequestEvent(new Request('http://localhost/'), { prerender: true });
+    for (let i = 0; i < 5; i++) {
+      // oxlint-disable-next-line no-await-in-loop -- Pages render one by one.
+      await expect(
+        rateLimit({ max: 1, window: '1m', event: prerendered }),
+      ).resolves.toBeUndefined();
+    }
   });
 
   it('keeps its counts in the store of the options, or of the configuration', async () => {
@@ -138,7 +220,7 @@ describe('rateLimit', () => {
     await rateLimit({ max: 1, window: '1m', event: event('1.2.3.4'), store });
     configureRateLimit({ store });
     await rateLimit({ max: 1, window: '1m', event: event('1.2.3.4') });
-    expect(calls).toEqual(['1.2.3.4 /sign-in 16', '1.2.3.4 /sign-in 16']);
+    expect(calls).toEqual(['1.2.3.4 (no route) 16', '1.2.3.4 (no route) 16']);
   });
 
   it('has a strict preset for sign-ins', () => {
@@ -164,24 +246,41 @@ describe('clientAddress', () => {
     expect(clientAddress(event('::ffff:1.2.3.4'))).toBe('1.2.3.4');
   });
 
-  it('is unknown without one, whatever the headers say', () => {
+  it('is unknown without one, whatever the headers say, even with proxies', () => {
     expect(clientAddress(event(undefined, { 'x-forwarded-for': '9.9.9.9' }))).toBeUndefined();
+    expect(
+      clientAddress(event(undefined, { 'x-forwarded-for': '9.9.9.9' }), ['10.0.0.0/8']),
+    ).toBeUndefined();
   });
 
   it('reads X-Forwarded-For from the right, past the trusted proxies', () => {
     const proxies = ['10.0.0.0/8', '192.168.1.1'];
     const headers = { 'x-forwarded-for': '6.6.6.6, 9.9.9.9, 10.1.2.3, 192.168.1.1' };
     expect(clientAddress(event('10.0.0.1', headers), proxies)).toBe('9.9.9.9');
-    // A server that is not a proxy itself is the address, even with the header.
+    // A peer that is not a proxy is the address, and the header is ignored.
     expect(clientAddress(event('5.5.5.5', headers), proxies)).toBe('5.5.5.5');
-    // Every hop a proxy: the address of the server, which is one too.
+    // Every hop a proxy: the first of them.
     expect(clientAddress(event('10.0.0.1', { 'x-forwarded-for': '10.9.9.9' }), proxies)).toBe(
-      '10.0.0.1',
+      '10.9.9.9',
     );
-    // Without a known address, the header is still trusted when proxies are named.
-    expect(clientAddress(event(undefined, headers), proxies)).toBe('9.9.9.9');
+    // A proxy that sent no header is the client itself.
+    expect(clientAddress(event('10.0.0.1'), proxies)).toBe('10.0.0.1');
+    // A hop that is not an address stops the walk, before what the client wrote.
+    expect(
+      clientAddress(event('10.0.0.1', { 'x-forwarded-for': '6.6.6.6, unknown' }), proxies),
+    ).toBeUndefined();
     configureRateLimit({ proxies });
     expect(clientAddress(event('10.0.0.1', headers))).toBe('9.9.9.9');
+  });
+
+  it('refuses a malformed range, rather than trusting every address', () => {
+    for (const range of ['10.0.0.0/', '10.0.0.0/abc', '10.0.0.0/33', 'fd00::/129', '10.0.0/8']) {
+      expect(() => configureRateLimit({ proxies: [range] })).toThrow(
+        `The proxy range "${range}" is not an address`,
+      );
+      expect(() => clientAddress(event('10.0.0.1'), [range])).toThrow(TypeError);
+    }
+    expect(() => configureRateLimit({ proxies: ['10.0.0.0/0', '::1', 'fd00::/8'] })).not.toThrow();
   });
 
   it('counts an IPv6 address by its /64, and matches IPv6 ranges', () => {
@@ -204,23 +303,34 @@ describe('in requests', () => {
         return 'ok';
       },
     };
-    const call = (): Promise<Response | undefined> =>
-      handleRequest(
-        functions,
-        new Request('http://localhost/_brumate/signIn', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(toJSON([])),
-        }),
-        '/_brumate',
-        { address: '1.2.3.4' },
-      );
-    expect((await call())?.status).toBe(200);
-    const refused = await call();
+    expect((await call(functions, 'signIn', [], { address: '1.2.3.4' }))?.status).toBe(200);
+    const refused = await call(functions, 'signIn', [], { address: '1.2.3.4' });
     expect(refused?.status).toBe(429);
-    // The rest of this window, and the whole next one, which the call weighs on in full at first.
+    // The rest of this window, and the whole next one, which the calls weigh on in full at first.
     expect(refused?.headers.get('retry-after')).toBe('50');
     expect(await refused!.json()).toEqual({ error: 'Too many requests. Try again in 50 seconds' });
+  });
+
+  it('counts by an argument of the call, such as the email of a sign-in', async () => {
+    const functions = {
+      signIn: async (email: string, _password: string) => {
+        await rateLimit({ max: 1, window: '1m', key: () => email.toLowerCase() });
+        return 'ok';
+      },
+      // The arguments reach the key too, as they do in middleware.
+      reset: async () => {
+        await rateLimit({ max: 1, window: '1m', key: (_event, [email]) => String(email) });
+        return 'ok';
+      },
+    };
+    expect((await call(functions, 'signIn', ['ada@example.com', 'a']))?.status).toBe(200);
+    // Another address guesses at the same account.
+    expect(
+      (await call(functions, 'signIn', ['Ada@example.com', 'b'], { address: '5.6.7.8' }))?.status,
+    ).toBe(429);
+    expect((await call(functions, 'signIn', ['grace@example.com', 'a']))?.status).toBe(200);
+    expect((await call(functions, 'reset', ['ada@example.com']))?.status).toBe(200);
+    expect((await call(functions, 'reset', ['ada@example.com']))?.status).toBe(429);
   });
 
   it('limits every request under a folder, or of the entry, as middleware', async () => {
@@ -249,6 +359,66 @@ describe('in requests', () => {
     expect((await other())?.status).toBe(429);
   });
 
+  it('counts the paths of one route together, by its pattern', async () => {
+    const tree: RouteNode = {
+      middleware: () =>
+        Promise.resolve({ middleware: rateLimit.middleware({ max: 1, window: '1m' }) }),
+      static: {
+        api: {
+          dynamic: { name: 'id', node: { endpoint } },
+          static: { list: { endpoint } },
+        },
+      },
+    };
+    const get = (path: string): Promise<Response | undefined> =>
+      handleRoute(tree, new Request(`http://localhost${path}`), { address: '1.2.3.4' });
+    expect((await get('/api/1'))?.status).toBe(200);
+    expect((await get('/api/2'))?.status).toBe(429);
+    // Another route counts on its own.
+    expect((await get('/api/list'))?.status).toBe(200);
+    // Paths that no route matches share one count.
+    expect((await get('/nothing/1'))?.status).toBe(404);
+    expect((await get('/nothing/2'))?.status).toBe(429);
+  });
+
+  it('exposes the pattern of the route on the event', async () => {
+    let route: string | undefined;
+    const tree: RouteNode = {
+      static: {
+        todos: {
+          dynamic: {
+            name: 'id',
+            node: {
+              endpoint: () =>
+                Promise.resolve({
+                  GET: () => {
+                    route = getEvent().route;
+                    return new Response('hi');
+                  },
+                }),
+            },
+          },
+        },
+      },
+    };
+    await handleRoute(tree, new Request('http://localhost/todos/3'));
+    expect(route).toBe('/todos/[id]');
+  });
+
+  it('does not count while the build prerenders, without an address', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const tree: RouteNode = {
+      middleware: () =>
+        Promise.resolve({ middleware: rateLimit.middleware({ max: 1, window: '1m' }) }),
+      endpoint: () => Promise.resolve({ GET: () => new Response('hi') }),
+    };
+    for (let i = 0; i < 3; i++) {
+      // oxlint-disable-next-line no-await-in-loop -- Pages render one by one.
+      const answer = await handleRoute(tree, new Request('http://localhost/'), { prerender: true });
+      expect(answer?.status).toBe(200);
+    }
+  });
+
   it('reads the event itself, so the function needs no variable', async () => {
     const functions = {
       search: async () => {
@@ -260,17 +430,10 @@ describe('in requests', () => {
         return 'found';
       },
     };
-    const call = (user: string): Promise<Response | undefined> =>
-      handleRequest(
-        functions,
-        new Request('http://localhost/_brumate/search', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-user': user },
-          body: JSON.stringify(toJSON([])),
-        }),
-      );
-    expect((await call('ada'))?.status).toBe(200);
-    expect((await call('ada'))?.status).toBe(429);
-    expect((await call('grace'))?.status).toBe(200);
+    const search = (user: string): Promise<Response | undefined> =>
+      call(functions, 'search', [], { headers: { 'x-user': user } });
+    expect((await search('ada'))?.status).toBe(200);
+    expect((await search('ada'))?.status).toBe(429);
+    expect((await search('grace'))?.status).toBe(200);
   });
 });

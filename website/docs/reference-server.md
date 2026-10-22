@@ -26,6 +26,8 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `address`                               | The address of the client as the server saw it, when the server passed it.                                      |
 | `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                         |
 | `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                  |
+| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.       |
+| `prerender`                             | True while the build prerenders the page.                                                                       |
 | `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                         |
 | `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.        |
 | `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.   |
@@ -47,8 +49,8 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `rateLimit({ max, window, key? })`                | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./server-functions.md#rate-limiting). |
 | `rateLimit.middleware(options)`                   | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                                       |
 | `rateLimit.strict`                                | 3 calls in 10 seconds, for functions that guess at secrets.                                                                             |
-| `configureRateLimit({ store, proxies, enabled })` | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count.                                    |
-| `clientAddress(event)`                            | The address of the client, from the server or from `X-Forwarded-For` behind the trusted proxies.                                        |
+| `configureRateLimit({ store, proxies, enabled })` | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.          |
+| `clientAddress(event)`                            | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                              |
 | `RateLimitError`                                  | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                                  |
 | `defineMiddleware(middleware)`                    | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                                     |
 | `Locals`                                          | The type of `event.locals`. An app adds fields to it with declaration merging.                                                          |
@@ -116,7 +118,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, and `address`, the address of the client. `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil` and `address` in its options.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, `middleware`, the entry middleware, `waitUntil`, which `event.waitUntil` passes its promises to, `address`, the address of the client, and `prerender`, which the build sets so rate limits do not count. `handleRequest` takes `origins`, `middleware`, `fileMiddleware`, `waitUntil`, `address` and `prerender` in its options.
 
 ### `RenderResult`
 
