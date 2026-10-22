@@ -76,11 +76,15 @@ brumate client report (gzip)
   Components, largest first
     src/App.brm: 1.3 kB
     src/routes/guestbook.brm: 847 B
+  What the first run of a handler loads, largest first
+    src/App.brm event form.submit (33:24): 1.3 kB
+    src/Counter.brm event button.click (9:18): 246 B
 ```
 
 - Before its first event, every page loads the loader only.
 - The first event loads the core.
 - A route can load the code of its page, its layouts and the components that they import. Each event loads only its own part, so a page often loads much less than this number.
+- A handler loads the entry of its component, its own part, the updates that it runs, and what they import. A small component is one module, so each of its handlers loads all of it. The report lists the ten largest handlers.
 - Navigation and server function calls load their own small modules, which the report does not count.
 
 ## Budgets
@@ -88,9 +92,15 @@ brumate client report (gzip)
 `budget` fails the client build when a size goes over it, in bytes after gzip:
 
 ```ts
-brumate({ budget: { loader: 3072, route: 20480 } });
+brumate({ budget: { loader: 3072, route: 20480, event: 2048, component: 4096 } });
 ```
 
 - `loader` limits what every page loads before its first event.
 - `route` limits the most that any route can load after its first event.
-- The error lists every size over the budget.
+- `event` limits what the first run of one handler or `$client` callback loads, besides the loader and the core. A route can stay under its budget while one handler grows past what a first click should load.
+- `component` limits the client code of one component.
+- The error lists every size over the budget. For a handler, it names the component, the handler with its place in the file, and the largest modules that it imports:
+
+```
+The handler event button.click (12:5) of src/Chart.brm loads 9.4 kB, over the budget of 2.0 kB. Its largest imports are node_modules/chart.js/dist/chart.js, src/format.ts.
+```
