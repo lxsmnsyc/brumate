@@ -624,6 +624,37 @@ describe('resume', () => {
     document.head.innerHTML = '';
   });
 
+  it('sets the title from the last <title> in markup, also one that a block renders', async () => {
+    vi.resetModules();
+    const server = await import(file('markupTitle.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const { html, state, head } = await runtime.render(server.default, {});
+    // The server puts the title in the head too. A <title> of an <svg> stays.
+    expect(head).toBe('<title>0 left | Todos</title>');
+    expect(html).toMatch(/<title b-b="[\d:]+" b-t>0 left \| Todos<\/title>/);
+    expect(html).toContain('<svg><title>Icon</title></svg>');
+    document.head.innerHTML = head;
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.title).toBe('1 left | Todos'));
+    // The last one in the page wins, so the title of the #if body does.
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('Unsaved changes & more | Todos'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('title[b-t]')).toBe('2 left | Todos'));
+    expect(document.title).toBe('Unsaved changes & more | Todos');
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('2 left | Todos'));
+    expect(text('svg title')).toBe('Icon');
+    // The markup keeps its own text: the title of the page is the one in the head.
+    expect(document.head.querySelectorAll('title')).toHaveLength(1);
+    document.head.innerHTML = '';
+  });
+
   it('shares functions between parts', async () => {
     await resume('shared', {});
     click(document.querySelector('.one')!);

@@ -1,13 +1,11 @@
 <script>
   import { href } from 'brumate/routes';
   import { fieldErrors, getEvent, parseForm, redirect } from 'brumate/server';
-  import { $action, $isPending, $title } from 'brumate/signals';
+  import { $action, $isPending } from 'brumate/signals';
   import { LABELS } from '../../../labels.ts';
   import { NewIssue } from '../../../schema.ts';
   import { session } from '../../../session.ts';
   import { addIssue } from '../../../store.ts';
-
-  $title('New issue');
 
   async function create(form: FormData) {
     'use server';
@@ -28,6 +26,8 @@
 
   const result = $action(create);
 </script>
+
+<title>New issue</title>
 
 <h1>New issue</h1>
 <form action=create>

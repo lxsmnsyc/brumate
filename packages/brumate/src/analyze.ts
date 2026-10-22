@@ -473,6 +473,11 @@ class Analyzer {
             if (call.arguments.length !== 1) {
               this.report('error', '$title takes one argument, the title', call);
             } else {
+              this.report(
+                'warning',
+                '$title is replaced by <title> in markup, such as <title>{`${count} left`}</title>, and goes in a later version',
+                call,
+              );
               this.createSite('title', scope, call.arguments[0]!, 'title');
             }
           } else if (name === '$setContext') {

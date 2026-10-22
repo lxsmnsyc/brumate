@@ -41,7 +41,7 @@
 - `getEvent()` works before the first `await` of a server function, middleware or endpoint, and anywhere in a component while it renders. The runtime sets the event while it starts a call and clears it right after, so it never needs `AsyncLocalStorage`, and never returns the event of another request. Code keeps the event in a variable and passes it to helpers.
 - Errors in the page state keep their name and message only.
 - Contexts are named by a key that is the same on the server and the client. The page state links each component to the scope that rendered it, records provided values and the slots of readers, so the client finds providers without running code.
-- The head is `$title` and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A `$title` or `#head` in a `#loading` body that resolves after the first render streams with the body. A script moves it into the head and sets the title.
+- The head is the title and `#head` blocks. `renderToStream` puts it before `</head>`, or passes it to `start`, and `render` returns it. A title or `#head` in a `#loading` body that resolves after the first render streams with the body. A script moves it into the head and sets the title.
 - seroval is the serializer. The page state is a stream of seroval cross-reference code records, one inline script each, so promises do not hold up the state. Server function calls use seroval JSON.
   - Each record hands a function of its values to `self.$brm`. The core calls it when it starts, so a page that never gets an event never builds its state.
   - The browser runs the scripts, which is not `eval`. Under a Content Security Policy they need the `nonce` of the render.
@@ -92,6 +92,7 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- A `<title>` outside `<head>` and `<svg>` sets the title of the page. The server writes it into the head, and leaves the element in place with `b-t`, hidden as every `<title>` is. The core sets `document.title` from the last `title[b-t]` in the page, whenever a block adds or removes one or its text changes, so blocks decide the title without code. When none is left, the title stays. The core watches the page only once it has such a title. `$title` stays with a warning until a later version.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

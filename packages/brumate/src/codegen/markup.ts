@@ -103,6 +103,26 @@ const CLIENT_HELPERS: Record<string, string> = {
   title: 'title',
 };
 
+/** The text that markup text shows, with its character references read. */
+function decodeText(html: string): string {
+  const named: Record<string, string> = {
+    amp: '&',
+    lt: '<',
+    gt: '>',
+    quot: '"',
+    apos: "'",
+    nbsp: '\u00a0',
+  };
+  return html.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
+    if (name[0] === '#') {
+      const code =
+        name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1));
+      return String.fromCodePoint(code);
+    }
+    return named[name.toLowerCase()] ?? match;
+  });
+}
+
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
 function literalText(node: oxc.Node): string | undefined {
   if (node.type === 'Literal') {
@@ -141,6 +161,8 @@ export class Emitter {
   private depth = 0;
   /** How many of this component's elements contain the current node. */
   private nesting = 0;
+  /** How many `<head>` and `<svg>` elements contain the current node, where a `<title>` stays. */
+  private titleHosts = 0;
   private counter = 0;
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
@@ -758,6 +780,12 @@ export class Emitter {
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
+    // A `<title>` outside `<head>` and `<svg>` sets the title of the page. The core sets it from
+    // the last one in the page, so a block that renders one decides the title.
+    const pageTitle = node.tag === 'title' && this.titleHosts === 0;
+    if (pageTitle && this.options.mode === 'server') {
+      this.line(`${this.helper('title')}(${this.titleText(node)});`);
+    }
     this.html(`<${node.tag}`);
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
@@ -827,6 +855,9 @@ export class Emitter {
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
     }
+    if (pageTitle) {
+      this.html(' b-t');
+    }
     if (events.length > 0) {
       this.html(` b-on="${events.join(' ')}"`);
       if (prefetch) {
@@ -837,10 +868,23 @@ export class Emitter {
     if (VOID_ELEMENTS.has(node.tag)) {
       return;
     }
+    const host = node.tag === 'head' || node.tag === 'svg';
     this.nesting++;
+    this.titleHosts += host ? 1 : 0;
     this.emitNodes(node.children, scope);
+    this.titleHosts -= host ? 1 : 0;
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /** The text of a `<title>`: its one insert, or its text. */
+  private titleText(node: ElementNode): string {
+    const insert = node.children.find((child) => child.kind === 'insert');
+    if (insert) {
+      return this.expression(insert.expression);
+    }
+    const text = node.children.map((child) => (child.kind === 'text' ? child.value : '')).join('');
+    return JSON.stringify(decodeText(cleanText(text)));
   }
 
   /**

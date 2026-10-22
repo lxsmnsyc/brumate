@@ -124,11 +124,12 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 ```brm
 <!-- src/routes/_error.brm -->
 <script>
-  import { $props, $title } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
 
   const { error } = $props<{ error: { message: string; status: number } }>();
-  $title(`Error ${error.status}`);
 </script>
+
+<title>{`Error ${error.status}`}</title>
 
 <h1>Something went wrong</h1>
 <p>{error.status}: {error.message}</p>

@@ -107,7 +107,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | Field     | Type                    | Meaning                                                                                              |
 | --------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
 | `html`    | `string`                | The markup. A `#loading` body that is not ready shows its fallback.                                  |
-| `head`    | `string`                | Markup for the head: the `$title` and the `#head` blocks.                                            |
+| `head`    | `string`                | Markup for the head: the title and the `#head` blocks.                                               |
 | `state`   | `string`                | The script that holds the page state.                                                                |
 | `pending` | `AsyncIterable<string>` | Markup to send after the page as it is ready: `#loading` bodies and the values that settle promises. |
 | `headers` | `Headers`               | Headers and cookies that the page set on its event while it rendered.                                |

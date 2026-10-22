@@ -1,5 +1,5 @@
 <script>
-  import { $memo, $props, $signal, $title } from 'brumate/signals';
+  import { $memo, $props, $signal } from 'brumate/signals';
   import Counter from './Counter.brm';
   import { save } from './store.ts';
   import type { Todo } from './store.ts';
@@ -8,7 +8,6 @@
   let todos = $signal(initial);
   let draft = $signal('');
   const left = $memo(todos.filter((todo) => !todo.done).length);
-  $title(`${left} left`);
 
   async function slowQuote() {
     'use server';
@@ -28,6 +27,8 @@
     await save(todos);
   }
 </script>
+
+<title>{`${left} left`}</title>
 
 <h1>Todos</h1>
 <form onSubmit:prevent=add>

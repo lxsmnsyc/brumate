@@ -1,5 +1,5 @@
 <script>
-  import { $props, $title } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
   import { pages, sections } from '../docs.ts';
   import LiveSample from './LiveSample.brm';
   import Meta from './Meta.brm';
@@ -13,8 +13,9 @@
   const next = index !== -1 ? order[index + 1] : undefined;
   const link = (target: string): string => `${base}docs${target ? `/${target}` : ''}`;
   const contents = (page?.headings ?? []).filter((heading) => heading.level === 2 || heading.level === 3);
-  $title(page ? `${page.title} | brumate` : 'Not found | brumate');
 </script>
+
+<title>{page ? `${page.title} | brumate` : 'Not found | brumate'}</title>
 
 #if (page) {
   <Meta

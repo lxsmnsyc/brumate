@@ -1,10 +1,10 @@
 <script>
-  import { $getContext, $title } from 'brumate/signals';
+  import { $getContext } from 'brumate/signals';
   import { CurrentUser } from '../user.ts';
-
-  $title('About');
   const user = $getContext(CurrentUser);
 </script>
+
+<title>About</title>
 
 <h1>About</h1>
 <p>
