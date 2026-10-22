@@ -11,6 +11,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
+| [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
@@ -373,6 +374,37 @@ export const listIssues = cached(async (status: string) => db.issues(status), {
 - Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
 
 Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
+
+### Rate limiting
+
+Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
+
+```ts
+import { rateLimit } from 'brumate/server';
+
+export const signIn = rateLimit(
+  async (name: string, password: string) => {
+    'use server';
+    // …
+  },
+  { max: 5, window: '1m', key: (event) => event.clientAddress },
+);
+```
+
+```ts
+// src/routes/api/_middleware.ts
+export const middleware = rateLimit.middleware({ max: 100, window: '1m' });
+```
+
+- `rateLimit(fn, options)` wraps a server function. `max` calls in `window` for each key, and then the call answers 429 with `Retry-After`, without running the function.
+- The key defaults to the address of the client, read from the request and from `X-Forwarded-For` behind a proxy that the app trusts, as the origin check reads the host. A key from the session limits a user instead, wherever they sign in from.
+- `rateLimit.middleware(options)` limits every request under a folder of routes, endpoints and pages included.
+- In the browser, the call rejects with a `RateLimitError`, a `ServerError` with status 429 and the time to wait, so a form can show it. A form posted without scripts gets the message, as for other errors.
+- The calls of [two-way realtime](#two-way-realtime) count too, per connection and per key.
+- The counters live in a store with the same interface as the cache of [caching pages and data](#caching-pages-and-data): in memory by default, which counts per process, and Redis or a platform store for an app with more than one server.
+- The algorithm is a sliding window, which does not let a burst through at the edge of a fixed window.
+
+Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
 
 ### Two-way realtime
 
@@ -785,7 +817,7 @@ Cost: a few days for the adapter, a guide and an example.
 2. Progressive forms, steps 1 and 2. They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`. Every app has forms.
 3. Errors in client code, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 4. Routing in the browser. It is small, and filters and tabs in the URL are common.
-5. Element behaviors, testing routes and budgets for one event. Each is small.
+5. Element behaviors, testing routes, budgets for one event and rate limiting. Each is small, and rate limiting protects the server functions that every app has.
 6. Transitions, which the UI components need in phase 2.
 7. Conditional `preventDefault` and handlers in spreads. Intents in the browser need the first. The UI components need both. Components from packages are done.
 8. Progressive forms, step 3, and the UI components, starting with the `Select` spike.
