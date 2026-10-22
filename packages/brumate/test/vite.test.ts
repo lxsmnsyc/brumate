@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { createServer as createHTTPServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { inspect } from 'node:util';
 import { toJSON } from 'seroval';
 import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
@@ -409,6 +410,90 @@ describe('environment variables', () => {
     } finally {
       delete process.env.SECRET;
       delete process.env.SITE_NAME;
+      await dev.close();
+    }
+  });
+
+  it('finds the env file by its resolved path, and keeps its values out of the page', async () => {
+    const directory = fileURLToPath(new URL('./.output/env-leak-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/lib`, { recursive: true });
+    writeFileSync(
+      `${directory}src/env.ts`,
+      "import { defineEnv } from 'brumate/env';\nimport * as v from 'valibot';\n\nexport default defineEnv({\n  server: { TOKEN: v.string(), PORT: v.string() },\n  public: { SITE_NAME: v.optional(v.string(), 'Tracker') },\n});\n",
+    );
+    // A helper that reads a server variable, and a module that passes the env file on.
+    writeFileSync(
+      `${directory}src/lib/token.ts`,
+      "import env from '~/env';\nexport const getToken = (): string => env.TOKEN;\nexport const getPort = (): string => env.PORT;\n",
+    );
+    writeFileSync(`${directory}src/lib/index.ts`, "export { default as env } from '../env.ts';\n");
+    const component = (name: string, script: string, markup: string): string => {
+      writeFileSync(
+        `${directory}src/${name}.brm`,
+        `<script>\n  import { $signal } from 'brumate/signals';\n${script}</script>\n${markup}\n`,
+      );
+      return `/src/${name}.brm`;
+    };
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+      resolve: {
+        alias: {
+          ...config.resolve!.alias,
+          'brumate/env': runtime('env'),
+          '~': `${directory}src`,
+        },
+      },
+    });
+    process.env.TOKEN = 'tok_live_0123456789';
+    process.env.PORT = '3000';
+    try {
+      // An alias of the env file is the env file: a handler cannot read a server variable from it.
+      const alias = component(
+        'Alias',
+        "  import env from '~/env';\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = env.TOKEN))>{shown}</button>',
+      );
+      await expect(dev.ssrLoadModule(alias)).rejects.toThrow(
+        'env.TOKEN, a server variable, is read by code that runs in the browser',
+      );
+      // A script that the browser loads cannot import the env file, by any path.
+      await expect(dev.transformRequest('/src/lib/token.ts')).rejects.toThrow(
+        'src/lib/token.ts imports src/env.ts, and the browser loads it',
+      );
+      await expect(dev.transformRequest('/src/lib/index.ts')).rejects.toThrow(
+        'src/lib/index.ts imports src/env.ts, and the browser loads it',
+      );
+      // A helper that reads a secret gives the value of a signal that the browser reads.
+      const helper = component(
+        'Helper',
+        "  import { getToken } from './lib/token.ts';\n  let token = $signal(getToken());\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = token))>{shown}</button>',
+      );
+      const { default: Helper } = await dev.ssrLoadModule(helper);
+      const error = await render(Helper, {}).then(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+      expect(String(error)).toMatch(
+        /The value of "token" in Helper_\w+ is the value of a server environment variable, and code that runs in the browser reads it/,
+      );
+      // The error, as a log would show it, does not hold the secret.
+      expect(inspect(error)).not.toContain('tok_live_0123456789');
+      // A short value, such as a port, can be in a page for other reasons, so it is sent.
+      const port = component(
+        'Port',
+        "  import { getPort } from './lib/token.ts';\n  let port = $signal(getPort());\n  let shown = $signal('');\n",
+        '<button onClick=(() => (shown = port))>{shown}</button>',
+      );
+      const { default: Port } = await dev.ssrLoadModule(port);
+      expect((await render(Port, {})).state).toContain('"3000"');
+    } finally {
+      delete process.env.TOKEN;
+      delete process.env.PORT;
       await dev.close();
     }
   });

@@ -3,6 +3,7 @@
 // values. Server values never reach the browser: the Vite plugin gives the
 // browser a copy of the file without them.
 
+import { addSecret } from './secrets.ts';
 import type { StandardSchemaV1 } from './standard-schema.ts';
 
 /** A schema for each variable, by name. */
@@ -55,25 +56,34 @@ export function defineEnv<const S extends EnvSchema>(schema: S, options: EnvOpti
   const source = options.source ?? processEnv();
   const values: Record<string, unknown> = {};
   const problems: string[] = [];
-  for (const group of [schema.server, schema.public]) {
+  for (const [group, isServer] of [
+    [schema.server, true],
+    [schema.public, false],
+  ] as const) {
     for (const [name, variable] of Object.entries(group ?? {})) {
       const props = variable['~standard'];
       if (props?.version !== 1 || typeof props.validate !== 'function') {
         throw new TypeError(`The schema of ${name} is not a Standard Schema of version 1`);
       }
-      const result = props.validate(source[name]);
+      const input = source[name];
+      const result = props.validate(input);
       if (result instanceof Promise) {
         throw new TypeError(
           `The schema of ${name} validates asynchronously. Use one that does not wait`,
         );
       }
       if (result.issues) {
-        const missing = source[name] === undefined;
         problems.push(
-          `${name} ${missing ? 'is missing' : `is invalid: ${result.issues.map((issue) => issue.message).join('; ')}`}`,
+          input === undefined
+            ? `${name} is missing`
+            : `${name} is invalid${isServer ? issuePaths(result.issues) : `: ${result.issues.map((issue) => issue.message).join('; ')}`}`,
         );
-      } else {
-        values[name] = result.value;
+        continue;
+      }
+      values[name] = result.value;
+      if (isServer) {
+        addSecret(input);
+        addSecret(result.value);
       }
     }
   }
@@ -81,6 +91,22 @@ export function defineEnv<const S extends EnvSchema>(schema: S, options: EnvOpti
     throw new Error(`Environment variables: ${problems.join('. ')}`);
   }
   return Object.freeze(values) as Env<S>;
+}
+
+/**
+ * Where the issues of a server variable are, such as ` at port`. The
+ * messages of some schema libraries hold the value, which is a secret, so
+ * the error leaves them out.
+ */
+function issuePaths(issues: readonly StandardSchemaV1.Issue[]): string {
+  const paths = issues
+    .map((issue) =>
+      (issue.path ?? [])
+        .map((segment) => String(typeof segment === 'object' ? segment.key : segment))
+        .join('.'),
+    )
+    .filter((path) => path !== '');
+  return paths.length > 0 ? ` at ${paths.join(', ')}` : '';
 }
 
 /** The variables of the process, where there is one. */

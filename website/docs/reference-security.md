@@ -41,7 +41,7 @@ export async function POST(request: Request): Promise<Response> {
 
 ## Secrets
 
-The server variables of `src/env.ts` never ship: the browser gets the file without them, and the compiler reports code that runs in the browser reading one, or a value made from one that the page state would send. See [Environment variables](./environment.md).
+The server variables of `src/env.ts` never ship. The browser gets the file without them, and only components import it in code that the browser loads. The compiler reports code that runs in the browser reading one, or a value made from one that the page state would send. The server refuses to send a page whose state holds the value of one, from any code, such as a helper. See [Environment variables](./environment.md).
 
 ## Errors
 

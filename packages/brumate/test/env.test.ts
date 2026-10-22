@@ -3,6 +3,8 @@ import * as v from 'valibot';
 import { clientEnvModule, parseEnvFile } from '../src/env-file.ts';
 import { compile } from '../src/index.ts';
 import { defineEnv } from '../src/runtime/env.ts';
+import { serverSecrets } from '../src/runtime/secrets.ts';
+import type { StandardSchemaV1 } from '../src/runtime/standard-schema.ts';
 
 const schema = {
   server: {
@@ -33,9 +35,39 @@ describe('defineEnv', () => {
   it('fails with every missing or wrong variable', () => {
     expect(() =>
       defineEnv(schema, { source: { DATABASE_URL: 'not a url', SITE_NAME: 'x' } }),
-    ).toThrow(
-      'Environment variables: DATABASE_URL is invalid: Invalid URL: Received "not a url". SESSION_SECRET is missing',
+    ).toThrow('Environment variables: DATABASE_URL is invalid. SESSION_SECRET is missing');
+  });
+
+  it('names a wrong server variable and where its issue is, without its value', () => {
+    // Some schema libraries put the value in the message of an issue.
+    const echo: StandardSchemaV1 = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: (value) => ({
+          issues: [{ message: `Bad value: ${String(value)}`, path: [{ key: 'port' }] }],
+        }),
+      },
+    };
+    const run = (): unknown =>
+      defineEnv(
+        { server: { DATABASE_URL: echo }, public: { MODE: echo } },
+        { source: { DATABASE_URL: 'postgres://user:hunter22@db', MODE: 'fast' } },
+      );
+    expect(run).toThrow(
+      'Environment variables: DATABASE_URL is invalid at port. MODE is invalid: Bad value: fast',
     );
+    expect(run).not.toThrow('hunter22');
+  });
+
+  it('keeps the values of server variables for the server to refuse, except short ones', () => {
+    defineEnv(
+      { server: { KEY: v.string(), PORT: v.string() }, public: { NAME: v.string() } },
+      { source: { KEY: 'sk_test_abcdefgh', PORT: '3000', NAME: 'public name' } },
+    );
+    expect(serverSecrets().has('sk_test_abcdefgh')).toBe(true);
+    expect(serverSecrets().has('3000')).toBe(false);
+    expect(serverSecrets().has('public name')).toBe(false);
   });
 
   it('reads process.env without a source', () => {

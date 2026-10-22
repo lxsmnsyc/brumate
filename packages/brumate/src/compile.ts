@@ -48,7 +48,8 @@ export interface CompileOptions {
   /**
    * The names of the server environment variables that an import gives,
    * such as `import env from './env.ts'`, or undefined for other imports.
-   * Code that runs in the browser cannot read them. The Vite plugin passes it.
+   * Code that runs in the browser cannot read them. The Vite plugin passes
+   * it for the imports that resolve to the env file.
    */
   envImport?: EnvImport;
   /**
