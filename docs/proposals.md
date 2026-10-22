@@ -22,6 +22,9 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Transitions](#transitions)                                           | Syntax  | High   | Medium |
 | [Element behaviors](#element-behaviors)                               | Syntax  | High   | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
+| [Devtools](#devtools)                                                 | Tooling | High   | Medium |
+| [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
 | [Batched reads](#batched-reads)                                       | Data    | High   | Small  |
 | [Timing helpers](#timing-helpers)                                     | Data    | Low    | Small  |
 | [Persisted signals](#persisted-signals)                               | Data    | Low    | Small  |
@@ -167,6 +170,35 @@ A long list renders every item on the server and in the browser. A windowed list
 - The `Virtualizer` of the UI components, in phase 6, becomes this block.
 
 Cost: about 2 weeks, most of it for scrolling, focus and the items of different heights.
+
+### Streaming lists
+
+A memo of a stream takes each value as it arrives, so a list that grows, such as the reply of a language model, search results or log lines, has to gather its items by hand.
+
+```html
+<script>
+  import { $props } from 'brumate/signals';
+  import { reply } from './chat.server';
+
+  const { prompt } = $props<{ prompt: string }>();
+</script>
+
+<ol>
+  #for await (token of reply(prompt)) {
+    <li>{token}</li>
+  } #else {
+    <li>Thinking…</li>
+  }
+</ol>
+```
+
+- `#for await (item of stream)` renders an item for each value of an async iterable, such as a server function that yields, as it arrives. `#else` shows until the first one.
+- On the server, the items stream into the page in the order they come, as `#loading` bodies do, and the page does not wait for the stream to end.
+- In the browser, the core appends the items that arrive after the page, from the render module, and the list keeps them as signals of its own. When the expression gives a new stream, such as for a new prompt, the list starts again.
+- `by key` keeps items when a stream sends a value with a key that it sent before, so a stream can update an item in place.
+- The memo of the stream keeps its last value, as now, for code that only needs the latest.
+
+Cost: about 1 to 2 weeks. Memos already read streams, and lists already add items in the browser.
 
 ## Data
 
@@ -682,6 +714,40 @@ await app.waitFor(() => expect(app.url).toBe('/issues/3'));
 - It keeps the cookies between requests, so a test can sign in and go on.
 
 Cost: a few days. The tests of this repository already answer routes and navigation in a DOM.
+
+### Devtools
+
+The panel has four tabs today: the scopes and their values, the graph of a component, a log of handlers, loads, writes and calls, and the report of a component. It shows the browser after the page resumed, and little of what makes a brumate page what it is: what the server sent, why code loaded, and the blocks that render later.
+
+What it should show:
+
+- **Elements.** Pick an element to see its scope, its anchor, its handlers with the size of each one's part and whether it loaded, and the values that its updates read. A link opens the `.brm` file at the line of the element in the editor, from the source maps, through the dev server, as Vite's `launch-editor` does.
+- **Loading.** A timeline of every part that loaded, with why: an event, the idle preload, an element that came into view, a hover, or navigation. Each row has its size, its time and the event that waited for it. Preloads that nothing used are marked.
+- **Page state.** The bytes of the first state record by component and by slot, and for each slot the client code that reads it, which is why it is sent. A value that is large, or sent but rarely read, stands out.
+- **Blocks.** Every `#loading`, `#defer` and `#client` block of the page with its state: fallback, waiting, streaming or rendered, its trigger, and when its body arrived and how long it took. Buttons fire a trigger now, or show a block's fallback again, to test both sides.
+- **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.
+- **Server.** For the request of the page: the render time, each memo load and server function call with its time, and each boundary, from the traces of [observability](#observability) in development.
+- **Navigation.** For the last client navigation: the layouts that stayed, the routes that were replaced, and the IDs that moved.
+- **Errors.** Errors of client code with their scope and component, once [errors in client code](#errors-in-client-code) gives them a place.
+- **History.** The writes of the log can be undone one by one, and a session of writes can be exported and replayed, to share how a bug happens.
+
+How it ships:
+
+- The panel stays in the page in development, so it needs no extension, and loads only when opened.
+- A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
+
+Cost: about 3 to 4 weeks for all of it. Elements, loading and blocks first, about 1 week, since the runtime already reports most of what they need.
+
+### Component workbench
+
+An exploration, not a plan yet. A page in the dev server that lists the components of the app, renders each one on the server with props from controls, and resumes it, as Storybook and Ladle do for other frameworks.
+
+- `brumate preview` finds the `.brm` files of the app and lists them by folder. The type checker knows the props type of each, from `$props<T>()`, so it can make the controls: text, numbers, booleans, choices for unions, and JSON for the rest.
+- A story file is optional: `Button.stories.ts` exports named sets of props, and named states with a server function answer or a request, using the helpers of `brumate/testing`.
+- Each story renders through `mount`, so what it shows is what the page gets, with the panel of the devtools beside it, and the report of what the component ships.
+- The website's live samples already compile, render and resume components in a page, so most of the pieces exist.
+
+Questions to answer first: whether props from controls are enough without story files, how to show components that need a context or a route, and whether it belongs in the dev server or in its own command.
 
 ### Budgets for one event
 
