@@ -49,6 +49,8 @@ sites
   insert (42:8) reads todo
   insert (42:27) reads format, todo
   insert (48:5) reads left
+diagnostics
+  warning onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events (30:7)
 
 # Graph
 nodes
@@ -77,3 +79,5 @@ client
   insert (42:27)
 created
   2 body (for 35:3)
+diagnostics
+  warning onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events (30:7)

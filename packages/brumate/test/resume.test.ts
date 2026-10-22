@@ -167,6 +167,13 @@ function moved(record: string): string {
   return record.replace('<script ', '<script b-offset="5" b-root="5" ');
 }
 
+/** Presses a key on the list of the page, and returns the event. */
+function press(key: string): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  document.querySelector('.list')!.dispatchEvent(event);
+  return event;
+}
+
 function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
@@ -398,11 +405,6 @@ describe('resume', () => {
     const { html } = await renderParts(server.default, {});
     expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space)=');
     await resume('preventKeys', {});
-    const press = (key: string): KeyboardEvent => {
-      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
-      document.querySelector('.list')!.dispatchEvent(event);
-      return event;
-    };
     // The first press is prevented at once, while the handler's code still loads.
     expect(press('ArrowDown').defaultPrevented).toBe(true);
     expect(press(' ').defaultPrevented).toBe(true);

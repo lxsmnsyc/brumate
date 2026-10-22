@@ -653,16 +653,11 @@ export class Emitter {
     }
   }
 
-  private eventEntry({ event, modifiers, preventKeys, handler }: EventAttribute): string {
+  private eventEntry({ event, modifiers, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
-    // `b-on` separates its entries with spaces, so the keys of `:prevent` take commas.
-    const name = [
-      event,
-      ...modifiers.map((modifier) =>
-        modifier === 'prevent' && preventKeys ? `prevent(${preventKeys.join(',')})` : modifier,
-      ),
-    ].join(':');
-    return `${name}=${this.plan.id}#${this.plan.symbols.get(site)}`;
+    // The modifiers of the attribute name, and those of the wrappers of `brumate/events`.
+    const all = [...new Set([...modifiers, ...(site.modifiers ?? [])])];
+    return `${[event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}`;
   }
 
   private emitRef(

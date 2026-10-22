@@ -1040,7 +1040,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 
 #### What the compiler needs first
 
-1. Conditional `preventDefault`. Done as `onKeyDown:prevent(ArrowDown ArrowUp Enter Escape)`, which the loader applies by key. See [Markup](../website/docs/markup.md).
+1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
 2. Handlers in spreads. `spread()` and `attrs()` drop `on*` keys, so a part cannot put merged handlers on its element, and a wrapper cannot forward `onClick` through `...rest`. `attrs()` also keeps keys that are gone from the new object.
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 

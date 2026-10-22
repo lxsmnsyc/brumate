@@ -68,21 +68,20 @@ Expressions cannot contain markup. Use a block or a `#template` instead.
 
 ## Events
 
-| Form                      | Meaning                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `onClick=handler`         | Calls `handler` with the event. Any name `on` and a capital letter is an event. |
-| `onClick=(() => count++)` | An inline handler.                                                              |
-| `onSubmit:prevent=save`   | A handler with modifiers.                                                       |
+| Form                       | Meaning                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `onClick=handler`          | Calls `handler` with the event. Any name `on` and a capital letter is an event. |
+| `onClick=(() => count++)`  | An inline handler.                                                              |
+| `onSubmit=(prevent(save))` | A handler with a wrapper of `brumate/events`.                                   |
 
-| Modifier   | Effect                                     |
-| ---------- | ------------------------------------------ |
-| `:prevent` | Calls `event.preventDefault()`.            |
-| `:stop`    | Calls `event.stopPropagation()`.           |
-| `:passive` | Adds the listener as passive.              |
-| `:once`    | Removes the handler after the first event. |
-| `:capture` | Listens in the capture phase.              |
+| Wrapper                     | Effect                                                       |
+| --------------------------- | ------------------------------------------------------------ |
+| `prevent(handler, ...keys)` | Calls `event.preventDefault()`, for the keys named, if any.  |
+| `stop(handler)`             | Stops the event at this element.                             |
+| `once(handler)`             | Runs the handler for the first event only.                   |
+| `capture(handler)`          | Runs the handler before the handlers of the elements inside. |
 
-Modifiers apply before the handler's code loads, so they work on the first event.
+Wrappers apply before the handler's code loads, so they work on the first event. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, still works, with a warning.
 
 ## Reserved attributes
 

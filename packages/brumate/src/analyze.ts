@@ -5,6 +5,7 @@ import type {
   ComponentNode,
   DynamicTagNode,
   ElementNode,
+  EventAttribute,
   Expression,
   Markup,
   Range,
@@ -13,6 +14,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { lookup, upstreamMemos } from './model.ts';
+import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
   DeclarationKind,
@@ -54,6 +56,13 @@ const REACTIVE = new Set<string>([
   'item',
   'action',
 ]);
+
+/** The module of the wrappers of event handlers, which the compiler reads. */
+const EVENTS_MODULE = 'brumate/events';
+/** The wrappers that `brumate/events` exports. */
+const WRAPPERS = new Set(['prevent', 'stop', 'once', 'capture']);
+/** The events whose `prevent` can name keys. */
+const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
@@ -314,6 +323,72 @@ class Analyzer {
     const site = this.createSite(kind, scope, expression.ast, label, extra);
     site.range = range(expression);
     return site;
+  }
+
+  /**
+   * Reads the wrappers of `brumate/events` around a handler, such as
+   * `prevent(move, 'Enter')`, into the modifiers that `b-on` holds, so the
+   * loader applies them before the handler's code loads. A modifier in the
+   * attribute name, such as `onSubmit:prevent`, still works, with a warning.
+   */
+  private readWrappers(site: Site, attribute: EventAttribute, scope: Scope): void {
+    if (attribute.modifiers.length > 0) {
+      const [first] = attribute.modifiers;
+      this.report(
+        'warning',
+        `${attribute.name}:${first} is replaced by ${attribute.name}=(${first === 'passive' ? 'handler' : `${first}(handler)`}) from brumate/events${first === 'passive' ? ', since listeners are passive unless a handler prevents' : ''}`,
+        attribute,
+      );
+    }
+    const modifiers: string[] = [];
+    let node: oxc.Node = attribute.handler.ast;
+    for (;;) {
+      while (node.type === 'ParenthesizedExpression') {
+        node = node.expression;
+      }
+      if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') {
+        break;
+      }
+      const imported = lookup(scope, node.callee.name)?.imported;
+      const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
+      if (name === undefined || !WRAPPERS.has(name)) {
+        break;
+      }
+      const [handler, ...rest]: oxc.Node[] = node.arguments;
+      if (!handler || (name !== 'prevent' && rest.length > 0)) {
+        this.report('error', `${name} takes a handler`, node);
+        break;
+      }
+      if (rest.length > 0) {
+        const keys = rest.map((key) =>
+          key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
+        );
+        const wrong = rest.find((_, index) => {
+          const key = keys[index];
+          return key === undefined || !(KEY_NAMES.includes(key) || /^[A-Za-z0-9]$/.test(key));
+        });
+        if (!KEY_EVENTS.has(attribute.event)) {
+          this.report(
+            'error',
+            'Only prevent of a keyboard event takes keys, such as onKeyDown',
+            node,
+          );
+        } else if (wrong) {
+          this.report(
+            'error',
+            "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a'",
+            wrong,
+          );
+        }
+        modifiers.push(`prevent(${keys.join(',')})`);
+      } else {
+        modifiers.push(name);
+      }
+      node = handler;
+    }
+    if (modifiers.length > 0) {
+      site.modifiers = modifiers;
+    }
   }
 
   private declareFunction(name: string, fn: Fn, scope: Scope, at: Range): void {
@@ -836,7 +911,7 @@ class Analyzer {
         break;
       case 'listener':
         for (const attribute of node.attributes) {
-          this.createExpressionSite(
+          const site = this.createExpressionSite(
             'event',
             scope,
             attribute.handler,
@@ -846,6 +921,7 @@ class Analyzer {
               event: attribute,
             },
           );
+          this.readWrappers(site, attribute, scope);
         }
         break;
       default:
@@ -883,15 +959,19 @@ class Analyzer {
             { owner: node },
           );
           break;
-        case 'event':
-          this.createExpressionSite(
+        case 'event': {
+          const site = this.createExpressionSite(
             isComponent ? 'prop' : 'event',
             scope,
             attribute.handler,
             isComponent ? `prop ${tag}.${attribute.name}` : `event ${tag}.${attribute.event}`,
             { owner: node, event: isComponent ? undefined : attribute },
           );
+          if (!isComponent) {
+            this.readWrappers(site, attribute, scope);
+          }
           break;
+        }
         case 'ref':
           if (node.kind === 'element') {
             this.refs.push({ attribute, element: node, scope });

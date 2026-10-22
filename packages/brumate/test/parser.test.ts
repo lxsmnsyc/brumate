@@ -42,24 +42,8 @@ describe('syntax errors', () => {
     ],
     ['<button onClick:later=go>x</button>', 'Unknown event modifier ":later" (Test.brm:1:9)'],
     [
-      '<button onClick:prevent(Enter)=go>x</button>',
-      'Only :prevent of a keyboard event takes keys, such as onKeyDown:prevent(ArrowDown Enter) (Test.brm:1:9)',
-    ],
-    [
-      '<input onKeyDown:stop(Enter)=go>',
-      'Only :prevent of a keyboard event takes keys, such as onKeyDown:prevent(ArrowDown Enter) (Test.brm:1:8)',
-    ],
-    [
-      '<input onKeyDown:prevent(Enter =)=go>',
-      'Name keys by their event.key, with letters and digits, such as ArrowDown or Space, not "=" (Test.brm:1:8)',
-    ],
-    [
-      '<Item onKeyDown:prevent(Enter)=go />',
+      '<Item onKeyDown:prevent=go />',
       'Modifiers apply to elements. Put ":prevent" on the element that the component renders (Test.brm:1:7)',
-    ],
-    [
-      '<input onKeyDown:prevent()=go>',
-      'Name keys by their event.key, with letters and digits, such as ArrowDown or Space (Test.brm:1:8)',
     ],
     [
       '<button onClick="go()">x</button>',

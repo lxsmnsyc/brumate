@@ -394,7 +394,7 @@
     "attribute": {
       "patterns": [
         {
-          "match": "on[A-Z][\\w]*(?::[\\w-]+(?:\\([^)\\n]*\\))?)*",
+          "match": "on[A-Z][\\w]*(?::[\\w-]+)*",
           "name": "entity.other.attribute-name.event.brumate"
         },
         {
