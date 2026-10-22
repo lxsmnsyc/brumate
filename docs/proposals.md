@@ -698,7 +698,7 @@ Server functions see `request.signal` abort when their call is cancelled. A page
 - `getEvent().signal` aborts when the connection of the response closes, for a page, a call and a `#defer` request.
 - The render of a page stops the boundaries that have not been sent, and the memos that only they read.
 - Server functions that the render calls run with the same signal, so `fetch(url, { signal })` and a database client that takes a signal stop too.
-- Work that must finish, such as writing to a log, runs in a function that does not read the signal, or with `after`.
+- Work that must finish, such as writing to a log, does not read the signal, so it goes on.
 - It depends on the host reporting a closed connection. Node does, and Nitro passes it on for most presets.
 
 Cost: a few days.
