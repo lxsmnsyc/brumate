@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('./testing/', import.meta.url));
 const runtime = (name: string): string =>
   fileURLToPath(new URL(`../src/runtime/${name}.ts`, import.meta.url));
 const alias = Object.fromEntries(
-  ['server', 'client', 'loader', 'signals', 'testing', 'context'].map((name) => [
+  ['server', 'client', 'loader', 'signals', 'testing', 'context', 'batch'].map((name) => [
     `brumate/${name}`,
     runtime(name),
   ]),
@@ -69,7 +69,9 @@ it('answers the calls of a mounted component with the real server functions', as
     );
     expect(failures).toEqual([]);
     expect(result.unhandledErrors).toEqual([]);
-    expect([...result.testModules[0]!.children.allTests('passed')]).toHaveLength(4);
+    expect(
+      result.testModules.flatMap((module) => Array.from(module.children.allTests('passed'))),
+    ).toHaveLength(6);
   } finally {
     await vitest.close();
     process.exitCode = exitCode;

@@ -145,6 +145,23 @@ The effect depends on `saves`, so each save runs the effect again. Call such fun
 - Use `$client` for browser APIs that the server does not have, such as `window`, `localStorage` or a chart library.
 - With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so the code of a chart low on the page loads when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
 
+## Errors in the browser
+
+Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, a `$client` callback, or a memo whose load rejects. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
+
+```brm
+#try {
+  <button onClick=(async () => { await save(); })>Save</button>
+} #catch (error, reset) {
+  <p>{String(error)}</p>
+  <button onClick=reset>Try again</button>
+}
+```
+
+- Without a `#try` around it, the page gets a `brumate:error` event on `window`, with `error` and the `scope` of the code in `detail`, and the error is logged. An app can report it from there.
+- `onError(error, info)` of the loader receives every error first, such as for a reporting service, also the ones that a `#try` catches. `info.scope` is the ID of the scope of the code.
+- A memo that fails keeps its old value, as before. A handler that throws stops there.
+
 ## `#client`
 
 A `#client` block skips its body on the server. The browser renders it when the trigger fires, with the same triggers as `$client`:

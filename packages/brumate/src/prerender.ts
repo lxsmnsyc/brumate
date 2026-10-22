@@ -101,6 +101,8 @@ export async function prerender(
   const document = {
     head: options.head?.(manifest) ?? '',
     scripts: `<script type="module" async src="${base}${entry.file}"></script>`,
+    // Every page renders from one place, with no client, so rate limits do not count.
+    prerender: true,
   };
   const queue = [...(options.paths ?? ['/'])];
   const seen = new Set<string>(queue);
