@@ -41,30 +41,44 @@ A `bind:` attribute writes it once:
 `#defer` renders part of a page on the server later, not with the first response. The name is reserved: using it is a compile error until this lands.
 
 ```html
-#defer (visible) {
+#defer ('visible') {
   <Recommendations user=user />
-} #loading {
+} #else {
   <p>Loading recommendations…</p>
 }
 ```
 
-- The first response has the fallback. When the trigger fires, the browser asks the server for the body, and the server renders it with the same props, context, route params and request, and sends its markup and state. It is like a `#loading` body, started by a trigger in place of a promise.
-- Triggers are `visible`, `idle` and `load`, as for `$client`.
+- The first response has the `#else` body. When the trigger fires, the browser asks the server for the body, and the server sends its markup and state, as it does for a `#loading` body that is ready.
+- Triggers are `'visible'`, `'idle'` and `'load'`, as for `#client` and `$client`. With `'visible'`, the loader observes the fallback.
+- The fallback is `#else`, as for `#loading` and `#client`.
 
 Why:
 
-- A page sends less HTML and state up front, and the server does less work for each request. On the dashboard benchmark, brumate's first page is 7.0 kB gzip against Marko 6's 5.4 kB, because every widget's markup and state is in it.
+- A page sends less HTML and state up front, and the server does less work for each request. On the dashboard benchmark, brumate's first page is 6.1 kB gzip against Marko 6's 5.4 kB, because every widget's markup and state is in it.
 - A page can be cached or prerendered, with the parts for one user rendered later. A prerendered page cannot show who is signed in today. The `/about` page of `examples/tracker` shows the header as signed out when it is loaded directly. Astro calls these server islands (`server:defer`).
+
+How the server gets the inputs of the body:
+
+- The request is the URL of the page, with a header that names the block: `x-brumate-defer: <boundary>`. Middleware runs as for the page, so the body sees the same cookies and the same user.
+- The server renders the route again. It skips every `#loading` and `#defer` body except the target, and sends only that body, as a `<template b-l>`, a `$bS` call and a state record.
+- Nothing comes from the browser except the URL and the boundary ID, so there is nothing to sign. A user can only get what loading the page would give them.
+- The scope IDs of the page must come out the same as in the first render, so the body's `p`, element references and function references point to scopes that the client has. The page numbers its scopes in order, and each `#loading` and `#defer` body numbers its own after its boundary ID, such as `5.0`, so the order in which data arrives does not change them. A deferred body numbers its scopes the same way, so its IDs cannot collide with the page or with client scopes.
+- The data can change between the two requests, such as a list that grew, and move the IDs before the block. The browser also sends the block's enclosing scope and anchor, `<scope>:<anchor>`. When the server's render puts the boundary somewhere else, it answers with an error, and the fallback stays.
 
 What it needs:
 
-- An endpoint that renders one block of a component. The inputs come from the browser, so they are signed, as sessions are, or rebuilt on the server from the route and the request, so a client cannot render the block with other props.
-- A block that reads state that only the browser has cannot be deferred. The compiler reports it.
-- Scope IDs that fit into the page, as `base` does for client navigation.
-- A body that depends on the user is not cached with the page. The block marks that boundary.
-- Without scripts, the fallback shows, with a link to the full content.
+- The header in `handleRoute`, and a render mode that renders one boundary.
+- A `b-defer` template that the loader triggers, and a small part of the core that fetches the body and inserts it, as streaming does.
+- Compile errors for a `#defer` that the server cannot render again: inside a `#client` body, inside markup that the client renders, and inside another `#defer` body.
+- Without scripts, the fallback shows. It can hold a link to the full content.
+- A prerendered page needs a server for the request. A static host answers with the whole page, which the browser rejects, and the fallback stays.
 
-Cost: about 2 to 3 weeks. Most of the risk is in signing the inputs.
+Cost:
+
+- The server renders the route again for each deferred body, up to the target. Data that the page loads before the block loads again. A later version can stop the render once the target is done.
+- About 1 to 2 weeks. Scope IDs inside boundaries are done, and `#client { … } #else { … }` already renders a fallback and swaps it.
+
+The other way, which this proposal does not take, puts the values that the body reads into the page, signed, and renders only the body. It needs a secret, a renderer for each block, and values that can be sent, but no second render of the route.
 
 ## Tooling
 
