@@ -78,6 +78,8 @@ export interface Declaration {
    * a guess, until the source changes or the server calls of the page finish.
    */
   optimistic?: Declaration;
+  /** For `let name = $signal(value)`, the value. */
+  init?: oxc.Node;
   /** True for a memo declared with `$optimistic`, before its source is known. */
   writable?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */

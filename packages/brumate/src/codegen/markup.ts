@@ -22,11 +22,11 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
-  inlineMemos,
+  plainValues,
   instanceScope,
   isMemo,
   isPrimitive,
-  readsInline,
+  readsPlain,
   scopePath,
   slotIndex,
 } from './scopes.ts';
@@ -128,7 +128,7 @@ export class Emitter {
   private readonly ctxArgument: string;
   /** Async memos that the server awaits where they are declared. */
   private readonly blocking: Set<Declaration>;
-  /** Memos that the server computes as plain values, so it awaits none of them. */
+  /** Memos and signals that hold a primitive on the server, so it awaits none of them. */
   private readonly inline: Set<Declaration>;
   private parts: Part[] = [];
   private depth = 0;
@@ -145,7 +145,7 @@ export class Emitter {
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
     this.blocking = blockingMemos(plan);
-    this.inline = options.mode === 'server' ? inlineMemos(plan, this.blocking) : new Set();
+    this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
     }
@@ -289,7 +289,7 @@ export class Emitter {
     }
     const site = this.sitesByNode.get(expression.ast);
     return isPrimitive(expression.ast, (name) =>
-      readsInline(site, name, (declaration) => this.inline.has(declaration)),
+      readsPlain(site, name, (declaration) => this.inline.has(declaration)),
     );
   }
 

@@ -9,7 +9,7 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
-  $$html += "<h1>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
+  $$html += "<h1>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
   $$ctx.slots($$s1, [count, double], ["count","double"]);
   return $$html;
 }

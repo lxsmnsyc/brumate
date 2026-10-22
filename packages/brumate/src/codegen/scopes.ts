@@ -175,56 +175,123 @@ function isSafe(node: oxc.Node, members: boolean): boolean {
   return true;
 }
 
-/** True if a name in the code of a site reads a memo that the server computes as a plain value. */
-export function readsInline(
+/** True if a name in the code of a site reads a declaration that `plain` accepts. */
+export function readsPlain(
   site: Site | undefined,
   name: oxc.Node,
-  inline: (declaration: Declaration) => boolean,
+  plain: (declaration: Declaration) => boolean,
 ): boolean {
   return (
     site?.reads.some(
       (read) =>
-        read.range.start === name.start &&
-        read.range.end === name.end &&
-        inline(read.declaration),
+        read.range.start === name.start && read.range.end === name.end && plain(read.declaration),
     ) ?? false
   );
 }
 
+// Compound assignments that give a primitive whatever the value that they assign.
+const ARITHMETIC_ASSIGNMENTS = new Set([
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+  '**=',
+  '<<=',
+  '>>=',
+  '>>>=',
+  '&=',
+  '|=',
+  '^=',
+]);
+
+/** Returns the assignment or update of a site whose target is at `at`. */
+function writeAt(node: oxc.Node, at: number): oxc.Node | undefined {
+  if (
+    (node.type === 'AssignmentExpression' &&
+      node.left.type === 'Identifier' &&
+      node.left.start === at) ||
+    (node.type === 'UpdateExpression' &&
+      node.argument.type === 'Identifier' &&
+      node.argument.start === at)
+  ) {
+    return node;
+  }
+  for (const [, child] of children(node)) {
+    const found = writeAt(child, at);
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
 /**
- * Returns the memos that the server computes as plain values where they are
- * declared. Such a memo gives a primitive and calls nothing, so it is never a
- * promise and needs no render context. Each memo that it reads is one too, so
- * no read waits for a load. A memo that the server would not compute where it
- * is declared reads no property, because computing it early must not throw.
+ * Returns the memos and signals that always hold a primitive on the server,
+ * so the server reads them as plain values.
+ *
+ * - A memo gives a primitive and calls nothing, so it is never a promise and
+ *   needs no render context. Each memo that it reads is one too, so no read
+ *   waits for a load. A memo that the server would not compute where it is
+ *   declared reads no property, because computing it early must not throw.
+ * - A signal starts with a primitive, and each write gives a primitive, such
+ *   as `count++`. A signal that an element ref sets is left out.
  */
-export function inlineMemos(plan: Plan, blocking: Set<Declaration>): Set<Declaration> {
+export function plainValues(plan: Plan, blocking: Set<Declaration>): Set<Declaration> {
   const result = new Set<Declaration>();
   const visiting = new Set<Declaration>();
   const check = (declaration: Declaration): boolean => {
     if (result.has(declaration)) {
       return true;
     }
-    const site = declaration.site;
-    if (
-      declaration.kind !== 'memo' ||
-      declaration.writable ||
-      declaration.optimistic ||
-      !site ||
-      visiting.has(declaration)
-    ) {
+    if (visiting.has(declaration)) {
       return false;
     }
     visiting.add(declaration);
-    const inline =
-      isPrimitive(site.node, (name) => readsInline(site, name, check)) &&
-      isSafe(site.node, blocking.has(declaration)) &&
-      site.reads.every((read) => !isMemo(read.declaration) || check(read.declaration));
+    const plain =
+      declaration.kind === 'signal' ? isPlainSignal(declaration) : isPlainMemo(declaration);
     visiting.delete(declaration);
-    if (inline) {
+    if (plain) {
       result.add(declaration);
     }
-    return inline;
+    return plain;
+  };
+  const isPlainMemo = (declaration: Declaration): boolean => {
+    const site = declaration.site;
+    return (
+      declaration.kind === 'memo' &&
+      !declaration.writable &&
+      !declaration.optimistic &&
+      site !== undefined &&
+      isPrimitive(site.node, (name) => readsPlain(site, name, check)) &&
+      isSafe(site.node, blocking.has(declaration)) &&
+      site.reads.every((read) => !isMemo(read.declaration) || check(read.declaration))
+    );
+  };
+  const isPlainSignal = (declaration: Declaration): boolean => {
+    if (declaration.refs.length > 0) {
+      return false;
+    }
+    const init = declaration.init;
+    if (init) {
+      const site = plan.graph.model.sites.find((item) => item.node === init);
+      if (!isPrimitive(init, (name) => readsPlain(site, name, check))) {
+        return false;
+      }
+    }
+    return declaration.writes.every((write) => {
+      const node = writeAt(write.site.node, write.range.start);
+      if (node?.type === 'UpdateExpression') {
+        return true;
+      }
+      if (node?.type !== 'AssignmentExpression') {
+        return false;
+      }
+      return (
+        ARITHMETIC_ASSIGNMENTS.has(node.operator) ||
+        isPrimitive(node.right, (name) => readsPlain(write.site, name, check))
+      );
+    });
   };
   for (const declaration of plan.graph.model.declarations) {
     check(declaration);

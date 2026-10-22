@@ -7,7 +7,7 @@ import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addEventEdits, addValueEdits } from './patch.ts';
-import { blockingMemos, inlineMemos } from './scopes.ts';
+import { blockingMemos, plainValues } from './scopes.ts';
 
 export function propsType(file: SFCFile): string {
   for (const statement of file.instanceScript?.program.body ?? []) {
@@ -55,7 +55,7 @@ export function serverFunctions(plan: Plan): Declaration[] {
 export function generateServer(file: SFCFile, plan: Plan): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
-  addValueEdits(patch, file, model.sites, 'server', inlineMemos(plan, blockingMemos(plan)));
+  addValueEdits(patch, file, model.sites, 'server', plainValues(plan, blockingMemos(plan)));
   addEventEdits(patch, model);
   const source = (node: { start: number; end: number }): string =>
     patch.slice(node.start, node.end);

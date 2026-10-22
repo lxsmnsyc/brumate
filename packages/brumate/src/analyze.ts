@@ -615,8 +615,9 @@ class Analyzer {
       }
       const argument = call.arguments[0];
       if (name === '$signal') {
-        this.addDeclaration(scope, id.name, 'signal', id);
+        const declaration = this.addDeclaration(scope, id.name, 'signal', id);
         if (argument) {
+          declaration.init = argument;
           this.createSite('setup', scope, argument, `signal ${id.name}`);
         }
         return;

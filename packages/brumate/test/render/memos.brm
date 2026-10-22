@@ -18,13 +18,23 @@
   // Memos on the server: one calls a function, and one reads a memo that does.
   const named = $memo(label(count));
   const both = $memo(`${named} ${quad}`);
+  // Signals that always hold a primitive, and ones that may not.
+  let steps = $signal(0);
+  let copy = $signal(count);
+  let loaded = $signal(0);
+  let typed = $signal('');
+  const same = $memo(copy);
   // Read only in #loading, and reads a property, so it stays lazy.
   const late = $memo(items.length + double);
 </script>
 
 <button onClick=(() => count++)>{count}</button>
 <p class="plain">{double} {quad} {parity} {size} {text}</p>
-<p class="memo">{named} {both}</p> <p class="literals">{`<i>`} {1.5} {10n} {true} {-1}</p>
+<p class="memo">{named} {both}</p> <button onClick=(() => { steps += 2; copy = copy * 2; loaded = label(1) as never; })>
+  {steps} {copy} {same} {loaded}
+</button>
+<input value=typed onInput=((event) => (typed = event.currentTarget.value))>
+<p class="literals">{`<i>`} {1.5} {10n} {true} {-1}</p>
 #loading {
   <p class="late">{late}</p>
 } #else {

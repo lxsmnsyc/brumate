@@ -20,8 +20,13 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
   const named = (($$t = $$b.ready($$p_named)) instanceof Promise ? await $$t : $$t);
   const $$p_both = $$b.memo(() => (`${$$b.read($$p_named)} ${quad}`), $$ctx);
   const both = (($$t = $$b.ready($$p_both)) instanceof Promise ? await $$t : $$t);
+  let steps = (0);
+  let copy = (count);
+  let loaded = (0);
+  let typed = ('');
+  const same = (copy);
   const $$p_late = $$b.memo(() => (items.length + double), $$ctx);
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h10\">" + (typeof ($$t = $$b.insert((count), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert((named), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert((both), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
+  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert((named), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert((both), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + (typeof ($$t = $$b.insert((loaded), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><input" + $$b.attribute("value", (typed)) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
   const $$boundary0 = $$ctx.boundary();
   $$html += "<!--l" + $$boundary0 + "-->";
   {
@@ -35,7 +40,7 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
     $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
     return $$html;
   });
-  $$ctx.slots($$s1, [count, items, double, quad, parity, size, text, named, both, $$b.wait($$p_late)], ["count","items","double","quad","parity","size","text","named","both","late"]);
+  $$ctx.slots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, $$b.wait($$p_late)], ["count","items","double","quad","parity","size","text","named","both","steps","copy","loaded","typed","same","late"]);
   return $$html;
 }
 Memos.brumateId = "Memos_1khoa0p";
@@ -43,10 +48,12 @@ Memos.brumateId = "Memos_1khoa0p";
 # Client entry
 export const id = "Memos_1khoa0p";
 export const props = {  };
-export const g = { 1: { 0: [[1, "m2"], [1, "m4"], [1, "m7"], [1, "u11"]], 2: [[1, "m3"], [1, "m9"], [1, "u12"]], 3: [[1, "m6"], [1, "m8"], [1, "u13"]], 5: [[1, "m6"]], 7: [[1, "m8"], [1, "u17"]], 1: [[1, "m9"]], 4: [[1, "u14"]], 6: [[1, "u16"]], 8: [[1, "u18"]], 9: [[2, "u24"]] } };
+export const g = { 1: { 0: [[1, "m2"], [1, "m4"], [1, "m7"], [1, "u16"]], 2: [[1, "m3"], [1, "m14"], [1, "u17"]], 3: [[1, "m6"], [1, "m8"], [1, "u18"]], 5: [[1, "m6"]], 7: [[1, "m8"], [1, "u22"]], 10: [[1, "m13"], [1, "u26"]], 1: [[1, "m14"]], 4: [[1, "u19"]], 6: [[1, "u21"]], 8: [[1, "u23"]], 9: [[1, "u25"]], 13: [[1, "u27"]], 11: [[1, "u28"]], 12: [[1, "u29"]], 14: [[2, "u36"]] } };
 const update = () => import("./memos.brm?brumate-client&part=update");
 const parts = {
-  "h10": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h10")),
+  "h15": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h15")),
+  "h24": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h24")),
+  "h30": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h30")),
   "update": update,
 };
 /** Imports a part of this module. */
@@ -54,10 +61,21 @@ export function load(part) {
   return parts[part]();
 }
 
-# Client part: h10
+# Client part: h15
 import * as $$b from 'brumate/client';
 
-export const h10 = ($$s) => $$b.update($$s, 0, 1, false);
+export const h15 = ($$s) => $$b.update($$s, 0, 1, false);
+
+# Client part: h24
+import * as $$b from 'brumate/client';
+import { label } from "./memos.brm?brumate-client&part=shared";
+
+export const h24 = ($$s) => { $$b.set($$s, 9, $$b.get($$s, 9) + (2)); $$b.set($$s, 10, $$b.get($$s, 10) * 2); $$b.set($$s, 11, label(1) as never); };
+
+# Client part: h30
+import * as $$b from 'brumate/client';
+
+export const h30 = ($$s, event) => ($$b.set($$s, 12, event.currentTarget.value));
 
 # Client part: update
 import * as $$b from 'brumate/client';
@@ -81,32 +99,50 @@ export function m7($$s) {
 export function m8($$s) {
   $$b.memo($$s, 8, () => `${$$b.get($$s, 7)} ${$$b.get($$s, 3)}`);
 }
-export function m9($$s) {
-  $$b.memo($$s, 9, () => $$b.get($$s, 1).length + $$b.get($$s, 2));
+export function m13($$s) {
+  $$b.memo($$s, 13, () => $$b.get($$s, 10));
 }
-export function u11($$s) {
-  $$b.content($$s, 0, $$b.get($$s, 0));
-}
-export function u12($$s) {
-  $$b.text($$s, 1, $$b.get($$s, 2));
-}
-export function u13($$s) {
-  $$b.text($$s, 2, $$b.get($$s, 3));
-}
-export function u14($$s) {
-  $$b.text($$s, 3, $$b.get($$s, 4));
+export function m14($$s) {
+  $$b.memo($$s, 14, () => $$b.get($$s, 1).length + $$b.get($$s, 2));
 }
 export function u16($$s) {
-  $$b.text($$s, 4, $$b.get($$s, 6));
+  $$b.content($$s, 0, $$b.get($$s, 0));
 }
 export function u17($$s) {
-  $$b.text($$s, 5, $$b.get($$s, 7));
+  $$b.text($$s, 1, $$b.get($$s, 2));
 }
 export function u18($$s) {
+  $$b.text($$s, 2, $$b.get($$s, 3));
+}
+export function u19($$s) {
+  $$b.text($$s, 3, $$b.get($$s, 4));
+}
+export function u21($$s) {
+  $$b.text($$s, 4, $$b.get($$s, 6));
+}
+export function u22($$s) {
+  $$b.text($$s, 5, $$b.get($$s, 7));
+}
+export function u23($$s) {
   $$b.text($$s, 6, $$b.get($$s, 8));
 }
-export function u24($$s) {
-  $$b.content($$s, 0, $$b.get($$s.p, 9));
+export function u25($$s) {
+  $$b.text($$s, 8, $$b.get($$s, 9));
+}
+export function u26($$s) {
+  $$b.text($$s, 9, $$b.get($$s, 10));
+}
+export function u27($$s) {
+  $$b.text($$s, 10, $$b.get($$s, 13));
+}
+export function u28($$s) {
+  $$b.text($$s, 11, $$b.get($$s, 11));
+}
+export function u29($$s) {
+  $$b.attr($$s, 12, "value", $$b.get($$s, 12));
+}
+export function u36($$s) {
+  $$b.content($$s, 0, $$b.get($$s.p, 14));
 }
 
 # Client part: shared
@@ -134,30 +170,39 @@ export default function Memos($$props: Record<string, never>): string {
   const text = (`${quad} and ${size}`);
   const named = (label(count));
   const both = (`${named} ${quad}`);
+  let steps = (0);
+  let copy = (count);
+  let loaded = (0);
+  let typed = ('');
+  const same = (copy);
   const late = (items.length + double);
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h10\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + $$b.insert((named)) + "<!--/t--> <!--t" + $$s1 + ":6-->" + $$b.insert((both)) + "<!--/t--></p> <p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
+  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + $$b.insert((named)) + "<!--/t--> <!--t" + $$s1 + ":6-->" + $$b.insert((both)) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + $$b.insert((loaded)) + "<!--/t--></button><input" + $$b.attribute("value", (typed)) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
   {
     const $$s2 = $$b.createScope(2, $$s1);
     $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + $$b.insert((late)) + "</p>";
   }
-  $$b.setSlots($$s1, [count, items, double, quad, parity, size, text, named, both, late]);
+  $$b.setSlots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, late]);
   return $$html;
 }
 
 # HTML
-<button b-b="0:0" b-on="click=Memos_1khoa0p#h10">3</button>
+<button b-b="0:0" b-on="click=Memos_1khoa0p#h15">3</button>
 <p class="plain">
 <!--t0:1-->6<!--/t--> <!--t0:2-->12<!--/t--> <!--t0:3-->odd<!--/t--> 2 <!--t0:4-->12 and 2<!--/t-->
 </p>
 <p class="memo">
 <!--t0:5-->#3<!--/t--> <!--t0:6-->#3 12<!--/t-->
-</p> <p class="literals">&lt;i&gt; 1.5 10  -1</p>
+</p> <button b-b="0:7" b-on="click=Memos_1khoa0p#h24">
+<!--t0:8-->0<!--/t--> <!--t0:9-->3<!--/t--> <!--t0:10-->3<!--/t--> <!--t0:11-->0<!--/t-->
+</button>
+<input value="" b-b="0:12" b-on="input=Memos_1khoa0p#h30">
+<p class="literals">&lt;i&gt; 1.5 10  -1</p>
 <!--l0-->
 <p>Loading</p>
 <!--/l-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Memos_1khoa0p",s:$R[2]=[3,$R[3]=["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",$R[4]=($R[5]=($R[6]=() => {
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Memos_1khoa0p",s:$R[2]=[3,$R[3]=["a","b"],6,12,"odd",2,"12 and 2","#3","#3 12",0,3,0,"",3,$R[4]=($R[5]=($R[6]=() => {
 	const resolver = {
 		p: 0,
 		s: 0,

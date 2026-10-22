@@ -27,22 +27,22 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     if (inner) {
       $$html += "<!--b" + $$s2 + ":4:1-->";
       const $$s3 = $$ctx.scope(3, $$s2);
-      $$html += "<p s-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "<!--/t--></p><!--/b-->";
+      $$html += "<p s-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
     } else {
       $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
     }
-    $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t-->";
+    $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
     if (count > 1) {
       $$html += "<!--b" + $$s2 + ":7:0-->";
       const $$s4 = $$ctx.scope(4, $$s2);
-      $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "<!--/t--></p><!--/b-->";
+      $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
     } else {
       $$html += "<!--b" + $$s2 + ":7:-1--><!--/b-->";
     }
     const $$portal0 = await (async () => {
       let $$html = '';
       const $$s5 = $$ctx.scope(5, $$s2);
-      $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s5)) === 'string' ? $$t : await $$t) + "<!--/t--></aside><!--/P-->";
+      $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + $$b.insert((count)) + "<!--/t--></aside><!--/P-->";
       return $$html;
     })();
     $$ctx.portal($$portal0);
@@ -55,7 +55,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
   if (tab === 'b') {
     $$html += "<!--b" + $$s1 + ":7:1-->";
     const $$s6 = $$ctx.scope(6, $$s1);
-    $$html += "<section s-1oupne3 class=\"panel-b\">B <!--t" + $$s6 + ":0-->" + (typeof ($$t = $$b.insert((count), $$ctx, $$s6)) === 'string' ? $$t : await $$t) + "<!--/t--></section><!--/b-->";
+    $$html += "<section s-1oupne3 class=\"panel-b\">B <!--t" + $$s6 + ":0-->" + $$b.insert((count)) + "<!--/t--></section><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":7:-1--><!--/b-->";
   }
