@@ -27,6 +27,7 @@ const config: InlineConfig = {
       'brumate/loader': runtime('loader'),
       'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
+      'brumate/events': runtime('events'),
     },
   },
 };
@@ -291,6 +292,62 @@ describe('files of server functions', () => {
       expect(response.status).toBe(200);
       // The page loads the memos that call the function of the file again, as in production.
       expect(response.headers.get('x-brumate-refresh')).toBe(list);
+    } finally {
+      await dev.close();
+    }
+  });
+
+  it('runs the entry middleware and the middleware of a file before a call', async () => {
+    const directory = fileURLToPath(new URL('./.output/server-middleware/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src`, { recursive: true });
+    writeFileSync(
+      `${directory}src/middleware.ts`,
+      "import { defineMiddleware } from 'brumate/server';\n\nexport default defineMiddleware(async (event, next) => {\n  (event.locals as { user?: string }).user = event.request.headers.get('x-user') ?? 'nobody';\n  const response = await next();\n  response.headers.set('x-entry', event.kind);\n  return response;\n});\n",
+    );
+    writeFileSync(
+      `${directory}admin.ts`,
+      "'use server';\n\nimport { getEvent } from 'brumate/server';\nimport type { EntryMiddleware } from 'brumate/server';\n\nexport const middleware: EntryMiddleware = (event, next) =>\n  (event.locals as { user?: string }).user === 'admin' ? next() : new Response('Forbidden', { status: 403 });\n\nexport async function reset() {\n  return `reset by ${(getEvent().locals as { user?: string }).user}`;\n}\n",
+    );
+    writeFileSync(
+      `${directory}Admin.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import { reset } from './admin.ts';\n  let message = $signal('');\n</script>\n<button onClick=(async () => (message = await reset()))>{message}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      // The middleware of the file is not a server function: the browser gets no stub for it.
+      const stubs = await dev.transformRequest('/admin.ts');
+      expect(stubs?.code).toContain('reset');
+      expect(stubs?.code).not.toContain('middleware');
+      const { functions, fileMiddleware } = await dev.ssrLoadModule('virtual:brumate/server');
+      const reset = Object.keys(functions).find((id) => id.endsWith('#reset'))!;
+      expect(Object.keys(functions).some((id) => id.endsWith('#middleware'))).toBe(false);
+      expect(typeof fileMiddleware[reset]).toBe('function');
+      const routes = await dev.transformRequest('virtual:brumate/routes', { ssr: true });
+      expect(routes?.code).toContain('src/middleware.ts');
+
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const call = (user: string): Promise<Response> =>
+        fetch(`http://localhost:${port}/_brumate/${encodeURIComponent(reset)}`, {
+          method: 'POST',
+          headers: { 'x-user': user },
+          body: JSON.stringify(toJSON([])),
+        });
+      const refused = await call('ada');
+      const allowed = await call('admin');
+      http.close();
+      // The entry runs first and sets the locals that the file's middleware reads.
+      expect(refused.status).toBe(403);
+      expect(refused.headers.get('x-entry')).toBe('call');
+      expect(allowed.status).toBe(200);
+      expect(await fromChunkStream(allowed.body!)).toBe('reset by admin');
     } finally {
       await dev.close();
     }

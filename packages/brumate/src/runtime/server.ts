@@ -29,7 +29,16 @@ import {
 import { Upload, functionReferences, replaceDeep } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
-import { Redirect, RequestEvent, ServerError, isRedirect, unwrap, withEvent } from './request.ts';
+import {
+  Redirect,
+  RequestEvent,
+  ServerError,
+  isRedirect,
+  runEntry,
+  unwrap,
+  withEvent,
+} from './request.ts';
+import type { EntryMiddleware, RequestKind } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export {
@@ -44,7 +53,9 @@ export {
 } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
-export { createContext } from './context.ts';
+export { createContext, navigationContext, routeContext } from './context.ts';
+export type { NavigationState, Route } from './context.ts';
+import { ROUTE_KEY } from './context.ts';
 import { matchRoute, missingPage, notFound } from './router.ts';
 import type { MiddlewareLoader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
@@ -62,12 +73,20 @@ export {
   RequestEvent,
   ServerError,
   dedupe,
+  defineMiddleware,
   getEvent,
   isRedirect,
   redirect,
   withEvent,
 } from './request.ts';
-export type { Redirect } from './request.ts';
+export type {
+  EntryMiddleware,
+  Locals,
+  Redirect,
+  RequestCall,
+  RequestEventOptions,
+  RequestKind,
+} from './request.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
 export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
@@ -195,6 +214,8 @@ export class Context {
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
+  /** The params of the route of the page, for `$route`. */
+  params: Record<string, string> = {};
   /** The request of the page, when it renders with one. */
   event: RequestEvent | undefined;
   /** Results of server function calls in this render, so the same call runs once. */
@@ -258,10 +279,11 @@ export class Context {
   /**
    * Starts a block whose shape depends on data, such as an `#if` or a
    * `#for`. The scopes of its bodies are numbered after one ID that the
-   * block takes, until `leave`.
+   * block takes, until `leave`. A `#loading` body that renders in place
+   * passes the ID of its boundary, so its scopes get the IDs that they
+   * would get in a stream.
    */
-  enter(): void {
-    const id = spaceId(this.space, this.space.boundary++);
+  enter(id: ScopeId = spaceId(this.space, this.space.boundary++)): void {
     this.spaces.push({ prefix: `${id}.`, scope: 0, boundary: 0 });
   }
 
@@ -343,6 +365,11 @@ export class Context {
         return node.values.get(context.key) as T;
       }
       id = node?.parent;
+    }
+    // The route of the page comes from its request and the params of its route.
+    if (context.key === ROUTE_KEY) {
+      const url = new URL(this.root.event?.request.url ?? 'http://localhost/');
+      return { url, search: url.searchParams, params: this.root.params } as T;
     }
     return context.defaultValue;
   }
@@ -515,6 +542,19 @@ export class Context {
     this.undo.push(() => removeLast(this.portals, html));
   }
 
+  /** Adds the head markup and the title of a body that renders in place, to the head of the page. */
+  adoptHead(late: { html: string; title: string | undefined }): void {
+    if (late.html) {
+      this.root.heads.push(late.html);
+    }
+    if (late.title !== undefined) {
+      this.root.pageTitle = late.title;
+    }
+  }
+
+  /** True when the bodies of `#defer` blocks render in place, for a page that renders in order. */
+  inOrder = false;
+
   /** Returns the ID of a new `#loading` boundary. */
   boundary(): ScopeId {
     return spaceId(this.space, this.space.boundary++);
@@ -538,6 +578,11 @@ export class Context {
    */
   deferBlock(id: ScopeId, at: string, renderBody: (ctx: Context) => Promise<string>): void {
     const target = this.root.target;
+    // A reader that runs no scripts never fires the trigger, so the body renders with the page.
+    if (!target && this.root.inOrder) {
+      this.register(id, renderBody, false);
+      return;
+    }
     if (!target || this.inTarget) {
       return;
     }
@@ -722,6 +767,56 @@ export function ready(node: Memo): unknown {
     }
     throw error;
   }
+}
+
+/**
+ * The value of a memo for the page state: its value when it is ready, or
+ * a promise of it while it loads. A memo that fails gives a rejected
+ * promise either way, so the page renders and the failure reaches the
+ * browser as the load that failed.
+ */
+export function stateValue(node: Memo): unknown {
+  try {
+    return read(node);
+  } catch (error) {
+    return error instanceof NotReady ? wait(node) : Promise.reject(error);
+  }
+}
+
+/**
+ * Starts every memo of a run of declarations that the render waits for,
+ * so they load at the same time. Returns a promise that settles when all
+ * of them have, or undefined when none is loading. A memo that fails
+ * throws here, or rejects the promise.
+ */
+export function waitAll(nodes: Memo[]): Promise<unknown> | undefined {
+  const loads: Promise<unknown>[] = [];
+  for (const node of nodes) {
+    const value = ready(node);
+    if (value instanceof Promise) {
+      loads.push(value);
+    }
+  }
+  return loads.length === 0 ? undefined : Promise.all(loads);
+}
+
+/**
+ * True when every memo has its value, so a `#loading` body that reads them
+ * can render in place. A memo that is not computed yet computes here, so
+ * the loads of the memos that are not ready start now, and the body that
+ * streams later finds them loading. A memo that failed counts as not ready:
+ * the body streams, and throws where it reads the memo.
+ */
+export function settled(nodes: Memo[]): boolean {
+  let result = true;
+  for (const node of nodes) {
+    try {
+      read(node);
+    } catch {
+      result = false;
+    }
+  }
+  return result;
 }
 
 const LAZY: unique symbol = Symbol.for('brumate.lazy');
@@ -1133,6 +1228,8 @@ export interface StateAttributes {
   root?: number | string;
   /** The Content Security Policy nonce of the script. */
   nonce?: string;
+  /** The params of the route of the page, on its first record, for `$route` in the browser. */
+  params?: Record<string, string>;
 }
 
 /**
@@ -1166,6 +1263,9 @@ export function stateScript(
   if (attributes.route !== undefined) {
     extra += ` b-route="${escapeAttribute(attributes.route)}"`;
   }
+  if (attributes.params !== undefined) {
+    extra += ` b-params="${escapeAttribute(JSON.stringify(attributes.params))}"`;
+  }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
 
@@ -1196,6 +1296,11 @@ export interface RenderResult {
   next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
+  /**
+   * The event of the request. Its `signal` aborts when the reader of the
+   * response goes away, which `streamParts` and `renderToStream` report.
+   */
+  event?: RequestEvent;
   /**
    * With the `defer` option, whether the render found the block: `found`,
    * `moved` when the boundary is at another place, such as after the data
@@ -1272,6 +1377,17 @@ export interface RenderOptions {
   base?: number;
   /** Names the route of the page, so the client knows which layouts it can keep. */
   route?: string;
+  /**
+   * Renders `#loading` and `#defer` bodies in place, in the order of the
+   * page, instead of streaming them in `<template>`s that a script swaps in.
+   * The page arrives later, and complete, for readers that run no scripts,
+   * such as crawlers. The state is the same either way. `'bots'`, the
+   * default, does it for requests whose `User-Agent` is a known crawler. A
+   * function decides for each request.
+   */
+  inOrder?: boolean | 'bots' | ((request: Request) => boolean);
+  /** The params of the route of the page, for `$route`. `handleRoute` sets them. */
+  params?: Record<string, string>;
   /** Results of server functions that a form posted to this page, by function, for `$action`. */
   actions?: Map<unknown, unknown>;
   /**
@@ -1282,6 +1398,12 @@ export interface RenderOptions {
   request?: Request;
   /** The event of the request, in place of `request`, such as one that middleware already set cookies on. */
   event?: RequestEvent;
+  /**
+   * Keeps work going after the response ends, for `event.waitUntil`, such
+   * as the `waitUntil` of Cloudflare Workers. Without it, the promise runs
+   * on its own and its error is logged.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
   /**
    * A Content Security Policy nonce for the inline scripts: the state
    * records, and the scripts that swap in `#loading` bodies.
@@ -1314,10 +1436,23 @@ export async function render<P>(
   if (options.actions) {
     ctx.actions = options.actions;
   }
+  if (options.params) {
+    ctx.params = options.params;
+  }
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
-  const event = options.event ?? (options.request ? new RequestEvent(options.request) : undefined);
+  ctx.inOrder =
+    !options.defer &&
+    rendersInOrder(options.inOrder ?? 'bots', options.request ?? options.event?.request);
+  const event =
+    options.event ??
+    (options.request
+      ? new RequestEvent(options.request, {
+          kind: options.defer ? 'defer' : 'page',
+          waitUntil: options.waitUntil,
+        })
+      : undefined);
   ctx.event = event;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
   const rendered = await ctx.run(() => Root(props, ctx));
@@ -1358,7 +1493,15 @@ export async function render<P>(
       (code, initial) => {
         if (initial) {
           onScopes(
-            stateScript(code, true, { next: ctx.next(), route, root, nonce, define: first }),
+            stateScript(code, true, {
+              next: ctx.next(),
+              route,
+              root,
+              nonce,
+              define: first,
+              // The params go with the route, so the browser reads them after a navigation.
+              params: route === undefined ? undefined : options.params,
+            }),
           );
           first = false;
         } else {
@@ -1372,14 +1515,23 @@ export async function render<P>(
     );
   };
 
+  // In order: the bodies render where they are, so the page waits for every one of them.
+  const inOrder: Boundary[] | undefined = ctx.inOrder ? [] : undefined;
+  // When the reader of the response leaves, the bodies that are not sent yet are not sent.
+  const stopped = (): boolean => event?.signal.aborted === true;
+  event?.signal.addEventListener('abort', () => queue?.close(), { once: true });
   ctx.watch((boundary) => {
+    if (inOrder) {
+      inOrder.push(boundary);
+      return;
+    }
     boundaries++;
     open++;
     boundary.render.then(
       (result) => {
         // A `#try` body around it failed, so the page has no markers for it. A body around the
         // target of a `#defer` request is in the page already.
-        if (boundary.cancelled || boundary.around) {
+        if (boundary.cancelled || boundary.around || stopped()) {
           finish();
           return;
         }
@@ -1438,13 +1590,53 @@ export async function render<P>(
     (error) => {
       failure = error;
     },
-    boundaries === 0,
+    boundaries === 0 && (inOrder === undefined || inOrder.length === 0),
   );
   if (failure !== undefined) {
     throw unsendable(failure, ctx);
   }
+  let page = html;
+  if (inOrder) {
+    // Each body that renders can add more, so the list grows while it is read.
+    const bodies = new Map<string, string>();
+    const portals: string[] = [];
+    for (let index = 0; index < inOrder.length; index++) {
+      const boundary = inOrder[index]!;
+      let result: { html: string; ctx: Context };
+      try {
+        // oxlint-disable-next-line no-await-in-loop -- The bodies settle in the order of the page.
+        result = await boundary.render;
+      } catch (error) {
+        // The fallback stays in the page.
+        console.error(error);
+        continue;
+      }
+      if (boundary.cancelled || boundary.around) {
+        continue;
+      }
+      bodies.set(String(boundary.id), result.html);
+      portals.push(...result.ctx.portals);
+      ctx.adoptHead(result.ctx.lateHead());
+      // The records of the bodies follow the page state, so they run after it, as when they stream.
+      serialize(
+        result.ctx,
+        (script) => {
+          state += script;
+        },
+        undefined,
+        (error) => {
+          failure = error;
+        },
+        index === inOrder.length - 1,
+      );
+      if (failure !== undefined) {
+        throw unsendable(failure, result.ctx);
+      }
+    }
+    page = beforeBodyEnd(inlineBodies(rendered, bodies), [...ctx.portals, ...portals].join(''));
+  }
   return {
-    html,
+    html: page,
     state,
     // Nothing is open when the page has no `#loading` body that is not ready and no promise in its state.
     pending: queue === undefined && open === 0 ? NOTHING_PENDING : pending().iterable,
@@ -1452,7 +1644,81 @@ export async function render<P>(
     status: event?.status ?? 200,
     next: () => ctx.next(),
     head: ctx.headHTML(),
+    event,
   };
+}
+
+/** Crawlers and link previews, which read the page without running its scripts. */
+const BOTS =
+  /bot\b|bot\/|crawl|spider|slurp|bingpreview|facebookexternalhit|embedly|quora link preview|outbrain|pinterest|vkshare|w3c_validator|whatsapp|lighthouse|google-inspectiontool|headlesschrome/i;
+
+/** True if a render with these options writes its bodies in place. */
+function rendersInOrder(
+  option: boolean | 'bots' | ((request: Request) => boolean),
+  request: Request | undefined,
+): boolean {
+  if (typeof option === 'boolean') {
+    return option;
+  }
+  if (!request) {
+    return false;
+  }
+  if (typeof option === 'function') {
+    return option(request);
+  }
+  return BOTS.test(request.headers.get('user-agent') ?? '');
+}
+
+// The markers of a `#loading` or `#defer` boundary, and the end of one.
+const BOUNDARY_MARKER = /<!--(l[\d.]+|\/l)-->/g;
+
+/**
+ * Puts the bodies of boundaries in place of their fallbacks, with the bodies
+ * inside them, as the swap script would in the browser. A `#defer` block
+ * loses its `<template>` too, so the browser does not ask for a body that
+ * is there. A boundary without a body keeps its fallback.
+ */
+export function inlineBodies(html: string, bodies: Map<string, string>): string {
+  let result = '';
+  let position = 0;
+  BOUNDARY_MARKER.lastIndex = 0;
+  for (let match = BOUNDARY_MARKER.exec(html); match; match = BOUNDARY_MARKER.exec(html)) {
+    if (match[1] === '/l') {
+      continue;
+    }
+    const id = match[1]!.slice(1);
+    // The end of this boundary, past the boundaries inside its fallback.
+    let depth = 0;
+    let end = -1;
+    for (let inner = BOUNDARY_MARKER.exec(html); inner; inner = BOUNDARY_MARKER.exec(html)) {
+      if (inner[1] !== '/l') {
+        depth++;
+      } else if (depth === 0) {
+        end = inner.index + inner[0].length;
+        break;
+      } else {
+        depth--;
+      }
+    }
+    if (end === -1) {
+      break;
+    }
+    const body = bodies.get(id);
+    if (body === undefined) {
+      continue;
+    }
+    let before = html.slice(position, match.index);
+    before = before.replace(
+      new RegExp(
+        `<template b-b="[^"]*" b-defer="[^":]*:${id.replace(/\./g, '\\.')}:[^"]*"></template>$`,
+      ),
+      '',
+    );
+    result += before + inlineBodies(body, bodies);
+    position = end;
+    BOUNDARY_MARKER.lastIndex = end;
+  }
+  return result + html.slice(position);
 }
 
 export interface DocumentOptions extends RenderOptions {
@@ -1564,13 +1830,28 @@ function partsStream(
   getParts: () => RenderResult | Promise<RenderResult>,
   options: DocumentOptions,
 ): ReadableStream<string> {
+  let parts: RenderResult | undefined;
+  let cancelled = false;
   return new ReadableStream<string>({
     async start(controller) {
       try {
-        await writeParts(await getParts(), options, controller);
+        parts = await getParts();
+        if (cancelled) {
+          parts.event?.abort();
+          return;
+        }
+        await writeParts(parts, options, controller, () => cancelled);
       } catch (error) {
-        controller.error(error);
+        if (!cancelled) {
+          controller.error(error);
+        }
       }
+    },
+    // The reader went away, such as a browser that left the page while it streamed. The event's
+    // signal aborts, so the work that nobody waits for stops.
+    cancel(reason) {
+      cancelled = true;
+      parts?.event?.abort(reason);
     },
   });
 }
@@ -1579,14 +1860,20 @@ async function writeParts(
   parts: RenderResult,
   options: DocumentOptions,
   controller: ReadableStreamDefaultController<string>,
+  cancelled: () => boolean = () => false,
 ): Promise<void> {
   controller.enqueue(firstRender(parts.html, parts.head, parts.state, options));
   if (parts.pending !== NOTHING_PENDING) {
     for await (const chunk of parts.pending) {
+      if (cancelled()) {
+        return;
+      }
       controller.enqueue(chunk);
     }
   }
-  controller.close();
+  if (!cancelled()) {
+    controller.close();
+  }
 }
 
 /**
@@ -1628,25 +1915,26 @@ function unknownAnswer(id: string): Response {
  * resolved against it.
  */
 async function callWithForm(
-  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
-  fn: (...args: any[]) => unknown,
-  request: Request,
-  event: RequestEvent,
+  invoke: () => unknown,
   headers: Headers,
   base?: string,
 ): Promise<{ result: unknown } | { answer: Response }> {
   try {
-    const form = await request.formData();
-    return { result: await withEvent(event, () => fn(form)) };
+    return { result: await invoke() };
   } catch (error) {
-    if (error instanceof Redirect) {
-      headers.set('location', base ? new URL(error.location, base).href : error.location);
-      return { answer: new Response(null, { status: error.status, headers }) };
-    }
-    const { message, status } = errorAnswer(error, 'The server function failed');
-    headers.set('content-type', 'text/plain; charset=utf-8');
-    return { answer: new Response(message, { status, headers }) };
+    return { answer: formFailure(error, headers, base) };
   }
+}
+
+/** The answer to a form post whose server function threw, or whose data could not be read. */
+function formFailure(error: unknown, headers: Headers, base?: string): Response {
+  if (error instanceof Redirect) {
+    headers.set('location', base ? new URL(error.location, base).href : error.location);
+    return new Response(null, { status: error.status, headers });
+  }
+  const { message, status } = errorAnswer(error, 'The server function failed');
+  headers.set('content-type', 'text/plain; charset=utf-8');
+  return new Response(message, { status, headers });
 }
 
 /**
@@ -1654,18 +1942,13 @@ async function callWithForm(
  * sends the browser back to the page with a redirect. The response has the
  * headers of the event, such as cookies that the function set.
  */
-async function handleForm(
-  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
-  fn: (...args: any[]) => unknown,
-  request: Request,
-  event: RequestEvent,
-): Promise<Response> {
+async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<Response> {
   const { headers } = event;
-  const outcome = await callWithForm(fn, request, event, headers);
+  const outcome = await callWithForm(invoke, headers);
   if ('answer' in outcome) {
     return outcome.answer;
   }
-  headers.set('location', request.headers.get('referer') ?? '/');
+  headers.set('location', event.request.headers.get('referer') ?? '/');
   return new Response(null, { status: 303, headers });
 }
 
@@ -1698,6 +1981,20 @@ export interface RequestOptions {
    * allowed.
    */
   origins?: string[];
+  /**
+   * The middleware of the entry, which runs for every request before
+   * anything else: pages, endpoints, calls, form posts and `#defer` bodies.
+   * The Vite plugin passes the default export of `src/middleware.ts`.
+   */
+  middleware?: EntryMiddleware;
+  /**
+   * The middleware of each `'use server'` file, by the ID of each of its
+   * functions. It runs before the function, after the middleware of the
+   * entry. `virtual:brumate/server` passes them.
+   */
+  fileMiddleware?: Record<string, EntryMiddleware>;
+  /** Keeps work going after the response ends, for `event.waitUntil`. See `RenderOptions`. */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 /**
@@ -1761,20 +2058,28 @@ export async function handleRequest(
   if (!fn) {
     return unknownAnswer(id);
   }
-  const event = new RequestEvent(request);
-  // The function runs with its event, so `getEvent()` before its first await returns it.
-  const invoke = (args: unknown[]): unknown => withEvent(event, () => fn(...args));
+  const event = new RequestEvent(request, { kind: 'call', waitUntil: options.waitUntil });
   // A call with files sends its arguments as form data, with this header.
-  if (isFormPost(request) && !request.headers.has('x-brumate-args')) {
-    // The loader sends a form of an `$action` with this header, and wants the result, not a page.
-    if (!request.headers.has('x-brumate-result')) {
-      return handleForm(fn, request, event);
-    }
-    const form = await request.formData();
-    return answerCall(functions, event, async () => invoke([form]));
+  const form = isFormPost(request) && !request.headers.has('x-brumate-args');
+  // A form without scripts posts to the function, and wants a page back, not the result. The
+  // loader sends a form of an `$action` with this header, and wants the result.
+  const posted = form && !request.headers.has('x-brumate-result');
+  // The arguments are read before the middleware runs, so a check can depend on them. Arguments
+  // that fail to read, such as a regular expression, answer as an error of the call.
+  let args: unknown[];
+  try {
+    args = form ? [await request.formData()] : await readArgs(request);
+  } catch (error) {
+    return posted ? formFailure(error, event.headers) : callFailure(error, event.headers);
   }
-  // Arguments that fail to read, such as a regular expression, answer as an error of the call.
-  return answerCall(functions, event, async () => invoke(await readArgs(request)));
+  event.call = { id, args };
+  // The function runs with its event, so `getEvent()` before its first await returns it.
+  const invoke = (): unknown => withEvent(event, () => fn(...args));
+  return runEntry(options.middleware, event, () =>
+    runEntry(options.fileMiddleware?.[id], event, () =>
+      posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
+    ),
+  );
 }
 
 /**
@@ -1801,16 +2106,24 @@ async function answerCall(
       }
     }
     headers.set('content-type', STREAM_TYPE);
-    return new Response(toChunkStream(result), { headers });
+    return new Response(
+      toChunkStream(result, (reason) => event.abort(reason)),
+      { headers },
+    );
   } catch (error) {
-    if (error instanceof Redirect) {
-      headers.set('x-brumate-redirect', error.location);
-      return new Response(null, { status: 204, headers });
-    }
-    const { message, status } = errorAnswer(error, 'The server function failed');
-    headers.set('content-type', 'application/json');
-    return new Response(JSON.stringify({ error: message }), { status, headers });
+    return callFailure(error, headers);
   }
+}
+
+/** The answer to a call whose server function threw, or whose arguments could not be read. */
+function callFailure(error: unknown, headers: Headers): Response {
+  if (error instanceof Redirect) {
+    headers.set('x-brumate-redirect', error.location);
+    return new Response(null, { status: 204, headers });
+  }
+  const { message, status } = errorAnswer(error, 'The server function failed');
+  headers.set('content-type', 'application/json');
+  return new Response(JSON.stringify({ error: message }), { status, headers });
 }
 
 interface ResolvedView {
@@ -1896,20 +2209,48 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
  * headers of the event.
  */
 async function runAction(
-  request: Request,
-  id: string,
-  options: RouteOptions,
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  fn: (...args: any[]) => unknown,
   event: RequestEvent,
 ): Promise<{ actions: Map<unknown, unknown> } | { answer: Response }> {
-  if (isCrossSite(request, options)) {
-    return { answer: crossSiteAnswer() };
-  }
-  const fn = options.functions?.[id];
-  if (!fn) {
-    return { answer: unknownAnswer(id) };
-  }
-  const outcome = await callWithForm(fn, request, event, new Headers(), request.url);
+  const { request } = event;
+  const args = event.call!.args;
+  const outcome = await callWithForm(
+    () => withEvent(event, () => fn(...args)),
+    new Headers(),
+    request.url,
+  );
   return 'answer' in outcome ? outcome : { actions: new Map([[fn, outcome.result]]) };
+}
+
+/**
+ * Reads the server function that a form without scripts posted to a page,
+ * as `?__action=<id>`, into `event.call`, before any middleware runs.
+ * Returns the response that answers the post instead of the page: a post
+ * from another site, an unknown function, or a form that cannot be read.
+ */
+async function readAction(
+  url: URL,
+  event: RequestEvent,
+  options: RouteOptions,
+): Promise<Response | undefined> {
+  const { request } = event;
+  const id = url.searchParams.get('__action');
+  if (request.method !== 'POST' || id === null) {
+    return undefined;
+  }
+  if (isCrossSite(request, options)) {
+    return crossSiteAnswer();
+  }
+  if (!options.functions?.[id]) {
+    return unknownAnswer(id);
+  }
+  try {
+    event.call = { id, args: [await request.formData()] };
+  } catch (error) {
+    return formFailure(error, new Headers(), request.url);
+  }
+  return undefined;
 }
 
 /** Renders the page of a route tree, streamed, with the results of a form for `$action`. */
@@ -1934,6 +2275,7 @@ async function renderPage(
       request,
       actions: extra.actions,
       route: view.key,
+      params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
     },
   );
@@ -1977,6 +2319,7 @@ async function renderDeferred(
       ...options,
       request,
       route: view.key,
+      params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       defer,
     },
@@ -2068,11 +2411,38 @@ export async function handleRoute(
   request: Request,
   options: RouteOptions = {},
 ): Promise<Response | undefined> {
+  const url = new URL(request.url);
+  const match = matchRoute(tree, url.pathname);
   // One event for the request: middleware, endpoints, a form's server function and the page
   // share it, so cookies that one sets reach the response and the others read them.
-  const event = options.event ?? new RequestEvent(request);
-  const answer = await routeAnswer(tree, request, { ...options, event });
+  const event =
+    options.event ??
+    new RequestEvent(request, {
+      kind: await requestKind(request, match),
+      waitUntil: options.waitUntil,
+    });
+  const answer = await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
+}
+
+/**
+ * What a request to a route is for: the body of a `#defer` block, an
+ * endpoint when the folder has one that answers the method, or a page. A
+ * path that no route matches is a page, the 404 page.
+ */
+async function requestKind(request: Request, match: RouteMatch | undefined): Promise<RequestKind> {
+  if (deferTarget(request)) {
+    return 'defer';
+  }
+  if (match?.endpoint) {
+    const endpoint = await match.endpoint();
+    const method = request.method === 'HEAD' ? 'GET' : request.method;
+    // A method that the endpoint does not answer gets 405 from it, unless the page answers GET.
+    if (endpoint[method] || request.method !== 'GET') {
+      return 'endpoint';
+    }
+  }
+  return 'page';
 }
 
 /** A response with more headers, such as cookies that middleware set. */
@@ -2093,29 +2463,39 @@ function withHeaders(answer: Response, headers: Headers): Response {
 
 async function routeAnswer(
   tree: RouteNode,
-  request: Request,
+  match: RouteMatch | undefined,
+  url: URL,
   options: RouteOptions,
 ): Promise<Response | undefined> {
-  const url = new URL(request.url);
-  const match = matchRoute(tree, url.pathname);
+  const event = options.event!;
+  const { request } = event;
   if (!match) {
     const missing = notFound(tree);
-    if (missing.errors.length === 0 && missing.middleware.length === 0) {
+    if (missing.errors.length === 0 && missing.middleware.length === 0 && !options.middleware) {
       return undefined;
     }
-    return runMiddleware(missing.middleware, request, options.event!, async () => {
-      const page = await renderError(
-        missing.errors,
-        { message: 'Not found', status: 404 },
-        {},
-        request,
-        options,
-      );
-      return page ?? new Response('Not found', { status: 404 });
-    });
+    return runEntry(options.middleware, event, () =>
+      runMiddleware(missing.middleware, request, event, async () => {
+        const page = await renderError(
+          missing.errors,
+          { message: 'Not found', status: 404 },
+          {},
+          request,
+          options,
+        );
+        return page ?? new Response('Not found', { status: 404 });
+      }),
+    );
   }
-  return runMiddleware(match.middleware, request, options.event!, () =>
-    answerRoute(match, request, url, options),
+  // A post from another site is refused before any middleware runs.
+  const refused = await readAction(url, event, options);
+  if (refused) {
+    return refused;
+  }
+  return runEntry(options.middleware, event, () =>
+    runMiddleware(match.middleware, request, event, () =>
+      answerRoute(match, request, url, options),
+    ),
   );
 }
 
@@ -2141,10 +2521,25 @@ async function answerRoute(
       });
     }
   }
+  const event = options.event!;
+  const call = event.call;
+  // A form that posts to a page runs the middleware of its function's file, as a call does.
+  return runEntry(call && options.fileMiddleware?.[call.id], event, () =>
+    renderRoute(match, request, url, options),
+  );
+}
+
+/** Runs the server function that a form posted to the page, if any, and renders the page. */
+async function renderRoute(
+  match: RouteMatch,
+  request: Request,
+  url: URL,
+  options: RouteOptions,
+): Promise<Response> {
   let actions: Map<unknown, unknown> | undefined;
-  const posted = url.searchParams.get('__action');
-  if (request.method === 'POST' && posted !== null) {
-    const outcome = await runAction(request, posted, options, options.event!);
+  const event = options.event!;
+  if (event.call) {
+    const outcome = await runAction(options.functions![event.call.id]!, event);
     if ('answer' in outcome) {
       return outcome.answer;
     }

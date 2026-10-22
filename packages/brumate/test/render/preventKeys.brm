@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+
+  let last = $signal('none');
+</script>
+
+<ul
+  class="list"
+  tabindex="0"
+  onKeyDown=(prevent((event: KeyboardEvent) => (last = event.key), 'ArrowDown', 'ArrowUp', 'Space'))
+>
+  <li>One</li>
+</ul>
+<p class="last">{last}</p>

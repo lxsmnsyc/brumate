@@ -16,6 +16,7 @@ import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
 import { clientEnvModule, parseEnvFile } from './env-file.ts';
 import {
+  hasServerMiddleware,
   hasUseServer,
   isScriptFile,
   serverExports,
@@ -64,6 +65,13 @@ export interface BrumateOptions {
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
+  /**
+   * The entry middleware, relative to the root. Its default export runs for
+   * every request: pages, endpoints, server function calls, form posts and
+   * `#defer` bodies. Defaults to `src/middleware.ts` when the file exists.
+   * `false` runs none.
+   */
+  middleware?: string | false;
   /**
    * The file of environment variables, relative to the root, which calls
    * `defineEnv` from `brumate/env`. The server checks them when it starts,
@@ -261,6 +269,20 @@ function buildFingerprint(): string {
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
+  /** The entry middleware, when the app has one. */
+  const middlewareFile = (): string | undefined => {
+    if (options.middleware === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.middleware ?? 'src/middleware.ts'));
+    if (!existsSync(file)) {
+      if (options.middleware !== undefined) {
+        throw new Error(`The middleware file ${options.middleware} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
   /** The file of environment variables, when the app has one. */
   const envFile = (): string | undefined => {
     if (options.env === false) {
@@ -531,29 +553,41 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const fileImports = functionFiles.map(
       ([, file], index) => `import * as f${index} from ${JSON.stringify(file + query)};`,
     );
+    // The middleware of a file runs before each of its functions.
+    const guards: string[] = [];
     const fileSpreads = functionFiles.map(([id, file], index) => {
       // The IDs are written here, so a build can hash the names of the functions.
-      const names = serverExports(readFileSync(file, 'utf8'), file);
+      const source = readFileSync(file, 'utf8');
+      const names = serverExports(source, file);
+      const guarded = hasServerMiddleware(source, file);
       return names
-        .map(
-          (name) =>
-            `  ${JSON.stringify(functionId(id, name, !isServe))}: f${index}[${JSON.stringify(name)}],`,
-        )
+        .map((name) => {
+          const key = JSON.stringify(functionId(id, name, !isServe));
+          if (guarded) {
+            guards.push(`  ${key}: f${index}.middleware,`);
+          }
+          return `  ${key}: f${index}[${JSON.stringify(name)}],`;
+        })
         .join('\n');
     });
     const env = envFile();
+    const entry = middlewareFile();
     return [
       // The variables are checked when the server starts, before anything else loads.
       ...(env ? [`import ${JSON.stringify(env)};`] : []),
       "import { handleRequest } from 'brumate/server';",
+      ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
       ...imports,
       ...fileImports,
       'export const functions = {',
       ...spreads,
       ...fileSpreads,
       '};',
-      'export function handle(request) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])} });`,
+      'export const fileMiddleware = {',
+      ...guards,
+      '};',
+      'export function handle(request, options) {',
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, ' : ''}fileMiddleware, ...options });`,
       '}',
     ].join('\n');
   };
@@ -587,6 +621,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       rpc,
       options.origins,
       isServe,
+      middlewareFile(),
     );
     // The variables are checked when the server starts, before any route loads.
     return env ? `import ${JSON.stringify(env)};\n${code}` : code;
@@ -676,8 +711,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     try {
       // Every server function of the app, as in production, so `event.refresh` can name a
       // function of another file, such as a component's call that refreshes a 'use server' file.
-      const { functions } = await server.ssrLoadModule(SERVER);
-      const { handleRequest } = await server.ssrLoadModule('brumate/server');
+      const { handle } = await server.ssrLoadModule(SERVER);
       // The same path as production, so server functions can read the request.
       const webRequest = new Request(new URL(request.url ?? '/', 'http://localhost'), {
         method: 'POST',
@@ -686,9 +720,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
-      const answer: Response = await handleRequest(functions, webRequest, rpc, {
-        origins: options.origins,
-      });
+      const answer: Response = await handle(webRequest);
       response.statusCode = answer.status;
       // Each cookie stays apart, as `forEach` would set only the last one.
       for (const [name, value] of Object.entries(toNodeHeaders(answer.headers))) {
@@ -1030,13 +1062,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return routeTree();
       }
       if (id === `\0${TESTING}`) {
+        const entry = middlewareFile();
         return [
           "import { answerCalls as answer, createMount } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
+          ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
-          `  return answer(async () => (await import(${JSON.stringify(SERVER)})).functions, { rpc: ${JSON.stringify(rpc)}, ...options });`,
+          `  const server = import(${JSON.stringify(SERVER)});`,
+          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
           '}',
         ].join('\n');
       }
@@ -1273,7 +1308,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return updateClient(file, server, timestamp);
       }
       const normalized = normalizePath(file);
-      if (!file.endsWith('.brm') && !dependents.has(normalized) && normalized !== envFile()) {
+      if (
+        !file.endsWith('.brm') &&
+        !dependents.has(normalized) &&
+        normalized !== middlewareFile() &&
+        normalized !== envFile()
+      ) {
         return undefined;
       }
       const invalidated = new Set<EnvironmentModuleNode>();

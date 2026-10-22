@@ -1,0 +1,9 @@
+<script>
+  import { $navigation, $route } from 'brumate/signals';
+
+  const route = $route();
+  const navigation = $navigation();
+</script>
+
+<p class="where">{route.url.pathname} {route.search.get('q') ?? '-'} {route.params.id ?? '-'}</p>
+<p class="pending">{navigation.pending ? `to ${new URL(navigation.to!).pathname}` : 'idle'}</p>

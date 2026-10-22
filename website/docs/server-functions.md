@@ -260,14 +260,52 @@ This needs no `AsyncLocalStorage` or other runtime support, so it runs on any ho
 
 In a component, `getEvent()` returns the event of the page anywhere in its script while the page renders. There, `event.setStatus(404)` also sets the status of the page. See [Routing](./routing.md#errors-and-404). Middleware and endpoints read it before their first `await`, as server functions do.
 
-When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.request.signal` tells the function, so it can stop work it no longer needs:
+When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.signal` tells the function, so it can stop work it no longer needs. It aborts when `event.request.signal` does, and when the reader of the answer goes away:
 
 ```ts
 async function search(query: string) {
   'use server';
-  return db.products.search(query, { signal: getEvent().request.signal });
+  return db.products.search(query, { signal: getEvent().signal });
 }
 ```
+
+## Request locals
+
+Middleware hands what it finds, such as the user, to the rest of the request through `event.locals`. Components, server functions and endpoints read it with `getEvent().locals`:
+
+```ts
+// src/middleware.ts
+import { defineMiddleware } from 'brumate/server';
+
+export default defineMiddleware(async (event, next) => {
+  event.locals.user = await readUser(event);
+  return next();
+});
+```
+
+```ts
+async function listOrders() {
+  'use server';
+  const { user } = getEvent().locals;
+  return user ? db.orders.of(user.id) : [];
+}
+```
+
+Its type comes from the `Locals` interface of `brumate/server`, which the app adds to:
+
+```ts
+// src/locals.d.ts
+declare module 'brumate/server' {
+  interface Locals {
+    user?: { id: string; name: string; admin: boolean };
+  }
+}
+```
+
+- It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
+- `event.waitUntil(promise)` keeps work going after the response ends, such as a log line or analytics. On a host that stops a function when its response ends, such as Cloudflare Workers, pass the host's `waitUntil` in the options of `handle`, and the promise goes to it. Elsewhere the promise runs on its own, and its error is logged.
+
+See [Middleware](./routing.md#middleware).
 
 ## Cookies and sessions
 

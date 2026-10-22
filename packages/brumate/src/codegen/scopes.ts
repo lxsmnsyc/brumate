@@ -1,6 +1,8 @@
-import type { Declaration, Scope, Site } from '../model.ts';
+import type { InsertNode, Markup } from '../ast.ts';
+import type { Declaration, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
+import { blockBodies } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 
 /** Returns the nearest scope, from `scope` outwards, that gets an ID at render time. */
@@ -65,14 +67,35 @@ export function isMemo(declaration: Declaration): boolean {
 }
 
 /**
- * Returns the memos that the server awaits where they are declared,
- * because markup or code outside every `#loading` body reads them. The
- * others are awaited by the `#loading` bodies that read them.
+ * The scope whose render waits for a read. A read with `await` inside a
+ * `#loading` body makes the render around the block wait, so it counts as
+ * a read in the scope that holds the block. Inside a `#defer` body, the
+ * request for the body waits, so the read stays where it is. `limit` is
+ * the scope of the declaration, which a read inside it never leaves.
+ */
+function readScope(read: Reference, limit?: Scope): Scope {
+  const scope = read.site.scope;
+  if (!read.await) {
+    return scope;
+  }
+  const body = loadingBody(scope, limit);
+  return body?.block?.kind === 'loading' ? body.parent! : scope;
+}
+
+/**
+ * Returns the memos that the server awaits where they are declared: those
+ * declared with `await $memo(…)`, and those that markup or code outside
+ * every `#loading` body reads, with `await` or without. The others are
+ * awaited by the `#loading` bodies that read them.
  */
 export function blockingMemos(plan: Plan): Set<Declaration> {
   const result = new Set<Declaration>();
   for (const declaration of plan.graph.model.declarations) {
     if (!isMemo(declaration)) {
+      continue;
+    }
+    if (declaration.awaited) {
+      result.add(declaration);
       continue;
     }
     for (const read of declaration.reads) {
@@ -89,7 +112,7 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
       for (let scope: Scope | undefined = site.scope; scope; scope = scope.parent) {
         template ||= scope.kind === 'template';
       }
-      if (template || !loadingBody(site.scope, declaration.scope)) {
+      if (template || !loadingBody(readScope(read, declaration.scope), declaration.scope)) {
         result.add(declaration);
         break;
       }
@@ -98,16 +121,21 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
   return result;
 }
 
-/** Returns the memos that a `#loading` body awaits before it renders. */
+/**
+ * Returns the memos that a `#loading` body waits for before it renders:
+ * the memos that its markup reads, and the memos that a `#loading` body
+ * inside it reads with `await`. Memos that the page or a body around it
+ * waits for are left out.
+ */
 export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>): Declaration[] {
   const result = new Set<Declaration>();
   for (const site of plan.graph.model.sites) {
-    if (DEFERRED_SITES.has(site.kind) || loadingBody(site.scope) !== body) {
+    if (DEFERRED_SITES.has(site.kind)) {
       continue;
     }
     for (const read of site.reads) {
       // Reads that `$isPending` adds for the memos a memo reads have no range, and need no value.
-      if (read.range.start === read.range.end) {
+      if (read.range.start === read.range.end || loadingBody(readScope(read)) !== body) {
         continue;
       }
       if (isMemo(read.declaration) && !blocking.has(read.declaration)) {
@@ -115,7 +143,72 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
       }
     }
   }
+  const outer = body.parent && loadingBody(body.parent);
+  if (outer) {
+    for (const declaration of awaitedMemos(plan, outer, blocking)) {
+      result.delete(declaration);
+    }
+  }
   return [...result];
+}
+
+/**
+ * True if the markup of a `#loading` body may wait for something other than
+ * the memos it reads, so the body cannot render in place when those memos
+ * are ready: a child component, a dynamic tag, a template, or an insert of
+ * a prop, which can be a promise or the children of a parent. Bodies that
+ * render later, such as those of a `#loading` or a `#defer` inside it, wait
+ * on their own.
+ */
+export function mayWait(plan: Plan, nodes: Markup[]): boolean {
+  const insertWaits = (node: InsertNode): boolean => {
+    const site = plan.graph.model.sites.find((item) => item.node === node.expression.ast);
+    if (!site) {
+      return false;
+    }
+    for (const read of site.reads) {
+      const kind = read.declaration.kind;
+      if (kind === 'prop' || kind === 'props-rest' || kind === 'template') {
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const node of nodes) {
+    switch (node.kind) {
+      case 'component':
+      case 'dynamic':
+        return true;
+      case 'insert':
+        if (insertWaits(node)) {
+          return true;
+        }
+        break;
+      case 'element':
+      case 'fragment':
+        if (mayWait(plan, node.children)) {
+          return true;
+        }
+        break;
+      case 'text':
+      case 'listener':
+        break;
+      default: {
+        const bodies =
+          node.kind === 'loading' || node.kind === 'defer' || node.kind === 'client'
+            ? node.fallback
+              ? [node.fallback]
+              : []
+            : blockBodies(node);
+        for (const body of bodies) {
+          if (mayWait(plan, body.children)) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /** Expressions that run code the compiler cannot see, or that a memo should not hold. */
