@@ -11,7 +11,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Taint](#taint)                                                       | Server  | High   | Small  |
 | [Errors in client code](#errors-in-client-code)                       | Runtime | High   | Medium |
 | [Routing in the browser](#routing-in-the-browser)                     | Routing | High   | Small  |
 | [Accessible navigation](#accessible-navigation)                       | Routing | High   | Small  |
@@ -46,7 +45,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
 
 ## Syntax
 
@@ -530,27 +528,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
 
-### Taint
-
-The page state refuses a value that it cannot send, such as a function. It sends any value that it can, so a user object with a password hash, or a token in a prop, reaches the page if client code reads it.
-
-```ts
-import { taint, taintValue } from 'brumate/server';
-
-const user = await db.user(id);
-taint(user, 'A user record holds the password hash. Send the fields that the page needs.');
-taintValue(process.env.API_TOKEN!, 'The API token stays on the server.');
-```
-
-- `taint(object, message)` marks an object, and `taintValue(value, message)` a string or a bigint, such as a token. A tainted value in the page state, or in the answer of a server function, fails the render with the message and the name of the slot, as a value that cannot be sent does now.
-- The serializer finds them with a plugin whose test reads a `WeakSet` of objects and a `Set` of values. The plugin is active only for a render after `taint` has been called, so pages without taints pay nothing.
-- `opaque(value, replacement)` is the other half: a value that the page should not get, but may hold, such as a client of a third-party service. It wraps seroval's `OpaqueReference`, so the serializer writes `replacement`, or `undefined`, in its place. The server code reads `.value`.
-- Taint is a check, not a guarantee: a copy of a tainted object, such as `{ ...user }`, is not tainted, and the docs say so.
-
-Prior art: React's `experimental_taintObjectReference` and `experimental_taintUniqueValue`, and Qwik's `noSerialize`.
-
-Cost: a few days.
-
 ### Rate limiting
 
 Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit, and today each app writes its own in middleware.
@@ -688,7 +665,7 @@ export default defineEnv({
 - `import { env } from 'brumate/env'` gives the values with their types.
 - Public values are written into the client build. Server values never are.
 - The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
+- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses.
 
 Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
 
@@ -950,7 +927,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 
 #### What the compiler needs first
 
-1. Conditional `preventDefault`. Handlers run after their code loads, so `event.preventDefault()` in a handler is too late, and `:prevent` applies to every event of its type. Arrow keys in a list, and Enter in a combobox, need a modifier that the loader applies by key, such as `onKeyDown:prevent(ArrowDown ArrowUp Enter Escape)`, or handlers that run at once when their code is loaded.
+1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
 2. Handlers in spreads. `spread()` and `attrs()` drop `on*` keys, so a part cannot put merged handlers on its element, and a wrapper cannot forward `onClick` through `...rest`. `attrs()` also keeps keys that are gone from the new object.
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
@@ -1164,21 +1141,12 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Compiled messages for i18n
-
-[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) compiles each translated message to its own function, so a page ships only the messages it uses. That matches how brumate ships only the code an event needs.
-
-- Paraglide works with any framework, so this is a guide and a small adapter, not a port: the locale of a request on the server, the same locale on the client, and links that keep it.
-- Messages that the server renders cost no client code. Only messages in client code, such as a handler that shows a toast, ship.
-
-Cost: a few days for the adapter, a guide and an example.
-
 ### Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
-2. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
+2. **Security**: rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
 3. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
 4. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 5. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
@@ -1186,10 +1154,10 @@ Each step lists what it holds and why it comes there. A step can start before th
 7. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 8. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 13.
 9. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-10. **What the UI components need first**: conditional `preventDefault` and handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+10. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
 11. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 12. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 13. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-14. **When an app or the website needs them**: compiled messages, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+14. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

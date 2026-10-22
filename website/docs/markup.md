@@ -106,6 +106,7 @@ Insert only HTML that you trust. HTML from a user can run scripts in your page.
 ```brm live
 <script>
   import { $signal } from 'brumate/signals';
+  import { once, prevent } from 'brumate/events';
 
   let message = $signal('');
   let draft = $signal('');
@@ -116,7 +117,7 @@ Insert only HTML that you trust. HTML from a user can run scripts in your page.
   }
 </script>
 
-<form onSubmit:prevent=send>
+<form onSubmit=(prevent(send))>
   <label>
     Message
     <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
@@ -124,24 +125,42 @@ Insert only HTML that you trust. HTML from a user can run scripts in your page.
   <button>Send</button>
 </form>
 <p>{message}</p>
-<button onClick:once=(() => (message = 'Only the first click counts'))>Click once</button>
+<button onClick=(once(() => (message = 'Only the first click counts')))>Click once</button>
 ```
 
-The handler is a name of a function, or an arrow function in parentheses. It loads in the browser when its event first fires.
+The handler is a name of a function, an arrow function in parentheses, or a call that returns a function. It loads in the browser when its event first fires.
 
-### Modifiers
+### Before the handler loads
 
-Modifiers follow the event name, as in `onSubmit:prevent`. They apply before the handler loads:
+A handler runs once its code has loaded, which is after the browser has acted on the event. `brumate/events` wraps a handler with what has to happen at once:
 
-| Modifier   | Effect                                     |
-| ---------- | ------------------------------------------ |
-| `:prevent` | Calls `event.preventDefault()`.            |
-| `:stop`    | Calls `event.stopPropagation()`.           |
-| `:passive` | Adds the listener as passive.              |
-| `:once`    | Removes the handler after the first event. |
-| `:capture` | Listens in the capture phase.              |
+| Wrapper                     | Effect                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `prevent(handler)`          | Calls `event.preventDefault()`.                                                                  |
+| `prevent(handler, ...keys)` | On a keyboard event, prevents only these keys. The handler still runs for every key.             |
+| `stop(handler)`             | Stops the event at this element, so the handlers of the elements around it do not run.           |
+| `once(handler)`             | Runs the handler for the first event only.                                                       |
+| `capture(handler)`          | Runs the handler before the handlers of the elements inside, as a listener in the capture phase. |
 
-Use `:prevent` rather than calling `event.preventDefault()` in the handler. The browser decides on the default action as soon as the event fires, before the handler's code has loaded.
+Handlers run as if each element had its own listener. Those wrapped by `capture` run first, from the outside in, and then the others, from the target outwards. An event that does not bubble, such as `focus`, `blur`, `mouseenter` or `scroll`, runs only the handlers of its target and the `capture` handlers around it. Listeners are passive unless a handler of the event prevents, so there is no `passive` wrapper.
+
+```brm
+<script>
+  import { prevent, stop } from 'brumate/events';
+</script>
+
+<ul role="listbox" tabindex="0" onKeyDown=(prevent(move, 'ArrowDown', 'ArrowUp', 'Home', 'End'))>
+  …
+</ul>
+<button onClick=(stop(prevent(save)))>Save</button>
+```
+
+- The compiler reads the wrappers in the markup and writes them into the page, so the loader applies them on the first event, before any code loads. Calling `event.preventDefault()` in the handler is too late.
+- Wrappers nest, in any order.
+- Keys are strings of their `event.key`: a named key such as `'Enter'`, `'Escape'`, `'ArrowDown'` or `'F1'`, a letter or a digit, and `'Space'` for the space bar. TypeScript completes them, and the compiler reports a key that is not one. Only `prevent` of `onKeyDown`, `onKeyUp` and `onKeyPress` takes keys.
+- Write the wrapper in the attribute, with keys as string literals, so the compiler can read it.
+
+A modifier after the event name, as in `onSubmit:prevent=send`, does the same, with a warning that points to the wrapper. It goes in a later version. A modifier on a component is a compile error: the component puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
 
 ### Loading handlers early
 

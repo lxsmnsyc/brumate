@@ -63,6 +63,10 @@
       "types": "./dist/runtime/routes.d.ts",
       "default": "./dist/runtime/routes.js"
     },
+    "./events": {
+      "types": "./dist/runtime/events.d.ts",
+      "default": "./dist/runtime/events.js"
+    },
     "./devtools": {
       "types": "./dist/runtime/devtools.d.ts",
       "default": "./dist/runtime/devtools.js"

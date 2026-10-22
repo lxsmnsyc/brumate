@@ -24,6 +24,7 @@ export const examples: Example[] = [
     name: 'Todos',
     source: `<script>
   import { $memo, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   let todos = $signal([{ id: 1, title: 'Write the docs', done: false }]);
   let draft = $signal('');
@@ -35,7 +36,7 @@ export const examples: Example[] = [
   }
 </script>
 
-<form onSubmit:prevent=add>
+<form onSubmit=(prevent(add))>
   <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
 </form>
 <ul>
