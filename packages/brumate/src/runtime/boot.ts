@@ -28,6 +28,12 @@ export interface LoaderOptions {
    * connection is 2G. Defaults to true.
    */
   preload?: boolean;
+  /**
+   * The ID of the build of the page, for skew protection. The Vite plugin
+   * sets it. Calls send it, and a page of another build, or a call that
+   * answers 409 after a deploy, makes the next navigation a full page load.
+   */
+  build?: string;
 }
 
 export interface NavigateOptions {

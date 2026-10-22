@@ -97,6 +97,8 @@ export interface CoreOptions {
   listen: (root: ParentNode) => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
+  /** The ID of the build of the page, for skew protection. Calls send it, and a deploy is noticed. */
+  build?: string;
 }
 
 // The core keeps only what every page needs: it reads the state, runs handlers and updates.
@@ -107,6 +109,17 @@ export interface CoreOptions {
 let options: CoreOptions;
 /** The URL prefix of server function calls, from the options. */
 export let rpcPrefix = '/_brumate';
+/** The ID of the build of the page, from the loader. Undefined on the dev server. */
+export let build: string | undefined;
+
+/**
+ * Tells the page that the site changed since it loaded: a call answered 409
+ * with another build, or the code of a handler is gone. The loader then
+ * loads the next page in full, and an app can save a draft first.
+ */
+export function skew(reason: 'call' | 'code' | 'defer'): void {
+  document.dispatchEvent(new CustomEvent('brumate:skew', { detail: reason }));
+}
 /** The scopes of the page, by ID. */
 export const scopes: Map<ScopeId, Scope> = new Map();
 
@@ -531,6 +544,7 @@ export function leavePage(): void {
 export function init(value: CoreOptions): void {
   options = value;
   rpcPrefix = value.rpc ?? '/_brumate';
+  build = value.build;
   const queue = stateQueue();
   // Records that are still streaming settle their promises when their scripts run.
   queue.push = pushRecords;
@@ -600,9 +614,18 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 
 async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
-  const module = await loadModule(id);
-  const part = await loadPart(module, partOf(name));
-  return part[name] as Handler;
+  try {
+    const module = await loadModule(id);
+    const part = await loadPart(module, partOf(name));
+    return part[name] as Handler;
+  } catch (error) {
+    // After a deploy, the files of a build can be gone. The page loads again, with the new code.
+    if (build !== undefined) {
+      skew('code');
+      location.reload();
+    }
+    throw error;
+  }
 }
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {

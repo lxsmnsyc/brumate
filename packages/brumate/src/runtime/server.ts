@@ -1133,6 +1133,8 @@ export interface StateAttributes {
   root?: number | string;
   /** The Content Security Policy nonce of the script. */
   nonce?: string;
+  /** The ID of the build that rendered the page, on its first record, for skew protection. */
+  build?: string;
 }
 
 /**
@@ -1165,6 +1167,9 @@ export function stateScript(
   }
   if (attributes.route !== undefined) {
     extra += ` b-route="${escapeAttribute(attributes.route)}"`;
+  }
+  if (attributes.build !== undefined) {
+    extra += ` b-build="${escapeAttribute(attributes.build)}"`;
   }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
@@ -1288,6 +1293,12 @@ export interface RenderOptions {
    */
   nonce?: string;
   /**
+   * The ID of the build, for skew protection. The page state carries it,
+   * and the browser sends it with each call. The Vite plugin sets it in
+   * builds. See `handleRequest`.
+   */
+  build?: string;
+  /**
    * Renders only the body of this `#defer` block, for the request that the
    * browser sends when the block's trigger fires. Pass the `base` of the
    * page too, so the IDs of the page come out the same. The body comes from
@@ -1358,7 +1369,14 @@ export async function render<P>(
       (code, initial) => {
         if (initial) {
           onScopes(
-            stateScript(code, true, { next: ctx.next(), route, root, nonce, define: first }),
+            stateScript(code, true, {
+              next: ctx.next(),
+              route,
+              root,
+              nonce,
+              define: first,
+              build: first ? options.build : undefined,
+            }),
           );
           first = false;
         } else {
@@ -1619,6 +1637,20 @@ function unknownAnswer(id: string): Response {
   return new Response(`Unknown server function "${id}"`, { status: 404 });
 }
 
+/** True when a request names a build other than the server's, so its page is from before a deploy. */
+function isSkewed(request: Request, build: string | undefined): boolean {
+  const sent = request.headers.get('x-brumate-build');
+  return build !== undefined && sent !== null && sent !== build;
+}
+
+/** The answer to a request from a page of another build that the server cannot serve. */
+function skewAnswer(build: string): Response {
+  return new Response(JSON.stringify({ error: 'The site changed. Load the page again' }), {
+    status: 409,
+    headers: { 'content-type': 'application/json', 'x-brumate-build': build },
+  });
+}
+
 /**
  * Calls a server function with the data of a form that the browser sent.
  * Returns its result, or the response that answers the post instead: a
@@ -1698,6 +1730,13 @@ export interface RequestOptions {
    * allowed.
    */
   origins?: string[];
+  /**
+   * The ID of the build, for skew protection. A call from a page of another
+   * build to a function that is gone answers 409 with this ID in
+   * `x-brumate-build`, and the browser loads the page again. A call to a
+   * function that still exists runs. The Vite plugin sets it in builds.
+   */
+  build?: string;
 }
 
 /**
@@ -1759,7 +1798,7 @@ export async function handleRequest(
   const id = decodeURIComponent(url.pathname.slice(prefix.length + 1));
   const fn = functions[id];
   if (!fn) {
-    return unknownAnswer(id);
+    return isSkewed(request, options.build) ? skewAnswer(options.build!) : unknownAnswer(id);
   }
   const event = new RequestEvent(request);
   // The function runs with its event, so `getEvent()` before its first await returns it.
@@ -2098,6 +2137,10 @@ async function routeAnswer(
 ): Promise<Response | undefined> {
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);
+  // The body of a `#defer` block from a page of another build: its boundaries may differ.
+  if (deferTarget(request) && isSkewed(request, options.build)) {
+    return skewAnswer(options.build!);
+  }
   if (!match) {
     const missing = notFound(tree);
     if (missing.errors.length === 0 && missing.middleware.length === 0) {

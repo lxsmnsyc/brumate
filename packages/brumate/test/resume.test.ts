@@ -439,6 +439,41 @@ describe('resume', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'));
   });
 
+  it('sends the build with calls, and loads the next page in full after a deploy', async () => {
+    vi.resetModules();
+    const server = await import(file('session.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const builds: (string | null)[] = [];
+    // The server is of a newer build, and the function of the call is gone from it.
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const request = new Request(`http://localhost${url}`, init);
+      builds.push(request.headers.get('x-brumate-build'));
+      return runtime.handleRequest({}, request, '/_brumate', { build: 'new' });
+    });
+    const assign = vi.fn<(url: string) => void>();
+    const { href, origin } = window.location;
+    vi.stubGlobal('location', { href, origin, assign });
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const { html, state } = await runtime.render(server.default, {}, { request, build: 'old' });
+    show(`${html}${state}<a class="next" href="/next">Next</a>`);
+    expect(state).toContain('b-build="old"');
+    const skews: string[] = [];
+    document.addEventListener('brumate:skew', (event) =>
+      skews.push((event as CustomEvent<string>).detail),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!), build: 'old' });
+
+    click(document.querySelector('.ok')!);
+    await waitFor(() => expect(text('.message')).toBe('The site changed. Load the page again'));
+    expect(builds).toEqual(['old']);
+    expect(skews).toEqual(['call']);
+    // The next link is a full page load, with the code of the new build.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
+  });
+
   it('loads async memos again when their inputs change', async () => {
     vi.resetModules();
     const server = await import(file('search.brm.ts'));

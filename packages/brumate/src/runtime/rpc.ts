@@ -1,4 +1,5 @@
 import { toJSONAsync } from 'seroval';
+import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 import { Upload, replaceDeep } from './calls.ts';
@@ -76,9 +77,14 @@ export async function submit(prefix: string, id: string, form: FormData): Promis
 
 /** Posts to a server function, and reads its answer. */
 async function post(prefix: string, id: string, init: RequestInit): Promise<unknown> {
+  const headers = new Headers(init.headers);
+  // The build of the page, so the server can tell a call from before a deploy.
+  if (build !== undefined) {
+    headers.set('x-brumate-build', build);
+  }
   return answer(
     id,
-    await fetch(`${prefix}/${encodeURIComponent(id)}`, { ...init, method: 'POST' }),
+    await fetch(`${prefix}/${encodeURIComponent(id)}`, { ...init, headers, method: 'POST' }),
   );
 }
 
@@ -102,6 +108,10 @@ async function answer(id: string, response: Response): Promise<unknown> {
     return new Promise(() => {});
   }
   if (!response.ok) {
+    // The site changed, and this page is from before. The next page loads in full.
+    if (response.status === 409 && response.headers.get('x-brumate-build')) {
+      skew('call');
+    }
     let message = `Server function "${id}" failed with status ${response.status}`;
     try {
       message = ((await response.json()) as { error: string }).error;
@@ -162,7 +172,16 @@ export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null)
   return import('./client.ts').then(({ asyncMemo, rpcPrefix, scopes, track }) => {
     const scope = scopes.get(scopeId);
     if (scope) {
-      asyncMemo(scope, slot, track(submit(rpcPrefix, action, data)));
+      const result = submit(rpcPrefix, action, data).catch((error: unknown) => {
+        // The site changed since the page loaded. The form posts again without scripts, and the
+        // page that answers is of the new build.
+        if ((error as { status?: number }).status === 409 && build !== undefined) {
+          form.submit();
+          return new Promise(() => {});
+        }
+        throw error;
+      });
+      asyncMemo(scope, slot, track(result));
     }
   });
 }

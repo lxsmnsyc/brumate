@@ -88,6 +88,7 @@ The options of `render`, and of every function that renders.
 | `base`    | `number`                | The first ID of the render, for a second root on the same page.                                                      |
 | `actions` | `Map<unknown, unknown>` | Results of server functions that a form posted to this page, by function, for `$action`.                             |
 | `route`   | `string`                | Names the route of the page. `handleRoute` sets it.                                                                  |
+| `build`   | `string`                | The ID of the build, for skew protection. The page state carries it. The Vite plugin sets it in builds.              |
 
 ### `DocumentOptions`
 
@@ -100,7 +101,7 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 | `start`   | `string \| ((head: string) => string)` | Markup before the component, for a component that does not render `<html>`.         |
 | `end`     | `string`                               | Markup after the first render, for a component that does not render `<html>`.       |
 
-`handleRoute` also takes `functions`, the server functions by ID, and `origins`.
+`handleRoute` also takes `functions`, the server functions by ID, `origins`, and `build`, the ID of the build, for skew protection. `handleRequest` takes `origins` and `build` in its options: a call from a page of another build to a function that is gone answers 409 with `x-brumate-build`.
 
 ### `RenderResult`
 

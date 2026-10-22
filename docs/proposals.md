@@ -19,7 +19,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Trusted Types](#trusted-types)                                       | Runtime | Medium | Small  |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
-| [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
 | [Cancelled work](#cancelled-work)                                     | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
@@ -681,21 +680,6 @@ Prior art: Better Auth limits its own routes this way. It keys by the address an
 
 Cost: a few days for the wrapper, the middleware and the in-memory store. The shared store comes with caching.
 
-### Skew protection
-
-A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, from file names that the new build may not have, and calls server functions whose IDs or arguments may have changed. A page that hydrates loads all of its code at the start, so it is less exposed than brumate.
-
-- Each build has an ID, which the page and its state records carry. Part loads and server function calls send it.
-- The client files have hashes in their names, so the files of older builds can stay next to the new ones. The build keeps a manifest of the files of the last builds, and a host that serves `dist/client` keeps them for a time that an option sets, such as a day.
-- A call from an older build to a function that still exists, with the same ID, runs. A call to a function that is gone answers 409 with the build ID of the server.
-- On a 409, or a part that fails to load, the browser does a full page load at the next navigation, or at once when the call cannot wait, such as a form post, which then posts again. The state of the page is lost then, and `onSkew` lets an app save a draft first.
-- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, since the kept layouts are code of the old build.
-- Prerendered pages carry the ID of their build too.
-
-Prior art: Vercel's skew protection, which keeps the deployments of the last hours and routes each request to the build that made its page.
-
-Cost: about 1 to 2 weeks, most of it in what the build keeps and in testing a deploy in the middle of a session.
-
 ### Middleware entry
 
 `_middleware.ts` runs before the routes of its folder, pages and endpoints. Server function calls, at `/_brumate/<id>`, go past it, so each server function checks the user itself, and a function that forgets is open.
@@ -1270,7 +1254,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
 2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
 3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
-4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
+4. **Skew protection.** Done.
 5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.
 6. **Routing in the browser**, with `$navigation`, and **accessible navigation**. They change the same code, and the second makes client navigation as accessible as a full page load.
 7. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.

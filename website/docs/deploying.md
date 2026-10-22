@@ -88,6 +88,27 @@ export default {
 
 [`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
 
+## Skew protection
+
+A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
+
+- Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
+- The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.
+- A handler whose code is gone, because the files of its build were removed, loads the page again at once.
+- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, because the layouts that it would keep are code of the old build.
+- The page gets a `brumate:skew` event when it notices a deploy, with `'call'`, `'code'` or `'defer'` in `detail`, before anything loads again. An app can save a draft in it.
+
+The files of the client build have hashes in their names, so the files of earlier builds can stay next to the new ones for the pages that are still open. `skew: { keep: 2 }` keeps the files of the two builds before the last one: the build does not empty `dist/client`, lists its builds in `.brumate/builds.json`, and removes the files of older builds itself. A host that serves the directory as it is then serves old pages their code for two deploys.
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  plugins: [brumate({ skew: { keep: 2 } })],
+});
+```
+
+The dev server has no build ID, so nothing is checked there.
+
 ## A production server
 
 Any server that speaks web `Request` and `Response` can serve the build. A request goes to the server functions first, then to the client files, then to the routes:

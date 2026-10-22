@@ -395,6 +395,66 @@ describe('prerendering', () => {
   });
 });
 
+describe('skew protection', () => {
+  it('gives the client and the server the ID of the build, and keeps the files of earlier builds', async () => {
+    const app = fileURLToPath(new URL('./.output/skew-app/', import.meta.url));
+    rmSync(app, { recursive: true, force: true });
+    mkdirSync(`${app}src/routes`, { recursive: true });
+    writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
+    writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>\n",
+    );
+    const shared: InlineConfig = {
+      ...config,
+      root: app,
+      plugins: [brumate({ skew: { keep: 1 } })],
+    };
+    const buildClient = (): Promise<unknown> =>
+      build({
+        ...shared,
+        build: {
+          outDir: 'dist/client',
+          manifest: true,
+          rolldownOptions: { input: 'src/client.ts' },
+        },
+      });
+    await buildClient();
+    const first = readFileSync(`${app}dist/client/.brumate/build.json`, 'utf8');
+    const id = (JSON.parse(first) as { build: string }).build;
+    const assets = (): string[] => readdirSync(`${app}dist/client/assets`);
+    const firstAssets = assets();
+    const code = firstAssets.map((name) =>
+      readFileSync(`${app}dist/client/assets/${name}`, 'utf8'),
+    );
+    expect(code.some((chunk) => chunk.includes(id))).toBe(true);
+
+    await build({ ...shared, build: { outDir: 'dist/server', ssr: 'src/server.ts' } });
+    expect(readFileSync(`${app}dist/server/server.js`, 'utf8')).toContain(`build: "${id}"`);
+
+    // A second client build keeps the files of the first, under a new ID.
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(1);\n</script>\n<button onClick=(() => (count += 2))>{count}</button>\n",
+    );
+    await buildClient();
+    const second = (
+      JSON.parse(readFileSync(`${app}dist/client/.brumate/build.json`, 'utf8')) as {
+        build: string;
+      }
+    ).build;
+    expect(second).not.toBe(id);
+    for (const name of firstAssets) {
+      expect(assets()).toContain(name);
+    }
+    const builds = JSON.parse(readFileSync(`${app}dist/client/.brumate/builds.json`, 'utf8')) as {
+      builds: { id: string }[];
+    };
+    expect(builds.builds.map((entry) => entry.id)).toEqual([id, second]);
+  });
+});
+
 describe('vitest cache key', () => {
   it('adds a hash of the build of brumate to the cache key of Vitest', () => {
     const keys: string[] = [];

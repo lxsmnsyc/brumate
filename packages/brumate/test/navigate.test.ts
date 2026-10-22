@@ -70,6 +70,40 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('builds', () => {
+  it('loads a page of another build in full, and swaps in one of the same build', async () => {
+    document.body.innerHTML = `<p>old</p>${pageState(1)}`;
+    const assign = vi.fn<(url: string) => void>();
+    const { href, origin } = window.location;
+    vi.stubGlobal('location', { href, origin, assign });
+    const page = (build: string): string =>
+      `<!doctype html><html><body><p>new</p>${pageState(1).replace('b-route="root"', `b-route="root" b-build="${build}"`)}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page('b2'), { headers: { 'content-type': 'text/html' } })),
+    );
+    await navigate({
+      url: '/next',
+      push: true,
+      build: 'b1',
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(assign).toHaveBeenCalledWith('http://localhost:3000/next');
+    expect(document.body.textContent).toContain('old');
+
+    await navigate({
+      url: '/next',
+      push: true,
+      build: 'b2',
+      leave: async () => {},
+      enter: () => {},
+    });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain('new');
+  });
+});
+
 describe('navigate', () => {
   it('swaps in the first render, then streams later markup into the body', async () => {
     document.head.innerHTML = '<title>Old</title><style b-style="Old">a{}</style>';

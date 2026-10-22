@@ -40,7 +40,22 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
   const rpc = `${options.rpc ?? '/_brumate'}/`;
   // The page without its hash, to tell a change of the hash from a change of the page.
   let page = String(location.href).split('#')[0];
+  // True once the site changed since the page loaded: the next page loads in full, with new code.
+  let skewed = false;
+  listen(document, 'brumate:skew', () => {
+    skewed = true;
+  });
   const go = (url: string, init?: RequestInit, push = true, reload = false): void => {
+    if (skewed) {
+      // A form post cannot be a full page load: the page loads again, and the form is lost with
+      // the rest of the state of the page.
+      if (init) {
+        location.reload();
+      } else {
+        location.assign(url);
+      }
+      return;
+    }
     page = url.split('#')[0]!;
     if (core()) {
       void routes();
@@ -51,6 +66,7 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
         init,
         push,
         reload,
+        build: options.build,
         transition: typeof options.navigate === 'object' && options.navigate.transition === true,
         // The core forgets the old page, or only stops reading, when layouts stay.
         leave: async (partial) => {
@@ -115,7 +131,13 @@ function navigation({ options, listen, core, scan }: Navigation): () => Promise<
     const submitter = (event as SubmitEvent).submitter;
     const action = submitter?.getAttribute('formaction') ?? form.getAttribute('action') ?? '';
     const method = submitter?.getAttribute('formmethod') ?? form.getAttribute('method');
-    if (event.defaultPrevented || method?.toLowerCase() !== 'post' || !action.startsWith(rpc)) {
+    if (
+      event.defaultPrevented ||
+      method?.toLowerCase() !== 'post' ||
+      !action.startsWith(rpc) ||
+      // After a deploy, the browser posts the form itself, and the page that answers is new.
+      skewed
+    ) {
       return;
     }
     event.preventDefault();

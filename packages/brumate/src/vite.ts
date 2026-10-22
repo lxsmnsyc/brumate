@@ -25,6 +25,7 @@ import type { CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, resolveRelative } from './project.ts';
+import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
   findPackages,
   packageFileName,
@@ -95,6 +96,21 @@ export interface BrumateOptions {
    * the pages that its links lead to.
    */
   prerender?: boolean | PrerenderOptions;
+  /**
+   * Skew protection: a page that was open before a deploy keeps working.
+   * Each build has an ID, which the page carries and sends with its calls.
+   * A call to a function that is gone, or a page of another build, makes
+   * the browser load the page in full. The client build writes its ID to
+   * `.brumate/build.json`, and the server build reads it, so build the
+   * client first. `BRUMATE_BUILD` in the environment names the ID for both.
+   *
+   * `keep` is how many earlier builds keep their files in the client
+   * output, so a page that is open still finds the code of its handlers
+   * after a deploy. The build then does not empty the output directory, and
+   * removes the files of older builds itself. Defaults to 0, which empties
+   * it as Vite does.
+   */
+  skew?: { keep?: number };
   /**
    * Prints what the client build ships: what every page loads before its
    * first event, the core, the most that each route can load, and each
@@ -256,6 +272,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
   let outDir = '';
+  /** The ID of the build, for skew protection. Undefined on the dev server. */
+  let buildId: string | undefined;
   let base = '/';
   let isSsrBuild = false;
   let isServe = false;
@@ -502,7 +520,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...fileSpreads,
       '};',
       'export function handle(request) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])} });`,
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
       '}',
     ].join('\n');
   };
@@ -535,6 +553,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       rpc,
       options.origins,
       isServe,
+      buildId,
     );
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
@@ -772,13 +791,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const shared = packageConfig(config);
       if (!env.isSsrBuild) {
         const preload = config.build?.modulePreload;
+        // The files of earlier builds stay, and the build removes the ones that are too old itself.
+        const keep = options.skew?.keep ? { build: { emptyOutDir: false } } : {};
         if (preload === false) {
-          return shared;
+          return { ...shared, ...keep };
         }
         const resolve = typeof preload === 'object' ? preload.resolveDependencies : undefined;
         return {
           ...shared,
           build: {
+            ...keep.build,
             modulePreload: {
               // The loader imports the core itself when it imports a component's module, so
               // it needs no list of the chunks to preload with it, which it would ship.
@@ -883,6 +905,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async writeBundle(_output, bundle) {
+      if (!isSsrBuild && buildId !== undefined) {
+        const written = Object.values(bundle).map((item) => item.fileName);
+        const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
+        if (removed.length > 0) {
+          this.info(`Removed the files of ${removed.length} older builds`);
+        }
+        return;
+      }
       if (!options.prerender || !isSsrBuild) {
         return;
       }
@@ -898,6 +928,20 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async buildStart() {
+      if (!isServe) {
+        if (isSsrBuild) {
+          // The server build names the build of the client, which must come first.
+          buildId = readBuildId(clientBuildDirectory(root, options.prerender));
+          if (buildId === undefined) {
+            this.warn(
+              `No ${BUILD_FILE} in the client build, so the server does not know its build ID. Build the client first for skew protection`,
+            );
+          }
+        } else {
+          buildId =
+            process.env.BRUMATE_BUILD || `${Date.now().toString(36)}${hash(String(Math.random()))}`;
+        }
+      }
       coreModule = isServe
         ? undefined
         : (await this.resolve('brumate/client', path.join(root, 'index.html')))?.id;
@@ -955,7 +999,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
