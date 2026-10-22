@@ -12,10 +12,10 @@ import {
 import type { SerovalNode } from 'seroval';
 import { describe, expect, it } from 'vitest';
 import { raw, rawHTML, spread } from '../src/runtime/html.ts';
-import { disabledFeatures, plugins, syncPlugins } from '../src/runtime/serial.ts';
+import { callPlugins, disabledFeatures, plugins, syncPlugins } from '../src/runtime/serial.ts';
 import { stateScript, streamState } from '../src/runtime/server.ts';
 import { dedupe, withEvent } from '../src/runtime/request.ts';
-import { Upload, functionReferences } from '../src/runtime/calls.ts';
+import { functionReferences } from '../src/runtime/calls.ts';
 import { ElementReference, FunctionReference, stateValues } from '../src/runtime/shared.ts';
 
 const handler = (): void => {};
@@ -30,7 +30,6 @@ function sample(): unknown {
     handler,
     html: raw('<b>bold</b>'),
     component,
-    upload: new Upload(3),
     url: new URL('https://example.com/a?b=c'),
     params: new URLSearchParams('x=1&y=2'),
     headers: new Headers({ 'x-a': '1' }),
@@ -64,7 +63,6 @@ function summary(value: unknown): unknown {
     handler: result.handler,
     html: rawHTML(result.html as ReturnType<typeof raw>),
     component: (result.component as { brumateId: string }).brumateId,
-    upload: result.upload,
     url: String(result.url),
     params: String(result.params),
     headers: Object.fromEntries(result.headers as Headers),
@@ -80,7 +78,6 @@ const expected = {
   handler: new FunctionReference('Card_x1#h2', 4),
   html: '<b>bold</b>',
   component: 'Card_x1',
-  upload: new Upload(3),
   url: 'https://example.com/a?b=c',
   params: 'x=1&y=2',
   headers: { 'x-a': '1' },
@@ -135,14 +132,9 @@ describe('plain objects', () => {
 
 describe('state records', () => {
   it('make the values of the plugins with the functions that the core passes', () => {
-    const { upload: _, ...value } = sample() as Record<string, unknown>;
-    const code = crossSerialize(value, { ...options, refs: new Map() });
+    const code = crossSerialize(sample(), { ...options, refs: new Map() });
     expect(code).toMatchSnapshot('cross code');
-    const { upload: __, ...rest } = expected;
-    expect(summary({ ...(runRecord(code) as object), upload: undefined })).toEqual({
-      ...rest,
-      upload: undefined,
-    });
+    expect(summary(runRecord(code))).toEqual(expected);
   });
 
   it('refer to values of earlier records, and settle their promises', async () => {
@@ -268,5 +260,69 @@ describe('streams', () => {
     const read = dedupe((_stream: ReadableStream<string>) => ++count, 'read');
     const results = withEvent(undefined, () => [read(chunks('a')), read(chunks('b'))], new Map());
     expect(results).toEqual([1, 2]);
+  });
+});
+
+/** Sends arguments as a call does, and reads them as the server does, with the files of the form. */
+async function sendArgs(args: unknown[]): Promise<{ files: Blob[]; read: unknown[] }> {
+  const files: Blob[] = [];
+  const json = await toJSONAsync(args, { plugins: callPlugins(files), disabledFeatures });
+  const form = new FormData();
+  files.forEach((file, index) => form.set(`file${index}`, file));
+  const read = fromJSON<unknown[]>(JSON.parse(JSON.stringify(json)), {
+    plugins: callPlugins(undefined, form),
+    disabledFeatures,
+  });
+  return { files, read };
+}
+
+describe('uploads', () => {
+  it('send files and blobs from anywhere in the arguments as parts of the form', async () => {
+    const file = new File(['hi'], 'hi.txt', { type: 'text/plain' });
+    const blob = new Blob(['b']);
+    const data = new FormData();
+    data.set('title', 'Notes');
+    data.set('attachment', file);
+    const { files, read } = await sendArgs([
+      file,
+      { nested: [blob] },
+      new Map([['key', file]]),
+      new Set([blob]),
+      data,
+    ]);
+    // A file that comes twice is sent once, and both places get the same file.
+    expect(files).toEqual([file, blob]);
+    const [first, object, map, set, form] = read as [
+      File,
+      { nested: Blob[] },
+      Map<string, File>,
+      Set<Blob>,
+      FormData,
+    ];
+    expect(first.name).toBe('hi.txt');
+    expect(await first.text()).toBe('hi');
+    expect(await object.nested[0]!.text()).toBe('b');
+    expect(map.get('key')).toBe(first);
+    expect([...set][0]).toBe(object.nested[0]);
+    expect(form.get('title')).toBe('Notes');
+    expect(await (form.get('attachment') as File).text()).toBe('hi');
+  });
+
+  it('refuse a file outside the arguments of a call', async () => {
+    const codes: string[] = [];
+    await expect(
+      streamState({ 0: { s: [new Blob(['x'])] } }, (code) => codes.push(code)),
+    ).rejects.toThrow('A file or a blob can only be sent in the arguments of a server function');
+    expect(() =>
+      fromJSON(
+        JSON.parse(
+          JSON.stringify(toJSON([0], { plugins, disabledFeatures })).replace(
+            '{"t":0,"s":0}',
+            '{"t":25,"i":1,"s":{"i":{"t":0,"s":0}},"c":"brumate/upload"}',
+          ),
+        ),
+        { plugins, disabledFeatures },
+      ),
+    ).toThrow('A file of the call is missing');
   });
 });

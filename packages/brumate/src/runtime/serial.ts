@@ -7,11 +7,9 @@
 import { Feature, createPlugin } from 'seroval';
 import {
   AbortSignalPlugin,
-  BlobPlugin,
   CustomEventPlugin,
   DOMExceptionPlugin,
   EventPlugin,
-  FilePlugin,
   FormDataPlugin,
   HeadersPlugin,
   ImageDataPlugin,
@@ -29,7 +27,7 @@ import type {
 } from 'seroval';
 import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
-import { Upload, functionReferences } from './calls.ts';
+import { functionReferences, isBlob } from './calls.ts';
 import { ElementReference, stateValues } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
@@ -112,33 +110,51 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.c(ctx.deserialize<string>(node.c)),
 });
 
-/** A file in the arguments of a server function call. It is never in the page state. */
-const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
-  tag: 'brumate/upload',
-  skipPlainObjects: true,
-  test: (value) => value instanceof Upload,
-  parse: parsers((value) => ({ i: value.index })),
-  serialize: () => {
-    throw new Error('A file cannot be sent in the page');
-  },
-  deserialize: (node, ctx) => new Upload(ctx.deserialize<number>(node.i)),
-});
+/**
+ * Files and blobs, which go only in the arguments of a call, as parts of
+ * multipart form data named `file<index>`. The node holds the index. The
+ * call passes `sent`, which gets each blob, and the server passes the form
+ * that it `received`, whose files the indexes read. Without them, as in the
+ * page state and in the answer of a call, a blob throws.
+ */
+export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, { i: SerovalNode }> {
+  return createPlugin<Blob, { i: SerovalNode }>({
+    tag: 'brumate/upload',
+    skipPlainObjects: true,
+    test: isBlob,
+    parse: parsers((value) => {
+      if (!sent) {
+        throw new Error('A file or a blob can only be sent in the arguments of a server function');
+      }
+      return { i: sent.push(value) - 1 };
+    }),
+    serialize: () => {
+      throw new Error('A file or a blob can only be sent in the arguments of a server function');
+    },
+    deserialize: (node, ctx) => {
+      const file = received?.get(`file${ctx.deserialize<number>(node.i)}`);
+      if (!(file instanceof Blob)) {
+        throw new TypeError('A file of the call is missing');
+      }
+      return file;
+    },
+  });
+}
 
+/** The plugins after the plugin of uploads, which a call makes for its files. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const plugins: Plugin<any, any>[] = [
+const valuePlugins: Plugin<any, any>[] = [
   ElementPlugin,
   FunctionPlugin,
   RawPlugin,
   ComponentPlugin,
-  UploadPlugin,
-  // The web values of seroval-plugins. Blobs, files, form data, requests and responses need
-  // the async or stream modes, so a page state or a call result that holds one streams.
+  // The web values of seroval-plugins. Requests and responses need the async or stream modes,
+  // so a page state or a call result that holds one streams. The plugin of uploads takes files
+  // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.
   AbortSignalPlugin,
-  BlobPlugin,
   CustomEventPlugin,
   DOMExceptionPlugin,
   EventPlugin,
-  FilePlugin,
   FormDataPlugin,
   HeadersPlugin,
   ImageDataPlugin,
@@ -148,6 +164,19 @@ export const plugins: Plugin<any, any>[] = [
   URLPlugin,
   URLSearchParamsPlugin,
 ];
+
+/**
+ * The plugins of a call with files: `sent` gets the files that the call
+ * sends, and `received` is the form that the server got them in.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export function callPlugins(sent?: Blob[], received?: FormData): Plugin<any, any>[] {
+  return [uploadPlugin(sent, received), ...valuePlugins];
+}
+
+/** The plugins of the page state, of answers and of calls without files. */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export const plugins: Plugin<any, any>[] = callPlugins();
 
 /**
  * Stops a sync mode at a value that only streams: an async iterable, such

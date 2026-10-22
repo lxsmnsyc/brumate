@@ -13,38 +13,20 @@ export const functionReferences: WeakMap<object, FunctionReference> = ((
 )[Symbol.for('brumate.functionReferences')] ??= new WeakMap());
 
 /**
- * A file or a blob in the arguments of a server function call. The call
- * sends it as a part of multipart form data, named `file<index>`, instead
- * of in the JSON of the arguments.
+ * True for a file or a blob. One from another frame, or another DOM, is an
+ * instance of another `Blob` class, so its methods tell instead.
  */
-export class Upload {
-  readonly index: number;
-
-  constructor(index: number) {
-    this.index = index;
+export function isBlob(value: unknown): value is Blob {
+  if (typeof Blob !== 'undefined' && value instanceof Blob) {
+    return true;
   }
-}
-
-/**
- * Replaces each value in arrays and plain objects that `replace` returns a
- * value for. Returns a copy, or the value itself when nothing changed.
- */
-export function replaceDeep(value: unknown, replace: (value: unknown) => unknown): unknown {
-  const replaced = replace(value);
-  if (replaced !== undefined) {
-    return replaced;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => replaceDeep(item, replace));
-  }
-  if (
-    value !== null &&
-    typeof value === 'object' &&
-    Object.getPrototypeOf(value) === Object.prototype
-  ) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, replaceDeep(item, replace)]),
-    );
-  }
-  return value;
+  const blob = value as Partial<Blob> | null;
+  return (
+    typeof blob === 'object' &&
+    blob !== null &&
+    typeof blob.size === 'number' &&
+    typeof blob.type === 'string' &&
+    typeof blob.arrayBuffer === 'function' &&
+    typeof blob.slice === 'function'
+  );
 }

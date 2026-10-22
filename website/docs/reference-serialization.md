@@ -14,7 +14,7 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | Plain objects and arrays                           | Shared and cyclic references are kept. Objects with a `null` prototype are kept.                   |
 | `Date`, `Map`, `Set`                               |                                                                                                    |
 | `URL`, `URLSearchParams`, `Headers`                |                                                                                                    |
-| `FormData`                                         | Its text fields. A field that holds a file is sent only in the arguments of a call.                |
+| `FormData`                                         | A field that holds a file is sent only in the arguments of a call.                                 |
 | `Request`, `Response`                              | With their body, which is read to send it.                                                         |
 | `ReadableStream`                                   | Each chunk streams as it is ready.                                                                 |
 | `AbortSignal`                                      | Whether it aborted, and its reason.                                                                |
@@ -29,11 +29,11 @@ Values cross from the server to the browser in two ways: in the page, for the st
 
 ## Only through server functions
 
-| Value           | Direction              | Notes                                                                                                                       |
-| --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `File`, `Blob`  | Arguments              | As parts of multipart form data, in arrays and plain objects. In other values, such as a `Map`, their bytes go in the JSON. |
-| Async iterables | Answers                | Each value streams as it is ready. In the page, a memo of a stream holds its first value.                                   |
-| `FormData`      | Arguments, from a form | A form that posts to a server function sends its `FormData`.                                                                |
+| Value           | Direction              | Notes                                                                                           |
+| --------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
+| `File`, `Blob`  | Arguments              | As parts of multipart form data, anywhere in the arguments, such as in a `Map` or a `FormData`. |
+| Async iterables | Answers                | Each value streams as it is ready. In the page, a memo of a stream holds its first value.       |
+| `FormData`      | Arguments, from a form | A form that posts to a server function sends its `FormData`.                                    |
 
 ## Not sent
 
