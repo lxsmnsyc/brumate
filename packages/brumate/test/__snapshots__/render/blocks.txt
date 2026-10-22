@@ -303,4 +303,4 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Blocks_jlmev2",s:$R[2]=["b",$R[3]=["one","two"],$R[4]=$b.e(0,2)]},3:$R[5]={k:12,p:0},g:$R[6]=[$R[7]=[5,0,33,2,0,1,1,0,1,1]]})))</script>
+<script b-state b-scopes b-next="4">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},3:{k:12,p:0},g:[[5,0,33,2,0,1,1,0,1,1]]})))</script>

@@ -122,4 +122,4 @@ export default function UsesCounter($$props: Record<string, never>): string {
 <button class="reset" b-b="0:5" b-on="click=UsesCounter_1euyiut#h15">Reset</button>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"UsesCounter_1euyiut",s:$R[2]=[10,1,2,10]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"UsesCounter_1euyiut",s:[10,1,2,10]}})))</script>

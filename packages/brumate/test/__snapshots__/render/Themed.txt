@@ -50,4 +50,4 @@ export default function Themed($$props: Record<string, never>): string {
 <span class="themed" b-b="0:0">light</span>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Themed_qy9qd3",x:$R[2]={theme:0},s:$R[3]=["light"]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Themed_qy9qd3",x:{theme:0},s:["light"]}})))</script>

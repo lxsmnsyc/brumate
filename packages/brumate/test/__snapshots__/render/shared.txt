@@ -86,4 +86,4 @@ export default function Shared($$props: Record<string, never>): string {
 </p>
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Shared_1xpln25",s:$R[2]=[0]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Shared_1xpln25",s:[0]}})))</script>

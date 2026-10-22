@@ -8,7 +8,7 @@ import {
   escapeAttribute,
 } from '../src/runtime/html.ts';
 import { RequestEvent } from '../src/runtime/request.ts';
-import { renderToStream } from '../src/runtime/server.ts';
+import { render, renderToStream } from '../src/runtime/server.ts';
 import type { Component } from '../src/runtime/server.ts';
 
 async function text(stream: ReadableStream<string>): Promise<string> {
@@ -81,6 +81,40 @@ describe('the first render', () => {
     expect(html).toMatch(
       /^<!doctype html><html><head><meta a><\/head><body>x.*<s><\/body><\/html>$/,
     );
+  });
+});
+
+const shared = { name: 'shared' };
+
+/** A component with one scope, whose slots hold `values`. */
+function withSlots(values: unknown[]): Component<object> {
+  return async (_props, ctx) => {
+    ctx.slots(ctx.scope(1, undefined, 'T_1'), values);
+    return '<p>x</p>';
+  };
+}
+
+describe('the page state', () => {
+  it('assigns only shared references when no later record reads them', async () => {
+    const { state, pending } = await render(withSlots([[1, 2], { a: 1 }, shared, shared]), {});
+    expect(state).toContain('$bR(($R,$b)=>(({0:{k:1,m:"T_1",s:[[1,2],{a:1},$R[');
+    expect(state.match(/\$R\[\d+\]=/g)).toHaveLength(1);
+    const later: string[] = [];
+    for await (const chunk of pending) {
+      later.push(chunk);
+    }
+    expect(later).toEqual([]);
+  });
+
+  it('streams a state with a promise, and settles it in a later record', async () => {
+    const { state, pending } = await render(withSlots([shared, Promise.resolve(shared)]), {});
+    const later: string[] = [];
+    for await (const chunk of pending) {
+      later.push(chunk);
+    }
+    // The later record refers to the shared object of the first one.
+    const id = /\$R\[(\d+)\]=\{name:"shared"\}/.exec(state)![1];
+    expect(later.join('')).toContain(`$R[${id}]`);
   });
 });
 
