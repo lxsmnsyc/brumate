@@ -1,0 +1,53 @@
+{
+  "name": "@brumate/content-mapper",
+  "version": "0.0.1",
+  "description": "TypeScript 7 content mapper for .brm files",
+  "homepage": "https://github.com/lxsmnsyc/brumate",
+  "bugs": "https://github.com/lxsmnsyc/brumate/issues",
+  "license": "MIT",
+  "author": "Alexis Munsayac",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxsmnsyc/brumate.git",
+    "directory": "packages/content-mapper"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "brumate": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.23.1",
+    "typescript": "7.1.0-beta",
+    "vitest": "^5.0.4"
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "dist/server.js"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Badge from './Badge.brm';
+
+  let name = $signal('Ada');
+</script>
+
+<input onInput=((event) => (name = event.currentTarget.value)) />
+<Badge label=name count="3" />
+<Badge label=name />
+<p>{name.toFixed(2)}</p>

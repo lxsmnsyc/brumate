@@ -21,5 +21,5 @@ It bundles a language server for styles and diagnostics, and a TypeScript plugin
 
 ## Limits
 
-- TypeScript 7 does not load plugins, so types in `.brm` files need TypeScript 5.0 to 6. VS Code ships with a version that works.
+- TypeScript 7 does not load plugins, so types in `.brm` files need TypeScript 5.0 to 6, or TypeScript 7.1 with the [content mapper](./typescript.md#typescript-7). VS Code ships with a version that works.
 - The diagnostics of the compiler read one file at a time. A warning that depends on how other files use a component can differ from the build, which reads the whole project.

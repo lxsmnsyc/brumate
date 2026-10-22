@@ -1,0 +1,6 @@
+<script>
+  // The file name makes the component name SignIn too.
+  import { SignIn } from './auth';
+</script>
+
+<p>{SignIn()}</p>

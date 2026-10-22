@@ -1,0 +1,5 @@
+<script>
+  const value: number = 'a';
+</script>
+
+<p>{value</p>

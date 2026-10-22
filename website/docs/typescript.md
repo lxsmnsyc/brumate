@@ -64,7 +64,31 @@ Values that only the server reads are not checked, because they are not sent.
 
 ## TypeScript 7
 
-TypeScript 7 does not load plugins and has no API for other file types yet. So:
+TypeScript 7 does not load plugins. TypeScript 7.1 runs content mappers instead, and `@brumate/content-mapper` is one for `.brm` files. With it, `tsc` and the editor check `.brm` files without `brumate-tsc` or the plugin.
 
-- `brumate-tsc` comes with the TypeScript 6 compiler and runs it.
-- In an editor, TypeScript features in `.brm` files need TypeScript 5.0 to 6, such as the version that VS Code ships with.
+```bash
+pnpm add -D typescript@7.1 @brumate/content-mapper
+```
+
+Add it to `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["brumate/types"]
+  },
+  "contentMappers": [{ "package": "@brumate/content-mapper", "extensions": [".brm"] }]
+}
+```
+
+Then run `tsc` with `--runExternalCode`, which lets it start the mapper:
+
+```bash
+tsc --noEmit --runExternalCode
+```
+
+- A syntax error in a `.brm` file has the code `BRM1`. As with a syntax error in a `.ts` file, `tsc` then reports only syntax errors.
+- In VS Code, the TypeScript 7.1 extension runs the mapper in a trusted workspace, once content mappers are allowed.
+- TypeScript 7.1 is in beta, and the content mapper API can still change.
+
+With TypeScript 7.0, `brumate-tsc` comes with the TypeScript 6 compiler and runs it. In an editor, TypeScript features in `.brm` files then need TypeScript 5.0 to 6, such as the version that VS Code ships with.

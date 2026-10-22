@@ -4,16 +4,15 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-| Proposal                                                              | Area    | Value  | Cost   |
-| --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Two-way binding](#two-way-binding)                                   | Syntax  | Medium | Small  |
-| [Deferred blocks](#deferred-blocks)                                   | Syntax  | High   | Medium |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
-| [Deployment adapters](#deployment-adapters)                           | Build   | Medium | Medium |
-| [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
-| [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Compiled messages for i18n](#compiled-messages-for-i18n)             | Library | Medium | Small  |
+| Proposal                                                  | Area    | Value  | Cost   |
+| --------------------------------------------------------- | ------- | ------ | ------ |
+| [Two-way binding](#two-way-binding)                       | Syntax  | Medium | Small  |
+| [Deferred blocks](#deferred-blocks)                       | Syntax  | High   | Medium |
+| [Deployment adapters](#deployment-adapters)               | Build   | Medium | Medium |
+| [Headless UI components](#headless-ui-components)         | Library | High   | Large  |
+| [Progressive forms](#progressive-forms)                   | Library | High   | Medium |
+| [Markdown with components](#markdown-with-components)     | Library | Medium | Medium |
+| [Compiled messages for i18n](#compiled-messages-for-i18n) | Library | Medium | Small  |
 
 ## Syntax
 
@@ -65,16 +64,6 @@ What it needs:
 - Without scripts, the fallback shows, with a link to the full content.
 
 Cost: about 2 to 3 weeks. Most of the risk is in signing the inputs.
-
-## Tooling
-
-### Content mappers for TypeScript 7
-
-TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScript 6 and older, through `@brumate/tsc` and `@brumate/typescript-plugin`. TypeScript 7.1 adds an API for content mappers, which turn the files of other languages into TypeScript and map positions between them.
-
-- A content mapper from `toTypeScript` would let `tsc` and the editor of TypeScript 7 check `.brm` files.
-- It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
-- This waits for the API to be stable, and for its documentation.
 
 ## Build
 
