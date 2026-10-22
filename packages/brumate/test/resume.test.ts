@@ -288,6 +288,25 @@ describe('resume', () => {
     expect(text('.outer')).toBe('1');
   });
 
+  it('resumes a #loading body that rendered in place, with the rest of the page', async () => {
+    const server = await import(file('awaited.brm.ts'));
+    const render = renderParts(server.default, {});
+    server.release('first', 'Ada');
+    server.release('second', 'Grace');
+    // The third memo starts once the run of the first two has settled.
+    await new Promise((done) => setTimeout(done, 0));
+    server.release('third', 'Alan');
+    const { html, state } = await render;
+    show(html + state);
+    await startLoader();
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.third')).toBe('Alan 0 users');
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.third')).toBe('Alan 1 users');
+  });
+
   it('scopes styles and updates style variables', async () => {
     await resume('styled', {});
     expect(document.querySelectorAll('style[b-style]')).toHaveLength(1);

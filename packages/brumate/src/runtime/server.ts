@@ -258,10 +258,11 @@ export class Context {
   /**
    * Starts a block whose shape depends on data, such as an `#if` or a
    * `#for`. The scopes of its bodies are numbered after one ID that the
-   * block takes, until `leave`.
+   * block takes, until `leave`. A `#loading` body that renders in place
+   * passes the ID of its boundary, so its scopes get the IDs that they
+   * would get in a stream.
    */
-  enter(): void {
-    const id = spaceId(this.space, this.space.boundary++);
+  enter(id: ScopeId = spaceId(this.space, this.space.boundary++)): void {
     this.spaces.push({ prefix: `${id}.`, scope: 0, boundary: 0 });
   }
 
@@ -722,6 +723,56 @@ export function ready(node: Memo): unknown {
     }
     throw error;
   }
+}
+
+/**
+ * The value of a memo for the page state: its value when it is ready, or
+ * a promise of it while it loads. A memo that fails gives a rejected
+ * promise either way, so the page renders and the failure reaches the
+ * browser as the load that failed.
+ */
+export function stateValue(node: Memo): unknown {
+  try {
+    return read(node);
+  } catch (error) {
+    return error instanceof NotReady ? wait(node) : Promise.reject(error);
+  }
+}
+
+/**
+ * Starts every memo of a run of declarations that the render waits for,
+ * so they load at the same time. Returns a promise that settles when all
+ * of them have, or undefined when none is loading. A memo that fails
+ * throws here, or rejects the promise.
+ */
+export function waitAll(nodes: Memo[]): Promise<unknown> | undefined {
+  const loads: Promise<unknown>[] = [];
+  for (const node of nodes) {
+    const value = ready(node);
+    if (value instanceof Promise) {
+      loads.push(value);
+    }
+  }
+  return loads.length === 0 ? undefined : Promise.all(loads);
+}
+
+/**
+ * True when every memo has its value, so a `#loading` body that reads them
+ * can render in place. A memo that is not computed yet computes here, so
+ * the loads of the memos that are not ready start now, and the body that
+ * streams later finds them loading. A memo that failed counts as not ready:
+ * the body streams, and throws where it reads the memo.
+ */
+export function settled(nodes: Memo[]): boolean {
+  let result = true;
+  for (const node of nodes) {
+    try {
+      read(node);
+    } catch {
+      result = false;
+    }
+  }
+  return result;
 }
 
 const LAZY: unique symbol = Symbol.for('brumate.lazy');

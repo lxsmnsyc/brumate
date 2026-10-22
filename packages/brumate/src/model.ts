@@ -82,6 +82,8 @@ export interface Declaration {
   init?: oxc.Node;
   /** True for a memo declared with `$optimistic`, before its source is known. */
   writable?: boolean;
+  /** True for `const name = await $memo(value)`: the render waits for the memo where it is declared. */
+  awaited?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** Elements whose `ref` targets this declaration. */
@@ -96,6 +98,12 @@ export interface Reference {
   tracked: boolean;
   /** True inside a function that the site contains, such as an inline arrow function. */
   inFunction: boolean;
+  /**
+   * For `await name` of a memo, the range of the whole `await` expression.
+   * The render around the read waits for the memo, and the read compiles to
+   * a plain read of its value.
+   */
+  await?: Range;
 }
 
 export type SiteKind =
