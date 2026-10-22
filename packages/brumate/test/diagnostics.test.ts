@@ -102,6 +102,35 @@ describe('reserved attributes', () => {
   });
 });
 
+describe('timing helpers', () => {
+  const compileScript = (script: string) =>
+    compile(
+      `<script>\nimport { $debounced, $signal, $throttled } from 'brumate/signals';\nlet query = $signal('');\n${script}\n</script>\n<p>{query}</p>`,
+      { filename: 'Test.brm' },
+    );
+
+  it('needs a const, a value and a wait in milliseconds', () => {
+    expect(() => compileScript('let a = $debounced(query, 300);')).toThrow(
+      'Declare $debounced with const',
+    );
+    expect(() => compileScript('const a = $throttled(query);')).toThrow(
+      '$throttled takes a value and a wait in milliseconds',
+    );
+    expect(() => compileScript('const wait = 300;\nconst a = $debounced(query, wait);')).toThrow(
+      'The wait of $debounced must be a number of milliseconds, such as 300',
+    );
+    expect(() => compileScript('const a = $throttled(query, 1e10);')).toThrow(
+      'The wait of $throttled must be a number of milliseconds',
+    );
+  });
+
+  it('renders the value itself on the server', () => {
+    const { server } = compileScript('const a = $debounced(query, 300);');
+    expect(server).toContain('const a = (query);');
+    expect(server).not.toContain('300');
+  });
+});
+
 /** Compiles markup with the wrappers of `brumate/events` imported. */
 const compileMarkup = (markup: string, imports = 'capture, once, prevent, stop') =>
   compile(

@@ -1,6 +1,6 @@
 import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
-import { isFunctionValue, isTemplateValue, resetUsed } from './graph.ts';
+import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
 import type { StyleOutput } from './css.ts';
@@ -420,7 +420,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       // The browser asks for the body of a `#defer` block by its anchor.
       block.kind === 'defer' ||
       portalTarget ||
-      (block.kind === 'try' && resetUsed(model, block, graph.reached)) ||
+      (block.kind === 'try' &&
+        (resetUsed(model, block, graph.reached) || tryCatchesClient(model, block))) ||
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);
@@ -469,6 +470,46 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     visitBody(template.body);
   }
   visitNodes(file.children, model.component);
+
+  // A `<title>` sets the title of the page from `#head`, as the tags of the head do. One in a
+  // `<head>` element is the head's own, and one in an `<svg>` names a shape.
+  const checkTitles = (nodes: Markup[], inHead: boolean): void => {
+    for (const node of nodes) {
+      switch (node.kind) {
+        case 'element': {
+          const tag = node.tag.toLowerCase();
+          if (tag === 'title' && !inHead) {
+            diagnostics.push({
+              severity: 'error',
+              message:
+                'Put <title> in #head, as <meta> and <link>, such as #head { <title>{`${count} left`}</title> }',
+              range: { start: node.start, end: node.end },
+            });
+          } else if (tag !== 'head' && tag !== 'svg') {
+            checkTitles(node.children, inHead);
+          }
+          break;
+        }
+        case 'component':
+        case 'dynamic':
+        case 'fragment':
+          checkTitles(node.children, inHead);
+          break;
+        case 'text':
+        case 'insert':
+        case 'listener':
+          break;
+        default:
+          for (const body of blockBodies(node)) {
+            checkTitles(body.children, inHead || node.kind === 'head');
+          }
+      }
+    }
+  };
+  for (const template of file.templates) {
+    checkTitles(template.body.children, false);
+  }
+  checkTitles(file.children, false);
 
   for (const plan of scopes.values()) {
     if (plan.slots.length > 0) {

@@ -46,10 +46,10 @@ const SENDABLE = new Set([
 ]);
 
 /** Compile-time functions whose argument is the value, such as `$signal(new Foo())`. */
-const WRAPPERS = new Set(['$signal', '$memo']);
+const WRAPPERS = new Set(['$signal', '$memo', '$debounced', '$throttled']);
 
 /** The value that a declaration holds, by the offset of its name. */
-function initializers(file: SFCFile): Map<number, oxc.Node> {
+export function initializers(file: SFCFile): Map<number, oxc.Node> {
   const result = new Map<number, oxc.Node>();
   const visit = (node: oxc.Node): void => {
     if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && node.init) {

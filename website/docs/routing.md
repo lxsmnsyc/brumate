@@ -124,11 +124,14 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 ```brm
 <!-- src/routes/_error.brm -->
 <script>
-  import { $props, $title } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
 
   const { error } = $props<{ error: { message: string; status: number } }>();
-  $title(`Error ${error.status}`);
 </script>
+
+#head {
+  <title>{`Error ${error.status}`}</title>
+}
 
 <h1>Something went wrong</h1>
 <p>{error.status}: {error.message}</p>
@@ -191,6 +194,30 @@ export async function DELETE(request: Request, params: Record<string, string>): 
 
 ## Middleware
 
+`src/middleware.ts` runs for every request of the app: pages, endpoints, server function calls, form posts and the requests for `#defer` bodies. It exports the middleware as its default, written with `defineMiddleware` for its types:
+
+```ts
+// src/middleware.ts
+import { defineMiddleware } from 'brumate/server';
+import { session } from './session.ts';
+
+export default defineMiddleware(async (event, next) => {
+  event.locals.user = await session.get(event);
+  if (event.kind === 'call' && event.call.id.includes('#admin') && !event.locals.user?.admin) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  return next();
+});
+```
+
+- `event` is the `RequestEvent` of the request, the one that `getEvent()` returns. `event.kind` says what the request is for: `'page'`, `'endpoint'`, `'call'` for a server function call or a form post to one, or `'defer'` for the body of a `#defer` block.
+- For a call, and for a form that posts to a page with `?__action=<id>`, `event.call` has the ID of the server function and its arguments, read already, so a check can depend on them.
+- `event.locals` holds what the middleware finds, such as the user, for the components, server functions and endpoints of the request. See [Request locals](./server-functions.md#request-locals).
+- It runs first, before the `_middleware.ts` of the folders. A call from a page of another site is refused before it runs. See [Security](./reference-security.md).
+- The `middleware` option of the plugin names another file. `false` runs none.
+
+A `'use server'` file can export `middleware` too, with the same shape. It runs before each function of the file, after the middleware of the entry, for a group of functions with the same rule. The browser gets no stub for it.
+
 `_middleware.ts` runs before every route of its folder and the folders inside it, endpoints included. It exports `middleware`, which answers the request itself, or calls `next` for the answer of the route:
 
 ```ts
@@ -236,6 +263,6 @@ const response = await handle(request, {
 });
 ```
 
-It returns `undefined` when no route matches and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404. [Deploying](./deploying.md) shows a full server for development and production.
+It returns `undefined` when no route matches and the app has no entry middleware, and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404. [Deploying](./deploying.md) shows a full server for development and production.
 
 [`examples/todos`](../../examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](../../examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.

@@ -106,6 +106,36 @@ Compute the starting value in the call instead: `let count = $signal(5)`.
 
 A memo can also hold a promise, such as the result of a server function. [Async data](./async-data.md) covers that.
 
+### Waiting for a pause
+
+A search field that loads results as the user types should wait for a pause. `$debounced(value, ms)` is a memo that takes the value once it stops changing for `ms` milliseconds:
+
+```brm
+<script>
+  import { $debounced, $isPending, $memo, $signal } from 'brumate/signals';
+  import { search } from './search.ts';
+
+  let query = $signal('');
+  const settled = $debounced(query, 300);
+  const results = $memo(search(settled));
+</script>
+
+<input type="search" value=query onInput=((event) => (query = event.currentTarget.value))>
+#if ($isPending(settled)) {
+  <p>Waiting for you to stop typing…</p>
+}
+<ul>
+  #for (result of results by result.id) {
+    <li>{result.title}</li>
+  }
+</ul>
+```
+
+- `$throttled(value, ms)` takes the value at most once every `ms` milliseconds: the first change at once, and the last one after the wait. Use it for values that change all the time, such as the position of the pointer.
+- On the server, both are the value itself, so the page renders the results for the query that it has.
+- In the browser, the memo is pending while it waits, so `$isPending` is true.
+- `ms` is a number, such as `300`.
+
 ## `$produce`
 
 A signal changes when you assign a new value. To change one item of an array or one field of an object, `$produce` gives you a draft that you can change in place, and writes the result as a new value:
@@ -183,6 +213,34 @@ Here the list follows the filter as you type, but a new page size only applies w
 ```
 
 `$untrack` also covers the functions that the expression calls. [Effects](./effects.md#effects-depend-on-the-functions-they-call) shows why that matters.
+
+## Values that stay across visits
+
+A preference such as the theme, a dismissed banner or the width of a panel belongs in a cookie. The server reads it, so the first render has the right value, and an `$effect` writes it when the value changes:
+
+```brm
+<script>
+  import { getEvent } from 'brumate/server';
+  import { $effect, $signal } from 'brumate/signals';
+
+  let theme = $signal(getEvent().getCookie('theme') ?? 'light');
+
+  $effect(() => {
+    document.cookie = `theme=${theme}; path=/; max-age=31536000; samesite=lax`;
+  });
+</script>
+
+<div class="page" data-theme=theme>
+  <button onClick=(() => (theme = theme === 'dark' ? 'light' : 'dark'))>Theme</button>
+</div>
+```
+
+- The page renders with the stored value, so nothing changes after it loads.
+- The effect never runs on load. Its code loads with the first change.
+- Encode a value that can hold `;`, `,` or spaces with `encodeURIComponent`, and decode it where you read it.
+- A server function can set the cookie too, with `event.setCookie`, when the server should check the value. See [Cookies and sessions](./server-functions.md#cookies-and-sessions).
+
+`localStorage` and `sessionStorage` work, but the server cannot read them. The page renders the default first, and the browser has to run code on load to read the stored value, so the page changes after it shows, and every page that does it loads code before anyone interacts. Keep them for values that the first render does not show.
 
 ## Rules and common mistakes
 

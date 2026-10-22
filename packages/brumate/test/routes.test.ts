@@ -1,5 +1,5 @@
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { findFiles, defaultExclude } from '../src/files.ts';
 import { routeFiles, routeModule, routePaths, routeTypes } from '../src/routes.ts';
@@ -8,8 +8,8 @@ import { href as typedHref } from '../src/runtime/routes.ts';
 // routes.check.ts declares a few routes for the whole test program. These tests use others.
 const href = typedHref as (path: string, params?: Record<string, string>) => string;
 import type { RouteFiles } from '../src/routes.ts';
-import { handleRoute, matchRoute } from '../src/runtime/server.ts';
-import type { Loader, RouteNode } from '../src/runtime/server.ts';
+import { getEvent, handleRoute, matchRoute } from '../src/runtime/server.ts';
+import type { EntryMiddleware, Loader, RequestCall, RouteNode } from '../src/runtime/server.ts';
 
 const input = new URL('./routes/', import.meta.url);
 const output = new URL('./.output/routes/', import.meta.url);
@@ -98,7 +98,7 @@ describe('route files', () => {
         api: {
           middleware: 'api/_middleware.ts',
           dynamic: { name: 'name', node: { endpoint: 'api/[name].ts' } },
-          static: { time: { endpoint: 'api/time.ts' } },
+          static: { time: { endpoint: 'api/time.ts' }, whoami: { endpoint: 'api/whoami.ts' } },
         },
         old: { page: 'old.brm' },
         private: { page: 'private/index.brm' },
@@ -109,6 +109,7 @@ describe('route files', () => {
           static: { broken: { page: 'todos/broken.brm' } },
           dynamic: { name: 'id', node: { page: 'todos/[id].brm' } },
         },
+        whoami: { page: 'whoami.brm' },
       },
       slots: {
         sidebar: {
@@ -125,6 +126,18 @@ describe('route files', () => {
     expect(code).toContain('import * as m1 from "/r/todos/[id].brm";');
     expect(code).toContain('page: () => Promise.resolve(m0)');
     expect(code).toContain('dynamic: { name: "id", node: { page: () => Promise.resolve(m1) } }');
+    expect(code).not.toContain('hints');
+    const hinted = routeModule(
+      routeFiles(['index.brm']),
+      (file) => file,
+      '/_b',
+      [],
+      false,
+      undefined,
+      undefined,
+      ['/assets/client.js'],
+    );
+    expect(hinted).toContain(', hints: ["/assets/client.js"], ...options');
   });
 
   it('rejects two dynamic segments in one folder', () => {
@@ -189,6 +202,39 @@ describe('rendering', () => {
   it('starts IDs above the base that the client sends', async () => {
     const html = await raw('/todos/3', 200, { 'x-brumate-base': '40' });
     expect(html).toContain('<!--R40:sidebar:41:');
+  });
+
+  it('hints the modules that every page loads, before the page renders', async () => {
+    const hints = ['/assets/client.js', '/assets/core.js?v=1&x="'];
+    const seen: string[][] = [];
+    const response = (await handleRoute(tree, new Request('http://localhost/todos/3'), {
+      hints,
+      earlyHints: (links) => seen.push(links),
+    }))!;
+    const links = [
+      '</assets/client.js>; rel=modulepreload',
+      '</assets/core.js?v=1&x=">; rel=modulepreload',
+    ];
+    expect(seen).toEqual([links]);
+    expect(response.headers.get('link')).toBe(links.join(', '));
+    // A cache keeps the page apart from the answer to a navigation, which has no links.
+    expect(response.headers.get('vary')).toContain('x-brumate-base');
+    const html = await response.text();
+    expect(html).toContain(
+      '<link rel="modulepreload" href="/assets/client.js"><link rel="modulepreload" href="/assets/core.js?v=1&amp;x=&quot;">',
+    );
+    expect(html.indexOf('modulepreload')).toBeLessThan(html.indexOf('</head>'));
+
+    // Client navigation and the request for a #defer body have the modules already.
+    seen.length = 0;
+    const navigation = (await handleRoute(
+      tree,
+      new Request('http://localhost/todos/3', { headers: { 'x-brumate-base': '40' } }),
+      { hints, earlyHints: (value) => seen.push(value) },
+    ))!;
+    expect(navigation.headers.get('link')).toBeNull();
+    expect(await navigation.text()).not.toContain('modulepreload');
+    expect(seen).toEqual([]);
   });
 
   it('returns undefined when no route matches', async () => {
@@ -273,6 +319,186 @@ describe('endpoints and middleware', () => {
     const blocked = await handleRoute(tree, new Request('http://localhost/private'));
     expect(blocked?.status).toBe(401);
     expect(await blocked!.text()).toBe('Sign in first');
+  });
+});
+
+/** An entry middleware that notes the requests it saw, and signs the user in. */
+function entry(seen: string[]): EntryMiddleware {
+  return async (event, next) => {
+    // Before the first await.
+    expect(getEvent()).toBe(event);
+    seen.push(event.kind);
+    (event.locals as { user?: string }).user = event.request.headers.get('x-user') ?? undefined;
+    const response = await next();
+    response.headers.set('x-entry', 'yes');
+    return response;
+  };
+}
+
+describe('entry middleware', () => {
+  it('runs for a page before the middleware of the folders, and hands locals to the page', async () => {
+    const seen: string[] = [];
+    const response = await handleRoute(
+      tree,
+      new Request('http://localhost/whoami', { headers: { 'x-user': 'Ada' } }),
+      { middleware: entry(seen) },
+    );
+    expect(seen).toEqual(['page']);
+    expect(response?.headers.get('x-entry')).toBe('yes');
+    expect(await response!.text()).toContain('<p class="whoami">page: Ada</p>');
+  });
+
+  it('hands locals to an endpoint, which it sees as one', async () => {
+    const seen: string[] = [];
+    const response = await handleRoute(
+      tree,
+      new Request('http://localhost/api/whoami', { headers: { 'x-user': 'Grace' } }),
+      { middleware: entry(seen) },
+    );
+    expect(seen).toEqual(['endpoint']);
+    expect(await response!.json()).toEqual({ kind: 'endpoint', user: 'Grace' });
+    // The middleware of the folder ran inside it.
+    expect(response?.headers.get('x-api')).toBe('yes');
+    expect(response?.headers.get('x-entry')).toBe('yes');
+  });
+
+  it('runs before the middleware of a folder that answers itself', async () => {
+    const seen: string[] = [];
+    const response = await handleRoute(tree, new Request('http://localhost/private'), {
+      middleware: entry(seen),
+    });
+    expect(seen).toEqual(['page']);
+    expect(response?.status).toBe(401);
+    expect(response?.headers.get('x-entry')).toBe('yes');
+  });
+
+  it('runs for a path that no route matches, and can answer it', async () => {
+    const seen: string[] = [];
+    const answered = await handleRoute({ page: tree.page }, new Request('http://localhost/x'), {
+      middleware: async (event, next) => {
+        seen.push(event.kind);
+        return new URL(event.request.url).pathname === '/x'
+          ? new Response('Gone', { status: 410 })
+          : next();
+      },
+    });
+    expect(seen).toEqual(['page']);
+    expect(answered?.status).toBe(410);
+    const missing = await handleRoute({ page: tree.page }, new Request('http://localhost/y'), {
+      middleware: (_event, next) => next(),
+    });
+    expect(missing?.status).toBe(404);
+  });
+
+  it('sees the request for a #defer body as one', async () => {
+    const seen: string[] = [];
+    await handleRoute(
+      tree,
+      new Request('http://localhost/', { headers: { 'x-brumate-defer': '3 0:1' } }),
+      { middleware: entry(seen) },
+    );
+    expect(seen).toEqual(['defer']);
+  });
+
+  it('refuses a form post from another site before it runs', async () => {
+    const seen: string[] = [];
+    const response = await handleRoute(
+      tree,
+      new Request('http://localhost/?__action=x', {
+        method: 'POST',
+        headers: { origin: 'https://evil.example' },
+        body: new FormData(),
+      }),
+      { middleware: entry(seen), functions: { x: () => 1 } },
+    );
+    expect(response?.status).toBe(403);
+    expect(seen).toEqual([]);
+  });
+
+  it('sees the server function that a form posted to a page, with the form read', async () => {
+    let call: RequestCall | undefined;
+    const form = new FormData();
+    form.set('title', 'Write the docs');
+    const response = await handleRoute(
+      tree,
+      new Request('http://localhost/?__action=add', { method: 'POST', body: form }),
+      {
+        middleware: (event, next) => {
+          call = event.call;
+          return next();
+        },
+        functions: { add: (data: FormData) => `added ${data.get('title')}` },
+      },
+    );
+    expect(response?.status).toBe(200);
+    expect(call?.id).toBe('add');
+    expect(call?.args).toHaveLength(1);
+    expect((call!.args[0] as FormData).get('title')).toBe('Write the docs');
+  });
+
+  it("runs the middleware of the function's file before a form post to a page", async () => {
+    const ran: string[] = [];
+    const post = (user: string) =>
+      handleRoute(
+        tree,
+        new Request('http://localhost/?__action=reset', {
+          method: 'POST',
+          headers: { 'x-user': user },
+          body: new FormData(),
+        }),
+        {
+          functions: { reset: () => ran.push('reset') },
+          fileMiddleware: {
+            reset: (event, next) =>
+              event.request.headers.get('x-user') === 'admin'
+                ? next()
+                : new Response('Forbidden', { status: 403 }),
+          },
+        },
+      );
+    expect((await post('ada'))?.status).toBe(403);
+    expect(ran).toEqual([]);
+    expect((await post('admin'))?.status).toBe(200);
+    expect(ran).toEqual(['reset']);
+  });
+
+  it('passes the promises of waitUntil to the host, or runs them and logs their errors', async () => {
+    const kept: Promise<unknown>[] = [];
+    await handleRoute(tree, new Request('http://localhost/'), {
+      middleware: (event, next) => {
+        event.waitUntil(Promise.resolve('logged'));
+        return next();
+      },
+      waitUntil: (promise) => kept.push(promise),
+    });
+    expect(kept).toHaveLength(1);
+    expect(await kept[0]).toBe('logged');
+
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await handleRoute(tree, new Request('http://localhost/'), {
+        middleware: (event, next) => {
+          event.waitUntil(Promise.reject(new Error('log failed')));
+          return next();
+        },
+      });
+      await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(new Error('log failed')));
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it('writes the import of the entry into the route module', () => {
+    const code = routeModule(
+      routeFiles(['index.brm']),
+      (file) => `/r/${file}`,
+      '/_brumate',
+      [],
+      false,
+      '/src/middleware.ts',
+    );
+    expect(code).toContain('import middleware from "/src/middleware.ts";');
+    expect(code).toContain('functions, fileMiddleware, middleware, ...options');
   });
 });
 
