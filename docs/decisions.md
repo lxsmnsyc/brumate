@@ -92,6 +92,8 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- `visit` in `brumate/testing` answers the requests of a page in the test, with the route handler and the server function handler of the app, through a `fetch` that follows redirects and keeps cookies. It does not start a server, so a test runs as fast as `mount`, and the server code shares modules with the test.
+  - A DOM environment such as happy-dom drops `set-cookie` from the headers that a `Response` is made with, and `cookie` from those of a `Request`. The server adds `set-cookie` after it makes a response, and `visit` sets the request headers after it makes a request, so cookies work in a test.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

@@ -1,6 +1,7 @@
 // Renders a component on the server and resumes it in the DOM of a test, as
 // a page does: the HTML and the state first, then the loader, which loads
-// client code when an event fires.
+// client code when an event fires. `visit` does the same for a route, with
+// the requests of the page answered by the routes of the app.
 
 import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
@@ -14,9 +15,8 @@ export interface TestingOptions {
   rpc?: string;
 }
 
-export interface Mounted {
-  /** The element that holds the component. */
-  container: HTMLElement;
+/** What a test does with the page, as a user does. */
+export interface Actions {
   /** The first element that matches a selector. Throws if none does. */
   get: (selector: string) => HTMLElement;
   /** The text of the first element that matches a selector. */
@@ -32,8 +32,52 @@ export interface Mounted {
    * client code, so its effects arrive a moment later.
    */
   waitFor: (assertion: () => void, timeout?: number) => Promise<void>;
+}
+
+export interface Mounted extends Actions {
+  /** The element that holds the component. */
+  container: HTMLElement;
   /** Stops the loader and removes the component. */
   unmount: () => void;
+}
+
+/** The actions on the elements inside `root`. */
+function actions(root: ParentNode): Actions {
+  const get = (selector: string): HTMLElement => {
+    const element = root.querySelector<HTMLElement>(selector);
+    if (!element) {
+      throw new Error(`No element matches ${selector}`);
+    }
+    return element;
+  };
+  return {
+    get,
+    text: (selector) => get(selector).textContent ?? '',
+    click: (selector) => get(selector).click(),
+    input: (selector, value) => {
+      const field = get(selector) as HTMLInputElement;
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    submit: (selector) => {
+      get(selector).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    },
+    waitFor: async (assertion, timeout = 2000) => {
+      const until = Date.now() + timeout;
+      for (;;) {
+        try {
+          assertion();
+          return;
+        } catch (error) {
+          if (Date.now() > until) {
+            throw error;
+          }
+          // oxlint-disable-next-line no-await-in-loop -- It waits between tries.
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+      }
+    },
+  };
 }
 
 /**
@@ -122,41 +166,9 @@ export function createMount(options: TestingOptions): Mount {
         append(container, chunk);
       }
     })();
-    const get = (selector: string): HTMLElement => {
-      const element = container.querySelector<HTMLElement>(selector);
-      if (!element) {
-        throw new Error(`No element matches ${selector}`);
-      }
-      return element;
-    };
     return {
       container,
-      get,
-      text: (selector) => get(selector).textContent ?? '',
-      click: (selector) => get(selector).click(),
-      input: (selector, value) => {
-        const field = get(selector) as HTMLInputElement;
-        field.value = value;
-        field.dispatchEvent(new Event('input', { bubbles: true }));
-      },
-      submit: (selector) => {
-        get(selector).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      },
-      waitFor: async (assertion, timeout = 2000) => {
-        const until = Date.now() + timeout;
-        for (;;) {
-          try {
-            assertion();
-            return;
-          } catch (error) {
-            if (Date.now() > until) {
-              throw error;
-            }
-            // oxlint-disable-next-line no-await-in-loop -- It waits between tries.
-            await new Promise((resolve) => setTimeout(resolve, 10));
-          }
-        }
-      },
+      ...actions(container),
       unmount: () => {
         stop();
         container.remove();
@@ -253,5 +265,237 @@ export function answerCalls(
     if (globalThis.fetch === answer) {
       globalThis.fetch = original;
     }
+  };
+}
+
+/** Answers a request as the server of the app does, or undefined when nothing does. */
+export type RequestHandler = (request: Request) => Promise<Response | undefined>;
+
+export interface VisitorOptions extends TestingOptions {
+  /** Answers the requests for pages, forms without scripts, `#defer` bodies and endpoints. */
+  routes: () => Promise<RequestHandler>;
+  /** Answers server function calls. */
+  calls: () => Promise<RequestHandler>;
+}
+
+export interface VisitOptions {
+  /** Cookies that the browser has before the first request, by name. */
+  cookies?: Record<string, string>;
+  /** Headers of every request, such as `accept-language`. */
+  headers?: HeadersInit;
+}
+
+export interface Visited extends Actions {
+  /** The path and the query of the page, such as `/issues?q=bug`. It changes with client navigation. */
+  readonly url: string;
+  /** The status of the first page. */
+  status: number;
+  /** The cookies that the browser has now, by name. */
+  readonly cookies: Record<string, string>;
+  /** Stops the loader, puts `fetch` back and empties the document. */
+  close: () => void;
+}
+
+/** Visits a path of the app, as a browser that runs scripts does. */
+export type Visit = (path: string, options?: VisitOptions) => Promise<Visited>;
+
+const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+
+/** Reads the `set-cookie` headers of a response into the cookies of the browser. */
+function storeCookies(jar: Map<string, string>, response: Response): void {
+  for (const header of response.headers.getSetCookie()) {
+    const [pair = '', ...attributes] = header.split(';');
+    const equals = pair.indexOf('=');
+    const name = pair.slice(0, equals).trim();
+    if (equals < 1) {
+      continue;
+    }
+    const gone = attributes.some((attribute) => {
+      const [key = '', value = ''] = attribute.trim().split('=');
+      const lower = key.toLowerCase();
+      return (
+        (lower === 'max-age' && Number(value) <= 0) ||
+        (lower === 'expires' && Date.parse(value) <= Date.now())
+      );
+    });
+    if (gone) {
+      jar.delete(name);
+    } else {
+      jar.set(name, pair.slice(equals + 1).trim());
+    }
+  }
+}
+
+/** The page that a visit holds, so a new visit closes the one before. */
+let visited: Visited | undefined;
+
+/** Returns `visit`, which answers the requests of the page with the routes of the app. */
+export function createVisit(options: VisitorOptions): Visit {
+  const prefix = options.rpc ?? '/_brumate';
+  /**
+   * Answers the path with the routes of the app, puts the page in the
+   * document, and starts the loader with client navigation. Links, forms,
+   * server function calls and `#defer` requests of the page go to the same
+   * routes, without a server, with the cookies that the answers set.
+   */
+  return async function visit(path, visitOptions = {}) {
+    visited?.close();
+    const jar = new Map(Object.entries(visitOptions.cookies ?? {}));
+    const original = globalThis.fetch;
+    const origin = location.origin;
+    history.replaceState(null, '', new URL(path, origin));
+
+    // A browser follows redirects, sends its cookies, and keeps the ones that the answers set.
+    const answer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      let url = new URL(input instanceof Request ? input.url : String(input), location.href);
+      if (url.origin !== origin) {
+        return original(input, init);
+      }
+      let method = (
+        init?.method ?? (input instanceof Request ? input.method : 'GET')
+      ).toUpperCase();
+      let body = init?.body ?? undefined;
+      const extra = new Headers(input instanceof Request ? input.headers : undefined);
+      new Headers(init?.headers).forEach((value, name) => extra.set(name, value));
+      for (let hops = 0; ; hops++) {
+        const request = new Request(url, { method, body, signal: init?.signal ?? null });
+        // Set after the request is made, since a DOM environment drops these from its init.
+        new Headers(visitOptions.headers).forEach((value, name) =>
+          request.headers.set(name, value),
+        );
+        extra.forEach((value, name) => request.headers.set(name, value));
+        if (jar.size > 0) {
+          request.headers.set(
+            'cookie',
+            [...jar].map(([name, value]) => `${name}=${value}`).join('; '),
+          );
+        }
+        if (method !== 'GET' && method !== 'HEAD') {
+          request.headers.set('origin', origin);
+        }
+        const handle = url.pathname.startsWith(`${prefix}/`) ? options.calls : options.routes;
+        const answered = handle().then((handler) => handler(request));
+        // oxlint-disable-next-line no-await-in-loop -- Each redirect is a request of its own.
+        const response = (await answered) ?? new Response('Not found', { status: 404 });
+        storeCookies(jar, response);
+        const location = response.headers.get('location');
+        if (!REDIRECTS.has(response.status) || !location || init?.redirect === 'manual') {
+          Object.defineProperty(response, 'url', { value: url.href });
+          return response;
+        }
+        if (hops === 20) {
+          throw new TypeError(`Too many redirects from ${path}`);
+        }
+        url = new URL(location, url);
+        if (response.status === 303 || (method === 'POST' && response.status !== 307)) {
+          method = 'GET';
+          body = undefined;
+          extra.delete('content-type');
+        }
+      }
+    };
+    globalThis.fetch = answer as typeof fetch;
+
+    // The DOM of a test does not run scripts, so the ones that the page adds run here, once each.
+    const ran = new WeakSet<Element>();
+    const runOnce = (script: Element): void => {
+      if (!ran.has(script) && !script.hasAttribute('src') && !script.hasAttribute('type')) {
+        ran.add(script);
+        run(script);
+      }
+    };
+    const scripts = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeName === 'SCRIPT') {
+            runOnce(node as Element);
+          } else if (node instanceof Element) {
+            node.querySelectorAll('script').forEach(runOnce);
+          }
+        }
+      }
+    });
+
+    const response = await answer(path);
+    // The page is at the URL of the last redirect.
+    history.replaceState(null, '', response.url);
+    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+    let html = '';
+    let end = -1;
+    let done = false;
+    while (end < 0 && !done) {
+      // oxlint-disable-next-line no-await-in-loop -- The page arrives in pieces.
+      const chunk = await reader.read();
+      done = chunk.done;
+      html += chunk.value ?? '';
+      end = html.search(/<\/html>/i);
+    }
+    const cut = end < 0 ? html.length : end + '</html>'.length;
+    const page = new DOMParser().parseFromString(html.slice(0, cut), 'text/html');
+    for (const name of document.documentElement.getAttributeNames()) {
+      document.documentElement.removeAttribute(name);
+    }
+    for (const attribute of page.documentElement.attributes) {
+      document.documentElement.setAttribute(attribute.name, attribute.value);
+    }
+    document.head.replaceChildren(
+      ...[...page.head.childNodes].map((node) => document.importNode(node, true)),
+    );
+    document.body.replaceChildren(
+      ...[...page.body.childNodes].map((node) => document.importNode(node, true)),
+    );
+    document.querySelectorAll('script').forEach(runOnce);
+    scripts.observe(document, { childList: true, subtree: true });
+
+    const stop = start({ load: options.load, rpc: prefix, navigate: true, preload: false });
+    let rest = html.slice(cut);
+    let open = true;
+    void (async () => {
+      while (!done) {
+        // oxlint-disable-next-line no-await-in-loop -- Later markup arrives in pieces.
+        const chunk = await reader.read();
+        done = chunk.done;
+        rest += chunk.value ?? '';
+        // A chunk can end inside a tag, so only whole nodes move in, as a browser parses them.
+        const last = done ? rest.length : rest.lastIndexOf('>') + 1;
+        if (last > 0 && open) {
+          // The observer runs its scripts.
+          const template = document.createElement('template');
+          template.innerHTML = rest.slice(0, last);
+          document.body.append(template.content);
+          rest = rest.slice(last);
+        }
+      }
+    })();
+
+    const current: Visited = {
+      ...actions(document),
+      get url() {
+        return location.pathname + location.search;
+      },
+      status: response.status,
+      get cookies() {
+        return Object.fromEntries(jar);
+      },
+      close: () => {
+        if (!open) {
+          return;
+        }
+        open = false;
+        visited = undefined;
+        stop();
+        scripts.disconnect();
+        reader.cancel().catch(() => {});
+        if (globalThis.fetch === answer) {
+          globalThis.fetch = original;
+        }
+        // The core forgets the page, so the next visit starts its IDs again.
+        void import('./client.ts').then((core) => core.leavePage());
+        document.head.replaceChildren();
+        document.body.replaceChildren();
+      },
+    };
+    visited = current;
+    return current;
   };
 }
