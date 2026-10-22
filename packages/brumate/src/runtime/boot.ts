@@ -34,6 +34,14 @@ export interface LoaderOptions {
    * answers 409 after a deploy, makes the next navigation a full page load.
    */
   build?: string;
+  /**
+   * Receives every error of client code first: of a handler, an effect, a
+   * `$client` callback or a memo that loads, such as for a reporting
+   * service. `scope` is the ID of the scope that the code belongs to. The
+   * error then renders the `#catch` body of the nearest `#try`, or the page
+   * gets a `brumate:error` event on `window` and the error is logged.
+   */
+  onError?: (error: unknown, info: { scope?: number | string }) => void;
 }
 
 export interface NavigateOptions {
@@ -44,6 +52,12 @@ export interface NavigateOptions {
    * function has the type `form`.
    */
   transition?: boolean;
+  /**
+   * After a navigation, moves the focus to the first `<h1>` of the routes
+   * that changed, or to `<main>`, as a full page load starts it at the top.
+   * Defaults to true.
+   */
+  focus?: boolean;
 }
 
 interface Entry {
@@ -102,6 +116,8 @@ export interface Navigation {
     flags?: AddEventListenerOptions | boolean,
   ) => void;
   core: () => Promise<Core> | undefined;
+  /** Starts the core, or returns the one that runs. */
+  start: () => Promise<Core>;
   scan: (root: ParentNode) => void;
 }
 
@@ -116,7 +132,8 @@ export function boot(
   navigate?: (navigation: Navigation) => () => Promise<Core>,
 ): () => void {
   let core: Promise<Core> | undefined;
-  const types = new Set<string>();
+  /** The event types that the document listens to, and whether each listener is passive. */
+  const types = new Map<string, boolean>();
   const removers: (() => void)[] = [];
   const listen = (
     target: EventTarget,
@@ -152,8 +169,20 @@ export function boot(
   };
 
   const apply = (event: Event, element: Element, entry: Entry): boolean => {
-    if (entry.modifiers.includes('prevent')) {
-      event.preventDefault();
+    for (const modifier of entry.modifiers) {
+      // `prevent(ArrowDown,Enter)` prevents only these keys, by `event.key`.
+      if (
+        modifier === 'prevent' ||
+        (modifier.startsWith('prevent(') &&
+          modifier
+            .slice(8, -1)
+            .split(',')
+            .includes(
+              (event as KeyboardEvent).key === ' ' ? 'Space' : (event as KeyboardEvent).key,
+            ))
+      ) {
+        event.preventDefault();
+      }
     }
     if (entry.modifiers.includes('once')) {
       element.setAttribute(
@@ -168,27 +197,65 @@ export function boot(
     return entry.modifiers.includes('stop');
   };
 
-  // Handlers run from the target outwards, as if each element had its own listener.
+  /**
+   * Handlers run as if each element had its own listener: those with
+   * `capture` from the outside in, then the others from the target outwards.
+   * An event that does not bubble, such as `focus`, reaches only the others
+   * of its target. `stop` ends the event where it is.
+   */
   const onEvent = (event: Event): void => {
+    const path: Element[] = [];
     for (
       let node = event.target as Node | null;
       node && node !== document;
       node = node.parentNode
     ) {
-      if (node.nodeType !== 1 || !(node as Element).hasAttribute('b-on')) {
-        continue;
-      }
-      let stop = false;
-      for (const entry of entries(node as Element)) {
-        if (entry.type === event.type && apply(event, node as Element, entry)) {
-          stop = true;
-        }
-      }
-      if (stop) {
-        event.stopPropagation();
-        return;
+      if (node.nodeType === 1 && (node as Element).hasAttribute('b-on')) {
+        path.push(node as Element);
       }
     }
+    const phase = (elements: Element[], capture: boolean): boolean => {
+      for (const element of elements) {
+        let stop = false;
+        for (const entry of entries(element)) {
+          if (
+            entry.type === event.type &&
+            entry.modifiers.includes('capture') === capture &&
+            apply(event, element, entry)
+          ) {
+            stop = true;
+          }
+        }
+        if (stop) {
+          event.stopPropagation();
+          return true;
+        }
+      }
+      return false;
+    };
+    if (!phase([...path].reverse(), true)) {
+      phase(event.bubbles ? path : path.filter((element) => element === event.target), false);
+    }
+  };
+
+  /** True for an entry that prevents the default action, which a passive listener cannot do. */
+  const prevents = (entry: Entry): boolean =>
+    entry.modifiers.some((modifier) => modifier.startsWith('prevent'));
+
+  /**
+   * Listens to an event type on the document. The listener is passive, so
+   * scrolling does not wait for it, until an entry of the type prevents.
+   */
+  const delegate = (type: string, prevent: boolean): void => {
+    const passive = types.get(type);
+    if (passive === false || (passive === true && !prevent)) {
+      return;
+    }
+    if (passive) {
+      document.removeEventListener(type, onEvent, true);
+    }
+    types.set(type, !prevent);
+    listen(document, type, onEvent, { capture: true, passive: !prevent });
   };
 
   // Templates are started once, even when markup is scanned again.
@@ -240,11 +307,8 @@ export function boot(
       }
     }
     for (const element of select(root, '[b-on]:not(template)')) {
-      for (const { type } of entries(element)) {
-        if (!types.has(type)) {
-          types.add(type);
-          listen(document, type, onEvent, true);
-        }
+      for (const entry of entries(element)) {
+        delegate(entry.type, prevents(entry));
       }
       if (eager && strategy(element) === 'hover') {
         visible?.observe(element);
@@ -254,11 +318,16 @@ export function boot(
       const target = template.getAttribute('b-listen') === 'window' ? window : document;
       for (const entry of entries(template)) {
         // Markup that is gone, such as a page that navigation replaced, no longer listens.
-        listen(target, entry.type, (event) => {
-          if (template.isConnected) {
-            apply(event, template, entry);
-          }
-        });
+        listen(
+          target,
+          entry.type,
+          (event) => {
+            if (template.isConnected) {
+              apply(event, template, entry);
+            }
+          },
+          { capture: entry.modifiers.includes('capture'), passive: !prevents(entry) },
+        );
       }
     }
     for (const template of select(root, 'template[b-client],template[b-defer]')) {
@@ -322,7 +391,7 @@ export function boot(
   });
 
   if (navigate) {
-    load = navigate({ options, listen, core: () => core, scan });
+    load = navigate({ options, listen, core: () => core, start: loadCore, scan });
   } else {
     // A hot update whose markup changed loads the page again.
     listen(document, 'brumate:reload', () => location.reload());

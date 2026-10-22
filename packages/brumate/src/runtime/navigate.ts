@@ -1,6 +1,7 @@
 // Client navigation. The loader imports it on the first navigation, so pages
 // that never navigate do not load it.
 
+import { trustedScript } from './trusted.ts';
 export interface Visit {
   url: string;
   /** For a form that posts to a server function. */
@@ -16,6 +17,10 @@ export interface Visit {
   enter: () => void;
   /** Swaps the page inside a view transition, where the browser has them. */
   transition?: boolean;
+  /** Scrolls to the top of the new page, or to its hash. Defaults to true. */
+  scroll?: boolean;
+  /** Moves the focus to the new content, as a full page load does. Defaults to false. */
+  focus?: boolean;
   /**
    * Loads the page after a server function changed something, as for a
    * redirect from one. As a form does, it replaces the whole page, and does
@@ -192,7 +197,8 @@ function planRoutes(next: Document, state: Element | null, requested: number): P
 }
 
 /** Replaces the routes that change, and keeps the rest of the page. */
-function replaceRoutes(next: Document, state: Element, result: Plan): void {
+function replaceRoutes(next: Document, state: Element, result: Plan): Node[] {
+  const added: Node[] = [];
   const removed: HTMLStyleElement[] = [];
   for (const [before, region] of result.replace) {
     const nodes = between(before.start, before.end);
@@ -207,6 +213,7 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
     }
     const parent = before.start.parentNode!;
     for (const node of between(region.start, region.end)) {
+      added.push(node);
       parent.insertBefore(document.adoptNode(node), before.start);
     }
     for (const node of nodes) {
@@ -222,6 +229,47 @@ function replaceRoutes(next: Document, state: Element, result: Plan): void {
   for (const script of next.body.querySelectorAll<HTMLScriptElement>(STATE)) {
     document.body.append(runnable(script));
   }
+  return added;
+}
+
+/** Visually hidden, so only a screen reader reads it. */
+const HIDDEN =
+  'position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap';
+
+/**
+ * Tells a screen reader that the page changed, as a full page load does:
+ * the text of `<meta name="brumate-announce">` of the new page, or its title,
+ * or its first heading, in a live region of the loader.
+ */
+function announce(text: string): void {
+  let region = document.querySelector<HTMLElement>('[b-announcer]');
+  if (!region) {
+    region = document.createElement('div');
+    region.setAttribute('b-announcer', '');
+    region.setAttribute('aria-live', 'assertive');
+    region.setAttribute('aria-atomic', 'true');
+    region.setAttribute('style', HIDDEN);
+    document.body.append(region);
+  }
+  region.textContent = text;
+}
+
+/**
+ * Moves the focus to the first `<h1>` of the new content, or to `<main>`,
+ * so the next Tab starts there, as after a full page load. An element that
+ * cannot take the focus gets `tabindex="-1"` until it loses it.
+ */
+function moveFocus(added: Node[]): void {
+  const elements = added.filter((node): node is Element => node.nodeType === 1);
+  const heading =
+    elements.find((element) => element.matches('h1')) ??
+    elements.map((element) => element.querySelector('h1')).find(Boolean);
+  const target = (heading ?? document.querySelector('main') ?? document.body) as HTMLElement;
+  if (!target.hasAttribute('tabindex') && target !== document.body) {
+    target.setAttribute('tabindex', '-1');
+    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+  }
+  target.focus({ preventScroll: true });
 }
 
 /** Moves the IDs of a page above the IDs of the page in the browser. */
@@ -312,9 +360,11 @@ function shiftIds(root: Node, shift: Shift): void {
       element.setAttribute('b-root', shift.root);
     } else if (element.tagName === 'SCRIPT' && !element.hasAttribute('type')) {
       // The scripts that swap in `#loading` bodies and their head name the boundary.
-      element.textContent = element.textContent!.replace(
-        /\$b([SH])\(("?)([\d.]+)/g,
-        (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
+      element.textContent = trustedScript(
+        element.textContent!.replace(
+          /\$b([SH])\(("?)([\d.]+)/g,
+          (_, kind: string, quote: string, id: string) => `$b${kind}(${quote}${add(id)}`,
+        ),
       );
     }
     for (const child of element.tagName === 'TEMPLATE'
@@ -372,7 +422,7 @@ function runnable(script: HTMLScriptElement): HTMLScriptElement {
     // A DOM without the property, such as in tests, reads the attribute.
     copy.setAttribute('nonce', copy.nonce);
   }
-  copy.textContent = script.textContent;
+  copy.textContent = trustedScript(script.textContent ?? '');
   return copy;
 }
 
@@ -623,13 +673,22 @@ export async function navigate(visit: Visit): Promise<void> {
     }
     // Read before the head moves, because moving the <title> clears it in `next`.
     const title = next.title;
+    const announced =
+      next.head.querySelector('meta[name="brumate-announce"]')?.getAttribute('content') ||
+      title ||
+      next.body.querySelector('h1')?.textContent ||
+      '';
     updateHead(next);
     document.title = title;
     const same = url.href === location.href;
+    // A change of only the query string, such as a filter, keeps the focus, so typing goes on.
+    const samePath = url.pathname === location.pathname;
     const top = window.scrollY;
+    let added: Node[];
     if (routes) {
-      replaceRoutes(next, state!, routes);
+      added = replaceRoutes(next, state!, routes);
     } else {
+      added = [next.body];
       document.body.replaceWith(document.adoptNode(next.body));
       // The state records of the page run in order, so the core reads them when it starts again.
       for (const script of document.body.querySelectorAll<HTMLScriptElement>(STATE)) {
@@ -643,11 +702,17 @@ export async function navigate(visit: Visit): Promise<void> {
       history.replaceState(history.state, '', url);
     }
     visit.enter();
-    if ((visit.init || visit.reload) && same) {
+    if (visit.scroll === false || ((visit.init || visit.reload) && same)) {
       // A form that comes back to its page keeps the place on the page.
       window.scrollTo(0, top);
     } else {
       scroll(url, visit.push ? undefined : (history.state?.scroll as number | undefined));
+    }
+    if (!samePath && announced) {
+      announce(announced);
+    }
+    if (visit.focus && !samePath) {
+      moveFocus(added);
     }
   });
   if (current.signal.aborted) {

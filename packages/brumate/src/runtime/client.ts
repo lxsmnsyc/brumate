@@ -1,3 +1,4 @@
+import { trustedHTML } from './trusted.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -23,7 +24,9 @@ import {
   stateValues,
 } from './shared.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
-import type { Context as ContextValue } from './context.ts';
+import { ROUTE_KEY } from './context.ts';
+export { navigationContext, routeContext } from './context.ts';
+import type { Context as ContextValue, Route } from './context.ts';
 
 export { affix, attribute, classAttribute, escape, raw, spread, vars } from './html.ts';
 export type { Raw } from './html.ts';
@@ -48,6 +51,16 @@ export interface ClientModule {
   load?: (part: string) => Promise<Part>;
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
+  /**
+   * The `#try` blocks that catch errors of client code, by the scope kinds
+   * inside their bodies: the kind of the scope that holds the block, the
+   * anchor of the block, the render functions of the body and the `#catch`
+   * body, and the kinds of both bodies.
+   */
+  t?: Record<
+    number,
+    [owner: number, anchor: number, body: string, fallback: string, kinds: number[]]
+  >;
 }
 
 /** A part of a client module: one client root, or the updates. */
@@ -99,6 +112,12 @@ export interface CoreOptions {
   rpc?: string;
   /** The ID of the build of the page, for skew protection. Calls send it, and a deploy is noticed. */
   build?: string;
+  /**
+   * Receives every error of client code first: of a handler, an effect, a
+   * `$client` callback or a memo that loads. `scope` is the ID of the scope
+   * that the code belongs to, when it has one.
+   */
+  onError?: (error: unknown, info: { scope?: ScopeId }) => void;
 }
 
 // The core keeps only what every page needs: it reads the state, runs handlers and updates.
@@ -674,7 +693,68 @@ export function handle(element: Element, ref: string, event?: Event): Promise<un
     .then(() => loaded)
     .then((handler) => ({ value: handler(scope, ...args) }));
   lastHandler = started.catch(() => {});
-  return started.then((result) => result.value);
+  // An error of the handler, or of the promise that an async one returns, goes to the nearest
+  // `#try` around its scope.
+  return started
+    .then((result) => result.value)
+    .catch((error: unknown) => {
+      fail(scope, error);
+    });
+}
+
+/**
+ * Reports an error of client code: a handler, an effect, a `$client`
+ * callback or a memo that loads. It renders the `#catch` body of the nearest
+ * `#try` around the scope of the code, through the parents and the owners of
+ * scopes. Without one, the page gets a `brumate:error` event on `window`,
+ * with the error and the scope, and the error is logged.
+ */
+export function fail(scope: Scope | undefined, error: unknown): void {
+  options.onError?.(error, { scope: scope?.id });
+  void (async () => {
+    for (let current = scope; current; current = current.p ?? current.o) {
+      const id = rootOf(current).m;
+      if (!id) {
+        continue;
+      }
+      // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
+      const module = await loadModule(id);
+      const entry = module.t?.[current.k];
+      if (!entry) {
+        continue;
+      }
+      // The scope that holds the block, which the anchor of the block counts from.
+      let owner = current.p;
+      while (owner && owner.k !== entry[0]) {
+        owner = owner.p;
+      }
+      if (owner) {
+        // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
+        await catchInto(owner, module, entry, error);
+        return;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('brumate:error', { detail: { error, scope } }));
+    console.error(error);
+  })();
+}
+
+/** Renders the `#catch` body of a `#try` with an error, in place of what the block shows. */
+async function catchInto(
+  owner: Scope,
+  module: ClientModule,
+  [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
+  error: unknown,
+): Promise<void> {
+  const updates = await loadPart(module, 'update');
+  const start = findComment(`b${owner.id}:${anchor}`);
+  if (!start) {
+    return;
+  }
+  const end = rangeEnd(start);
+  disposeKinds(owner, kinds);
+  clear(start, end);
+  insertHTML(end, (updates[fallback] as (parent: Scope, error: unknown) => string)(owner, error));
 }
 
 /** Returns the instance of a scope by its ID. */
@@ -786,10 +866,11 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
       trigger(scope, slot);
     }
   };
-  const fail = (error: unknown): void => {
-    // A newer load of the memo aborted this one.
+  const failed = (error: unknown): void => {
+    // A newer load of the memo aborted this one. The memo keeps its value, and the error goes
+    // to the nearest `#try` around the memo.
     if (loads.get(key) === load) {
-      console.error(error);
+      fail(scope, error);
       settle(undefined, true);
     }
   };
@@ -813,10 +894,10 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
           }
         }
       } catch (error) {
-        fail(error);
+        failed(error);
       }
     })();
-  }, fail);
+  }, failed);
 }
 
 /** Thrown when a memo reads a value that is still loading. */
@@ -1236,7 +1317,7 @@ function clear(start: Node, end: Node): void {
  */
 function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const template = document.createElement('template');
-  template.innerHTML = html;
+  template.innerHTML = trustedHTML(html);
   const fragment = template.content;
   // Markers that others inserted first, so the new markers win over them.
   if (markerObserver) {
@@ -1945,7 +2026,13 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   }
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
-  const cleanup = callback();
+  let cleanup: unknown;
+  try {
+    cleanup = callback();
+  } catch (error) {
+    // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
+    fail(scope, error);
+  }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
   scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
 }
@@ -2085,11 +2172,54 @@ export function consumeContext<T>(
     target.x[context.key] = slot;
   }
   const provider = findProvider(target, context.key);
-  return provider ? (provider.v![context.key] as T) : context.defaultValue;
+  if (provider) {
+    return provider.v![context.key] as T;
+  }
+  if (context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
+    globals.set(ROUTE_KEY, currentRoute());
+  }
+  return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;
+}
+
+/** The values of the contexts that the runtime provides to the whole page, by key. */
+const globals = new Map<string, unknown>();
+
+/** The route of the page: `location`, and the params of the route from the last page state. */
+function currentRoute(): Route {
+  const records = document.querySelectorAll('script[b-state][b-params]');
+  const params = records[records.length - 1]?.getAttribute('b-params');
+  const url = new URL(location.href);
+  return { url, search: url.searchParams, params: params ? JSON.parse(params) : {} };
+}
+
+/**
+ * Writes a context that the runtime provides to the whole page, and the
+ * slot of every scope that reads it without a provider above it.
+ */
+export function setGlobal(key: string, value: unknown): void {
+  globals.set(key, value);
+  for (const target of scopes.values()) {
+    const slot = target.x?.[key];
+    if (slot !== undefined && !findProvider(target, key)) {
+      set(target, slot, value);
+    }
+  }
+}
+
+/** Reads the route of the page again, after navigation changed it. */
+export function updateRoute(): void {
+  setGlobal(ROUTE_KEY, currentRoute());
 }
 
 export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
+  // A render function computes a memo that loads as a promise, which the memo update of the
+  // scope replaces. Its failure is the update's to report, not an unhandled rejection.
+  for (const value of values) {
+    if (isThenable(value)) {
+      Promise.resolve(value).catch(noop);
+    }
+  }
 }
 
 export function setItem(id: ScopeId, value: unknown): void {
@@ -2152,4 +2282,6 @@ export const loader: {
   handle: typeof handle;
   dispose: typeof dispose;
   submitAction: typeof submitAction;
-} = { init, handle, dispose, submitAction };
+  setGlobal: typeof setGlobal;
+  updateRoute: typeof updateRoute;
+} = { init, handle, dispose, submitAction, setGlobal, updateRoute };

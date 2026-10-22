@@ -1,5 +1,6 @@
 <script>
   import { $memo, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
 
   interface Todo {
     id: number;
@@ -22,7 +23,7 @@
   }
 </script>
 
-<form class="demo-todos" onSubmit:prevent=add>
+<form class="demo-todos" onSubmit=(prevent(add))>
   <input value=draft placeholder="Add a todo" aria-label="New todo" onInput=((event) => (draft = event.currentTarget.value))>
   <button>Add</button>
 </form>

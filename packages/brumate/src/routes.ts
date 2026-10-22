@@ -91,6 +91,8 @@ export function routeFiles(paths: string[]): RouteFiles {
 /**
  * Writes a route tree as module code, with an import for each file. `rpc`
  * is the URL prefix of server function calls, for forms that post to one.
+ * `middleware` is the path of the entry middleware, which runs for every
+ * request, when the app has one.
  */
 export function routeModule(
   tree: RouteFiles,
@@ -99,6 +101,7 @@ export function routeModule(
   origins: string[] = [],
   /** In development, errors reach the dev server instead of `_error.brm`. */
   dev = false,
+  middleware?: string,
   /** The ID of the build, for skew protection. */
   build?: string,
 ): string {
@@ -146,11 +149,12 @@ export function routeModule(
   return [
     "import { handleRoute } from 'brumate/server';",
     // Forms without scripts post to their page, which runs the server function.
-    "import { functions } from 'virtual:brumate/server';",
+    "import { functions, fileMiddleware } from 'virtual:brumate/server';",
+    ...(middleware ? [`import middleware from ${JSON.stringify(middleware)};`] : []),
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}, ...options });`,
     '}',
   ].join('\n');
 }
