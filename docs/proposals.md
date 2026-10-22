@@ -341,7 +341,6 @@ Cost: a few days.
 
 ## Runtime
 
-
 ### Worker functions
 
 Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler.
