@@ -41,7 +41,7 @@ A `bind:` attribute writes it once:
 
 ### Blocking async memos
 
-`await` says where the server waits. A read with `await` gives the value, never a promise, so the page state holds the value and needs no later record for it:
+`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback, so the state holds the value and needs no later record for it:
 
 ```html
 <script>
@@ -52,27 +52,45 @@ A `bind:` attribute writes it once:
   // The server waits here. A constant: it does not load again on the client.
   const settings = await fetchSettings();
   // A memo that the page waits for. It loads again when `id` changes.
-  const user = await $memo(fetchUser(id));
-  // A memo that streams: the page sends a promise, and a later record settles it.
+  const user = $memo(fetchUser(id));
+  // A memo that streams, unless an `await` reads it.
   const tags = $memo(listTags());
 </script>
 
-<p>{user.name} · {settings.theme}</p>
+<p>{settings.theme}</p>
 #loading {
-  <!-- The body waits for the tags, and the page does not. -->
-  <p>{(await tags).join(', ')}</p>
+  <!-- The page waits for the user. The tags can show the fallback. -->
+  <h1>{(await user).name}</h1>
+  <p>{tags.join(', ')}</p>
 } #else {
-  <p>Loading tags…</p>
+  <p>Loading…</p>
 }
 <button onClick=(() => console.log(tags))>Log tags</button>
 ```
+
+The page waits for `user`. Then, if `tags` is ready too, the body renders in place, with no fallback and no swap. If `tags` is still loading, the page shows the fallback, and the body streams in when `tags` arrives.
 
 Where `await` can be, and what it waits for:
 
 - In a script, `await` of a promise or of a call that returns one, as in JavaScript. The script runs only on the server, so the value is a constant that the state sends when client code reads it. This works today, except in the browser.
 - `const name = await $memo(value)` declares a memo that the page waits for where it is declared. It is a memo like any other on the client: it loads again when what it reads changes. Its value is in the first state record, even when only client code reads it.
-- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo there. Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record. Inside a body, that body waits.
+- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it:
+  - Outside every `#loading` and `#defer` body, the page waits, so the memo is in the first state record.
+  - Inside a `#loading` body, the render around the block waits for the memo before it reaches the block: the page, for a block at the top, or the body of a `#loading` around it.
+  - Inside a `#defer` body, the request for the body waits.
 - `$memo(await value)` keeps its meaning: a memo whose value loads. Without an `await` of the memo itself, it streams when only client code or a `#loading` body reads it, as now.
+
+Reads without `await`:
+
+- Inside a `#loading` body, a read of a memo that is still loading shows the fallback, and the body streams in when the memo arrives.
+- Outside every body there is no fallback, so a read still makes the page wait, as now. A lint can suggest `await` there, so the wait shows in the code.
+
+A `#loading` body renders in place when it can:
+
+- After the memos that it reads with `await` settle, the server checks the other memos that the body reads. When all of them are ready, the body renders where the block is, with no fallback, no `<template>` and no swap.
+- It renders in its own ID space, such as `5.0`, as a body that streams does, so its IDs are the same either way. Its scopes are in the first state record.
+- Otherwise the block renders as now: the fallback, and the body later.
+- This also changes the HTML of a `#loading` block today whose data happens to be ready: it renders in place.
 
 In the browser:
 
@@ -100,7 +118,8 @@ const b = $$b.read($$p_b);
 
 What it needs:
 
-- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await` outside every body, as blocking. `blockingMemos` already decides which memos the server awaits where they are declared.
+- The analyzer marks memos that `await $memo(…)` declares, and memos read with `await`, as blocking for the render around their read. `blockingMemos` already decides which memos the server awaits where they are declared.
+- The `#loading` emitter awaits the memos that its body reads with `await` before the block, checks whether the other memos are ready, and renders the body in place or streams it.
 - The client codegen removes `await` from reads of memos, and reports `await` of anything else in code that runs in the browser.
 - The type checker types `await name` of a memo as its value.
 - With every promise awaited, a page with no `#loading` or `#defer` body has one state record, and gets the smaller state that assigns only shared references.
