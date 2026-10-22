@@ -81,8 +81,22 @@ In the browser:
 
 Order:
 
-- Awaits in a script run in order, as in JavaScript, so two awaits of independent loads wait one after the other.
-- `await $memo(…)` starts its load where it is declared. The server could start every such memo of a script first and wait for them together, since a memo depends only on what it reads. This is the main open question.
+- Awaits of promises in a script run in order, as in JavaScript.
+- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time.
+- A memo that reads another one waits for it by itself. On the server, the read of a memo that is still loading throws `NotReady` with its load, and `wait` computes the memo again once that load settles. So in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` starts when `foo()` settles:
+
+```js
+const $$p_a = $$b.memo(() => foo(), $$ctx);
+const $$p_b = $$b.memo(() => bar($$b.read($$p_a)), $$ctx);
+// The end of the run: every memo of it loads, and the render waits for all of them.
+await Promise.all([$$b.wait($$p_a), $$b.wait($$p_b)]);
+const a = $$b.read($$p_a);
+const b = $$b.read($$p_b);
+```
+
+- Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript.
+- When a memo fails, the memos that read it do not run, and the error comes where the run waits.
+- In the browser nothing changes: `b` reads `a`, so it loads again when `a` changes, as any memo that reads another.
 
 What it needs:
 
