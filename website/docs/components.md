@@ -73,6 +73,7 @@ const { title, size = 'medium', ...rest } = $props<{
 - The type argument types the props. Callers get type errors for missing or wrong props, in the editor and in `brumate-tsc`.
 - A default value, such as `size = 'medium'`, applies when the caller does not pass the prop.
 - A rest element, such as `...rest`, collects the other props. Spread it onto an element with `{...rest}`.
+- On an element with a spread, the attributes apply in their order, so a later one wins. A `class` adds to the others: `<a class="link" {...rest}>` with `class="primary"` in `rest` gets `class="link primary"`.
 - Read props by their names. Do not keep the object of `$props()` and read from it later.
 
 ### Handlers in a spread

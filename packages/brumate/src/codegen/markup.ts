@@ -104,6 +104,19 @@ const CLIENT_HELPERS: Record<string, string> = {
   title: 'title',
 };
 
+/** The value of a static attribute, with its character references read. */
+export function decodeAttribute(text: string): string {
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  return text.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
+    if (name[0] === '#') {
+      return String.fromCodePoint(
+        name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1)),
+      );
+    }
+    return named[name.toLowerCase()] ?? match;
+  });
+}
+
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
 function literalText(node: oxc.Node): string | undefined {
   if (node.type === 'Literal') {
@@ -778,12 +791,20 @@ export class Emitter {
     const events: string[] = [];
     let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
+    // With spreads, the attributes are one object in their order, so a name is written once:
+    // a later value wins, and classes add up.
+    const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
+      ? ([] as string[])
+      : undefined;
     for (const attribute of node.attributes) {
       if (
         ownStyle &&
         (attribute.kind === 'static' || attribute.kind === 'value') &&
         attribute.name === 'style'
       ) {
+        continue;
+      }
+      if (merged && this.mergedAttribute(node, attribute, scope, merged)) {
         continue;
       }
       switch (attribute.kind) {
@@ -836,6 +857,11 @@ export class Emitter {
           break;
       }
     }
+    if (merged) {
+      this.code(
+        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}])${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+      );
+    }
     if (anchor) {
       this.html(' b-b="');
       this.code(anchor.scope);
@@ -858,6 +884,42 @@ export class Emitter {
     this.emitNodes(node.children, scope);
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /**
+   * Adds an attribute of an element with spreads to `parts`, the objects
+   * that its spread merges. Returns false for an attribute that stays apart,
+   * such as a handler or a `ref`.
+   */
+  private mergedAttribute(
+    node: ElementNode,
+    attribute: Attribute,
+    scope: Scope,
+    parts: string[],
+  ): boolean {
+    switch (attribute.kind) {
+      case 'static':
+        parts.push(
+          `{ ${JSON.stringify(attribute.name)}: ${attribute.value === true ? 'true' : JSON.stringify(decodeAttribute(attribute.value))} }`,
+        );
+        return true;
+      case 'value':
+        if (this.formAction(node, attribute.name, attribute.value, scope)) {
+          return false;
+        }
+        parts.push(`{ ${JSON.stringify(attribute.name)}: ${this.expression(attribute.value)} }`);
+        return true;
+      case 'computed':
+        parts.push(
+          `{ [${this.expression(attribute.name)}]: ${attribute.value === true ? 'true' : this.expression(attribute.value)} }`,
+        );
+        return true;
+      case 'spread':
+        parts.push(this.expression(attribute.value));
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**

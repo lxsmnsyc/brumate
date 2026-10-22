@@ -177,6 +177,23 @@ export function styleElement(id: string, css: string): string {
   return `<style b-style="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
 }
 
+/**
+ * Merges the attributes of an element that has spreads, in their order: a
+ * later value wins, except `class`, whose values all apply.
+ */
+export function mergeAttributes(parts: Record<string, unknown>[]): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const part of parts) {
+    for (const [name, value] of Object.entries(part ?? {})) {
+      result[name] =
+        name === 'class' && result.class !== undefined && value !== undefined
+          ? [result.class, value]
+          : value;
+    }
+  }
+  return result;
+}
+
 /** Renders an object of attributes. */
 export function spread(attributes: Record<string, unknown>): string {
   let result = '';
