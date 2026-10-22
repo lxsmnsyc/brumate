@@ -139,6 +139,11 @@ export interface Site {
   /** The element, component or listener of an attribute or event site. */
   owner?: ElementNode | ComponentNode | DynamicTagNode | GlobalListenerNode;
   event?: EventAttribute;
+  /**
+   * For a handler wrapped by `brumate/events`, such as `prevent(move, 'Enter')`,
+   * the modifiers that `b-on` holds, such as `prevent(Enter)`.
+   */
+  modifiers?: string[];
   /** The block whose header this site is. */
   block?: Block;
   /** The trigger of a `$client` site. */

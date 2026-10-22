@@ -15,6 +15,7 @@ import { analyzeProject, compile, generateShared } from 'brumate';
 import type { CompileResult } from 'brumate';
 import * as client from 'brumate/client';
 import * as context from 'brumate/context';
+import * as events from 'brumate/events';
 import * as html from 'brumate/html';
 import * as routes from 'brumate/routes';
 import * as server from 'brumate/server';
@@ -45,6 +46,7 @@ function registry(): Map<string, () => Promise<ClientModule>> {
 const RUNTIME: Record<string, object> = {
   'brumate/client': client,
   'brumate/context': context,
+  'brumate/events': events,
   'brumate/html': html,
   'brumate/routes': routes,
   'brumate/server': server,

@@ -147,8 +147,20 @@ export function boot(
   };
 
   const apply = (event: Event, element: Element, entry: Entry): boolean => {
-    if (entry.modifiers.includes('prevent')) {
-      event.preventDefault();
+    for (const modifier of entry.modifiers) {
+      // `prevent(ArrowDown,Enter)` prevents only these keys, by `event.key`.
+      if (
+        modifier === 'prevent' ||
+        (modifier.startsWith('prevent(') &&
+          modifier
+            .slice(8, -1)
+            .split(',')
+            .includes(
+              (event as KeyboardEvent).key === ' ' ? 'Space' : (event as KeyboardEvent).key,
+            ))
+      ) {
+        event.preventDefault();
+      }
     }
     if (entry.modifiers.includes('once')) {
       element.setAttribute(

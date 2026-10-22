@@ -167,6 +167,13 @@ function moved(record: string): string {
   return record.replace('<script ', '<script b-offset="5" b-root="5" ');
 }
 
+/** Presses a key on the list of the page, and returns the event. */
+function press(key: string): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  document.querySelector('.list')!.dispatchEvent(event);
+  return event;
+}
+
 function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
@@ -402,7 +409,7 @@ describe('resume', () => {
     });
     await resume('delegation', {});
     vi.mocked(document.addEventListener).mockRestore();
-    // Only the type with :prevent needs a listener that is not passive.
+    // Only the type with prevent needs a listener that is not passive.
     expect(flags.get('click')).toEqual({ capture: true, passive: true });
     expect(flags.get('focus')).toEqual({ capture: true, passive: true });
     expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
@@ -416,6 +423,20 @@ describe('resume', () => {
     document.querySelector('.wheel')!.dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
+  it('prevents only the keys that :prevent names, before the handler loads', async () => {
+    const server = await import(file('preventKeys.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space)=');
+    await resume('preventKeys', {});
+    // The first press is prevented at once, while the handler's code still loads.
+    expect(press('ArrowDown').defaultPrevented).toBe(true);
+    expect(press(' ').defaultPrevented).toBe(true);
+    expect(press('Tab').defaultPrevented).toBe(false);
+    expect(press('a').defaultPrevented).toBe(false);
+    // The handler still runs for every key.
+    await waitFor(() => expect(text('.last')).toBe('a'));
   });
 
   it('renders a #try body again with reset', async () => {
