@@ -115,24 +115,57 @@ const CLIENT_HELPERS: Record<string, string> = {
   title: 'title',
 };
 
-/** The text that markup text shows, with its character references read. */
-function decodeText(html: string): string {
-  const named: Record<string, string> = {
-    amp: '&',
-    lt: '<',
-    gt: '>',
-    quot: '"',
-    apos: "'",
-    nbsp: '\u00a0',
-  };
+/** The named character references that markup reads. Others stay as they are written. */
+const NAMED: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+  copy: '\u00a9',
+  reg: '\u00ae',
+  trade: '\u2122',
+  hellip: '\u2026',
+  mdash: '\u2014',
+  ndash: '\u2013',
+  lsquo: '\u2018',
+  rsquo: '\u2019',
+  ldquo: '\u201c',
+  rdquo: '\u201d',
+  laquo: '\u00ab',
+  raquo: '\u00bb',
+  middot: '\u00b7',
+  bull: '\u2022',
+  times: '\u00d7',
+  euro: '\u20ac',
+};
+
+/**
+ * Markup text or a static attribute value, with its character references
+ * read. A number that is no character, such as one past 0x10FFFF, reads as
+ * U+FFFD, as the browser reads it.
+ */
+function decodeReferences(html: string): string {
   return html.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
     if (name[0] === '#') {
       const code =
         name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1));
-      return String.fromCodePoint(code);
+      const valid = code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+      return valid ? String.fromCodePoint(code) : '\ufffd';
     }
-    return named[name.toLowerCase()] ?? match;
+    return NAMED[name.toLowerCase()] ?? match;
   });
+}
+
+/** The value of a static attribute, with its character references read. */
+export function decodeAttribute(text: string): string {
+  return decodeReferences(text);
+}
+
+/** The text that markup text shows, with its character references read. */
+function decodeText(html: string): string {
+  return decodeReferences(html);
 }
 
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
@@ -898,12 +931,20 @@ export class Emitter {
     const events: string[] = [];
     let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
+    // With spreads, the attributes are one object in their order, so a name is written once:
+    // a later value wins, and classes add up.
+    const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
+      ? ([] as string[])
+      : undefined;
     for (const attribute of node.attributes) {
       if (
         ownStyle &&
         (attribute.kind === 'static' || attribute.kind === 'value') &&
         attribute.name === 'style'
       ) {
+        continue;
+      }
+      if (merged && this.mergedAttribute(node, attribute, scope, merged)) {
         continue;
       }
       switch (attribute.kind) {
@@ -956,6 +997,11 @@ export class Emitter {
           break;
       }
     }
+    if (merged) {
+      this.code(
+        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}])${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+      );
+    }
     if (anchor) {
       this.html(' b-b="');
       this.code(anchor.scope);
@@ -981,6 +1027,42 @@ export class Emitter {
     this.emitNodes(node.children, scope);
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /**
+   * Adds an attribute of an element with spreads to `parts`, the objects
+   * that its spread merges. Returns false for an attribute that stays apart,
+   * such as a handler or a `ref`.
+   */
+  private mergedAttribute(
+    node: ElementNode,
+    attribute: Attribute,
+    scope: Scope,
+    parts: string[],
+  ): boolean {
+    switch (attribute.kind) {
+      case 'static':
+        parts.push(
+          `{ ${JSON.stringify(attribute.name)}: ${attribute.value === true ? 'true' : JSON.stringify(decodeAttribute(attribute.value))} }`,
+        );
+        return true;
+      case 'value':
+        if (this.formAction(node, attribute.name, attribute.value, scope)) {
+          return false;
+        }
+        parts.push(`{ ${JSON.stringify(attribute.name)}: ${this.expression(attribute.value)} }`);
+        return true;
+      case 'computed':
+        parts.push(
+          `{ [${this.expression(attribute.name)}]: ${attribute.value === true ? 'true' : this.expression(attribute.value)} }`,
+        );
+        return true;
+      case 'spread':
+        parts.push(this.expression(attribute.value));
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**

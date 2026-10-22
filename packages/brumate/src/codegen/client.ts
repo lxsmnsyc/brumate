@@ -16,7 +16,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
-import { Emitter, classText, literalClasses, variableValue } from './markup.ts';
+import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
@@ -911,8 +911,20 @@ class ClientGenerator {
       if (this.plan.styles.css) {
         own.push(this.plan.styles.attribute, 'style');
       }
+      // The element's static attributes merge with the spread in their order, as on the server.
+      const parts = owner.attributes.flatMap((item) => {
+        if (item === attribute) {
+          return [expression()];
+        }
+        return item.kind === 'static'
+          ? [
+              `{ ${JSON.stringify(item.name)}: ${item.value === true ? 'true' : JSON.stringify(decodeAttribute(item.value))} }`,
+            ]
+          : [];
+      });
+      const value = parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : expression();
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${expression()}, ${JSON.stringify(own)});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
       const value =

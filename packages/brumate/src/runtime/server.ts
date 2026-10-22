@@ -43,7 +43,16 @@ import {
 import type { EntryMiddleware, RequestKind } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export { affix, attribute, classAttribute, escape, escapeAttribute, raw, vars } from './html.ts';
+export {
+  affix,
+  attribute,
+  classAttribute,
+  escape,
+  escapeAttribute,
+  mergeAttributes,
+  raw,
+  vars,
+} from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';

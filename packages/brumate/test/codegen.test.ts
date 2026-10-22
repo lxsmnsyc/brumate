@@ -1,7 +1,7 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MERGE, minifiedSize } from '../src/codegen/client.ts';
-import { classText, literalClasses } from '../src/codegen/markup.ts';
+import { classText, decodeAttribute, literalClasses } from '../src/codegen/markup.ts';
 import { compile, inspect } from '../src/index.ts';
 import { parseExpression } from '../src/oxc.ts';
 import { classValue } from '../src/runtime/html.ts';
@@ -643,5 +643,14 @@ describe('#try with client code', () => {
     const { client, server } = compile(tryPage('<p>{count}</p>'), { filename: 'T.brm' });
     expect(server).not.toContain('<!--b');
     expect(client).not.toContain('export const t');
+  });
+});
+
+describe('character references', () => {
+  it('reads named and numeric references, and a number that is no character as U+FFFD', () => {
+    expect(decodeAttribute('a&nbsp;b &amp; &copy; &#65;&#x42; &unknown;')).toBe(
+      'a b & © AB &unknown;',
+    );
+    expect(decodeAttribute('&#x110000; &#0; &#xD800;')).toBe('� � �');
   });
 });

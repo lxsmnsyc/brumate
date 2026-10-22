@@ -619,6 +619,8 @@ describe('resume', () => {
     await resume('spreadUpdate', {});
     const target = document.querySelector('.target')!;
     expect(target.getAttribute('title')).toBe('Tip');
+    // The class of the spread adds to the class of the element.
+    expect(target.className).toBe('target tip');
     click(document.querySelector('.drop')!);
     await waitFor(() => expect(target.getAttribute('data-kind')).toBe('b'));
     expect(target.hasAttribute('title')).toBe(false);
@@ -714,7 +716,7 @@ describe('resume', () => {
       await waitFor(() => expect(text('.spike-link')).toBe('Linked 1'));
     });
 
-    it.fails('merges a class of a spread with the class of the element', async () => {
+    it('merges a class of a spread with the class of the element', async () => {
       const server = await import(file('spikePage.brm.ts'));
       const { html } = await renderParts(server.default, {});
       // SpikeLink writes class="spike-link", and the spread of SpikeButton writes class="trigger".

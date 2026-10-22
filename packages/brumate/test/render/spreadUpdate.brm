@@ -1,7 +1,7 @@
 <script>
   import { $signal } from 'brumate/signals';
 
-  let extra = $signal<Record<string, string>>({ title: 'Tip', 'data-kind': 'a' });
+  let extra = $signal<Record<string, string>>({ title: 'Tip', 'data-kind': 'a', class: 'tip' });
 </script>
 
 <p class="target" id="fixed" {...extra}>Text</p>
