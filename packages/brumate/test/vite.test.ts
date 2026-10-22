@@ -303,6 +303,60 @@ describe('files of server functions', () => {
   });
 });
 
+describe('environment variables', () => {
+  it('checks them on the server, and gives the browser the public ones only', async () => {
+    const directory = fileURLToPath(new URL('./.output/env-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/env.ts`,
+      "import { defineEnv } from 'brumate/env';\nimport * as v from 'valibot';\n\nexport default defineEnv({\n  server: { SECRET: v.pipe(v.string(), v.minLength(4)) },\n  public: { SITE_NAME: v.optional(v.string(), 'Tracker') },\n});\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import env from '../env.ts';\n  let clicks = $signal(0);\n  const secretLength = env.SECRET.length;\n</script>\n<p>{env.SITE_NAME} {secretLength}</p>\n<button onClick=(() => clicks++)>{clicks}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+      resolve: { alias: { ...config.resolve!.alias, 'brumate/env': runtime('env') } },
+    });
+    try {
+      // The server fails to start its routes without the secret.
+      delete process.env.SECRET;
+      await expect(dev.ssrLoadModule('virtual:brumate/routes')).rejects.toThrow(
+        'Environment variables: SECRET is missing',
+      );
+      process.env.SECRET = 'hunter2';
+      process.env.SITE_NAME = 'Issues';
+      // The failed module stays in the graph until it is invalidated, as a restart would.
+      dev.moduleGraph.invalidateAll();
+      // The browser's copy has the public values, and no server variable.
+      const client = await dev.transformRequest('/src/env.ts');
+      expect(client?.code).toMatch(/"SITE_NAME":\s*"Issues"/);
+      expect(client?.code).not.toContain('SECRET');
+      // The server reads them while the page renders.
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const response = await handle(new Request('http://localhost/'));
+      expect(await response.text()).toContain('<p>Issues 7</p>');
+      // Code that runs in the browser cannot read a server variable.
+      writeFileSync(
+        `${directory}src/Leak.brm`,
+        "<script>\n  import { $signal } from 'brumate/signals';\n  import env from './env.ts';\n  let shown = $signal('');\n</script>\n<button onClick=(() => (shown = env.SECRET))>{shown}</button>\n",
+      );
+      await expect(dev.ssrLoadModule('/src/Leak.brm')).rejects.toThrow(
+        'env.SECRET, a server variable, is read by code that runs in the browser',
+      );
+    } finally {
+      delete process.env.SECRET;
+      delete process.env.SITE_NAME;
+      await dev.close();
+    }
+  });
+});
+
 describe('merged parts', () => {
   it('puts the parts of a small component into one module', async () => {
     const dev = await createServer({

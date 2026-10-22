@@ -23,7 +23,6 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
 | [Cancelled work](#cancelled-work)                                     | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
-| [Environment variables](#environment-variables)                       | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
@@ -753,35 +752,6 @@ declare module 'brumate/server' {
 
 Cost: a few days.
 
-### Environment variables
-
-Secrets come from `process.env`, and values for the browser from Vite's `import.meta.env.VITE_*`. Nothing checks that a secret is set, or that browser code does not read one.
-
-```ts
-// src/env.ts
-import { defineEnv } from 'brumate/env';
-import * as v from 'valibot';
-
-export default defineEnv({
-  server: {
-    DATABASE_URL: v.pipe(v.string(), v.url()),
-    SESSION_SECRET: v.pipe(v.string(), v.minLength(32)),
-  },
-  public: {
-    SITE_NAME: v.optional(v.string(), 'Tracker'),
-  },
-});
-```
-
-- `defineEnv` takes a Standard Schema for each variable, split into `server` and `public`, as SolidStart's split between server and client variables and Astro's `astro:env` do.
-- The server checks the variables when it starts, and fails with every missing or wrong one, so a deploy without a secret does not start.
-- `import { env } from 'brumate/env'` gives the values with their types.
-- Public values are written into the client build. Server values never are.
-- The compiler knows which code runs in the browser, so it reports a read of a server value in a handler, an effect or a `$client` callback, even without a prefix in its name. That is what a prefix alone cannot do: SolidStart and Vite only check the name.
-- A server value that a component reads while it renders stays on the server, unless client code reads the slot that holds it, which the page state then refuses, as [taint](#taint) does.
-
-Cost: a few days for the check and the types, and about 1 week with the compiler's check of browser code.
-
 ### Idempotent calls
 
 A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
@@ -1268,7 +1238,7 @@ Cost: a few days for the adapter, a guide and an example.
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Blocking async memos.** They fix a bug: a component whose script awaits breaks when the browser renders it, because the render module copies the `await` into a function that does not wait.
-2. **The server's foundation**: the middleware entry, request locals with `waitUntil`, and environment variables. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals and the variables are what middleware hands on.
+2. **The server's foundation**: the middleware entry and request locals with `waitUntil`. The middleware entry closes a hole, since server function calls skip `_middleware.ts` today, and the locals are what middleware hands on. Environment variables are done.
 3. **Security**: taint, rate limiting and Trusted Types. Each is small, and each protects every app. Rate limiting starts with the in-memory store, and moves to the shared store with caching.
 4. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
 5. **Errors in client code**, so a handler that throws shows a `#catch` body instead of failing silently. Forms and the UI components run most of their code in handlers.

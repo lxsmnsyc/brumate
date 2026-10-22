@@ -39,6 +39,10 @@ export async function POST(request: Request): Promise<Response> {
 
 `same-site` counts as another site, because a page on another subdomain can be run by someone else.
 
+## Secrets
+
+The server variables of `src/env.ts` never ship: the browser gets the file without them, and the compiler reports code that runs in the browser reading one, or a value made from one that the page state would send. See [Environment variables](./environment.md).
+
 ## Errors
 
 - A `ServerError` sends its message and status to the browser. Write messages for the user.

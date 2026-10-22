@@ -14,6 +14,7 @@ import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'v
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
+import { clientEnvModule, parseEnvFile } from './env-file.ts';
 import {
   hasUseServer,
   isScriptFile,
@@ -63,6 +64,13 @@ export interface BrumateOptions {
   exclude?: (directory: string) => boolean;
   /** The directory of route files, relative to the root. Defaults to `src/routes`. */
   routes?: string;
+  /**
+   * The file of environment variables, relative to the root, which calls
+   * `defineEnv` from `brumate/env`. The server checks them when it starts,
+   * and the browser gets the file without the server variables. Defaults
+   * to `src/env.ts` when the file exists. `false` uses none.
+   */
+  env?: string | false;
   /**
    * The declaration file that gives `href` of `brumate/routes` the paths of
    * the routes, relative to the root. The plugin writes it when the routes
@@ -253,6 +261,45 @@ function buildFingerprint(): string {
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
+  /** The file of environment variables, when the app has one. */
+  const envFile = (): string | undefined => {
+    if (options.env === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.env ?? 'src/env.ts'));
+    if (!existsSync(file)) {
+      if (options.env !== undefined) {
+        throw new Error(`The env file ${options.env} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
+  /** The names of the server variables, read from the env file, by its source. */
+  let envKeys: { source: string; server: string[] } | undefined;
+  const serverEnvKeys = (): string[] | undefined => {
+    const file = envFile();
+    if (!file) {
+      return undefined;
+    }
+    const source = readFileSync(file, 'utf8');
+    if (envKeys?.source !== source) {
+      envKeys = { source, server: parseEnvFile(source, file).server };
+    }
+    return envKeys.server;
+  };
+  /** The server variables that an import of the env file gives a component. */
+  const envImport = (importer: string, specifier: string): string[] | undefined => {
+    const file = envFile();
+    if (!file || !specifier.startsWith('.')) {
+      return undefined;
+    }
+    const stem = path.resolve(path.dirname(importer), specifier);
+    const found = [stem, ...['.ts', '.js', '.mjs'].map((extension) => stem + extension)].some(
+      (candidate) => normalizePath(candidate) === file,
+    );
+    return found ? serverEnvKeys() : undefined;
+  };
   const exclude = options.exclude ?? defaultExclude;
   let root = process.cwd();
   let outDir = '';
@@ -416,6 +463,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // A build does not show the names of server functions in their IDs.
           hideNames: !isServe,
           serverImport: (specifier, name) => serverImport(file, specifier, name),
+          envImport: (specifier) => envImport(file, specifier),
           // A module of reactive logic can come from a package of components.
           resolveModule: (specifier, importer) => {
             const local = resolveFromDisk(specifier, importer);
@@ -493,7 +541,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         )
         .join('\n');
     });
+    const env = envFile();
     return [
+      // The variables are checked when the server starts, before anything else loads.
+      ...(env ? [`import ${JSON.stringify(env)};`] : []),
       "import { handleRequest } from 'brumate/server';",
       ...imports,
       ...fileImports,
@@ -528,14 +579,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return routeFiles(paths);
   };
 
-  const routeTree = (): string =>
-    routeModule(
+  const routeTree = (): string => {
+    const env = envFile();
+    const code = routeModule(
       currentRoutes(),
       (file) => `${routesDirectory()}/${file}`,
       rpc,
       options.origins,
       isServe,
     );
+    // The variables are checked when the server starts, before any route loads.
+    return env ? `import ${JSON.stringify(env)};\n${code}` : code;
+  };
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
   const writeRouteTypes = (): void => {
@@ -1050,6 +1105,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     async transform(code, id, transformOptions) {
       const [file] = id.split('?');
+      // The browser gets the env file without the server variables, and with the values of the
+      // public ones, read now.
+      if (file && !transformOptions?.ssr && file === envFile()) {
+        try {
+          return { code: clientEnvModule(code, file, process.env), map: null };
+        } catch (error) {
+          this.error((error as Error).message);
+        }
+      }
       // A file of server functions: the browser gets stubs that call the server instead.
       if (file && isScriptFile(file) && hasUseServer(code)) {
         try {
@@ -1103,6 +1167,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       });
       server.watcher.on('all', (event, file) => {
+        // The names of the server variables are part of what each component compiles with.
+        if (normalizePath(file) === envFile()) {
+          compiled.clear();
+        }
         // A stylesheet that a component imports compiles into that component.
         for (const importer of dependents.get(normalizePath(file)) ?? []) {
           compiled.delete(importer);
@@ -1205,7 +1273,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return updateClient(file, server, timestamp);
       }
       const normalized = normalizePath(file);
-      if (!file.endsWith('.brm') && !dependents.has(normalized)) {
+      if (!file.endsWith('.brm') && !dependents.has(normalized) && normalized !== envFile()) {
         return undefined;
       }
       const invalidated = new Set<EnvironmentModuleNode>();

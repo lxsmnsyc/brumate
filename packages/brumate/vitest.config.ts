@@ -14,6 +14,7 @@ export default defineConfig({
       'brumate/hot': fileURLToPath(new URL('./src/runtime/hot.ts', import.meta.url)),
       'brumate/routes': fileURLToPath(new URL('./src/runtime/routes.ts', import.meta.url)),
       'brumate/context': fileURLToPath(new URL('./src/runtime/context.ts', import.meta.url)),
+      'brumate/env': fileURLToPath(new URL('./src/runtime/env.ts', import.meta.url)),
     },
   },
 });
