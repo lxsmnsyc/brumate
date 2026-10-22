@@ -69,6 +69,8 @@ const BLOCK_KEYWORDS = new Set([
 const BRANCH_KEYWORDS = new Set(['else', 'catch', 'case', 'default']);
 
 const MODIFIERS = new Set<string>(['prevent', 'stop', 'passive', 'once', 'capture']);
+/** The events whose `:prevent` can name keys. */
+const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const PREFETCH_STRATEGIES = new Set<string>(['hover', 'visible', 'idle', 'none']);
 
@@ -447,7 +449,10 @@ class Parser {
       return { kind: 'computed', start, end: this.pos, name, value };
     }
 
-    const match = /^[A-Za-z_][\w-]*(?::[\w-]+)*/.exec(this.source.slice(this.pos, this.pos + 200));
+    // An event modifier can have arguments, such as `onKeyDown:prevent(ArrowDown Enter)`.
+    const match = /^[A-Za-z_][\w-]*(?::[\w-]+(?:\([^)\n]*\))?)*/.exec(
+      this.source.slice(this.pos, this.pos + 200),
+    );
     if (!match) {
       return this.fail('Expected an attribute name', this.pos);
     }
@@ -457,11 +462,38 @@ class Parser {
 
     if (/^on[A-Z]/.test(fullName)) {
       const name = parts[0]!;
-      const modifiers = parts.slice(1);
-      for (const modifier of modifiers) {
+      const event = name.slice(2).toLowerCase();
+      const modifiers: string[] = [];
+      let preventKeys: string[] | undefined;
+      for (const part of parts.slice(1)) {
+        const [, modifier = part, keys] = /^([\w-]+)\(([^)]*)\)$/.exec(part) ?? [];
         if (!MODIFIERS.has(modifier)) {
           this.fail(`Unknown event modifier ":${modifier}"`, start);
         }
+        if (keys !== undefined) {
+          if (modifier !== 'prevent' || !KEY_EVENTS.has(event)) {
+            this.fail(
+              'Only :prevent of a keyboard event takes keys, such as onKeyDown:prevent(ArrowDown Enter)',
+              start,
+            );
+          }
+          preventKeys = keys.split(/\s+/).filter(Boolean);
+          const wrong = preventKeys.find((key) => !/^[A-Za-z0-9]+$/.test(key));
+          if (preventKeys.length === 0 || wrong !== undefined) {
+            this.fail(
+              `Name keys by their event.key, with letters and digits, such as ArrowDown or Space${wrong === undefined ? '' : `, not "${wrong}"`}`,
+              start,
+            );
+          }
+        }
+        modifiers.push(modifier);
+      }
+      // A component gets the handler as a prop, and nothing would apply the modifiers.
+      if (owner === 'component' && modifiers.length > 0) {
+        this.fail(
+          `Modifiers apply to elements. Put ":${modifiers[0]}" on the element that the component renders`,
+          start,
+        );
       }
       if (this.peek() !== '=') {
         this.fail('Expected an event handler', this.pos);
@@ -476,8 +508,9 @@ class Parser {
         start,
         end: this.pos,
         name,
-        event: name.slice(2).toLowerCase(),
+        event,
         modifiers: modifiers as Modifier[],
+        ...(preventKeys ? { preventKeys } : {}),
         handler: value,
       };
     }

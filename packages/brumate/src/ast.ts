@@ -114,6 +114,11 @@ export interface EventAttribute extends Range {
   /** The DOM event name, such as `click`. */
   event: string;
   modifiers: Modifier[];
+  /**
+   * The keys of `:prevent(ArrowDown Enter)`, by `event.key`, on a keyboard
+   * event: only these keys are prevented. Undefined prevents every event.
+   */
+  preventKeys?: string[];
   handler: Expression;
 }
 

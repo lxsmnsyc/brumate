@@ -143,6 +143,20 @@ Modifiers follow the event name, as in `onSubmit:prevent`. They apply before the
 
 Use `:prevent` rather than calling `event.preventDefault()` in the handler. The browser decides on the default action as soon as the event fires, before the handler's code has loaded.
 
+On a keyboard event, `:prevent` can name the keys to prevent, by their `event.key`. The handler still runs for every key:
+
+```brm
+<ul role="listbox" tabindex="0" onKeyDown:prevent(ArrowDown ArrowUp Home End)=move>
+  …
+</ul>
+```
+
+- The arrow keys no longer scroll the page, and Tab still moves the focus.
+- Name a key with letters and digits, such as `Enter`, `Escape`, `ArrowDown` or `a`. Use `Space` for the space bar.
+- Only `:prevent` of `onKeyDown`, `onKeyUp` and `onKeyPress` takes keys.
+
+Modifiers apply to elements. A component gets its handlers as props, so a modifier on a component is a compile error: the component puts it on the element that it renders, such as a listbox that prevents the keys it handles.
+
 ### Loading handlers early
 
 The code of a handler loads when the pointer moves over its element, or when the element gets focus, so it is often ready before the click. Once the page has loaded and the browser is idle, it also loads for elements in or near the viewport. See [Idle preload](./client-modules.md#idle-preload). `prefetch` on the element changes when:

@@ -92,6 +92,7 @@
   - The bodies of `#if`, `#switch`, `#for`, `#repeat`, `#try` and `#offscreen` are numbered after an ID of the block, so the markup after them keeps its IDs when the second render takes another branch, such as for a user who is signed in on a prerendered page.
   - The browser also sends the scope and anchor of the block. When the second render puts the boundary elsewhere, such as after the data changed, the server answers 409 and the fallback stays.
   - A boundary ID names the bodies around it, such as `0.0` inside boundary `0`. The second render renders those bodies, without sending them, so a block can be inside a `#loading` or `#defer` body, also of a parent component.
+- `:prevent` of a keyboard event can name keys, as `onKeyDown:prevent(ArrowDown Enter)`, so a list or a combobox stops the keys it handles, before its code loads, and leaves the others to the browser. The keys are `event.key` values of letters and digits, with `Space` for the space bar, and `b-on` holds them with commas, as it separates its entries with spaces. A handler that decides at run time whether to prevent is not possible, because its code loads after the browser acts.
 
 - Hosts are Nitro's: its presets build the app for Node, Bun, Deno, Cloudflare, Vercel and the rest, so brumate has no adapters of its own. Features that need the host, such as a cache store or WebSocket, use Nitro's storage layer and its WebSocket support, and a plain handler for an app that writes its own server.
 

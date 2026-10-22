@@ -5,6 +5,7 @@ import type {
   ComponentNode,
   DynamicTagNode,
   ElementNode,
+  EventAttribute,
   Expression,
   ForBlock,
   Markup,
@@ -632,9 +633,7 @@ export class Emitter {
         return;
       case 'listener': {
         const anchor = this.anchor(scope, node)!;
-        const events = node.attributes.map((attribute) =>
-          this.eventEntry(attribute.event, attribute.modifiers, attribute.handler),
-        );
+        const events = node.attributes.map((attribute) => this.eventEntry(attribute));
         this.html('<template b-b="');
         this.code(anchor.scope);
         this.html(
@@ -654,9 +653,15 @@ export class Emitter {
     }
   }
 
-  private eventEntry(event: string, modifiers: string[], handler: Expression): string {
+  private eventEntry({ event, modifiers, preventKeys, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
-    const name = [event, ...modifiers].join(':');
+    // `b-on` separates its entries with spaces, so the keys of `:prevent` take commas.
+    const name = [
+      event,
+      ...modifiers.map((modifier) =>
+        modifier === 'prevent' && preventKeys ? `prevent(${preventKeys.join(',')})` : modifier,
+      ),
+    ].join(':');
     return `${name}=${this.plan.id}#${this.plan.symbols.get(site)}`;
   }
 
@@ -810,7 +815,7 @@ export class Emitter {
           );
           break;
         case 'event':
-          events.push(this.eventEntry(attribute.event, attribute.modifiers, attribute.handler));
+          events.push(this.eventEntry(attribute));
           break;
         case 'ref':
           if (anchor) {
@@ -1021,9 +1026,7 @@ export class Emitter {
       extra.push(`"b-b": \`\${${anchor.scope}}:${anchor.index}\``);
     }
     const events = node.attributes.flatMap((attribute) =>
-      attribute.kind === 'event'
-        ? [this.eventEntry(attribute.event, attribute.modifiers, attribute.handler)]
-        : [],
+      attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
     );
     if (events.length > 0) {
       extra.push(`"b-on": ${JSON.stringify(events.join(' '))}`);

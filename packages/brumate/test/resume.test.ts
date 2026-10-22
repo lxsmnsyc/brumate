@@ -393,6 +393,25 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('prevents only the keys that :prevent names, before the handler loads', async () => {
+    const server = await import(file('preventKeys.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space)=');
+    await resume('preventKeys', {});
+    const press = (key: string): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      document.querySelector('.list')!.dispatchEvent(event);
+      return event;
+    };
+    // The first press is prevented at once, while the handler's code still loads.
+    expect(press('ArrowDown').defaultPrevented).toBe(true);
+    expect(press(' ').defaultPrevented).toBe(true);
+    expect(press('Tab').defaultPrevented).toBe(false);
+    expect(press('a').defaultPrevented).toBe(false);
+    // The handler still runs for every key.
+    await waitFor(() => expect(text('.last')).toBe('a'));
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {});
     expect(text('.error')).toBe('Error: Not ready');
