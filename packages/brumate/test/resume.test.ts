@@ -474,6 +474,69 @@ describe('resume', () => {
     expect(document.querySelector('.error')).toBeNull();
   });
 
+  it('renders the #catch body when a handler in the #try body throws, and resets', async () => {
+    await resume('boom', {});
+    expect(text('.count')).toBe('0');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+    expect(document.querySelector('.count')).toBeNull();
+    // The body renders again, with the current values.
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.count')).toBe('0'));
+    expect(document.querySelector('.caught')).toBeNull();
+    // The error of the promise that an async handler returns counts too.
+    click(document.querySelector('.async')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Later'));
+  });
+
+  it('catches the error of a memo that loads, and of an effect, in the #try around them', async () => {
+    await resume('boom', {});
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 0'));
+    click(document.querySelector('.load')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Load 1 failed'));
+    // Once the load works, the body renders again with the current values.
+    const shared = await import(file('boom.brm.client.shared.ts'));
+    shared.heal();
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 1'));
+    expect(text('.count')).toBe('1');
+    click(document.querySelector('.count-up')!);
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
+  });
+
+  it('reports an error outside every #try with an event, and to onError first', async () => {
+    const server = await import(file('boom.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + state);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const reported: unknown[] = [];
+    window.addEventListener('brumate:error', (event) =>
+      seen.push(String((event as CustomEvent<{ error: unknown }>).detail.error)),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      load: (id) => import(modules.get(id)!),
+      onError: (error, info) => reported.push(`${String(error)} in ${info.scope}`),
+    });
+    try {
+      click(document.querySelector('.outside')!);
+      await waitFor(() => expect(seen).toEqual(['Error: Outside']));
+      expect(reported).toEqual(['Error: Outside in 0']);
+      expect(errors).toHaveBeenCalledWith(new Error('Outside'));
+      // An error that a `#try` catches is reported too, without the event.
+      click(document.querySelector('.throw')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+      expect(reported).toHaveLength(2);
+      expect(seen).toHaveLength(1);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
   it('calls server functions with errors and redirects', async () => {
     vi.resetModules();
     // The component and the test use the same copy of the runtime, so they share the request.

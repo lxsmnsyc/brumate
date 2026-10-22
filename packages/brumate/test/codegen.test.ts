@@ -594,3 +594,29 @@ describe('await', () => {
     ).toThrow('await works with $memo, not $signal');
   });
 });
+
+/** A page with a `#try` whose body is `body`, and a counter button outside it. */
+function tryPage(body: string): string {
+  return `<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n#try {\n  ${body}\n} #catch (error) {\n  <p>{String(error)}</p>\n}\n<button onClick=(() => count++)>{count}</button>`;
+}
+
+describe('#try with client code', () => {
+  it('ships both bodies and lists the block for the scopes inside its body', () => {
+    const { client, server } = compile(
+      tryPage('<button onClick=(() => { throw new Error("x"); })>Go</button>'),
+      {
+        filename: 'T.brm',
+      },
+    );
+    // The block has a marker, because the browser replaces its content when a handler throws.
+    expect(server).toContain('"<!--b" + $$s1 + ":0-->"');
+    // The kinds inside the body point at the scope that holds the block, the anchor, both renders and both kinds.
+    expect(client).toMatch(/export const t = \{ 2: \[1, 0, "r2", "r3", \[2, 3\]\] \};/);
+  });
+
+  it('ships nothing for a #try without client code in its body', () => {
+    const { client, server } = compile(tryPage('<p>{count}</p>'), { filename: 'T.brm' });
+    expect(server).not.toContain('<!--b');
+    expect(client).not.toContain('export const t');
+  });
+});

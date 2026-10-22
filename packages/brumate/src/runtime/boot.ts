@@ -28,6 +28,14 @@ export interface LoaderOptions {
    * connection is 2G. Defaults to true.
    */
   preload?: boolean;
+  /**
+   * Receives every error of client code first: of a handler, an effect, a
+   * `$client` callback or a memo that loads, such as for a reporting
+   * service. `scope` is the ID of the scope that the code belongs to. The
+   * error then renders the `#catch` body of the nearest `#try`, or the page
+   * gets a `brumate:error` event on `window` and the error is logged.
+   */
+  onError?: (error: unknown, info: { scope?: number | string }) => void;
 }
 
 export interface NavigateOptions {
