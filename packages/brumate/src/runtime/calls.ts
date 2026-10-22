@@ -3,8 +3,14 @@
 
 import type { FunctionReference } from './shared.ts';
 
-/** Server functions that are passed to the client, with their references. */
-export const functionReferences: WeakMap<object, FunctionReference> = new WeakMap();
+/**
+ * Client functions that the server passes on, such as function props, with
+ * their references. Kept under a symbol of the registry, so two copies of the
+ * runtime, such as a component's and the render context's, share it.
+ */
+export const functionReferences: WeakMap<object, FunctionReference> = ((
+  globalThis as Record<symbol, WeakMap<object, FunctionReference> | undefined>
+)[Symbol.for('brumate.functionReferences')] ??= new WeakMap());
 
 /**
  * A file or a blob in the arguments of a server function call. The call

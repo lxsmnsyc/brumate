@@ -1,3 +1,4 @@
+import type { oxc } from './oxc.ts';
 import type { Block } from './ast.ts';
 import { isWithin, lookup } from './model.ts';
 import type {
@@ -113,7 +114,22 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
 
 /** True if a site's expression is a function, such as a function passed as a prop. */
 export function isFunctionValue(site: Site): boolean {
-  const node = site.node;
+  let node: oxc.Node = site.node;
+  // A wrapper of `brumate/events`, such as `prevent(save)`, returns the handler that it wraps.
+  for (;;) {
+    while (node.type === 'ParenthesizedExpression') {
+      node = node.expression;
+    }
+    if (
+      node.type !== 'CallExpression' ||
+      node.callee.type !== 'Identifier' ||
+      lookup(site.scope, node.callee.name)?.imported?.source !== 'brumate/events' ||
+      !node.arguments[0]
+    ) {
+      break;
+    }
+    node = node.arguments[0];
+  }
   if (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression') {
     return true;
   }

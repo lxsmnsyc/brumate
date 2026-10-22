@@ -8,9 +8,10 @@ import {
   insertValue,
   isRaw,
   rawHTML,
-  spread,
+  spread as spreadAttributes,
   styleElement,
 } from './html.ts';
+import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
 import { disabledFeatures, plugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
@@ -42,16 +43,7 @@ import {
 import type { EntryMiddleware, RequestKind } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
-export {
-  affix,
-  attribute,
-  classAttribute,
-  escape,
-  escapeAttribute,
-  raw,
-  spread,
-  vars,
-} from './html.ts';
+export { affix, attribute, classAttribute, escape, escapeAttribute, raw, vars } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';
@@ -946,9 +938,24 @@ export function dynamic(
   scope?: ScopeId,
 ): string | Promise<string> {
   if (typeof tag === 'function') {
-    return component(tag, children ? { ...attributes, children } : attributes, ctx, scope);
+    // The handlers of the tag belong to this component, so they name its scope for the
+    // component that renders the element.
+    const entries = attributes['b-on'];
+    const props =
+      typeof entries === 'string' && scope !== undefined
+        ? {
+            ...attributes,
+            'b-on': entries
+              .split(' ')
+              .map((entry) => (entry.includes('@') ? entry : `${entry}@${scope}`))
+              .join(' '),
+          }
+        : attributes;
+    return component(tag, children ? { ...props, children } : props, ctx, scope);
   }
-  const open = `<${tag}${spread(attributes)}>`;
+  // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
+  const on: string[] = [];
+  const open = `<${tag}${spread(attributes, on)}${onAttribute(on, '')}>`;
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
@@ -2787,4 +2794,41 @@ async function renderRoute(
     }
     throw error;
   }
+}
+
+/**
+ * Renders an object of attributes. A handler in it, such as an `onClick`
+ * that a component passes on with `...rest`, goes into `on` as a `b-on`
+ * entry: the client function that it refers to, with the scope that the
+ * function belongs to and the modifiers of its wrappers. A function that
+ * refers to nothing in the browser is left out.
+ */
+export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
+  // its handlers come first, as the element's own.
+  const entries = on && attributes['b-on'];
+  if (typeof entries === 'string') {
+    on!.unshift(entries);
+    const { 'b-on': _, ...rest } = attributes;
+    return spread(rest, on);
+  }
+  for (const [name, value] of Object.entries(attributes)) {
+    const reference =
+      on && /^on[A-Z]/.test(name) && typeof value === 'function'
+        ? functionReferences.get(value)
+        : undefined;
+    if (reference) {
+      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS] ?? [];
+      on!.push(
+        `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${reference.ref}@${reference.scope}`,
+      );
+    }
+  }
+  return spreadAttributes(attributes);
+}
+
+/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
+export function onAttribute(on: string[], own: string): string {
+  const value = [own, ...on].filter(Boolean).join(' ');
+  return value ? ` b-on="${escapeAttribute(value)}"` : '';
 }

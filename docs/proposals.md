@@ -573,7 +573,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 #### What the compiler needs first
 
 1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
-2. Handlers in spreads. `spread()` and `attrs()` drop `on*` keys, so a part cannot put merged handlers on its element, and a wrapper cannot forward `onClick` through `...rest`. `attrs()` also keeps keys that are gone from the new object.
+2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. Markup that the browser renders gets the attributes of a spread, and not its handlers yet. See [Components](../website/docs/components.md#handlers-in-a-spread).
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
 #### Questions to answer with a spike
@@ -792,7 +792,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
-3. **What the UI components need first**: handlers in spreads, bindable props and transitions. Element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
+3. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
 4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
 5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
