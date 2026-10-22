@@ -36,6 +36,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'styles',
       'what-runs-where',
       'testing',
+      'environment',
       'deploying',
       'packages',
     ],

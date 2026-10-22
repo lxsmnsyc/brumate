@@ -2,7 +2,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { generateShared } from '../src/shared-module.ts';
@@ -178,6 +178,58 @@ function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
 
+/**
+ * Shows `boom.brm` of build `b1`, with a server of `server`, and starts the
+ * loader with handler parts that fail to load. Returns the calls to
+ * `location.reload` and the `brumate:skew` events.
+ */
+async function failingHandlers(server: string): Promise<{
+  reload: Mock<() => void>;
+  skews: string[];
+  reported: unknown[];
+  restart: () => Promise<void>;
+}> {
+  const component = await import(file('boom.brm.ts'));
+  const runtime = await import('../src/runtime/server.ts');
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    runtime.handleRequest({}, new Request(`http://localhost${url}`, init), '/_brumate', {
+      build: server,
+    }),
+  );
+  const reload = vi.fn<() => void>();
+  const { href, origin } = window.location;
+  vi.stubGlobal('location', { href, origin, reload, assign: vi.fn<(url: string) => void>() });
+  const skews: string[] = [];
+  const reported: unknown[] = [];
+  const onSkew = (event: Event): void => {
+    skews.push((event as CustomEvent<string>).detail);
+  };
+  document.addEventListener('brumate:skew', onSkew);
+  const restart = async (): Promise<void> => {
+    stop?.();
+    const { html, state } = await runtime.render(component.default, {}, { build: 'b1' });
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      build: 'b1',
+      onError: (error) => reported.push(String(error)),
+      load: async (id) => {
+        const module = await import(modules.get(id)!);
+        return {
+          ...module,
+          // The handlers fail to load, as a module that throws or a file that is gone does.
+          load: (part: string) =>
+            part.startsWith('h') ? Promise.reject(new Error('Top level')) : module.load(part),
+        };
+      },
+    });
+  };
+  await restart();
+  onTestFinished(() => document.removeEventListener('brumate:skew', onSkew));
+  return { reload, skews, reported, restart };
+}
+
 describe('resume', () => {
   it('reads state records that run after the core starts, also inside other markup', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
@@ -283,6 +335,37 @@ describe('resume', () => {
     expect(document.querySelector('template[b-l]')).toBeNull();
 
     // The streamed body resumes, and updates with the rest of the page.
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.outer')).toBe('1');
+  });
+
+  it('resumes a #loading body that rendered in place, with the rest of the page', async () => {
+    const server = await import(file('awaited.brm.ts'));
+    const render = renderParts(server.default, {});
+    server.release('first', 'Ada');
+    server.release('second', 'Grace');
+    // The third memo starts once the run of the first two has settled.
+    await new Promise((done) => setTimeout(done, 0));
+    server.release('third', 'Alan');
+    const { html, state } = await render;
+    show(html + state);
+    await startLoader();
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.third')).toBe('Alan 0 users');
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.third')).toBe('Alan 1 users');
+  });
+
+  it('resumes a page whose #loading body rendered in order', async () => {
+    const server = await import(file('loading.brm.ts'));
+    server.release('Ada');
+    const { html, state } = await renderParts(server.default, {}, { inOrder: true });
+    show(html + state);
+    await startLoader();
+    expect(text('.greeting')).toBe('Hello Ada');
     click(document.querySelector('.inner')!);
     await waitFor(() => expect(text('.inner')).toBe('1'));
     expect(text('.outer')).toBe('1');
@@ -400,6 +483,110 @@ describe('resume', () => {
     expect(text('.seen')).toBe('0');
   });
 
+  it('keeps a preference in a cookie, which the server reads for the first render', async () => {
+    const server = await import(file('preference.brm.ts'));
+    const request = new Request('http://localhost/');
+    // The DOM environment drops `cookie` from the headers that a request is made with.
+    request.headers.set('cookie', 'theme=dark');
+    const { html, state } = await renderParts(server.default, {}, { request });
+    expect(html).toContain('data-theme="dark"');
+    show(html + state);
+    document.cookie = 'theme=; max-age=0; path=/';
+    await startLoader();
+    window.dispatchEvent(new Event('load'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The effect waits for a change, so loading the page writes no cookie.
+    expect(document.cookie).not.toContain('theme=');
+    click(document.querySelector('.toggle')!);
+    await waitFor(() =>
+      expect(document.querySelector('.page')!.getAttribute('data-theme')).toBe('light'),
+    );
+    await waitFor(() => expect(document.cookie).toContain('theme=light'));
+  });
+
+  it('writes a debounced value after a pause, and a throttled one at most once a wait', async () => {
+    await resume('timing', {});
+    const field = document.querySelector<HTMLInputElement>('.query')!;
+    const type = (value: string): void => {
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    // The server renders the value itself.
+    expect(text('.settled')).toBe('');
+    type('a');
+    // The throttled value takes the first change at once, and the debounced one waits.
+    await waitFor(() => expect(text('.sampled')).toBe('a'));
+    expect(text('.settled')).toBe('');
+    expect(text('.pending')).toBe('waiting');
+    type('ab');
+    type('abc');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(text('.sampled')).toBe('a');
+    expect(text('.settled')).toBe('');
+    // After the wait, both have the last value.
+    await waitFor(() => expect(text('.sampled')).toBe('abc'));
+    await waitFor(() => expect(text('.settled')).toBe('abc'));
+    expect(text('.pending')).toBe('idle');
+  });
+
+  it('runs a visible $client callback when the element that it reads through ref comes into view', async () => {
+    const observed: Element[] = [];
+    let report: (() => void) | undefined;
+    class InView {
+      readonly callback: IntersectionObserverCallback;
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element): void {
+        observed.push(target);
+        report = () =>
+          this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', InView);
+    const server = await import(file('refVisible.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(
+      /<template b-b="[\d:]+" b-client="visible=[^"]+" b-near="[\d:]+"><\/template>/,
+    );
+    await resume('refVisible', {});
+    expect(observed).toEqual([document.querySelector('.chart')]);
+    expect(text('.status')).toBe('Waiting');
+    report!();
+    await waitFor(() => expect(text('.status')).toBe('Drawn'));
+    expect(document.querySelector<HTMLElement>('.chart')!.dataset.drawn).toBe('yes');
+  });
+
+  it('runs capture handlers first, keeps events that do not bubble on their target, and listens passively', async () => {
+    const flags = new Map<string, unknown>();
+    const add = document.addEventListener.bind(document);
+    vi.spyOn(document, 'addEventListener').mockImplementation((type, listener, options) => {
+      flags.set(type, options);
+      add(type, listener, options);
+    });
+    await resume('delegation', {});
+    vi.mocked(document.addEventListener).mockRestore();
+    // Only the type with prevent needs a listener that is not passive.
+    expect(flags.get('click')).toEqual({ capture: true, passive: true });
+    expect(flags.get('focus')).toEqual({ capture: true, passive: true });
+    expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
+
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner'));
+    // Focus does not bubble, so the focus of the button does not reach the handler around it.
+    document.querySelector('.inner')!.dispatchEvent(new FocusEvent('focus'));
+    document.querySelector('.outer')!.dispatchEvent(new FocusEvent('focus'));
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true });
+    document.querySelector('.wheel')!.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
   it('prevents only the keys that :prevent names, before the handler loads', async () => {
     const server = await import(file('preventKeys.brm.ts'));
     const { html } = await renderParts(server.default, {});
@@ -513,6 +700,135 @@ describe('resume', () => {
     expect(document.querySelector('.error')).toBeNull();
   });
 
+  it('renders the #catch body when a handler in the #try body throws, and resets', async () => {
+    await resume('boom', {});
+    expect(text('.count')).toBe('0');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+    expect(document.querySelector('.count')).toBeNull();
+    // The body renders again, with the current values.
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.count')).toBe('0'));
+    expect(document.querySelector('.caught')).toBeNull();
+    // The error of the promise that an async handler returns counts too.
+    click(document.querySelector('.async')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Later'));
+  });
+
+  it('catches the error of a memo that loads, and of an effect, in the #try around them', async () => {
+    await resume('boom', {});
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 0'));
+    click(document.querySelector('.load')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Load 1 failed'));
+    // Once the load works, the body renders again with the current values.
+    const shared = await import(file('boom.brm.client.shared.ts'));
+    shared.heal();
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.loaded')).toBe('Loaded 1'));
+    expect(text('.count')).toBe('1');
+    click(document.querySelector('.count-up')!);
+    click(document.querySelector('.count-up')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
+  });
+
+  it('reports an error outside every #try with an event, and to onError first', async () => {
+    const server = await import(file('boom.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + state);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const reported: unknown[] = [];
+    window.addEventListener('brumate:error', (event) =>
+      seen.push(String((event as CustomEvent<{ error: unknown }>).detail.error)),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      load: (id) => import(modules.get(id)!),
+      onError: (error, info) => reported.push(`${String(error)} in ${info.scope}`),
+    });
+    try {
+      click(document.querySelector('.outside')!);
+      await waitFor(() => expect(seen).toEqual(['Error: Outside']));
+      expect(reported).toEqual(['Error: Outside in 0']);
+      expect(errors).toHaveBeenCalledWith(new Error('Outside'));
+      // An error that a `#try` catches is reported too, without the event.
+      click(document.querySelector('.throw')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: Clicked'));
+      expect(reported).toHaveLength(2);
+      expect(seen).toHaveLength(1);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it('reads the route and the navigation, on the server and after the browser changes them', async () => {
+    const server = await import(file('where.brm.ts'));
+    const request = new Request('http://localhost:3000/issues/7?q=bug');
+    const { html, state } = await renderParts(
+      server.default,
+      {},
+      { request, params: { id: '7' }, route: 'r' },
+    );
+    expect(html).toContain('<p class="where"');
+    expect(state).toContain('b-params="{&quot;id&quot;:&quot;7&quot;}"');
+    show(html + state);
+    expect(text('.where')).toBe('/issues/7 bug 7');
+    expect(text('.pending')).toBe('idle');
+    await startLoader();
+    // The browser changes them: the core reads the new route, and the navigation that loads.
+    const client = await import('../src/runtime/client.ts');
+    client.loader.init({ load: (id) => import(modules.get(id)!), listen: () => {} });
+    client.setGlobal('brumate.navigation', {
+      pending: true,
+      from: 'http://localhost:3000/issues/7?q=bug',
+      to: 'http://localhost:3000/issues/8',
+    });
+    await waitFor(() => expect(text('.pending')).toBe('to /issues/8'));
+    history.pushState({}, '', '/issues/8?q=open');
+    client.updateRoute();
+    await waitFor(() => expect(text('.where')).toBe('/issues/8 open 7'));
+    history.replaceState({}, '', '/');
+    // This copy of the core was started by hand, so it stops by hand.
+    client.loader.dispose();
+  });
+
+  it('loads a page from navigate(), and marks the page while it loads', async () => {
+    document.body.innerHTML = '<p class="old">Old</p>';
+    let finish: ((response: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      () =>
+        new Promise<Response>((answer) => {
+          finish = answer;
+        }),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    const { navigate } = await import('../src/runtime/routes.ts');
+    const done = navigate('/next', { replace: true });
+    await waitFor(() => expect(finish).toBeDefined());
+    expect(document.documentElement.hasAttribute('data-navigating')).toBe(true);
+    finish!(
+      new Response(
+        '<!doctype html><html><head><title>Next</title></head><body><h1>Next</h1></body></html>',
+        {
+          headers: { 'content-type': 'text/html' },
+        },
+      ),
+    );
+    await done;
+    expect(text('h1')).toBe('Next');
+    expect(location.pathname).toBe('/next');
+    expect(document.documentElement.hasAttribute('data-navigating')).toBe(false);
+    // A screen reader hears the title, and the focus starts at the heading.
+    expect(text('[b-announcer]')).toBe('Next');
+    expect(document.activeElement).toBe(document.querySelector('h1'));
+    history.replaceState({}, '', '/');
+  });
+
   it('calls server functions with errors and redirects', async () => {
     vi.resetModules();
     // The component and the test use the same copy of the runtime, so they share the request.
@@ -541,6 +857,66 @@ describe('resume', () => {
 
     click(document.querySelector('.admin')!);
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'));
+  });
+
+  it('sends the build with calls, and loads the next page in full after a deploy', async () => {
+    vi.resetModules();
+    const server = await import(file('session.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const builds: (string | null)[] = [];
+    // The server is of a newer build, and the function of the call is gone from it.
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const request = new Request(`http://localhost${url}`, init);
+      builds.push(request.headers.get('x-brumate-build'));
+      return runtime.handleRequest({}, request, '/_brumate', { build: 'new' });
+    });
+    const assign = vi.fn<(url: string) => void>();
+    const { href, origin } = window.location;
+    vi.stubGlobal('location', { href, origin, assign });
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const { html, state } = await runtime.render(server.default, {}, { request, build: 'old' });
+    show(`${html}${state}<a class="next" href="/next">Next</a>`);
+    expect(state).toContain('b-build="old"');
+    const skews: string[] = [];
+    document.addEventListener('brumate:skew', (event) =>
+      skews.push((event as CustomEvent<string>).detail),
+    );
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!), build: 'old' });
+
+    click(document.querySelector('.ok')!);
+    await waitFor(() => expect(text('.message')).toBe('The site changed. Load the page again'));
+    expect(builds).toEqual(['old']);
+    expect(skews).toEqual(['call']);
+    // The next link is a full page load, with the code of the new build.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
+  });
+
+  it('sends the error of a handler that fails to load to #try when the build is the same', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported } = await failingHandlers('b1');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    expect(reported).toEqual(['Error: Top level']);
+    expect(reload).not.toHaveBeenCalled();
+    expect(skews).toEqual([]);
+  });
+
+  it('loads the page again once for each build when the code of a handler is gone', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported, restart } = await failingHandlers('b2');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(skews).toEqual(['code']);
+    // The page loads again, from a cache that still serves the page of the old build. Its code
+    // is gone too, and the page does not load again for the same build.
+    await restart();
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reported).toEqual(['Error: Top level']);
   });
 
   it('loads async memos again when their inputs change', async () => {
@@ -726,6 +1102,58 @@ describe('resume', () => {
     click(document.querySelector('.open')!);
     await waitFor(() => expect(document.head.querySelector('link')).toBeNull());
     document.head.innerHTML = '';
+  });
+
+  it('sets the title from the last <title> of #head, also one that a block renders', async () => {
+    vi.resetModules();
+    const server = await import(file('markupTitle.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const { html, state, head } = await runtime.render(server.default, {});
+    // The one title is the title of the head, with no copy of the server. A <title> of an <svg> stays.
+    expect(head).toMatch(
+      /^<!--P[\d.]+--><title b-b="[\d.:]+" b-t>0 left \| Todos<\/title><!--\/P-->$/,
+    );
+    expect(html).toContain('<svg><title>Icon</title></svg>');
+    document.head.innerHTML = head;
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    expect(document.title).toBe('0 left | Todos');
+
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.title).toBe('1 left | Todos'));
+    // The last one in the page wins, so the title of the #if body does.
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('Unsaved changes & more | Todos'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('title[b-t]')).toBe('2 left | Todos'));
+    expect(document.title).toBe('Unsaved changes & more | Todos');
+    click(document.querySelector('.edit')!);
+    await waitFor(() => expect(document.title).toBe('2 left | Todos'));
+    // The title of the markup keeps its text.
+    expect(text('title[b-t]')).toBe('2 left | Todos');
+    expect(text('svg title')).toBe('Icon');
+    document.head.innerHTML = '';
+  });
+
+  it('puts the last title first in the head, when several render', async () => {
+    const server = await import(file('twoTitles.brm.ts'));
+    const { head } = await renderParts(server.default, {});
+    expect(head.startsWith('<title>Page | Site</title>')).toBe(true);
+    expect(head.match(/<title b-t>/g)).toHaveLength(2);
+  });
+
+  it('reports a <title> outside #head, and keeps those of <head> and <svg>', () => {
+    const compileMarkup = (markup: string) => compile(markup, { filename: 'Title.brm' });
+    expect(() => compileMarkup('<title>Home</title>')).toThrow('Put <title> in #head');
+    expect(() => compileMarkup('#if (true) { <title>Home</title> }')).toThrow(
+      'Put <title> in #head',
+    );
+    const document = compileMarkup(
+      '<html><head><title>Site</title></head><body><svg><title>Icon</title></svg></body></html>',
+    );
+    expect(document.server).not.toContain('$$ctx.title');
   });
 
   it('shares functions between parts', async () => {
@@ -1188,6 +1616,22 @@ describe('children', () => {
     await waitFor(() => expect(document.querySelector('.inner')).toBeNull());
     click(document.querySelectorAll('.open')[0]!);
     await waitFor(() => expect(text('.inner')).toBe('Hello'));
+  });
+
+  it('inserts markup through the Trusted Types policy of the page, when the browser has one', async () => {
+    const html: string[] = [];
+    const policies: string[] = [];
+    vi.stubGlobal('trustedTypes', {
+      createPolicy(name: string, rules: { createHTML(value: string): string }) {
+        policies.push(name);
+        return { createHTML: (value: string) => (html.push(value), rules.createHTML(value)) };
+      },
+    });
+    await resume('cards', {});
+    click(document.querySelectorAll('.open')[0]!);
+    await waitFor(() => expect(text('.inner')).toBe('Hello'));
+    expect(policies).toEqual(['brumate']);
+    expect(html.some((value) => value.includes('Hello'))).toBe(true);
   });
 
   it('keeps the handlers and updates of children that the client renders', async () => {

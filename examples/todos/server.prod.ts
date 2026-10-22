@@ -43,6 +43,8 @@ const http = createServer(async (request, response) => {
     // The route files under src/routes render the page.
     const answer = await server.route(webRequest, {
       scripts: `<script type="module" async src="${entry}"></script>`,
+      // The browser starts to load the loader and the core while the page renders.
+      earlyHints: (link: string[]) => response.writeEarlyHints({ link }),
     });
     send(answer, response);
   } catch (error) {

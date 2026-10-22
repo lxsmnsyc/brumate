@@ -11,7 +11,7 @@ import {
 } from 'seroval';
 import type { SerovalNode } from 'seroval';
 import { describe, expect, it } from 'vitest';
-import { raw, rawHTML } from '../src/runtime/html.ts';
+import { raw, rawHTML, spread } from '../src/runtime/html.ts';
 import { disabledFeatures, plugins } from '../src/runtime/serial.ts';
 import { stateScript, streamState } from '../src/runtime/server.ts';
 import { Upload, functionReferences } from '../src/runtime/calls.ts';
@@ -198,5 +198,21 @@ describe('state records', () => {
     await expect(streamState({ 0: { s: [/a+$/] } }, () => {})).rejects.toThrow(
       /Seroval Error|cannot be parsed/,
     );
+  });
+});
+
+describe('spread attributes', () => {
+  it('leaves out names that are not one attribute', () => {
+    expect(
+      spread({
+        title: 'a',
+        'data-x': 'b',
+        'x onclick="alert(1)"': 'c',
+        'a>b': 'd',
+        'a/b': 'e',
+        'a=b': 'f',
+        '': 'g',
+      }),
+    ).toBe(' title="a" data-x="b"');
   });
 });

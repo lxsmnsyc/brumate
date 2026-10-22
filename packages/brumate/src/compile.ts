@@ -1,5 +1,7 @@
 import { checkAccessibility } from './a11y.ts';
 import { checkCaptures } from './captures.ts';
+import { checkEnv } from './env-check.ts';
+import type { EnvImport } from './env-check.ts';
 import { finish } from './sourcemap.ts';
 import { ModuleError, expandModules, relocate, resolveFromDisk } from './modules.ts';
 import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './modules.ts';
@@ -43,6 +45,13 @@ export interface CompileOptions {
    * server function calls `refresh` with it. The Vite plugin passes it.
    */
   serverImport?: (specifier: string, name: string) => string | undefined;
+  /**
+   * The names of the server environment variables that an import gives,
+   * such as `import env from './env.ts'`, or undefined for other imports.
+   * Code that runs in the browser cannot read them. The Vite plugin passes
+   * it for the imports that resolve to the env file.
+   */
+  envImport?: EnvImport;
   /**
    * Server function IDs use a hash of each function's name instead of the
    * name, so the browser does not see it. The Vite plugin sets it in builds.
@@ -336,7 +345,10 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (styleErrors.length > 0) {
     fail(styleErrors);
   }
-  const captures = checkCaptures(file, plan);
+  const captures = [
+    ...checkCaptures(file, plan),
+    ...(options.envImport ? checkEnv(file, plan, options.envImport) : []),
+  ];
   if (captures.length > 0) {
     fail(captures);
   }

@@ -1,9 +1,7 @@
 <script>
-  import { $action, $isPending, $memo, $signal, $title } from 'brumate/signals';
+  import { $action, $isPending, $memo, $signal } from 'brumate/signals';
   import { getEvent } from 'brumate/server';
   import { addNote, listNotes } from '../notes.ts';
-
-  $title('Notes');
 
   let count = $signal(0);
 
@@ -18,6 +16,10 @@
   const result = $action(add);
   const notes = $memo(listNotes());
 </script>
+
+#head {
+  <title>Notes</title>
+}
 
 <h1>Notes</h1>
 <button class="count" onClick=(() => count++)>Clicked {count} times</button>

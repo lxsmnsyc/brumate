@@ -26,7 +26,11 @@ function chunk(text: string): Uint8Array {
 }
 
 /** Serializes a value as a stream of chunks. */
-export function toChunkStream(value: unknown): ReadableStream<Uint8Array> {
+export function toChunkStream(
+  value: unknown,
+  onCancel?: (reason: unknown) => void,
+): ReadableStream<Uint8Array> {
+  let cancelled = false;
   return new ReadableStream({
     start(controller) {
       toCrossJSONStream(value, {
@@ -34,15 +38,26 @@ export function toChunkStream(value: unknown): ReadableStream<Uint8Array> {
         plugins,
         disabledFeatures,
         onParse(node) {
-          controller.enqueue(chunk(JSON.stringify(node)));
+          if (!cancelled) {
+            controller.enqueue(chunk(JSON.stringify(node)));
+          }
         },
         onDone() {
-          controller.close();
+          if (!cancelled) {
+            controller.close();
+          }
         },
         onError(error) {
-          controller.error(error);
+          if (!cancelled) {
+            controller.error(error);
+          }
         },
       });
+    },
+    // The reader went away, such as a browser that aborted the call.
+    cancel(reason) {
+      cancelled = true;
+      onCancel?.(reason);
     },
   });
 }
