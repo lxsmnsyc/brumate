@@ -9,13 +9,11 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
 | [Titles in markup](#titles-in-markup)                                 | Syntax  | Low    | Small  |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
-| [Streaming without scripts](#streaming-without-scripts)               | Server  | High   | Small  |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Rate limiting](#rate-limiting)                                       | Server  | High   | Small  |
 | [Skew protection](#skew-protection)                                   | Server  | High   | Medium |
 | [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
-| [Cancelled work](#cancelled-work)                                     | Server  | High   | Small  |
 | [Request locals](#request-locals)                                     | Server  | Medium | Small  |
 | [Environment variables](#environment-variables)                       | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
@@ -225,7 +223,7 @@ How it fits:
 
 - Each body renders in its own ID space, such as `5.0`, so holding one back changes no other ID.
 - A `#reveal` inside a `#loading` body orders the bodies of that body, as nested lists do in React.
-- [Streaming without scripts](#streaming-without-scripts) renders bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
+- Rendering in order, for readers without scripts, puts bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
 - Pages that client navigation loads stream through the same path, so they keep the order.
 - `#defer` blocks in a `#reveal` can follow the same order in the browser: the module that loads them waits to put a body in until the ones before it are in.
 - Without `#reveal`, nothing changes.
@@ -422,18 +420,6 @@ export const listIssues = cached(async (status: string) => db.issues(status), {
 
 Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
 
-### Streaming without scripts
-
-A `#loading` body that is ready streams in a `<template b-l>`, and a script swaps it in for the fallback. Without scripts, such as for a crawler, a reader with JavaScript turned off, or a script that failed, the fallback stays and the content never shows.
-
-- The server can render `#loading` bodies in place, in the order of the page: it waits for each body where it is, and writes its markup there, with no `<template>` and no swap. The page arrives later, and complete.
-- An option sets when: `inOrder: 'bots'` by default, for requests whose `User-Agent` is a known crawler, or `true`, or a function of the request.
-- The state is the same either way, so a page that the browser gets in order resumes as it does now.
-- `#defer` bodies render in place too, in the same request, since a crawler does not run their triggers.
-- `#client` bodies have no server markup, so their `#else` is what a crawler sees.
-
-Cost: a few days. The server already renders each body. This writes it in place instead of later.
-
 ### Prerendering with holes
 
 A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
@@ -525,18 +511,6 @@ export default defineMiddleware(async (event, next) => {
 - Cross-site calls are refused before any middleware runs, as now.
 
 Cost: a few days. The routes already run middleware in a chain, and calls get the same chain.
-
-### Cancelled work
-
-Server functions see `request.signal` abort when their call is cancelled. A page does not: when the browser leaves while the page streams, its `#loading` bodies, the memos that they load and the server functions that those call go on until they finish.
-
-- `getEvent().signal` aborts when the connection of the response closes, for a page, a call and a `#defer` request.
-- The render of a page stops the boundaries that have not been sent, and the memos that only they read.
-- Server functions that the render calls run with the same signal, so `fetch(url, { signal })` and a database client that takes a signal stop too.
-- Work that must finish, such as writing to a log, does not read the signal, and passes its promise to `getEvent().waitUntil` from [request locals](#request-locals), so a host does not stop it either.
-- It depends on the host reporting a closed connection. Node does, and Nitro passes it on for most presets.
-
-Cost: a few days.
 
 ### Request locals
 
@@ -1066,14 +1040,13 @@ Each step lists what it holds and why it comes there. A step can start before th
 1. **Environment variables.** They are what middleware hands on, with the request locals, which are done.
 2. **Security**: rate limiting. It is small, and it protects every app. It starts with the in-memory store, and moves to the shared store with caching. Trusted Types are done.
 3. **Skew protection.** A resumable page loads its code late, so a deploy breaks the pages that are open. Every app that deploys more than once needs it.
-4. **Streaming without scripts** and **cancelled work.** Both are small changes to how the server streams a page: one for crawlers and readers without scripts, one for readers who leave.
-5. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-6. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 11.
-7. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
-8. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
-9. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-10. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-11. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-12. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
+4. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
+5. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 10.
+6. **Small conveniences**: testing routes, budgets for one event, batched reads and titles in markup. Each is a few days. Titles in markup changes the syntax, so it goes with other changes that break, while brumate is at 0.x.
+7. **What the UI components need first**: handlers in spreads, element behaviors, bindable props and transitions. Bindable props carry the controlled and uncontrolled split of the parts.
+8. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
+9. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+10. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+11. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability, early hints, timing helpers and persisted signals.
 
 Content mappers for TypeScript 7 are done in #3, so they are in no step.

@@ -307,6 +307,18 @@ describe('resume', () => {
     expect(text('.third')).toBe('Alan 1 users');
   });
 
+  it('resumes a page whose #loading body rendered in order', async () => {
+    const server = await import(file('loading.brm.ts'));
+    server.release('Ada');
+    const { html, state } = await renderParts(server.default, {}, { inOrder: true });
+    show(html + state);
+    await startLoader();
+    expect(text('.greeting')).toBe('Hello Ada');
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    expect(text('.outer')).toBe('1');
+  });
+
   it('scopes styles and updates style variables', async () => {
     await resume('styled', {});
     expect(document.querySelectorAll('style[b-style]')).toHaveLength(1);

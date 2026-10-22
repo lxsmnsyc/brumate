@@ -88,6 +88,29 @@ The server renders the page once, so it waits for the values that the page needs
 - Markup inside a `#loading` block does not hold up the page. When the values that the body reads are ready as the block renders, the body renders in place. Otherwise the fallback goes out with the first render, and the body streams in when its values settle.
 - A page that waits for every value it loads has one state record, and nothing streams after it.
 
+### Pages for readers without scripts
+
+A `#loading` body streams in a `<template>` that a script swaps in. A reader that runs no scripts, such as a crawler, would keep the fallback. For such a reader, the server renders every `#loading` and `#defer` body in place, in the order of the page: it waits for each body and writes it where the block is, with no `<template>` and no swap. The page arrives later, and complete, and resumes as it does when it streams.
+
+- `inOrder` in the options of `handle`, `render` or `renderToStream` decides. `'bots'`, the default, does it for requests whose `User-Agent` is a known crawler or link preview. `true` does it for every request, `false` for none, and a function of the request decides for each.
+- A `#defer` body renders with the page, since a crawler does not fire its trigger.
+- A `#client` body has no server markup, so a crawler sees its `#else` body.
+
+### When the reader leaves
+
+When the browser leaves while a page streams, `getEvent().signal` aborts: for a page, a server function call and the request for a `#defer` body. The bodies that are not sent yet are not sent. Pass the signal to work that can stop, so nothing runs for a reader that is gone:
+
+```ts
+async function listIssues() {
+  'use server';
+  return db.issues.list({ signal: getEvent().signal });
+}
+```
+
+- It aborts when `request.signal` aborts too, as for a call that the browser cancels.
+- Work that must finish, such as a log line, does not read the signal, and passes its promise to `getEvent().waitUntil` where the server has it.
+- It needs the host to report a closed connection. Node's streams do, and Nitro passes it on for most presets.
+
 ### One call for the same arguments
 
 While a page renders, calls of the same server function with the same arguments share one result. Two components that load `getUser(1)` make one call:

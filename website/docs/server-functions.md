@@ -260,12 +260,12 @@ This needs no `AsyncLocalStorage` or other runtime support, so it runs on any ho
 
 In a component, `getEvent()` returns the event of the page anywhere in its script while the page renders. There, `event.setStatus(404)` also sets the status of the page. See [Routing](./routing.md#errors-and-404). Middleware and endpoints read it before their first `await`, as server functions do.
 
-When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.request.signal` tells the function, so it can stop work it no longer needs:
+When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.signal` tells the function, so it can stop work it no longer needs. It aborts when `event.request.signal` does, and when the reader of the answer goes away:
 
 ```ts
 async function search(query: string) {
   'use server';
-  return db.products.search(query, { signal: getEvent().request.signal });
+  return db.products.search(query, { signal: getEvent().signal });
 }
 ```
 
