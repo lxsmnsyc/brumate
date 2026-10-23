@@ -90,7 +90,7 @@
       .serial { grid-area: 4 / 3 / 5 / 5; }
       .handler { grid-area: 4 / 1 / 5 / 2; }
       .shell { grid-area: 4 / 2 / 5 / 3; }
-      .spread { grid-area: 4 / 5 / 5 / 6; }
+      .state { grid-area: 4 / 5 / 5 / 6; }
       .first { grid-area: 4 / 6 / 5 / 7; }
 
       .row2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 18px; }
@@ -118,10 +118,11 @@
         </div>
       </div>
 
-      <div class="tile bind">
-        <div class="glyph">⇄</div>
-        <h2 class="bottom">Two-way binding</h2>
-        <p>Fields and props, with <span class="code" style="font-size: 17px">$bind</span>.</p>
+      <div class="tile bind small">
+        <div class="eyebrow">$bind</div>
+        <h2>Two-way binding.</h2>
+        <p>For fields and props.</p>
+        <div class="code bottom">value=$bind(name)</div>
       </div>
 
       <div class="tile lists">
@@ -161,10 +162,10 @@
         <div class="code bottom">transition(sort)</div>
       </div>
 
-      <div class="tile once">
-        <div class="big" style="font-size: 88px">1×</div>
-        <h2 class="bottom">Posts once</h2>
-        <p>A double click saves once.</p>
+      <div class="tile once small">
+        <div class="eyebrow">brumate/server</div>
+        <h2>A double click saves once.</h2>
+        <div class="code bottom">idempotent(save)</div>
       </div>
 
       <div class="tile gather small">
@@ -194,10 +195,10 @@
         <div class="code bottom">handle(req, { shell })</div>
       </div>
 
-      <div class="tile spread small">
-        <div class="eyebrow">Components</div>
-        <h2>Spreads that change.</h2>
-        <div class="code bottom">&lt;Button {...rest} /&gt;</div>
+      <div class="tile state small">
+        <div class="eyebrow">Page state</div>
+        <h2>Only what can change ships.</h2>
+        <p>A memo of a call that nothing refreshes stays on the server.</p>
       </div>
 
       <div class="tile first small">
