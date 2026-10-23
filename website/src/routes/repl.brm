@@ -26,6 +26,13 @@
   let copied = $signal(false);
   let result = $signal<HTMLElement>();
   let backdrop = $signal<HTMLElement>();
+  let gutter = $signal<HTMLElement>();
+  let panes = $signal<HTMLElement>();
+  let width = $signal('');
+  let canvas = $signal<'dots' | 'plain'>('dots');
+  // The width of the source pane, in percent, which the divider changes.
+  let split = $signal(50);
+  let dragging = $signal(false);
 
   const language = (name: string): 'brm' | 'ts' => (name.endsWith('.brm') ? 'brm' : 'ts');
   // A line break at the end keeps the last line of the editor and the highlight the same height.
@@ -42,6 +49,14 @@
     ),
   );
   const errors = $memo(logs.filter((log) => log.level === 'error').length);
+  const lines = $memo(
+    Array.from({ length: (files[active]?.source ?? '').split('\n').length }, (_, index) => index + 1).join('\n'),
+  );
+  /** Moves the divider between the panes to a pointer, in percent of their width. */
+  function moveSplit(clientX: number) {
+    const box = panes!.getBoundingClientRect();
+    split = Math.min(78, Math.max(22, ((clientX - box.left) / box.width) * 100));
+  }
 
   /** Sets the source of the open file. */
   function edit(source: string) {
@@ -85,8 +100,8 @@
     }
   }
 
-  async function run() {
-    if (files === ranWith) {
+  async function run(again = false) {
+    if (!again && files === ranWith) {
       return;
     }
     ranWith = files;
@@ -189,6 +204,7 @@
     }, 400);
     return () => clearTimeout(timer);
   });
+
 </script>
 
 #head {
@@ -200,26 +216,36 @@
   description="Write brumate components and run them in your browser. See the page they render, the code they compile to, and what the browser loads."
   path="repl"
 />
-<main class="repl-page">
+<main class="repl" style={ '--split': `${split}%` }>
   <header class="repl-bar">
-    <h1>REPL</h1>
-    <label>
-      Example
+    <div class="repl-title">
+      <h1>REPL</h1>
+      <span class={ status: true, running, failed: !running && Boolean(error) }>
+        <i aria-hidden="true"></i>{running ? 'Running' : error ? 'Error' : 'Ready'}
+      </span>
+    </div>
+    <label class="repl-example">
+      <span>Example</span>
       <select onChange=((event) => open(examples[Number(event.currentTarget.value)]!.files))>
         #for (example, index of examples by example.name) {
           <option value=index>{example.name}</option>
         }
       </select>
     </label>
-    <button class="button" type="button" onClick=share>{copied ? 'Copied' : 'Copy link'}</button>
-    <p class="repl-note">The compiler and the server runtime run in your browser. They load with the page.</p>
+    <p class="repl-note">The compiler and the server runtime run in your browser.</p>
+    <button class="repl-button" type="button" onClick=share>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M7 4.5l1-1a2.8 2.8 0 0 1 4 4l-1 1M9 11.5l-1 1a2.8 2.8 0 0 1-4-4l1-1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+      {copied ? 'Copied' : 'Copy link'}
+    </button>
   </header>
-  <div class="repl-grid">
-    <section class="repl-source" aria-label="Files">
-      <div class="tabs repl-files" role="tablist">
+  <div class={ 'repl-panes': true, dragging } ref=panes>
+    <section class="pane repl-source" aria-label="Files">
+      <div class="pane-bar repl-files" role="tablist">
         #for (file, index of files by file.name) {
           <span class={ 'repl-file': true, active: index === active }>
-            <button role="tab" aria-selected=(index === active) onClick=(() => (active = index))>{file.name}</button>
+            <button role="tab" aria-selected=(index === active) onClick=(() => (active = index))>
+              <i class={ 'file-kind': true, ts: !file.name.endsWith('.brm') } aria-hidden="true"></i>{file.name}
+            </button>
             #if (index > 0) {
               <button class="repl-remove" aria-label=(`Remove ${file.name}`) onClick=(() => removeFile(index))>×</button>
             }
@@ -243,94 +269,172 @@
             >
           </form>
         } #else {
-          <button aria-label="Add a file" onClick=(() => (adding = true))>+</button>
+          <button class="repl-new" aria-label="Add a file" title="Add a file" onClick=(() => (adding = true))>+</button>
         }
       </div>
       #if (nameError) {
         <p class="repl-name-error">{nameError}</p>
       }
       <div class="editor">
-        <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
-        <textarea
-          aria-label=(`Source of ${files[active]?.name}`)
-          spellcheck="false"
-          value=(files[active]?.source ?? '')
-          onInput=((event) => edit(event.currentTarget.value))
-          onKeyDown=((event) => {
-            if (event.key !== 'Tab' || event.shiftKey) {
-              return;
-            }
-            event.preventDefault();
-            const area = event.currentTarget;
-            area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end');
-            edit(area.value);
-          })
-          onScroll=((event) => {
-            backdrop!.scrollTop = event.currentTarget.scrollTop;
-            backdrop!.scrollLeft = event.currentTarget.scrollLeft;
-          })
-        >{$untrack(files[0]!.source)}</textarea>
+        <pre class="gutter" ref=gutter aria-hidden="true">{lines}</pre>
+        <div class="editor-body">
+          <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
+          <textarea
+            aria-label=(`Source of ${files[active]?.name}`)
+            spellcheck="false"
+            value=(files[active]?.source ?? '')
+            onInput=((event) => edit(event.currentTarget.value))
+            onKeyDown=((event) => {
+              if (event.key !== 'Tab' || event.shiftKey) {
+                return;
+              }
+              event.preventDefault();
+              const area = event.currentTarget;
+              area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end');
+              edit(area.value);
+            })
+            onScroll=((event) => {
+              backdrop!.scrollTop = event.currentTarget.scrollTop;
+              backdrop!.scrollLeft = event.currentTarget.scrollLeft;
+              gutter!.scrollTop = event.currentTarget.scrollTop;
+            })
+          >{$untrack(files[0]!.source)}</textarea>
+        </div>
       </div>
     </section>
-    <section class="output" aria-label="Output">
-      <div class="tabs" role="tablist">
-        <button role="tab" aria-selected=(view === 'result') class={ active: view === 'result' } onClick=(() => (view = 'result'))>Result</button>
-        <button role="tab" aria-selected=(view === 'compiled') class={ active: view === 'compiled' } onClick=(() => (view = 'compiled'))>Compiled</button>
-        <button role="tab" aria-selected=(view === 'ships') class={ active: view === 'ships' } onClick=(() => (view = 'ships'))>What ships</button>
-        <button role="tab" aria-selected=(view === 'console') class={ active: view === 'console' } onClick=(() => (view = 'console'))>
-          Console
-          #if (logs.length > 0) {
-            <span class={ 'repl-count': true, bad: errors > 0 }>{logs.length}</span>
-          }
-        </button>
-        #if (running) {
-          <span class="repl-status">Running</span>
+    <div
+      class="splitter"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the panes"
+      aria-valuenow=(Math.round(split))
+      aria-valuemin="22"
+      aria-valuemax="78"
+      tabindex="0"
+      onPointerDown=((event) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragging = true;
+      })
+      onPointerMove=((event) => {
+        if (dragging) {
+          moveSplit(event.clientX);
+        }
+      })
+      onPointerUp=(() => (dragging = false))
+      onKeyDown=((event) => {
+        if (event.key === 'ArrowLeft') {
+          split = Math.max(22, split - 4);
+        } else if (event.key === 'ArrowRight') {
+          split = Math.min(78, split + 4);
+        }
+      })
+    ></div>
+    <section class="pane output" aria-label="Output">
+      <div class="pane-bar">
+        <div class="views" role="tablist">
+          <button role="tab" aria-selected=(view === 'result') onClick=(() => (view = 'result'))>Preview</button>
+          <button role="tab" aria-selected=(view === 'compiled') onClick=(() => (view = 'compiled'))>Compiled</button>
+          <button role="tab" aria-selected=(view === 'ships') onClick=(() => (view = 'ships'))>What ships</button>
+          <button role="tab" aria-selected=(view === 'console') onClick=(() => (view = 'console'))>
+            Console
+            #if (logs.length > 0) {
+              <span class={ 'repl-count': true, bad: errors > 0 }>{logs.length}</span>
+            }
+          </button>
+        </div>
+        #if (view === 'result') {
+          <div class="tools">
+            <div class="segment" role="group" aria-label="Width">
+              <button type="button" aria-pressed=(width === '') title="Fill the pane" onClick=(() => (width = ''))>Fill</button>
+              <button type="button" aria-pressed=(width === '390') title="Phone, 390 px" onClick=(() => (width = '390'))>390</button>
+              <button type="button" aria-pressed=(width === '768') title="Tablet, 768 px" onClick=(() => (width = '768'))>768</button>
+            </div>
+            <div class="segment" role="group" aria-label="Background">
+              <button type="button" aria-pressed=(canvas === 'dots') onClick=(() => (canvas = 'dots'))>Dots</button>
+              <button type="button" aria-pressed=(canvas === 'plain') onClick=(() => (canvas = 'plain'))>Plain</button>
+            </div>
+            <button class="tool" type="button" title="Run again" aria-label="Run again" onClick=(() => run(true))>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+          </div>
         }
       </div>
-      #if (error) {
-        <pre class="error">{error}</pre>
-      }
-      <div class={ 'repl-result': true, hidden: view !== 'result' } ref=result>
-        <p class="repl-note">The files run once the page loads.</p>
+      <div class={ preview: true, hidden: view !== 'result' }>
+        <div class=(`canvas ${canvas}`)>
+          #if (error) {
+            <div class="error-card" role="alert">
+              <div class="eyebrow">The files do not run</div>
+              <pre>{error}</pre>
+            </div>
+          }
+          <div class={ device: true, hidden: Boolean(error) } style={ width: width ? `${width}px` : '100%' }>
+            <div class="repl-result" ref=result>
+              <p class="repl-note">The files run once the page loads.</p>
+            </div>
+          </div>
+          #if (width) {
+            <span class="size">{width} px</span>
+          }
+        </div>
       </div>
       #if (view === 'compiled' && output) {
         <div class="repl-compiled">
-          <select aria-label="Module" onChange=((event) => (shown = event.currentTarget.value))>
-            #for (item of output.modules by item.name) {
-              <option value=(item.name) selected=(item.name === module?.name)>{item.name}</option>
-            }
-          </select>
+          <div class="sub-bar">
+            <select aria-label="Module" onChange=((event) => (shown = event.currentTarget.value))>
+              #for (item of output.modules by item.name) {
+                <option value=(item.name) selected=(item.name === module?.name)>{item.name}</option>
+              }
+            </select>
+            <span class={ chip: true, client: module?.client }>{module?.client ? 'Browser' : 'Server'}</span>
+          </div>
           <div class="code output-code">{moduleHtml}</div>
         </div>
       }
       #if (view === 'ships') {
         #loading {
-          <table class="sizes">
-            <thead>
-              <tr><th>Client module</th><th>Bytes</th><th>gzip</th></tr>
-            </thead>
-            <tbody>
-              #for (size of sizes by size.name) {
-                <tr><td><code>{size.name}</code></td><td class="num">{size.bytes}</td><td class="num">{size.gzip}</td></tr>
-              }
-            </tbody>
-          </table>
-          <p class="repl-note">
-            The client entry loads when a component is first used. Each part loads when its event fires or a value it updates changes.
-            The server code never reaches the browser.
-          </p>
+          <div class="ships">
+            <div class="ships-total">
+              <strong>{sizes.reduce((sum, size) => sum + size.gzip, 0).toLocaleString('en-US')} B</strong>
+              <span>gzip, in {sizes.length} {sizes.length === 1 ? 'module' : 'modules'} that the browser can load</span>
+            </div>
+            <table class="sizes">
+              <thead>
+                <tr><th>Client module</th><th class="num">Bytes</th><th class="num">gzip</th><th></th></tr>
+              </thead>
+              <tbody>
+                #for (size of sizes by size.name) {
+                  <tr>
+                    <td><code>{size.name}</code></td>
+                    <td class="num">{size.bytes.toLocaleString('en-US')}</td>
+                    <td class="num">{size.gzip.toLocaleString('en-US')}</td>
+                    <td class="bar-cell"><span class="bar" style={ width: `${(size.gzip / Math.max(1, ...sizes.map((item) => item.gzip))) * 100}%` }></span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <p class="repl-note">
+              The client entry loads when a component is first used. Each part loads when its event fires or a value it updates changes.
+              The server code never reaches the browser.
+            </p>
+          </div>
         } #else {
           <p class="repl-note repl-pad">Measuring</p>
         }
       }
       #if (view === 'console') {
-        <ol class="repl-console">
-          #for (log of logs by log.id) {
-            <li class=(`repl-log ${log.level}`)>{log.text}</li>
-          } #else {
-            <li class="repl-log empty">Nothing logged yet. Use console.log in a handler.</li>
-          }
-        </ol>
+        <div class="repl-console-wrap">
+          <div class="sub-bar">
+            <span class="repl-note">{logs.length} {logs.length === 1 ? 'entry' : 'entries'}</span>
+            <button class="tool" type="button" onClick=(() => (logs = []))>Clear</button>
+          </div>
+          <ol class="repl-console">
+            #for (log of logs by log.id) {
+              <li class=(`repl-log ${log.level}`)>{log.text}</li>
+            } #else {
+              <li class="repl-log empty">Nothing logged yet. Use console.log in a handler.</li>
+            }
+          </ol>
+        </div>
       }
       #if (output && output.warnings.length > 0) {
         <ul class="warnings">
@@ -344,61 +448,286 @@
 </main>
 
 <style>
-  /* Playground */
+  /* The REPL fills the page under the header: a bar, then the files and the output side by side. */
 
-  .repl-page {
-    max-width: 90rem;
-    margin: 0 auto;
-    padding: 1.25rem 1rem 3rem;
+  .repl {
+    --split: 50%;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100vh - var(--header-height));
+    min-height: 32rem;
+  }
+
+  .repl button,
+  .repl select,
+  .repl input,
+  .repl textarea {
+    font: inherit;
+    color: inherit;
   }
 
   .repl-bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 1.5rem;
-    margin-bottom: 1rem;
+    gap: 0.5rem 1rem;
+    padding: 0.4rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
   }
 
-  .repl-bar h1 {
+  .repl-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .repl-title h1 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 0.95rem;
   }
 
-  .repl-bar label {
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .status i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #2da44e;
+  }
+
+  .status.running i {
+    background: var(--accent);
+    animation: pulse 0.9s ease-in-out infinite alternate;
+  }
+
+  .status.failed {
+    color: #d64545;
+  }
+
+  .status.failed i {
+    background: #d64545;
+  }
+
+  @keyframes pulse {
+    to {
+      opacity: 0.3;
+    }
+  }
+
+  .repl-example {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
-  .repl-bar select {
-    padding: 0.35rem 0.5rem;
+  .repl select {
+    padding: 0.2rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
+    background: var(--bg);
+    font-size: 0.85rem;
   }
 
   .repl-note {
     margin: 0;
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
-  .repl-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 1rem;
-    height: calc(100vh - var(--header-height) - 6rem);
-    min-height: 28rem;
+  .repl .repl-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
   }
+
+  .repl .repl-button:hover {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
+
+  .repl-button svg,
+  .tool svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .repl-panes {
+    display: grid;
+    grid-template-columns: minmax(0, var(--split)) 6px minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .repl-panes.dragging {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--code-bg);
+  }
+
+  .pane-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .splitter {
+    background: var(--border);
+    cursor: col-resize;
+    transition: background 0.15s;
+  }
+
+  .splitter:hover,
+  .splitter:focus-visible,
+  .dragging .splitter {
+    background: var(--accent);
+    outline: none;
+  }
+
+  /* Files */
+
+  .repl-file {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 7px;
+  }
+
+  .repl-file button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    font: 0.8rem var(--mono);
+    cursor: pointer;
+  }
+
+  .repl-file:hover {
+    background: var(--surface-strong);
+  }
+
+  .repl-file.active {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .repl-file.active button {
+    color: var(--text);
+  }
+
+  .file-kind {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .file-kind.ts {
+    background: #3178c6;
+  }
+
+  .repl-file .repl-remove {
+    padding: 0.3rem 0.45rem 0.3rem 0;
+    opacity: 0.6;
+  }
+
+  .repl-file .repl-remove:hover {
+    color: #d64545;
+    opacity: 1;
+  }
+
+  .repl-new {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px dashed var(--border);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .repl-new:hover {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
+
+  .repl-add input {
+    width: 9rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--accent);
+    border-radius: 7px;
+    background: var(--bg);
+    font: 0.8rem var(--mono);
+  }
+
+  .repl-name-error {
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: #d64545;
+    font-size: 0.8rem;
+  }
+
+  /* Editor */
 
   .editor {
-    position: relative;
+    display: flex;
+    flex: 1;
     min-height: 0;
+  }
+
+  .gutter {
+    flex: none;
+    min-width: 3rem;
+    margin: 0;
+    padding: 1rem 0.75rem 1rem 0.5rem;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    font: 0.85rem/1.6 var(--mono);
+    text-align: right;
+    opacity: 0.6;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .editor-body {
+    position: relative;
+    flex: 1;
+    min-width: 0;
   }
 
   .editor-backdrop,
@@ -417,9 +746,15 @@
     pointer-events: none;
   }
 
+  /* The highlight takes the colors of a code block, and the editor draws the frame. */
+  .editor-backdrop.code {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
   .editor textarea {
-    border: 1px solid transparent;
-    border-radius: var(--radius);
+    border: 0;
     background: transparent;
     color: transparent;
     caret-color: var(--text);
@@ -427,7 +762,7 @@
   }
 
   .editor textarea:focus {
-    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline: none;
   }
 
   .editor textarea::selection {
@@ -435,164 +770,33 @@
     color: transparent;
   }
 
-  .output {
+  /* Output */
+
+  .views {
     display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--code-bg);
-    overflow: hidden;
+    gap: 0.15rem;
   }
 
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    padding: 0.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tabs button {
-    padding: 0.3rem 0.6rem;
+  .views button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
     border: 0;
-    border-radius: 6px;
+    border-radius: 7px;
     background: transparent;
     color: var(--muted);
-    font: 0.8rem var(--mono);
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: pointer;
   }
 
-  .tabs button.active {
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-  }
-
-  .output-code {
-    flex: 1;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .sizes {
-    margin: 1rem;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-  }
-
-  .sizes th,
-  .sizes td {
-    padding: 0.35rem 0.75rem;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-  }
-
-  .sizes .num {
-    font-family: var(--mono);
-    text-align: right;
-  }
-
-  .output .repl-note {
-    margin: 0 1rem 1rem;
-  }
-
-  .warnings {
-    margin: 0;
-    padding: 0.75rem 1rem 0.75rem 2rem;
-    border-top: 1px solid var(--border);
-    color: #b7791f;
-    font-size: 0.85rem;
-  }
-
-  .error {
-    margin: 0;
-    padding: 1rem;
-    color: #d64545;
-    font: 0.85rem/1.6 var(--mono);
-    white-space: pre-wrap;
-  }
-
-  @media (max-width: 900px) {
-    .repl-grid {
-        grid-template-columns: minmax(0, 1fr);
-        height: auto;
-      }
-
-    .editor,
-    .repl-grid .repl-source .editor {
-        flex: none;
-        height: 24rem;
-      }
-
-    .output {
-        height: 28rem;
-      }
-  }
-
-  .repl-source {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--code-bg);
-    overflow: hidden;
-  }
-
-  .repl-source .editor {
-    flex: 1;
-  }
-
-  .repl-source .editor textarea {
-    border-radius: 0;
-  }
-
-  .repl-files {
-    align-items: center;
-  }
-
-  .repl-file {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 6px;
-  }
-
-  .repl-file.active {
-    background: var(--accent-soft);
-  }
-
-  .repl-file.active button {
-    color: var(--accent-strong);
-  }
-
-  .tabs .repl-remove {
-    padding: 0.3rem 0.45rem 0.3rem 0;
-  }
-
-  .repl-add input {
-    width: 9rem;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
+  .views button:hover {
     color: var(--text);
-    font: 0.8rem var(--mono);
   }
 
-  .repl-name-error {
-    margin: 0;
-    padding: 0.4rem 0.75rem;
-    border-bottom: 1px solid var(--border);
-    color: #d64545;
-    font-size: 0.8rem;
-  }
-
-  .repl-status {
-    margin-left: auto;
-    align-self: center;
-    color: var(--muted);
-    font-size: 0.8rem;
+  .views button[aria-selected='true'] {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
   }
 
   .repl-count {
@@ -608,40 +812,239 @@
     color: #fff;
   }
 
-  .repl-result {
-    flex: 1;
-    padding: 1rem;
-    background: var(--bg);
-    overflow: auto;
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
   }
 
-  .repl-result.hidden {
+  .segment {
+    display: flex;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  .segment button {
+    padding: 0.15rem 0.5rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .segment button[aria-pressed='true'] {
+    background: var(--surface-strong);
+    color: var(--text);
+  }
+
+  .repl .tool {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.85rem;
+    height: 1.85rem;
+    padding: 0 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .repl .tool:hover {
+    color: var(--text);
+  }
+
+  .repl .tool[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .preview.hidden {
     display: none;
   }
 
-  .repl-compiled {
+  .canvas {
+    position: relative;
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    min-height: 0;
+    padding: 1.25rem;
+    overflow: auto;
+  }
+
+  .canvas.dots {
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--muted) 30%, transparent) 1px, transparent 1px) 0 0 / 16px 16px,
+      var(--code-bg);
+  }
+
+  .canvas.plain {
+    background: var(--code-bg);
+  }
+
+  .device {
+    max-width: 100%;
+    min-height: 12rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    transition: width 0.2s;
+  }
+
+  .device.hidden {
+    display: none;
+  }
+
+  .repl-result {
+    padding: 1rem;
+    overflow: auto;
+  }
+
+  .size {
+    position: absolute;
+    right: 0.9rem;
+    bottom: 0.6rem;
+    color: var(--muted);
+    font: 0.7rem var(--mono);
+  }
+
+  .error-card {
+    width: min(36rem, 100%);
+    padding: 1rem 1.15rem;
+    border: 1px solid color-mix(in srgb, #d64545 40%, var(--border));
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .eyebrow {
+    color: #d64545;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .error-card pre {
+    margin: 0.5rem 0 0;
+    font: 0.8rem/1.6 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* Compiled, what ships, console */
+
+  .sub-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sub-bar .tool {
+    margin-left: auto;
+  }
+
+  .chip {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .chip.client {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .repl-compiled,
+  .repl-console-wrap {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
   }
 
-  .repl-compiled select {
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-  }
-
-  .repl-compiled select {
-    margin: 0.5rem;
-    font: 0.8rem var(--mono);
-  }
-
-  .repl-compiled .output-code {
+  .output-code {
+    flex: 1;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
     overflow: auto;
+  }
+
+  .ships {
+    flex: 1;
+    padding: 1rem;
+    overflow: auto;
+  }
+
+  .ships-total {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .ships-total strong {
+    font-size: 1.6rem;
+  }
+
+  .ships-total span {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .sizes {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .sizes th,
+  .sizes td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .sizes th {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .sizes .num {
+    font-family: var(--mono);
+    text-align: right;
+  }
+
+  .bar-cell {
+    width: 30%;
+  }
+
+  .bar {
+    display: block;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f6a679, var(--accent));
   }
 
   .repl-console {
@@ -676,5 +1079,41 @@
 
   .repl-pad {
     padding: 1rem;
+  }
+
+  .warnings {
+    margin: 0;
+    padding: 0.6rem 1rem 0.6rem 2rem;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, #b7791f 8%, transparent);
+    color: #b7791f;
+    font-size: 0.8rem;
+  }
+
+  /* A narrow screen puts the output under the files. */
+  @media (max-width: 900px) {
+    .repl {
+      height: auto;
+    }
+
+    .repl-panes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .splitter {
+      display: none;
+    }
+
+    .repl-source {
+      height: 24rem;
+    }
+
+    .output {
+      min-height: 30rem;
+    }
+
+    .repl-note {
+      display: none;
+    }
   }
 </style>
