@@ -365,6 +365,14 @@ const FLASH_MS = 700;
 /** The most outlines that one frame draws, so a big change does not stall the page. */
 const MAX_FLASHES = 200;
 
+/** The class of an outline, by how many times the element changed in the last second. */
+function heatClass(count: number): string {
+  if (count >= 5) {
+    return 'hot';
+  }
+  return count >= 2 ? 'warm' : '';
+}
+
 /**
  * Outlines the elements that change, as an update writes them: green for an
  * element that changes now and then, yellow and red for one that changes
@@ -396,7 +404,7 @@ function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): vo
       const count = last && now - last.time < 1000 ? last.count + 1 : 1;
       heat.set(target, { count, time: now });
       const box = document.createElement('div');
-      box.className = `flash ${count >= 5 ? 'hot' : count >= 2 ? 'warm' : ''}`;
+      box.className = `flash ${heatClass(count)}`;
       box.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
       layer.append(box);
       setTimeout(() => box.remove(), FLASH_MS);

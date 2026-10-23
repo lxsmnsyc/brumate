@@ -187,10 +187,14 @@ tr.failed td:not(.bar-cell) { color: var(--red); }
 .run-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .run-head .what { font-weight: 600; }
 .run-head .ref { color: var(--dim); font: 11.5px var(--mono); }
-.run-row { display: grid; grid-template-columns: 170px 1fr 90px; align-items: center; gap: 10px; font: 11.5px var(--mono); color: var(--dim); }
+.run-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 90px; align-items: center; gap: 10px; font: 11.5px var(--mono); color: var(--dim); }
 .run-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .run-row .took { text-align: right; color: var(--text); }
-.track { position: relative; height: 14px; border-radius: 4px; background: #ffffff08; }
+.track { position: relative; height: 14px; overflow: hidden; border-radius: 4px; background-color: #ffffff08; }
+.ruler { position: relative; height: 16px; color: var(--faint); font: 10.5px var(--mono); }
+.ruler span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.ruler span:first-child { transform: none; }
+.ruler span.end { transform: translateX(-100%); }
 .seg { position: absolute; top: 3px; height: 8px; min-width: 2px; border-radius: 3px; }
 .seg.wait { background: repeating-linear-gradient(45deg, var(--faint) 0 3px, transparent 3px 6px); }
 .seg.run { background: var(--blue); }
@@ -495,7 +499,10 @@ function valueOf(scope: Scope, name: string): string | undefined {
 
 /** The colour of the pill of a reason to load. */
 function reasonColor(reason: string): string {
-  return PRELOADS.has(reason) ? 'purple' : reason === 'event' || reason === 'block' ? 'blue' : '';
+  if (PRELOADS.has(reason)) {
+    return 'purple';
+  }
+  return reason === 'event' || reason === 'block' ? 'blue' : '';
 }
 
 const STATE_COLORS: Record<BlockEntry['state'], string> = {
@@ -505,6 +512,25 @@ const STATE_COLORS: Record<BlockEntry['state'], string> = {
   rendered: 'green',
   failed: 'red',
 };
+
+/** The colour of a node in the graph. Other kinds are blue when they hold a value. */
+function nodeColor(kind: string, slot: number | undefined): string {
+  if (kind === 'memo') {
+    return 'purple';
+  }
+  if (kind === 'effect') {
+    return 'green';
+  }
+  return slot === undefined ? '' : 'blue';
+}
+
+/** The colour of how long a run took, in milliseconds. */
+function speedColor(total: number): string {
+  if (total < 100) {
+    return 'green';
+  }
+  return total < 300 ? 'yellow' : 'red';
+}
 
 const blockLabel = (block: BlockEntry): string =>
   block.kind === '$client' ? '$client' : `#${block.kind}`;
@@ -771,6 +797,17 @@ const handlerName = (ref: string): string => {
   const [component, name = ''] = ref.split('#') as [string, string];
   return `${known.get(component)?.name ?? component} ${name}`;
 };
+
+/** A round step for the ticks of a ruler: 1, 2 or 5 times a power of ten, at least `rough`. */
+function tickStep(rough: number): number {
+  const power = 10 ** Math.floor(Math.log10(rough));
+  for (const factor of [1, 2, 5]) {
+    if (factor * power >= rough) {
+      return factor * power;
+    }
+  }
+  return 10 * power;
+}
 
 let panel: HTMLElement | undefined;
 /** Switches the tab of the open panel. */
@@ -1145,7 +1182,11 @@ export function togglePanel(
     for (const [name, badge] of badges) {
       const [count = 0, warning] = counts[name] ?? [];
       badge.textContent = count > 0 ? String(count) : '';
-      badge.className = `badge${name === 'errors' ? ' error' : warning ? ' warn' : ''}`;
+      let kind = warning ? ' warn' : '';
+      if (name === 'errors') {
+        kind = ' error';
+      }
+      badge.className = `badge${kind}`;
       badge.title = warning ?? '';
     }
   };
@@ -1540,14 +1581,15 @@ export function togglePanel(
       const part = /^[hct]\d/.test(name) ? name : 'update';
       const load = state.loads.get(`${component}:${part}`) ?? state.loads.get(`${component}:all`);
       const info = known.get(component);
-      const status = !load
-        ? pill('not loaded')
-        : load.end === undefined
-          ? pill('loading', 'blue')
-          : pill(
-              `${load.failed ? 'failed' : 'loaded'} in ${ms(load.end - load.start)} (${load.reason})`,
-              load.failed ? 'red' : 'green',
-            );
+      let status = pill('not loaded');
+      if (load && load.end === undefined) {
+        status = pill('loading', 'blue');
+      } else if (load && load.end !== undefined) {
+        status = pill(
+          `${load.failed ? 'failed' : 'loaded'} in ${ms(load.end - load.start)} (${load.reason})`,
+          load.failed ? 'red' : 'green',
+        );
+      }
       const bytes = bytesOf(info, load?.part ?? part);
       table.append(
         row([
@@ -1729,9 +1771,13 @@ export function togglePanel(
       const at = /^(.*) (\d+:\d+)$/.exec(node.label);
       const owner = node.slot === undefined ? undefined : scopeOfNode.get(node.scope);
       const value = owner && node.slot !== undefined ? preview(owner.s[node.slot]) : undefined;
+      let meta = at ? `${node.kind} · ${at[2]}` : node.kind;
+      if (value !== undefined) {
+        meta = `= ${value}`;
+      }
       return {
         name: at ? at[1]! : node.label,
-        meta: value === undefined ? (at ? `${node.kind} · ${at[2]}` : node.kind) : `= ${value}`,
+        meta,
         value,
         at: at?.[2],
       };
@@ -1939,14 +1985,7 @@ export function togglePanel(
               ...indexes.map((index) => element('div', { class: 'mono' }, nodes[index]!.label)),
             )
           : element('div', { class: 'sub' }, 'nothing');
-      const color =
-        node.kind === 'memo'
-          ? 'purple'
-          : node.kind === 'effect'
-            ? 'green'
-            : node.slot === undefined
-              ? ''
-              : 'blue';
+      const color = nodeColor(node.kind, node.slot);
       side.append(
         element('h2', {}, part.name),
         element(
@@ -2088,11 +2127,10 @@ export function togglePanel(
     );
     for (const load of loads) {
       const info = known.get(load.component);
-      const marks = load.failed
-        ? 'failed'
-        : PRELOADS.has(load.reason) && !load.used
-          ? 'unused'
-          : '';
+      let marks = PRELOADS.has(load.reason) && !load.used ? 'unused' : '';
+      if (load.failed) {
+        marks = 'failed';
+      }
       const stop = load.end ?? performance.now();
       const bytes = bytesOf(info, load.part);
       const tr = element(
@@ -2181,12 +2219,16 @@ export function togglePanel(
       end: number,
       kind: string,
       title: string,
-    ): HTMLElement =>
-      element('span', {
+    ): HTMLElement => {
+      // Inside the track: a bar that starts before the run, or ends after the scale, is cut.
+      const left = Math.min(Math.max(((start - run.begun) / scale) * 100, 0), 100);
+      const width = Math.min(Math.max(((end - start) / scale) * 100, 0), 100 - left);
+      return element('span', {
         class: `seg ${kind}`,
-        style: `left:${((start - run.begun) / scale) * 100}%;width:${(Math.max(end - start, 0) / scale) * 100}%`,
+        style: `left:${left}%;width:${width}%`,
         title,
       });
+    };
     const list = element('div');
     runs.forEach((run, index) => {
       const total = totals[index]!;
@@ -2195,10 +2237,21 @@ export function togglePanel(
         ...run.calls.map((call) => call.end ?? now),
         ...run.updates.map((update) => update.end),
       );
-      const scale = Math.max(last - run.begun, 1);
+      // The scale ends at a round tick past the last bar, so the ruler reads in round numbers.
+      const step = tickStep(Math.max(last - run.begun, 1) / 4);
+      const scale = Math.ceil(Math.max(last - run.begun, 1) / step) * step;
+      const ticks = element('div', { class: 'ruler' });
+      for (let time = 0; time <= scale + step / 2; time += step) {
+        const at = (time / scale) * 100;
+        ticks.append(
+          element('span', { class: at > 99 ? 'end' : '', style: `left:${at}%` }, ms(time)),
+        );
+      }
+      // Lines through the tracks at each tick.
+      const grid = `background-image: repeating-linear-gradient(to right, #ffffff1a 0 1px, transparent 1px ${(step / scale) * 100}%)`;
       const handler = element(
         'div',
-        { class: 'track' },
+        { class: 'track', style: grid },
         ...(run.ready - run.begun > 0.5
           ? [
               segment(
@@ -2233,6 +2286,7 @@ export function togglePanel(
           : []),
       );
       const rows: HTMLElement[] = [
+        element('div', { class: 'run-row' }, element('span'), ticks, element('span')),
         element(
           'div',
           { class: 'run-row' },
@@ -2272,7 +2326,7 @@ export function togglePanel(
             'div',
             { class: 'run-row' },
             element('span', { class: 'name', title: call.name }, `call ${handlerName(call.name)}`),
-            element('div', { class: 'track' }, ...parts),
+            element('div', { class: 'track', style: grid }, ...parts),
             element(
               'span',
               { class: 'took' },
@@ -2283,29 +2337,39 @@ export function togglePanel(
           ),
         );
       }
-      for (const update of run.updates) {
+      // The batches of updates share a row, each on its own bar.
+      if (run.updates.length > 0) {
+        const count = run.updates.reduce((sum, update) => sum + update.count, 0);
+        const took = run.updates.reduce((sum, update) => sum + update.end - update.start, 0);
+        const batches = run.updates.length;
         rows.push(
           element(
             'div',
             { class: 'run-row' },
-            element('span', { class: 'name' }, `${update.count} updates`),
+            element(
+              'span',
+              { class: 'name' },
+              `${count} ${count === 1 ? 'update' : 'updates'}${batches > 1 ? `, ${batches} batches` : ''}`,
+            ),
             element(
               'div',
-              { class: 'track' },
-              segment(
-                run,
-                scale,
-                update.start,
-                update.end,
-                'update',
-                `${update.count} updates and their effects`,
+              { class: 'track', style: grid },
+              ...run.updates.map((update) =>
+                segment(
+                  run,
+                  scale,
+                  update.start,
+                  update.end,
+                  'update',
+                  `${update.count} ${update.count === 1 ? 'update' : 'updates'} and their effects: ${ms(update.end - update.start)}`,
+                ),
               ),
             ),
-            element('span', { class: 'took' }, ms(update.end - update.start)),
+            element('span', { class: 'took' }, ms(took)),
           ),
         );
       }
-      const speed = total < 100 ? 'green' : total < 300 ? 'yellow' : 'red';
+      const speed = speedColor(total);
       list.append(
         element(
           'div',
@@ -2439,6 +2503,18 @@ export function togglePanel(
     );
   };
 
+  /** The draw of each tab that loads what it shows. Log and Blocks draw at once. */
+  const drawTab: Record<Exclude<Tab, 'log' | 'blocks'>, () => Promise<void>> = {
+    overview: drawOverview,
+    errors: drawErrors,
+    scopes: drawScopes,
+    elements: drawElements,
+    loading: drawLoading,
+    timeline: drawTimeline,
+    graph: drawGraph,
+    report: drawReport,
+  };
+
   let queued = false;
   const draw = (): void => {
     drawChrome();
@@ -2450,22 +2526,7 @@ export function togglePanel(
       drawBlocks();
       return;
     }
-    const drawn =
-      tab === 'overview'
-        ? drawOverview()
-        : tab === 'errors'
-          ? drawErrors()
-          : tab === 'scopes'
-            ? drawScopes()
-            : tab === 'elements'
-              ? drawElements()
-              : tab === 'loading'
-                ? drawLoading()
-                : tab === 'timeline'
-                  ? drawTimeline()
-                  : tab === 'graph'
-                    ? drawGraph()
-                    : drawReport();
+    const drawn = drawTab[tab]();
     // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
       drawChrome();
