@@ -78,16 +78,26 @@ Three parts, each with one job:
 
 #### In the child
 
-- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning.
-- Without a binding, the child writes its own copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
+- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning. A component can destructure `$props()` more than once, with `const` and with `let`.
+- Without a binding, the child writes its own copy, such as a prop that seeds a state that the child then edits. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
 - With a binding, a write goes to the parent's signal.
 - The child writes first and calls its handlers after, so a handler such as `onOpen` reads the new value. A write never calls a handler by itself.
 
 #### In the type
 
+`let` says that the child writes a prop. `Bindable<T>` says that a parent can bind it. They are apart, because a child can write its own copy of a prop that it does not share:
+
+|                                             | The child writes it                                  | A parent can `$bind` it                        |
+| ------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| `const { foo }`                             | No, it is a compile error                            | No                                             |
+| `let { foo }`, and `foo` is not `Bindable`  | Yes, its own copy                                    | No, it is a type error in the parent           |
+| `let { foo }`, and `foo` is `Bindable<T>`   | Yes, its own copy, or the parent's signal when bound | Yes                                            |
+| `const { foo }`, and `foo` is `Bindable<T>` | No                                                   | Yes, with a warning: the child never writes it |
+
 - `Bindable<T>` in a props interface marks a prop that a parent can bind. Inside the child, `$props<T>()` unwraps it, so `open` is a `boolean`.
-- The type checker also reads `let` in the destructuring, and types those props as bindable for the parent, so a component needs no annotation. `Bindable<T>` is for interfaces that describe the contract, such as an exported or library type.
-- When both are there, they must agree. The type checker reports a `Bindable` prop that the child reads with `const`, which a parent could bind and the child never writes, and a `let` prop that the interface does not mark `Bindable`.
+- With a typed `$props<T>()`, the type decides which props a parent can bind.
+- With an untyped `$props()`, the type checker reads `let` in the destructuring, and types those props as bindable, so a quick component needs no annotation.
+- The type checker warns about a `Bindable` prop that the child reads only with `const`.
 
 #### In the parent
 
