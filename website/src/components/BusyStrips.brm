@@ -43,3 +43,87 @@
     While the browser is idle, brumate preloads the core and the handlers near the viewport. A click before that waits one round trip for them.
   </figcaption>
 </figure>
+
+<style>
+  /* When the main thread is busy, with hydration and with brumate. */
+
+  .strips {
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .strips figcaption {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .strips svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    font-family: var(--font);
+  }
+
+  .wf-lane {
+    fill: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .wf-lane.accent {
+    fill: var(--accent-strong);
+  }
+
+  .wf-note {
+    fill: var(--text);
+    font-size: 12px;
+  }
+
+  .wf-in {
+    fill: var(--bg);
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  .wf-note.muted,
+  .wf-axis,
+  .wf-legend text {
+    fill: var(--muted);
+    font-size: 11px;
+  }
+
+  .wf-note.muted {
+    font-size: 12px;
+  }
+
+  .wf-axis.end {
+    text-anchor: end;
+  }
+
+  .wf-track {
+    fill: var(--bg);
+    stroke: var(--border);
+  }
+
+  .wf-html {
+    fill: var(--muted);
+  }
+
+  .wf-busy {
+    fill: var(--cool);
+  }
+
+  .wf-ready {
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+
+  .wf-ready-dot {
+    fill: var(--accent);
+  }
+</style>

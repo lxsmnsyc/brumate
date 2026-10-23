@@ -91,3 +91,184 @@
     <span class="ships-hydration-text">With hydration, the browser loads the code of every part of the page and renders it again, static parts included.</span>
   </figcaption>
 </figure>
+
+<style>
+  .ships {
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .ships svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 0.75rem;
+    font-family: var(--mono);
+  }
+
+  .ships-switch {
+    display: inline-flex;
+    padding: 0.2rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+  }
+
+  .ships-switch label {
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ships-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ships-switch label:has(input:checked) {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .ships-switch label:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .ships figcaption {
+    margin-top: 0.75rem;
+    color: var(--muted);
+  }
+
+  .sm-frame {
+    fill: var(--bg);
+    stroke: var(--border);
+  }
+
+  .sm-rule {
+    stroke: var(--border);
+  }
+
+  .sm-dot {
+    fill: var(--surface-strong);
+  }
+
+  .sm-static rect,
+  .sm-deep rect,
+  .sm-live rect,
+  .sm-update circle {
+    transition:
+      fill 0.4s,
+      stroke 0.4s,
+      opacity 0.4s;
+  }
+
+  .sm-static rect {
+    fill: var(--surface);
+    stroke: var(--border);
+  }
+
+  .sm-deep rect {
+    fill: var(--surface-strong);
+    stroke: none;
+  }
+
+  .sm-live rect {
+    fill: var(--accent);
+    animation: sm-pulse 2.4s ease-in-out infinite;
+  }
+
+  .sm-update circle {
+    fill: none;
+    stroke: var(--cool);
+    stroke-width: 3;
+  }
+
+  .sm-update circle + circle {
+    fill: var(--cool);
+    stroke: none;
+  }
+
+  .sm-tags rect {
+    fill: var(--accent);
+  }
+
+  .sm-tags text,
+  .sm-tag-all text {
+    fill: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  .sm-tags .sm-tag-update rect {
+    fill: var(--cool);
+  }
+
+  .sm-tag-all {
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .sm-tag-all rect {
+    fill: var(--cool);
+  }
+
+  .sm-tag-all text {
+    font-family: var(--font);
+    font-size: 18px;
+  }
+
+  .sm-tags {
+    transition: opacity 0.4s;
+  }
+
+  @keyframes sm-pulse {
+    50% {
+      opacity: 0.65;
+    }
+  }
+
+  .ships-hydration-text {
+    display: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-static rect,
+  .ships:has(.ships-hydration:checked) .sm-live rect {
+    fill: color-mix(in srgb, var(--cool) 35%, var(--bg));
+    stroke: var(--cool);
+    animation: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-deep rect {
+    fill: color-mix(in srgb, var(--cool) 60%, var(--bg));
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-tags {
+    opacity: 0;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-tag-all {
+    opacity: 1;
+  }
+
+  .ships:has(.ships-hydration:checked) .ships-brumate {
+    display: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .ships-hydration-text {
+    display: inline;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sm-live rect {
+        animation: none;
+      }
+  }
+</style>

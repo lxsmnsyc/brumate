@@ -236,3 +236,637 @@
     </div>
   </section>
 </main>
+
+<style>
+  /* Home */
+
+  .home {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1rem 4rem;
+  }
+
+  .hero {
+    position: relative;
+    padding: 5rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .hero-glow {
+    position: absolute;
+    inset: 0 10% auto;
+    z-index: -1;
+    height: 22rem;
+    background:
+      radial-gradient(
+        closest-side at 35% 50%,
+        color-mix(in srgb, var(--cool) 22%, transparent),
+        transparent
+      ),
+      radial-gradient(
+        closest-side at 65% 50%,
+        color-mix(in srgb, var(--accent) 24%, transparent),
+        transparent
+      );
+    filter: blur(20px);
+  }
+
+  .eyebrow {
+    margin: 0 0 1rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    max-width: 44rem;
+    margin: 0 auto;
+    font-size: clamp(2.3rem, 6vw, 3.8rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(90deg, var(--cool), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .lead {
+    max-width: 38rem;
+    margin: 1.4rem auto 0;
+    color: var(--muted);
+    font-size: 1.125rem;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .install {
+    display: inline-block;
+    margin: 1.75rem 0 0;
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--code-bg);
+    font-size: 0.9rem;
+  }
+
+  .prompt {
+    margin-right: 0.6rem;
+    color: var(--muted);
+    user-select: none;
+  }
+
+  .section {
+    padding: 3rem 0 0;
+  }
+
+  .section h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .section-lead {
+    max-width: 46rem;
+    margin: 0.6rem 0 1.5rem;
+    color: var(--muted);
+  }
+
+  .playground {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .showcase {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .showcase-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .showcase-item h3 {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 1rem;
+  }
+
+  .showcase-item :global(.code) {
+    margin: 0;
+    border-radius: 0;
+    border-width: 0 0 1px;
+    max-height: 22rem;
+  }
+
+  /* A wireframe of an app, and what of it ships code. Radio buttons and :has switch the view. */
+
+  .ships-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  @media (max-width: 52rem) {
+    .ships-section {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+      }
+  }
+
+  /* The shop demo, and its X-ray view: a checkbox and :has, with no script. */
+
+  .xray {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .xray-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-self: start;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .xray-toggle input {
+    accent-color: var(--accent);
+  }
+
+  .browser-bar em {
+    margin-left: 0.75rem;
+    color: var(--muted);
+    font: normal 0.75rem var(--mono);
+  }
+
+  .xray-legend,
+  .xray-sum {
+    display: none;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .xray-legend {
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .xray-legend li::before {
+    content: '';
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-right: 0.4rem;
+    border-radius: 3px;
+    vertical-align: -0.1rem;
+  }
+
+  .xray-legend .html::before {
+    background: repeating-linear-gradient(45deg, var(--surface-strong) 0 3px, transparent 3px 6px);
+    border: 1px dashed var(--muted);
+  }
+
+  .xray-legend .handler::before {
+    border: 2px solid var(--accent);
+  }
+
+  .xray-legend .update::before {
+    border: 2px solid var(--cool);
+  }
+
+  .xray:has(.xray-toggle input:checked) .xray-legend {
+    display: flex;
+  }
+
+  .xray:has(.xray-toggle input:checked) .xray-sum {
+    display: block;
+    color: var(--muted);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray]) {
+    position: relative;
+    border-radius: 6px;
+    outline-offset: 3px;
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='html']) {
+    outline: 1px dashed var(--muted);
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--surface-strong) 70%, transparent) 0 4px,
+      transparent 4px 10px
+    );
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='handler']) {
+    outline: 2px solid var(--accent);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='update']) {
+    outline: 2px solid var(--cool);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray])::after {
+    position: absolute;
+    top: -0.6rem;
+    right: 0.25rem;
+    z-index: 1;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    font: 600 0.65rem/1.4rem var(--mono);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .xray:has(.xray-toggle input:checked) :global(.shop-nav) :global([data-xray])::after {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global(.shop-logo)::after {
+    right: auto;
+    left: calc(100% + 0.5rem);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global(.shop-cart)::after {
+    right: calc(100% + 0.5rem);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='html'])::after {
+    content: 'HTML · 0 KB';
+    background: var(--surface-strong);
+    color: var(--muted);
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='handler'])::after {
+    content: 'loads on click';
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .xray:has(.xray-toggle input:checked) :global([data-xray='update'])::after {
+    content: 'updates';
+    background: var(--cool);
+    color: #fff;
+  }
+
+  /* The features with code, text on one side and the code on the other. */
+
+  .rows {
+    display: grid;
+    gap: 4.5rem;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .row:nth-child(even) .row-text {
+    order: 2;
+  }
+
+  .row h2 {
+    margin: 0.25rem 0 0.75rem;
+    font-size: 1.6rem;
+    line-height: 1.2;
+  }
+
+  .row-text p:not(.eyebrow) {
+    color: var(--muted);
+  }
+
+  .row-text > a {
+    font-weight: 600;
+  }
+
+  .row-text > a::after {
+    content: ' →';
+  }
+
+  .row-media {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .row-media .code {
+    margin: 0;
+  }
+
+  .browser {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .browser-bar {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .browser-bar span {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--surface-strong);
+  }
+
+  .stream-demo {
+    display: grid;
+    padding: 1rem;
+    min-height: 5.5rem;
+  }
+
+  .stream-demo > * {
+    grid-area: 1 / 1;
+  }
+
+  .stream-skeleton {
+    display: grid;
+    gap: 0.5rem;
+    animation: skeleton 5s infinite;
+  }
+
+  .stream-skeleton i {
+    height: 0.9rem;
+    border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      var(--surface) 25%,
+      var(--surface-strong) 50%,
+      var(--surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite linear;
+  }
+
+  .stream-skeleton i:first-child {
+    width: 45%;
+    height: 1.2rem;
+  }
+
+  .stream-loaded {
+    display: grid;
+    gap: 0.25rem;
+    animation: loaded 5s infinite;
+  }
+
+  .stream-loaded span {
+    color: var(--muted);
+  }
+
+  @keyframes skeleton {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    50%,
+    95% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes loaded {
+    0%,
+    45% {
+      opacity: 0;
+    }
+    50%,
+    95% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  /* A call of a server function: the arguments go to the server, and the result comes back. */
+
+  .wire {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+
+  .wire-end {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .wire-end.server {
+    border-color: var(--accent);
+  }
+
+  .wire-end small {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+  }
+
+  .wire-lines {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  /* Each line is an arrow, with its value on it. */
+
+  .wire-line {
+    position: relative;
+    height: 2px;
+    background: var(--muted);
+    text-align: center;
+  }
+
+  .wire-line code {
+    position: relative;
+    top: -0.7rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.75rem;
+  }
+
+  .wire-line.back code {
+    background: var(--cool);
+  }
+
+  .wire-line::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    border: 5px solid transparent;
+  }
+
+  .wire-line.out::after {
+    right: -2px;
+    border-left: 8px solid var(--muted);
+    border-right: 0;
+  }
+
+  .wire-line.back::after {
+    left: -2px;
+    border-right: 8px solid var(--muted);
+    border-left: 0;
+  }
+
+  .type-error {
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border-left: 3px solid #d1242f;
+    border-radius: 6px;
+    background: color-mix(in srgb, #d1242f 10%, transparent);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .type-error span {
+    color: #d1242f;
+    font-weight: 700;
+  }
+
+  .tree {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    font-size: 0.9rem;
+    list-style: none;
+  }
+
+  .tree li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.2rem 0;
+  }
+
+  .tree li span {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .tree .nest {
+    padding-left: 1.25rem;
+  }
+
+  .tree .nest2 {
+    padding-left: 2.5rem;
+  }
+
+  @media (max-width: 52rem) {
+    .row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+      }
+
+    .row:nth-child(even) .row-text {
+        order: 0;
+      }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stream-loaded {
+        animation: none;
+      }
+
+    .stream-skeleton {
+        display: none;
+      }
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+  }
+
+  .feature {
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .feature h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+  }
+
+  .feature p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .cta {
+    text-align: center;
+    padding-top: 4rem;
+  }
+
+  .cta p {
+    color: var(--muted);
+  }
+
+  @media (max-width: 800px) {
+    .playground {
+        grid-template-columns: minmax(0, 1fr);
+      }
+  }
+</style>

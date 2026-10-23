@@ -313,3 +313,339 @@
     </section>
   </div>
 </main>
+
+<style>
+  /* Playground */
+
+  .repl-page {
+    max-width: 90rem;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .repl-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .repl-bar h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .repl-bar label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .repl-bar select {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+
+  .repl-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .repl-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    height: calc(100vh - var(--header-height) - 6rem);
+    min-height: 28rem;
+  }
+
+  .editor {
+    position: relative;
+    min-height: 0;
+  }
+
+  .editor-backdrop,
+  .editor textarea {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 1rem 1.1rem;
+    font: 0.85rem/1.6 var(--mono);
+    white-space: pre;
+    overflow: auto;
+    tab-size: 2;
+  }
+
+  .editor-backdrop {
+    pointer-events: none;
+  }
+
+  .editor textarea {
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: transparent;
+    caret-color: var(--text);
+    resize: none;
+  }
+
+  .editor textarea:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .editor textarea::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: transparent;
+  }
+
+  .output {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tabs button {
+    padding: 0.3rem 0.6rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font: 0.8rem var(--mono);
+    cursor: pointer;
+  }
+
+  .tabs button.active {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .output-code {
+    flex: 1;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .sizes {
+    margin: 1rem;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .sizes th,
+  .sizes td {
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .sizes .num {
+    font-family: var(--mono);
+    text-align: right;
+  }
+
+  .output .repl-note {
+    margin: 0 1rem 1rem;
+  }
+
+  .warnings {
+    margin: 0;
+    padding: 0.75rem 1rem 0.75rem 2rem;
+    border-top: 1px solid var(--border);
+    color: #b7791f;
+    font-size: 0.85rem;
+  }
+
+  .error {
+    margin: 0;
+    padding: 1rem;
+    color: #d64545;
+    font: 0.85rem/1.6 var(--mono);
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 900px) {
+    .repl-grid {
+        grid-template-columns: minmax(0, 1fr);
+        height: auto;
+      }
+
+    .editor,
+    .repl-grid .repl-source .editor {
+        flex: none;
+        height: 24rem;
+      }
+
+    .output {
+        height: 28rem;
+      }
+  }
+
+  .repl-source {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+
+  .repl-source .editor {
+    flex: 1;
+  }
+
+  .repl-source .editor textarea {
+    border-radius: 0;
+  }
+
+  .repl-files {
+    align-items: center;
+  }
+
+  .repl-file {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
+  }
+
+  .repl-file.active {
+    background: var(--accent-soft);
+  }
+
+  .repl-file.active button {
+    color: var(--accent-strong);
+  }
+
+  .tabs .repl-remove {
+    padding: 0.3rem 0.45rem 0.3rem 0;
+  }
+
+  .repl-add input {
+    width: 9rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font: 0.8rem var(--mono);
+  }
+
+  .repl-name-error {
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: #d64545;
+    font-size: 0.8rem;
+  }
+
+  .repl-status {
+    margin-left: auto;
+    align-self: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .repl-count {
+    margin-left: 0.35rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    font-size: 0.7rem;
+  }
+
+  .repl-count.bad {
+    background: #d64545;
+    color: #fff;
+  }
+
+  .repl-result {
+    flex: 1;
+    padding: 1rem;
+    background: var(--bg);
+    overflow: auto;
+  }
+
+  .repl-result.hidden {
+    display: none;
+  }
+
+  .repl-compiled {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .repl-compiled select {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+
+  .repl-compiled select {
+    margin: 0.5rem;
+    font: 0.8rem var(--mono);
+  }
+
+  .repl-compiled .output-code {
+    overflow: auto;
+  }
+
+  .repl-console {
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    font: 0.8rem/1.5 var(--mono);
+    list-style: none;
+  }
+
+  .repl-log {
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .repl-log.warn {
+    background: color-mix(in srgb, #b7791f 10%, transparent);
+    color: #b7791f;
+  }
+
+  .repl-log.error {
+    background: color-mix(in srgb, #d64545 10%, transparent);
+    color: #d64545;
+  }
+
+  .repl-log.empty {
+    color: var(--muted);
+  }
+
+  .repl-pad {
+    padding: 1rem;
+  }
+</style>
