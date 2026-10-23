@@ -194,7 +194,15 @@ function madeAfter(mark: Mark, id: ScopeId): boolean {
  * context, so its scopes are written with its markup.
  */
 export class Context {
-  readonly state: PageState = {};
+  /**
+   * The records of the scopes of this render, by scope ID. A map, since the
+   * IDs inside blocks are strings, which would turn an object into a slow
+   * dictionary.
+   */
+  readonly state: StateMap = new Map();
+  /** The scope that `record` read last, and its record. */
+  private lastScope: ScopeId | undefined;
+  private lastRecord: ScopeState | undefined;
   private readonly root: Context;
   /** The ID spaces of the blocks that the render is in, from the outside in. */
   private readonly spaces: IdSpace[];
@@ -462,10 +470,11 @@ export class Context {
    * scopes stay.
    */
   private drop(mark: Mark): void {
-    for (const key of Object.keys(this.state)) {
-      const id = parseId(key);
+    this.lastScope = undefined;
+    this.lastRecord = undefined;
+    for (const id of this.state.keys()) {
       if (madeAfter(mark, id)) {
-        delete this.state[id];
+        this.state.delete(id);
         this.root.slotNames.delete(id);
         this.root.tree.delete(id);
         this.sources.delete(id);
@@ -474,8 +483,19 @@ export class Context {
   }
 
   private record(scope: ScopeId): ScopeState {
-    this.state[scope] ??= {};
-    return this.state[scope];
+    // A scope's record is read a few times in a row as it renders, and a string ID is slower
+    // to look up than to compare.
+    if (scope === this.lastScope && this.lastRecord) {
+      return this.lastRecord;
+    }
+    let record = this.state.get(scope);
+    if (!record) {
+      record = {};
+      this.state.set(scope, record);
+    }
+    this.lastScope = scope;
+    this.lastRecord = record;
+    return record;
   }
 
   slots(scope: ScopeId, values: unknown[], names?: string[]): void {
@@ -1079,16 +1099,16 @@ function unsendable(error: unknown, ctx: Context): Error {
   if (target === undefined) {
     return error instanceof Error ? error : new Error(String(error));
   }
-  for (const [id, record] of Object.entries(ctx.state)) {
+  for (const [id, record] of ctx.state) {
     const index = (record.s ?? []).findIndex((value) => holds(value, target));
     if (index === -1) {
       continue;
     }
     let owner: ScopeState | undefined = record;
     while (owner && owner.m === undefined && owner.p !== undefined) {
-      owner = ctx.state[owner.p];
+      owner = ctx.state.get(owner.p);
     }
-    const name = ctx.slotNames.get(parseId(id))?.[index] ?? `slot ${index}`;
+    const name = ctx.slotNames.get(id)?.[index] ?? `slot ${index}`;
     if (secret !== undefined) {
       return new Error(
         `The value of "${name}" in ${owner?.m ?? 'a component'} is the value of a server environment variable, and code that runs in the browser reads it. Read the variable in a server function, and send the browser only what it needs.`,
@@ -1141,6 +1161,9 @@ function scriptJSON(value: unknown): string {
 const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
 
 /** A group of `PackedState` while `packState` collects it. */
+/** How many of the last groups `packState` compares a record with, before it looks up its name. */
+const RECENT_GROUPS = 4;
+
 interface PackGroup {
   k: number;
   base: ScopeId;
@@ -1163,6 +1186,41 @@ function splitId(id: ScopeId): [prefix: string, n: number] {
   return [id.slice(0, dot + 1), Number(id.slice(dot + 1))];
 }
 
+/** The records of the scopes of a render, by scope ID. */
+export type StateMap = Map<ScopeId, ScopeState>;
+
+/** The records of a state as a map, for a state written as an object, such as in tests. */
+function toStateMap(state: PageState | StateMap): StateMap {
+  if (state instanceof Map) {
+    return state;
+  }
+  return new Map(Object.entries(state).map(([key, record]) => [parseId(key), record]));
+}
+
+/**
+ * The IDs of a state in the order of the keys of an object: number IDs
+ * ascending, then string IDs in the order they were made.
+ */
+function orderedIds(state: StateMap): ScopeId[] {
+  const numbers: number[] = [];
+  const strings: string[] = [];
+  let sorted = true;
+  for (const id of state.keys()) {
+    if (typeof id === 'number') {
+      if (numbers.length > 0 && id < numbers.at(-1)!) {
+        sorted = false;
+      }
+      numbers.push(id);
+    } else {
+      strings.push(id);
+    }
+  }
+  if (!sorted) {
+    numbers.sort((a, b) => a - b);
+  }
+  return [...numbers, ...strings];
+}
+
 /**
  * The list that the client can take the items of a group from: the items
  * are list items with the same source, the source's record is in `state`,
@@ -1171,7 +1229,7 @@ function splitId(id: ScopeId): [prefix: string, n: number] {
  * same values. Otherwise the items are written.
  */
 function groupSource(
-  state: PageState,
+  state: StateMap,
   sources: Map<ScopeId, ItemSource>,
   group: PackGroup,
 ): ItemSource | undefined {
@@ -1179,7 +1237,7 @@ function groupSource(
   if (!source || !(group.flags & (ITEM | ITEM_SLOT))) {
     return undefined;
   }
-  const value = state[source[0]]?.s?.[source[1]];
+  const value = state.get(source[0])?.s?.[source[1]];
   // Seroval keeps the order of a Set. A Map's entries are new arrays, which the check below rejects.
   const list = Array.isArray(value) ? value : value instanceof Set ? Array.from(value) : undefined;
   if (!list || list.length < group.ids.length) {
@@ -1187,7 +1245,7 @@ function groupSource(
   }
   for (let n = 0; n < group.ids.length; n++) {
     const id = group.ids[n]!;
-    if (sources.get(id) !== source || !Object.is(list[n], state[id]!.i)) {
+    if (sources.get(id) !== source || !Object.is(list[n], state.get(id)!.i)) {
       return undefined;
     }
   }
@@ -1200,13 +1258,18 @@ function groupSource(
  * to the ID before it. The items of a list whose list is in `sources` and in
  * the state are not written. See `PackedState`.
  */
-export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>): PackedState {
+export function packState(
+  input: PageState | StateMap,
+  sources?: Map<ScopeId, ItemSource>,
+): PackedState {
+  const state = toStateMap(input);
   const result: PackedState = {};
   const groups = new Map<string, PackGroup>();
-  // Integer keys come in ascending order, and the keys inside a `#loading` body in the order
-  // the body made them, so the gaps are positive.
-  for (const [key, record] of Object.entries(state)) {
-    const id = parseId(key);
+  const recent: PackGroup[] = [];
+  // Number IDs come in ascending order, and the IDs inside blocks in the order the render made
+  // them, as an object orders its keys, so the gaps are positive and the output stays the same.
+  for (const id of orderedIds(state)) {
+    const record = state.get(id)!;
     const [prefix, n] = splitId(id);
     // The root scope of a component in a list item has its own owner, the item, at the same
     // distance before it in each item. The parent of other scopes is the same for the group.
@@ -1235,30 +1298,47 @@ export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>):
     if (record.m !== undefined) {
       flags |= MODULE;
     }
-    const name = `${prefix}:${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
-    const group = groups.get(name);
-    if (group) {
-      group.ids.push(id);
-      group.numbers.push(n);
-    } else {
-      groups.set(name, {
-        k: record.k,
-        base,
-        flags,
-        count: slots.length,
-        m: record.m,
-        prefix,
-        ids: [id],
-        numbers: [n],
-      });
+    // The scopes of a list come in runs, so the last groups usually hold the record's group,
+    // and the name of the group, a new string to hash, is made only when they do not.
+    let group = recent.find(
+      (item) =>
+        item.k === record.k &&
+        item.base === base &&
+        item.flags === flags &&
+        item.count === slots.length &&
+        item.m === record.m &&
+        item.prefix === prefix,
+    );
+    if (!group) {
+      const name = `${prefix}:${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
+      group = groups.get(name);
+      if (!group) {
+        group = {
+          k: record.k,
+          base,
+          flags,
+          count: slots.length,
+          m: record.m,
+          prefix,
+          ids: [],
+          numbers: [],
+        };
+        groups.set(name, group);
+      }
+      recent.unshift(group);
+      if (recent.length > RECENT_GROUPS) {
+        recent.pop();
+      }
     }
+    group.ids.push(id);
+    group.numbers.push(n);
   }
   const packed: unknown[][] = [];
   for (const group of groups.values()) {
     const { ids } = group;
     // A group of one scope is no shorter than its record.
     if (ids.length === 1) {
-      result[ids[0]!] = state[ids[0]!]!;
+      result[ids[0]!] = state.get(ids[0]!)!;
       continue;
     }
     const source = sources && sources.size > 0 ? groupSource(state, sources, group) : undefined;
@@ -1284,7 +1364,7 @@ export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>):
     for (let index = 0; index < ids.length; index++) {
       const id = ids[index]!;
       const number = group.numbers[index]!;
-      const record = state[id]!;
+      const record = state.get(id)!;
       values.push(number - last);
       const slots = record.s ?? [];
       for (let n = from; n < slots.length; n++) {
@@ -1317,7 +1397,7 @@ export function packState(state: PageState, sources?: Map<ScopeId, ItemSource>):
  * promise makes `crossSerialize` throw, and then it streams as usual.
  */
 function serializeState(
-  state: PageState,
+  state: PageState | StateMap,
   refs: Map<unknown, number>,
   onRecord: (code: string, initial: boolean) => void,
   onError: (error: unknown) => void,
@@ -1372,7 +1452,7 @@ function serializeState(
  * every promise in the state has settled.
  */
 export function streamState(
-  state: PageState,
+  state: PageState | StateMap,
   onRecord: (code: string, initial: boolean) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {

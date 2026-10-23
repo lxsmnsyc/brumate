@@ -2086,7 +2086,7 @@ async function serverRecords(name: string, props: unknown): Promise<Record<numbe
   const { Context } = await import('../src/runtime/server.ts');
   const ctx = new Context();
   await server.default(props, ctx);
-  return toRecords(ctx.state);
+  return toRecords(Object.fromEntries(ctx.state));
 }
 
 /** The fields of scope records that `clientRecords` reads, from records of the server. */
@@ -2426,7 +2426,7 @@ async function lists(
   if (!state) {
     const ctx = new Context();
     await (await import(file(`${name}.brm.ts`))).default(props, ctx);
-    state = ctx.state;
+    state = Object.fromEntries(ctx.state);
     sources = ctx.sources;
   }
   const component = (id: number): string | undefined => {
@@ -2508,7 +2508,7 @@ describe('list items taken from their list', () => {
     const { Context } = await import('../src/runtime/server.ts');
     const ctx = new Context();
     await (await import(file('sourced.brm.ts'))).default({ initial }, ctx);
-    const state = structuredClone(ctx.state);
+    const state = structuredClone(Object.fromEntries(ctx.state));
     const todos = state[0]!.s![0] as unknown[];
     // The record of the list is not in this state, as for a `#loading` body that streams later.
     const { 0: root, ...rest } = state;
@@ -2650,7 +2650,10 @@ describe('list items taken from their list', () => {
     );
     // One group takes its items, from the body's signal. The other writes them.
     expect(flags.toSorted()).toEqual([0, SOURCE]);
-    const expected = { ...toRecords(ctx.state), ...toRecords(body!.ctx.state) };
+    const expected = {
+      ...toRecords(Object.fromEntries(ctx.state)),
+      ...toRecords(Object.fromEntries(body!.ctx.state)),
+    };
     const client = await import('../src/runtime/client.ts');
     document.dispatchEvent(new Event('brumate:core'));
     await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
