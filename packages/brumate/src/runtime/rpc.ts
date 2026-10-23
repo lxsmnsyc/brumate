@@ -1,35 +1,15 @@
 import { toJSONAsync } from 'seroval';
 import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
-import { disabledFeatures, plugins } from './serial.ts';
-import { Upload, replaceDeep } from './calls.ts';
+import { callPlugins, disabledFeatures } from './serial.ts';
 import { fromChunkStream } from './stream.ts';
-
-/**
- * True for a file or a blob. One from another frame, or another DOM, is an
- * instance of another `Blob` class, so its methods tell instead.
- */
-function isBlob(value: unknown): value is Blob {
-  if (value instanceof Blob) {
-    return true;
-  }
-  const blob = value as Partial<Blob> | null;
-  return (
-    typeof blob === 'object' &&
-    blob !== null &&
-    typeof blob.size === 'number' &&
-    typeof blob.type === 'string' &&
-    typeof blob.arrayBuffer === 'function' &&
-    typeof blob.slice === 'function'
-  );
-}
 
 /**
  * Calls a server function. It is a separate module, so pages that never call
  * one never load seroval's serializer.
  *
- * Files and blobs in the arguments, in arrays and plain objects, go as parts
- * of multipart form data. `signal` aborts the call.
+ * Files and blobs in the arguments, anywhere in them, go as parts of
+ * multipart form data. `signal` aborts the call.
  */
 export async function call(
   prefix: string,
@@ -37,11 +17,11 @@ export async function call(
   args: unknown[],
   signal?: AbortSignal,
 ): Promise<unknown> {
+  // The plugin of uploads takes each file and blob in the arguments, wherever it is.
   const files: Blob[] = [];
-  const sent = replaceDeep(args, (value) =>
-    isBlob(value) ? new Upload(files.push(value) - 1) : undefined,
+  const json = JSON.stringify(
+    await toJSONAsync(args, { plugins: callPlugins(files), disabledFeatures }),
   );
-  const json = JSON.stringify(await toJSONAsync(sent, { plugins, disabledFeatures }));
   let init: RequestInit;
   if (files.length > 0) {
     const form = new FormData();

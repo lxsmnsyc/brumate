@@ -238,15 +238,15 @@ g: [[2, 0, 33, 1, 0, 0, 1, 1, 1]]
 
 Values with plugins of their own, and the call of `$b` that makes each one in a record:
 
-| Tag                     | In a record                 | Value                                                                                                          |
-| ----------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `brumate/element`       | `$b.e(scope, anchor)`       | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
-| `brumate/function`      | `$b.f(reference, scope)`    | `FunctionReference`: a client function passed as a prop. It holds its reference and the scope it reads.        |
-| `brumate/raw`           | `$b.r(html)`                | HTML that the client may insert again, such as `children`.                                                     |
-| `brumate/component`     | `$b.c(id)`                  | A component, as its component ID, for dynamic tags.                                                            |
-| `brumate/url`           | `new URL(href)`             | A `URL`.                                                                                                       |
-| `brumate/search-params` | `new URLSearchParams(text)` | `URLSearchParams`.                                                                                             |
-| `brumate/upload`        | Not in the page             | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
+| Tag                 | In a record              | Value                                                                                                          |
+| ------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `brumate/element`   | `$b.e(scope, anchor)`    | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
+| `brumate/function`  | `$b.f(reference, scope)` | `FunctionReference`: a client function passed as a prop. It holds its reference and the scope it reads.        |
+| `brumate/raw`       | `$b.r(html)`             | HTML that the client may insert again, such as `children`.                                                     |
+| `brumate/component` | `$b.c(id)`               | A component, as its component ID, for dynamic tags.                                                            |
+| `brumate/upload`    | Not in the page          | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
+
+Web values, such as `URL`, `Headers` and `ReadableStream`, use the plugins of `seroval-plugins/web`, which write code that makes them, such as `new URL(href)`.
 
 ### Attributes of records
 

@@ -16,13 +16,13 @@ Each server function has an ID: `<component ID>#<function name>`, such as `Todos
 
 A call is a `POST` to `<rpc prefix>/<encoded ID>`. The prefix is `/_brumate` by default.
 
-| Arguments                       | Body                                                                                                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No files                        | `content-type: application/json`. The arguments array as seroval JSON, from `toJSONAsync`.                                                                                                            |
-| Files or blobs in the arguments | `x-brumate-args: form`, and multipart form data. The `args` field holds the seroval JSON. Each file is a field named `file<index>`, and the JSON holds an `Upload` value with the index in its place. |
+| Arguments                       | Body                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No files                        | `content-type: application/json`. The arguments array as seroval JSON, from `toJSONAsync`.                                                                                                                  |
+| Files or blobs in the arguments | `x-brumate-args: form`, and multipart form data. The `args` field holds the seroval JSON. Each file is a field named `file<index>`, and the JSON holds a `brumate/upload` node with the index in its place. |
 
-- Files are found in the arguments, and in the arrays and plain objects inside them.
-- The server reads the JSON with `fromJSON`, then puts each `File` from the form in place of its `Upload`.
+- Files are found anywhere in the arguments, such as in a `Map` or in a `FormData`, by the plugin of uploads, which seroval runs on each value. A file that comes twice is sent once.
+- The server reads the JSON with `fromJSON`, and the plugin of uploads reads each index as the `File` of the form.
 - Promises in the arguments are awaited before the call is sent.
 - The request can carry an `AbortSignal`. A memo that computes again aborts the calls of its last run, and the server sees `request.signal` abort, if its HTTP server reports it.
 

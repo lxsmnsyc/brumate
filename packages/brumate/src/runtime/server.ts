@@ -13,7 +13,7 @@ import {
 } from './html.ts';
 import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
-import { disabledFeatures, plugins } from './serial.ts';
+import { callPlugins, disabledFeatures, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   CHILDREN,
@@ -28,7 +28,7 @@ import {
   isAsyncIterable,
   parseId,
 } from './shared.ts';
-import { Upload, functionReferences, replaceDeep } from './calls.ts';
+import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import {
@@ -1536,7 +1536,7 @@ function serializeState(
     let code: string | undefined;
     try {
       code = crossSerialize(packed, {
-        plugins,
+        plugins: syncPlugins,
         disabledFeatures,
         refs,
         assignSharedRefsOnly: true,
@@ -2398,7 +2398,7 @@ async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<R
 /**
  * The arguments of a call. They come as seroval JSON, or as multipart form
  * data when they hold files: the JSON in `args`, and each file in
- * `file<index>`, where an `Upload` stands in the JSON.
+ * `file<index>`, whose index stands in the JSON.
  */
 async function readArgs(request: Request): Promise<unknown[]> {
   if (!request.headers.has('x-brumate-args')) {
@@ -2408,13 +2408,10 @@ async function readArgs(request: Request): Promise<unknown[]> {
     });
   }
   const form = await request.formData();
-  const args = fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
-    plugins,
+  return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
+    plugins: callPlugins(undefined, form),
     disabledFeatures,
   });
-  return replaceDeep(args, (value) =>
-    value instanceof Upload ? (form.get(`file${value.index}`) ?? undefined) : undefined,
-  ) as unknown[];
 }
 
 export interface RequestOptions {

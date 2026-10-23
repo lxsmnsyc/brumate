@@ -5,6 +5,20 @@
 // browser only with the first server function call.
 
 import { Feature, createPlugin } from 'seroval';
+import {
+  AbortSignalPlugin,
+  CustomEventPlugin,
+  DOMExceptionPlugin,
+  EventPlugin,
+  FormDataPlugin,
+  HeadersPlugin,
+  ImageDataPlugin,
+  ReadableStreamPlugin,
+  RequestPlugin,
+  ResponsePlugin,
+  URLPlugin,
+  URLSearchParamsPlugin,
+} from 'seroval-plugins/web';
 import type {
   Plugin,
   SerovalNode,
@@ -13,7 +27,7 @@ import type {
 } from 'seroval';
 import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
-import { Upload, functionReferences } from './calls.ts';
+import { functionReferences, isBlob } from './calls.ts';
 import { ElementReference, stateValues } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
@@ -96,46 +110,136 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.c(ctx.deserialize<string>(node.c)),
 });
 
-/** A value that its string makes again, such as a `URL` from its `href`. */
-function stringPlugin<T extends { toString(): string }>(
-  tag: string,
-  type: new (text: string) => T,
-): Plugin<T, { v: SerovalNode }> {
-  return createPlugin<T, { v: SerovalNode }>({
-    tag,
+/**
+ * Files and blobs, which go only in the arguments of a call, as parts of
+ * multipart form data named `file<index>`. The node holds the index. The
+ * call passes `sent`, which gets each blob, and the server passes the form
+ * that it `received`, whose files the indexes read. Without them, as in the
+ * page state and in the answer of a call, a blob throws.
+ */
+export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, { i: SerovalNode }> {
+  return createPlugin<Blob, { i: SerovalNode }>({
+    tag: 'brumate/upload',
     skipPlainObjects: true,
-    test: (value) => value instanceof type,
-    parse: parsers((value) => ({ v: value.toString() })),
-    serialize: (node, ctx) => `new ${type.name}(${ctx.serialize(node.v)})`,
-    deserialize: (node, ctx) => new type(ctx.deserialize<string>(node.v)),
+    test: isBlob,
+    parse: parsers((value) => {
+      if (!sent) {
+        throw new Error('A file or a blob can only be sent in the arguments of a server function');
+      }
+      return { i: sent.push(value) - 1 };
+    }),
+    serialize: () => {
+      throw new Error('A file or a blob can only be sent in the arguments of a server function');
+    },
+    deserialize: (node, ctx) => {
+      const file = received?.get(`file${ctx.deserialize<number>(node.i)}`);
+      if (!(file instanceof Blob)) {
+        throw new TypeError('A file of the call is missing');
+      }
+      return file;
+    },
   });
 }
 
-const URLPlugin = stringPlugin('brumate/url', URL);
-const SearchParamsPlugin = stringPlugin('brumate/search-params', URLSearchParams);
-
-/** A file in the arguments of a server function call. It is never in the page state. */
-const UploadPlugin = createPlugin<Upload, { i: SerovalNode }>({
-  tag: 'brumate/upload',
-  skipPlainObjects: true,
-  test: (value) => value instanceof Upload,
-  parse: parsers((value) => ({ i: value.index })),
-  serialize: () => {
-    throw new Error('A file cannot be sent in the page');
+/**
+ * The plugin of `AbortSignal` from seroval-plugins, which sends whether the
+ * signal aborted and its reason. The one of seroval-plugins waits for a live
+ * signal to abort, so a call with one would not be sent, and a page or an
+ * answer with one would not end.
+ */
+const SignalPlugin: typeof AbortSignalPlugin = {
+  ...AbortSignalPlugin,
+  parse: {
+    sync: AbortSignalPlugin.parse.sync,
+    stream: AbortSignalPlugin.parse.sync,
+    async: async (value, ctx) => (value.aborted ? { reason: await ctx.parse(value.reason) } : {}),
   },
-  deserialize: (node, ctx) => new Upload(ctx.deserialize<number>(node.i)),
-});
+};
 
+/**
+ * The plugin of `Request` from seroval-plugins, whose body streams in the
+ * stream mode. A request with a stream body needs `duplex: 'half'`, or its
+ * constructor throws, so the plugin adds it.
+ */
+const BodyRequestPlugin: typeof RequestPlugin = {
+  ...RequestPlugin,
+  serialize: (node, ctx) =>
+    `new Request(${ctx.serialize(node.url)},Object.assign(${ctx.serialize(node.options)},{duplex:"half"}))`,
+  deserialize: (node, ctx) =>
+    new Request(
+      ctx.deserialize(node.url) as string,
+      {
+        ...(ctx.deserialize(node.options) as RequestInit),
+        duplex: 'half',
+      } as RequestInit,
+    ),
+};
+
+/** The plugins after the plugin of uploads, which a call makes for its files. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const plugins: Plugin<any, any>[] = [
+const valuePlugins: Plugin<any, any>[] = [
   ElementPlugin,
   FunctionPlugin,
   RawPlugin,
   ComponentPlugin,
-  UploadPlugin,
+  // The web values of seroval-plugins. Requests and responses need the async or stream modes,
+  // so a page state or a call result that holds one streams. The plugin of uploads takes files
+  // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.
+  SignalPlugin,
+  CustomEventPlugin,
+  DOMExceptionPlugin,
+  EventPlugin,
+  FormDataPlugin,
+  HeadersPlugin,
+  ImageDataPlugin,
+  ReadableStreamPlugin,
+  BodyRequestPlugin,
+  ResponsePlugin,
   URLPlugin,
-  SearchParamsPlugin,
+  URLSearchParamsPlugin,
 ];
+
+/**
+ * The plugins of a call with files: `sent` gets the files that the call
+ * sends, and `received` is the form that the server got them in.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export function callPlugins(sent?: Blob[], received?: FormData): Plugin<any, any>[] {
+  return [uploadPlugin(sent, received), ...valuePlugins];
+}
+
+/** The plugins of the page state, of answers and of calls without files. */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export const plugins: Plugin<any, any>[] = callPlugins();
+
+/**
+ * Stops a sync mode at a value that only streams: an async iterable, such
+ * as a `ReadableStream`. seroval writes one in a sync mode as a stream that
+ * never gets its values, without an error.
+ */
+const StreamGuardPlugin = createPlugin<object, Record<string, never>>({
+  tag: 'brumate/stream-guard',
+  test: (value) =>
+    (typeof ReadableStream !== 'undefined' && value instanceof ReadableStream) ||
+    (typeof value === 'object' && value !== null && Symbol.asyncIterator in value),
+  parse: {
+    sync: () => {
+      throw new Error('A stream needs the async or stream mode');
+    },
+  },
+  serialize: () => '',
+  deserialize: () => ({}),
+});
+
+/**
+ * The plugins for the sync modes, which must throw for a value that only
+ * streams, so the page state streams instead, and a call with a stream in
+ * its arguments is not shared with another. The guard comes first, so it
+ * takes a `ReadableStream` before the plugin of `ReadableStream`, which the
+ * plugins of `Request` and `Response` bring in.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
+export const syncPlugins: Plugin<any, any>[] = [StreamGuardPlugin, ...plugins];
 
 /**
  * Features that are off in both directions:

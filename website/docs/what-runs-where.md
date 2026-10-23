@@ -72,7 +72,7 @@ Browser code can read values of the script, such as a constant that a handler us
 - Promises, which can settle after the page arrives.
 - Elements of the page, such as a `ref`, and browser functions, such as handlers and functions passed as props.
 
-[Serializable values](./reference-serialization.md) has the full list. Functions, class instances, `URL` and regular expressions cannot be sent. Send `url.href` for a URL.
+[Serializable values](./reference-serialization.md) has the full list. Functions, instances of your own classes and regular expressions cannot be sent.
 
 `brumate-tsc` checks the signals and memos that are sent, and reports a value that cannot be:
 
