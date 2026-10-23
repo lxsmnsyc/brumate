@@ -138,6 +138,8 @@ export interface CoreOptions {
   loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
+  /** Tells the loader that the markup that `listen` scanned is in the page now. */
+  inserted?: () => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
   /** The ID of the build of the page, for skew protection. Calls send it, and a deploy is noticed. */
@@ -640,6 +642,8 @@ export function leavePage(): void {
   scopes.clear();
   comments.clear();
   elements.clear();
+  unindexed.length = 0;
+  rendered.length = 0;
   pendingEffects.clear();
   hiding = undefined;
   loads.clear();
@@ -1662,6 +1666,12 @@ function markerKey(data: string): string {
 
 const SCOPE_MARKER = /^[tb](-?[\d.]+):/;
 
+/** True for markup that names a scope from the server: a `b-b` or marker with an ID that is not negative. */
+const SERVER_SCOPES = /b-b="\d|<!--[tb]\d/;
+
+/** The scopes that the client made since the last insert, which the next insert holds. */
+const rendered: Scope[] = [];
+
 /** How many `#portal` markers the page has had, so a scope looks for its own only when any have. */
 let portals = 0;
 
@@ -1671,16 +1681,14 @@ let portals = 0;
  * With `ids`, it also collects the IDs of the scopes that the markup names. The IDs of scopes
  * that the client made are negative.
  */
-function indexMarkers(root: Node, ids?: Set<ScopeId>): void {
-  if (root.nodeType === 1) {
-    indexElement(root as Element, ids);
+function indexMarkers(root: Node, ids?: Set<ScopeId>, withElements = true): void {
+  // The query finds the bound elements in native code, and the walk visits only comments, so
+  // the code here runs for each marker, not for each node of a long list.
+  if (withElements) {
+    indexElements(root, ids);
   }
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_ELEMENT);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeType === 1) {
-      indexElement(node as Element, ids);
-      continue;
-    }
     const data = (node as Comment).data;
     if (!MARKER.test(data)) {
       continue;
@@ -1719,6 +1727,43 @@ function sweepIndexes(): void {
     }
   }
   sweepAt = Math.max(4096, 2 * (comments.size + elements.size));
+}
+
+function indexElements(root: Node, ids?: Set<ScopeId>): void {
+  if (root.nodeType === 1) {
+    indexElement(root as Element, ids);
+  }
+  if (root.nodeType === 1 || root.nodeType === 9 || root.nodeType === 11) {
+    for (const element of (root as ParentNode).querySelectorAll('[b-b]')) {
+      indexElement(element, ids);
+    }
+  }
+}
+
+/**
+ * The nodes that inserts of the client put in the page, from the first to the last of each,
+ * whose bound elements are not indexed yet. A list that the client creates is often never
+ * updated row by row, so its elements are indexed when an update first needs one of them.
+ */
+const unindexed: [first: Node, last: Node][] = [];
+
+function indexInserts(): void {
+  for (const [first, last] of unindexed.splice(0)) {
+    if (first.isConnected) {
+      for (let node: Node | null = first; node; node = node.nextSibling) {
+        indexElements(node);
+        if (node === last) {
+          break;
+        }
+      }
+    } else if (last.isConnected) {
+      // The first nodes left the page, such as the first rows of a list that were removed, so
+      // the walk goes back from the last node, past the start of the insert if it must.
+      for (let node: Node | null = last; node; node = node.previousSibling) {
+        indexElements(node);
+      }
+    }
+  }
 }
 
 function indexElement(element: Element, ids?: Set<ScopeId>): void {
@@ -1771,12 +1816,20 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
-    // As for markers: once the core starts, the index has every bound element in the page.
+    // As for markers: once the core starts, the index has every bound element in the page,
+    // with those of the inserts that are waiting.
     if (markerObserver) {
       indexAdded(markerObserver.takeRecords());
+      indexInserts();
       element = elements.get(key);
-    } else {
+    }
+    // An insert whose first node left the page, such as the first row of a list that was
+    // removed, has elements that the walk did not reach.
+    if (!element?.isConnected) {
       element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
+      if (element) {
+        elements.set(key, element);
+      }
     }
   }
   return element?.isConnected ? element : null;
@@ -1824,16 +1877,27 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
-  const ids = new Set<ScopeId>();
-  indexMarkers(fragment, ids);
+  // The scopes that the renders since the last insert made, whose markup this is.
+  const client = rendered.splice(0);
+  // Markup from the server, such as `children`, names scopes with IDs that are not negative.
+  // Only then are the elements of the insert read for them now.
+  const fromServer = SERVER_SCOPES.test(html);
+  const ids = fromServer ? new Set<ScopeId>() : undefined;
+  indexMarkers(fragment, ids, fromServer);
   options.listen(fragment);
   watchTitles(fragment);
   const server: Scope[] = [];
-  const client: Scope[] = [];
-  for (const id of ids) {
-    const scope = scopes.get(id);
+  for (const id of ids ?? []) {
+    const scope = typeof id === 'number' && id < 0 ? undefined : scopes.get(id);
     if (scope) {
-      (typeof id === 'number' && id < 0 ? client : server).push(scope);
+      server.push(scope);
+    }
+  }
+  if (!fromServer && fragment.firstChild) {
+    unindexed.push([fragment.firstChild, fragment.lastChild!]);
+    // Many inserts that no update read are indexed at once, so they do not hold their nodes.
+    if (unindexed.length > 256) {
+      indexInserts();
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
@@ -1846,8 +1910,9 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (added) {
     hiding!.added(added);
   }
-  // The records of this insert, whose markers are indexed already.
+  // The records of this insert, whose markers are indexed and whose handlers listen already.
   markerObserver?.takeRecords();
+  options.inserted?.();
   for (const fn of afterInsert.splice(0)) {
     fn();
   }
@@ -1856,8 +1921,9 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     refresh(server);
   }
   // Scopes that the client just rendered have its values, but the memos that load start here.
-  if (client.length > 0) {
-    refresh(client, true);
+  const live = client.filter((scope) => scopes.has(scope.id));
+  if (live.length > 0) {
+    refresh(live, true);
   }
 }
 
@@ -2921,6 +2987,7 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   const id = nextId--;
   const parentScope = resolveScope(parent);
   const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  rendered.push(created);
   if (module !== undefined && owner) {
     created.o = owner;
     owner = undefined;

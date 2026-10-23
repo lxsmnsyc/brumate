@@ -200,7 +200,7 @@ export function boot(
   };
   const loadCore = (): Promise<Core> =>
     (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
-      client.init({ ...options, load: loadModule, loadPart, listen: scan, serial });
+      client.init({ ...options, load: loadModule, loadPart, listen: scanInsert, inserted, serial });
       return client;
     }));
 
@@ -411,6 +411,8 @@ export function boot(
   // The values of `b-on` whose event types the document listens to already. The rows of a
   // list repeat the same few values.
   const delegated = new Set<string>();
+  // The values of `b-on` whose parts loaded, so the elements with them have nothing to preload.
+  const ready = new Set<string>();
   const onElement = (element: Element): void => {
     const value = element.getAttribute('b-on')!;
     if (!delegated.has(value)) {
@@ -420,10 +422,15 @@ export function boot(
       }
     }
     // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
-    if (eager && strategy(element) === 'hover' && !warmedAll(element)) {
-      eagerly.add(element);
-      visible?.observe(element);
+    if (!eager || ready.has(value) || strategy(element) !== 'hover') {
+      return;
     }
+    if (warmedAll(element)) {
+      ready.add(value);
+      return;
+    }
+    eagerly.add(element);
+    visible?.observe(element);
   };
   const onListener = (template: Element): void => {
     const target = template.getAttribute('b-listen') === 'window' ? window : document;
@@ -558,7 +565,7 @@ export function boot(
 
   scan(document);
   // Markup that streams in later, such as a `#loading` body, has handlers too.
-  const observer = new MutationObserver((records) => {
+  const scanAdded = (records: MutationRecord[]): void => {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (node.nodeType === 1) {
@@ -566,8 +573,19 @@ export function boot(
         }
       }
     }
-  });
+  };
+  const observer = new MutationObserver(scanAdded);
   observer.observe(document, { childList: true, subtree: true });
+  // The core scans the markup that it inserts before the insert, so the records of the insert
+  // are dropped instead of scanned again. The markup that others inserted first is scanned
+  // first.
+  const scanInsert = (root: ParentNode): void => {
+    scanAdded(observer.takeRecords());
+    scan(root);
+  };
+  const inserted = (): void => {
+    observer.takeRecords();
+  };
 
   // After `load`, so the page's own requests go first, and only when the browser is idle.
   // `2g` matches `slow-2g` too.

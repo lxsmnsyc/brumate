@@ -2528,6 +2528,18 @@ describe('long lists', () => {
     expect(moved.filter((node) => node.nodeType === 1)).toHaveLength(2);
   });
 
+  it('updates the items that the client added after the first of them is gone', async () => {
+    await resume('swapList', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(9));
+    // Row 7 is the first node of the insert of rows 7 to 9.
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(8));
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(text('li:nth-child(8)')).toBe('Row 9!'));
+    expect(text('li:nth-child(7)')).toBe('Row 8!');
+  });
+
   it('updates the items that the client added', async () => {
     await resume('swapList', {});
     click(document.querySelector('.add')!);
