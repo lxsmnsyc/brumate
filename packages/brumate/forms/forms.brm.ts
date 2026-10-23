@@ -2,9 +2,18 @@
 // function, so the compiler copies it into the component that calls it, and
 // its state resumes with the page.
 
+import { prevent } from 'brumate/events';
 import { $action, $effect, $handler, $id, $memo, $signal } from 'brumate/signals';
-import { DEFAULT_SUBMIT, checkField, formErrorsOf, formFields } from 'brumate/forms/core';
-import type { CheckedErrors, SubmissionResult } from 'brumate/forms/core';
+import {
+  DEFAULT_SUBMIT,
+  applyLocalIntent,
+  checkField,
+  checkedSince,
+  formErrorsOf,
+  formFields,
+  validateValues,
+} from 'brumate/forms/core';
+import type { CheckedErrors, Intent, LocalChanges, SubmissionResult } from 'brumate/forms/core';
 import type { StandardSchemaV1 } from 'brumate/server';
 
 export type {
@@ -65,8 +74,36 @@ export function createForm<S extends StandardSchemaV1, D = StandardSchemaV1.Infe
   const id = $id();
   // The errors that the browser found since the last reply.
   let checked = $signal<CheckedErrors | undefined>(undefined);
+  // The changes of lists that the browser made since the last reply.
+  let local = $signal<LocalChanges | undefined>(undefined);
+
+  // Applies the intent of a button of a list at once. Its `prevent` stops the post of the form,
+  // even before this code loads.
+  async function change(intent: Intent) {
+    const next = applyLocalIntent(
+      document.getElementById(id) as HTMLFormElement | null,
+      intent,
+      local,
+      result,
+    );
+    if (!next) {
+      return;
+    }
+    local = next;
+    // The errors that show follow the items to where they are now.
+    const current = checkedSince(checked, result);
+    if (current) {
+      checked = { ...current, ...(await validateValues(schema, next.value)) };
+    }
+  }
+  const press = (intent: Intent) => $handler(prevent(change), intent);
+
   const fields = $memo(
-    formFields(id, options.defaultValue as FormValue<S, D> | undefined, result, checked),
+    formFields(id, options.defaultValue as FormValue<S, D> | undefined, result, {
+      checked,
+      local,
+      press,
+    }),
   );
   const errors = $memo(formErrorsOf(result, checked));
 

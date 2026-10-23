@@ -2053,6 +2053,35 @@ describe('createForm', () => {
     expect(text('.email-error')).toBe('Enter an email address');
   });
 
+  it('applies the buttons of a list in the browser, without a post', async () => {
+    const form = await showOrder();
+    const posts = vi.fn<typeof fetch>(globalThis.fetch);
+    vi.stubGlobal('fetch', posts);
+    const insert = form.querySelector('.insert')!;
+    expect(insert.getAttribute('b-on')).toMatch(/^click:prevent=/);
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    itemInputs()[0]!.value = 'Tea';
+    const first = itemInputs()[0];
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    insert.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(itemInputs()).toHaveLength(2));
+    // The first item keeps its element and what was typed in it.
+    expect(itemInputs()[0]).toBe(first);
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
+      ['items[0].name', 'Tea'],
+      ['items[1].name', ''],
+    ]);
+    itemInputs()[1]!.value = 'Milk';
+    const second = itemInputs()[1];
+    // The new item, which the browser rendered, has a button that works too.
+    click(form.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(itemInputs()).toEqual([second]));
+    expect(second!.name).toBe('items[0].name');
+    expect(second!.value).toBe('Milk');
+    expect(posts).not.toHaveBeenCalled();
+  });
+
   it('shows the errors of the form, and resets the form after a save', async () => {
     const form = await showOrder();
     const email = form.querySelector<HTMLInputElement>('.email')!;

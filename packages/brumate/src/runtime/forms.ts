@@ -205,10 +205,12 @@ interface FormSchema {
  */
 export async function validateForm(schema: FormSchema, form: FormData): Promise<FormErrors> {
   const values = formValues(form, (name) => name === INTENT);
-  if (values.issues) {
-    return groupIssues(values.issues);
-  }
-  const result = (await schema['~standard'].validate(values.value)) as {
+  return values.issues ? groupIssues(values.issues) : validateValues(schema, values.value);
+}
+
+/** Validates the values of a form in the browser, and groups the errors as `reply` does. */
+export async function validateValues(schema: FormSchema, value: unknown): Promise<FormErrors> {
+  const result = (await schema['~standard'].validate(value)) as {
     issues?: readonly { message: string; path?: readonly (PathSegment | { key: PropertyKey })[] }[];
   };
   return groupIssues(
@@ -375,6 +377,28 @@ export interface IntentAttributes {
   name: typeof INTENT;
   value: string;
   formnovalidate: true;
+  /** With scripts, applies the intent in the browser instead of posting the form. */
+  onClick?: (event: MouseEvent) => unknown;
+}
+
+/**
+ * The changes of lists that the browser made since the last reply: the
+ * values of the form after them, and the keys of the items of each list.
+ */
+export interface LocalChanges {
+  /** The ID of the reply that the changes came after, or undefined before the first submit. */
+  reply: string | undefined;
+  value: unknown;
+  /** The keys of the items of each list that changed, by field name. */
+  keys: Record<string, string[]>;
+}
+
+/** What `formFields` reads besides the reply: the state of the browser, and the handler of intents. */
+export interface FormState {
+  checked?: CheckedErrors;
+  local?: LocalChanges;
+  /** The click handler of an intent button. */
+  press?: (intent: Intent) => (event: MouseEvent) => unknown;
 }
 
 /** The attributes of a field that `createForm` gives. */
@@ -442,8 +466,73 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   !(value instanceof Date);
 
 /** The attributes of a submit button that posts an intent. */
-export function intentButton(intent: Intent): IntentAttributes {
-  return { type: 'submit', name: INTENT, value: intentValue(intent), formnovalidate: true };
+export function intentButton(
+  intent: Intent,
+  press?: (intent: Intent) => (event: MouseEvent) => unknown,
+): IntentAttributes {
+  const attrs: IntentAttributes = {
+    type: 'submit',
+    name: INTENT,
+    value: intentValue(intent),
+    formnovalidate: true,
+  };
+  if (press) {
+    attrs.onClick = press(intent);
+  }
+  return attrs;
+}
+
+/** The changes of the browser when they came after the last reply. */
+export function localSince(
+  local: LocalChanges | undefined,
+  result: SubmissionResult | undefined,
+): LocalChanges | undefined {
+  return local && local.reply === result?.id ? local : undefined;
+}
+
+/** A key for a new item, which no other item of the page has. */
+let nextKey = 0;
+
+/**
+ * Applies an intent in the browser to the values that the form holds now.
+ * The items of the list keep their keys, so their elements and what was
+ * typed in them stay, and a new item gets a new key. Undefined when the
+ * intent does not fit the values.
+ */
+export function applyLocalIntent(
+  form: HTMLFormElement | null,
+  intent: Intent,
+  local: LocalChanges | undefined,
+  result: SubmissionResult | undefined,
+): LocalChanges | undefined {
+  if (!form || intent.type === 'reset' || intent.type === 'validate') {
+    return undefined;
+  }
+  const values = formValues(new FormData(form), (name) => name === INTENT);
+  const applied = values.value && applyIntent(values.value, intent);
+  if (!applied) {
+    return undefined;
+  }
+  const current = localSince(local, result);
+  const before = getAt(values.value, parsePath(intent.name)!);
+  const length = Array.isArray(before) ? before.length : 0;
+  const keys = [
+    ...(current?.keys[intent.name] ??
+      (result && !result.reset ? result.keys[intent.name] : undefined) ??
+      Array.from({ length }, (_, index) => String(index))),
+  ];
+  if (intent.type === 'insert') {
+    keys.splice(intent.index ?? keys.length, 0, `n${nextKey++}`);
+  } else if (intent.type === 'remove') {
+    keys.splice(intent.index, 1);
+  } else {
+    keys.splice(intent.to, 0, ...keys.splice(intent.from, 1));
+  }
+  return {
+    reply: result?.id,
+    value: applied.value,
+    keys: { ...current?.keys, [intent.name]: keys },
+  };
 }
 
 /**
@@ -455,12 +544,19 @@ export function formFields<T>(
   id: string,
   defaultValue: T | undefined,
   result: SubmissionResult | undefined,
-  checked?: CheckedErrors,
+  { checked, local, press }: FormState = {},
 ): Fields<T> {
-  const value = result && !result.reset ? result.value : undefined;
+  const changes = localSince(local, result);
+  const value = changes ? changes.value : result && !result.reset ? result.value : undefined;
   const submitted = result !== undefined;
-  const replied = result && !result.reset ? result.errors : {};
-  const keys = (result && !result.reset && result.keys) || {};
+  const keys = { ...(result && !result.reset ? result.keys : {}), ...changes?.keys };
+  // The errors of the reply for the items of a list that the browser changed are of other items.
+  const replied: Record<string, string[]> = {};
+  for (const [name, messages] of Object.entries(result && !result.reset ? result.errors : {})) {
+    if (!Object.keys(changes?.keys ?? {}).some((list) => name.startsWith(`${list}[`))) {
+      replied[name] = messages;
+    }
+  }
   // The errors that the browser found replace those of the reply, for the fields that it checked.
   const current = checkedSince(checked, result);
   const shows = (name: string): boolean =>
@@ -514,23 +610,29 @@ export function formFields<T>(
           {
             key: itemKeys?.[index] ?? String(index),
             index,
-            remove: intentButton({ type: 'remove', name, index }),
-            moveUp: intentButton({
-              type: 'reorder',
-              name,
-              from: index,
-              to: Math.max(index - 1, 0),
-            }),
-            moveDown: intentButton({
-              type: 'reorder',
-              name,
-              from: index,
-              to: Math.min(index + 1, items.length - 1),
-            }),
+            remove: intentButton({ type: 'remove', name, index }, press),
+            moveUp: intentButton(
+              {
+                type: 'reorder',
+                name,
+                from: index,
+                to: Math.max(index - 1, 0),
+              },
+              press,
+            ),
+            moveDown: intentButton(
+              {
+                type: 'reorder',
+                name,
+                from: index,
+                to: Math.min(index + 1, items.length - 1),
+              },
+              press,
+            ),
           },
         ),
       );
-      return Object.assign(own, { list, insert: intentButton({ type: 'insert', name }) });
+      return Object.assign(own, { list, insert: intentButton({ type: 'insert', name }, press) });
     }
     if (isPlainObject(shown) || isPlainObject(fallback)) {
       const defaults = isPlainObject(fallback) ? fallback : {};

@@ -256,8 +256,10 @@ An object has its fields in `fields`, such as `fields.address.fields.city`. A li
 
 ### Buttons that change a list
 
-The buttons of a list are submit buttons with the name `__intent`. The server applies the change to the posted values, and the reply shows them:
+The buttons of a list are submit buttons with the name `__intent`. With scripts, a button changes the list in the browser at once. Without scripts, it posts the form, and the server applies the change to the posted values:
 
+- With scripts, the items that stay keep their elements and what was typed in them. A new item gets a new key.
+- Its click handler wraps `prevent`, so with scripts the form never posts for it, even before its code loads.
 - They work without scripts, since a submit button posts its value only when it is pressed.
 - They have `formnovalidate`, so a list can grow while the form is incomplete.
 - An intent shows no errors, so the fields that the user has not filled yet show none.
@@ -280,7 +282,7 @@ The schema runs in the browser, so it must not import server code. A check that 
 ### With and without scripts
 
 - Without scripts, the form posts, and the page renders again with the reply. The fields show what was posted, with their errors.
-- With scripts, the reply arrives without loading the page. The items of a list that a button changed render again.
+- With scripts, the reply arrives without loading the page. The buttons of a list change it in the browser.
 - With the code of the form loaded, the fields validate as the user leaves them and types.
 - A reply with `reset: true` sets the fields back to their default values.
 
