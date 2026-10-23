@@ -1202,53 +1202,50 @@ pre {
   }
 }
 
-.wire {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  align-items: center;
+.split-arrow,
+.split-call {
+  margin: 0;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
-.wire-end {
-  padding: 0.35rem 0.7rem;
+.split {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.split-side {
+  min-width: 0;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  font-weight: 600;
+  border-top: 3px solid var(--muted);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  overflow: hidden;
 }
 
-.wire-line {
-  position: relative;
-  height: 2px;
-  background: var(--border);
+.split-side.browser {
+  border-top-color: var(--accent);
 }
 
-.wire-packet {
-  position: absolute;
-  top: 50%;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--mono);
+.split-label {
+  margin: 0;
+  padding: 0.4rem 0.75rem 0;
+  color: var(--muted);
   font-size: 0.75rem;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: packet 3s infinite ease-in-out;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-@keyframes packet {
-  0% {
-    left: 15%;
-  }
-  45%,
-  55% {
-    left: 85%;
-  }
-  100% {
-    left: 15%;
-  }
+.split-side.browser .split-label {
+  color: var(--accent-strong);
+}
+
+.split-side .code {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.75rem;
 }
 
 .type-error {
@@ -1310,8 +1307,7 @@ pre {
 
 @media (prefers-reduced-motion: reduce) {
   .sm-live rect,
-  .stream-loaded,
-  .wire-packet {
+  .stream-loaded {
     animation: none;
   }
 

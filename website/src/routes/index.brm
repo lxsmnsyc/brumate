@@ -4,7 +4,7 @@
   import Shipped from '../components/Shipped.brm';
   import ShipsMap from '../components/ShipsMap.brm';
   import BusyStrips from '../components/BusyStrips.brm';
-  import { serverFunctions, streaming, typed } from '../home/snippets.ts';
+  import { browserSide, serverFunctions, serverSide, streaming, typed } from '../home/snippets.ts';
   import * as counter from '../demos/Counter.brm?inspect';
   import * as todos from '../demos/Todos.brm?inspect';
   import Shop from '../demos/Shop.brm';
@@ -148,11 +148,18 @@
       </div>
       <div class="row-media">
         <div class="code">{serverFunctions}</div>
-        <div class="wire" aria-hidden="true">
-          <span class="wire-end">Browser</span>
-          <span class="wire-line"><span class="wire-packet">like(1)</span></span>
-          <span class="wire-end">Server</span>
+        <p class="split-arrow">The compiler splits it in two:</p>
+        <div class="split">
+          <div class="split-side">
+            <p class="split-label">Server: the body stays here</p>
+            <div class="code">{serverSide}</div>
+          </div>
+          <div class="split-side browser">
+            <p class="split-label">Browser: the click handler gets this</p>
+            <div class="code">{browserSide}</div>
+          </div>
         </div>
+        <p class="split-call">A click posts <code>[1]</code> to <code>/_brumate/Post#like</code>. The server runs <code>like(1)</code> and sends back the result.</p>
       </div>
     </article>
 
