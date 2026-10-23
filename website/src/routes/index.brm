@@ -35,7 +35,6 @@
     <div class="actions">
       <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
       <a class="button" href=(`${base}repl`)>Open the REPL</a>
-      <a class="button" href=(`${base}docs`)>Read the docs</a>
     </div>
     <pre class="install"><span class="prompt">$</span> pnpm add brumate</pre>
   </section>
