@@ -1,0 +1,61 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  // A product page. `data-xray` names what each part ships, for the X-ray view of the home page.
+  const colors = [
+    { name: 'Ember', from: '#f6a679', to: '#d4612a' },
+    { name: 'Lagoon', from: '#8fd3f4', to: '#2f7fbf' },
+    { name: 'Moss', from: '#b8e0a2', to: '#4d8b3a' },
+  ];
+
+  let color = $signal(0);
+  let quantity = $signal(1);
+  let cart = $signal(0);
+  let saved = $signal(false);
+  const total = $memo((quantity * 24).toFixed(2));
+</script>
+
+<div class="shop">
+  <header class="shop-nav">
+    <span class="shop-logo" data-xray="html">Kettle &amp; Co.</span>
+    <span class="shop-cart" data-xray="update">Cart <b>{cart}</b></span>
+  </header>
+  <div class="shop-main">
+    <div class="shop-photo" style={ '--from': colors[color]!.from, '--to': colors[color]!.to } data-xray="update">
+      <span class="shop-kettle" aria-hidden="true"></span>
+    </div>
+    <div class="shop-info">
+      <div data-xray="html">
+        <h3>Pour-over kettle</h3>
+        <p class="shop-stars" aria-label="4.8 out of 5">★★★★★ <span>4.8 · 312 reviews</span></p>
+        <p class="shop-copy">A gooseneck spout for a slow, even pour. Holds 0.9 L and works on every stove.</p>
+      </div>
+      <div class="shop-swatches" role="radiogroup" aria-label="Color" data-xray="handler">
+        #for (option, index of colors by option.name) {
+          <button
+            role="radio"
+            aria-checked=(index === color)
+            aria-label=(option.name)
+            class={ swatch: true, active: index === color }
+            style={ '--from': option.from, '--to': option.to }
+            onClick=(() => (color = index))
+          ></button>
+        }
+      </div>
+      <div class="shop-buy" data-xray="handler">
+        <div class="shop-qty">
+          <button aria-label="One less" onClick=(() => (quantity = Math.max(1, quantity - 1)))>−</button>
+          <span>{quantity}</span>
+          <button aria-label="One more" onClick=(() => quantity++)>+</button>
+        </div>
+        <button class="shop-add" onClick=(() => (cart += quantity))>Add · ${total}</button>
+        <button class={ 'shop-save': true, saved } aria-pressed=saved aria-label="Save for later" onClick=(() => (saved = !saved))>{saved ? '♥' : '♡'}</button>
+      </div>
+      <ul class="shop-specs" data-xray="html">
+        <li>Stainless steel, 0.9 L</li>
+        <li>Thermometer in the lid</li>
+        <li>Free shipping over $50</li>
+      </ul>
+    </div>
+  </div>
+</div>

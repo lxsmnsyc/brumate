@@ -1,0 +1,60 @@
+<script>
+  // What the browser does after the HTML of a page arrives, with hydration and with brumate,
+  // drawn as a waterfall. It is a picture of the steps, not a measurement.
+</script>
+
+<figure class="waterfall">
+  <svg viewBox="0 0 760 286" role="img" aria-labelledby="waterfall-title waterfall-desc">
+    <title id="waterfall-title">Hydration and resuming over time</title>
+    <desc id="waterfall-desc">With hydration, the page shows its HTML early, but clicks do nothing until the browser has loaded the code of every component and rendered them again. With brumate, clicks work as soon as the HTML arrives. While the browser is idle it preloads the handlers near the viewport, and a click runs only its own handler.</desc>
+    <defs>
+      <pattern id="waterfall-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="8" height="8" class="wf-dead-bg"></rect>
+        <line x1="0" y1="0" x2="0" y2="8" class="wf-dead-line"></line>
+      </pattern>
+    </defs>
+
+    <g class="wf-grid">
+      <line x1="110" y1="24" x2="110" y2="244"></line>
+      <line x1="270" y1="24" x2="270" y2="244"></line>
+      <line x1="430" y1="24" x2="430" y2="244"></line>
+      <line x1="590" y1="24" x2="590" y2="244"></line>
+      <line x1="750" y1="24" x2="750" y2="244"></line>
+    </g>
+
+    <text x="0" y="74" class="wf-lane">Hydration</text>
+    <rect x="110" y="30" width="80" height="14" rx="3" class="wf-html"></rect>
+    <text x="196" y="41" class="wf-note">HTML</text>
+    <rect x="190" y="50" width="150" height="14" rx="3" class="wf-js"></rect>
+    <rect x="205" y="68" width="190" height="14" rx="3" class="wf-js"></rect>
+    <text x="212" y="79" class="wf-in">The code of every component</text>
+    <rect x="220" y="86" width="140" height="14" rx="3" class="wf-js"></rect>
+    <rect x="395" y="106" width="120" height="14" rx="3" class="wf-cpu"></rect>
+    <text x="521" y="117" class="wf-note">Render it all again</text>
+    <rect x="190" y="126" width="325" height="8" class="wf-dead"></rect>
+    <text x="190" y="148" class="wf-note muted">Looks ready, but clicks do nothing</text>
+    <line x1="515" y1="24" x2="515" y2="136" class="wf-ready"></line>
+    <circle cx="515" cy="24" r="4" class="wf-ready-dot"></circle>
+
+    <text x="0" y="197" class="wf-lane accent">brumate</text>
+    <rect x="110" y="174" width="80" height="14" rx="3" class="wf-html"></rect>
+    <text x="196" y="185" class="wf-note">HTML</text>
+    <line x1="190" y1="166" x2="190" y2="228" class="wf-ready"></line>
+    <circle cx="190" cy="166" r="4" class="wf-ready-dot"></circle>
+    <rect x="300" y="198" width="40" height="8" rx="3" class="wf-preload"></rect>
+    <rect x="312" y="210" width="28" height="8" rx="3" class="wf-preload"></rect>
+    <text x="346" y="213" class="wf-note muted">Idle: preload nearby handlers</text>
+    <circle cx="560" cy="202" r="6" class="wf-click"></circle>
+    <rect x="568" y="197" width="14" height="10" rx="3" class="wf-js"></rect>
+    <text x="588" y="206" class="wf-note">A click runs one handler</text>
+
+    <text x="110" y="264" class="wf-axis">0</text>
+    <text x="750" y="264" class="wf-axis end">time →</text>
+    <g class="wf-legend" transform="translate(110 280)">
+      <circle cx="0" cy="-4" r="4" class="wf-ready-dot"></circle>
+      <text x="8" y="0">Clicks work</text>
+    </g>
+
+    <line x1="110" y1="20" x2="110" y2="246" class="wf-playhead"></line>
+  </svg>
+</figure>
