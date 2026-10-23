@@ -343,4 +343,61 @@ describe('devtools', () => {
     expect(shadow.querySelector('.top')!.textContent).toContain('v1.2.3');
     togglePanel(shadow, state);
   });
+
+  it('outlines the elements that change, by how often they change', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    document.body.innerHTML = '<p class="count">1</p><p class="other">a</p>';
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const count = document.querySelector('.count')!;
+    count.getBoundingClientRect = () => new DOMRect(10, 20, 100, 30);
+    state.setFlash!(true);
+    const flashes = (): Element[] => [...shadow.querySelectorAll('.flash')];
+    count.textContent = '2';
+    await expect.poll(() => flashes().length).toBe(1);
+    expect((flashes()[0] as HTMLElement).style.left).toBe('10px');
+    count.textContent = '3';
+    await expect.poll(() => shadow.querySelectorAll('.flash.warm').length).toBe(1);
+    // The choice stays, and turning it off clears the outlines.
+    expect(localStorage.getItem('brumate:devtools:flash')).toBe('1');
+    state.setFlash!(false);
+    expect(flashes()).toEqual([]);
+    count.textContent = '4';
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(flashes()).toEqual([]);
+  });
+
+  it('shows a card of the element under the pointer while picking', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    document.body.innerHTML = '<button class="go" b-b="9:0" b-on="click=Counter_4#h1">Go</button>';
+    globalThis.fetch = (async () =>
+      Response.json({
+        name: 'Counter',
+        file: 'src/Counter.brm',
+        scopes: { 0: { label: 'component', slots: ['count'] } },
+        anchors: { 0: { 0: { label: '<button>', at: '7:1', reads: ['count'] } } },
+        text: '',
+      })) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const root: Scope = { id: 9, k: 0, m: 'Counter_4', s: [3], children: new Set() };
+    hooks().attach!({ scopes: new Map([[9, root]]), set: () => {} });
+    togglePanel(shadow, state);
+    const pick = [...shadow.querySelectorAll('.top button')].find((button) =>
+      button.textContent!.includes('Pick'),
+    ) as HTMLElement;
+    pick.click();
+    document
+      .querySelector('.go')!
+      .dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+    const card = (): string => shadow.querySelector('.inspect-card')?.textContent ?? '';
+    await expect.poll(card).toContain('src/Counter.brm:7:1');
+    expect(card()).toContain('button.go');
+    expect(card()).toContain('click · not loaded');
+    expect(card()).toContain('count = 3');
+    // Escape stops picking, and the card goes.
+    dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(shadow.querySelector('.inspect-card')).toBeNull();
+    togglePanel(shadow, state);
+  });
 });

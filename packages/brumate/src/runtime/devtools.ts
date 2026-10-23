@@ -118,6 +118,10 @@ export interface DevtoolsState {
   open?: (tab: string) => void;
   /** Shows the number of errors on the tab. */
   errorCount?: () => void;
+  /** True while the elements that change are outlined on the page. */
+  flash: boolean;
+  /** Turns the outlines of changed elements on or off, and keeps the choice. */
+  setFlash?: (on: boolean) => void;
   /** While the panel is open: sets its top edge to a place of the pointer, and keeps it. */
   resize?: (clientY: number) => void;
   resized?: () => void;
@@ -315,6 +319,119 @@ export function reportError(
 /** The code of the panel, which loads when it opens. */
 const panelModule = (): Promise<typeof Panel> => import('./devtools-panel.ts');
 
+/** Where the choice to outline changed elements is kept. */
+const FLASH_KEY = 'brumate:devtools:flash';
+/** How long an outline shows. */
+const FLASH_MS = 700;
+/** The most outlines that one frame draws, so a big change does not stall the page. */
+const MAX_FLASHES = 200;
+
+/**
+ * Outlines the elements that change, as an update writes them: green for an
+ * element that changes now and then, yellow and red for one that changes
+ * often. A MutationObserver sees every change of the page, so it needs no
+ * hook of the core. The outlines are drawn in the shadow root, so the page
+ * itself does not change.
+ */
+function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): void {
+  const layer = document.createElement('div');
+  layer.className = 'flashes';
+  root.append(layer);
+  // How many times each element changed lately, for its colour.
+  const heat = new WeakMap<Element, { count: number; time: number }>();
+  const pending = new Set<Element>();
+  let frame = 0;
+  const draw = (): void => {
+    frame = 0;
+    let drawn = 0;
+    for (const target of pending) {
+      if (drawn >= MAX_FLASHES) {
+        break;
+      }
+      const rect = target.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        continue;
+      }
+      const now = performance.now();
+      const last = heat.get(target);
+      const count = last && now - last.time < 1000 ? last.count + 1 : 1;
+      heat.set(target, { count, time: now });
+      const box = document.createElement('div');
+      box.className = `flash ${count >= 5 ? 'hot' : count >= 2 ? 'warm' : ''}`;
+      box.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
+      layer.append(box);
+      setTimeout(() => box.remove(), FLASH_MS);
+      drawn++;
+    }
+    pending.clear();
+  };
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      let target: Node | null = record.target;
+      if (record.type === 'childList') {
+        // The elements that came in, or else the element that lost some.
+        const added = [...record.addedNodes].filter((node) => node.nodeType === 1);
+        for (const node of added) {
+          pending.add(node as Element);
+        }
+        if (added.length > 0) {
+          continue;
+        }
+      }
+      if (target.nodeType !== 1) {
+        target = target.parentElement;
+      }
+      if (
+        target &&
+        target !== host &&
+        target !== document.documentElement &&
+        target !== document.body
+      ) {
+        pending.add(target as Element);
+      }
+    }
+    for (const target of pending) {
+      // The devtools change their own markup, and the host carries their styles.
+      if (target === host || host.contains(target)) {
+        pending.delete(target);
+      }
+    }
+    if (pending.size > 0 && frame === 0) {
+      frame = requestAnimationFrame(draw);
+    }
+  });
+  state.setFlash = (on) => {
+    state.flash = on;
+    if (on) {
+      observer.observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
+    } else {
+      observer.disconnect();
+      pending.clear();
+      layer.replaceChildren();
+    }
+    try {
+      localStorage.setItem(FLASH_KEY, on ? '1' : '0');
+    } catch {
+      // Storage can be off.
+    }
+    state.changed?.();
+  };
+  let saved = false;
+  try {
+    saved = localStorage.getItem(FLASH_KEY) === '1';
+  } catch {
+    // Storage can be off.
+  }
+  if (saved) {
+    state.setFlash(true);
+  }
+}
+
 /** True for an error of code that is not of the page, such as of a browser extension. */
 const foreign = (stack: string | undefined, file = ''): boolean =>
   /^[a-z-]+-extension:/.test(file) ||
@@ -335,6 +452,7 @@ export function installDevtools(
     endpoint,
     meta,
     errors: [],
+    flash: false,
   };
   const load = (component: string, part: string, reason: string, done: Promise<unknown>): void => {
     const key = `${component}:${part}`;
@@ -499,6 +617,12 @@ export function installDevtools(
 .chevron { width: 12px; height: 12px; color: #a39a92; }
 .count { min-width: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #e5484d; color: #fff; font: 600 11px/18px system-ui, sans-serif; text-align: center; }
 .count:empty { display: none; }
+.flashes { position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
+.flash { position: fixed; box-sizing: border-box; border: 2px solid #7fd99a; border-radius: 3px; background: rgb(127 217 154 / 0.08); animation: flash 700ms ease-out forwards; }
+.flash.warm { border-color: #ffd166; background: rgb(255 209 102 / 0.1); }
+.flash.hot { border-color: #ff7a7a; background: rgb(255 122 122 / 0.12); }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .grip, .content { transition: none; } }
 `;
   // The closed panel: a grip on the bottom edge that grows into a pull tab on hover or focus, so
@@ -581,6 +705,7 @@ export function installDevtools(
     void import('./devtools-panel.ts').then(({ openPanel }) => openPanel(root, state, tab));
   };
   root.append(style, button);
+  installFlash(state, root, host);
 
   // Errors of code of the page in the browser. Errors of other code are left out.
   addEventListener('error', (event) => {

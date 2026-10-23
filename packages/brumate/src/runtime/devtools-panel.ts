@@ -208,6 +208,11 @@ svg path.edge.lit { stroke: var(--accent); stroke-width: 1.75; }
 svg path.edge.hot-edge { stroke: var(--yellow); stroke-width: 1.75; }
 svg path.edge.faded { opacity: 0.15; }
 pre.report { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: 11.5px/1.55 var(--mono); white-space: pre-wrap; }
+.inspect-card { position: fixed; z-index: 2147483647; display: flex; flex-direction: column; gap: 5px; max-width: 340px; padding: 9px 11px; border: 1px solid var(--line, #2f2c31); border-radius: 10px; background: #19181aee; color: #ece8e4; font: 12px/1.4 system-ui, -apple-system, sans-serif; box-shadow: 0 10px 28px #0008; pointer-events: none; backdrop-filter: blur(6px); }
+.inspect-card .card-head { display: flex; justify-content: space-between; gap: 12px; color: #ffb48a; }
+.inspect-card .card-component { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.inspect-card .card-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.inspect-card .card-hint { margin-top: 2px; padding-top: 6px; border-top: 1px solid #2f2c31; color: #6f6862; font-size: 11px; }
 .outline { position: fixed; pointer-events: none; border: 2px solid #ee7a3e; background: #ee7a3e22; border-radius: 3px; z-index: 2147483646; }
 `;
 
@@ -304,6 +309,8 @@ const ICONS = {
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
   report:
     '<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h6"/>',
+  flash:
+    '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="2.5"/>',
   pick: '<circle cx="12" cy="12" r="7"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
   close: '<path d="m6 9.5 6 6 6-6"/>',
   trash:
@@ -829,6 +836,15 @@ export function togglePanel(
     'aria-pressed': 'false',
     title: 'Click an element of the page to see its scope, handlers and code',
   });
+  // Outlines the elements that change on the page, as updates write them.
+  const flash = iconButton('flash', 'Updates', {
+    'aria-pressed': String(state.flash),
+    title: 'Outline the elements that change: green now and then, red often',
+  });
+  flash.addEventListener('click', () => {
+    state.setFlash?.(!state.flash);
+    flash.setAttribute('aria-pressed', String(state.flash));
+  });
   const close = iconButton('close', 'Close the devtools (Alt+Shift+D)', {}, true);
   close.addEventListener('click', () => togglePanel(root, state));
   const versions: HTMLElement[] = [
@@ -859,6 +875,7 @@ export function togglePanel(
       routeText,
       stats,
       element('span', { class: 'spacer' }),
+      flash,
       pick,
       close,
     ),
@@ -946,10 +963,116 @@ export function togglePanel(
     tab = 'elements';
     draw();
   };
+  // While picking, the element under the pointer is outlined, with a card of what brumate knows
+  // about it: its component, its place in the file, its scope, its handlers and what it reads.
+  const inspectCard = element('div', { class: 'inspect-card', role: 'tooltip' });
+  const hoverBox = element('div', { class: 'outline' });
+  let hovered: Element | undefined;
+  let hoverToken = 0;
+  const onHover = (event: PointerEvent): void => {
+    const target = event.target as Element | null;
+    if (!target?.closest || event.composedPath().includes(panel!) || target === hovered) {
+      return;
+    }
+    hovered = target;
+    void inspect(target);
+  };
+  const inspect = async (target: Element): Promise<void> => {
+    const token = ++hoverToken;
+    const rect = target.getBoundingClientRect();
+    hoverBox.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
+    root.append(hoverBox, inspectCard);
+    const tag = target.tagName.toLowerCase();
+    const classes = [...target.classList]
+      .slice(0, 2)
+      .map((name) => `.${name}`)
+      .join('');
+    const rows: (Node | string)[] = [
+      element(
+        'div',
+        { class: 'card-head' },
+        element('span', { class: 'mono' }, `${tag}${classes}`),
+        element('span', { class: 'sub' }, `${Math.round(rect.width)} × ${Math.round(rect.height)}`),
+      ),
+    ];
+    const anchored = target.closest('[b-b]');
+    const [id = '', anchorText = '0'] = anchored?.getAttribute('b-b')!.split(':') ?? [];
+    const scope = anchored ? scopeOf(id) : undefined;
+    if (scope) {
+      const { info, component: owner, place } = await anchorOf(scope, Number(anchorText));
+      if (token !== hoverToken) {
+        return;
+      }
+      rows.push(
+        element(
+          'div',
+          { class: 'card-component' },
+          element('strong', {}, info?.name ?? owner.m ?? 'component'),
+          element(
+            'span',
+            { class: 'mono sub' },
+            place?.at ? `${info?.file}:${place.at}` : (info?.file ?? ''),
+          ),
+        ),
+        element(
+          'div',
+          { class: 'sub' },
+          `scope ${scope.id} · ${info?.scopes[scope.k]?.label ?? 'scope'}${anchored === target ? '' : ` · in ${place?.label ?? 'an element'}`}`,
+        ),
+      );
+      const handled = target.closest('[b-on]');
+      if (handled && anchored!.contains(handled)) {
+        const handlers = element('div', { class: 'card-pills' });
+        for (const raw of (handled.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
+          const [head, ref = ''] = raw.split('=') as [string, string];
+          const [handlerComponent, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
+          const part = /^[hct]\d/.test(name) ? name : 'update';
+          const load =
+            state.loads.get(`${handlerComponent}:${part}`) ??
+            state.loads.get(`${handlerComponent}:all`);
+          handlers.append(
+            pill(
+              `${head} · ${load?.end === undefined ? 'not loaded' : 'loaded'}`,
+              load?.end === undefined ? '' : 'green',
+            ),
+          );
+        }
+        rows.push(handlers);
+      }
+      if (place && place.reads.length > 0) {
+        rows.push(
+          element('div', { class: 'card-pills' }, ...drawReads(scope, place.reads.slice(0, 4))),
+        );
+      }
+    } else {
+      rows.push(element('div', { class: 'sub' }, 'Nothing in the browser updates this element.'));
+    }
+    rows.push(element('div', { class: 'card-hint' }, 'Click to see it in Elements · Esc to stop'));
+    inspectCard.replaceChildren(...rows);
+    // Below the element, or above it when there is no room, and inside the window.
+    const cardHeight = inspectCard.offsetHeight;
+    const top =
+      rect.bottom + 8 + cardHeight < window.innerHeight
+        ? rect.bottom + 8
+        : Math.max(8, rect.top - 8 - cardHeight);
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - inspectCard.offsetWidth - 8);
+    inspectCard.style.cssText = `top:${top}px;left:${left}px`;
+  };
+  const onEscape = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      stopPicking();
+    }
+  };
   const stopPicking = (): void => {
     pick.setAttribute('aria-pressed', 'false');
     window.removeEventListener('click', onPick, true);
+    window.removeEventListener('pointermove', onHover, true);
+    window.removeEventListener('keydown', onEscape, true);
     document.documentElement.style.cursor = '';
+    hovered = undefined;
+    hoverToken++;
+    hoverBox.remove();
+    inspectCard.remove();
   };
   pick.addEventListener('click', () => {
     if (pick.getAttribute('aria-pressed') === 'true') {
@@ -960,6 +1083,8 @@ export function togglePanel(
     document.documentElement.style.cursor = 'crosshair';
     // On the window, so it runs before the listeners of the loader on the document.
     window.addEventListener('click', onPick, true);
+    window.addEventListener('pointermove', onHover, true);
+    window.addEventListener('keydown', onEscape, true);
   });
 
   const roots = (): Scope[] =>

@@ -64,7 +64,9 @@ In Components:
 
 - Click a value to change it. Type JSON, or text for a string, and press Enter. The page updates as if a handler wrote the value. Elements and functions cannot be changed.
 - Hover the label of a scope to outline its elements on the page.
-- Press **Pick**, then click an element of the page. The **Elements** tab shows it.
+- Press **Pick**, then point at an element of the page. A card shows its component, its place in the file, its scope, its handlers with whether their code loaded, and the values it reads. Click to see it in the **Elements** tab, or press Escape to stop.
+
+**Updates** in the header outlines each element as it changes: green for one that changes now and then, yellow and red for one that changes often. The choice is kept between pages.
 
 Until you press the button, only a small listener runs, so the page behaves as in production. Opening the panel loads the core of the page, so it can show the components before any event. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
 
