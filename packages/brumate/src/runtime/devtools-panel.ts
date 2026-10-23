@@ -812,6 +812,8 @@ function tickStep(rough: number): number {
 let panel: HTMLElement | undefined;
 /** Switches the tab of the open panel. */
 let showTab: ((tab: Tab) => void) | undefined;
+/** Stops picking, with its outline and card, when the panel closes. */
+let endPick: (() => void) | undefined;
 
 /** Opens the panel on a tab, or switches to it when the panel is open. */
 export function openPanel(root: ShadowRoot, state: DevtoolsState, tab: string): void {
@@ -830,6 +832,9 @@ export function togglePanel(
 ): void {
   const opener = root.querySelector<HTMLElement>('button.open');
   if (panel) {
+    // Pick has no button, nor the styles of its card, without the panel.
+    endPick?.();
+    endPick = undefined;
     panel.remove();
     panel = undefined;
     state.changed = undefined;
@@ -1126,6 +1131,7 @@ export function togglePanel(
       stopPicking();
     }
   };
+  endPick = (): void => stopPicking();
   const stopPicking = (): void => {
     pick.setAttribute('aria-pressed', 'false');
     window.removeEventListener('click', onPick, true);

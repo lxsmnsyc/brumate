@@ -398,7 +398,15 @@ describe('devtools', () => {
     // Escape stops picking, and the card goes.
     dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(shadow.querySelector('.inspect-card')).toBeNull();
+    // Closing the panel stops picking too, as the card has no styles without it.
+    pick.click();
     togglePanel(shadow, state);
+    document
+      .querySelector('.go')!
+      .dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(shadow.querySelector('.inspect-card')).toBeNull();
+    expect(document.documentElement.style.cursor).toBe('');
   });
 
   it('times handlers, with the server calls and the updates that ran meanwhile', async () => {
