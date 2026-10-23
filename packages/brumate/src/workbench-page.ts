@@ -1,3 +1,5 @@
+import { LOGO } from './runtime/logo.ts';
+
 // The page of the workbench in the dev server. The sidebar lists the components that depend
 // only on their props, and apart the ones that need more, with why. The canvas renders the
 // picked component in a frame, on the server and resumed in the browser, as a page does, and
@@ -11,6 +13,7 @@ export function workbenchPage(base: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Workbench · brumate</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(LOGO.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '))}">
 <style>
   :root {
     --bg: #121113; --surface: #19181a; --raised: #222023; --hover: #2a282c; --line: #2f2c31;
@@ -37,7 +40,7 @@ export function workbenchPage(base: string): string {
   /* Sidebar */
   #sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
   .brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
-  .brand i { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); }
+  .brand .logo { display: block; width: 22px; height: 22px; }
   .brand strong { font-size: 14px; }
   .brand span { margin-left: auto; color: var(--faint); font-size: 12px; }
   .search { margin: 0 12px 8px; position: relative; }
@@ -169,7 +172,7 @@ export function workbenchPage(base: string): string {
 </head>
 <body class="no-props">
 <aside id="sidebar">
-  <div class="brand"><i></i><strong>Workbench</strong><span id="total"></span></div>
+  <div class="brand"><span class="logo">${LOGO}</span><strong>Workbench</strong><span id="total"></span></div>
   <label class="search">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     <input id="filter" type="search" placeholder="Find a component" aria-label="Find a component">
