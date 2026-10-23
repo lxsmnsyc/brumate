@@ -30,6 +30,8 @@ export interface Plan {
   bodyScopes: Map<Body, Scope>;
   /** The anchor index of a node within its scope. */
   anchors: Map<AnchorTarget, number>;
+  /** The scope of each anchor, for the devtools, which find an element by its scope and anchor. */
+  anchorScopes: Map<AnchorTarget, Scope>;
   /**
    * Inserts that are the only content of their element. They share the
    * element's anchor and update its children, so they have no markers.
@@ -232,9 +234,11 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   }
 
   const anchors = new Map<AnchorTarget, number>();
+  const anchorScopes = new Map<AnchorTarget, Scope>();
   const anchor = (scope: Scope, target: AnchorTarget): void => {
     const plan = scopes.get(scope)!;
     anchors.set(target, plan.anchors++);
+    anchorScopes.set(target, scope);
     plan.needsId = true;
   };
 
@@ -345,6 +349,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         }
         if (content) {
           anchors.set(content, anchors.get(node)!);
+          anchorScopes.set(content, scope);
           contents.add(content);
           if (node.kind === 'element' && RAW_TEXT.has(node.tag.toLowerCase())) {
             textContents.add(content);
@@ -536,6 +541,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     scopes,
     bodyScopes,
     anchors,
+    anchorScopes,
     contents,
     textContents,
     elementItems,

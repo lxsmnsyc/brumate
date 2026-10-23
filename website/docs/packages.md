@@ -34,7 +34,7 @@ A package cannot ship routes. The routes of an app come only from its own `src/r
 
 - `brumate` tells the plugin of the app that the package ships `.brm` files. `dir` names the folder to search, so test files stay out. Without `dir`, or with `"brumate": true`, the plugin searches the whole package. Folders named `node_modules` and hidden folders are skipped.
 - `version` is the version of this field. This version of brumate reads `1`. A package with another version fails the start of Vite with a message that names it.
-- `exports` lets the app import `@acme/ui/Button.brm`. Export each `.brm`, `.brm.ts` and `'use server'` file that the app imports. The plugin reads the `import`, `module`, `node`, `browser` and `default` conditions, and a `brumate` condition if you need one.
+- `exports` lets the app import `@acme/ui/Button.brm`. Export each `.brm`, `.brm.ts` and `'use server'` file that the app imports. An export can name a `.brm.ts` module without its extension, such as `"./forms": "./src/forms.brm.ts"`, and the app imports it as `@acme/ui/forms`. The plugin reads the `import`, `module`, `node`, `browser` and `default` conditions, and a `brumate` condition if you need one.
 - `files` publishes the source.
 - `sideEffects` lets the bundler drop modules that the app does not use. List the stylesheets that the package imports for their effect, such as `import './theme.css'`, or the bundler drops them. The styles of `.brm` files are part of the components, so they need no entry.
 - `peerDependencies` names the versions of brumate that the package works with. See [Versions](#versions).

@@ -357,6 +357,18 @@ importers:
 
   packages/brumate:
     dependencies:
+      '@twinkleplop/core':
+        specifier: 0.3.1
+        version: 0.3.1
+      '@twinkleplop/css':
+        specifier: 0.1.7
+        version: 0.1.7
+      '@twinkleplop/theme-github':
+        specifier: 0.2.4
+        version: 0.2.4
+      '@twinkleplop/tsx':
+        specifier: 0.1.7
+        version: 0.1.7
       oxc-parser:
         specifier: ^0.154.0
         version: 0.154.0

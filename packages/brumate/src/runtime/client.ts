@@ -5,6 +5,7 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  handlerEntry,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -34,8 +35,8 @@ export {
   classAttribute,
   escape,
   mergeAttributes,
+  onAttribute,
   raw,
-  spread,
   vars,
 } from './html.ts';
 export type { Raw } from './html.ts';
@@ -167,11 +168,36 @@ export interface DevtoolsHooks {
   attach?(core: {
     scopes: Map<ScopeId, Scope>;
     set: (scope: Scope, slot: number, value: unknown) => void;
+    /** Runs the code of a reference for an element, as an event or a trigger does. */
+    handle?: (element: Element, ref: string, event?: Event) => Promise<unknown>;
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
   /** A part of a component's client code loaded. */
   part?(component: string, name: string): void;
+  /**
+   * A handler ran: when its event came, when its code was ready and the
+   * handlers before it had started, when the call returned, and what it
+   * returned, which is a promise for an async handler.
+   */
+  handled?(run: {
+    ref: string;
+    element: Element;
+    event?: string;
+    begun: number;
+    ready: number;
+    end: number;
+    result: unknown;
+  }): void;
+  /** The updates of a write ran: how many, and how long they took with their effects. */
+  updated?(count: number, start: number, end: number): void;
+  /**
+   * Code of a component starts to load: its entry, or a part, and why.
+   * `done` settles when it has loaded.
+   */
+  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
+  /** The loader asks the server for the body of a `#defer` block. */
+  defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
   write?(scope: Scope, slot: number, value: unknown): void;
 }
@@ -266,7 +292,7 @@ function refresh(added: Scope[]): void {
     if (!id) {
       continue;
     }
-    void loadModule(id).then(async (module) => {
+    void loadModule(id, 'state').then(async (module) => {
       const names = new Set<string>();
       for (const slots of Object.values(module.g)) {
         for (const entries of Object.values(slots)) {
@@ -280,7 +306,7 @@ function refresh(added: Scope[]): void {
       if (names.size === 0) {
         return;
       }
-      const updates = await loadPart(module, 'update');
+      const updates = await loadPart(module, 'update', 'state');
       // Memos first, so the other updates read their new values.
       for (const name of [...names].toSorted(
         (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
@@ -595,16 +621,52 @@ export function init(value: CoreOptions): void {
   indexMarkers(document.documentElement);
   watchTitles(document);
   if (DEV) {
-    devtools()?.attach?.({ scopes, set });
+    devtools()?.attach?.({ scopes, set, handle });
   }
+}
+
+/**
+ * The handlers that the core makes from references, with their references,
+ * so a spread in markup that the browser renders passes them on in `b-on`,
+ * as a spread on the server does.
+ */
+const handlerReferences = new WeakMap<object, FunctionReference>();
+
+/** The modifiers that the wrappers of `brumate/events` put on a handler. */
+const MODIFIERS = Symbol.for('brumate.modifiers');
+
+/**
+ * Renders an object of attributes. With `on`, a handler in it that the core
+ * made from a reference goes into `on` as a `b-on` entry, with the scope and
+ * the arguments of its reference and the modifiers of its wrappers.
+ */
+export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  if (on) {
+    for (const [name, value] of Object.entries(attributes)) {
+      const reference =
+        /^on[A-Z]/.test(name) && typeof value === 'function'
+          ? handlerReferences.get(value)
+          : undefined;
+      if (reference) {
+        on.push(
+          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+        );
+      }
+    }
+  }
+  return spreadText(attributes);
 }
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof FunctionReference) {
-    return isTemplate(value.ref)
-      ? templateReference(value.ref, scopes.get(value.scope))
-      : (...args: unknown[]) => call(value.ref, scopes.get(value.scope), args);
+    if (isTemplate(value.ref)) {
+      return templateReference(value.ref, scopes.get(value.scope));
+    }
+    const handler = (...args: unknown[]): unknown =>
+      call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
+    handlerReferences.set(handler, value);
+    return handler;
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
@@ -619,7 +681,22 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-export function loadModule(id: string): Promise<ClientModule> {
+/**
+ * Why the core loads code, for the Loading tab of the devtools: an event,
+ * a call of a function prop, a template, the scopes of a state record, a
+ * write, an error, a reset of `#try`, or a prop of a child.
+ */
+export type LoadReason =
+  | 'event'
+  | 'call'
+  | 'template'
+  | 'state'
+  | 'write'
+  | 'error'
+  | 'reset'
+  | 'prop';
+
+export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -629,11 +706,18 @@ export function loadModule(id: string): Promise<ClientModule> {
       return module;
     });
     loading.set(id, promise);
+    if (DEV) {
+      devtools()?.load?.(id, 'entry', reason, promise);
+    }
   }
   return promise;
 }
 
-export function loadPart(module: ClientModule, name: string): Promise<Part> {
+export function loadPart(
+  module: ClientModule,
+  name: string,
+  reason: LoadReason = 'write',
+): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -647,6 +731,9 @@ export function loadPart(module: ClientModule, name: string): Promise<Part> {
       },
     );
     parts.set(key, promise);
+    if (DEV) {
+      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
+    }
   }
   return promise;
 }
@@ -656,11 +743,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string): Promise<Handler> {
+async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id);
-    const part = await loadPart(module, partOf(name));
+    const module = await loadModule(id, reason);
+    const part = await loadPart(module, partOf(name), reason);
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -700,7 +787,7 @@ async function serverBuild(): Promise<string | undefined> {
 }
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  return (await resolve(ref))(scope, ...args);
+  return (await resolve(ref, 'call'))(scope, ...args);
 }
 
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
@@ -718,7 +805,7 @@ const loadingTemplates = new Set<Promise<unknown>>();
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
   let render: Handler | undefined;
   // A template that fails to load stops holding up updates too, and its error is reported.
-  const code: Promise<unknown> = resolve(ref)
+  const code: Promise<unknown> = resolve(ref, 'template')
     .then((handler) => {
       render = handler;
     })
@@ -753,23 +840,42 @@ function withTarget(event: Event, element: Element): Event {
  */
 export function handle(element: Element, entry: string, event?: Event): Promise<unknown> {
   // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
-  const [ref, owner] = entry.split('@') as [string, string | undefined];
+  // A handler that `$handler` made has its arguments after another `@`.
+  const [ref, owner, encoded] = entry.split('@') as [string, string | undefined, string?];
+  const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
   }
-  const args = event ? [withTarget(event, element)] : [];
+  const args = event ? [...bound, withTarget(event, element)] : bound;
+  const begun = DEV ? performance.now() : 0;
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref);
+  const loaded = resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
-    .then((handler) => ({ value: handler(scope, ...args) }));
+    .then((handler) => {
+      if (!DEV) {
+        return { value: handler(scope, ...args) };
+      }
+      const ready = performance.now();
+      const value = handler(scope, ...args);
+      devtools()?.handled?.({
+        ref,
+        element,
+        event: event?.type,
+        begun,
+        ready,
+        end: performance.now(),
+        result: value,
+      });
+      return { value };
+    });
   lastHandler = started.catch(() => {});
   // An error of the handler, or of the promise that an async one returns, goes to the nearest
   // `#try` around its scope.
@@ -796,7 +902,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id);
+      const module = await loadModule(id, 'error');
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -824,7 +930,7 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update');
+  const updates = await loadPart(module, 'update', 'error');
   const start = findComment(`b${owner.id}:${anchor}`);
   if (!start) {
     return;
@@ -1224,7 +1330,15 @@ let flushing = false;
 /** Counts changes to the scope tree, so `run` knows when the descendants it found are out of date. */
 let treeChanges = 0;
 
+/** The updates that ran since the outermost `run` started, and when it started, for the devtools. */
+let updateCount = 0;
+let updateStart = 0;
+
 function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+  if (DEV && running === 0) {
+    updateCount = 0;
+    updateStart = performance.now();
+  }
   running++;
   // The descendants of each kind, found once while the tree does not change.
   let found: Map<number, Scope[]> | undefined;
@@ -1255,11 +1369,17 @@ function run(module: ClientModule, updates: Part, scope: Scope, slot: number): v
   }
   if (running === 0) {
     flushEffects();
+    if (DEV) {
+      devtools()?.updated?.(updateCount, updateStart, performance.now());
+    }
   }
 }
 
 /** Runs an update on a scope. An effect waits until the other updates have run. */
 function runUpdate(fn: (scope: Scope) => void, name: string, target: Scope): void {
+  if (DEV) {
+    updateCount++;
+  }
   if (name[0] === 'e') {
     pendingEffects.set(`${target.id}:${name}`, () => {
       if (scopes.has(target.id)) {
@@ -1706,7 +1826,7 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id), 'update');
+  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
   const start = findComment(`b${scope.id}:${anchor}`);
   if (!start) {
     return;
@@ -2229,7 +2349,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m).then(apply);
+    void loadModule(child.m, 'prop').then(apply);
   }
 }
 
@@ -2322,7 +2442,10 @@ export function children(from: Scope | ScopeId | undefined, html: () => string):
 export type Component<P = any> = (props: P) => string;
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
-  return typeof scope === 'object' ? scope : scope === undefined ? undefined : scopes.get(scope);
+  if (typeof scope === 'object') {
+    return scope;
+  }
+  return scope === undefined ? undefined : scopes.get(scope);
 }
 
 /**
@@ -2532,13 +2655,31 @@ export function addStyle(id: string, css: string): string {
 }
 
 /** A function prop rendered on the client calls the parent's exported handler. */
-export function handlerProp(value: unknown, ref: string, scope: Scope | number): unknown {
+export function handlerProp(
+  value: unknown,
+  ref: string,
+  scope: Scope | number,
+  bound: unknown[] = [],
+  modifiers?: string[],
+): unknown {
   // A template renders at once, and the client has its code already.
   if (typeof value !== 'function' || isTemplate(ref)) {
     return value;
   }
   const instance = resolveScope(scope);
-  return (...args: unknown[]) => call(ref, instance, args);
+  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
+  // A scope that is not in the page yet has its ID in `scope`.
+  handlerReferences.set(
+    handler,
+    new FunctionReference(
+      ref,
+      instance?.id ?? (scope as ScopeId),
+      bound.length > 0 ? bound : undefined,
+      modifiers ?? (value as { [MODIFIERS]?: string[] })[MODIFIERS],
+    ),
+  );
+  return handler;
 }
 
 /**

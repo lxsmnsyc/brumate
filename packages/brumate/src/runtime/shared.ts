@@ -43,10 +43,16 @@ export class FunctionReference {
   /** `<component id>#<export name>`. */
   readonly ref: string;
   readonly scope: ScopeId;
+  /** The arguments of a handler that `$handler` made, which come before the event. */
+  readonly args: unknown[] | undefined;
+  /** The modifiers of the wrappers of a handler, such as `prevent`, for the `b-on` of a spread. */
+  readonly modifiers: string[] | undefined;
 
-  constructor(ref: string, scope: ScopeId) {
+  constructor(ref: string, scope: ScopeId, args?: unknown[] | null, modifiers?: string[]) {
     this.ref = ref;
     this.scope = scope;
+    this.args = args ?? undefined;
+    this.modifiers = modifiers;
   }
 }
 
@@ -62,7 +68,12 @@ export const stateValues: {
   /** An element that the server rendered, by its scope and anchor. */
   e: (scope: ScopeId, anchor: number) => ElementReference;
   /** A client function, by its reference and scope. */
-  f: (ref: string, scope: ScopeId) => FunctionReference;
+  f: (
+    ref: string,
+    scope: ScopeId,
+    args?: unknown[] | null,
+    modifiers?: string[],
+  ) => FunctionReference;
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
   /**
@@ -73,7 +84,7 @@ export const stateValues: {
   c: (id: string) => ComponentValue;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
-  f: (ref, scope) => new FunctionReference(ref, scope),
+  f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
   c: (id) => Object.assign(() => '', { brumateId: id }),
 };

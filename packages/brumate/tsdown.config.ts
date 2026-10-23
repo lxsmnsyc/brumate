@@ -15,6 +15,8 @@ export default defineConfig({
     'src/runtime/routes.ts',
     'src/runtime/batch.ts',
     'src/runtime/events.ts',
+    'src/highlight.ts',
+    'src/runtime/forms.ts',
     'src/runtime/devtools.ts',
     'src/runtime/hot.ts',
     'src/vite.ts',

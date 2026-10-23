@@ -5,8 +5,10 @@ import {
   actionAttributes,
   escape,
   escapeAttribute,
+  handlerEntry,
   insertValue,
   isRaw,
+  onAttribute,
   rawHTML,
   spread as spreadAttributes,
   styleElement,
@@ -90,6 +92,16 @@ export type {
   RequestKind,
 } from './request.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
+export { parseSubmission } from './submission.ts';
+export type {
+  FailedSubmission,
+  IntentSubmission,
+  ReplyOptions,
+  Submission,
+  SubmissionOptions,
+  SuccessfulSubmission,
+} from './submission.ts';
+export type { Intent, SubmissionResult } from './forms.ts';
 export { RateLimitError, clientAddress, configureRateLimit, rateLimit } from './rate-limit.ts';
 export type {
   RateLimit,
@@ -639,12 +651,24 @@ export class Context {
     return new ElementReference(scope, anchor);
   }
 
-  /** Marks a function as a client function, so it serializes as a reference. */
-  fn<T>(value: T, ref: string, scope: ScopeId): T {
-    if (typeof value === 'function') {
-      functionReferences.set(value, new FunctionReference(ref, scope));
+  /**
+   * Marks a function as a client function, so it serializes as a reference.
+   * `args` are the arguments of a handler that `$handler` made, which go
+   * with the reference. Each call makes a new reference, so a function that
+   * `$handler` marks gets a copy for its arguments.
+   */
+  fn<T>(value: T, ref: string, scope: ScopeId, args?: unknown[]): T {
+    if (typeof value !== 'function') {
+      return value;
     }
-    return value;
+    if (args === undefined) {
+      functionReferences.set(value, new FunctionReference(ref, scope));
+      return value;
+    }
+    const bound = Object.assign((...rest: unknown[]) => value(...args, ...rest), value) as T &
+      object;
+    functionReferences.set(bound, new FunctionReference(ref, scope, args));
+    return bound;
   }
 
   /** Returns a component's stylesheet the first time the page renders the component. */
@@ -1177,14 +1201,14 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
     return false;
   }
   seen.add(value);
-  const items =
-    value instanceof Map
-      ? [...value.keys(), ...value.values()]
-      : value instanceof Set
-        ? [...value]
-        : Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype
-          ? Object.values(value)
-          : [];
+  let items: unknown[] = [];
+  if (value instanceof Map) {
+    items = [...value.keys(), ...value.values()];
+  } else if (value instanceof Set) {
+    items = [...value];
+  } else if (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype) {
+    items = Object.values(value);
+  }
   return items.some((item) => holds(item, target, seen));
 }
 
@@ -1345,8 +1369,8 @@ function groupSource(
   }
   const value = record(source[0])?.s?.[source[1]];
   // Seroval keeps the order of a Set. A Map's entries are new arrays, which the check below rejects.
-  const list = Array.isArray(value) ? value : value instanceof Set ? Array.from(value) : undefined;
-  if (!list || list.length < entries.length) {
+  const list = value instanceof Set ? Array.from(value) : value;
+  if (!Array.isArray(list) || list.length < entries.length) {
     return undefined;
   }
   for (let n = 0; n < entries.length; n++) {
@@ -3097,17 +3121,11 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
         ? functionReferences.get(value)
         : undefined;
     if (reference) {
-      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS] ?? [];
-      on!.push(
-        `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${reference.ref}@${reference.scope}`,
-      );
+      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
+      on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
     }
   }
   return spreadAttributes(attributes);
 }
 
-/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
-export function onAttribute(on: string[], own: string): string {
-  const value = [own, ...on].filter(Boolean).join(' ');
-  return value ? ` b-on="${escapeAttribute(value)}"` : '';
-}
+export { onAttribute };

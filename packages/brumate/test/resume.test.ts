@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
+import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
 import { handleRoute, render as renderParts, stateScript } from '../src/runtime/server.ts';
 import type { PageState } from '../src/runtime/server.ts';
@@ -26,6 +27,15 @@ beforeAll(() => {
   );
   // Compiled as the Vite plugin does, with the props that parents can change.
   const liveProps = analyzeProject(sources);
+  // `brumate/forms`, a module function of the package, as if it were next to the components.
+  const forms = {
+    path: join(input, 'forms.brm.ts'),
+    source: readFileSync(resolve(import.meta.dirname, '../forms/forms.brm.ts'), 'utf8'),
+  };
+  writeFileSync(join(output, 'forms.brm.ts'), forms.source);
+  writeFileSync(join(output, 'forms.brm.ts.shared.ts'), generateShared(forms).code);
+  const resolveModule = (specifier: string, importer: string) =>
+    specifier === 'brumate/forms' ? forms : resolveFromDisk(specifier, importer);
   for (const name of readdirSync(input)) {
     if (!name.endsWith('.brm')) {
       copyFileSync(join(input, name), join(output, name));
@@ -40,6 +50,7 @@ beforeAll(() => {
       filename: name,
       liveProps: liveProps.get(name),
       path: join(input, name),
+      resolveModule,
     });
     for (const [part, code] of Object.entries(parts)) {
       writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
@@ -613,6 +624,41 @@ describe('resume', () => {
     expect(event.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('parent'));
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
+  });
+
+  it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {
+    const server = await import(file('scriptHandlers.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(/class="one" b-on="click:prevent=ScriptHandlers_\w+#h\d+@\d+"/);
+    expect(html).toMatch(/class="add5" b-on="click=ScriptHandlers_\w+#h\d+@\d+@%5B5%5D"/);
+    await resume('scriptHandlers', {});
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('.one')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    click(document.querySelector('.add5')!);
+    await waitFor(() => expect(text('.count')).toBe('6'));
+    click(document.querySelector('.add10')!);
+    await waitFor(() => expect(text('.count')).toBe('16'));
+  });
+
+  it('passes on the handlers of spreads in markup that the browser renders', async () => {
+    await resume('scriptHandlerList', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1', 'item2']));
+    // A button that the browser rendered: its `$handler` with its argument and its wrapper.
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.remove')[2]!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1']));
+    // A handler that the parent passed through the spread of a component the browser rendered.
+    const forward = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.forward')[1]!.dispatchEvent(forward);
+    expect(forward.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('item1'));
+    click(document.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(texts('.item')).toEqual(['item1']));
   });
 
   it('removes the attributes that a spread drops, and keeps the element own', async () => {
@@ -1897,6 +1943,158 @@ describe('validation with $action', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await waitFor(() => expect(text('.welcome')).toBe('Welcome ada@example.com'));
     expect(document.querySelector('.error')).toBeNull();
+  });
+});
+
+/** Presses a submit button of a form, as a browser does. */
+function pressSubmit(form: HTMLFormElement, button: Element): void {
+  const event = new Event('submit', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'submitter', { value: button });
+  form.dispatchEvent(event);
+}
+
+/** Renders the order form, resumes it, and answers its posts with its server functions. */
+async function showOrder(): Promise<HTMLFormElement> {
+  vi.resetModules();
+  const server = await import(file('orderForm.brm.ts'));
+  const runtime = await import('../src/runtime/server.ts');
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+  );
+  const { html, state } = await runtime.render(server.default, {});
+  show(html + state);
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  return document.querySelector<HTMLFormElement>('.order')!;
+}
+
+describe('createForm', () => {
+  it('renders the fields with names, IDs and default values', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    expect(email.name).toBe('email');
+    expect(form.querySelector('label')!.getAttribute('for')).toBe(email.id);
+    expect(email.id).toBe(`${form.id}-email`);
+    expect([...form.querySelectorAll<HTMLInputElement>('.item')].map((item) => item.name)).toEqual([
+      'items[0].name',
+    ]);
+    const insert = form.querySelector<HTMLButtonElement>('.insert')!;
+    expect(insert.name).toBe('__intent');
+    expect(insert.hasAttribute('formnovalidate')).toBe(true);
+    expect(JSON.parse(insert.value)).toEqual({ type: 'insert', name: 'items' });
+    expect(form.querySelector('.default')!.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('shows the errors of each field, with the values that were posted', async () => {
+    const form = await showOrder();
+    form.querySelector<HTMLInputElement>('.email')!.value = 'nope';
+    // happy-dom leaves empty values out of the body of a request, so each field has one.
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(email.getAttribute('aria-describedby')).toBe(`${email.id}-error`);
+    expect(document.querySelector('.email-error')!.id).toBe(`${email.id}-error`);
+    expect(document.querySelector('.email-error')!.getAttribute('role')).toBe('alert');
+    expect(email.getAttribute('value')).toBe('nope');
+  });
+
+  it('applies intents on the server, and keeps what was typed', async () => {
+    const form = await showOrder();
+    form.querySelector<HTMLInputElement>('.email')!.value = 'ada@example.com';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.insert')!);
+    await waitFor(() => expect(form.querySelectorAll('.item')).toHaveLength(2));
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
+      ['items[0].name', 'Tea'],
+      ['items[1].name', ''],
+    ]);
+    // An intent shows no errors, for fields that the user has not filled yet.
+    expect(document.querySelector('.item-error')).toBeNull();
+    itemInputs()[1]!.value = 'Milk';
+    pressSubmit(form, form.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(itemInputs().map((item) => item.value)).toEqual(['Milk']));
+    expect(itemInputs()[0]!.name).toBe('items[0].name');
+    expect(form.querySelector<HTMLInputElement>('.email')!.value).toBe('ada@example.com');
+  });
+
+  it('validates in the browser when the user leaves a field, then as the user types', async () => {
+    const form = await showOrder();
+    expect(form.getAttribute('b-on')).toMatch(/focusout=\S+ input=\S+/);
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    // Typing in a field that the user has not left shows nothing yet.
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    email.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    // The item is not touched, so its error does not show.
+    expect(document.querySelector('.item-error')).toBeNull();
+    email.value = 'ada@example.com';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(document.querySelector('.email-error')).toBeNull());
+    expect(email.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('validates every field as the user types after a submit', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    const item = form.querySelector<HTMLInputElement>('.item')!;
+    item.value = '';
+    item.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.item-error')).toBe('Name the item'));
+    expect(text('.email-error')).toBe('Enter an email address');
+  });
+
+  it('applies the buttons of a list in the browser, without a post', async () => {
+    const form = await showOrder();
+    const posts = vi.fn<typeof fetch>(globalThis.fetch);
+    vi.stubGlobal('fetch', posts);
+    const insert = form.querySelector('.insert')!;
+    expect(insert.getAttribute('b-on')).toMatch(/^click:prevent=/);
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    itemInputs()[0]!.value = 'Tea';
+    const first = itemInputs()[0];
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    insert.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(itemInputs()).toHaveLength(2));
+    // The first item keeps its element and what was typed in it.
+    expect(itemInputs()[0]).toBe(first);
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
+      ['items[0].name', 'Tea'],
+      ['items[1].name', ''],
+    ]);
+    itemInputs()[1]!.value = 'Milk';
+    const second = itemInputs()[1];
+    // The new item, which the browser rendered, has a button that works too.
+    click(form.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(itemInputs()).toEqual([second]));
+    expect(second!.name).toBe('items[0].name');
+    expect(second!.value).toBe('Milk');
+    expect(posts).not.toHaveBeenCalled();
+  });
+
+  it('shows the errors of the form, and resets the form after a save', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'taken@example.com';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.form-error')).toBe('That email has an order already'));
+    email.value = 'ada@example.com';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.saved')).toBe('Saved'));
+    await waitFor(() => expect(document.querySelector('.form-error')).toBeNull());
+    await waitFor(() => expect(email.value).toBe(''));
+    expect(form.querySelector<HTMLInputElement>('.item')!.value).toBe('');
   });
 });
 

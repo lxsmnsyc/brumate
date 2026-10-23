@@ -24,6 +24,9 @@ function pageNonce(): string | undefined {
   return undefined;
 }
 
+/** The templates whose bodies were asked for. */
+const requested = new WeakSet<Element>();
+
 /**
  * Asks the server for the body of the `#defer` block of a `<template
  * b-defer>`, and puts it in place of the fallback. When the server cannot
@@ -31,6 +34,11 @@ function pageNonce(): string | undefined {
  * that answers with the whole page, the fallback stays.
  */
 export async function loadDeferred(template: Element): Promise<void> {
+  // Once, so the devtools can fire the trigger before the loader does.
+  if (requested.has(template)) {
+    return;
+  }
+  requested.add(template);
   const [, boundary, base] = template.getAttribute('b-defer')!.split(':') as [
     string,
     string,

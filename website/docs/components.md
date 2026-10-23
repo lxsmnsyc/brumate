@@ -155,8 +155,42 @@ A handler that the caller passes, such as `onClick`, goes through `{...rest}` to
 ```
 
 - The caller's handler runs in the caller's component, as if the caller had put it on the element.
-- A spread passes on handlers that the server renders. A function that the component makes itself, such as one that calls `rest.onClick`, cannot go through a spread: put it on the element as its own handler instead.
-- Markup that the browser renders, such as a new item of a `#for`, gets the attributes of a spread, and not its handlers yet.
+- A spread passes on handlers on the server and in markup that the browser renders, such as a new item of a `#for`.
+- A function that the component makes itself, such as one that calls `rest.onClick`, goes through a spread only when `$handler` marks it. See below.
+
+### Handlers that a script makes
+
+A function in a script is not a handler until markup uses it, so a spread leaves it out. `$handler(fn, ...args)` from `brumate/signals` marks it as one. A function that makes the attributes of a button can then give its handler too:
+
+```brm live
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+
+  let items = $signal(['Milk', 'Bread', 'Eggs']);
+
+  function removeAt(index: number) {
+    items = items.filter((_, at) => at !== index);
+  }
+
+  const remove = (index: number) => ({
+    type: 'button',
+    'aria-label': `Remove ${items[index]}`,
+    onClick: $handler(prevent(removeAt), index),
+  });
+</script>
+
+<ul>
+  #for (item, index of items by item) {
+    <li>{item} <button {...remove(index)}>×</button></li>
+  }
+</ul>
+```
+
+- `index` is an argument: it goes with the handler, and the handler runs as `removeAt(index, event)`. Arguments are JSON values.
+- The handler reads the values of the component, such as `items`, as a handler in markup does. A value of the function around the call, such as `index`, must be an argument.
+- `prevent` applies before the code of the handler loads, as in markup.
+- A [module function](./reactive-modules.md) can call `$handler` too, so a library can give attributes with their handlers.
 
 ### `children`
 

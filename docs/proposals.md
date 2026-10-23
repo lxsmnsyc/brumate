@@ -4,11 +4,10 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`) and progressive forms (`brumate/forms`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Handlers from scripts](#handlers-from-scripts)                       | Syntax  | High   | Medium |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
@@ -27,108 +26,102 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, so they ar
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
 
 ## Syntax
 
-### Handlers from scripts
-
-A handler reaches the browser only when the compiler saw it in markup: it gives the code a part and a name, and the page refers to it in `b-on`. A handler that a caller passes as a prop goes through `{...rest}`, because the caller's markup named it. A function that a script or a module function makes, such as the `onClick` in an object of attributes, refers to nothing in the browser, so a spread leaves it out. Libraries that give attributes with behavior, such as the list helpers of [progressive forms](#progressive-forms) or the parts of [headless UI components](#headless-ui-components), need it to work.
-
-`$handler(fn, ...args)` from `brumate/signals` marks a function as a handler, as if it were written in markup:
-
-```ts
-// forms.brm.ts
-import { $handler, $signal } from 'brumate/signals';
-import { prevent } from 'brumate/events';
-
-export function list(path: string[]) {
-  let keys = $signal<string[]>([]);
-  function removeAt(index: number) {
-    keys = keys.filter((_, at) => at !== index);
-  }
-  return {
-    keys,
-    // The attributes of an intent button. Without scripts, it posts the intent.
-    remove: (index: number) => ({
-      type: 'submit',
-      name: '__intent',
-      value: JSON.stringify({ type: 'remove', name: path.join('.'), index }),
-      formnovalidate: true,
-      onClick: $handler(prevent(removeAt), index),
-    }),
-  };
-}
-```
-
-```brm
-#for (key, index of items.keys by key) {
-  <button {...items.remove(index)}>Remove</button>
-}
-```
-
-- `fn` is a function that the compiler can see: a function expression, or the name of a local or module function, in wrappers such as `prevent` or not. It compiles as a handler in markup does: a part of its own, whose reads and writes of signals are the slots of the scope where `$handler` is called.
-- `args` are the values that change with each call, such as `index`. They go with the reference, so they must be [sendable](../website/docs/reference-serialization.md). The handler runs as `fn(...args, event)`.
-- It can be called at the top of a component or block script, and in a module function, which the compiler copies into the component. A value that `fn` reads and that is neither a slot of the scope nor an argument is a compile error.
-- The server writes the reference into `b-on` with the modifiers of its wrappers and its arguments, such as `click:prevent=Forms_x1#h9@3[1]`. The loader applies `:prevent` before the code loads, and calls `h9(scope, 1, event)` on the click.
-- Wrappers such as `prevent` keep their names. They are functions at run time that the compiler also reads, and a `$` names a function that only the compiler runs.
-
-Markup that the browser renders, such as a new item of a `#for`, must get the handlers of its spreads too, which it does not yet. A list that grows in the browser is what forms need most, so this comes with it.
-
-Cost: about 1 week. The compiler reuses the extraction and the capture analysis of handlers in markup. The loader reads arguments in `b-on`, which changes the page format. Most of the time goes to the handlers of markup that the browser renders.
-
 ### Two-way binding
 
-Fields repeat the same pair of attributes:
+Some state is sometimes the parent's and sometimes the child's own, such as whether a dialog is open, or the value of a field. Today a parent that wants to own it passes a value and a handler that writes it back, and an element needs the same pair:
 
 ```html
 <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
 ```
 
-A `bind:` attribute writes it once:
+#### The design
 
-```html
-<input bind:value=draft>
-<input type="checkbox" bind:checked=done>
-<select bind:value=choice>…</select>
-```
+Three parts, each with one job:
 
-- `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
-- The target must be a signal, so the compiler checks the write.
-
-#### Bindable props
-
-A component such as a dialog, a tab list or a select has state that its parent sometimes wants to own, and sometimes not. Svelte 4 said so with `export let`, a prop that the child can write. Svelte 5 kept the idea inside its props, with `$bindable`, which fits `$props` here too:
+- `let` in the child: a prop that the component writes.
+- `Bindable<T>` in the type: a prop that a parent can bind.
+- `$bind(signal)` in the parent: the parent owns the value.
 
 ```html
 <!-- Dialog.brm -->
-<script>
-  import { $bindable, $props } from 'brumate/signals';
+<script lang="ts">
+  import type { Bindable } from 'brumate/signals';
 
-  let { open = $bindable(false), title } = $props<{ open?: boolean; title: string }>();
+  interface DialogProps {
+    title: string;
+    open?: Bindable<boolean>;
+    onOpen?: () => void;
+  }
+
+  const { title, onOpen } = $props<DialogProps>();
+  let { open = false } = $props<DialogProps>();
+
+  function show() {
+    open = true;
+    onOpen?.();
+  }
 </script>
-
-<button onClick=(() => (open = !open))>{title}</button>
-#if (open) {
-  <div role="dialog">…</div>
-}
 ```
 
 ```html
-<!-- A parent that owns the state, and one that does not. -->
-<Dialog title="Settings" bind:open=settingsOpen />
+<!-- The parent owns the value, and the child keeps its own. -->
+<Dialog title="Settings" open=$bind(settingsOpen) onOpen=track />
 <Dialog title="Help" />
+
+<input value=$bind(draft)>
+<input type="checkbox" checked=$bind(done)>
 ```
 
-- `let { name = $bindable(initial) } = $props()` declares a prop that the component can write. Other props stay `const`, so a write to them is a compile error, as now.
-- With `bind:name=signal`, the parent owns the value: a write in the child writes the parent's signal, and the parent's change reaches the child as any prop does. The target must be a signal of the parent.
-- With a plain `name=value`, or no attribute, the child owns it: a write changes the child's copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes.
-- `initial` is the value when the parent passes nothing.
-- On the server, nothing writes, so a bindable prop is its value. A bound child keeps its parent's scope and slot in the page state, so its writes in the browser go up without a request.
-- The type checker types `bind:name` as the prop's type, and reports it on a prop that is not bindable.
+#### In the child
 
-`export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
+- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning. A component can destructure `$props()` more than once, with `const` and with `let`.
+- Without a binding, the child writes its own copy, such as a prop that seeds a state that the child then edits. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
+- With a binding, a write goes to the parent's signal.
+- The child writes first and calls its handlers after, so a handler such as `onOpen` reads the new value. A write never calls a handler by itself.
+
+#### In the type
+
+`let` says that the child writes a prop. `Bindable<T>` says that a parent can bind it. They are apart, because a child can write its own copy of a prop that it does not share:
+
+|                                             | The child writes it                                  | A parent can `$bind` it                        |
+| ------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| `const { foo }`                             | No, it is a compile error                            | No                                             |
+| `let { foo }`, and `foo` is not `Bindable`  | Yes, its own copy                                    | No, it is a type error in the parent           |
+| `let { foo }`, and `foo` is `Bindable<T>`   | Yes, its own copy, or the parent's signal when bound | Yes                                            |
+| `const { foo }`, and `foo` is `Bindable<T>` | No                                                   | Yes, with a warning: the child never writes it |
+
+- `Bindable<T>` in a props interface marks a prop that a parent can bind. Inside the child, `$props<T>()` unwraps it, so `open` is a `boolean`.
+- With a typed `$props<T>()`, the type decides which props a parent can bind.
+- With an untyped `$props()`, the type checker reads `let` in the destructuring, and types those props as bindable, so a quick component needs no annotation.
+- The type checker warns about a `Bindable` prop that the child reads only with `const`.
+
+#### In the parent
+
+- `$bind(signal)` passes a reference to a signal, or to a `let` prop of the parent, which binds through more than one level. The compiler checks that the argument is one of those.
+- The type of `$bind(x)` is `Binding<T>`. A prop that is not `Bindable`, or of another type, does not accept it.
+- `$bind(signal, (next) => …)` calls the function for each write in place of writing the signal, so the parent can refuse a value or change it, such as keep a dialog open while a form has changes. The function is a client root, so it loads on the first write.
+- Handlers stay ordinary props. The binding keeps the state in step, and a handler such as `onOpen` is for side effects.
+
+#### On elements
+
+- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and an input handler. The handler is small and loads on the first input. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
+
+#### Through rest props and spreads
+
+- A binding is a value, as a function reference is: it serializes as the scope and the slot of its signal.
+- `...rest` keeps a binding as it is. Spread on an element, a binding on `value` or `checked` writes the value and adds the input handler, as a spread passes on handlers. Spread on a component, it binds that component's prop.
+- Reading `rest.value` gives the binding, not the value. To read or write a bound prop, destructure it by name with `let`.
+
+#### In the browser
+
+- On the server, nothing writes, so a bindable prop is its value.
+- A bound write in the browser writes the parent's slot through the reference, without the parent's code. The parent's updates load only when something in its markup reads the signal, as for any write. A handler loads only when the child calls it.
+
+Cost: about 1 week. The compiler work is `let` props, `$bind` on components and elements, and a binding through spreads. The runtime keeps a reference to a slot, as it keeps references to functions.
 
 ### Transitions
 
@@ -463,7 +456,7 @@ How it ships:
 - The panel stays in the page in development, so it needs no extension, and loads only when opened.
 - A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
 
-Cost: about 3 to 4 weeks for all of it. Elements, loading and blocks first, about 1 week, since the runtime already reports most of what they need.
+Elements, loading and blocks are done: see [Devtools](../website/docs/inspect.md#devtools). Showing a block's fallback again is not, since the page drops the fallback when the body arrives. The rest costs about 2 to 3 weeks.
 
 ### Component workbench
 
@@ -575,7 +568,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 #### What the compiler needs first
 
 1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
-2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. A part that makes its own handlers, and markup that the browser renders, need [handlers from scripts](#handlers-from-scripts). See [Components](../website/docs/components.md#handlers-in-a-spread).
+2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. A part that makes its own handlers gives them with [`$handler`](../website/docs/components.md#handlers-that-a-script-makes), and markup that the browser renders gets the handlers of its spreads. See [Components](../website/docs/components.md#handlers-in-a-spread).
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
 #### Questions to answer with a spike
@@ -608,16 +601,16 @@ Cost: about 2 weeks for the compiler work, then the phases of the roadmap below.
 
 The parts come from `react-aria-components` 1.22.1 (2026-10-09). Each phase ships when its parts have tests that follow React Aria's behaviour, an accessibility check, docs and live samples. A phase builds on the ones before it.
 
-| Phase                      | Parts                                                                                                                                                                                                                                                                                                | Needs                                                                                              | Cost                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                              | 3 to 4 weeks, with the compiler work |
-| 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [progressive forms](#progressive-forms).                      | 3 to 4 weeks                         |
-| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work. | 4 to 5 weeks                         |
-| 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                      | 6 to 8 weeks                         |
-| 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                           | 2 weeks                              |
-| 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                      | 4 to 6 weeks                         |
-| 6. Data                    | `Table` with sorting, selection and column resizing, `Tree`, `NavigationTree`, `TokenField`, `Virtualizer`, drag and drop with `DropZone`, and list and tree data helpers                                                                                                                            | Phase 3                                                                                            | 6 to 8 weeks                         |
-| 7. Color                   | `ColorPicker`, `ColorArea`, `ColorSlider`, `ColorWheel`, `ColorThumb`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`                                                                                                                                                                              | Phases 1 and 4                                                                                     | 3 to 4 weeks                         |
+| Phase                      | Parts                                                                                                                                                                                                                                                                                                | Needs                                                                                                | Cost                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                                | 3 to 4 weeks, with the compiler work |
+| 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [`createForm`](../website/docs/forms.md#forms-with-createform). | 3 to 4 weeks                         |
+| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work.   | 4 to 5 weeks                         |
+| 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                        | 6 to 8 weeks                         |
+| 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                             | 2 weeks                              |
+| 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                        | 4 to 6 weeks                         |
+| 6. Data                    | `Table` with sorting, selection and column resizing, `Tree`, `NavigationTree`, `TokenField`, `Virtualizer`, drag and drop with `DropZone`, and list and tree data helpers                                                                                                                            | Phase 3                                                                                              | 6 to 8 weeks                         |
+| 7. Color                   | `ColorPicker`, `ColorArea`, `ColorSlider`, `ColorWheel`, `ColorThumb`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`                                                                                                                                                                              | Phases 1 and 4                                                                                       | 3 to 4 weeks                         |
 
 Notes for each phase:
 
@@ -643,149 +636,6 @@ Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 month
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
 
-### Progressive forms
-
-A form library for brumate, `brumate/forms`. Its server side and wire format follow [Conform](https://conform.guide), which builds forms that work without scripts in Remix and Next.js. Its component API follows [Formisch](https://formisch.dev), which types field paths from the schema and keeps form state in signals. It is written in brumate. No React code runs.
-
-brumate forms already post without scripts, with `action=fn`, `parseForm` and `$action`. This adds lists, echoed values, form-level errors, accessibility attributes and validation in the browser on top.
-
-#### Libraries compared
-
-| Library       | Model                                                        | Without scripts | Lists                                              | Fit                                                         |
-| ------------- | ------------------------------------------------------------ | --------------- | -------------------------------------------------- | ----------------------------------------------------------- |
-| Conform       | Server first, built on `FormData`                            | Yes, by design  | Path names and intent buttons                      | The protocol to copy. Its API is made for React.            |
-| Superforms    | Server first, on SvelteKit form actions                      | Yes             | Yes. Its JSON mode for complex data needs scripts. | Close in spirit, tied to SvelteKit.                         |
-| Formisch      | Client first, one small core for many frameworks, on signals | No              | Typed paths from the schema                        | The API to copy. It has no story for forms without scripts. |
-| TanStack Form | Client first, with a store, and server validation in Start   | Not built in    | Yes                                                | Heavy, and its store does not resume.                       |
-
-So `brumate/forms` takes the wire format from Conform and the shape of the API from Formisch. Validation uses Standard Schema, as `parse` and `parseForm` do.
-
-#### Wire format
-
-- Field names are paths: `email`, `address.city`, `items[0].name`. `parseForm` learns bracket indexes too, so `items[0].name` makes an array. Its current rules for `a.b`, repeated names and `tags[]` stay.
-- An intent is a submit button with a reserved name. A button posts its value only when it is clicked, so intents work without scripts:
-
-  ```html
-  <button name="__intent" value='{"type":"remove","name":"items","index":1}' formnovalidate>Remove</button>
-  ```
-
-  The types are `insert`, `remove`, `reorder`, `reset` and `validate`.
-
-- The reply is data, so it goes through `$action` and the page state:
-
-  ```ts
-  type SubmissionResult = {
-    status: 'success' | 'error' | 'intent';
-    // The values as posted, after the intent. Files and passwords are left out.
-    value: unknown;
-    // The errors of each field, by path name.
-    errors: Record<string, string[]>;
-    // The errors of the whole form. They replace errors[''] of fieldErrors.
-    formErrors: string[];
-    // Stable keys of list items, for `#for … by`.
-    keys: Record<string, string[]>;
-  };
-  ```
-
-#### Server
-
-```ts
-import { parseSubmission } from 'brumate/forms';
-
-async function save(data: FormData) {
-  'use server';
-  const submission = await parseSubmission(data, Order);
-  if (submission.status !== 'success') {
-    // An intent, or values that failed the schema: send the values back.
-    return submission.reply();
-  }
-  if (await db.orders.exists(submission.value.id)) {
-    return submission.reply({ formErrors: ['That order exists already'] });
-  }
-  await db.orders.save(submission.value);
-  return submission.reply({ reset: true });
-}
-```
-
-- An intent changes the posted values. It inserts, removes or moves a list item and keeps the keys of the others. It reports no errors on fields that were not touched.
-- An intent is input from the browser, so it is checked: its path must exist in the posted values, indexes must be in range, lists have a maximum length, and path parts such as `__proto__` are rejected, as in `parseForm`.
-
-#### Component
-
-`createForm(fn, schema, options)` is a function of a `.brm.ts` module that ships with brumate. It makes the `$action` of `fn`, and keeps the state of the form in signals, so it resumes like any reactive module. A component destructures what it returns, as with any module function.
-
-```html
-<script>
-  import { createForm } from 'brumate/forms';
-
-  const { attrs, fields, errors, defaultSubmit } = createForm(save, Order, {
-    defaultValue: { items: [{ name: '' }] },
-  });
-</script>
-
-<form action=save {...attrs}>
-  <button {...defaultSubmit}></button>
-
-  <label for=(fields.email.id)>Email</label>
-  <input {...fields.email.attrs} type="email" required>
-  #if (fields.email.errors) {
-    <p {...fields.email.errorAttrs}>{fields.email.errors[0]}</p>
-  }
-
-  #for (item of fields.items.list by item.key) {
-    <input {...item.fields.name.attrs}>
-    <button {...item.remove}>Remove</button>
-  }
-  <button {...fields.items.insert}>Add an item</button>
-
-  #if (errors) {
-    <p role="alert">{errors[0]}</p>
-  }
-  <button>Save</button>
-</form>
-```
-
-- `fields` is a tree typed by the output of the schema: `fields.email`, `fields.address.city`, `fields.items`. A field has:
-  - `attrs`: `name`, `id`, `aria-invalid`, `aria-describedby`, and the echoed `value`, `checked` or `selected`.
-  - `errors`, `errorAttrs` (the id of the error, and `role="alert"` after a submit), and its typed default value.
-- A list field has `list`, its items with their keys, indexes and `fields`, and `insert`, the attributes of an intent button. Each item has `remove`, `moveUp` and `moveDown`. `fields.at(path)` takes a path as a string or an array, for a path that is not known in the code.
-- `errors` holds the errors of the whole form.
-- `attrs` holds the handlers of the form, `onFocusout`, `onInput` and `onClick`, made with [`$handler`](#handlers-from-scripts), so the `<form>` needs only `action` and the spread. `action=save` stays in the markup, since the compiler reads it.
-- The attributes of intent buttons hold a handler made with `$handler(prevent(…))`, so a click with scripts never posts the form, even before the code loads.
-- `defaultSubmit` is a hidden submit button. Enter in a field submits the first submit button of the form, so without it, Enter could press "Remove". The accessibility checks warn about a form that has intent buttons and no `defaultSubmit` first.
-- An echoed value never replaces what the user is typing. The value of a field changes only when its value came from the server, or when the reply resets the form (`reply({ reset: true })`), and not when a reply arrives while the field was edited after the post.
-- A module function can call `$action`, as it can `$effect` and `$client`. This needs a test before the work starts.
-
-#### Without scripts
-
-The same markup works in three states:
-
-1. Without scripts, the form posts and the page renders again with the result. The fields show what was typed and their errors. An intent button posts the whole form, and the server applies the intent, so what was typed in other fields stays.
-2. With scripts, before the code of the form loads, `$action` sends the form with `fetch`, and the page does not load again.
-3. With the code of the form loaded, it validates as fields change and applies intents at once.
-
-What a form without scripts has to handle:
-
-- The constraint attributes of the browser, such as `required` and `type="email"`, still block a submit. Intent buttons have `formnovalidate`, so a list can grow while the form is incomplete.
-- A checkbox that is not checked is not posted. The schema must read a missing value as `false`.
-- A file input cannot be filled again. After an error, the user picks the file again, and only the error shows.
-- Passwords are not echoed.
-- Each post loads the page, so focus and scroll start over. A summary of errors should link to its fields, such as `<a href="#email">`.
-
-#### In the browser
-
-- The `onFocusout` and `onInput` of the form see every field, because brumate delegates events. They validate with the same schema and show the errors of fields that were touched, and of every field after a submit, as Conform does.
-- The handlers of intent buttons apply the intent to the values at once. Their `prevent` stops the post before their code loads.
-- The schema and the validation code load with the first focus out or input, not with the page, so a form costs nothing until someone uses it.
-
-#### Plan
-
-1. The wire format and the server: `parseSubmission`, bracket paths in `parseForm`, `reply`, and the field and list helpers with plain attributes. It works without scripts and through `$action`. About 1 week with tests and docs.
-2. Validation in the browser through the `onFocusout` and `onInput` of the form, loaded when first used. It needs [handlers from scripts](#handlers-from-scripts) for the handlers in `attrs`. About 3 to 4 days.
-3. Intents in the browser, through the handlers of intent buttons. It needs handlers from scripts in markup that the browser renders, for the buttons of new items. About 2 to 3 days.
-
-It lives at `brumate/forms` while the page format still changes, and can move to its own package later.
-
 ### Markdown with components
 
 Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
@@ -799,13 +649,10 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Handlers from scripts, and progressive forms step 1.** `$handler` is compiler and loader work, and the server side of forms is a library, so they go side by side. Forms and the UI components both need `$handler`.
-2. **Progressive forms, steps 2 and 3**, on top of `$handler`.
-3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-4. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
-5. **The UI components**, starting with the `Select` spike.
-6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-7. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-8. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+1. **Binding and transitions**: `bind:value`, `bind:checked` and bindable props, then transitions. They are small, and useful without the UI components: forms get shorter fields, and any block can animate. The UI components need both later.
+2. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+3. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
+4. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
+5. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

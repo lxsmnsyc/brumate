@@ -13,26 +13,27 @@ import { $memo, $signal } from 'brumate/signals';
 
 ## Summary
 
-| Function                      | Returns                    | Where                                                                    | Guide                                              |
-| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                      |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                |
-| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md) |
-| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)  |
-| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)  |
-| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                      |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
-| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                            |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                            |
-| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)            |
-| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)   |
-| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                |
-| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts) |
+| Function                      | Returns                    | Where                                                                    | Guide                                                      |
+| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
+| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
+| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
+| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
+| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                        |
+| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
+| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
+| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                                    |
+| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
+| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
+| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
+| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
+| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
+| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
+| `$handler(fn, ...args)`       | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
 
 ## `$props`
 
@@ -188,6 +189,23 @@ The latest result of a server function that a form of this component posts to.
 - Assign it to a `const` at the top level of a script. The argument is a server function of the same file.
 - It is `undefined` before the first post. `$isPending(result)` is true while the form sends.
 - Without scripts, the page renders again with the result.
+
+## `$handler`
+
+```ts
+function $handler<A extends unknown[], E = Event>(
+  fn: (...args: [...A, E]) => unknown,
+  ...args: A
+): (event: E) => unknown;
+```
+
+Marks a function that a script makes as an event handler, so a spread can pass it on, as it passes on a handler that a caller writes in markup.
+
+- `fn` is a function expression or a function of the script, in wrappers of `brumate/events` or not. It compiles as a handler in markup does, with its own part.
+- `args` are JSON values, such as numbers, strings, arrays and plain objects. They go with the handler, which runs as `fn(...args, event)`.
+- It can be called in any expression of a script, such as in a function that makes the attributes of a button, and in a module function.
+- `fn` reads the values of the scope where `$handler` is called. A value of a function around the call, such as its parameter, is a compile error: pass it as an argument.
+- The handler of a spread goes into `b-on`, on the server and in markup that the browser renders. The loader applies its wrappers, such as `prevent`, before its code loads.
 
 ## `$optimistic`
 

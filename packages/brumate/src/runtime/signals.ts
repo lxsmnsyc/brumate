@@ -132,3 +132,22 @@ export function $action<F extends (...args: never[]) => unknown>(
 ): Awaited<ReturnType<F>> | undefined {
   return compileTimeOnly('$action');
 }
+
+/**
+ * Marks a function that a script makes as an event handler, so a spread can
+ * pass it on, as it passes on a handler that a caller writes in markup.
+ * `args` are JSON values that go with the handler, and it runs as
+ * `fn(...args, event)`.
+ */
+export function $handler<A extends unknown[], E = Event>(
+  fn: (...args: [...A, E]) => unknown,
+  ...args: A
+): (event: E) => unknown;
+/** A function that does not read the event. */
+export function $handler<A extends unknown[]>(
+  fn: (...args: A) => unknown,
+  ...args: A
+): (event: Event) => unknown;
+export function $handler(): never {
+  return compileTimeOnly('$handler');
+}

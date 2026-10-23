@@ -28,10 +28,11 @@ import type {
 import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
+import { MODIFIERS } from './events.ts';
 import { ElementReference, stateValues } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
-type ReferenceNode = { a: SerovalNode; b: SerovalNode };
+type ReferenceNode = { a: SerovalNode; b: SerovalNode; c?: SerovalNode; d?: SerovalNode };
 
 /**
  * Returns the parse functions of a plugin. `read` returns the values of the
@@ -82,11 +83,30 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
   test: (value) => typeof value === 'function' && functionReferences.has(value),
   parse: parsers((value) => {
     const reference = functionReferences.get(value)!;
-    return { a: reference.ref, b: reference.scope };
+    // The arguments of a handler that `$handler` made go with it.
+    const node: Record<string, unknown> = { a: reference.ref, b: reference.scope };
+    // The modifiers of its wrappers, so a spread in markup that the browser renders writes them.
+    const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
+    if (reference.args !== undefined || modifiers) {
+      node.c = reference.args ?? null;
+    }
+    if (modifiers) {
+      node.d = modifiers;
+    }
+    return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
   }),
-  serialize: (node, ctx) => `$b.f(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  serialize: (node, ctx) =>
+    `$b.f(${[node.a, node.b, node.c, node.d]
+      .filter((part) => part !== undefined)
+      .map((part) => ctx.serialize(part!))
+      .join(',')})`,
   deserialize: (node, ctx) =>
-    stateValues.f(ctx.deserialize<string>(node.a), ctx.deserialize<number>(node.b)),
+    stateValues.f(
+      ctx.deserialize<string>(node.a),
+      ctx.deserialize<number>(node.b),
+      node.c === undefined ? undefined : ctx.deserialize<unknown[] | null>(node.c),
+      node.d === undefined ? undefined : ctx.deserialize<string[]>(node.d),
+    ),
 });
 
 /** HTML, such as the `children` of a component, so the client can insert it again. */
