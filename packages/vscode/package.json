@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Language support for .brm files: highlighting, types, styles and compiler diagnostics",
-  "icon": "icon.png",
   "categories": [
     "Programming Languages"
   ],
@@ -79,6 +78,7 @@
   "activationEvents": [
     "onLanguage:brumate"
   ],
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.100.0"
   }
