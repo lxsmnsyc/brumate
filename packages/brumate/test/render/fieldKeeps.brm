@@ -9,4 +9,5 @@
 
 <input class="box" type="checkbox" checked=(runs >= 0 && posted)>
 <button class="rerun" onClick=(() => runs++)>Run again</button>
+<p class="runs">{runs}</p>
 <button class="post" onClick=(() => (posted = !posted))>Post</button>

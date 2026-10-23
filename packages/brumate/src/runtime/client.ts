@@ -1705,6 +1705,11 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     indexAdded(markerObserver.takeRecords());
   }
   indexMarkers(fragment);
+  // The bound elements of the insert, so that its updates find them without a search of the
+  // page. A search for each element of a long list takes time that grows with the list.
+  for (const element of fragment.querySelectorAll('[b-b]')) {
+    elements.set(element.getAttribute('b-b')!, element);
+  }
   options.listen(fragment);
   watchTitles(fragment);
   const server = serverScopes(fragment);
@@ -2285,6 +2290,8 @@ function createHiding(): Hiding {
 interface Item {
   scope: Scope;
   nodes: Node[];
+  /** The place of the item in the list before the update. */
+  position: number;
 }
 
 /** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
@@ -2323,7 +2330,7 @@ export function list(
       for (let current = node; current !== last;) {
         nodes.push((current = current.nextSibling!));
       }
-      previous.set(key(item.i, position++), { scope: item, nodes });
+      previous.set(key(item.i, position), { scope: item, nodes, position: position++ });
     } else {
       others.push(node);
     }
@@ -2349,8 +2356,19 @@ export function list(
     node.parentNode?.removeChild(node);
   }
   const parent = end.parentNode!;
-  // The first node after the items placed so far. An item already there is not
-  // moved, because moving a node restarts its animations and drops its focus.
+  // The items that stay, in the new order, and the ones that stay in place: the longest run of
+  // them that keeps the old order. Only the others move, because moving a node restarts its
+  // animations and drops its focus.
+  // A key that repeats keeps its item once, as below.
+  const kept = new Set<Item>();
+  items.forEach((value, index) => {
+    const item = previous.get(key(value, index));
+    if (item) {
+      kept.add(item);
+    }
+  });
+  const still = inPlace([...kept]);
+  // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
   // New items next to each other go into the page with one insert.
   let added = '';
@@ -2369,7 +2387,8 @@ export function list(
       previous.delete(id);
       // Slots that keep their values do not trigger updates.
       assign(item.scope, value, index);
-      if (item.nodes[0] === cursor) {
+      if (still.has(item)) {
+        // The nodes between the cursor and the item belong to items that move or go.
         cursor = item.nodes.at(-1)!.nextSibling!;
       } else {
         for (const node of item.nodes) {
@@ -2387,6 +2406,39 @@ export function list(
       node.parentNode?.removeChild(node);
     }
   }
+}
+
+/**
+ * The items of a list that keep their places: the longest run of `kept`, the items that stay
+ * in their new order, whose old positions go up.
+ */
+function inPlace(kept: Item[]): Set<Item> {
+  if (kept.every((item, index) => index === 0 || kept[index - 1]!.position < item.position)) {
+    return new Set(kept);
+  }
+  // `tails[length - 1]` is the index of the item that ends the run of that length with the
+  // lowest position, and `before` links each item to the item before it in its run.
+  const tails: number[] = [];
+  const before: number[] = [];
+  kept.forEach((item, index) => {
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (kept[tails[middle]!]!.position < item.position) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    before[index] = low > 0 ? tails[low - 1]! : -1;
+    tails[low] = index;
+  });
+  const still = new Set<Item>();
+  for (let index = tails.at(-1) ?? -1; index >= 0; index = before[index]!) {
+    still.add(kept[index]!);
+  }
+  return still;
 }
 
 /** Sets a style variable on the top-level elements of a component instance. */
