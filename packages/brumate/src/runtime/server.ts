@@ -1866,6 +1866,10 @@ const SHOW_FALLBACK = `function $bF(i){var t=document.querySelector('template[b-
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
+// In development, the swap keeps the fallback that it removes and the body that it adds, by
+// boundary, so the devtools can show the fallback again.
+const SWAP_DEV = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode,f=[];for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;f.push(p.removeChild(n));n=x}(self.$bD||(self.$bD={}))[i]={f:f,b:[].slice.call(t.content.childNodes)};p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+
 export interface RenderResult {
   /** The markup. A `#loading` body that is not ready shows its fallback. */
   html: string;
@@ -1961,6 +1965,8 @@ function createQueue<T>(): Queue<T> {
 export interface RenderOptions {
   /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
   rpc?: string;
+  /** In development: the swaps of `#loading` bodies keep their fallbacks, for the devtools. */
+  dev?: boolean;
   /**
    * The first scope and boundary ID. A page that the client loads in place
    * of another starts above the IDs of the page it keeps parts of.
@@ -2086,6 +2092,8 @@ export async function render<P>(
   };
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
+  // The function that swaps a body in, which the first swap of the page defines.
+  const swapScript = options.dev ? SWAP_DEV : SWAP;
   // `$bF` is defined in the first script that shows a held fallback.
   let fallbackDefined = false;
   const showFallback = (): string => {
@@ -2171,7 +2179,7 @@ export async function render<P>(
           serialize(result.ctx, (script) => {
             // An ID inside a boundary, such as `5.1`, is a string.
             const id = scriptJSON(boundary.id);
-            let call = `${swap ? '' : SWAP}$bS(${id})`;
+            let call = `${swap ? '' : swapScript}$bS(${id})`;
             swap = true;
             if (after) {
               call += `;${showFallback()}${after}`;

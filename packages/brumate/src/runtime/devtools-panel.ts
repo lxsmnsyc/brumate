@@ -2926,6 +2926,29 @@ export function togglePanel(
         });
         action.append(fire);
       }
+      // A body that the page swapped in, whose fallback it kept, can show its fallback again.
+      const kept = (globalThis as { $bD?: Record<string, unknown> }).$bD?.[block.id];
+      if (
+        block.state === 'rendered' &&
+        kept &&
+        (block.kind === 'loading' || block.kind === 'defer')
+      ) {
+        const toggle = iconButton(
+          block.fallback ? 'play' : 'pause',
+          block.fallback ? 'Body' : 'Fallback',
+          {
+            title: block.fallback
+              ? 'Show the body again'
+              : 'Show the fallback in place of the body',
+            'aria-pressed': String(block.fallback === true),
+          },
+        );
+        toggle.addEventListener('click', () => {
+          state.showFallback?.(block, !block.fallback);
+          draw();
+        });
+        action.append(toggle);
+      }
       let took = '';
       if (block.rendered !== undefined) {
         took =
@@ -2950,7 +2973,7 @@ export function togglePanel(
       element(
         'p',
         { class: 'sub', style: 'margin-top: 0' },
-        'Streaming bodies come with the page. Waiting ones wait for their trigger, and Fire runs it now.',
+        'Streaming bodies come with the page. Waiting ones wait for their trigger, and Fire runs it now. Fallback shows the fallback of a body again, to check both sides.',
       ),
       blocks.length > 0
         ? table

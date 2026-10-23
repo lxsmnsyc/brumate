@@ -126,6 +126,8 @@ export interface BlockEntry {
   seen: number;
   fired?: number;
   rendered?: number;
+  /** True while the devtools show its fallback in place of its body. */
+  fallback?: boolean;
 }
 
 /** The loads that are preloads, which the Loading tab marks when nothing used them. */
@@ -163,6 +165,11 @@ export interface DevtoolsState {
   blocks: Map<string, BlockEntry>;
   /** Asks the server for the body of a `#defer` block now. */
   fire?: (block: BlockEntry) => void;
+  /**
+   * Shows the fallback of a `#loading` or `#defer` block in place of its
+   * body, or its body again. False when the page did not keep its fallback.
+   */
+  showFallback?: (block: BlockEntry, on: boolean) => boolean;
   /** The scopes written since the panel last drew, by scope ID. */
   written: Set<ScopeId>;
   /** The URL prefix of the inspect endpoint of the dev server. */
@@ -695,6 +702,29 @@ export function installDevtools(
     },
   };
   (globalThis as Record<symbol, DevtoolsHooks | undefined>)[DEVTOOLS] = hooks;
+
+  // The swap of a body keeps its fallback in development, by boundary, so the fallback can show
+  // again. While it shows, the body is out of the page, and updates of its nodes wait there.
+  state.showFallback = (block, on) => {
+    const kept = (globalThis as { $bD?: Record<string, { f: Node[]; b: Node[] }> }).$bD?.[block.id];
+    if (!kept || (block.fallback ?? false) === on) {
+      return false;
+    }
+    const [shown, hidden] = on ? [kept.b, kept.f] : [kept.f, kept.b];
+    const anchor = shown.find((node) => node.parentNode);
+    if (!anchor) {
+      return false;
+    }
+    for (const node of hidden) {
+      anchor.parentNode!.insertBefore(node, anchor);
+    }
+    for (const node of shown) {
+      node.parentNode?.removeChild(node);
+    }
+    block.fallback = on;
+    state.changed?.();
+    return true;
+  };
 
   // Server function calls, with how long each took and how it answered.
   const original = globalThis.fetch.bind(globalThis);

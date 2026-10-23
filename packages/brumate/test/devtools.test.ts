@@ -330,6 +330,26 @@ describe('devtools', () => {
     togglePanel(shadow, state);
   });
 
+  it('shows the fallback of a body again, and the body back', () => {
+    document.querySelector('brumate-devtools')?.remove();
+    const state = installDevtools('/inspect');
+    document.body.insertAdjacentHTML('beforeend', '<div id="spot"><p>Body</p></div>');
+    const spot = document.getElementById('spot')!;
+    const body = spot.firstChild!;
+    const fallback = document.createElement('p');
+    fallback.textContent = 'Loading';
+    // What the swap of the dev server keeps for boundary 5.
+    (globalThis as { $bD?: unknown }).$bD = { 5: { f: [fallback], b: [body] } };
+    const block = { kind: 'loading', id: '5', state: 'rendered', seen: 0 } as const;
+    const entry = { ...block } as Parameters<NonNullable<typeof state.showFallback>>[0];
+    expect(state.showFallback!(entry, true)).toBe(true);
+    expect(spot.innerHTML).toBe('<p>Loading</p>');
+    expect(state.showFallback!(entry, false)).toBe(true);
+    expect(spot.innerHTML).toBe('<p>Body</p>');
+    delete (globalThis as { $bD?: unknown }).$bD;
+    spot.remove();
+  });
+
   it('follows the blocks of the page, and fires a trigger now', async () => {
     document.querySelector('brumate-devtools')?.remove();
     document.body.innerHTML = [

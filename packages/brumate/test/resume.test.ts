@@ -1563,6 +1563,30 @@ describe('gather', () => {
   });
 });
 
+describe('fallbacks kept in development', () => {
+  it('keeps the fallback and the body of each swap, by boundary', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const done: Record<string, () => void> = {};
+    const wait = Object.fromEntries(
+      ['first', 'second', 'third'].map((name) => [
+        name,
+        new Promise<void>((resolve) => (done[name] = resolve)),
+      ]),
+    );
+    const page = await renderParts(server.default, { wait }, { dev: true });
+    show(page.html + page.state);
+    const chunks = page.pending[Symbol.asyncIterator]();
+    done.first!();
+    appendChunk((await chunks.next()).value as string);
+    const kept = (globalThis as { $bD?: Record<string, { f: Node[]; b: Node[] }> }).$bD!['0']!;
+    expect(kept.f.map((node) => (node as Element).outerHTML)).toEqual([
+      '<p class="wait-first">Loading first</p>',
+    ]);
+    expect((kept.b[0] as Element).textContent).toBe('first');
+    delete (globalThis as { $bD?: unknown }).$bD;
+  });
+});
+
 describe('the trace of a render', () => {
   it('ends the page with what the server did, in development', async () => {
     const server = await import(file('awaitedStream.brm.ts'));
