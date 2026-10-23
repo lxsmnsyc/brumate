@@ -21,7 +21,21 @@
 <header class="header">
   <div class="header-inner">
     <a class="brand" href=base>
-      <span class="brand-mark" aria-hidden="true"></span>
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="brand-fill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffc38a" />
+            <stop offset=".5" stop-color="#ee7a3e" />
+            <stop offset="1" stop-color="#e0445a" />
+          </linearGradient>
+          <clipPath id="brand-pole"><rect x="7.5" y="2.5" width="8" height="27" rx="4" /></clipPath>
+        </defs>
+        <circle cx="18" cy="19.5" r="10" fill="url(#brand-fill)" clip-path="url(#brand-pole)" />
+        <g fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="7.5" y="2.5" width="8" height="27" rx="4" />
+          <circle cx="18" cy="19.5" r="10" />
+        </g>
+      </svg>
       brumate
     </a>
     <Search />
@@ -74,10 +88,8 @@
   }
 
   .brand-mark {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--cool), var(--accent));
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .header-nav {
