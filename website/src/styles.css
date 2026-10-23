@@ -447,6 +447,20 @@ pre {
 }
 
 /* A wireframe of an app, and what of it ships code. Radio buttons and :has switch the view. */
+.ships-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (max-width: 52rem) {
+  .ships-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
 .ships {
   margin: 0;
   padding: 1.25rem;
@@ -556,7 +570,7 @@ pre {
 .sm-tags text,
 .sm-tag-all text {
   fill: #fff;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   text-anchor: middle;
 }
@@ -576,7 +590,7 @@ pre {
 
 .sm-tag-all text {
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .sm-tags {

@@ -75,15 +75,15 @@
     </g>
 
     <g class="sm-tags">
-      <g transform="translate(530 96)"><rect width="74" height="16" rx="8"></rect><text x="37" y="11.5">on input</text></g>
-      <g transform="translate(30 278)"><rect width="78" height="16" rx="8"></rect><text x="39" y="11.5">on change</text></g>
-      <g transform="translate(420 241)"><rect width="66" height="16" rx="8"></rect><text x="33" y="11.5">on click</text></g>
-      <g transform="translate(230 380)"><rect width="56" height="16" rx="8"></rect><text x="28" y="11.5">on click</text></g>
-      <g class="sm-tag-update" transform="translate(630 96)"><rect width="60" height="16" rx="8"></rect><text x="30" y="11.5">updates</text></g>
+      <g transform="translate(486 92)"><rect width="96" height="22" rx="11"></rect><text x="48" y="15.5">on input</text></g>
+      <g transform="translate(30 276)"><rect width="104" height="22" rx="11"></rect><text x="52" y="15.5">on change</text></g>
+      <g transform="translate(418 238)"><rect width="88" height="22" rx="11"></rect><text x="44" y="15.5">on click</text></g>
+      <g transform="translate(198 377)"><rect width="88" height="22" rx="11"></rect><text x="44" y="15.5">on click</text></g>
+      <g class="sm-tag-update" transform="translate(612 92)"><rect width="84" height="22" rx="11"></rect><text x="42" y="15.5">updates</text></g>
     </g>
     <g class="sm-tag-all" transform="translate(360 210)">
-      <rect x="-170" y="-16" width="340" height="32" rx="16"></rect>
-      <text y="5">Every part ships its code and runs again</text>
+      <rect x="-210" y="-20" width="420" height="40" rx="20"></rect>
+      <text y="6">Every part ships its code and runs again</text>
     </g>
   </svg>
   <figcaption>

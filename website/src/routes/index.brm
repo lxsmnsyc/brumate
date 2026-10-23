@@ -40,12 +40,15 @@
     <pre class="install"><span class="prompt">$</span> pnpm add brumate</pre>
   </section>
 
-  <section class="section">
-    <h2>What ships to the browser</h2>
-    <p class="section-lead">
-      The server renders the whole page as HTML. The browser gets code only for the parts that respond to the user,
-      and each part loads when its event fires.
-    </p>
+  <section class="section ships-section">
+    <div class="ships-text">
+      <h2>What ships to the browser</h2>
+      <p class="section-lead">
+        The server renders the whole page as HTML. The browser gets code only for the parts that respond to the user,
+        and each part loads when its event fires.
+      </p>
+      <p class="section-lead">Switch to hydration to compare.</p>
+    </div>
     <ShipsMap />
   </section>
 
