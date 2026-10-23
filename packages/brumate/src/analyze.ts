@@ -869,6 +869,87 @@ class Analyzer {
     }
   }
 
+  /**
+   * `$handler(fn, ...args)`: `fn` is a client root, as a function prop is, and
+   * its reference goes with the arguments. `isLocal` tells a name that a
+   * function around the call declares: `fn` cannot read one, since only the
+   * values of the scope and the arguments reach the browser.
+   */
+  declareHandler(call: oxc.CallExpression, scope: Scope, isLocal: (name: string) => boolean): void {
+    const [fn] = call.arguments;
+    if (!fn || fn.type === 'SpreadElement' || !this.isHandlerFunction(fn, scope)) {
+      this.report(
+        'error',
+        '$handler needs a function as its first argument: a function expression, a function of the script, or one of them in a wrapper of brumate/events',
+        call,
+      );
+      return;
+    }
+    for (const name of freeNames(fn)) {
+      if (isLocal(name)) {
+        this.report(
+          'error',
+          `The handler reads "${name}", a value of the function around $handler, which the browser does not have. Pass it as an argument: $handler(fn, ${name})`,
+          fn,
+        );
+        return;
+      }
+    }
+    if (call.arguments.slice(1).some((argument) => argument.type === 'SpreadElement')) {
+      this.report('error', 'The arguments of $handler cannot be spread', call);
+    }
+    this.createSite('prop', scope, fn, 'handler', {
+      handler: call,
+      modifiers: this.handlerModifiers(fn, scope),
+    });
+  }
+
+  /**
+   * The modifiers of the wrappers around the function of `$handler`, such as
+   * `prevent`, as `b-on` holds them. Markup that the browser renders writes
+   * them without loading the code of the handler.
+   */
+  private handlerModifiers(node: oxc.Node, scope: Scope): string[] | undefined {
+    const modifiers: string[] = [];
+    while (node.type === 'CallExpression' && node.callee.type === 'Identifier') {
+      const imported = lookup(scope, node.callee.name)?.imported;
+      const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
+      const [handler, ...keys] = node.arguments;
+      if (name === undefined || !WRAPPERS.has(name) || !handler) {
+        break;
+      }
+      const names = keys.map((key) =>
+        key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
+      );
+      if (names.some((key) => key === undefined)) {
+        this.report('error', "Name each key of prevent as a string, such as 'Enter'", node);
+      }
+      modifiers.push(names.length > 0 ? `${name}(${names.join(',')})` : name);
+      node = handler;
+    }
+    return modifiers.length > 0 ? modifiers : undefined;
+  }
+
+  /** A function, a function of the script, or one of them in wrappers of `brumate/events`. */
+  private isHandlerFunction(node: oxc.Node, scope: Scope): boolean {
+    while (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      lookup(scope, node.callee.name)?.imported?.source === EVENTS_MODULE &&
+      node.arguments[0]
+    ) {
+      node = node.arguments[0];
+    }
+    if (isFunction(node)) {
+      return true;
+    }
+    if (node.type === 'Identifier') {
+      const kind = lookup(scope, node.name)?.kind;
+      return kind === 'function' || kind === 'server-function';
+    }
+    return false;
+  }
+
   private declareProvide(call: oxc.CallExpression, scope: Scope): void {
     const [context, value] = call.arguments;
     if (!context || !value || call.arguments.length !== 2) {
@@ -1605,6 +1686,14 @@ class Resolver {
             }
             return;
           }
+          if (name === '$handler') {
+            this.analyzer.declareHandler(node, this.site.scope, (local) => this.isLocal(local));
+            // The arguments are values of this site, which go with the handler.
+            for (const argument of node.arguments.slice(1)) {
+              this.visit(argument);
+            }
+            return;
+          }
           if (COMPILE_TIME_FUNCTIONS.has(name)) {
             this.analyzer.report('error', MISPLACED[name] ?? `${name} cannot be used here`, node);
           } else if (name in REMOVED) {
@@ -1794,4 +1883,57 @@ function varNames(node: oxc.Node, names: string[] = []): string[] {
     varNames(child, names);
   }
   return names;
+}
+
+/**
+ * The names that code reads and does not declare itself, such as what a
+ * function reads from around it. Property names are not reads.
+ */
+function freeNames(node: oxc.Node): Set<string> {
+  const free = new Set<string>();
+  const visit = (current: oxc.Node, bound: Set<string>): void => {
+    if (isFunction(current)) {
+      const inner = new Set(bound);
+      for (const param of current.params) {
+        for (const name of getPatternNames(param)) {
+          inner.add(name.name);
+        }
+      }
+      if (current.type === 'FunctionExpression' && current.id) {
+        inner.add(current.id.name);
+      }
+      const body = current.body;
+      if (body?.type === 'BlockStatement') {
+        for (const name of [...lexicalNames(body.body), ...varNames(body)]) {
+          inner.add(name);
+        }
+      }
+      for (const param of current.params) {
+        visit(param, inner);
+      }
+      if (body) {
+        visit(body, inner);
+      }
+      return;
+    }
+    if (current.type === 'Identifier') {
+      if (!bound.has(current.name)) {
+        free.add(current.name);
+      }
+      return;
+    }
+    if (current.type === 'MemberExpression' && !current.computed) {
+      visit(current.object, bound);
+      return;
+    }
+    if (current.type === 'Property' && !current.computed) {
+      visit(current.value, bound);
+      return;
+    }
+    for (const [, child] of children(current)) {
+      visit(child, bound);
+    }
+  };
+  visit(node, new Set());
+  return free;
 }

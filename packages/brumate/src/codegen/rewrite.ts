@@ -43,11 +43,19 @@ export class Rewriter {
 
   private readonly shared: SharedContext | undefined;
 
+  /** The sites of `$handler` calls, by call. */
+  private readonly handlers = new Map<oxc.Node, Site>();
+
   constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[], shared?: SharedContext) {
     this.file = file;
     this.plan = plan;
     this.diagnostics = diagnostics;
     this.shared = shared;
+    for (const site of plan.graph.model.sites) {
+      if (site.handler) {
+        this.handlers.set(site.handler, site);
+      }
+    }
   }
 
   /**
@@ -337,6 +345,35 @@ export class Rewriter {
           break;
         }
         case 'CallExpression': {
+          // `$handler(fn, ...args)` in code that the browser runs, such as a function that renders
+          // the items of a list: a handler with its reference, which a spread passes on. The
+          // function is the code of its own site.
+          const handler = this.handlers.get(node);
+          if (handler) {
+            const [fn, ...args] = node.arguments;
+            const symbol = this.plan.symbols.get(handler);
+            // The code of the handler loads with its part, so the call holds its reference, and
+            // the modifiers of its wrappers, which the compiler read, in place of its function.
+            const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+            const owner = scopePath(
+              this.plan,
+              scopeVar,
+              base,
+              instanceScope(this.plan, handler.scope),
+            );
+            const modifiers = JSON.stringify(handler.modifiers ?? []);
+            patch.replace(node.start, fn!.end, `$$b.handlerProp(() => {}, ${ref}, ${owner}`);
+            if (args.length === 0) {
+              patch.replace(fn!.end, node.end, `, [], ${modifiers})`);
+            } else {
+              patch.replace(fn!.end, args[0]!.start, ', [');
+              patch.replace(args.at(-1)!.end, node.end, `], ${modifiers})`);
+            }
+            for (const argument of args) {
+              visit(argument);
+            }
+            return;
+          }
           // A call of a local function passes the scope itself. `.bind` is only for a function
           // value that escapes, such as one passed as an argument.
           const fn = target(node.callee)?.declaration;

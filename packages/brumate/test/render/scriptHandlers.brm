@@ -1,0 +1,17 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+
+  // Handlers that the script makes, which spreads pass on with their wrappers and arguments.
+  let count = $signal(0);
+  function bump(by: number) {
+    count += by;
+  }
+  const press = { type: 'button', class: 'one', onClick: $handler(prevent(() => count++)) };
+  const add = (by: number) => ({ type: 'button', class: `add${by}`, onClick: $handler(bump, by) });
+</script>
+
+<button {...press}>+1</button>
+<button {...add(5)}>+5</button>
+<button {...add(10)}>+10</button>
+<p class="count">{count}</p>

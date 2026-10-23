@@ -202,6 +202,29 @@ export function mergeAttributes(parts: Record<string, unknown>[]): Record<string
   return result;
 }
 
+/**
+ * The `b-on` entry of a handler that a spread passes on, such as
+ * `click:prevent=Parent#h1@3`: its event, the modifiers of its wrappers, its
+ * client function and the scope it runs in. A handler that `$handler` made
+ * has its arguments after another `@`, encoded so that they hold no space.
+ */
+export function handlerEntry(
+  name: string,
+  ref: string,
+  scope: number | string,
+  modifiers: readonly string[] = [],
+  args?: unknown[],
+): string {
+  const bound = args === undefined ? '' : `@${encodeURIComponent(JSON.stringify(args))}`;
+  return `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${ref}@${scope}${bound}`;
+}
+
+/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
+export function onAttribute(on: string[], own: string): string {
+  const value = [own, ...on].filter(Boolean).join(' ');
+  return value ? ` b-on="${escapeAttribute(value)}"` : '';
+}
+
 /** Renders an object of attributes. */
 export function spread(attributes: Record<string, unknown>): string {
   let result = '';

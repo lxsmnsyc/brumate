@@ -5,6 +5,7 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  handlerEntry,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -34,8 +35,8 @@ export {
   classAttribute,
   escape,
   mergeAttributes,
+  onAttribute,
   raw,
-  spread,
   vars,
 } from './html.ts';
 export type { Raw } from './html.ts';
@@ -599,12 +600,48 @@ export function init(value: CoreOptions): void {
   }
 }
 
+/**
+ * The handlers that the core makes from references, with their references,
+ * so a spread in markup that the browser renders passes them on in `b-on`,
+ * as a spread on the server does.
+ */
+const handlerReferences = new WeakMap<object, FunctionReference>();
+
+/** The modifiers that the wrappers of `brumate/events` put on a handler. */
+const MODIFIERS = Symbol.for('brumate.modifiers');
+
+/**
+ * Renders an object of attributes. With `on`, a handler in it that the core
+ * made from a reference goes into `on` as a `b-on` entry, with the scope and
+ * the arguments of its reference and the modifiers of its wrappers.
+ */
+export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  if (on) {
+    for (const [name, value] of Object.entries(attributes)) {
+      const reference =
+        /^on[A-Z]/.test(name) && typeof value === 'function'
+          ? handlerReferences.get(value)
+          : undefined;
+      if (reference) {
+        on.push(
+          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+        );
+      }
+    }
+  }
+  return spreadText(attributes);
+}
+
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof FunctionReference) {
-    return isTemplate(value.ref)
-      ? templateReference(value.ref, scopes.get(value.scope))
-      : (...args: unknown[]) => call(value.ref, scopes.get(value.scope), args);
+    if (isTemplate(value.ref)) {
+      return templateReference(value.ref, scopes.get(value.scope));
+    }
+    const handler = (...args: unknown[]): unknown =>
+      call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
+    handlerReferences.set(handler, value);
+    return handler;
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
@@ -753,14 +790,16 @@ function withTarget(event: Event, element: Element): Event {
  */
 export function handle(element: Element, entry: string, event?: Event): Promise<unknown> {
   // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
-  const [ref, owner] = entry.split('@') as [string, string | undefined];
+  // A handler that `$handler` made has its arguments after another `@`.
+  const [ref, owner, encoded] = entry.split('@') as [string, string | undefined, string?];
+  const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
   }
-  const args = event ? [withTarget(event, element)] : [];
+  const args = event ? [...bound, withTarget(event, element)] : bound;
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
   }
@@ -2532,13 +2571,31 @@ export function addStyle(id: string, css: string): string {
 }
 
 /** A function prop rendered on the client calls the parent's exported handler. */
-export function handlerProp(value: unknown, ref: string, scope: Scope | number): unknown {
+export function handlerProp(
+  value: unknown,
+  ref: string,
+  scope: Scope | number,
+  bound: unknown[] = [],
+  modifiers?: string[],
+): unknown {
   // A template renders at once, and the client has its code already.
   if (typeof value !== 'function' || isTemplate(ref)) {
     return value;
   }
   const instance = resolveScope(scope);
-  return (...args: unknown[]) => call(ref, instance, args);
+  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
+  // A scope that is not in the page yet has its ID in `scope`.
+  handlerReferences.set(
+    handler,
+    new FunctionReference(
+      ref,
+      instance?.id ?? (scope as ScopeId),
+      bound.length > 0 ? bound : undefined,
+      modifiers ?? (value as { [MODIFIERS]?: string[] })[MODIFIERS],
+    ),
+  );
+  return handler;
 }
 
 /**

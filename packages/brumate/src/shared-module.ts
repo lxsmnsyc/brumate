@@ -47,6 +47,8 @@ const UNSHARED = new Set([
   '$title',
   '$action',
   '$props',
+  // The reference of a handler names a part of the component that calls the function.
+  '$handler',
 ]);
 
 interface Analysis {

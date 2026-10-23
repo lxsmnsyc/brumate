@@ -29,6 +29,7 @@ export const MACROS: Set<string> = new Set([
   '$id',
   '$title',
   '$action',
+  '$handler',
 ]);
 
 /** Compile-time functions that have a new name, by old name. */

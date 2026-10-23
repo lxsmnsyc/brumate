@@ -185,3 +185,38 @@ describe('wrappers of event handlers', () => {
     );
   });
 });
+
+describe('$handler', () => {
+  const compileHandler = (script: string, markup = '<button {...press}>Go</button>') =>
+    compile(
+      `<script>\nimport { $handler, $signal } from 'brumate/signals';\nimport { prevent } from 'brumate/events';\n${script}\n</script>\n\n${markup}`,
+      { filename: 'Test.brm' },
+    );
+
+  it('marks a function, a function of the script, or one in wrappers', () => {
+    expect(() =>
+      compileHandler(`let count = $signal(0);
+function bump(by: number) {
+  count += by;
+}
+const press = { onClick: $handler(prevent(() => count++)) };
+const add = { onClick: $handler(bump, 2) };`),
+    ).not.toThrow();
+  });
+
+  it('needs a function as its first argument', () => {
+    expect(() => compileHandler(`const press = { onClick: $handler(42) };`)).toThrow(
+      '$handler needs a function as its first argument',
+    );
+  });
+
+  it('refuses a value of the function around the call, which goes in as an argument', () => {
+    expect(() =>
+      compileHandler(
+        `let count = $signal(0);
+const add = (by: number) => ({ onClick: $handler(() => (count += by)) });`,
+        '<button {...add(2)}>Go</button>',
+      ),
+    ).toThrow('The handler reads "by", a value of the function around $handler');
+  });
+});

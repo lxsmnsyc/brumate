@@ -615,6 +615,41 @@ describe('resume', () => {
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
   });
 
+  it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {
+    const server = await import(file('scriptHandlers.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(/class="one" b-on="click:prevent=ScriptHandlers_\w+#h\d+@\d+"/);
+    expect(html).toMatch(/class="add5" b-on="click=ScriptHandlers_\w+#h\d+@\d+@%5B5%5D"/);
+    await resume('scriptHandlers', {});
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('.one')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    click(document.querySelector('.add5')!);
+    await waitFor(() => expect(text('.count')).toBe('6'));
+    click(document.querySelector('.add10')!);
+    await waitFor(() => expect(text('.count')).toBe('16'));
+  });
+
+  it('passes on the handlers of spreads in markup that the browser renders', async () => {
+    await resume('scriptHandlerList', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1', 'item2']));
+    // A button that the browser rendered: its `$handler` with its argument and its wrapper.
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.remove')[2]!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1']));
+    // A handler that the parent passed through the spread of a component the browser rendered.
+    const forward = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.forward')[1]!.dispatchEvent(forward);
+    expect(forward.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('item1'));
+    click(document.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(texts('.item')).toEqual(['item1']));
+  });
+
   it('removes the attributes that a spread drops, and keeps the element own', async () => {
     await resume('spreadUpdate', {});
     const target = document.querySelector('.target')!;

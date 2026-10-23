@@ -5,8 +5,10 @@ import {
   actionAttributes,
   escape,
   escapeAttribute,
+  handlerEntry,
   insertValue,
   isRaw,
+  onAttribute,
   rawHTML,
   spread as spreadAttributes,
   styleElement,
@@ -639,12 +641,24 @@ export class Context {
     return new ElementReference(scope, anchor);
   }
 
-  /** Marks a function as a client function, so it serializes as a reference. */
-  fn<T>(value: T, ref: string, scope: ScopeId): T {
-    if (typeof value === 'function') {
-      functionReferences.set(value, new FunctionReference(ref, scope));
+  /**
+   * Marks a function as a client function, so it serializes as a reference.
+   * `args` are the arguments of a handler that `$handler` made, which go
+   * with the reference. Each call makes a new reference, so a function that
+   * `$handler` marks gets a copy for its arguments.
+   */
+  fn<T>(value: T, ref: string, scope: ScopeId, args?: unknown[]): T {
+    if (typeof value !== 'function') {
+      return value;
     }
-    return value;
+    if (args === undefined) {
+      functionReferences.set(value, new FunctionReference(ref, scope));
+      return value;
+    }
+    const bound = Object.assign((...rest: unknown[]) => value(...args, ...rest), value) as T &
+      object;
+    functionReferences.set(bound, new FunctionReference(ref, scope, args));
+    return bound;
   }
 
   /** Returns a component's stylesheet the first time the page renders the component. */
@@ -3097,17 +3111,11 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
         ? functionReferences.get(value)
         : undefined;
     if (reference) {
-      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS] ?? [];
-      on!.push(
-        `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${reference.ref}@${reference.scope}`,
-      );
+      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
+      on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
     }
   }
   return spreadAttributes(attributes);
 }
 
-/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
-export function onAttribute(on: string[], own: string): string {
-  const value = [own, ...on].filter(Boolean).join(' ');
-  return value ? ` b-on="${escapeAttribute(value)}"` : '';
-}
+export { onAttribute };

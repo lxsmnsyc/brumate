@@ -98,6 +98,9 @@ export interface EmitterOptions {
 
 /** Writes code that renders markup to an HTML string, on the server or on the client. */
 /** The exports of the core that do on the client what the server's render context does. */
+/** The `$handler` calls that each patch has edited, since emitters of a file share its patch. */
+const handlerEdits = new WeakMap<Patch, Set<object>>();
+
 const CLIENT_HELPERS: Record<string, string> = {
   scope: 'createScope',
   slots: 'setSlots',
@@ -223,9 +226,48 @@ export class Emitter {
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
     }
+    this.addHandlerEdits();
     for (const declaration of plan.graph.model.declarations) {
       for (const ref of declaration.refs) {
         this.refTargets.set(ref.attribute, declaration);
+      }
+    }
+  }
+
+  /**
+   * `$handler(fn, ...args)` marks its function as a client function with its
+   * arguments, `fn(fn, "<id>#<export>", scope, [args])`, so a spread can
+   * pass it on. The calls are edits of the source, wherever they are in a
+   * script. Emitters of one file share its patch, so each call is edited once.
+   */
+  private addHandlerEdits(): void {
+    let edited = handlerEdits.get(this.patch);
+    if (!edited) {
+      handlerEdits.set(this.patch, (edited = new Set()));
+    }
+    for (const site of this.plan.graph.model.sites) {
+      const call = site.handler;
+      const fn = call?.arguments[0];
+      if (!call || !fn || edited.has(call)) {
+        continue;
+      }
+      edited.add(call);
+      const args = call.arguments.slice(1);
+      const symbol = this.plan.symbols.get(site);
+      if (!symbol) {
+        // A handler that nothing in the browser can reach is the function alone.
+        this.patch.replace(call.start, fn.start, '(');
+        this.patch.replace(fn.end, call.end, ')');
+        continue;
+      }
+      const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+      const scope = this.scopeVar(instanceScope(this.plan, site.scope));
+      this.patch.replace(call.start, fn.start, `${this.helper('fn')}(`);
+      if (args.length === 0) {
+        this.patch.replace(fn.end, call.end, `, ${ref}, ${scope})`);
+      } else {
+        this.patch.replace(fn.end, args[0]!.start, `, ${ref}, ${scope}, [`);
+        this.patch.replace(args.at(-1)!.end, call.end, '])');
       }
     }
   }
@@ -914,12 +956,10 @@ export class Emitter {
     if (pageTitle && this.options.mode === 'server') {
       this.line(`${this.helper('title')}(${this.titleText(node)}, true);`);
     }
-    // On the server, a spread can pass on handlers, such as the `onClick` of `...rest`.
+    // A spread can pass on handlers, such as the `onClick` of `...rest`, on the server and in
+    // markup that the browser renders.
     let spreadHandlers: string | undefined;
-    if (
-      this.options.mode === 'server' &&
-      node.attributes.some((attribute) => attribute.kind === 'spread')
-    ) {
+    if (node.attributes.some((attribute) => attribute.kind === 'spread')) {
       spreadHandlers = this.unique('on');
       this.line(`const ${spreadHandlers}: string[] = [];`);
     }
