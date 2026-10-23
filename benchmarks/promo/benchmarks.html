@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; margin: 0; }
+      :root {
+        --bg: #141110;
+        --text: #f2ebe3;
+        --muted: #a8998b;
+        --dim: #6f645a;
+        --accent: #ee7a3e;
+        --card: rgb(255 255 255 / 4%);
+        --line: rgb(255 255 255 / 9%);
+        --bar: rgb(255 255 255 / 14%);
+      }
+      body {
+        width: 1600px;
+        height: 900px;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 600px at 85% 0%, rgb(120 70 40 / 45%), transparent 70%),
+          radial-gradient(700px 500px at 0% 100%, rgb(70 40 25 / 40%), transparent 70%),
+          var(--bg);
+        color: var(--text);
+        font-family: 'Avenir Next', Avenir, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .page { display: flex; flex-direction: column; height: 100%; padding: 52px 64px 40px; }
+      header { display: flex; align-items: center; gap: 18px; }
+      .dot { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); }
+      header h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; }
+      header h1 span { color: var(--muted); font-weight: 500; }
+      .legend { margin-left: auto; display: flex; gap: 22px; color: var(--muted); font-size: 18px; }
+      .legend i { display: inline-block; width: 14px; height: 14px; margin-right: 8px; border-radius: 4px; vertical-align: -1px; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 38px;
+      }
+      .card { padding: 26px 28px 30px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); }
+      .card h2 { font-size: 23px; font-weight: 700; letter-spacing: -0.01em; }
+      .card p { margin-top: 2px; color: var(--muted); font-size: 16px; }
+      .bars { display: grid; gap: 12px; margin-top: 22px; }
+      .row { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 12px; }
+      .name { color: var(--muted); font-size: 17px; font-weight: 500; }
+      .track { position: relative; height: 34px; }
+      .fill { height: 100%; min-width: 5px; border-radius: 7px; background: var(--bar); }
+      .value { position: absolute; top: 50%; transform: translateY(-50%); font: 600 17px/1 'SF Mono', Menlo, monospace; white-space: nowrap; }
+      .row.us .name { color: var(--text); font-weight: 700; }
+      .row.us .fill { background: linear-gradient(90deg, #f6a679, var(--accent)); }
+      .row.us .value { color: var(--accent); }
+      .star { margin-left: 8px; color: inherit; opacity: 0.8; font-family: 'Avenir Next', sans-serif; font-size: 16px; }
+      .foot { margin-top: auto; color: var(--dim); font-size: 16px; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <span class="dot"></span>
+        <h1>brumate 0.2.0 <span>benchmarks</span></h1>
+        <div class="legend">
+          <span><i style="background: var(--accent)"></i>brumate</span
+          ><span><i style="background: var(--bar)"></i>others</span><span>★ best</span>
+        </div>
+      </header>
+      <div class="grid" id="grid"></div>
+      <p class="foot">
+        The same two apps in each framework: a todo list, and a dashboard of 50 widgets. Medians of
+        5 runs. brumate 0.2.0, Marko 6.4.6, Qwik 1.20.2, Qwik 2.0.0-rc.3 · Apple M2, Node 26, Chrome
+        156 · github.com/lxsmnsyc/brumate/tree/main/benchmarks
+      </p>
+    </div>
+    <script>
+      // Results of `pnpm bench` in the repository. Frameworks always in the same order.
+      const names = ['brumate', 'Marko 6', 'Qwik 1', 'Qwik 2'];
+      const kb = (v) => `${v.toFixed(1)} kB`;
+      const count = (v) => v.toLocaleString('en-US');
+      const charts = [
+        { title: 'JS before the page loads', note: 'Dashboard, gzip. Less is better.', values: [3.9, 10.5, 21.8, 36.4], unit: kb, less: true },
+        { title: 'JS before the page loads', note: 'Todos, gzip. Less is better.', values: [2.6, 4.4, 22.4, 36.4], unit: kb, less: true },
+        { title: 'JS after clicking 3 widgets', note: 'Dashboard, gzip, with preload. Less is better.', values: [19.4, 10.5, 77.5, 103.8], unit: kb, less: true },
+        { title: 'Server renders per second', note: '100 todos. More is better.', values: [11736, 9144, 2771, 1886], unit: count, less: false },
+        { title: 'Server renders per second', note: 'Dashboard. More is better.', values: [5044, 6183, 851, 440], unit: count, less: false },
+        { title: 'HTML of the page', note: 'Dashboard, gzip. Less is better.', values: [6.0, 5.4, 13.0, 16.1], unit: kb, less: true },
+      ];
+      const grid = document.getElementById('grid');
+      for (const chart of charts) {
+        const max = Math.max(...chart.values);
+        const best = chart.less ? Math.min(...chart.values) : max;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h2>${chart.title}</h2><p>${chart.note}</p><div class="bars"></div>`;
+        chart.values.forEach((value, index) => {
+          const share = value / max;
+          const us = index === 0;
+          const inside = share > 0.66;
+          const row = document.createElement('div');
+          row.className = `row${us ? ' us' : ''}${value === best ? ' best' : ''}`;
+          const position = inside
+            ? `right:${(100 - share * 100 + 3).toFixed(1)}%;color:${us ? '#141110' : 'var(--text)'}`
+            : `left:calc(${(share * 100).toFixed(1)}% + 10px)`;
+          row.innerHTML = `<span class="name">${names[index]}</span><div class="track"><div class="fill" style="width:${(share * 100).toFixed(1)}%"></div><span class="value" style="${position}">${chart.unit(value)}${value === best ? '<span class="star">★</span>' : ''}</span></div>`;
+          card.querySelector('.bars').append(row);
+        });
+        grid.append(card);
+      }
+    </script>
+  </body>
+</html>
