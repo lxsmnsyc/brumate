@@ -143,7 +143,7 @@ export function b7($$s) {
   $$b.branch($$s, 3, ($$b.get($$s, 0) === 'a') ? 0 : 1, [r3, r4], [3, 4]);
 }
 export function b8($$s) {
-  $$b.list($$s, 4, Array.from($$b.get($$s, 1)), ($$item) => $$item, r5, a5, r6, [6]);
+  $$b.list($$s, 4, $$b.listOf($$b.get($$s, 1)), ($$item) => $$item, r5, a5, r6, [6]);
 }
 export function a5($$s, $$item, $$index) {
   $$s.i = $$item;

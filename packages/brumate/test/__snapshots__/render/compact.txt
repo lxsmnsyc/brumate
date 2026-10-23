@@ -120,7 +120,7 @@ export const h6 = ($$s) => $$b.update($$s, 1, 1, false);
 import * as $$b from 'brumate/client';
 
 export function b7($$s) {
-  $$b.list($$s, 5, Array.from($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r2, a2, r3, [3]);
+  $$b.list($$s, 5, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r2, a2, r3, [3]);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -140,7 +140,7 @@ export function u14($$s) {
   $$b.attr($$s, 0, "class", (" empty" + (($$b.get($$s.p, 1) % 2 === 1) ? " odd" : "")).slice(1));
 }
 export function b15($$s) {
-  $$b.list($$s, 6, Array.from($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r4, a4, undefined, []);
+  $$b.list($$s, 6, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r4, a4, undefined, []);
 }
 export function a4($$s, $$item, $$index) {
   $$s.i = $$item;

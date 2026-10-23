@@ -368,76 +368,110 @@ export function boot(
   // as they come near the viewport. See `preload` in the options.
   let eager = false;
 
-  const scan = (root: ParentNode): void => {
-    for (const element of select(root, '[data-prefetch=visible],[data-prefetch=idle]')) {
-      if (strategy(element) === 'idle' || !visible) {
-        idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
-      } else {
-        visible.observe(element);
-      }
-    }
-    for (const element of select(root, '[b-on]:not(template)')) {
+  // The values of `b-on` whose event types the document listens to already. The rows of a
+  // list repeat the same few values.
+  const delegated = new Set<string>();
+  const onElement = (element: Element): void => {
+    const value = element.getAttribute('b-on')!;
+    if (!delegated.has(value)) {
+      delegated.add(value);
       for (const entry of entries(element)) {
         delegate(entry.type, prevents(entry));
       }
-      // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
-      if (eager && strategy(element) === 'hover' && !warmedAll(element)) {
-        eagerly.add(element);
-        visible?.observe(element);
-      }
     }
-    for (const template of select(root, 'template[b-listen]')) {
-      const target = template.getAttribute('b-listen') === 'window' ? window : document;
-      for (const entry of entries(template)) {
-        // Markup that is gone, such as a page that navigation replaced, no longer listens.
-        listen(
-          target,
-          entry.type,
-          (event) => {
-            if (template.isConnected) {
-              apply(event, template, entry);
-            }
-          },
-          { capture: entry.modifiers.includes('capture'), passive: !prevents(entry) },
-        );
-      }
+    // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
+    if (eager && strategy(element) === 'hover' && !warmedAll(element)) {
+      eagerly.add(element);
+      visible?.observe(element);
     }
-    // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
-    for (const template of select(root, 'template[b-client],template[b-defer]:not([b-hole])')) {
-      const client = template.getAttribute('b-client');
-      const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
-        client ? '=' : ':',
-      ) as [string, string];
-      // A `#defer` block asks the server for its body, with a module that only it needs.
-      const go = (): void => {
-        if (client) {
-          run(template, ref);
-          return;
-        }
-        const done = import('./defer.ts').then((module) => module.loadDeferred(template));
-        if (DEV) {
-          devtools()?.defer?.(template, done);
-        }
-      };
-      // The element that a `$client` callback reads through `ref`, or the one after the marker.
-      const near = template.getAttribute('b-near');
-      const next =
-        (near &&
-          (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
-        template.nextElementSibling;
-      if (trigger === 'idle') {
-        idle(go);
-      } else if (trigger === 'visible' && next && visible) {
-        const observer = new IntersectionObserver((records) => {
-          if (records.some((record) => record.isIntersecting)) {
-            observer.disconnect();
-            go();
+  };
+  const onListener = (template: Element): void => {
+    const target = template.getAttribute('b-listen') === 'window' ? window : document;
+    for (const entry of entries(template)) {
+      // Markup that is gone, such as a page that navigation replaced, no longer listens.
+      listen(
+        target,
+        entry.type,
+        (event) => {
+          if (template.isConnected) {
+            apply(event, template, entry);
           }
-        });
-        observer.observe(next);
-      } else {
-        go();
+        },
+        { capture: entry.modifiers.includes('capture'), passive: !prevents(entry) },
+      );
+    }
+  };
+  // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
+  const onBlock = (root: ParentNode, template: Element): void => {
+    const client = template.getAttribute('b-client');
+    const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
+      client ? '=' : ':',
+    ) as [string, string];
+    // A `#defer` block asks the server for its body, with a module that only it needs.
+    const go = (): void => {
+      if (client) {
+        run(template, ref);
+        return;
       }
+      const done = import('./defer.ts').then((module) => module.loadDeferred(template));
+      if (DEV) {
+        devtools()?.defer?.(template, done);
+      }
+    };
+    // The element that a `$client` callback reads through `ref`, or the one after the marker.
+    const near = template.getAttribute('b-near');
+    const next =
+      (near &&
+        (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
+      template.nextElementSibling;
+    if (trigger === 'idle') {
+      idle(go);
+    } else if (trigger === 'visible' && next && visible) {
+      const observer = new IntersectionObserver((records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          observer.disconnect();
+          go();
+        }
+      });
+      observer.observe(next);
+    } else {
+      go();
+    }
+  };
+  const SCANNED =
+    '[data-prefetch=visible],[data-prefetch=idle],[b-on],template[b-listen],template[b-client],template[b-defer]';
+  // One query of the markup for everything that the loader starts. The blocks start after the
+  // rest, as they did when each kind had its own query.
+  const scan = (root: ParentNode): void => {
+    const blocks: Element[] = [];
+    for (const element of select(root, SCANNED)) {
+      if (element.tagName === 'TEMPLATE') {
+        if (element.hasAttribute('b-listen')) {
+          onListener(element);
+        } else if (
+          element.hasAttribute('b-client') ||
+          (element.hasAttribute('b-defer') && !element.hasAttribute('b-hole'))
+        ) {
+          blocks.push(element);
+        }
+        continue;
+      }
+      if (element.hasAttribute('data-prefetch')) {
+        const prefetch = element.getAttribute('data-prefetch');
+        if (prefetch === 'visible' || prefetch === 'idle') {
+          if (strategy(element) === 'idle' || !visible) {
+            idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
+          } else {
+            visible.observe(element);
+          }
+        }
+      }
+      if (element.hasAttribute('b-on')) {
+        onElement(element);
+      }
+    }
+    for (const template of blocks) {
+      onBlock(root, template);
     }
   };
 

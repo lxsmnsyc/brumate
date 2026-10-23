@@ -2387,12 +2387,25 @@ function createHiding(): Hiding {
 
 interface Item {
   scope: Scope;
-  nodes: Node[];
+  /** The first and last node of the item, which are the same node for one element. */
+  first: Node;
+  last: Node;
   /** The place of the item in the list before the update. */
   position: number;
+  /** True for an item whose key is in the new list. */
+  kept: boolean;
+  /** True for a kept item that stays in place. */
+  still: boolean;
 }
 
+const ITEM_MARKER = /^i(-?[\d.]+)$/;
+
 /** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
+/** The items of a `#for` list: an array as it is, since `list` only reads it, or any iterable as an array. */
+export function listOf(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
+  return Array.isArray(value) ? value : Array.from(value);
+}
+
 export function list(
   scope: Scope,
   anchor: number,
@@ -2409,34 +2422,43 @@ export function list(
   }
   const end = rangeEnd(start);
   const previous = new Map<unknown, Item>();
-  const others: Node[] = [];
+  let others: Node[] | undefined;
   let position = 0;
   for (let node = start.nextSibling; node && node !== end;) {
-    const data = node.nodeType === 8 ? (node as Comment).data : undefined;
     // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `b-b` names the scope.
-    const id = data
-      ? /^i(-?[\d.]+)$/.exec(data)?.[1]
-      : (node as Element).getAttribute?.('b-b')?.split(':')[0];
+    let data: string | undefined;
+    let id: string | undefined;
+    if (node.nodeType === 8) {
+      data = (node as Comment).data;
+      id = ITEM_MARKER.exec(data)?.[1];
+    } else if (node.nodeType === 1) {
+      const bound = (node as Element).getAttribute('b-b');
+      id = bound === null ? undefined : bound.slice(0, bound.indexOf(':'));
+    }
     const item = id === undefined ? undefined : scopes.get(parseId(id));
     let last: Node = node;
     // The elements of the fallback have scopes of its kinds.
-    if (item && (data || (item.p === scope && !fallbackKinds.includes(item.k)))) {
-      if (data) {
+    if (item && (data !== undefined || (item.p === scope && !fallbackKinds.includes(item.k)))) {
+      if (data !== undefined) {
         last = rangeEnd(node as Comment);
       }
-      const nodes = [node];
-      for (let current = node; current !== last;) {
-        nodes.push((current = current.nextSibling!));
-      }
-      previous.set(key(item.i, position), { scope: item, nodes, position: position++ });
+      previous.set(key(item.i, position), {
+        scope: item,
+        first: node,
+        last,
+        position: position++,
+        kept: false,
+        still: false,
+      });
     } else {
-      others.push(node);
+      (others ??= []).push(node);
     }
     node = last.nextSibling;
   }
 
-  if (items.length === 0) {
-    if (previous.size === 0 && others.length > 0) {
+  const count = items.length;
+  if (count === 0) {
+    if (previous.size === 0 && others) {
       return;
     }
     for (const item of previous.values()) {
@@ -2450,24 +2472,29 @@ export function list(
   }
 
   disposeKinds(scope, fallbackKinds);
-  for (const node of others) {
-    node.parentNode?.removeChild(node);
+  if (others) {
+    for (const node of others) {
+      node.parentNode?.removeChild(node);
+    }
   }
   const parent = end.parentNode!;
-  // The items that stay, in the new order, and the ones that stay in place: the longest run of
-  // them that keeps the old order. Only the others move, because moving a node restarts its
-  // animations and drops its focus.
-  // A key that repeats keeps its item once, as below.
-  const kept = new Set<Item>();
-  items.forEach((value, index) => {
-    const item = previous.get(key(value, index));
-    if (item) {
-      kept.add(item);
+  // The key of each item, and the items that stay, in the new order. A key that repeats keeps
+  // its item once, as below.
+  const keys: unknown[] = Array.from({ length: count });
+  const kept: Item[] = [];
+  for (let index = 0; index < count; index++) {
+    const id = (keys[index] = key(items[index], index));
+    const item = previous.get(id);
+    if (item && !item.kept) {
+      item.kept = true;
+      kept.push(item);
     }
-  });
-  const still = inPlace([...kept]);
+  }
+  // The items that stay in place: the longest run of them that keeps the old order. Only the
+  // others move, because moving a node restarts its animations and drops its focus.
+  markInPlace(kept);
   // When no item stays, the old ones go first, in one removal, and the new ones go in after.
-  if (kept.size === 0 && previous.size > 0) {
+  if (kept.length === 0 && previous.size > 0) {
     for (const item of previous.values()) {
       destroy(item.scope);
     }
@@ -2478,60 +2505,77 @@ export function list(
   let cursor: Node = start.nextSibling!;
   // New items next to each other go into the page with one insert.
   let added = '';
-  const flush = (): void => {
+  for (let index = 0; index < count; index++) {
+    const id = keys[index];
+    const item = previous.get(id);
+    if (!item) {
+      added += render(scope, items[index], index);
+      continue;
+    }
+    // Before the item's updates run, so they see the new items before it.
     if (added) {
       insertHTML(cursor, added);
       added = '';
     }
-  };
-  items.forEach((value, index) => {
-    const id = key(value, index);
-    const item = previous.get(id);
-    if (item) {
-      // Before the item's updates run, so they see the new items before it.
-      flush();
-      previous.delete(id);
-      // Slots that keep their values do not trigger updates.
-      assign(item.scope, value, index);
-      if (still.has(item)) {
-        // The nodes between the cursor and the item belong to items that move or go.
-        cursor = item.nodes.at(-1)!.nextSibling!;
-      } else {
-        for (const node of item.nodes) {
-          parent.insertBefore(node, cursor);
-        }
-      }
+    previous.delete(id);
+    // Slots that keep their values do not trigger updates.
+    assign(item.scope, items[index], index);
+    if (item.still) {
+      // The nodes between the cursor and the item belong to items that move or go.
+      cursor = item.last.nextSibling!;
     } else {
-      added += render(scope, value, index);
+      for (let node = item.first; ;) {
+        const next = node.nextSibling;
+        parent.insertBefore(node, cursor);
+        if (node === item.last) {
+          break;
+        }
+        node = next!;
+      }
     }
-  });
-  flush();
+  }
+  if (added) {
+    insertHTML(cursor, added);
+  }
   for (const item of previous.values()) {
     destroy(item.scope);
-    for (const node of item.nodes) {
+    for (let node: Node | null = item.first; node;) {
+      const next: Node | null = node === item.last ? null : node.nextSibling;
       node.parentNode?.removeChild(node);
+      node = next;
     }
   }
 }
 
 /**
- * The items of a list that keep their places: the longest run of `kept`, the items that stay
- * in their new order, whose old positions go up.
+ * Marks the items of a list that keep their places: the longest run of `kept`, the items that
+ * stay in their new order, whose old positions go up.
  */
-function inPlace(kept: Item[]): Set<Item> {
-  if (kept.every((item, index) => index === 0 || kept[index - 1]!.position < item.position)) {
-    return new Set(kept);
+function markInPlace(kept: Item[]): void {
+  let sorted = true;
+  for (let index = 1; index < kept.length; index++) {
+    if (kept[index - 1]!.position > kept[index]!.position) {
+      sorted = false;
+      break;
+    }
+  }
+  if (sorted) {
+    for (const item of kept) {
+      item.still = true;
+    }
+    return;
   }
   // `tails[length - 1]` is the index of the item that ends the run of that length with the
   // lowest position, and `before` links each item to the item before it in its run.
   const tails: number[] = [];
   const before: number[] = [];
-  kept.forEach((item, index) => {
+  for (let index = 0; index < kept.length; index++) {
+    const position = kept[index]!.position;
     let low = 0;
     let high = tails.length;
     while (low < high) {
       const middle = (low + high) >> 1;
-      if (kept[tails[middle]!]!.position < item.position) {
+      if (kept[tails[middle]!]!.position < position) {
         low = middle + 1;
       } else {
         high = middle;
@@ -2539,12 +2583,10 @@ function inPlace(kept: Item[]): Set<Item> {
     }
     before[index] = low > 0 ? tails[low - 1]! : -1;
     tails[low] = index;
-  });
-  const still = new Set<Item>();
-  for (let index = tails.at(-1) ?? -1; index >= 0; index = before[index]!) {
-    still.add(kept[index]!);
   }
-  return still;
+  for (let index = tails.at(-1) ?? -1; index >= 0; index = before[index]!) {
+    kept[index]!.still = true;
+  }
 }
 
 /** Sets a style variable on the top-level elements of a component instance. */
@@ -2879,9 +2921,11 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   }
   // A scope at the top of children that are inserted elsewhere finds its contexts there.
   const up = created.o ?? parentScope;
-  const inserted = insertedChildren.findLast((entry) => entry.from === up);
-  if (inserted) {
-    created.t = inserted.at;
+  for (let index = insertedChildren.length - 1; index >= 0; index--) {
+    if (insertedChildren[index]!.from === up) {
+      created.t = insertedChildren[index]!.at;
+      break;
+    }
   }
   parentScope?.children.add(created);
   treeChanges++;
@@ -2971,12 +3015,13 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
   // A render function computes a memo that loads as a promise, which the first compute of the
   // memo takes. Its failure is the memo's to report, not an unhandled rejection.
-  values.forEach((value, slot) => {
+  for (let slot = 0; slot < values.length; slot++) {
+    const value = values[slot];
     if (isThenable(value)) {
       renderedLoads.add(`${id}:${slot}`);
       Promise.resolve(value).catch(noop);
     }
-  });
+  }
 }
 
 export function setItem(id: ScopeId, value: unknown): void {

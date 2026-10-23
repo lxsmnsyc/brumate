@@ -1014,7 +1014,7 @@ class ClientGenerator {
       case 'repeat': {
         const items =
           block.kind === 'for'
-            ? `Array.from(${header(0)})`
+            ? `$$b.listOf(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
         const fallback = block.fallback ? this.renderName(block.fallback) : 'undefined';
