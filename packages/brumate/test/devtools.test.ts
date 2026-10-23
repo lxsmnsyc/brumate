@@ -53,12 +53,23 @@ describe('devtools', () => {
         text: 'Counter report',
       })) as typeof fetch;
     togglePanel(host.shadowRoot!, state);
-    const body = (): string => host.shadowRoot!.querySelector('.body')!.textContent!;
-    await expect.poll(body).toContain('Counter (src/Counter.brm)');
-    expect(body()).toContain('count = 2');
-    expect(body()).toContain('scope 1 · body of #for');
-    expect(body()).toContain('item = "a"');
-    expect(body()).toContain('scope 2 · body of #offscreen · hidden');
+    const shadow = host.shadowRoot!;
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    // The overview lists the components of the page.
+    await expect.poll(body).toContain('Components on the page');
+    expect(body()).toContain('src/Counter.brm');
+    (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
+    await expect.poll(body).toContain('body of #offscreen · hidden');
+    expect(body()).toContain('body of #for');
+    const values = (): string[] =>
+      [...shadow.querySelectorAll('.slot')].map((line) => line.textContent!);
+    expect(values()).toEqual(['countnumber2']);
+    // A scope of the tree shows its slots.
+    const forRow = [...shadow.querySelectorAll('.tree-row')].find((line) =>
+      line.textContent!.startsWith('body of #for'),
+    ) as HTMLElement;
+    forRow.click();
+    await expect.poll(values).toEqual(['itemstring"a"']);
     togglePanel(host.shadowRoot!, state);
     expect(host.shadowRoot!.querySelector('.panel')).toBeNull();
   });
@@ -109,7 +120,8 @@ describe('devtools', () => {
     });
     togglePanel(shadow, state);
     const body = (): HTMLElement => shadow.querySelector('.body')!;
-    await expect.poll(() => body().textContent).toContain('count = 1');
+    (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
+    await expect.poll(() => shadow.querySelector('.slot .value')?.textContent).toBe('1');
 
     // A click on a value edits it, and Enter writes it as JSON.
     (shadow.querySelector('.slot .value') as HTMLElement).click();
@@ -122,8 +134,9 @@ describe('devtools', () => {
     // A write marks its node and the nodes that read it.
     hooks().write!(root, 0, 42);
     (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
-    await expect.poll(() => shadow.querySelectorAll('svg g.hot').length).toBe(3);
-    expect(shadow.querySelectorAll('svg g').length).toBe(3);
+    await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(3);
+    expect(shadow.querySelectorAll('svg g.node').length).toBe(3);
+    expect(shadow.querySelectorAll('svg path.edge.hot-edge').length).toBe(2);
 
     // A server function call is logged, and the log shows writes by the name of their slot.
     await fetch('/_brumate/Counter_2%23save', { method: 'POST' });
@@ -219,7 +232,7 @@ describe('devtools', () => {
     togglePanel(shadow, state);
     (shadow.querySelector('[data-tab="loading"]') as HTMLElement).click();
     const body = (): string => shadow.querySelector('.body')!.textContent!;
-    await expect.poll(body).toContain('5 loads. 1 preloads that nothing used');
+    await expect.poll(body).toContain('Unused preloads1');
     expect(shadow.querySelectorAll('tr.unused')).toHaveLength(1);
     expect(shadow.querySelectorAll('tr.failed')).toHaveLength(1);
     togglePanel(shadow, state);

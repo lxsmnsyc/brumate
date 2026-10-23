@@ -19,6 +19,12 @@ export interface DevtoolsEntry {
   write?: { component: string; k: number; slot: number };
 }
 
+/** What the plugin tells the devtools about the dev server. */
+export interface DevtoolsMeta {
+  version?: string;
+  vite?: string;
+}
+
 /** Code of a component that loaded, or is loading, for the Loading tab. */
 export interface LoadEntry {
   component: string;
@@ -74,6 +80,8 @@ export interface DevtoolsState {
   written: Set<ScopeId>;
   /** The URL prefix of the inspect endpoint of the dev server. */
   endpoint: string;
+  /** The versions of brumate and Vite, from the plugin. */
+  meta: DevtoolsMeta;
   /** Called after each change, while the panel is open. */
   changed?: () => void;
 }
@@ -222,13 +230,18 @@ export function scanBlocks(state: DevtoolsState): boolean {
 }
 
 /** Listens to the core, and adds the button that opens the panel. */
-export function installDevtools(endpoint = '/__brumate/inspect', rpc = '/_brumate'): DevtoolsState {
+export function installDevtools(
+  endpoint = '/__brumate/inspect',
+  rpc = '/_brumate',
+  meta: DevtoolsMeta = {},
+): DevtoolsState {
   const state: DevtoolsState = {
     log: [],
     loads: new Map(),
     blocks: new Map(),
     written: new Set(),
     endpoint,
+    meta,
   };
   const load = (component: string, part: string, reason: string, done: Promise<unknown>): void => {
     const key = `${component}:${part}`;

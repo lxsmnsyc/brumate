@@ -9,6 +9,7 @@ import {
   normalizePath,
   searchForWorkspaceRoot,
   transformWithOxc,
+  version as viteVersion,
 } from 'vite';
 import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
 import { compile } from './compile.ts';
@@ -163,6 +164,13 @@ const SERVER_QUERY = '?brumate-server';
 const TESTING = 'virtual:brumate/testing';
 /** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
 const HINTS_FILE = '.brumate/hints.json';
+/** The version of brumate, which the devtools show. The file is next to `src` and `dist`. */
+const BRUMATE_VERSION: string = (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
+
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
 
@@ -1252,7 +1260,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
-                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}));`,
+                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}));`,
               ]
             : []),
         ].join('\n');
