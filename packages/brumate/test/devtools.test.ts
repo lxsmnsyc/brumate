@@ -14,9 +14,7 @@ describe('devtools', () => {
   it('logs what the core reports, and shows scopes with the names of their slots', async () => {
     const state = installDevtools('/inspect');
     const host = document.querySelector('brumate-devtools')!;
-    expect(host.shadowRoot!.querySelector('button.open')!.getAttribute('aria-label')).toBe(
-      'Open the brumate devtools',
-    );
+    expect(host.shadowRoot!.querySelector('button.open')!.textContent).toBe('brumate');
 
     const root: Scope = { id: 0, k: 0, m: 'Counter_1', s: [1], children: new Set() };
     const item: Scope = { id: 1, k: 1, p: root, s: ['a'], children: new Set() };

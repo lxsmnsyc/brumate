@@ -115,8 +115,11 @@ export interface DevtoolsState {
   errors: ErrorEntry[];
   /** Opens the panel on a tab, such as `errors`. */
   open?: (tab: string) => void;
-  /** Shows the number of errors on the button. */
+  /** Shows the number of errors on the tab. */
   errorCount?: () => void;
+  /** While the panel is open: sets its top edge to a place of the pointer, and keeps it. */
+  resize?: (clientY: number) => void;
+  resized?: () => void;
   /** Called after each change, while the panel is open. */
   changed?: () => void;
 }
@@ -476,30 +479,55 @@ export function installDevtools(
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
-.open { position: fixed; right: 14px; bottom: 14px; z-index: 2147483647; width: 40px; height: 40px; padding: 5px; border-radius: 50%; border: 1px solid #ffffff1f; background: #19181a; box-shadow: 0 6px 20px #0006, 0 0 0 1px #0003; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
-.open:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 28px #0007, 0 0 0 3px #ee7a3e44; }
+.open { position: fixed; right: 24px; bottom: 0; z-index: 2147483647; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px 0 8px; border: 1px solid #2f2c31; border-bottom: 0; border-radius: 9px 9px 0 0; background: #19181a; color: #ece8e4; font: 600 12px/1 system-ui, -apple-system, sans-serif; letter-spacing: -0.01em; cursor: pointer; box-shadow: 0 -4px 18px #0005; transition: height 0.15s, background 0.15s; touch-action: none; }
+.open:hover { height: 32px; background: #222023; }
 .open:focus-visible { outline: 2px solid #ee7a3e; outline-offset: 2px; }
-.count { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; border: 2px solid #19181a; background: #e5484d; color: #fff; font: 700 10px/14px system-ui, sans-serif; text-align: center; }
+.open .mark { display: inline-flex; width: 16px; height: 16px; }
+.open .chevron { width: 10px; height: 10px; opacity: 0.6; transition: transform 0.15s; }
+.open[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+.count { min-width: 16px; height: 16px; padding: 0 5px; box-sizing: border-box; border-radius: 8px; background: #e5484d; color: #fff; font: 700 10px/16px system-ui, sans-serif; text-align: center; }
 .count:empty { display: none; }
-@media (prefers-reduced-motion: reduce) { .open { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .open, .open .chevron { transition: none; } }
 `;
   const button = document.createElement('button');
   button.className = 'open';
-  button.title = 'Open the brumate devtools';
-  button.setAttribute('aria-label', 'Open the brumate devtools');
-  button.innerHTML = LOGO;
-  // The number of errors, in red on the button, so an error shows while the panel is closed.
-  const count = document.createElement('span');
-  count.className = 'count';
-  button.append(count);
+  button.title = 'Open the brumate devtools. Drag to resize.';
+  button.setAttribute('aria-expanded', 'false');
+  // A tab on the bottom edge, which pulls the panel up, and sits on its top edge while it is open.
+  button.innerHTML = `<span class="mark">${LOGO}</span><span>brumate</span><span class="count"></span><svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6.5 5 3.5 8 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // The number of errors, in red on the tab, so an error shows while the panel is closed.
+  const count = button.querySelector<HTMLElement>('.count')!;
   state.errorCount = (): void => {
     count.textContent = state.errors.length > 0 ? String(state.errors.length) : '';
-    button.title =
-      state.errors.length > 0
-        ? `Open the brumate devtools: ${state.errors.length} errors`
-        : 'Open the brumate devtools';
+    count.title = `${state.errors.length} errors`;
   };
+  // Dragging the tab of an open panel changes its height. A click opens or closes it.
+  let drag: { y: number; moved: boolean } | undefined;
+  let dragged = false;
+  button.addEventListener('pointerdown', (event) => {
+    if (state.resize) {
+      drag = { y: event.clientY, moved: false };
+      button.setPointerCapture(event.pointerId);
+    }
+  });
+  button.addEventListener('pointermove', (event) => {
+    if (drag && (drag.moved || Math.abs(event.clientY - drag.y) > 4)) {
+      drag.moved = true;
+      state.resize?.(event.clientY);
+    }
+  });
+  button.addEventListener('pointerup', () => {
+    dragged = drag?.moved ?? false;
+    drag = undefined;
+    if (dragged) {
+      state.resized?.();
+    }
+  });
   button.addEventListener('click', () => {
+    if (dragged) {
+      dragged = false;
+      return;
+    }
     void import('./devtools-panel.ts').then(({ togglePanel }) => togglePanel(root, state));
   });
   state.open = (tab) => {

@@ -668,13 +668,17 @@ export function togglePanel(
   state: DevtoolsState,
   initial: Tab = 'overview',
 ): void {
-  const opener = root.querySelector<HTMLElement>(':scope > button.open');
+  const opener = root.querySelector<HTMLElement>('button.open');
   if (panel) {
     panel.remove();
     panel = undefined;
     state.changed = undefined;
     document.documentElement.style.removeProperty('padding-bottom');
+    opener?.style.removeProperty('bottom');
     opener?.style.removeProperty('display');
+    opener?.setAttribute('aria-expanded', 'false');
+    state.resize = undefined;
+    state.resized = undefined;
     showTab = undefined;
     return;
   }
@@ -781,28 +785,35 @@ export function togglePanel(
     }
     // The page can scroll past the panel.
     document.documentElement.style.paddingBottom = `${height}px`;
+    // The tab sits on the top edge of the panel. A panel as tall as the page has no room for it.
+    if (opener) {
+      opener.style.bottom = `${height - 1}px`;
+      opener.style.display = height > window.innerHeight - 30 ? 'none' : '';
+    }
   };
   applyHeight();
   root.append(panel);
-  if (opener) {
-    opener.style.display = 'none';
-  }
+  opener?.setAttribute('aria-expanded', 'true');
+  state.resize = (clientY) => {
+    height = Math.min(Math.max(window.innerHeight - clientY, 160), window.innerHeight * 0.9);
+    applyHeight();
+  };
+  state.resized = () => {
+    try {
+      localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
+    } catch {
+      // Storage can be off.
+    }
+    draw();
+  };
   resize.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- It writes the height of this panel.
-    const move = (next: PointerEvent): void => {
-      height = Math.min(Math.max(window.innerHeight - next.clientY, 160), window.innerHeight * 0.9);
-      applyHeight();
-    };
+    const move = (next: PointerEvent): void => state.resize?.(next.clientY);
     const up = (): void => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      try {
-        localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
-      } catch {
-        // Storage can be off.
-      }
-      draw();
+      state.resized?.();
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
