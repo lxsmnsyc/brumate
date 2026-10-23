@@ -4,7 +4,7 @@ The VS Code extension gives `.brm` files highlighting, types, style support and 
 
 ## VS Code
 
-The extension is in [`packages/vscode`](../../packages/vscode). It gives:
+The extension is in [`packages/vscode`](https://github.com/lxsmnsyc/brumate/tree/main/packages/vscode). It gives:
 
 - Highlighting for markup, blocks, scripts, expressions and styles.
 - Types, completion, hover and go to definition from TypeScript, in `.brm` files and in `.ts` files that import them.
@@ -17,7 +17,7 @@ It bundles a language server for styles and diagnostics, and a TypeScript plugin
 
 - Run `brumate-language-server --stdio` from `@brumate/language-server` with the language server client of the editor. It gives style features and the diagnostics of the compiler.
 - For types, add `@brumate/typescript-plugin` to the TypeScript server of the editor, as [TypeScript](./typescript.md#in-an-editor) describes.
-- The TextMate grammar is in [`packages/vscode/syntaxes`](../../packages/vscode/syntaxes/brumate.tmLanguage.json). Its scope name is `source.brm`.
+- The TextMate grammar is in [`packages/vscode/syntaxes`](https://github.com/lxsmnsyc/brumate/blob/main/packages/vscode/syntaxes/brumate.tmLanguage.json). Its scope name is `source.brm`.
 
 ## Limits
 

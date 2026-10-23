@@ -243,4 +243,4 @@ export async function greet(name: string): Promise<string> {
 <output>{message}</output>
 ```
 
-[`examples/ui-kit`](../../examples/ui-kit) is a package like this one, and [`examples/kit-app`](../../examples/kit-app) is an app that uses it.
+[`examples/ui-kit`](https://github.com/lxsmnsyc/brumate/tree/main/examples/ui-kit) is a package like this one, and [`examples/kit-app`](https://github.com/lxsmnsyc/brumate/tree/main/examples/kit-app) is an app that uses it.

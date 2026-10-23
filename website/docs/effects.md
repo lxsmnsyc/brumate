@@ -111,6 +111,56 @@ The effect depends on `saves`, so each save runs the effect again. Call such fun
 
 [`brumate inspect`](./inspect.md) shows what each effect depends on, as `reads signal query`.
 
+## Values that stay across visits
+
+A preference such as the theme, a dismissed banner or the width of a panel belongs in a cookie. The server reads it, so the first render has the right value, and an `$effect` writes it when the value changes:
+
+```brm
+<script>
+  import { getEvent } from 'brumate/server';
+  import { $effect, $signal } from 'brumate/signals';
+
+  let theme = $signal(getEvent().getCookie('theme') ?? 'light');
+
+  $effect(() => {
+    document.cookie = `theme=${theme}; path=/; max-age=31536000; samesite=lax`;
+  });
+</script>
+
+<div class="page" data-theme=theme>
+  <button onClick=(() => (theme = theme === 'dark' ? 'light' : 'dark'))>Theme</button>
+</div>
+```
+
+- The page renders with the stored value, so nothing changes after it loads.
+- The effect never runs on load. Its code loads with the first change.
+- Encode a value that can hold `;`, `,` or spaces with `encodeURIComponent`, and decode it where you read it.
+- A server function can set the cookie too, with `event.setCookie`, when the server should check the value. See [Cookies and sessions](./server-functions.md#cookies-and-sessions).
+
+`localStorage` and `sessionStorage` work, but the server cannot read them. The page renders the default first, and the browser has to run code on load to read the stored value, so the page changes after it shows, and every page that does it loads code before anyone interacts. Keep them for values that the first render does not show.
+
+## Element references
+
+`ref=name` on an element writes the element into the signal `name`, so browser code can use it:
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let input = $signal<HTMLInputElement>();
+</script>
+
+<label>
+  Email
+  <input ref=input type="email">
+</label>
+<button onClick=(() => input!.focus())>Focus the field</button>
+```
+
+- The signal must be a `$signal` declared in the same file.
+- On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
+- An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
+
 ## `$client`
 
 `$client(callback, trigger)` runs the callback in the browser once, when the trigger fires. It does not wait for a change:
@@ -145,24 +195,7 @@ The effect depends on `saves`, so each save runs the effect again. Call such fun
 - Use `$client` for browser APIs that the server does not have, such as `window`, `localStorage` or a chart library.
 - With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so the code of a chart low on the page loads when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
 
-## Errors in the browser
-
-Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, a `$client` callback, or a memo whose load rejects. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
-
-```brm
-#try {
-  <button onClick=(async () => { await save(); })>Save</button>
-} #catch (error, reset) {
-  <p>{String(error)}</p>
-  <button onClick=reset>Try again</button>
-}
-```
-
-- Without a `#try` around it, the page gets a `brumate:error` event on `window`, with `error` and the `scope` of the code in `detail`, and the error is logged. An app can report it from there.
-- `onError(error, info)` of the loader receives every error first, such as for a reporting service, also the ones that a `#try` catches. `info.scope` is the ID of the scope of the code.
-- A memo that fails keeps its old value, as before. A handler that throws stops there.
-
-## `#client`
+## `#client` blocks
 
 A `#client` block skips its body on the server. The browser renders it when the trigger fires, with the same triggers as `$client`:
 
@@ -180,29 +213,21 @@ A `#client` block skips its body on the server. The browser renders it when the 
 }
 ```
 
-Use it for markup that needs the browser, such as a map or a value from `localStorage`. The page shows nothing in its place until the block renders, unless the block has an `#else` body, which the server renders in its place. See [`#client`](./control-flow.md#client).
+Use it for markup that needs the browser, such as a map or a value from `localStorage`. The page shows nothing in its place until the block renders.
 
-## Element references
-
-`ref=name` on an element writes the element into the signal `name`, so browser code can use it:
+An `#else` body renders on the server in place of the body, until the body renders:
 
 ```brm live
-<script>
-  import { $signal } from 'brumate/signals';
-
-  let input = $signal<HTMLInputElement>();
-</script>
-
-<label>
-  Email
-  <input ref=input type="email">
-</label>
-<button onClick=(() => input!.focus())>Focus the field</button>
+#client ('idle') {
+  <p>Your time zone is {Intl.DateTimeFormat().resolvedOptions().timeZone}.</p>
+} #else {
+  <p>Finding your time zone…</p>
+}
 ```
 
-- The signal must be a `$signal` declared in the same file.
-- On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
-- An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
+- The fallback can keep the space of the body, so the page does not move when the body renders.
+- With `'visible'`, the block renders when the fallback comes into view.
+- Without scripts, the fallback stays.
 
 ## Behaviors of an element
 
@@ -255,3 +280,20 @@ export function clickOutside(element: HTMLElement, onOutside: () => void): () =>
 | Add a behavior to an element                             | `ref=name` and `$client`     |
 
 Handlers are often enough. A value that a handler writes updates the page by itself, so an effect is only needed for work outside the page, such as saving to `localStorage` or talking to a library.
+
+## Errors in the browser
+
+Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, a `$client` callback, or a memo whose load rejects. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
+
+```brm
+#try {
+  <button onClick=(async () => { await save(); })>Save</button>
+} #catch (error, reset) {
+  <p>{String(error)}</p>
+  <button onClick=reset>Try again</button>
+}
+```
+
+- Without a `#try` around it, the page gets a `brumate:error` event on `window`, with `error` and the `scope` of the code in `detail`, and the error is logged. An app can report it from there.
+- `onError(error, info)` of the loader receives every error first, such as for a reporting service, also the ones that a `#try` catches. `info.scope` is the ID of the scope of the code.
+- A memo that fails keeps its old value, as before. A handler that throws stops there.
