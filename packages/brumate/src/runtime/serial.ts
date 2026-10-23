@@ -141,6 +141,37 @@ export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, {
   });
 }
 
+/**
+ * The plugin of `AbortSignal` from seroval-plugins, which sends whether the
+ * signal aborted and its reason. The one of seroval-plugins waits for a live
+ * signal to abort, so a call with one would not be sent, and a page or an
+ * answer with one would not end.
+ */
+const SignalPlugin: typeof AbortSignalPlugin = {
+  ...AbortSignalPlugin,
+  parse: {
+    sync: AbortSignalPlugin.parse.sync,
+    stream: AbortSignalPlugin.parse.sync,
+    async: async (value, ctx) => (value.aborted ? { reason: await ctx.parse(value.reason) } : {}),
+  },
+};
+
+/**
+ * The plugin of `Request` from seroval-plugins, whose body streams in the
+ * stream mode. A request with a stream body needs `duplex: 'half'`, or its
+ * constructor throws, so the plugin adds it.
+ */
+const BodyRequestPlugin: typeof RequestPlugin = {
+  ...RequestPlugin,
+  serialize: (node, ctx) =>
+    `new Request(${ctx.serialize(node.url)},Object.assign(${ctx.serialize(node.options)},{duplex:"half"}))`,
+  deserialize: (node, ctx) =>
+    new Request(ctx.deserialize(node.url) as string, {
+      ...(ctx.deserialize(node.options) as RequestInit),
+      duplex: 'half',
+    } as RequestInit),
+};
+
 /** The plugins after the plugin of uploads, which a call makes for its files. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
 const valuePlugins: Plugin<any, any>[] = [
@@ -151,7 +182,7 @@ const valuePlugins: Plugin<any, any>[] = [
   // The web values of seroval-plugins. Requests and responses need the async or stream modes,
   // so a page state or a call result that holds one streams. The plugin of uploads takes files
   // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.
-  AbortSignalPlugin,
+  SignalPlugin,
   CustomEventPlugin,
   DOMExceptionPlugin,
   EventPlugin,
@@ -159,7 +190,7 @@ const valuePlugins: Plugin<any, any>[] = [
   HeadersPlugin,
   ImageDataPlugin,
   ReadableStreamPlugin,
-  RequestPlugin,
+  BodyRequestPlugin,
   ResponsePlugin,
   URLPlugin,
   URLSearchParamsPlugin,
@@ -185,7 +216,6 @@ export const plugins: Plugin<any, any>[] = callPlugins();
  */
 const StreamGuardPlugin = createPlugin<object, Record<string, never>>({
   tag: 'brumate/stream-guard',
-  skipPlainObjects: true,
   test: (value) =>
     (typeof ReadableStream !== 'undefined' && value instanceof ReadableStream) ||
     (typeof value === 'object' && value !== null && Symbol.asyncIterator in value),
@@ -201,13 +231,12 @@ const StreamGuardPlugin = createPlugin<object, Record<string, never>>({
 /**
  * The plugins for the sync modes, which must throw for a value that only
  * streams, so the page state streams instead, and a call with a stream in
- * its arguments is not shared with another.
+ * its arguments is not shared with another. The guard comes first, so it
+ * takes a `ReadableStream` before the plugin of `ReadableStream`, which the
+ * plugins of `Request` and `Response` bring in.
  */
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
-export const syncPlugins: Plugin<any, any>[] = [
-  StreamGuardPlugin,
-  ...plugins.filter((plugin) => plugin !== ReadableStreamPlugin),
-];
+export const syncPlugins: Plugin<any, any>[] = [StreamGuardPlugin, ...plugins];
 
 /**
  * Features that are off in both directions:

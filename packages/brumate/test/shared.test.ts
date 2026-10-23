@@ -244,6 +244,13 @@ describe('streams', () => {
     );
   });
 
+  it('are left out of the sync modes as plain objects too', () => {
+    const iterable = { [Symbol.asyncIterator]: async function* () {} };
+    expect(() => toJSON(iterable, { plugins: syncPlugins, disabledFeatures })).toThrow(
+      'A stream needs the async or stream mode',
+    );
+  });
+
   it('stream their chunks in the page state', async () => {
     const codes: string[] = [];
     await streamState({ 0: { s: [chunks('a', 'b')] } }, (code) => codes.push(code));
@@ -260,6 +267,52 @@ describe('streams', () => {
     const read = dedupe((_stream: ReadableStream<string>) => ++count, 'read');
     const results = withEvent(undefined, () => [read(chunks('a')), read(chunks('b'))], new Map());
     expect(results).toEqual([1, 2]);
+  });
+});
+
+/** A request with a body. */
+function postRequest(): Request {
+  return new Request('https://example.com/', { method: 'POST', body: 'hi' });
+}
+
+describe('web values', () => {
+  it('send a live signal as it is now, without waiting for it to abort', async () => {
+    const signal = new AbortController().signal;
+    const json = await toJSONAsync(signal, options);
+    expect((fromJSON(json, options) as AbortSignal).aborted).toBe(false);
+    const [node] = await stream(signal);
+    expect((fromCrossJSON(node!, { ...options, refs: new Map() }) as AbortSignal).aborted).toBe(
+      false,
+    );
+  });
+
+  it('send a request with its body in the page state and in answers', async () => {
+    const codes: string[] = [];
+    await streamState({ 0: { s: [postRequest()] } }, (code) => codes.push(code));
+    const refs: unknown[] = [];
+    const state = runRecord(codes[0]!, refs) as Record<number, { s: [Request] }>;
+    for (const code of codes.slice(1)) {
+      runRecord(code, refs);
+    }
+    expect(await state[0]!.s[0].text()).toBe('hi');
+    const read = new Map();
+    let answer: Request | undefined;
+    await new Promise<void>((resolve, reject) => {
+      toCrossJSONStream(postRequest(), {
+        ...options,
+        refs: new Map(),
+        onParse: (node, initial) => {
+          if (initial) {
+            answer = fromCrossJSON(node, { ...options, refs: read });
+          } else {
+            fromCrossJSON(node, { ...options, refs: read });
+          }
+        },
+        onError: reject,
+        onDone: resolve,
+      });
+    });
+    expect(await answer!.text()).toBe('hi');
   });
 });
 

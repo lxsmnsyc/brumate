@@ -25,6 +25,8 @@ const SENDABLE = new Set([
   'Event',
   'CustomEvent',
   'DOMException',
+  'AbortSignal',
+  'ImageData',
   'Map',
   'Set',
   'Promise',
