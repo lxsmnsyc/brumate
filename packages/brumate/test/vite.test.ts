@@ -212,6 +212,41 @@ describe('style imports', () => {
   });
 });
 
+describe('server modules', () => {
+  it('reloads the page when a module that only the server reads changes', async () => {
+    const directory = fileURLToPath(new URL('./.output/server-modules/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(`${directory}data.ts`, "export const title = 'Before';\n");
+    writeFileSync(
+      `${directory}Page.brm`,
+      "<script>\n  import { title } from './data.ts';\n</script>\n\n<h1>{title}</h1>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    const send = vi.spyOn(dev.environments.client.hot, 'send');
+    try {
+      const html = async (): Promise<string> => {
+        const module = await dev.ssrLoadModule('/Page.brm');
+        return (await render(module.default, {})).html;
+      };
+      expect(await html()).toContain('Before');
+      writeFileSync(`${directory}data.ts`, "export const title = 'After';\n");
+      // The file watcher can take a while to notice the change while other tests run.
+      await vi.waitFor(() => expect(send).toHaveBeenCalledWith({ type: 'full-reload' }), {
+        timeout: 15_000,
+      });
+      expect(await html()).toContain('After');
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
 describe('files of server functions', () => {
   it('gives the browser stubs, and answers their calls on the server', async () => {
     const directory = fileURLToPath(new URL('./.output/server-files/', import.meta.url));
