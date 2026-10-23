@@ -4,11 +4,10 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`) and progressive forms (`brumate/forms`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`) and two-way binding (`$bind`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
@@ -29,99 +28,6 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
 
 ## Syntax
-
-### Two-way binding
-
-Some state is sometimes the parent's and sometimes the child's own, such as whether a dialog is open, or the value of a field. Today a parent that wants to own it passes a value and a handler that writes it back, and an element needs the same pair:
-
-```html
-<input value=draft onInput=((event) => (draft = event.currentTarget.value))>
-```
-
-#### The design
-
-Three parts, each with one job:
-
-- `let` in the child: a prop that the component writes.
-- `Bindable<T>` in the type: a prop that a parent can bind.
-- `$bind(signal)` in the parent: the parent owns the value.
-
-```html
-<!-- Dialog.brm -->
-<script lang="ts">
-  import type { Bindable } from 'brumate/signals';
-
-  interface DialogProps {
-    title: string;
-    open?: Bindable<boolean>;
-    onOpen?: () => void;
-  }
-
-  const { title, onOpen } = $props<DialogProps>();
-  let { open = false } = $props<DialogProps>();
-
-  function show() {
-    open = true;
-    onOpen?.();
-  }
-</script>
-```
-
-```html
-<!-- The parent owns the value, and the child keeps its own. -->
-<Dialog title="Settings" open=$bind(settingsOpen) onOpen=track />
-<Dialog title="Help" />
-
-<input value=$bind(draft)>
-<input type="checkbox" checked=$bind(done)>
-```
-
-#### In the child
-
-- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning. A component can destructure `$props()` more than once, with `const` and with `let`.
-- Without a binding, the child writes its own copy, such as a prop that seeds a state that the child then edits. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
-- With a binding, a write goes to the parent's signal.
-- The child writes first and calls its handlers after, so a handler such as `onOpen` reads the new value. A write never calls a handler by itself.
-
-#### In the type
-
-`let` says that the child writes a prop. `Bindable<T>` says that a parent can bind it. They are apart, because a child can write its own copy of a prop that it does not share:
-
-|                                             | The child writes it                                  | A parent can `$bind` it                        |
-| ------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
-| `const { foo }`                             | No, it is a compile error                            | No                                             |
-| `let { foo }`, and `foo` is not `Bindable`  | Yes, its own copy                                    | No, it is a type error in the parent           |
-| `let { foo }`, and `foo` is `Bindable<T>`   | Yes, its own copy, or the parent's signal when bound | Yes                                            |
-| `const { foo }`, and `foo` is `Bindable<T>` | No                                                   | Yes, with a warning: the child never writes it |
-
-- `Bindable<T>` in a props interface marks a prop that a parent can bind. Inside the child, `$props<T>()` unwraps it, so `open` is a `boolean`.
-- With a typed `$props<T>()`, the type decides which props a parent can bind.
-- With an untyped `$props()`, the type checker reads `let` in the destructuring, and types those props as bindable, so a quick component needs no annotation.
-- The type checker warns about a `Bindable` prop that the child reads only with `const`.
-
-#### In the parent
-
-- `$bind(signal)` passes a reference to a signal, or to a `let` prop of the parent, which binds through more than one level. The compiler checks that the argument is one of those.
-- The type of `$bind(x)` is `Binding<T>`. A prop that is not `Bindable`, or of another type, does not accept it.
-- `$bind(signal, (next) => …)` calls the function for each write in place of writing the signal, so the parent can refuse a value or change it, such as keep a dialog open while a form has changes. The function is a client root, so it loads on the first write.
-- Handlers stay ordinary props. The binding keeps the state in step, and a handler such as `onOpen` is for side effects.
-
-#### On elements
-
-- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and a `b-on` entry of the core, `input=$bind#<hops>.<slot>`. The core writes the slot without loading code of the component. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
-
-#### Through rest props and spreads
-
-- A binding is a value, as a function reference is: it serializes as the scope and the slot of its signal.
-- `...rest` keeps a binding as it is. Spread on an element, a binding on `value` or `checked` writes the value and adds the input handler, as a spread passes on handlers. Spread on a component, it binds that component's prop.
-- Reading `rest.value` gives the binding, not the value. To read or write a bound prop, destructure it by name with `let`.
-
-#### In the browser
-
-- On the server, nothing writes, so a bindable prop is its value.
-- A bound write in the browser writes the parent's slot through the reference, without the parent's code. The parent's updates load only when something in its markup reads the signal, as for any write. A handler loads only when the child calls it.
-
-Cost: about 1 week. The compiler work is `let` props, `$bind` on components and elements, and a binding through spreads. The runtime keeps a reference to a slot, as it keeps references to functions.
 
 ### Transitions
 
@@ -649,7 +555,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Binding and transitions**: `bind:value`, `bind:checked` and bindable props, then transitions. They are small, and useful without the UI components: forms get shorter fields, and any block can animate. The UI components need both later.
+1. **Transitions**: binding is done, so transitions come next. They are small, and useful without the UI components: any block can animate. The UI components need them later.
 2. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 3. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 4. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.

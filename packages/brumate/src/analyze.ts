@@ -165,6 +165,50 @@ function range(node: Range): Range {
   return { start: node.start, end: node.end };
 }
 
+/**
+ * The names of the props that a type marks `Bindable`, such as `open` in
+ * `{ open?: Bindable<boolean> }`. A name of a type is looked up among the
+ * interfaces and the type aliases of the scripts.
+ */
+function bindableNames(type: oxc.Node, file: SFCFile): string[] {
+  let members: oxc.Node[] | undefined;
+  if (type.type === 'TSTypeLiteral') {
+    members = type.members;
+  } else if (type.type === 'TSTypeReference' && type.typeName.type === 'Identifier') {
+    const name = type.typeName.name;
+    const statements = [
+      ...(file.moduleScript?.program.body ?? []),
+      ...(file.instanceScript?.program.body ?? []),
+    ].map((statement) =>
+      statement.type === 'ExportNamedDeclaration' && statement.declaration
+        ? statement.declaration
+        : statement,
+    );
+    for (const statement of statements) {
+      if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
+        members = statement.body.body;
+      } else if (statement.type === 'TSTypeAliasDeclaration' && statement.id.name === name) {
+        return bindableNames(statement.typeAnnotation, file);
+      }
+    }
+  }
+  return (members ?? []).flatMap((member) => {
+    const annotation =
+      member.type === 'TSPropertySignature' ? member.typeAnnotation?.typeAnnotation : undefined;
+    const isBindable =
+      annotation?.type === 'TSTypeReference' &&
+      annotation.typeName.type === 'Identifier' &&
+      annotation.typeName.name === 'Bindable';
+    if (!isBindable || member.type !== 'TSPropertySignature' || member.computed) {
+      return [];
+    }
+    if (member.key.type === 'Identifier') {
+      return [member.key.name];
+    }
+    return member.key.type === 'Literal' ? [String(member.key.value)] : [];
+  });
+}
+
 export function analyze(file: SFCFile): SemanticModel {
   return new Analyzer(file).run();
 }
@@ -177,6 +221,8 @@ class Analyzer {
   readonly bindings: SemanticModel['bindings'] = [];
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
+  /** The type arguments of the `$props<T>()` calls. */
+  private readonly propsTypes: oxc.Node[] = [];
   private readonly module: Scope;
   private readonly component: Scope;
 
@@ -205,6 +251,7 @@ class Analyzer {
     }
     this.visitNodes(this.file.children, this.component);
     this.addProvidedFunctions();
+    this.checkBindableProps();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -242,6 +289,43 @@ class Analyzer {
         };
         declaration.reads.push(read);
         reference.site.reads.push(read);
+      }
+    }
+  }
+
+  /**
+   * Warns about a prop that the type of `$props<T>()` marks `Bindable`, but
+   * that the component reads only with `const`, so a binding of it never
+   * changes the parent's value. It reads the type in the file: a type
+   * literal, or an interface or a type alias of the scripts.
+   */
+  private checkBindableProps(): void {
+    const bindable = new Set<string>();
+    for (const type of this.propsTypes) {
+      for (const name of bindableNames(type, this.file)) {
+        bindable.add(name);
+      }
+    }
+    if (bindable.size === 0) {
+      return;
+    }
+    const props = this.declarations.filter(
+      (declaration) =>
+        declaration.kind === 'prop' &&
+        declaration.scope === this.component &&
+        declaration.propKey !== undefined &&
+        bindable.has(declaration.propKey),
+    );
+    const written = new Set(
+      props.filter((declaration) => declaration.writable).map((declaration) => declaration.propKey),
+    );
+    for (const declaration of props) {
+      if (!written.has(declaration.propKey)) {
+        this.report(
+          'warning',
+          `The prop "${declaration.propKey}" is Bindable, but the component reads it with const and never writes it. Destructure it with let`,
+          declaration.range,
+        );
       }
     }
   }
@@ -621,6 +705,10 @@ class Analyzer {
       }
       if (call.arguments.length > 0) {
         this.report('error', '$props() takes no arguments', call);
+      }
+      const type = (call as { typeArguments?: { params: oxc.Node[] } }).typeArguments?.params[0];
+      if (type) {
+        this.propsTypes.push(type);
       }
       if (id.type === 'ObjectPattern') {
         for (const property of id.properties) {

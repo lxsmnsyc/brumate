@@ -158,8 +158,12 @@ export function $action<F extends (...args: never[]) => unknown>(
  * Passes a child a signal, or a prop that the component writes, so a write
  * of the prop in the child writes it. The child destructures the prop with
  * `let`. Pass it as the value of a prop: `<Dialog open=$bind(open) />`.
+ *
+ * - Only a prop of type `Bindable<T>` takes it.
+ * - With `set`, a write calls `set(next)` in place of writing the signal.
  */
-export function $bind<T>(_signal: T): T {
+export function $bind<T>(signal: T, set?: (next: T) => unknown): BindableMark<T>;
+export function $bind(): never {
   return compileTimeOnly('$bind');
 }
 

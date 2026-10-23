@@ -1,0 +1,13 @@
+<script lang="ts">
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  interface ToggleProps {
+    on?: Bindable<boolean>;
+    size?: number;
+  }
+
+  let { on = false } = $props<ToggleProps>();
+</script>
+
+<button onClick=(() => (on = !on))>{on ? 'on' : 'off'}</button>

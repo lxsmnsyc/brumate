@@ -288,3 +288,26 @@ describe('setters of bindings', () => {
     ).toThrow('$bind takes the name of a signal, and a function that writes it');
   });
 });
+
+describe('bindable props', () => {
+  const messages = (script: string) =>
+    compile(
+      `<script lang="ts">\nimport { $props } from 'brumate/signals';\nimport type { Bindable } from 'brumate/signals';\n${script}\n</script>\n`,
+      { filename: 'Test.brm' },
+    ).warnings.map((warning) => warning.message);
+
+  it('warns about a Bindable prop that the component reads only with const', () => {
+    const warning =
+      'The prop "open" is Bindable, but the component reads it with const and never writes it. Destructure it with let';
+    expect(messages('const { open } = $props<{ open?: Bindable<boolean> }>();')).toEqual([warning]);
+    expect(
+      messages(`interface Props { open?: Bindable<boolean>; title: string }
+const { open, title } = $props<Props>();`),
+    ).toEqual([warning]);
+    expect(
+      messages(`type Props = { open?: Bindable<boolean> };
+const { open } = $props<Props>();`),
+    ).toEqual([warning]);
+    expect(messages('let { open = false } = $props<{ open?: Bindable<boolean> }>();')).toEqual([]);
+  });
+});
