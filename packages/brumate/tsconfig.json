@@ -18,7 +18,8 @@
     "noEmit": true,
     "paths": {
       "brumate/context": ["./src/runtime/context.ts"],
-      "brumate/serial": ["./src/runtime/values.ts"]
+      "brumate/serial": ["./src/runtime/values.ts"],
+      "brumate/stream": ["./src/runtime/gather.ts"]
     }
   },
   "include": ["src", "test", "types.d.ts"]

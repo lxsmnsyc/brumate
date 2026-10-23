@@ -33,6 +33,7 @@ const config: InlineConfig = {
       'brumate/context': runtime('context'),
       'brumate/events': runtime('events'),
       'brumate/serial': runtime('values'),
+      'brumate/stream': runtime('gather'),
     },
   },
 };

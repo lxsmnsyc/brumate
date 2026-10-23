@@ -9,7 +9,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Handlers from scripts (`$handler`) and progressive forms (`brumate/forms`).
 - Two-way binding (`$bind`) and view transitions of handlers (`transition`).
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
-- The reveal order of `#loading` bodies (`#reveal`).
+- The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
@@ -18,7 +18,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
 | [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
@@ -88,32 +88,11 @@ Cost: about 2 weeks, most of it for scrolling, focus and the items of different 
 
 ### Streaming lists
 
-A memo of a stream takes each value as it arrives, so a list that grows, such as the reply of a language model, search results or log lines, has to gather its items by hand.
+`gather` from `brumate/stream` gives the list of the values of a stream so far, which a memo renders with `#for` as it grows in the browser. The server renders the empty list, because it reads only the first value of a memo.
 
-```html
-<script>
-  import { $props } from 'brumate/signals';
-  import { reply } from './chat.server';
+- `#for await (item of stream) { … } #else { … }` would be the same without the memo, and the server would stream the items of a stream that starts with the page, as `#loading` bodies stream, with the browser reading on from there.
 
-  const { prompt } = $props<{ prompt: string }>();
-</script>
-
-<ol>
-  #for await (token of reply(prompt)) {
-    <li>{token}</li>
-  } #else {
-    <li>Thinking…</li>
-  }
-</ol>
-```
-
-- `#for await (item of stream)` renders an item for each value of an async iterable, such as a server function that yields, as it arrives. `#else` shows until the first one.
-- On the server, the items stream into the page in the order they come, as `#loading` bodies do, and the page does not wait for the stream to end.
-- In the browser, the core appends the items that arrive after the page, from the render module, and the list keeps them as signals of its own. When the expression gives a new stream, such as for a new prompt, the list starts again.
-- `by key` keeps items when a stream sends a value with a key that it sent before, so a stream can update an item in place.
-- The memo of the stream keeps its last value, as now, for code that only needs the latest.
-
-Cost: about 1 to 2 weeks. Memos already read streams, and lists already add items in the browser.
+Cost: about 1 to 2 weeks for the server part, when a page needs a stream that starts with it. Handing the stream from the server to the browser without reading it twice is most of it.
 
 ### Reveal order of `#defer` blocks
 
@@ -479,7 +458,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
-2. **Streaming and tools**: reveal order is done. Next are streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
+2. **Streaming and tools**: reveal order and lists that grow in the browser are done. Next are the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 

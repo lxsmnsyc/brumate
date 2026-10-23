@@ -1538,6 +1538,31 @@ async function withRoute(
   }
 }
 
+describe('gather', () => {
+  it('renders the list empty on the server, and fills it as the stream sends values', async () => {
+    const server = await import(file('gatherList.brm.ts'));
+    const page = await renderParts(server.default, {});
+    expect(page.html).toContain('<li class="empty">Nothing yet</li>');
+    await resume('gatherList', {});
+    click(document.querySelector('.ask')!);
+    // The items arrive one by one, and the list shows the first before the stream ends.
+    const seen = new Set<number>();
+    const counter = new MutationObserver(() =>
+      seen.add(document.querySelectorAll('li:not(.empty)').length),
+    );
+    counter.observe(document.querySelector('ol')!, { childList: true, subtree: true });
+    await waitFor(() =>
+      expect([...document.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        'word 1',
+        'word 2',
+        'word 3',
+      ]),
+    );
+    counter.disconnect();
+    expect([...seen]).toEqual([1, 2, 3]);
+  });
+});
+
 describe('#reveal', () => {
   /** Promises that the test settles, by name. */
   function waits(): { wait: Record<string, Promise<void>>; go: (name: string) => void } {
