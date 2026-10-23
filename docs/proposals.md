@@ -321,6 +321,30 @@ From Terracotta:
 - State as `data-*` attributes, such as `data-open` and `data-selected`, for styling with CSS or class objects.
 - The split between controlled and uncontrolled state, below.
 
+#### Decisions
+
+Settled on 2026-10-24:
+
+- **Browser support.** A part uses a feature of the platform only when at least 95% of global usage supports it. The share is the global usage of each browser version, from caniuse, summed over the versions that MDN's compatibility data marks as supporting the feature. The client of brumate will be checked against the same rule.
+- **No native popover or dialog.** Overlays follow React Aria and Terracotta, which use neither: they render with `#portal`, and the shared modules place them, keep focus in them and give it back, close them on Escape or a click outside, and hide the rest of the page from assistive technology.
+- **React Aria and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they do, and their tests and docs are the specification.
+- **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
+- **Bindable state.** The state props of the parts, such as `open`, `value` and `checked`, are bindable, so a caller writes `open=$bind(settingsOpen)`.
+
+What the 95% rule allows, measured on 2026-10-24:
+
+| Feature                               | Global support | Use                                                                 |
+| ------------------------------------- | -------------: | ------------------------------------------------------------------- |
+| `inert`                               |          96.4% | Yes, for the page behind a modal                                    |
+| `:focus-visible`                      |          96.5% | Yes, in place of focus-visible tracking                             |
+| `Element.checkVisibility()`           |          95.2% | Yes, for focus order                                                |
+| Popover API                           |          93.6% | No                                                                  |
+| `@starting-style`                     |          93.0% | No. Overlays animate with `Transition`.                             |
+| `transition-behavior: allow-discrete` |          91.0% | No                                                                  |
+| CSS anchor positioning                |          87.3% | No. A shared module places overlays.                                |
+| `commandfor` and `command`            |          86.2% | No                                                                  |
+| View transitions                      |          92.9% | Only where a browser without them still works, as `transition` does |
+
 #### Controlled and uncontrolled
 
 Each part that has state comes in two shapes, as in Terracotta, and the prop that the caller passes picks one:
@@ -340,12 +364,12 @@ Each part that has state comes in two shapes, as in Terracotta, and the prop tha
 <Dialog open=settingsOpen onChange=((open) => (settingsOpen = open))>…</Dialog>
 
 <!-- The same, with a bindable prop. -->
-<Dialog bind:open=settingsOpen>…</Dialog>
+<Dialog open=$bind(settingsOpen)>…</Dialog>
 ```
 
 - **Uncontrolled**: the part owns a signal that starts at the default, and writes it. `onChange` tells the caller what happened.
 - **Controlled**: the part never writes its state. It calls `onChange` with the value it wants, and shows the value that the caller passes. A caller that does not write it back gets a part that does not move, and the docs say so, as Terracotta's do.
-- `bind:open=signal` is the controlled shape with an `onChange` that writes the signal, from [bindable props](#bindable-props). The parts declare `open` as bindable, so both spellings work.
+- `open=$bind(signal)` is the controlled shape with an `onChange` that writes the signal. The parts declare `open` as `Bindable`, so both spellings work.
 - The props type is a union of the two shapes, so passing `open` and `defaultOpen` together is a type error, as Terracotta's types do.
 - The shape is chosen once, by which prop is there: `'open' in props`, as Terracotta's `isDisclosureUncontrolled` checks `'defaultOpen' in props`. A part does not switch shape after it renders.
 - One helper in the shared `.brm.ts` module gives every part the same rule: `controllable(props, 'open', 'defaultOpen')` returns a value to read and a `set` that writes the part's own signal when it is uncontrolled, and calls `onChange` either way.
@@ -358,20 +382,20 @@ What brumate adds to the split:
 
 #### How it maps to brumate
 
-| React Aria Components or Terracotta | brumate                                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                             |
-| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                       |
-| `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                        |
-| `triggerRef` for positioning        | CSS anchor positioning: `anchor-name` on the trigger and `position-anchor` on the popover. It needs no ref and no script. |
-| Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                      |
-| Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                            |
-| `defaultOpen` and `isOpen`          | `defaultOpen`, and `open` or `bind:open`, through one `controllable` helper                                               |
-| Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                              |
-| Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.   |
-| `@internationalized/date`, `number` | Used as they are                                                                                                          |
+| React Aria Components or Terracotta | brumate                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                                         |
+| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                                   |
+| `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                                    |
+| `triggerRef` for positioning        | A function of a shared `.brm.ts` module that places the overlay next to its trigger, when it opens and as the page scrolls or resizes |
+| Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                                  |
+| Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                                        |
+| `defaultOpen` and `isOpen`          | `defaultOpen`, and `open` or `open=$bind(…)`, through one `controllable` helper                                                       |
+| Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                                          |
+| Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.               |
+| `@internationalized/date`, `number` | Used as they are                                                                                                                      |
 
-Native features cover parts of the behaviour with no script: `<dialog>` with `showModal()`, the Popover API, `commandfor` and `command` on buttons, and CSS anchor positioning.
+The parts do not use `<dialog>`, the Popover API, `commandfor` or CSS anchor positioning. See [Decisions](#decisions).
 
 #### What the compiler needs first
 
@@ -397,13 +421,18 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
 
 #### Plan
 
-1. The spike above, as a test fixture or a page in `examples/`.
-2. The compiler work that the spike and the list above call for, each with tests.
-3. `packages/ui` in this repository, while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's. The parts follow the [roadmap](#roadmap).
-4. `examples/ui`, a page of every part, covered by `pnpm e2e` with an accessibility check such as axe-core.
-5. Docs in `website/docs/ui`, with live samples.
+1. **Groundwork**, about a week:
+   - `packages/ui` as `@brumate/ui`, a package of `.brm` components, as `examples/ui-kit` is.
+   - The workbench counts a context with a default and a dynamic tag with a default element as self-contained, since every part reads the context of its parent and renders `as`.
+   - Story files for the workbench, with named sets of props, so each part shows its states.
+   - Helpers for keyboard and focus in tests, and `examples/ui`, a page of every part that `pnpm e2e` covers with axe-core.
+2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: `controllable`, the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with the press tests of React Aria, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
+3. **Phases 1, 2 and 3**, the controls and fields, the overlays, and the collections with `Select`, in that order, as the roadmap below says.
+4. **Phases 4 to 7**, as users ask for them.
 
-Cost: about 2 weeks for the compiler work, then the phases of the roadmap below.
+Each phase ships with tests that follow the behaviour of React Aria, an accessibility check, docs in `website/docs/ui` with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
+
+`packages/ui` stays in this repository while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's.
 
 #### Roadmap
 
@@ -413,7 +442,7 @@ The parts come from `react-aria-components` 1.22.1 (2026-10-09). Each phase ship
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                                | 3 to 4 weeks, with the compiler work |
 | 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [`createForm`](../website/docs/forms.md#forms-with-createform). | 3 to 4 weeks                         |
-| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work.   | 4 to 5 weeks                         |
+| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `#portal`, and shared modules that place overlays, trap focus and close them.               | 5 to 6 weeks                         |
 | 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                        | 6 to 8 weeks                         |
 | 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                             | 2 weeks                              |
 | 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                        | 4 to 6 weeks                         |
@@ -424,10 +453,12 @@ Notes for each phase:
 
 - Phase 0 is most of the risk. It settles how a part merges its context with its props, how state reaches the caller's markup, and how `as` passes handlers and focus to a component. Every later part depends on it.
 - Phase 1 parts are mostly markup and attributes, and many need no client code until they are used. A `Checkbox` is a native `<input type="checkbox">` with labels and states.
-- Phase 2 uses the platform where it can. `Modal` and `Sheet` are `<dialog>` with `showModal()`. `Popover` and `Tooltip` use the Popover API and anchor positioning, so they need no positioning code. A click outside closes them through `popover="auto"`, or a listener that is added when they open.
-- Phase 2 animates in two ways:
-  - Overlays animate as they open and close with CSS alone. `<dialog>` and popovers are hidden, not removed, so `@starting-style` and `transition-behavior: allow-discrete` on `display` and `overlay` cover both directions.
-  - `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
+- Phase 2 renders every overlay with `#portal`, so it is above the page without the top layer of the browser. Shared modules do the rest:
+  - placing a `Popover` or `Tooltip` next to its trigger, flipping it when it does not fit, when it opens and as the page scrolls or resizes;
+  - moving focus into a `Dialog` or `Modal`, keeping it there, and giving it back to the trigger when it closes, as React Aria's `FocusScope` does;
+  - closing on Escape and on a click outside, with listeners that are added when the overlay opens, as React Aria's `useInteractOutside` does;
+  - hiding the rest of the page behind a `Modal` with `aria-hidden`, as React Aria's `ariaHideOutside` does, and locking its scroll, as its `usePreventScroll` does.
+- Phase 2 animates with `Transition`, for overlays and for other content that is removed. `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
 - Phase 3 is the largest. Collections take `items` and an item `#template`, because brumate cannot read the structure of markup the way React Aria reads its children. Keyboard movement and typeahead go in a `.brm.ts` module that every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
 - Phase 4 parses and formats numbers by locale on the server and in the browser with the same code.
 - Phase 5 keeps dates in signals as ISO strings, because the page state cannot hold `CalendarDate` class instances.
