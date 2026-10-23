@@ -15,6 +15,10 @@
   let error = $signal('');
   let running = $signal(false);
   let runs = $signal(0);
+  // The files of the last run, so the first run of the effect does not run them twice.
+  let ranWith = $signal<ReplFile[]>();
+  // False until the files of a shared link are open, so the address keeps the link until then.
+  let ready = $signal(false);
   let logs = $signal<{ id: number; level: string; text: string }[]>([]);
   let adding = $signal(false);
   let draftName = $signal('');
@@ -82,6 +86,10 @@
   }
 
   async function run() {
+    if (files === ranWith) {
+      return;
+    }
+    ranWith = files;
     // Only the latest run writes its result, so an older run that finishes later is dropped.
     runs++;
     const id = runs;
@@ -105,7 +113,14 @@
   }
 
   async function share() {
-    await navigator.clipboard.writeText(location.href);
+    // The address gets the files after a pause in typing, so the link is made from them here.
+    history.replaceState(history.state, '', `#${encode(files)}`);
+    try {
+      await navigator.clipboard.writeText(location.href);
+    } catch {
+      // The browser can refuse the clipboard. The link is still in the address bar.
+      return;
+    }
     copied = true;
     setTimeout(() => (copied = false), 1500);
   }
@@ -130,22 +145,36 @@
       count++;
       logs = [...$untrack(logs), { id: count, level, text: values.map(text).join(' ') }].slice(-200);
     };
-    for (const level of ['log', 'info', 'warn', 'error'] as const) {
-      const original = console[level].bind(console);
+    const levels = ['log', 'info', 'warn', 'error'] as const;
+    const originals = levels.map((level) => console[level]);
+    for (const [index, level] of levels.entries()) {
+      const original = originals[index]!.bind(console);
       console[level] = (...values: unknown[]) => {
         push(level, values);
         original(...values);
       };
     }
-    addEventListener('error', (event) => push('error', [event.error ?? event.message]));
-    addEventListener('unhandledrejection', (event) => push('error', [event.reason]));
+    const onError = (event: ErrorEvent) => push('error', [event.error ?? event.message]);
+    const onRejection = (event: PromiseRejectionEvent) => push('error', [event.reason]);
+    addEventListener('error', onError);
+    addEventListener('unhandledrejection', onRejection);
 
     // A shared link opens its files.
     const shared = decode(location.hash.slice(1));
     if (shared) {
       open(shared);
     }
+    ready = true;
     void run();
+
+    // Leaving the REPL gives the console back.
+    return () => {
+      for (const [index, level] of levels.entries()) {
+        console[level] = originals[index]!;
+      }
+      removeEventListener('error', onError);
+      removeEventListener('unhandledrejection', onRejection);
+    };
   }, 'load');
 
   // An edit runs the files again, once typing pauses, and keeps them in the address.
@@ -153,7 +182,7 @@
   $effect(() => {
     const current = files;
     const timer = setTimeout(() => {
-      if (current === $untrack(files)) {
+      if (current === $untrack(files) && $untrack(ready)) {
         history.replaceState(history.state, '', `#${encode(current)}`);
         void $untrack(run());
       }

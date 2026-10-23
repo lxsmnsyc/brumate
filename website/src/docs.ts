@@ -7,8 +7,11 @@ export type { Page };
 
 const files = import.meta.glob<Page>('../docs/*.md', { eager: true, import: 'default' });
 
-/** The pages, by their path after `/docs/`. */
-export const pages: Record<string, Page> = {};
+/**
+ * The pages, by their path after `/docs/`. The map has no prototype, so a path such as
+ * `constructor` is not a page.
+ */
+export const pages: Record<string, Page> = Object.create(null);
 for (const [file, page] of Object.entries(files)) {
   const name = /([\w-]+)\.md$/.exec(file)![1]!;
   pages[name === 'index' ? '' : name] = page;

@@ -207,10 +207,12 @@ export function counter(start: number) {
 /** The files in the address, so a link shares them. */
 export function encode(files: ReplFile[]): string {
   const bytes = new TextEncoder().encode(JSON.stringify(files));
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/, '');
+  // In chunks, since one call with every byte as an argument fails for a long source.
+  let binary = '';
+  for (let start = 0; start < bytes.length; start += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
+  }
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 }
 
 /** The files of a link. A link of the old playground holds the source of one component. */
@@ -227,11 +229,21 @@ export function decode(hash: string): ReplFile[] | undefined {
       return [{ name: 'App.brm', source: text }];
     }
     const files = JSON.parse(text) as ReplFile[];
-    return Array.isArray(files) &&
+    // A link can be written by hand, so its files are checked as the REPL checks a new file.
+    const valid =
+      Array.isArray(files) &&
       files.length > 0 &&
-      files.every((file) => typeof file.name === 'string' && typeof file.source === 'string')
-      ? files
-      : undefined;
+      files.every(
+        (file, index) =>
+          typeof file?.name === 'string' &&
+          typeof file.source === 'string' &&
+          validName(
+            file.name,
+            files.slice(0, index).map((item) => item.name),
+          ) === undefined,
+      ) &&
+      files[0]!.name.endsWith('.brm');
+    return valid ? files : undefined;
   } catch {
     return undefined;
   }

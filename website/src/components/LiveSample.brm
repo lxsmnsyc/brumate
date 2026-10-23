@@ -13,6 +13,8 @@
   let output = $signal<LiveOutput>();
   let running = $signal(false);
   let runs = $signal(0);
+  // The sources of the last run, so the first run of the effect does not run the sample twice.
+  let ranWith = $signal<string[]>();
   let result = $signal<HTMLElement>();
   let backdrop = $signal<HTMLElement>();
 
@@ -21,6 +23,10 @@
   const code = $memo(highlight(`${sources[active]}\n`, language(files[active]!.name)));
 
   async function run() {
+    if (sources === ranWith) {
+      return;
+    }
+    ranWith = sources;
     // Only the latest run writes its result, so an older run that finishes later is dropped.
     runs++;
     const id = runs;

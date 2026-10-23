@@ -98,7 +98,7 @@ function rewrite(code: string, resolve: (specifier: string) => string): string {
 
 let runs = 0;
 /** Server functions of every sample on the page, by ID. */
-const functions: Record<string, (...args: unknown[]) => unknown> = {};
+const functions: Record<string, (...args: unknown[]) => unknown> = Object.create(null);
 
 let answering = false;
 
@@ -112,7 +112,13 @@ function answerCalls(): void {
   globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    if (url.origin === location.origin && url.pathname.startsWith('/_brumate/')) {
+    const id = decodeURIComponent(url.pathname.slice('/_brumate/'.length));
+    // Only the calls of sample functions are answered here. Others go to the server.
+    if (
+      url.origin === location.origin &&
+      url.pathname.startsWith('/_brumate/') &&
+      id in functions
+    ) {
       const answer = await server.handleRequest(functions, request);
       if (answer) {
         return answer;
@@ -157,6 +163,9 @@ export async function runSample(
   /** False when a newer run of the same sample started, so this one does not write over it. */
   isLatest: () => boolean = () => true,
 ): Promise<LiveOutput | undefined> {
+  if (!files[0]?.name.endsWith('.brm')) {
+    throw new Error('The first file renders the page, so it must be a component, a .brm file.');
+  }
   const run = ++runs;
   const folder = `live${run}`;
   const path = (name: string): string => `${folder}/${name}`;
