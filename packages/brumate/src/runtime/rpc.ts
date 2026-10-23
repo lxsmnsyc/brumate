@@ -1,7 +1,7 @@
 import { toJSONAsync } from 'seroval';
 import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
-import { callPlugins, disabledFeatures } from './serial.ts';
+import { callPlugins, serialOptions } from './serial.ts';
 import { fromChunkStream } from './stream.ts';
 
 /**
@@ -20,7 +20,7 @@ export async function call(
   // The plugin of uploads takes each file and blob in the arguments, wherever it is.
   const files: Blob[] = [];
   const json = JSON.stringify(
-    await toJSONAsync(args, { plugins: callPlugins(files), disabledFeatures }),
+    await toJSONAsync(args, { plugins: callPlugins(files), ...serialOptions() }),
   );
   let init: RequestInit;
   if (files.length > 0) {

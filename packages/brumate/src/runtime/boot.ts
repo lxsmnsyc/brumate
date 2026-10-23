@@ -5,6 +5,7 @@
 
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks } from './client.ts';
+import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
 const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
@@ -22,6 +23,8 @@ export interface LoaderOptions {
   load: (id: string) => Promise<ClientModule> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
+  /** Imports the serial entry, which the core takes before it reads the page state. */
+  serial?: () => Promise<SerialEntry>;
   /**
    * Loads pages without a full page load: links to the same origin, the back
    * and forward buttons, forms that post to a server function, and redirects
@@ -155,9 +158,10 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
+  // The serial entry loads with the core, so the core can make the values of the app.
   const loadCore = (): Promise<Core> =>
-    (core ??= load().then((client) => {
-      client.init({ ...options, listen: scan });
+    (core ??= Promise.all([load(), options.serial?.()]).then(([client, serial]) => {
+      client.init({ ...options, listen: scan, serial });
       return client;
     }));
 

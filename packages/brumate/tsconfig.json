@@ -17,7 +17,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "brumate/context": ["./src/runtime/context.ts"]
+      "brumate/context": ["./src/runtime/context.ts"],
+      "brumate/serial": ["./src/runtime/values.ts"]
     }
   },
   "include": ["src", "test", "types.d.ts"]

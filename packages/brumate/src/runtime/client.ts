@@ -10,6 +10,7 @@ import {
   spread as spreadText,
   textValue,
 } from './html.ts';
+import type { SerialEntry } from './values.ts';
 import type { Raw } from './html.ts';
 import {
   Binding,
@@ -26,6 +27,7 @@ import {
   isAsyncIterable,
   isBinding,
   isSlotReference,
+  useSerialEntry,
   parseId,
   stateValues,
 } from './shared.ts';
@@ -124,6 +126,8 @@ export interface Scope {
 }
 
 export interface CoreOptions {
+  /** The exports of the serial entry, for the values of the app in the page state. */
+  serial?: SerialEntry;
   /**
    * Imports the client module of a component. Undefined for a component that
    * has no client code, which a build leaves out.
@@ -619,6 +623,9 @@ export function leavePage(): void {
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   options = value;
+  if (value.serial) {
+    useSerialEntry(value.serial);
+  }
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();

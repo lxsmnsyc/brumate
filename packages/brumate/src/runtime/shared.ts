@@ -4,6 +4,57 @@
 
 import { raw } from './html.ts';
 import type { Raw } from './html.ts';
+import type { SerialEntry, ValuePlugin } from './values.ts';
+
+/** The plugins of values of the app, by tag, which the entry `src/serial.ts` exports. */
+const valuePlugins = new Map<string, ValuePlugin>();
+const pluginListeners: ((plugin: ValuePlugin) => void)[] = [];
+/** The options of the entry, which the serializer reads when it loads. */
+let entryOptions: Omit<SerialEntry, 'plugins'> = {};
+const optionListeners: ((options: Omit<SerialEntry, 'plugins'>) => void)[] = [];
+
+/**
+ * Takes the exports of the serial entry: its plugins and the options that it
+ * changes. The server and the loader call it before the first value is
+ * written or read.
+ */
+export function useSerialEntry(entry: SerialEntry): void {
+  const { plugins = [], ...options } = entry;
+  if (options.disabledFeatures !== undefined || options.depthLimit !== undefined) {
+    entryOptions = options;
+    for (const listener of optionListeners) {
+      listener(options);
+    }
+  }
+  registerValues(plugins);
+}
+
+/** Calls `listener` with the options of the entry, now and when they change. */
+export function onSerialOptions(listener: (options: Omit<SerialEntry, 'plugins'>) => void): void {
+  optionListeners.push(listener);
+  listener(entryOptions);
+}
+
+/** Adds plugins of values of the app. */
+function registerValues(plugins: readonly ValuePlugin[]): void {
+  for (const plugin of plugins) {
+    if (valuePlugins.get(plugin.tag) === plugin) {
+      continue;
+    }
+    valuePlugins.set(plugin.tag, plugin);
+    for (const listener of pluginListeners) {
+      listener(plugin);
+    }
+  }
+}
+
+/** Calls `listener` for each plugin of the app, those added so far and those added later. */
+export function onValuePlugin(listener: (plugin: ValuePlugin) => void): void {
+  pluginListeners.push(listener);
+  for (const plugin of valuePlugins.values()) {
+    listener(plugin);
+  }
+}
 
 /**
  * The ID of a scope or of a `#loading` boundary. The rest of the page numbers
@@ -159,6 +210,8 @@ export const stateValues: {
   l: (scope: ScopeId, slot: number) => SlotReference;
   /** A binding that a rest prop holds, with its value and its slot. */
   b: (value: unknown, scope: ScopeId, slot: number, set?: unknown) => Binding;
+  /** A value of the app, which a plugin of the entry makes from its data. */
+  u: (tag: string, data: unknown) => unknown;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
@@ -166,6 +219,15 @@ export const stateValues: {
   c: (id) => Object.assign(() => '', { brumateId: id }),
   l: (scope, slot) => new SlotReference(scope, slot),
   b: (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set),
+  u: (tag, data) => {
+    const plugin = valuePlugins.get(tag);
+    if (!plugin) {
+      throw new Error(
+        `No plugin reads the value "${tag}". Export it in the plugins of the serial entry, src/serial.ts`,
+      );
+    }
+    return plugin.fromData(data);
+  },
 };
 
 /** True for a value that `for await` reads, such as the result of an async generator. */

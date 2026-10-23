@@ -5,7 +5,7 @@
 
 import { fromJSON, toJSON } from 'seroval';
 import { currentEvent, withEvent } from './request.ts';
-import { disabledFeatures, syncPlugins } from './serial.ts';
+import { serialOptions, syncPlugins } from './serial.ts';
 
 /**
  * Where cached results live. Values are text. `maxAge` is in seconds, after
@@ -115,7 +115,7 @@ let unnamed = 0;
 
 /** The text of a value, as the store keeps it. */
 function write(value: unknown): unknown {
-  return toJSON(value, { plugins: syncPlugins, disabledFeatures });
+  return toJSON(value, { plugins: syncPlugins, ...serialOptions() });
 }
 
 /**

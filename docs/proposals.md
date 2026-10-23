@@ -4,11 +4,10 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) and caching (`cache`, `cached` and `revalidate`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`) and the serial entry (`src/serial.ts`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
@@ -145,34 +144,6 @@ Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0'
 Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
 
 ## Data
-
-### Serialization entry
-
-The page state and server function calls hold the values that seroval and brumate's plugins can write. A class of the app, such as `Money`, a `Decimal` or a Temporal value, has to be sent as a plain object and made again by hand, and the serializer options are fixed.
-
-```ts
-// src/serial.ts
-import { definePlugin } from 'brumate/serial';
-import { Money } from './money';
-
-export const plugins = [
-  definePlugin({
-    tag: 'app/money',
-    test: (value) => value instanceof Money,
-    toData: (money: Money) => [money.amount, money.currency],
-    fromData: ([amount, currency]) => new Money(amount, currency),
-  }),
-];
-```
-
-- An entry file, `src/serial.ts` by default and set with the `serial` option of the plugin, as SolidStart reads its own entries, exports `plugins` and the options that it changes.
-- `definePlugin` makes a seroval plugin from `toData` and `fromData`. In the page state, a value is written as `$b.u('app/money', data)`, so the record does not need the class in scope.
-- The browser makes the value with `fromData` when the core reads the record. The entry loads with the core, not with the loader, so a page that is never used does not load the class.
-- `disabledFeatures` and `depthLimit` can change. Turning on a feature that brumate turns off, such as `RegExp`, warns, because brumate turns it off on purpose.
-- The type checker accepts a value of a class with a plugin in the state.
-- The same plugins write server function calls and their answers, and the stubs of two-way realtime.
-
-Cost: about 1 week, most of it for loading the entry with the core and for the types.
 
 ### Worker functions
 
@@ -542,7 +513,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Caching**: caching pages and data is done. Next are the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting can keep their results in the store of `cached`, and the serialization entry lets cached data hold classes.
+1. **Caching**: caching pages and data and the serial entry are done. Next are idempotent calls and prerendering with holes. Idempotent calls and rate limiting can keep their results in the store of `cached`.
 2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.

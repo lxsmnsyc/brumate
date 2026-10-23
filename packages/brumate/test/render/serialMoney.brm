@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { Money } from './money.ts';
+
+  let price = $signal(new Money(500, 'EUR'));
+</script>
+
+<p class="price">{price.format()}</p>
+<button class="more" onClick=(() => (price = price.add(100)))>More</button>

@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { parseSync } from 'oxc-parser';
+import type { oxc } from './oxc.ts';
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -13,6 +15,7 @@ import {
   version as viteVersion,
 } from 'vite';
 import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
+import { entryClasses } from './captures.ts';
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
@@ -77,6 +80,13 @@ export interface BrumateOptions {
    * `false` runs none.
    */
   middleware?: string | false;
+  /**
+   * The serial entry, relative to the root. It exports `plugins` for values
+   * of the app, such as a class, and the options of the serializer that it
+   * changes. The server and the browser load it. Defaults to `src/serial.ts`
+   * when the file exists. `false` uses none.
+   */
+  serial?: string | false;
   /**
    * The file of environment variables, relative to the root, which calls
    * `defineEnv` from `brumate/env`. The server checks them when it starts,
@@ -309,6 +319,45 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     return file;
   };
+  /** The serial entry, when the app has one. */
+  const serialFile = (): string | undefined => {
+    if (options.serial === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.serial ?? 'src/serial.ts'));
+    if (!existsSync(file)) {
+      if (options.serial !== undefined) {
+        throw new Error(`The serial entry ${options.serial} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
+  /** The classes that the plugins of the serial entry send, read from its `instanceof` checks. */
+  let serialRead: { source: string; classes: string[] } | undefined;
+  const serialClasses = (): string[] => {
+    const file = serialFile();
+    if (!file) {
+      return [];
+    }
+    const source = readFileSync(file, 'utf8');
+    if (serialRead?.source !== source) {
+      const { program } = parseSync(file, source, { lang: 'ts' });
+      serialRead = { source, classes: entryClasses(program as oxc.Node) };
+    }
+    return serialRead.classes;
+  };
+  /** The lines that give the server the serial entry, before anything is written or read. */
+  const serialImports = (): string[] => {
+    const file = serialFile();
+    return file
+      ? [
+          `import * as $$serial from ${JSON.stringify(file)};`,
+          "import { useSerialEntry } from 'brumate/server';",
+          'useSerialEntry($$serial);',
+        ]
+      : [];
+  };
   /** The file of environment variables, when the app has one. */
   const envFile = (): string | undefined => {
     if (options.env === false) {
@@ -494,6 +543,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     a11y: options.a11y,
     // A build does not show the names of server functions in their IDs.
     hideNames: !isServe,
+    sendableClasses: serialClasses(),
     serverImport: (specifier, name) => serverImport(file, specifier, name),
     // A module of reactive logic can come from a package of components.
     resolveModule: (specifier, importer) => {
@@ -645,6 +695,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [
       // The variables are checked when the server starts, before anything else loads.
       ...(env ? [`import ${JSON.stringify(env)};`] : []),
+      ...serialImports(),
       "import { handleRequest } from 'brumate/server';",
       ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
       ...imports,
@@ -707,7 +758,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       clientHints(),
     );
     // The variables are checked when the server starts, before any route loads.
-    return env ? `import ${JSON.stringify(env)};\n${code}` : code;
+    const serial = serialImports().join('\n');
+    return [env ? `import ${JSON.stringify(env)};` : '', serial, code].filter(Boolean).join('\n');
   };
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
@@ -1290,7 +1342,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [

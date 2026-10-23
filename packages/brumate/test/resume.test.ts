@@ -7,8 +7,14 @@ import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
-import { handleRoute, render as renderParts, stateScript } from '../src/runtime/server.ts';
+import {
+  handleRoute,
+  render as renderParts,
+  stateScript,
+  useSerialEntry,
+} from '../src/runtime/server.ts';
 import type { PageState } from '../src/runtime/server.ts';
+import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -51,6 +57,8 @@ beforeAll(() => {
       liveProps: liveProps.get(name),
       path: join(input, name),
       resolveModule,
+      // The class of the serial entry of the tests, `render/money.ts`.
+      sendableClasses: ['Money'],
     });
     for (const [part, code] of Object.entries(parts)) {
       writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
@@ -130,19 +138,25 @@ type PartDelays = Record<string, number>;
 /** The parts that the loader and the core loaded, as `<component>:<part>`. */
 const loadedParts: string[] = [];
 
-async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
+async function resume(
+  name: string,
+  props: unknown,
+  delays: PartDelays = {},
+  serial?: SerialEntry,
+): Promise<void> {
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderParts(server.default, props);
   show(html + state);
-  await startLoader(delays);
+  await startLoader(delays, serial);
 }
 
 /** Starts the loader on the page that is shown, with the compiled client modules. */
-async function startLoader(delays: PartDelays = {}): Promise<void> {
+async function startLoader(delays: PartDelays = {}, serial?: SerialEntry): Promise<void> {
   loadedParts.length = 0;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({
+    ...(serial ? { serial: async () => serial } : {}),
     load: async (id) => {
       const module = await import(modules.get(id)!);
       return {
@@ -2170,6 +2184,20 @@ describe('view transitions', () => {
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(document.querySelector('.panel')).not.toBeNull());
     expect(start).not.toHaveBeenCalled();
+  });
+});
+
+describe('the serial entry', () => {
+  it('sends a value of the app in the page state, and makes it again in the browser', async () => {
+    // The copy that the compiled components import, as an app's components import its entry.
+    const entry = (await import(file('money.ts'))) as SerialEntry;
+    useSerialEntry(entry);
+    await resume('serialMoney', {}, {}, entry);
+    expect(document.querySelector('script[b-state]')!.textContent).toContain('$b.u("test/money"');
+    expect(text('.price')).toBe('5.00 EUR');
+    // The handler calls a method of the value, so the browser made a Money again.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.price')).toBe('6.00 EUR'));
   });
 });
 

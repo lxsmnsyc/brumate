@@ -29,7 +29,15 @@ import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
-import { ElementReference, isBinding, isSlotReference, stateValues } from './shared.ts';
+import {
+  ElementReference,
+  isBinding,
+  isSlotReference,
+  onSerialOptions,
+  onValuePlugin,
+  stateValues,
+} from './shared.ts';
+import type { ValuePlugin } from './values.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
@@ -302,6 +310,29 @@ const StreamGuardPlugin = createPlugin<object, Record<string, never>>({
 export const syncPlugins: Plugin<any, any>[] = [StreamGuardPlugin, ...plugins];
 
 /**
+ * The seroval plugin of a plugin of the app. The page state writes its value
+ * as `$b.u(tag, data)`, so the record does not need the class in scope.
+ */
+function appPlugin(plugin: ValuePlugin): Plugin<unknown, { d: SerovalNode }> {
+  return createPlugin<unknown, { d: SerovalNode }>({
+    tag: `app:${plugin.tag}`,
+    test: plugin.test,
+    parse: parsers((value) => ({ d: plugin.toData(value) })),
+    serialize: (node, ctx) => `$b.u(${JSON.stringify(plugin.tag)},${ctx.serialize(node.d)})`,
+    deserialize: (node, ctx) => plugin.fromData(ctx.deserialize(node.d)),
+  });
+}
+
+// The plugins of the app come before brumate's, in each list, as the entry adds them. The
+// plugin of uploads stays first in a call, and the guard of streams first in the sync modes.
+onValuePlugin((plugin) => {
+  const added = appPlugin(plugin);
+  valuePlugins.unshift(added);
+  plugins.splice(1, 0, added);
+  syncPlugins.splice(2, 0, added);
+});
+
+/**
  * Features that are off in both directions:
  *
  * - Errors keep their name and message only. A stack trace would show the
@@ -309,4 +340,24 @@ export const syncPlugins: Plugin<any, any>[] = [StreamGuardPlugin, ...plugins];
  * - Regular expressions are not sent. A pattern from a client could take
  *   the server a long time to match, and reading one is refused as well.
  */
-export const disabledFeatures: number = Feature.ErrorPrototypeStack | Feature.RegExp;
+const BRUMATE_DISABLED = Feature.ErrorPrototypeStack | Feature.RegExp;
+
+export let disabledFeatures: number = BRUMATE_DISABLED;
+let depthLimit: number | undefined;
+
+/** The options of every call of seroval: the features that are off, and the depth limit of the entry. */
+export function serialOptions(): { disabledFeatures: number; depthLimit?: number } {
+  return depthLimit === undefined ? { disabledFeatures } : { disabledFeatures, depthLimit };
+}
+
+onSerialOptions((options) => {
+  disabledFeatures = options.disabledFeatures ?? BRUMATE_DISABLED;
+  depthLimit = options.depthLimit;
+  // oxlint-disable-next-line no-bitwise -- The features are flags.
+  const enabled = BRUMATE_DISABLED & ~disabledFeatures;
+  if (enabled !== 0) {
+    console.warn(
+      `The serial entry turns on ${enabled & Feature.RegExp ? 'RegExp' : 'ErrorPrototypeStack'}, which brumate turns off: ${enabled & Feature.RegExp ? 'a pattern from a client can take the server a long time to match' : 'a stack shows the files and code of the server to the browser'}.`,
+    );
+  }
+});

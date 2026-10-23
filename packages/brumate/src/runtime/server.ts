@@ -17,7 +17,7 @@ import {
 } from './html.ts';
 import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
-import { callPlugins, disabledFeatures, plugins, syncPlugins } from './serial.ts';
+import { callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   Binding,
@@ -120,6 +120,7 @@ export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export { cached, memoryStore, revalidate, setCacheStore, storageStore } from './cache.ts';
+export { useSerialEntry } from './shared.ts';
 export type { CachedOptions, CacheStore } from './cache.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
@@ -1588,7 +1589,7 @@ function serializeState(
     try {
       code = crossSerialize(packed, {
         plugins: syncPlugins,
-        disabledFeatures,
+        ...serialOptions(),
         refs,
         assignSharedRefsOnly: true,
       });
@@ -1604,7 +1605,7 @@ function serializeState(
   }
   crossSerializeStream(packed, {
     plugins,
-    disabledFeatures,
+    ...serialOptions(),
     refs,
     onSerialize: send,
     onError,
@@ -2455,13 +2456,13 @@ async function readArgs(request: Request): Promise<unknown[]> {
   if (!request.headers.has('x-brumate-args')) {
     return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
       plugins,
-      disabledFeatures,
+      ...serialOptions(),
     });
   }
   const form = await request.formData();
   return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
     plugins: callPlugins(undefined, form),
-    disabledFeatures,
+    ...serialOptions(),
   });
 }
 

@@ -20,7 +20,10 @@ const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [brumate({ merge: 0 })],
+  // `serialMoney.brm` holds a Money, which the plugin of `money.ts` sends.
+  plugins: [
+    brumate({ merge: 0, serial: fileURLToPath(new URL('./render/money.ts', import.meta.url)) }),
+  ],
   resolve: {
     alias: {
       'brumate/server': runtime('server'),
@@ -29,6 +32,7 @@ const config: InlineConfig = {
       'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
       'brumate/events': runtime('events'),
+      'brumate/serial': runtime('values'),
     },
   },
 };
@@ -254,6 +258,43 @@ describe('server modules', () => {
         timeout: 15_000,
       });
       expect(await html()).toContain('After');
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
+describe('the serial entry', () => {
+  it('gives its plugins to the server and the browser, and lets a signal hold its classes', async () => {
+    const directory = fileURLToPath(new URL('./.output/serial-entry/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/money.ts`,
+      'export class Money {\n  constructor(readonly cents: number) {}\n  format(): string {\n    return `${this.cents / 100} EUR`;\n  }\n}\n',
+    );
+    writeFileSync(
+      `${directory}src/serial.ts`,
+      "import { definePlugin } from 'brumate/serial';\nimport { Money } from './money.ts';\n\nexport const plugins = [\n  definePlugin({\n    tag: 'app/money',\n    test: (value) => value instanceof Money,\n    toData: (money: Money) => money.cents,\n    fromData: (cents: number) => new Money(cents),\n  }),\n];\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import { Money } from '../money.ts';\n  let price = $signal(new Money(500));\n</script>\n\n<p>{price.format()}</p>\n<button onClick=(() => (price = new Money(price.cents + 100)))>More</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const html = await (await handle(new Request('http://localhost/'))).text();
+      expect(html).toMatch(/<p b-b="[\d:]+">5 EUR<\/p>/);
+      expect(html).toContain('$b.u("app/money",500)');
+      const start = await dev.transformRequest('virtual:brumate/start');
+      expect(start?.code).toMatch(/serial: \(\) => import\(".*src\/serial\.ts"\)/);
     } finally {
       await dev.close();
     }

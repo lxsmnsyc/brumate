@@ -7,7 +7,7 @@
 
 import { Stream, fromCrossJSON, toCrossJSONStream } from 'seroval';
 import type { SerovalNode } from 'seroval';
-import { disabledFeatures, plugins } from './serial.ts';
+import { serialOptions, plugins } from './serial.ts';
 
 const HEADER_SIZE = 12;
 const encoder = new TextEncoder();
@@ -36,7 +36,7 @@ export function toChunkStream(
       toCrossJSONStream(value, {
         refs: new Map(),
         plugins,
-        disabledFeatures,
+        ...serialOptions(),
         onParse(node) {
           if (!cancelled) {
             controller.enqueue(chunk(JSON.stringify(node)));
@@ -177,7 +177,7 @@ export async function fromChunkStream(stream: ReadableStream<Uint8Array>): Promi
   const reader = new ChunkReader(stream);
   const refs = new Refs();
   const read = (data: string): unknown =>
-    fromCrossJSON(JSON.parse(data) as SerovalNode, { refs, plugins, disabledFeatures });
+    fromCrossJSON(JSON.parse(data) as SerovalNode, { refs, plugins, ...serialOptions() });
   const first = await reader.next();
   if (first === undefined) {
     throw new Error('The answer of a server function is empty');

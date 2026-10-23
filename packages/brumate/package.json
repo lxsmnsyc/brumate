@@ -72,6 +72,10 @@
       "types": "./dist/runtime/events.d.ts",
       "default": "./dist/runtime/events.js"
     },
+    "./serial": {
+      "types": "./dist/runtime/values.d.ts",
+      "default": "./dist/runtime/values.js"
+    },
     "./highlight": {
       "types": "./dist/highlight.d.ts",
       "default": "./dist/highlight.js"
