@@ -75,6 +75,25 @@ In Components:
 
 Until you press the button, only a small listener runs, so the page behaves as in production. Opening the panel loads the core of the page, so it can show the components before any event. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
 
+## Workbench
+
+The dev server has a workbench at `/__brumate/workbench`. It lists the components of the app that depend only on their props and their own state, such as a button or a list of labels, and shows each one with controls for its props.
+
+- Each component renders on the server with the props of the controls, and resumes in the browser, as a page does. So what it shows, and the code that it loads, is what a page gets. The devtools are in the frame too.
+- The controls come from the type of `$props<T>()`: a text field for `string`, a number field for `number`, a box for `boolean`, a list for a union of literals, such as `'info' | 'warning'`, and JSON for the rest. A prop starts at the default of its destructuring. A function prop, such as a handler, has no control.
+- **Open alone** opens the frame in its own tab.
+- The files of `src/routes` are not listed. Pages are what `visit` from [`brumate/testing`](./testing.md) and end-to-end tests are for.
+
+A component is not listed when it needs more than its props, itself or through a component that it renders. The list says why for each one under **Need the environment**:
+
+- It calls a server function, of a `'use server'` file or one that it declares.
+- It reads the request, through an import of `brumate/server`.
+- It reads the route with `$route` or `$navigation`, or a context with `$getContext`.
+- It has a form action of `$action`, a `#defer` block or a dynamic tag.
+- It renders a component that the workbench cannot find.
+
+A component in the workbench has no layout around it, so the styles of a layout, such as `:global` rules of `_layout.brm`, are not there.
+
 ## Build report
 
 `report: true` in the plugin options prints what the client build ships, after gzip:

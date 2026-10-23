@@ -288,15 +288,15 @@ The project analysis classifies each component by what it depends on, itself and
 
 #### How it works
 
-- `/_brumate/workbench` in the dev server lists the self-contained components of the app and of its `.brm` packages, by folder.
+- `/__brumate/workbench` in the dev server lists the self-contained components of the app and of its `.brm` packages, by folder.
 - The type checker knows the props of each component from `$props<T>()`, so the page makes the controls: text, numbers, booleans, choices for unions, and JSON for the rest.
 - Each component renders on the server with the props of the controls and resumes in the browser, as a page does, so what it shows is what a page gets. The devtools panel and the report of what the component ships are beside it.
 - A story file is optional: `Button.stories.ts` exports named sets of props. Later, a story can also give a component that needs the environment its server answers, its request, its route and its context providers, with the helpers of `brumate/testing`.
 
 #### Order
 
-1. The classification in the project analysis, with tests.
-2. The page in the dev server, for self-contained components, with controls from the props.
+1. The classification in the project analysis, with tests. Done.
+2. The page in the dev server, for self-contained components, with controls from the props. Done: see [Workbench](../website/docs/inspect.md#workbench).
 3. Story files with named props.
 4. Stories with server answers, a request, a route and providers, if apps ask for them.
 

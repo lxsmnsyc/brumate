@@ -52,7 +52,11 @@ import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { originalPosition } from './sourcemap.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
-import { errorPayload } from './dev-error.ts';
+import { errorPage, errorPayload } from './dev-error.ts';
+import type { renderToStream as RenderToStream } from './runtime/server.ts';
+import { workbenchPage } from './workbench-page.ts';
+import { classifyComponents, propControls } from './workbench.ts';
+import { parse as parseComponent } from './parser.ts';
 import { BRUMATE_VERSION } from './version.ts';
 import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
@@ -185,6 +189,8 @@ const INSPECT = '/__brumate/inspect';
 const POSITION = '/__brumate/position';
 /** The dev server sends the source of a file for the Errors tab of the devtools at this path. */
 const SOURCE = '/__brumate/source';
+/** The workbench of the dev server, which shows the components that depend only on their props. */
+const WORKBENCH = '/__brumate/workbench';
 
 /** What tells two lists of packages of components apart. */
 function packagesKey(list: BrumatePackage[]): string {
@@ -906,6 +912,100 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       graph,
       text,
     };
+  };
+
+  /** The components of the app for the workbench, with what each one needs and its controls. */
+  const workbenchComponents = async (): Promise<unknown[]> => {
+    const routes = `${routesDirectory()}/`;
+    const list = [...new Set(files.values())];
+    const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+    const sources = new Map(list.map((file, index) => [file, contents[index]!]));
+    const classes = classifyComponents(sources, {
+      resolve: resolveComponent,
+      serverImport: (file, specifier, name) => serverImport(file, specifier, name) !== undefined,
+    });
+    const relative = (file: string): string => normalizePath(path.relative(root, file));
+    return list
+      .filter((file) => !file.startsWith(routes) && classes.has(file))
+      .map((file) => {
+        const found = classes.get(file)!;
+        let controls: unknown[] = [];
+        try {
+          controls = propControls(parseComponent(sources.get(file)!, { filename: file }));
+        } catch {
+          // The compile of the file reports the error.
+        }
+        return {
+          file: relative(file),
+          name: path.basename(file, '.brm'),
+          selfContained: found.selfContained,
+          needs: found.needs.map((need) => ({ ...need, via: need.via && relative(need.via) })),
+          controls,
+        };
+      })
+      .sort((a, b) => a.file.localeCompare(b.file));
+  };
+
+  /**
+   * Answers the workbench: its page, the list of components, and the frame that renders one
+   * component on the server with props, and resumes it in the browser as a page does.
+   */
+  const serveWorkbench = async (
+    server: ViteDevServer,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    if (url.pathname === WORKBENCH || url.pathname === `${WORKBENCH}/`) {
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end(workbenchPage(WORKBENCH));
+      return;
+    }
+    if (url.pathname === `${WORKBENCH}/components`) {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify(await workbenchComponents()));
+      return;
+    }
+    if (url.pathname !== `${WORKBENCH}/frame`) {
+      response.statusCode = 404;
+      response.end();
+      return;
+    }
+    // Only a component of the app, by its path from the root.
+    const asked = url.searchParams.get('file') ?? '';
+    const file = [...files.values()].find(
+      (candidate) => normalizePath(path.relative(root, candidate)) === asked,
+    );
+    if (!file) {
+      response.statusCode = 404;
+      response.end(`Unknown component "${asked}"`);
+      return;
+    }
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    try {
+      const props = JSON.parse(url.searchParams.get('props') || '{}') as Record<string, unknown>;
+      const component = (await server.ssrLoadModule(file)).default;
+      const { renderToStream } = await server.ssrLoadModule('brumate/server');
+      const stream = (renderToStream as typeof RenderToStream)(component, props, {
+        start: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${path.basename(file, '.brm')}</title></head><body>`,
+        end: '</body></html>',
+        // The client of Vite and the loader, as the entry of an app starts it.
+        scripts: `<script type="module" src="/@vite/client"></script><script type="module" src="/@id/__x00__${START}"></script>`,
+      });
+      const reader = stream.getReader();
+      for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- The page streams in order.
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        response.write(value);
+      }
+      response.end();
+    } catch (error) {
+      response.statusCode = 500;
+      response.end(errorPage(error, server));
+    }
   };
 
   const handleDevRPC = async (
@@ -1676,6 +1776,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               response.end(JSON.stringify(place ? { ...place, file } : null));
             })
             .catch(next);
+          return;
+        }
+        if (request.method === 'GET' && request.url?.startsWith(WORKBENCH)) {
+          void serveWorkbench(server, request, response).catch(next);
           return;
         }
         if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {
