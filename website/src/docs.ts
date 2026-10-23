@@ -14,34 +14,29 @@ for (const [file, page] of Object.entries(files)) {
   pages[name === 'index' ? '' : name] = page;
 }
 
+/** Shorter names for the sidebar, where the title of a page is long or close to another one. */
+const labels: Record<string, string> = {
+  effects: 'Effects',
+  'reactive-modules': 'Shared logic',
+  forms: 'Forms',
+  security: 'Security',
+  environment: 'Environment variables',
+  packages: 'Publishing',
+  'reference-plugin': 'Plugin options',
+  'reference-security': 'Security checks',
+};
+
 /** The sections of the sidebar, in reading order. */
 export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
   { title: 'Start', pages: ['', 'getting-started', 'tutorial'] },
+  { title: 'Components', pages: ['components', 'markup', 'styles'] },
   {
-    title: 'Guides',
-    pages: [
-      'components',
-      'markup',
-      'styles',
-      'state',
-      'control-flow',
-      'effects',
-      'what-runs-where',
-      'context',
-      'reactive-modules',
-      'server-functions',
-      'async-data',
-      'page-metadata',
-      'forms',
-      'routing',
-      'navigation',
-      'security',
-      'environment',
-      'testing',
-      'deploying',
-      'packages',
-    ],
+    title: 'Reactivity',
+    pages: ['state', 'control-flow', 'effects', 'what-runs-where', 'context', 'reactive-modules'],
   },
+  { title: 'Data', pages: ['server-functions', 'async-data', 'forms'] },
+  { title: 'Pages', pages: ['routing', 'navigation', 'page-metadata'] },
+  { title: 'Production', pages: ['security', 'environment', 'testing', 'deploying', 'packages'] },
   { title: 'Tools', pages: ['typescript', 'editor', 'inspect'] },
   {
     title: 'Reference',
@@ -69,5 +64,8 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   title: section.title,
   pages: section.pages
     .filter((slug) => slug in pages)
-    .map((slug) => ({ slug, title: slug === '' ? 'Introduction' : pages[slug]!.title })),
+    .map((slug) => ({
+      slug,
+      title: slug === '' ? 'Introduction' : (labels[slug] ?? pages[slug]!.title),
+    })),
 }));
