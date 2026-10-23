@@ -15,6 +15,7 @@ describe('devtools', () => {
     const state = installDevtools('/inspect');
     const host = document.querySelector('brumate-devtools')!;
     expect(host.shadowRoot!.querySelector('button.open')!.textContent).toBe('brumate');
+    // Without a version from the plugin, the tab shows the name.
 
     const root: Scope = { id: 0, k: 0, m: 'Counter_1', s: [1], children: new Set() };
     const item: Scope = { id: 1, k: 1, p: root, s: ['a'], children: new Set() };
@@ -305,6 +306,8 @@ describe('devtools', () => {
     const state = installDevtools('/inspect', '/_brumate', { version: '1.2.3', vite: '8.0.0' });
     const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
     const count = (): string => shadow.querySelector('button.open .count')!.textContent!;
+    // The tab shows the version of brumate.
+    expect(shadow.querySelector('button.open .version')!.textContent).toBe('v1.2.3');
 
     // An error of a browser extension is not an error of the page.
     dispatchEvent(

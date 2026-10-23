@@ -486,6 +486,7 @@ export function installDevtools(
 .open:hover { height: 32px; background: #222023; }
 .open:focus-visible { outline: 2px solid #ee7a3e; outline-offset: 2px; }
 .open .mark { display: inline-flex; width: 16px; height: 16px; }
+.open .version { font: 600 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #c9c1b9; }
 .open .chevron { width: 10px; height: 10px; opacity: 0.6; transition: transform 0.15s; }
 .open[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 .count { min-width: 16px; height: 16px; padding: 0 5px; box-sizing: border-box; border-radius: 8px; background: #e5484d; color: #fff; font: 700 10px/16px system-ui, sans-serif; text-align: center; }
@@ -497,7 +498,13 @@ export function installDevtools(
   button.title = 'Open the brumate devtools. Drag to resize.';
   button.setAttribute('aria-expanded', 'false');
   // A tab on the bottom edge, which pulls the panel up, and sits on its top edge while it is open.
-  button.innerHTML = `<span class="mark">${LOGO}</span><span>brumate</span><span class="count"></span><svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6.5 5 3.5 8 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  button.innerHTML = `<span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6.5 5 3.5 8 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // The version of brumate, next to its mark.
+  button.querySelector('.version')!.textContent = meta.version ? `v${meta.version}` : 'brumate';
+  button.setAttribute(
+    'aria-label',
+    `brumate devtools${meta.version ? `, version ${meta.version}` : ''}`,
+  );
   // The number of errors, in red on the tab, so an error shows while the panel is closed.
   const count = button.querySelector<HTMLElement>('.count')!;
   state.errorCount = (): void => {
