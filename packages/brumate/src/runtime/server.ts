@@ -118,6 +118,8 @@ export type {
 export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
+export { cached, memoryStore, revalidate, setCacheStore, storageStore } from './cache.ts';
+export type { CachedOptions, CacheStore } from './cache.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
 export { unbind } from './shared.ts';

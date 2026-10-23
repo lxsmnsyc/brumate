@@ -22,8 +22,38 @@ export function isScriptFile(path: string): boolean {
 }
 
 /** True for a function expression or an arrow. */
-function isFunction(node: { type: string } | null | undefined): boolean {
-  return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression';
+type Program = ReturnType<typeof parseSync>['program'];
+type Node = Program['body'][number] | { type: string; callee?: unknown } | null | undefined;
+
+/**
+ * Tells a value that the file exports as a function: a function expression,
+ * or a call of `cached` of `brumate/server`, which returns a function.
+ */
+function functionTest(program: Program): (node: Node) => boolean {
+  const wrappers = new Set<string>();
+  for (const statement of program.body) {
+    if (statement.type === 'ImportDeclaration' && statement.source.value === 'brumate/server') {
+      for (const specifier of statement.specifiers) {
+        if (
+          specifier.type === 'ImportSpecifier' &&
+          specifier.imported.type === 'Identifier' &&
+          specifier.imported.name === 'cached'
+        ) {
+          wrappers.add(specifier.local.name);
+        }
+      }
+    }
+  }
+  return (node) => {
+    if (node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression') {
+      return true;
+    }
+    const callee =
+      node?.type === 'CallExpression'
+        ? (node.callee as { type: string; name?: string })
+        : undefined;
+    return callee?.type === 'Identifier' && wrappers.has(callee.name!);
+  };
 }
 
 /**
@@ -39,6 +69,7 @@ export function serverExports(source: string, filename: string): string[] {
   const functions = new Set<string>();
   const values = new Set<string>();
   const local = new Map<string, 'function' | 'value'>();
+  const isFunction = functionTest(program);
   for (const statement of program.body) {
     const declaration =
       statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
@@ -160,6 +191,7 @@ export function serverStubs(
  */
 export function serverModule(source: string, filename: string, id: string): string {
   const { program } = parseSync(filename, source, { lang: 'ts' });
+  const isFunction = functionTest(program);
   // Local names of exported functions, with the name that each is exported as.
   const wrapped = new Map<string, string>();
   const declarations = new Map<string, 'function' | 'const'>();

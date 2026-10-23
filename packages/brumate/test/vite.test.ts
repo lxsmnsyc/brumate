@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
 import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
-import { serverStubs } from '../src/server-files.ts';
+import { serverModule, serverStubs } from '../src/server-files.ts';
 
 const root = fileURLToPath(new URL('./render/', import.meta.url));
 const runtime = (name: string): string =>
@@ -432,6 +432,16 @@ describe('files of server functions', () => {
     expect(() =>
       serverStubs("'use server';\nexport const limit = 5;\n", 'limits.ts', 'limits_1'),
     ).toThrow("A 'use server' file exports only functions");
+  });
+
+  it('takes a function that cached of brumate/server makes', () => {
+    const source =
+      "'use server';\nimport { cached } from 'brumate/server';\nexport const listIssues = cached(async (status: string) => [status], { maxAge: 30 });\n";
+    expect(serverStubs(source, 'issues.ts', 'issues_1')).toContain('listIssues');
+    // The server registers it, as it does a function that the file writes.
+    expect(serverModule(source, 'issues.ts', 'issues_1')).toContain(
+      'listIssues = __brumateDedupe(listIssues, "issues_1#listIssues")',
+    );
   });
 });
 

@@ -38,22 +38,27 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
 | `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
 
-| Export                                            | What it does                                                                                                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `getEvent(): RequestEvent`                        | The event of the request being handled.                                                                                         |
-| `redirect(location, status = 303): never`         | Stops and sends the browser to `location`.                                                                                      |
-| `isRedirect(error): boolean`                      | True for the error that `redirect` throws.                                                                                      |
-| `new ServerError(message, { status = 400 })`      | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.                |
-| `createSession<T>({ secret, name, maxAge })`      | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.                |
-| `withEvent(event, callback)`                      | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests.               |
-| `rateLimit({ max, window, key? })`                | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./security.md#rate-limiting). |
-| `rateLimit.middleware(options)`                   | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                               |
-| `rateLimit.strict`                                | 3 calls in 10 seconds, for functions that guess at secrets.                                                                     |
-| `configureRateLimit({ store, proxies, enabled })` | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.  |
-| `clientAddress(event)`                            | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                      |
-| `RateLimitError`                                  | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                          |
-| `defineMiddleware(middleware)`                    | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                             |
-| `Locals`                                          | The type of `event.locals`. An app adds fields to it with declaration merging.                                                  |
+| Export                                              | What it does                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getEvent(): RequestEvent`                          | The event of the request being handled.                                                                                                                |
+| `redirect(location, status = 303): never`           | Stops and sends the browser to `location`.                                                                                                             |
+| `isRedirect(error): boolean`                        | True for the error that `redirect` throws.                                                                                                             |
+| `new ServerError(message, { status = 400 })`        | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.                                       |
+| `createSession<T>({ secret, name, maxAge })`        | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.                                       |
+| `withEvent(event, callback)`                        | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests.                                      |
+| `rateLimit({ max, window, key? })`                  | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./security.md#rate-limiting).                        |
+| `rateLimit.middleware(options)`                     | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                                                      |
+| `rateLimit.strict`                                  | 3 calls in 10 seconds, for functions that guess at secrets.                                                                                            |
+| `configureRateLimit({ store, proxies, enabled })`   | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.                         |
+| `clientAddress(event)`                              | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                                             |
+| `RateLimitError`                                    | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                                                 |
+| `defineMiddleware(middleware)`                      | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                                                    |
+| `Locals`                                            | The type of `event.locals`. An app adds fields to it with declaration merging.                                                                         |
+| `cached(fn, { maxAge, tags?, name? })`              | Keeps the results of `fn` by its arguments for `maxAge` seconds. See [Results that requests share](./server-functions.md#results-that-requests-share). |
+| `revalidate(...tags)`                               | Drops the results of `cached` functions with these tags.                                                                                               |
+| `setCacheStore(store)`                              | Sets where `cached` keeps results: an object with `get(key)` and `set(key, value, maxAge)`.                                                            |
+| `memoryStore(size = 1000)`, `storageStore(storage)` | The default store in memory, and a store from an unstorage storage, such as Nitro's `useStorage()`.                                                    |
+| `PageCache`                                         | The type of the `cache` export of a route. See [Caching pages](./routing.md#caching-pages).                                                            |
 
 See [Server functions](./server-functions.md) and [Cookies and sessions](./server-functions.md#cookies-and-sessions).
 
