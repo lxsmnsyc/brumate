@@ -32,55 +32,86 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 
 ### Two-way binding
 
-Fields repeat the same pair of attributes:
+Some state is sometimes the parent's and sometimes the child's own, such as whether a dialog is open, or the value of a field. Today a parent that wants to own it passes a value and a handler that writes it back, and an element needs the same pair:
 
 ```html
 <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
 ```
 
-A `bind:` attribute writes it once:
+#### The design
 
-```html
-<input bind:value=draft>
-<input type="checkbox" bind:checked=done>
-<select bind:value=choice>…</select>
-```
+Three parts, each with one job:
 
-- `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
-- The target must be a signal, so the compiler checks the write.
-
-#### Bindable props
-
-A component such as a dialog, a tab list or a select has state that its parent sometimes wants to own, and sometimes not. Svelte 4 said so with `export let`, a prop that the child can write. Svelte 5 kept the idea inside its props, with `$bindable`, which fits `$props` here too:
+- `let` in the child: a prop that the component writes.
+- `Bindable<T>` in the type: a prop that a parent can bind.
+- `$bind(signal)` in the parent: the parent owns the value.
 
 ```html
 <!-- Dialog.brm -->
-<script>
-  import { $bindable, $props } from 'brumate/signals';
+<script lang="ts">
+  import type { Bindable } from 'brumate/signals';
 
-  let { open = $bindable(false), title } = $props<{ open?: boolean; title: string }>();
+  interface DialogProps {
+    title: string;
+    open?: Bindable<boolean>;
+    onOpen?: () => void;
+  }
+
+  const { title, onOpen } = $props<DialogProps>();
+  let { open = false } = $props<DialogProps>();
+
+  function show() {
+    open = true;
+    onOpen?.();
+  }
 </script>
-
-<button onClick=(() => (open = !open))>{title}</button>
-#if (open) {
-  <div role="dialog">…</div>
-}
 ```
 
 ```html
-<!-- A parent that owns the state, and one that does not. -->
-<Dialog title="Settings" bind:open=settingsOpen />
+<!-- The parent owns the value, and the child keeps its own. -->
+<Dialog title="Settings" open=$bind(settingsOpen) onOpen=track />
 <Dialog title="Help" />
+
+<input value=$bind(draft)>
+<input type="checkbox" checked=$bind(done)>
 ```
 
-- `let { name = $bindable(initial) } = $props()` declares a prop that the component can write. Other props stay `const`, so a write to them is a compile error, as now.
-- With `bind:name=signal`, the parent owns the value: a write in the child writes the parent's signal, and the parent's change reaches the child as any prop does. The target must be a signal of the parent.
-- With a plain `name=value`, or no attribute, the child owns it: a write changes the child's copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes.
-- `initial` is the value when the parent passes nothing.
-- On the server, nothing writes, so a bindable prop is its value. A bound child keeps its parent's scope and slot in the page state, so its writes in the browser go up without a request.
-- The type checker types `bind:name` as the prop's type, and reports it on a prop that is not bindable.
+#### In the child
 
-`export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
+- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning.
+- Without a binding, the child writes its own copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
+- With a binding, a write goes to the parent's signal.
+- The child writes first and calls its handlers after, so a handler such as `onOpen` reads the new value. A write never calls a handler by itself.
+
+#### In the type
+
+- `Bindable<T>` in a props interface marks a prop that a parent can bind. Inside the child, `$props<T>()` unwraps it, so `open` is a `boolean`.
+- The type checker also reads `let` in the destructuring, and types those props as bindable for the parent, so a component needs no annotation. `Bindable<T>` is for interfaces that describe the contract, such as an exported or library type.
+- When both are there, they must agree. The type checker reports a `Bindable` prop that the child reads with `const`, which a parent could bind and the child never writes, and a `let` prop that the interface does not mark `Bindable`.
+
+#### In the parent
+
+- `$bind(signal)` passes a reference to a signal, or to a `let` prop of the parent, which binds through more than one level. The compiler checks that the argument is one of those.
+- The type of `$bind(x)` is `Binding<T>`. A prop that is not `Bindable`, or of another type, does not accept it.
+- `$bind(signal, (next) => …)` calls the function for each write in place of writing the signal, so the parent can refuse a value or change it, such as keep a dialog open while a form has changes. The function is a client root, so it loads on the first write.
+- Handlers stay ordinary props. The binding keeps the state in step, and a handler such as `onOpen` is for side effects.
+
+#### On elements
+
+- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and an input handler. The handler is small and loads on the first input. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
+
+#### Through rest props and spreads
+
+- A binding is a value, as a function reference is: it serializes as the scope and the slot of its signal.
+- `...rest` keeps a binding as it is. Spread on an element, a binding on `value` or `checked` writes the value and adds the input handler, as a spread passes on handlers. Spread on a component, it binds that component's prop.
+- Reading `rest.value` gives the binding, not the value. To read or write a bound prop, destructure it by name with `let`.
+
+#### In the browser
+
+- On the server, nothing writes, so a bindable prop is its value.
+- A bound write in the browser writes the parent's slot through the reference, without the parent's code. The parent's updates load only when something in its markup reads the signal, as for any write. A handler loads only when the child calls it.
+
+Cost: about 1 week. The compiler work is `let` props, `$bind` on components and elements, and a binding through spreads. The runtime keeps a reference to a slot, as it keeps references to functions.
 
 ### Transitions
 
