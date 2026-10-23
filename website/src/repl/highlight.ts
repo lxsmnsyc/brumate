@@ -1,4 +1,4 @@
-// Highlights code in the playground, on the server and in the browser.
+// Highlights code in the REPL and the docs, on the server and in the browser.
 import { language as css } from '@twinkleplop/css';
 import { language as typescript } from '@twinkleplop/typescript';
 import { raw } from 'brumate/html';

@@ -28,8 +28,8 @@ export interface LiveFile {
 }
 
 export interface LiveOutput {
-  /** The compiled modules of the entry file, by name, for the output tab. */
-  modules: { name: string; code: string }[];
+  /** The compiled modules of the files, by name, for the output tab. */
+  modules: { name: string; code: string; language: 'ts' | 'css'; client: boolean }[];
   warnings: string[];
 }
 
@@ -306,29 +306,42 @@ export async function runSample(
     return undefined;
   }
   // Every file of the sample, in the order of the sample, with each name before its modules.
-  const outputs: { name: string; code: string }[] = [];
+  const outputs: LiveOutput['modules'] = [];
   for (const file of files) {
     const name = path(file.name);
     const result = compiled.get(name);
     if (result) {
       outputs.push(
-        { name: `${file.name}: client entry`, code: result.client },
+        { name: `${file.name}: client entry`, code: result.client, language: 'ts', client: true },
         ...Object.entries(result.parts).map(([part, code]) => ({
           name: `${file.name}: part ${part}`,
           code,
+          language: 'ts' as const,
+          client: true,
         })),
-        { name: `${file.name}: server`, code: result.server },
+        { name: `${file.name}: server`, code: result.server, language: 'ts', client: false },
+        { name: `${file.name}: render`, code: result.render, language: 'ts', client: true },
       );
+      if (result.css) {
+        outputs.push({
+          name: `${file.name}: css`,
+          code: result.css,
+          language: 'css',
+          client: false,
+        });
+      }
     } else if (file.name.endsWith('.brm.ts')) {
       // A module of reactive logic: components copy its functions, and the browser shares this code.
       outputs.push({
         name: `${file.name}: shared browser code`,
         code: generateShared({ path: name, source: file.source }).code,
+        language: 'ts',
+        client: true,
       });
     }
   }
-  return {
-    modules: outputs.map((module) => ({ name: module.name, code: clean(module.code) })),
-    warnings,
-  };
+  for (const module of outputs) {
+    module.code = clean(module.code);
+  }
+  return { modules: outputs, warnings };
 }

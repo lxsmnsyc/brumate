@@ -2,6 +2,8 @@
   import Meta from '../components/Meta.brm';
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
+  import Timeline from '../components/Timeline.brm';
+  import { serverFunctions, streaming, typed } from '../home/snippets.ts';
   import Counter from '../demos/Counter.brm';
   import * as counter from '../demos/Counter.brm?inspect';
   import Todos from '../demos/Todos.brm';
@@ -30,9 +32,19 @@
     </p>
     <div class="actions">
       <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
+      <a class="button" href=(`${base}repl`)>Open the REPL</a>
       <a class="button" href=(`${base}docs`)>Read the docs</a>
     </div>
     <pre class="install"><span class="prompt">$</span> pnpm add brumate</pre>
+  </section>
+
+  <section class="section">
+    <h2>After the HTML arrives</h2>
+    <p class="section-lead">
+      A page that hydrates runs every component again in the browser before the first click works.
+      A brumate page picks up where the server left off.
+    </p>
+    <Timeline />
   </section>
 
   <section class="section">
@@ -76,36 +88,124 @@
     </div>
   </section>
 
-  <section class="section features">
-    <article class="feature">
-      <h3>No hydration</h3>
-      <p>The server writes state into the page. The browser reads it when an event needs it, and never renders a component again to find it.</p>
+  <section class="section rows">
+    <article class="row">
+      <div class="row-text">
+        <p class="eyebrow">Streaming</p>
+        <h2>Send the page now, and the data when it is ready</h2>
+        <p>
+          A <code>#loading</code> block shows its <code>#else</code> body in the first response.
+          The server keeps the connection open and streams the real body in place once its data loads.
+          The browser needs no code for it.
+        </p>
+        <a href=(`${base}docs/async-data`)>Loading data</a>
+      </div>
+      <div class="row-media">
+        <div class="code">{streaming}</div>
+        <div class="browser" aria-hidden="true">
+          <div class="browser-bar"><span></span><span></span><span></span></div>
+          <div class="browser-page stream-demo">
+            <div class="stream-skeleton"><i></i><i></i></div>
+            <div class="stream-loaded"><b>Ada Lovelace</b><span>Wrote the first program.</span></div>
+          </div>
+        </div>
+      </div>
     </article>
-    <article class="feature">
-      <h3>Code per event</h3>
-      <p>Each handler is a module that loads when its event fires, or when the pointer is over its element. Markup that never changes ships no code.</p>
+
+    <article class="row">
+      <div class="row-text">
+        <p class="eyebrow">Server functions</p>
+        <h2>Call the server like a function</h2>
+        <p>
+          Mark an async function with <code>'use server'</code>. Its body and its imports, such as a database client,
+          stay on the server. The browser gets a small function that sends the call. A form can post to one with no script at all.
+        </p>
+        <a href=(`${base}docs/server-functions`)>Server functions</a>
+      </div>
+      <div class="row-media">
+        <div class="code">{serverFunctions}</div>
+        <div class="wire" aria-hidden="true">
+          <span class="wire-end">Browser</span>
+          <span class="wire-line"><span class="wire-packet">like(1)</span></span>
+          <span class="wire-end">Server</span>
+        </div>
+      </div>
     </article>
-    <article class="feature">
-      <h3>Streaming first</h3>
-      <p>The first render goes out whole. <code>#loading</code> bodies stream in after it, as their data resolves.</p>
+
+    <article class="row">
+      <div class="row-text">
+        <p class="eyebrow">Typed</p>
+        <h2>Errors before the page breaks</h2>
+        <p>
+          <code>brumate-tsc</code> checks scripts, markup, props and events. It also checks that every value the browser reads can be sent to it.
+        </p>
+        <a href=(`${base}docs/typescript`)>TypeScript</a>
+      </div>
+      <div class="row-media">
+        <div class="code">{typed}</div>
+        <p class="type-error"><span>error</span> A function cannot be sent to the client. Keep it out of the signal or memo</p>
+      </div>
     </article>
-    <article class="feature">
-      <h3>Server functions</h3>
-      <p>Mark a function with <code>'use server'</code>, and the browser calls it over the network. A form posts to it without any script.</p>
+
+    <article class="row">
+      <div class="row-text">
+        <p class="eyebrow">Routes</p>
+        <h2>Files are routes</h2>
+        <p>
+          A <code>.brm</code> file under <code>src/routes</code> renders its URL. Layouts wrap the routes of their folder.
+          Links load pages in place and keep the layouts, with their state.
+        </p>
+        <a href=(`${base}docs/routing`)>Routing</a>
+      </div>
+      <div class="row-media">
+        <ul class="tree">
+          <li><code>src/routes/</code></li>
+          <li class="nest"><code>_layout.brm</code><span>wraps every page</span></li>
+          <li class="nest"><code>index.brm</code><span>/</span></li>
+          <li class="nest"><code>docs/</code></li>
+          <li class="nest2"><code>[page].brm</code><span>/docs/routing</span></li>
+          <li class="nest"><code>[...rest].brm</code><span>every other path</span></li>
+        </ul>
+      </div>
     </article>
-    <article class="feature">
-      <h3>Routes and layouts</h3>
-      <p>File routes with layouts and sibling routes. Links load pages in place and keep the layouts, with their state.</p>
-    </article>
-    <article class="feature">
-      <h3>Typed</h3>
-      <p><code>brumate-tsc</code> checks scripts, markup, props, events, and that every value sent to the browser can be serialized.</p>
-    </article>
+  </section>
+
+  <section class="section">
+    <h2>And the rest of an app</h2>
+    <div class="features">
+      <article class="feature">
+        <h3>Forms without scripts</h3>
+        <p>A form posts to a server function before any script loads, and with scripts off. Once the loader runs, it posts without a page load.</p>
+      </article>
+      <article class="feature">
+        <h3>Scoped styles</h3>
+        <p>A <code>&lt;style&gt;</code> block matches only its component. Values from the script go into the CSS and update with the state.</p>
+      </article>
+      <article class="feature">
+        <h3>Shared logic</h3>
+        <p>A <code>.brm.ts</code> module holds signals and memos that several components use, compiled like the script of a component.</p>
+      </article>
+      <article class="feature">
+        <h3>Tests that resume</h3>
+        <p><code>brumate/testing</code> renders on the server and resumes in the DOM of a test, with the code that ships.</p>
+      </article>
+      <article class="feature">
+        <h3>Deploy anywhere</h3>
+        <p>Serve pages from your own server, build for Node, Bun, Deno, Cloudflare or Vercel with Nitro, or prerender a site that has no server functions.</p>
+      </article>
+      <article class="feature">
+        <h3>An editor that knows .brm</h3>
+        <p>The VS Code extension gives <code>.brm</code> files highlighting, types and the compiler's errors. Other editors use the same language server.</p>
+      </article>
+    </div>
   </section>
 
   <section class="section cta">
     <h2>Start with one component</h2>
     <p>A <code>.brm</code> file, the Vite plugin and a server that streams pages.</p>
-    <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
+    <div class="actions">
+      <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
+      <a class="button" href=(`${base}repl`)>Open the REPL</a>
+    </div>
   </section>
 </main>

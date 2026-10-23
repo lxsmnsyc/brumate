@@ -7,6 +7,6 @@ declare module 'brumate/routes' {
     '/[...rest]': { rest: string };
     '/docs': {};
     '/docs/[page]': { page: string };
-    '/playground': {};
+    '/repl': {};
   }
 }

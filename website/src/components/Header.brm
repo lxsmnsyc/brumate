@@ -27,7 +27,7 @@
     <Search />
     <nav class="header-nav" aria-label="Main">
       <a href=(`${base}docs`)>Docs</a>
-      <a href=(`${base}playground`)>Playground</a>
+      <a href=(`${base}repl`)>REPL</a>
       <a href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer">GitHub</a>
       <button class="theme-toggle" type="button" aria-label="Switch theme" onClick=toggleTheme>
         <span class="sun" aria-hidden="true">☀</span>

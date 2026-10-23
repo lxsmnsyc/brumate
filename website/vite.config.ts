@@ -74,7 +74,7 @@ export default defineConfig({
     // Every page is written as a static file, with readable names for the scripts.
     brumate({
       navigate: { transition: true },
-      prerender: { paths: ['/', '/playground'], head: scriptNames },
+      prerender: { paths: ['/', '/repl'], head: scriptNames },
     }),
   ],
   resolve: {
@@ -91,7 +91,7 @@ export default defineConfig({
       ),
     },
   },
-  // The compiler of the playground parses with oxc on WebAssembly, which loads its files itself.
+  // The compiler of the REPL and the live samples parses with oxc on WebAssembly, which loads its files itself.
   optimizeDeps: {
     exclude: [
       'oxc-parser',
@@ -103,7 +103,7 @@ export default defineConfig({
   worker: { format: 'es' },
   build: {
     target: 'es2023',
-    // The playground chunk holds the compiler and PostCSS.
+    // The REPL chunk holds the compiler and PostCSS.
     chunkSizeWarningLimit: 1200,
     // The prerender script reads the manifest to find the built client entry.
     manifest: true,

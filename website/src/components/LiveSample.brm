@@ -1,7 +1,7 @@
 <script>
   import { $client, $effect, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import type { LiveFile, LiveOutput } from '../live/run.ts';
-  import { highlight } from '../playground/highlight.ts';
+  import { highlight } from '../repl/highlight.ts';
 
   // A code sample of the docs that runs in the page. Editing it runs it again.
   const { files } = $props<{ files: LiveFile[] }>();
@@ -108,7 +108,7 @@
     <div class="live-output">
       #for (module of output.modules by module.name) {
         <p class="live-module">{module.name}</p>
-        <div class="code">{highlight(module.code, 'ts')}</div>
+        <div class="code">{highlight(module.code, module.language)}</div>
       }
     </div>
   }

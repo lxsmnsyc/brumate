@@ -1,0 +1,315 @@
+<script>
+  import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import type { LiveOutput } from '../live/run.ts';
+  import { decode, encode, examples, measure, validName } from '../repl/files.ts';
+  import type { ReplFile } from '../repl/files.ts';
+  import { highlight } from '../repl/highlight.ts';
+  import Meta from '../components/Meta.brm';
+
+  let files = $signal<ReplFile[]>(examples[0]!.files);
+  let active = $signal(0);
+  let view = $signal<'result' | 'compiled' | 'ships' | 'console'>('result');
+  let shown = $signal('');
+  let output = $signal<LiveOutput>();
+  let error = $signal('');
+  let running = $signal(false);
+  let runs = $signal(0);
+  let logs = $signal<{ id: number; level: string; text: string }[]>([]);
+  let adding = $signal(false);
+  let draftName = $signal('');
+  let nameError = $signal('');
+  let copied = $signal(false);
+  let result = $signal<HTMLElement>();
+  let backdrop = $signal<HTMLElement>();
+
+  const language = (name: string): 'brm' | 'ts' => (name.endsWith('.brm') ? 'brm' : 'ts');
+  // A line break at the end keeps the last line of the editor and the highlight the same height.
+  const sourceHtml = $memo(
+    highlight(`${files[active]?.source ?? ''}\n`, language(files[active]?.name ?? '')),
+  );
+  const module = $memo(output?.modules.find((item) => item.name === shown) ?? output?.modules[0]);
+  const moduleHtml = $memo(module ? highlight(module.code, module.language) : undefined);
+  const sizes = $memo(
+    Promise.all(
+      (output?.modules ?? [])
+        .filter((item) => item.client)
+        .map(async (item) => ({ name: item.name, ...(await measure(item.code)) })),
+    ),
+  );
+  const errors = $memo(logs.filter((log) => log.level === 'error').length);
+
+  /** Sets the source of the open file. */
+  function edit(source: string) {
+    const next = [...files];
+    next[active] = { ...next[active]!, source };
+    files = next;
+  }
+
+  function open(next: ReplFile[]) {
+    files = next;
+    active = 0;
+  }
+
+  /** Adds a file with a start that runs, for its kind. */
+  function addFile() {
+    const name = draftName.trim();
+    const problem = validName(
+      name,
+      files.map((file) => file.name),
+    );
+    if (problem) {
+      nameError = problem;
+      return;
+    }
+    const source = name.endsWith('.brm.ts')
+      ? `import { $signal } from 'brumate/signals';\n\nexport function use() {\n  let value = $signal(0);\n  return { value };\n}\n`
+      : name.endsWith('.ts')
+        ? `export const value = 1;\n`
+        : `<p>${name}</p>\n`;
+    files = [...files, { name, source }];
+    active = files.length - 1;
+    adding = false;
+    draftName = '';
+    nameError = '';
+  }
+
+  function removeFile(index: number) {
+    files = files.filter((_, at) => at !== index);
+    if (active >= index) {
+      active = Math.max(0, active - 1);
+    }
+  }
+
+  async function run() {
+    // Only the latest run writes its result, so an older run that finishes later is dropped.
+    runs++;
+    const id = runs;
+    running = true;
+    logs = [];
+    try {
+      const { runSample } = await import('../live/run.ts');
+      const next = await runSample(result!, files, () => id === runs);
+      if (id === runs) {
+        output = next;
+        error = '';
+      }
+    } catch (caught) {
+      if (id === runs) {
+        error = caught instanceof Error ? caught.message : String(caught);
+      }
+    }
+    if (id === runs) {
+      running = false;
+    }
+  }
+
+  async function share() {
+    await navigator.clipboard.writeText(location.href);
+    copied = true;
+    setTimeout(() => (copied = false), 1500);
+  }
+
+  // The console of the page shows in the REPL, with the errors that nothing caught.
+  $client(() => {
+    let count = 0;
+    const text = (value: unknown): string => {
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (value instanceof Error) {
+        return `${value.name}: ${value.message}`;
+      }
+      try {
+        return JSON.stringify(value) ?? String(value);
+      } catch {
+        return String(value);
+      }
+    };
+    const push = (level: string, values: unknown[]) => {
+      count++;
+      logs = [...$untrack(logs), { id: count, level, text: values.map(text).join(' ') }].slice(-200);
+    };
+    for (const level of ['log', 'info', 'warn', 'error'] as const) {
+      const original = console[level].bind(console);
+      console[level] = (...values: unknown[]) => {
+        push(level, values);
+        original(...values);
+      };
+    }
+    addEventListener('error', (event) => push('error', [event.error ?? event.message]));
+    addEventListener('unhandledrejection', (event) => push('error', [event.reason]));
+
+    // A shared link opens its files.
+    const shared = decode(location.hash.slice(1));
+    if (shared) {
+      open(shared);
+    }
+    void run();
+  }, 'load');
+
+  // An edit runs the files again, once typing pauses, and keeps them in the address.
+  // The effect reads only `files`: `run` reads and writes other values, which must not run it again.
+  $effect(() => {
+    const current = files;
+    const timer = setTimeout(() => {
+      if (current === $untrack(files)) {
+        history.replaceState(history.state, '', `#${encode(current)}`);
+        void $untrack(run());
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  });
+</script>
+
+#head {
+  <title>REPL | brumate</title>
+}
+
+<Meta
+  title="REPL | brumate"
+  description="Write brumate components and run them in your browser. See the page they render, the code they compile to, and what the browser loads."
+  path="repl"
+/>
+<main class="repl-page">
+  <header class="repl-bar">
+    <h1>REPL</h1>
+    <label>
+      Example
+      <select onChange=((event) => open(examples[Number(event.currentTarget.value)]!.files))>
+        #for (example, index of examples by example.name) {
+          <option value=index>{example.name}</option>
+        }
+      </select>
+    </label>
+    <button class="button" type="button" onClick=share>{copied ? 'Copied' : 'Copy link'}</button>
+    <p class="repl-note">The compiler and the server runtime run in your browser. They load with the page.</p>
+  </header>
+  <div class="repl-grid">
+    <section class="repl-source" aria-label="Files">
+      <div class="tabs repl-files" role="tablist">
+        #for (file, index of files by file.name) {
+          <span class={ 'repl-file': true, active: index === active }>
+            <button role="tab" aria-selected=(index === active) onClick=(() => (active = index))>{file.name}</button>
+            #if (index > 0) {
+              <button class="repl-remove" aria-label=(`Remove ${file.name}`) onClick=(() => removeFile(index))>×</button>
+            }
+          </span>
+        }
+        #if (adding) {
+          <form class="repl-add" onSubmit=(prevent(addFile))>
+            <input
+              aria-label="File name"
+              placeholder="Name.brm"
+              value=draftName
+              onInput=((event) => {
+                draftName = event.currentTarget.value;
+                nameError = '';
+              })
+              onKeyDown=((event) => {
+                if (event.key === 'Escape') {
+                  adding = false;
+                }
+              })
+            >
+          </form>
+        } #else {
+          <button aria-label="Add a file" onClick=(() => (adding = true))>+</button>
+        }
+      </div>
+      #if (nameError) {
+        <p class="repl-name-error">{nameError}</p>
+      }
+      <div class="editor">
+        <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
+        <textarea
+          aria-label=(`Source of ${files[active]?.name}`)
+          spellcheck="false"
+          value=(files[active]?.source ?? '')
+          onInput=((event) => edit(event.currentTarget.value))
+          onKeyDown=((event) => {
+            if (event.key !== 'Tab' || event.shiftKey) {
+              return;
+            }
+            event.preventDefault();
+            const area = event.currentTarget;
+            area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end');
+            edit(area.value);
+          })
+          onScroll=((event) => {
+            backdrop!.scrollTop = event.currentTarget.scrollTop;
+            backdrop!.scrollLeft = event.currentTarget.scrollLeft;
+          })
+        >{$untrack(files[0]!.source)}</textarea>
+      </div>
+    </section>
+    <section class="output" aria-label="Output">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected=(view === 'result') class={ active: view === 'result' } onClick=(() => (view = 'result'))>Result</button>
+        <button role="tab" aria-selected=(view === 'compiled') class={ active: view === 'compiled' } onClick=(() => (view = 'compiled'))>Compiled</button>
+        <button role="tab" aria-selected=(view === 'ships') class={ active: view === 'ships' } onClick=(() => (view = 'ships'))>What ships</button>
+        <button role="tab" aria-selected=(view === 'console') class={ active: view === 'console' } onClick=(() => (view = 'console'))>
+          Console
+          #if (logs.length > 0) {
+            <span class={ 'repl-count': true, bad: errors > 0 }>{logs.length}</span>
+          }
+        </button>
+        #if (running) {
+          <span class="repl-status">Running</span>
+        }
+      </div>
+      #if (error) {
+        <pre class="error">{error}</pre>
+      }
+      <div class={ 'repl-result': true, hidden: view !== 'result' } ref=result>
+        <p class="repl-note">The files run once the page loads.</p>
+      </div>
+      #if (view === 'compiled' && output) {
+        <div class="repl-compiled">
+          <select aria-label="Module" onChange=((event) => (shown = event.currentTarget.value))>
+            #for (item of output.modules by item.name) {
+              <option value=(item.name) selected=(item.name === module?.name)>{item.name}</option>
+            }
+          </select>
+          <div class="code output-code">{moduleHtml}</div>
+        </div>
+      }
+      #if (view === 'ships') {
+        #loading {
+          <table class="sizes">
+            <thead>
+              <tr><th>Client module</th><th>Bytes</th><th>gzip</th></tr>
+            </thead>
+            <tbody>
+              #for (size of sizes by size.name) {
+                <tr><td><code>{size.name}</code></td><td class="num">{size.bytes}</td><td class="num">{size.gzip}</td></tr>
+              }
+            </tbody>
+          </table>
+          <p class="repl-note">
+            The client entry loads when a component is first used. Each part loads when its event fires or a value it updates changes.
+            The server code never reaches the browser.
+          </p>
+        } #else {
+          <p class="repl-note repl-pad">Measuring</p>
+        }
+      }
+      #if (view === 'console') {
+        <ol class="repl-console">
+          #for (log of logs by log.id) {
+            <li class=(`repl-log ${log.level}`)>{log.text}</li>
+          } #else {
+            <li class="repl-log empty">Nothing logged yet. Use console.log in a handler.</li>
+          }
+        </ol>
+      }
+      #if (output && output.warnings.length > 0) {
+        <ul class="warnings">
+          #for (warning of output.warnings by warning) {
+            <li>{warning}</li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</main>
