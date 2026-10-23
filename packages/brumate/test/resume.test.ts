@@ -1900,6 +1900,32 @@ describe('$action', () => {
     expect(posted.html).toContain('Enter an email address');
   });
 
+  it('sends the key of an idempotent form, and gives the form a new one after the answer', async () => {
+    vi.resetModules();
+    const server = await import(file('signup.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      urls.push(url);
+      return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { html, state } = await runtime.render(server.default, {});
+    // The server puts a key in the URL of a form of a function that `idempotent` made.
+    show(html.replace('__action=', '__key=first-key-0001&amp;__action=') + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    const form = document.querySelector<HTMLFormElement>('.signup')!;
+    form.querySelector('input')!.value = 'nope';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.error')).toBe('Enter an email address'));
+    expect(urls[0]).toMatch(/\?__key=first-key-0001$/);
+    // The next post is one that the user means again, so it has a new key.
+    await waitFor(() => expect(form.getAttribute('action')).not.toContain('first-key-0001'));
+    expect(form.getAttribute('action')).toMatch(/__key=[\w-]{36}/);
+    expect(form.getAttribute('action')).toContain('__action=');
+  });
+
   it('sends the form with fetch and writes the result into the page', async () => {
     vi.resetModules();
     const server = await import(file('signup.brm.ts'));

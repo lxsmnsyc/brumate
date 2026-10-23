@@ -335,7 +335,21 @@ export function runEntry(
  * runs each time.
  */
 // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+/** Marks the functions that `idempotent` made. A symbol of the registry. */
+export const IDEMPOTENT: unique symbol = Symbol.for('brumate.idempotent') as never;
+
+/** The IDs of the server functions that `idempotent` made, which `dedupe` records. */
+export const idempotentIds: Set<string> = new Set();
+
+/** The ID of each function that `idempotent` made, once the server registered it. */
+export const idempotentId: WeakMap<object, string> = new WeakMap();
+
 export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
+  // A form of a function that `idempotent` made gets a key when it renders.
+  if (IDEMPOTENT in fn) {
+    idempotentIds.add(id);
+    idempotentId.set(fn, id);
+  }
   const wrapper = ((...args: unknown[]) => {
     const cache = currentCalls;
     if (!cache) {

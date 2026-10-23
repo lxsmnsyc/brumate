@@ -55,6 +55,7 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `defineMiddleware(middleware)`                      | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                                                    |
 | `Locals`                                            | The type of `event.locals`. An app adds fields to it with declaration merging.                                                                         |
 | `cached(fn, { maxAge, tags?, name? })`              | Keeps the results of `fn` by its arguments for `maxAge` seconds. See [Results that requests share](./server-functions.md#results-that-requests-share). |
+| `idempotent(fn, { maxAge? })`                       | Runs a server function once for each form that the server renders for it. See [Forms posted twice](./forms.md#forms-posted-twice).                     |
 | `revalidate(...tags)`                               | Drops the results of `cached` functions with these tags.                                                                                               |
 | `setCacheStore(store)`                              | Sets where `cached` keeps results: an object with `get(key)` and `set(key, value, maxAge)`.                                                            |
 | `memoryStore(size = 1000)`, `storageStore(storage)` | The default store in memory, and a store from an unstorage storage, such as Nitro's `useStorage()`.                                                    |

@@ -42,6 +42,7 @@ import {
   Redirect,
   RequestEvent,
   ServerError,
+  idempotentIds,
   isRedirect,
   runEntry,
   unwrap,
@@ -121,6 +122,8 @@ export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export { cached, memoryStore, revalidate, setCacheStore, storageStore } from './cache.ts';
 export { useSerialEntry } from './shared.ts';
+export { idempotent } from './idempotent.ts';
+export type { IdempotentOptions } from './idempotent.ts';
 export type { CachedOptions, CacheStore } from './cache.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
@@ -314,6 +317,13 @@ export class Context {
       throw new Error('getEvent() works while a page renders with a request, such as in a route');
     }
     return event;
+  }
+
+  /** Marks the request of the page as one that depends on the user, so the page is not cached for everyone. */
+  personal(): void {
+    if (this.root.event) {
+      this.root.event.personal = true;
+    }
   }
 
   /** Runs code of the render with its event and its call results, such as a memo's compute. */
@@ -1108,7 +1118,13 @@ export function action(
   method?: string,
   result?: string,
 ): string {
-  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId());
+  // The key goes to one visitor, so the page is not cached for everyone.
+  let key: string | undefined;
+  if (idempotentIds.has(id)) {
+    key = crypto.randomUUID();
+    ctx.personal();
+  }
+  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId(), key);
 }
 
 /**

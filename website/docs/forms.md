@@ -25,7 +25,7 @@ Set the `action` of the form to a server function. The function gets the `FormDa
 
 - The form gets `method="post"` unless it sets its own method.
 - `formaction=fn` on a button posts that button to another server function.
-- The value must be a server function. Any other value renders as a normal attribute.
+- The value must be a server function of the component, or one that it imports from a `'use server'` file. Any other value renders as a normal attribute.
 
 What happens when the form is sent:
 
@@ -325,6 +325,36 @@ A form with a file input sends its files to the function as `File` values in the
 ```
 
 Set `enctype="multipart/form-data"`, so the browser sends the files when scripts are off. A handler can also pass a file to a server function directly. See [Server functions](./server-functions.md#files).
+
+## Forms posted twice
+
+A form can be posted twice: a double click before the page loads, or a post again after a reload or the back button. For a function that must not run twice, such as one that places an order, wrap it in `idempotent` from `brumate/server`:
+
+```ts
+// orders.ts
+'use server';
+
+import { idempotent } from 'brumate/server';
+
+export const placeOrder = idempotent(async (form: FormData) => {
+  await db.orders.insert(String(form.get('item')));
+  redirect('/orders');
+});
+```
+
+```brm
+<script>
+  import { placeOrder } from '../orders.ts';
+</script>
+
+<form action=placeOrder>…</form>
+```
+
+- Each form that the server renders for the function gets a key in its URL. A second post with that key gets the result of the first, or the same redirect, without running the function. A post that comes while the first runs waits for it.
+- The result of a key is kept for 10 minutes, in the store of [`cached`](./server-functions.md#results-that-requests-share). `idempotent(fn, { maxAge })` changes it. An error is not kept, so the post can be tried again.
+- With scripts, the form gets a new key after each answer, so a post that the user means again runs again.
+- A page with such a form is not cached for everyone, since its key is for one visitor.
+- It works for the functions of `'use server'` files. A call without a key, such as from a handler, runs as usual.
 
 ## Refreshing other data
 

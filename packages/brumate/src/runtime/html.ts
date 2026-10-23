@@ -296,9 +296,16 @@ export function actionAttributes(
   method?: string,
   result?: string,
   build?: string,
+  key?: string,
 ): string {
   const methodText = method ? ` ${method}="post"` : '';
-  const query = build === undefined ? '' : `__build=${encodeURIComponent(build)}`;
+  // The key of a form of a function that `idempotent` made, so a second post gets the first result.
+  const query = [
+    build === undefined ? '' : `__build=${encodeURIComponent(build)}`,
+    key === undefined ? '' : `__key=${key}`,
+  ]
+    .filter(Boolean)
+    .join('&');
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.

@@ -301,6 +301,55 @@ describe('the serial entry', () => {
   });
 });
 
+describe('idempotent forms', () => {
+  it('runs a form posted twice once, and keeps its page private', async () => {
+    const directory = fileURLToPath(new URL('./.output/idempotent-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/orders.ts`,
+      "'use server';\n\nimport { idempotent } from 'brumate/server';\n\nlet orders = 0;\n\nexport const placeOrder = idempotent(async (form: FormData) => {\n  orders += Number(form.get('count'));\n});\n\nexport async function countOrders(): Promise<number> {\n  return orders;\n}\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      '<script module>\n  export const cache = { maxAge: 60 };\n</script>\n\n<script>\n  import { $memo } from \'brumate/signals\';\n  import { countOrders, placeOrder } from \'../orders.ts\';\n  const orders = $memo(countOrders());\n</script>\n\n<p class="orders">{orders} orders</p>\n<form action=placeOrder>\n  <input name="count" value="1">\n  <button>Order</button>\n</form>\n',
+    );
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const page = await handle(new Request('http://localhost/'), { dev: false });
+      const html = await page.text();
+      // The key goes to one visitor, so the page is private although it exports cache.
+      expect(page.headers.get('cache-control')).toBe('private, no-cache');
+      const action = /<form action="([^"]+)"/.exec(html)![1]!.replaceAll('&amp;', '&');
+      expect(action).toMatch(/__key=[\w-]{36}/);
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const send = (): Promise<Response> =>
+        fetch(`http://localhost:${port}${action}`, {
+          method: 'POST',
+          body: new URLSearchParams({ count: '1' }),
+          headers: { origin: `http://localhost:${port}`, referer: `http://localhost:${port}/` },
+          redirect: 'manual',
+        });
+      expect((await send()).status).toBe(303);
+      expect((await send()).status).toBe(303);
+      http.close();
+      const after = await (await handle(new Request('http://localhost/'))).text();
+      expect(after.replaceAll(/<!--.*?-->/g, '')).toContain('>1 orders<');
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
 describe('a route that does not compile in development', () => {
   it('breaks only its own pages', async () => {
     const directory = fileURLToPath(new URL('./.output/broken-route/', import.meta.url));

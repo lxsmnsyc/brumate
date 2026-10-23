@@ -27,7 +27,7 @@ type Node = Program['body'][number] | { type: string; callee?: unknown } | null 
 
 /**
  * Tells a value that the file exports as a function: a function expression,
- * or a call of `cached` of `brumate/server`, which returns a function.
+ * or a call of `cached` or `idempotent` of `brumate/server`, which return a function.
  */
 function functionTest(program: Program): (node: Node) => boolean {
   const wrappers = new Set<string>();
@@ -37,7 +37,7 @@ function functionTest(program: Program): (node: Node) => boolean {
         if (
           specifier.type === 'ImportSpecifier' &&
           specifier.imported.type === 'Identifier' &&
-          specifier.imported.name === 'cached'
+          (specifier.imported.name === 'cached' || specifier.imported.name === 'idempotent')
         ) {
           wrappers.add(specifier.local.name);
         }

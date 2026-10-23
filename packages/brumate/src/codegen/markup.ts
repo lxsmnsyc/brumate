@@ -1016,10 +1016,13 @@ export class Emitter {
       return undefined;
     }
     const declaration = lookup(scope, value.ast.name);
-    if (declaration?.kind !== 'server-function') {
+    // A server function of the component, or one that it imports from a `'use server'` file.
+    if (declaration?.kind !== 'server-function' && declaration?.serverImport === undefined) {
       return undefined;
     }
-    const ref = JSON.stringify(serverFunctionId(this.plan, declaration.name));
+    const ref = JSON.stringify(
+      declaration.serverImport ?? serverFunctionId(this.plan, declaration.name),
+    );
     // The form posts, unless the element sets its own method.
     const hasMethod = node.attributes.some(
       (attribute) => 'name' in attribute && attribute.name === method,

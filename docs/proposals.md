@@ -4,12 +4,12 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`) and the serial entry (`src/serial.ts`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`) and forms that run once (`idempotent`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
+| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
 | [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
@@ -203,14 +203,11 @@ Cost: about 1 week, after `#defer`. Most of it is rendering several targets in o
 
 ### Idempotent calls
 
-A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
+`idempotent(fn)` makes forms that run once for each render: a second post of the same form gets the first result. Calls from the browser, such as from a handler, have no key yet, because nothing sends a call again.
 
-- `idempotent(fn)` wraps a server function. The browser sends a key with each call, and sends the same key when it sends that call again.
-- The server keeps the result of a key for a time, in the store of `cached`, and answers a call with a key that it has seen with the result that it kept, without running the function.
-- A call with a key that is still running waits for that run.
-- Form posts without scripts get a key in a hidden field, so a second post of the same form is the same call.
+- When the offline queue or a reconnect sends calls again, the browser sends a key with each call, and the same key when it sends that call again. The server already keeps the result of a key.
 
-Cost: a few days, after the store of caching.
+Cost: a day, with the first feature that sends calls again.
 
 ### Two-way realtime
 
@@ -513,7 +510,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Caching**: caching pages and data and the serial entry are done. Next are idempotent calls and prerendering with holes. Idempotent calls and rate limiting can keep their results in the store of `cached`.
+1. **Caching**: caching pages and data, the serial entry and idempotent forms are done. Next is prerendering with holes. Keys for calls that the browser sends again wait for the offline queue.
 2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
