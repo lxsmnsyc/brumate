@@ -202,6 +202,8 @@ export class Emitter {
   private readonly file: SFCFile;
   private readonly plan: Plan;
   private readonly patch: Patch;
+  /** How many `#reveal` blocks are around the markup that is emitted, on the server. */
+  private revealDepth = 0;
   private readonly options: EmitterOptions;
   private readonly sitesByNode = new Map<object, Site>();
   private readonly refTargets = new Map<object, Declaration>();
@@ -874,6 +876,18 @@ export class Emitter {
         this.emitDynamic(node, scope);
         return;
       case 'fragment':
+        // `#reveal` orders the `#loading` bodies that stream from the server. Markup that the
+        // browser renders has no stream, so its children render as they are.
+        if (node.reveal && this.options.mode === 'server') {
+          this.line(
+            `$$ctx.revealStart(${JSON.stringify(node.reveal.order)}, ${node.reveal.collapsed});`,
+          );
+          this.revealDepth++;
+          this.emitNodes(node.children, scope);
+          this.revealDepth--;
+          this.line('$$ctx.revealEnd();');
+          return;
+        }
         this.emitNodes(node.children, scope);
         return;
       case 'listener': {
@@ -1516,7 +1530,9 @@ export class Emitter {
     }
     this.line(`const ${boundary} = $$ctx.boundary();`);
     if (inPlace) {
-      this.line(`if ($$b.settled([${names.join(', ')}])) {`);
+      // A `#reveal` around the block can hold a body that is ready, so it shows in its turn.
+      const turn = this.revealDepth > 0 ? ' && $$ctx.mayShow()' : '';
+      this.line(`if ($$b.settled([${names.join(', ')}])${turn}) {`);
       this.line(`$$ctx.enter(${boundary});`);
       for (const declaration of memos) {
         this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
@@ -1530,13 +1546,22 @@ export class Emitter {
     this.code(boundary);
     this.html('-->');
     if (block.fallback) {
+      // `#reveal (collapsed)` holds the fallback in a template until the body before it shows.
+      const reveal = this.revealDepth > 0;
+      if (reveal) {
+        this.code(`$$ctx.fallbackStart(${boundary})`);
+      }
       this.line('{');
       this.emitBody(block.fallback);
       this.close();
+      if (reveal) {
+        this.code(`$$ctx.fallbackEnd(${boundary})`);
+      }
     }
     this.html('<!--/l-->');
     this.end(block);
-    this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
+    // A block inside a `#reveal` of this file joins its group.
+    this.line(`$$ctx.defer(${boundary}, ${this.revealDepth > 0 ? 'true, ' : ''}async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of memos) {
       this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);

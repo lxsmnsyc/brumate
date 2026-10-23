@@ -147,6 +147,90 @@ interface Boundary {
   cancelled?: boolean;
   /** A body around the target of a request for a `#defer` body, which renders but is not sent. */
   around?: boolean;
+  /** The `#reveal` group that orders it, when it is in one. */
+  group?: RevealGroup;
+}
+
+/** The order of a `#reveal` block. */
+export type RevealOrder = 'sequential' | 'backwards' | 'together' | 'natural';
+
+/**
+ * The `#loading` bodies of a `#reveal` block, in the order of the markup.
+ * When a body is ready, the stream asks the group, which sends the bodies
+ * that its order lets show. The data of every body still loads at once.
+ */
+class RevealGroup {
+  readonly order: RevealOrder;
+  readonly collapsed: boolean;
+  /** The bodies that stream, each with how to send it once it is ready. */
+  private readonly members: { id: ScopeId; send?: (after: string) => void; sent?: boolean }[] = [];
+  /** The fallbacks that `collapsed` hides until the body before them shows. */
+  readonly hidden: Set<ScopeId> = new Set();
+  private closed = false;
+
+  constructor(order: RevealOrder, collapsed: boolean) {
+    this.order = order;
+    this.collapsed = collapsed;
+  }
+
+  /** True when a body that is ready can render in place, before the bodies that stream. */
+  mayShow(): boolean {
+    return this.order === 'natural' || (this.order === 'sequential' && this.members.length === 0);
+  }
+
+  /** True when the fallback of the next body that streams waits, for `collapsed`. */
+  hides(): boolean {
+    return this.collapsed && this.members.length > 0;
+  }
+
+  add(id: ScopeId): void {
+    this.members.push({ id });
+  }
+
+  /** The body is ready, or failed with nothing to send. `send` writes it, and runs `after` with it. */
+  ready(id: ScopeId, send: (after: string) => void): void {
+    const member = this.members.find((item) => item.id === id);
+    if (member) {
+      member.send = send;
+      this.flush();
+    } else {
+      send('');
+    }
+  }
+
+  /** The block ended, so the group knows its last body. */
+  close(): void {
+    this.closed = true;
+    this.flush();
+  }
+
+  private flush(): void {
+    const { members } = this;
+    const sendAt = (index: number): void => {
+      const member = members[index]!;
+      member.sent = true;
+      // `collapsed`: the body that shows brings the fallback of the next one in.
+      const next = members[index + 1];
+      member.send!(next && this.hidden.has(next.id) ? `$bF(${scriptJSON(next.id)})` : '');
+    };
+    if (this.order === 'natural') {
+      members.forEach((member, index) => member.send && !member.sent && sendAt(index));
+    } else if (this.order === 'sequential') {
+      for (let index = 0; index < members.length && members[index]!.send; index++) {
+        if (!members[index]!.sent) {
+          sendAt(index);
+        }
+      }
+    } else if (this.closed && this.order === 'backwards') {
+      for (let index = members.length - 1; index >= 0 && members[index]!.send; index--) {
+        if (!members[index]!.sent) {
+          sendAt(index);
+        }
+      }
+    } else if (this.closed && members.every((member) => member.send)) {
+      members.forEach((member, index) => !member.sent && sendAt(index));
+    }
+  }
 }
 
 /** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
@@ -794,16 +878,65 @@ export class Context {
   /** True when the bodies of `#defer` blocks render in place, for a page that renders in order. */
   inOrder = false;
 
+  /** The `#reveal` blocks that are open in this context, the innermost last. */
+  private readonly reveals: RevealGroup[] = [];
+
+  /** Starts a `#reveal` block: the `#loading` bodies until `revealEnd` show in its order. */
+  revealStart(order: RevealOrder, collapsed: boolean): void {
+    const group = new RevealGroup(order, collapsed);
+    this.reveals.push(group);
+    // A `#try` body that fails ends the block, so the bodies that it held are sent.
+    this.undo.push(() => group.close());
+  }
+
+  /** Ends the `#reveal` block that `revealStart` started. */
+  revealEnd(): void {
+    this.reveals.pop()?.close();
+  }
+
+  /** The group of the `#reveal` block around the next body, when the stream orders it. */
+  private get reveal(): RevealGroup | undefined {
+    return this.root.target ? undefined : this.reveals.at(-1);
+  }
+
+  /** True when a `#loading` body that is ready can render in place, as its `#reveal` allows. */
+  mayShow(): boolean {
+    return this.reveal?.mayShow() ?? true;
+  }
+
+  /** Starts the fallback of a `#loading` body, which `collapsed` hides in a template. */
+  fallbackStart(id: ScopeId): string {
+    const group = this.reveal;
+    if (!group?.hides()) {
+      return '';
+    }
+    group.hidden.add(id);
+    return `<template b-f="${id}">`;
+  }
+
+  /** Ends the fallback that `fallbackStart` started. */
+  fallbackEnd(id: ScopeId): string {
+    return this.reveal?.hidden.has(id) ? '</template>' : '';
+  }
+
   /** Returns the ID of a new `#loading` boundary. */
   boundary(): ScopeId {
     return spaceId(this.space, this.space.boundary++);
   }
 
   /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
-  defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
+  defer(
+    id: ScopeId,
+    ...args:
+      | [renderBody: (ctx: Context) => Promise<string>]
+      | [inReveal: true, renderBody: (ctx: Context) => Promise<string>]
+  ): void {
+    // A block that the compiler found inside a `#reveal` of its file joins the group of the block.
+    const inReveal = args.length === 2;
+    const renderBody = args.at(-1) as (ctx: Context) => Promise<string>;
     const target = this.root.target;
     if (!target || this.inTarget) {
-      this.register(id, renderBody, this.inTarget);
+      this.register(id, renderBody, this.inTarget, false, inReveal);
     } else if (holdsBoundary(id, target.boundary)) {
       // The request for a `#defer` body renders the bodies around it, without sending them.
       this.register(id, renderBody, false, true);
@@ -845,13 +978,17 @@ export class Context {
     renderBody: (ctx: Context) => Promise<string>,
     inTarget: boolean,
     around = false,
+    inReveal = false,
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
+    const group = inReveal ? this.reveal : undefined;
+    group?.add(id);
     const boundary: Boundary = {
       id,
       render: renderBody(child).then((html) => ({ html, ctx: child })),
       around,
+      group,
     };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
@@ -1711,6 +1848,9 @@ export function stateScript(
 // A `<title>` of `#head` keeps its text: the head gets a title of its own for `document.title`.
 const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+'"]'),h=document.head;e&&(h.append(e.content),e.remove());t!=null&&(h.querySelector('title:not([b-t])')||h.prepend(document.createElement('title')),document.title=t)}`;
 
+// Shows a fallback that `#reveal (collapsed)` held in a <template>, when the body before it shows.
+const SHOW_FALLBACK = `function $bF(i){var t=document.querySelector('template[b-f="'+i+'"]');t&&t.replaceWith(t.content)}`;
+
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
@@ -1934,6 +2074,15 @@ export async function render<P>(
   };
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
+  // `$bF` is defined in the first script that shows a held fallback.
+  let fallbackDefined = false;
+  const showFallback = (): string => {
+    if (fallbackDefined) {
+      return '';
+    }
+    fallbackDefined = true;
+    return `${SHOW_FALLBACK};`;
+  };
   const serialize = (
     target: Context,
     onScopes: (script: string) => void,
@@ -1983,38 +2132,58 @@ export async function render<P>(
     }
     boundaries++;
     open++;
+    // A body whose `#reveal` holds it waits for its turn. One that is not sent still takes its
+    // turn, and can show the fallback after it.
+    const skip = (after: string): void => {
+      if (after) {
+        pending().push(`${scriptTag}${showFallback()}${after}</script>`);
+      }
+      finish();
+    };
+    const turn = (send: (after: string) => void): void => {
+      if (boundary.group) {
+        boundary.group.ready(boundary.id, send);
+      } else {
+        send('');
+      }
+    };
     boundary.render.then(
       (result) => {
         // A `#try` body around it failed, so the page has no markers for it. A body around the
         // target of a `#defer` request is in the page already.
         if (boundary.cancelled || boundary.around || stopped()) {
-          finish();
+          turn(skip);
           return;
         }
-        serialize(result.ctx, (script) => {
-          // An ID inside a boundary, such as `5.1`, is a string.
-          const id = scriptJSON(boundary.id);
-          let call = `${swap ? '' : SWAP}$bS(${id})`;
-          swap = true;
-          const late = result.ctx.lateHead();
-          let head = '';
-          if (late.html || late.title !== undefined) {
-            head = `<template b-h="${boundary.id}">${late.html}</template>`;
-            const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
-            call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
-            headSwap = true;
-          }
-          pending().push(
-            // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
-            `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
-          );
+        turn((after) => {
+          serialize(result.ctx, (script) => {
+            // An ID inside a boundary, such as `5.1`, is a string.
+            const id = scriptJSON(boundary.id);
+            let call = `${swap ? '' : SWAP}$bS(${id})`;
+            swap = true;
+            if (after) {
+              call += `;${showFallback()}${after}`;
+            }
+            const late = result.ctx.lateHead();
+            let head = '';
+            if (late.html || late.title !== undefined) {
+              head = `<template b-h="${boundary.id}">${late.html}</template>`;
+              const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
+              call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
+              headSwap = true;
+            }
+            pending().push(
+              // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
+              `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
+            );
+          });
+          finish();
         });
-        finish();
       },
       (error: unknown) => {
         // The fallback stays in the page.
         console.error(error);
-        finish();
+        turn(skip);
       },
     );
   });

@@ -4,7 +4,12 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`) and prerendered pages with their `#defer` bodies in one response (`shell`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0. These shipped after it, so they are no longer here:
+
+- Handlers from scripts (`$handler`) and progressive forms (`brumate/forms`).
+- Two-way binding (`$bind`) and view transitions of handlers (`transition`).
+- Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
+- The reveal order of `#loading` bodies (`#reveal`).
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
@@ -14,7 +19,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 | [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
-| [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
@@ -110,37 +115,13 @@ A memo of a stream takes each value as it arrives, so a list that grows, such as
 
 Cost: about 1 to 2 weeks. Memos already read streams, and lists already add items in the browser.
 
-### Reveal order
+### Reveal order of `#defer` blocks
 
-`#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. React's `SuspenseList` and Solid 2.0's `<Reveal>` let siblings show in an order, or together. In brumate, a body only goes from its fallback to its content once, while the page streams: a memo that loads again in the browser keeps its last value. So the order is about the stream, which the server controls.
+`#reveal` orders the `#loading` bodies that stream from the server. `#defer` blocks inside it show when each body arrives.
 
-```html
-#reveal ('sequential', collapsed) {
-  #loading { <Profile /> } #else { <p>Loading the profile…</p> }
-  #loading { <Posts /> } #else { <p>Loading the posts…</p> }
-  #loading { <Friends /> } #else { <p>Loading the friends…</p> }
-}
-```
+- The module that loads `#defer` bodies would wait to put a body in until the ones before it are in, in the order of the `#reveal` around them.
 
-- `'sequential'`, the default, shows the bodies in the order of the markup. When a body is ready, the server holds what it sends for it, the `<template b-l>`, the swap and its state record, until every body before it is sent. The data still loads at the same time. Only the showing waits.
-- `'backwards'` does the same from the last body to the first, as React's `revealOrder="backwards"`.
-- `'together'` holds every body of the group until the last one is ready, and sends them at once.
-- `'natural'` shows each body when it is ready, as now.
-- `collapsed`, with an order, shows only the fallback of the next body to show. The server renders the other fallbacks in `<template b-f="id">`, and the chunk that shows a body also moves the next fallback in, with a small `$bF(id)` script like `$bS`. It needs no core and no client code.
-- The names follow Solid 2.0, with `'backwards'` from React.
-
-How it fits:
-
-- Each body renders in its own ID space, such as `5.0`, so holding one back changes no other ID.
-- A `#reveal` inside a `#loading` body orders the bodies of that body, as nested lists do in React.
-- Rendering in order, for readers without scripts, puts bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
-- Pages that client navigation loads stream through the same path, so they keep the order.
-- `#defer` blocks in a `#reveal` can follow the same order in the browser: the module that loads them waits to put a body in until the ones before it are in.
-- Without `#reveal`, nothing changes.
-
-Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0's `<Reveal>`, with `order` and `collapsed`. Solid 2.0 is in beta, so its details can still change.
-
-Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
+Cost: a day or two, when a page needs it.
 
 ## Data
 
@@ -498,7 +479,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
-2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
+2. **Streaming and tools**: reveal order is done. Next are streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 

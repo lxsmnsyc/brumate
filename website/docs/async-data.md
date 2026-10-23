@@ -76,6 +76,28 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
 
+### Reveal order
+
+`#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. `#reveal` shows them in an order:
+
+```brm
+#reveal ('sequential', collapsed) {
+  #loading { <Profile /> } #else { <p>Loading the profile…</p> }
+  #loading { <Posts /> } #else { <p>Loading the posts…</p> }
+  #loading { <Friends /> } #else { <p>Loading the friends…</p> }
+}
+```
+
+- `'sequential'`, the default, shows the bodies in the order of the markup. A body that is ready waits until every body before it shows.
+- `'backwards'` shows them from the last to the first.
+- `'together'` shows every body at once, when the last one is ready.
+- `'natural'` shows each body when it is ready, as without `#reveal`.
+- `collapsed`, with `'sequential'`, shows only the fallback of the next body to show. The others appear one at a time, as the body before each shows.
+- The data of every body still loads at once. Only the showing waits, on the server, so it needs no code in the browser.
+- A body that fails keeps its fallback and takes its turn, so the bodies after it still show.
+- It orders the `#loading` blocks in its markup, in the same file. A block inside a component that it renders shows when it is ready, as the component has no `#reveal` of its own.
+- A `#reveal` inside a `#loading` body orders the bodies of that body. Markup that the browser renders has no stream, so there `#reveal` renders its children as they are. `#defer` blocks inside it are not ordered.
+
 ## `$isPending`
 
 `$isPending(memo)` is true while a new value of the memo loads on the client. It is also true while a memo that it reads loads.

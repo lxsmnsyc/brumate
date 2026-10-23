@@ -1538,6 +1538,114 @@ async function withRoute(
   }
 }
 
+describe('#reveal', () => {
+  /** Promises that the test settles, by name. */
+  function waits(): { wait: Record<string, Promise<void>>; go: (name: string) => void } {
+    const done: Record<string, () => void> = {};
+    const wait: Record<string, Promise<void>> = {};
+    for (const name of ['first', 'second', 'third']) {
+      wait[name] = new Promise<void>((resolve) => (done[name] = resolve));
+    }
+    return { wait, go: (name) => done[name]!() };
+  }
+
+  it('sends the bodies in the order of the markup, and shows one fallback at a time', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    // Only the fallback of the first body shows. The others wait in templates.
+    expect(page.html).toContain('<p class="wait-first">Loading first</p>');
+    expect(page.html).toMatch(/<template b-f="1"><p class="wait-second">/);
+    expect(page.html).toMatch(/<template b-f="2"><p class="wait-third">/);
+    const chunks: string[] = [];
+    const reading = (async () => {
+      for await (const chunk of page.pending) {
+        chunks.push(chunk);
+      }
+    })();
+    // The data arrives backwards, and the bodies still show from the first.
+    go('third');
+    go('second');
+    await new Promise((done) => setTimeout(done, 20));
+    expect(chunks.join('')).not.toContain('b-l=');
+    go('first');
+    await reading;
+    const order = [...chunks.join('').matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1]);
+    expect(order).toEqual(['0', '1', '2']);
+    // The body that shows brings the fallback of the next one in.
+    const first = chunks.join('').split('<template b-l="1">')[0]!;
+    expect(first).toContain('$bS(0);function $bF(i)');
+    expect(first).toContain('$bF(1)');
+  });
+
+  /** The bodies of a page in the order that its stream sends them, as the data arrives in `arrive`. */
+  async function streamOrder(name: string, arrive: string[]): Promise<string[]> {
+    const server = await import(file(`${name}.brm.ts`));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    const sent: string[] = [];
+    const reading = (async () => {
+      for await (const chunk of page.pending) {
+        sent.push(...[...chunk.matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1]!));
+      }
+    })();
+    for (const name of arrive) {
+      go(name);
+      // oxlint-disable-next-line no-await-in-loop -- Each arrives on its own.
+      await new Promise((done) => setTimeout(done, 5));
+    }
+    await reading;
+    return sent;
+  }
+
+  it('sends the bodies from the last with backwards, and at once with together', async () => {
+    expect(await streamOrder('revealBackwards', ['first', 'second', 'third'])).toEqual([
+      '2',
+      '1',
+      '0',
+    ]);
+    expect(await streamOrder('revealTogether', ['second', 'first', 'third'])).toEqual([
+      '0',
+      '1',
+      '2',
+    ]);
+    expect(await streamOrder('revealOrder', ['second', 'third', 'first'])).toEqual(['0', '1', '2']);
+  });
+
+  it('lets a body that fails take its turn, so the bodies after it still show', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const failing = Promise.reject(new Error('the profile service is down'));
+    failing.catch(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const page = await renderParts(server.default, { wait: { ...wait, first: failing } });
+    go('second');
+    go('third');
+    const sent = await allPending(page.pending);
+    expect([...sent.matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1])).toEqual([
+      '1',
+      '2',
+    ]);
+    // The fallback of the second body still comes out of its template.
+    expect(sent.indexOf('$bF(1)')).toBeLessThan(sent.indexOf('<template b-l="1">'));
+    error.mockRestore();
+  });
+
+  it('swaps the bodies and the fallbacks in the browser', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    show(page.html + page.state);
+    const chunks = page.pending[Symbol.asyncIterator]();
+    go('first');
+    appendChunk((await chunks.next()).value as string);
+    expect(text('.first')).toBe('first');
+    // The second fallback came out of its template, and the third still waits.
+    expect(text('.wait-second')).toBe('Loading second');
+    expect(document.querySelector('.wait-third')).toBeNull();
+  });
+});
+
 describe('#defer', () => {
   it('renders the fallback in the page, and the body in a request of its own', async () => {
     const server = await import(file('deferred.brm.ts'));
