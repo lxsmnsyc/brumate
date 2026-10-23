@@ -27,46 +27,33 @@
     type="article"
   />
 }
-<div class="docs">
-  <details class="sidebar-toggle">
-    <summary>Menu</summary>
-  </details>
-  <nav class="sidebar" aria-label="Documentation">
-    #for (section of sections by section.title) {
-      <p class="sidebar-title">{section.title}</p>
-      #for (item of section.pages by item.slug) {
-        <a href=(link(item.slug)) class={ active: item.slug === slug }>{item.title}</a>
+<article class="prose">
+  #if (page) {
+    #for (part, index of page.parts by index) {
+      #if ('files' in part) {
+        <LiveSample files=part.files />
+      } #else {
+        {part.html}
       }
     }
-  </nav>
-  <article class="prose">
-    #if (page) {
-      #for (part, index of page.parts by index) {
-        #if ('files' in part) {
-          <LiveSample files=part.files />
-        } #else {
-          {part.html}
-        }
+    <nav class="pager" aria-label="Pages">
+      #if (previous) {
+        <a class="previous" href=(link(previous.slug))><small>Previous</small>{previous.title}</a>
       }
-      <nav class="pager" aria-label="Pages">
-        #if (previous) {
-          <a class="previous" href=(link(previous.slug))><small>Previous</small>{previous.title}</a>
-        }
-        #if (next) {
-          <a class="next" href=(link(next.slug))><small>Next</small>{next.title}</a>
-        }
-      </nav>
-    } #else {
-      <h1>Not found</h1>
-      <p>No page at this address. <a href=(link(''))>Back to the documentation</a>.</p>
-    }
-  </article>
-  <nav class="toc" aria-label="On this page">
-    #if (contents.length > 0) {
-      <p>On this page</p>
-      #for (heading of contents by heading.id) {
-        <a href=(`#${heading.id}`) class=(`level-${heading.level}`)>{heading.text}</a>
+      #if (next) {
+        <a class="next" href=(link(next.slug))><small>Next</small>{next.title}</a>
       }
+    </nav>
+  } #else {
+    <h1>Not found</h1>
+    <p>No page at this address. <a href=(link(''))>Back to the documentation</a>.</p>
+  }
+</article>
+<nav class="toc" aria-label="On this page">
+  #if (contents.length > 0) {
+    <p>On this page</p>
+    #for (heading of contents by heading.id) {
+      <a href=(`#${heading.id}`) class=(`level-${heading.level}`)>{heading.text}</a>
     }
-  </nav>
-</div>
+  }
+</nav>
