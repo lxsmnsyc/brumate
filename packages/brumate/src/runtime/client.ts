@@ -10,6 +10,7 @@ import {
   spread as spreadText,
   textValue,
 } from './html.ts';
+import type { NavigationReport } from './navigate.ts';
 import type { SerialEntry } from './values.ts';
 import type { Raw } from './html.ts';
 import {
@@ -220,6 +221,8 @@ export interface DevtoolsHooks {
    * and took `time` milliseconds, or its cleanup ran.
    */
   effect?(scope: Scope, name: string, kind: 'run' | 'cleanup', time: number): void;
+  /** A client navigation changed the page: the routes that stayed, and those it replaced. */
+  navigated?(report: NavigationReport): void;
 }
 
 /** The global key of the devtools hooks. */

@@ -176,6 +176,8 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .entry .time { color: var(--faint); white-space: nowrap; width: 1%; }
 .kind-handler { color: var(--blue); } .kind-part { color: var(--green); } .kind-write { color: var(--yellow); } .kind-call { color: #ff9ecf; }
 .bar-cell { width: 40%; min-width: 160px; }
+.navigation { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.navigation .routes { display: flex; flex-direction: column; gap: 3px; }
 tr.large td, tr.busy td { color: var(--yellow); }
 tr.ended td { color: var(--faint); }
 .bar-track { position: relative; height: 12px; }
@@ -250,6 +252,7 @@ type Tab =
   | 'loading'
   | 'state'
   | 'effects'
+  | 'navigation'
   | 'blocks'
   | 'report';
 const TABS: [Tab, string][] = [
@@ -263,6 +266,7 @@ const TABS: [Tab, string][] = [
   ['loading', 'Loading'],
   ['state', 'Page state'],
   ['effects', 'Effects'],
+  ['navigation', 'Navigation'],
   ['blocks', 'Blocks'],
   ['report', 'Report'],
 ];
@@ -337,6 +341,8 @@ const ICONS = {
   state:
     '<ellipse cx="12" cy="6" rx="7.5" ry="2.75"/><path d="M4.5 6v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6"/><path d="M4.5 12v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6"/>',
   effects: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4h-4"/>',
+  navigation:
+    '<path d="M4 7h11M4 7l3.5-3.5M4 7l3.5 3.5"/><path d="M20 17H9M20 17l-3.5-3.5M20 17l-3.5 3.5"/>',
   timeline: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.6M10 3h4"/>',
   blocks:
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
@@ -2498,6 +2504,70 @@ export function togglePanel(
     );
   };
 
+  /**
+   * The client navigations of the page, newest first: the routes that
+   * stayed, those that were replaced, or the whole page, and how far the
+   * IDs of the new page moved.
+   */
+  const drawNavigation = async (): Promise<void> => {
+    const list = state.navigations.toReversed();
+    const items = list.map((navigation) => {
+      const path = new URL(navigation.url).pathname + new URL(navigation.url).search;
+      const routes = element('div', { class: 'routes' });
+      if (navigation.full) {
+        routes.append(
+          element(
+            'div',
+            { class: 'sub' },
+            navigation.kind === 'form'
+              ? 'The whole page: a form changes what can show anywhere on it.'
+              : 'The whole page: its root route or its layouts did not match the page before.',
+          ),
+        );
+      } else {
+        for (const key of navigation.kept) {
+          routes.append(element('div', { class: 'mono' }, pill('kept', 'green'), ' ', key));
+        }
+        for (const change of navigation.replaced) {
+          routes.append(
+            element(
+              'div',
+              { class: 'mono' },
+              pill('replaced', 'yellow'),
+              ` ${change.slot}: ${change.from} → ${change.to}`,
+            ),
+          );
+        }
+      }
+      return element(
+        'div',
+        { class: 'navigation' },
+        element(
+          'div',
+          { class: 'toolbar' },
+          element('span', { class: 'mono' }, path),
+          pill(navigation.kind, navigation.kind === 'form' ? 'purple' : 'blue'),
+          element('span', { class: 'sub' }, `${ms(navigation.time)} until the page changed`),
+          navigation.shift === undefined
+            ? ''
+            : element('span', { class: 'sub' }, `IDs moved by ${navigation.shift}`),
+        ),
+        routes,
+      );
+    });
+    body.replaceChildren(
+      ...(items.length > 0
+        ? items
+        : [
+            element(
+              'div',
+              { class: 'empty' },
+              'No client navigation yet. Follow a link of the page to see what it keeps.',
+            ),
+          ]),
+    );
+  };
+
   const drawTimeline = async (): Promise<void> => {
     const runs = state.timeline.toReversed().slice(0, 40);
     await Promise.all(
@@ -2816,6 +2886,7 @@ export function togglePanel(
     loading: drawLoading,
     state: drawState,
     effects: drawEffects,
+    navigation: drawNavigation,
     timeline: drawTimeline,
     graph: drawGraph,
     report: drawReport,
@@ -2832,10 +2903,17 @@ export function togglePanel(
       drawBlocks();
       return;
     }
+    const drawing = tab;
     const drawn = drawTab[tab]();
-    // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
+      // A tab that waited for the dev server, and that the user left meanwhile, drew over the
+      // tab that is open now, so that one draws again.
+      if (tab !== drawing) {
+        draw();
+        return;
+      }
       drawChrome();
+      // Marks of writes show once, on the next draw of the scopes.
       if (tab === 'scopes') {
         state.written.clear();
       }

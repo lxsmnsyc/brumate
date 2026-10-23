@@ -2,6 +2,7 @@
 // the core and shows a button. The panel loads when the button is pressed,
 // so the page behaves as in production until then.
 
+import type { NavigationReport } from './navigate.ts';
 import type { DevtoolsHooks, Scope } from './client.ts';
 import type * as Panel from './devtools-panel.ts';
 import type { ScopeId } from './shared.ts';
@@ -174,6 +175,8 @@ export interface DevtoolsState {
   timeline: Interaction[];
   /** The effects and `$client` callbacks that ran, by scope and name. */
   effects: Map<string, EffectEntry>;
+  /** The client navigations of the page, newest last, at most 20. */
+  navigations: NavigationReport[];
   /** Opens the panel on a tab, such as `errors`. */
   open?: (tab: string) => void;
   /** Shows the number of errors on the tab. */
@@ -522,6 +525,7 @@ export function installDevtools(
     errors: [],
     timeline: [],
     effects: new Map(),
+    navigations: [],
     flash: false,
   };
   /** The handler that a server call or an update that starts now belongs to. */
@@ -669,6 +673,13 @@ export function installDevtools(
         entry.cleanups++;
         entry.lastCleanup = now;
         entry.active = false;
+      }
+      state.changed?.();
+    },
+    navigated(report) {
+      state.navigations.push(report);
+      if (state.navigations.length > 20) {
+        state.navigations.shift();
       }
       state.changed?.();
     },

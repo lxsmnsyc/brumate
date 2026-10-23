@@ -296,6 +296,40 @@ describe('devtools', () => {
     togglePanel(shadow, state);
   });
 
+  it('shows what each client navigation kept and replaced', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    hooks().navigated!({
+      url: 'http://localhost/issues/2',
+      kind: 'push',
+      kept: ['/_layout {}'],
+      replaced: [{ slot: 'children', from: '/index {}', to: '/issues/[id] {"id":"2"}' }],
+      full: false,
+      shift: 3,
+      start: 0,
+      time: 40,
+    });
+    hooks().navigated!({
+      url: 'http://localhost/',
+      kind: 'form',
+      kept: [],
+      replaced: [],
+      full: true,
+      start: 50,
+      time: 20,
+    });
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="navigation"]') as HTMLElement).click();
+    const text = (): string => shadow.querySelector('.body')!.textContent!;
+    // The newest first.
+    await expect.poll(text).toMatch(/^\/form.*whole page.*\/issues\/2push/);
+    expect(text()).toContain('kept /_layout {}');
+    expect(text()).toContain('replaced children: /index {} → /issues/[id] {"id":"2"}');
+    expect(text()).toContain('IDs moved by 3');
+    togglePanel(shadow, state);
+  });
+
   it('follows the blocks of the page, and fires a trigger now', async () => {
     document.querySelector('brumate-devtools')?.remove();
     document.body.innerHTML = [
