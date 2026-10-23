@@ -153,8 +153,9 @@ How the fields become an object:
 - A name that appears more than once holds an array of its values, in the order of the form.
 - A name that ends with `[]`, such as `tags[]`, always holds an array, under the name without `[]`. Use it for a list that can have one item, such as checkboxes.
 - Dots nest objects: `address.city` and `address.zip` make `{ address: { city, zip } }`. A number between dots is a key of an object, not an index of an array.
+- An index in brackets makes a list: `items[0].name` and `items[1].name` make `{ items: [{ name }, { name }] }`. An index is at most 999.
 - Values stay strings, and files stay `File` values. The schema turns a string into a number or a date.
-- A name with an empty part, such as `a..b`, or a part named `__proto__`, `constructor` or `prototype`, is an issue, and the schema does not run. So a form cannot change the prototype of an object.
+- A name with an empty part, such as `a..b`, a part named `__proto__`, `constructor` or `prototype`, or an index above 999, is an issue, and the schema does not run. So a form cannot change the prototype of an object, or make a huge list.
 - A name that needs an object where another field holds a value, such as `a` and `a.b`, is an issue too.
 
 What `fieldErrors` returns:
@@ -164,6 +165,111 @@ What `fieldErrors` returns:
 - The result is plain data, so the function can return it to the page.
 
 `parse(schema, value)` throws instead, with status 400. Use it for values that a correct page always sends right. Without scripts, the browser shows its message as text. See [Validating arguments](./server-functions.md#validating-arguments).
+
+## Forms with `createForm`
+
+`createForm` from `brumate/forms` gives the attributes of a form and of its fields: names, IDs, the values that were posted, errors and their ARIA attributes, and buttons that add and remove the items of a list. Its server function reads the form with `parseSubmission` from `brumate/server`. The form works without scripts, and with scripts it posts without loading the page.
+
+```brm
+<script>
+  import { createForm } from 'brumate/forms';
+  import { parseSubmission } from 'brumate/server';
+  import { Order } from '../schema.ts';
+
+  async function save(form: FormData) {
+    'use server';
+    const submission = await parseSubmission(Order, form);
+    if (submission.status !== 'success') {
+      // The errors, and the values as posted, so the fields show what was typed.
+      return submission.reply();
+    }
+    if (await db.orders.exists(submission.value.email)) {
+      return submission.reply({ formErrors: ['That email has an order already'] });
+    }
+    await db.orders.save(submission.value);
+    return submission.reply({ reset: true });
+  }
+
+  const { attrs, fields, errors, defaultSubmit } = createForm(save, Order, {
+    defaultValue: { email: '', items: [{ name: '' }] },
+  });
+</script>
+
+<form action=save {...attrs}>
+  <button {...defaultSubmit}></button>
+
+  <label for=(fields.email.id)>Email</label>
+  <input {...fields.email.attrs} type="email" required>
+  #if (fields.email.errors) {
+    <p {...fields.email.errorAttrs}>{fields.email.errors[0]}</p>
+  }
+
+  #for (item of fields.items.list by item.key) {
+    <input {...item.fields.name.attrs} aria-label="Item">
+    <button {...item.remove}>Remove</button>
+  }
+  <button {...fields.items.insert}>Add an item</button>
+
+  #if (errors) {
+    <p role="alert">{errors[0]}</p>
+  }
+  <button>Save</button>
+</form>
+```
+
+### The server function
+
+`parseSubmission(schema, form, options?)` reads the fields as `parseForm` does, and validates them with the schema. It does not throw. Its `status` is:
+
+- `success`: the values passed the schema. `value` is the output of the schema.
+- `error`: the values did not pass, or a field name was not allowed.
+- `intent`: a button such as "Add an item" was pressed. The schema does not run.
+
+`submission.reply(options?)` is what the function returns. It holds the values as posted, the errors of each field by field name, such as `items[0].name`, and the errors of the whole form. Its options:
+
+- `formErrors`: more errors of the whole form, such as a check against the database.
+- `fieldErrors`: more errors of fields, by field name.
+- `reset: true`: the form goes back to its default values, such as after a save.
+
+Files are never sent back, because a file input cannot be filled again. List other fields that must not come back, such as a password, in `options.hide`:
+
+```ts
+const submission = await parseSubmission(SignUp, form, { hide: ['password'] });
+```
+
+### Fields
+
+`fields` follows the default value. Each field has:
+
+- `attrs`: `name`, `id`, `aria-invalid` and `aria-describedby` when it has errors, and the value to show. A string or a number is `value`, and a boolean is `checked`.
+- `errors`: its messages, or `undefined`.
+- `errorAttrs`: the ID that `aria-describedby` names, and `role="alert"` after a submit.
+- `value`: the posted value after a submit, or the default value. Use it where `attrs` does not fit, such as the text of a `<textarea>` or the boxes of a group of checkboxes.
+- `name` and `id`.
+
+An object has its fields in `fields`, such as `fields.address.fields.city`. A list has:
+
+- `list`: its items. Each item is a field with a `key` for `#for … by`, its `index`, and `remove`, `moveUp` and `moveDown`, the attributes of buttons that change the list.
+- `insert`: the attributes of a button that adds an item at the end.
+
+`defaultValue` names every field that the form shows. A list of objects has one item in it, and new items take its fields.
+
+### Buttons that change a list
+
+The buttons of a list are submit buttons with the name `__intent`. The server applies the change to the posted values, and the reply shows them:
+
+- They work without scripts, since a submit button posts its value only when it is pressed.
+- They have `formnovalidate`, so a list can grow while the form is incomplete.
+- An intent shows no errors, so the fields that the user has not filled yet show none.
+- The server checks the change. A list cannot grow past 1000 items, and a name must be a field of the form.
+
+Enter in a field presses the first submit button of the form. `defaultSubmit` is a hidden submit button. Put it first, so Enter saves the form instead of pressing "Remove".
+
+### With and without scripts
+
+- Without scripts, the form posts, and the page renders again with the reply. The fields show what was posted, with their errors.
+- With scripts, the reply arrives without loading the page. The items of a list that a button changed render again.
+- A reply with `reset: true` sets the fields back to their default values.
 
 ## Redirects after a post
 

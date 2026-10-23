@@ -92,6 +92,16 @@ export type {
   RequestKind,
 } from './request.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
+export { parseSubmission } from './submission.ts';
+export type {
+  FailedSubmission,
+  IntentSubmission,
+  ReplyOptions,
+  Submission,
+  SubmissionOptions,
+  SuccessfulSubmission,
+} from './submission.ts';
+export type { Intent, SubmissionResult } from './forms.ts';
 export { RateLimitError, clientAddress, configureRateLimit, rateLimit } from './rate-limit.ts';
 export type {
   RateLimit,

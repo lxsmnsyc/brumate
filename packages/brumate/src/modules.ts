@@ -539,6 +539,12 @@ export function expandModules(
   if (!program) {
     return undefined;
   }
+  // A specifier of a package, such as `brumate/forms`, names a module when its export is one.
+  const reactive = (specifier: string): boolean =>
+    isReactiveModule(specifier) ||
+    (!specifier.startsWith('.') &&
+      specifier !== SIGNALS_MODULE &&
+      isReactiveModule(resolve(specifier, path)?.path ?? ''));
   // The module functions that the component imports, by local name.
   const imported = new Map<string, { specifier: string; name: string }>();
   // The local names of compile-time functions in the component.
@@ -555,7 +561,7 @@ export function expandModules(
           specifier.imported.type === 'Identifier'
             ? specifier.imported.name
             : specifier.imported.value;
-        if (isReactiveModule(statement.source.value)) {
+        if (reactive(statement.source.value)) {
           imported.set(specifier.local.name, { specifier: statement.source.value, name });
         } else if (statement.source.value === SIGNALS_MODULE && MACROS.has(name)) {
           macroNames.set(name, specifier.local.name);

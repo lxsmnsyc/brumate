@@ -10,6 +10,7 @@ import {
   actionResult,
   parse,
   parseForm,
+  parseSubmission,
   safeParse,
 } from '../src/runtime/server.ts';
 import type { Context, RouteNode, StandardSchemaV1 } from '../src/runtime/server.ts';
@@ -247,10 +248,224 @@ describe('parseForm', () => {
       ['a', new File([], 'f')],
       ['a.b', '2'],
     ],
+    [
+      ['a[0]', '1'],
+      ['a.b', '2'],
+    ],
+    [
+      ['a.b', '1'],
+      ['a[0]', '2'],
+    ],
   ])('refuses names that need an object where a value is (%j)', async (...entries) => {
     const result = await parseForm(anything, formOf(entries));
     expect(result.issues).toHaveLength(1);
     expect(result.issues![0]!.message).toMatch(/conflicts with another field/);
+  });
+
+  it('makes lists of indexes in brackets', async () => {
+    const result = await parseForm(
+      anything,
+      formOf([
+        ['items[0].name', 'Tea'],
+        ['items[0].tags[]', 'hot'],
+        ['items[1].name', 'Milk'],
+        ['grid[0][1]', 'x'],
+      ]),
+    );
+    expect(result.value).toEqual({
+      items: [{ name: 'Tea', tags: ['hot'] }, { name: 'Milk' }],
+      grid: [[undefined, 'x']],
+    });
+  });
+
+  it.each(['items[1000]', 'items[01]', '[0]', 'items[x]', 'items[0]extra'])(
+    'refuses the index of %s',
+    async (name) => {
+      const result = await parseForm(anything, formOf([[name, 'x']]));
+      expect(result.issues).toEqual([{ message: 'The form has a field name that is not allowed' }]);
+    },
+  );
+});
+
+describe('parseSubmission', () => {
+  type Order = { email: string; items: { name: string }[] };
+  const Order: StandardSchemaV1<unknown, Order> = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      validate(value) {
+        const { email, items = [] } = value as { email?: string; items?: { name?: string }[] };
+        const issues: StandardSchemaV1.Issue[] = [];
+        if (!email?.includes('@')) {
+          issues.push({ message: 'Enter an email address', path: ['email'] });
+        }
+        items.forEach((item, index) => {
+          if (!item?.name) {
+            issues.push({ message: 'Name the item', path: ['items', index, 'name'] });
+          }
+        });
+        if (items.length > 2) {
+          issues.push({ message: 'Two items at most' });
+        }
+        return issues.length > 0
+          ? { issues }
+          : { value: { email: email!, items: items as { name: string }[] } };
+      },
+    },
+  };
+  const intent = (value: object): [string, string] => ['__intent', JSON.stringify(value)];
+
+  it('gives the output of the schema, and a reply that resets', async () => {
+    const submission = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'ada@example.com'],
+        ['items[0].name', 'Tea'],
+      ]),
+    );
+    expect(submission.status).toBe('success');
+    expect(submission.value).toEqual({ email: 'ada@example.com', items: [{ name: 'Tea' }] });
+    const reply = submission.reply({ reset: true });
+    expect(reply).toEqual({
+      status: 'success',
+      value: undefined,
+      errors: {},
+      formErrors: [],
+      keys: {},
+      reset: true,
+      id: expect.any(String),
+    });
+    expect(toJSON(reply)).toBeTruthy();
+  });
+
+  it('answers the errors by field name, with the posted values', async () => {
+    const submission = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'nope'],
+        ['items[0].name', ''],
+        ['items[1].name', 'Milk'],
+        ['items[2].name', 'Tea'],
+      ]),
+    );
+    expect(submission.status).toBe('error');
+    expect(submission.reply({ fieldErrors: { email: ['Taken'] } })).toMatchObject({
+      status: 'error',
+      value: { email: 'nope', items: [{ name: '' }, { name: 'Milk' }, { name: 'Tea' }] },
+      errors: { email: ['Enter an email address', 'Taken'], 'items[0].name': ['Name the item'] },
+      formErrors: ['Two items at most'],
+    });
+  });
+
+  it('leaves files and hidden fields out of the values it sends back', async () => {
+    const submission = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'nope'],
+        ['password', 'secret'],
+        ['avatar', new File(['x'], 'x.txt')],
+      ]),
+      { hide: ['password'] },
+    );
+    expect(submission.reply().value).toEqual({ email: 'nope' });
+  });
+
+  it('applies an intent, with no errors and new keys for the list', async () => {
+    const submission = await parseSubmission(
+      Order,
+      formOf([
+        ['email', ''],
+        ['items[0].name', 'Tea'],
+        ['items[1].name', 'Milk'],
+        intent({ type: 'remove', name: 'items', index: 0 }),
+      ]),
+    );
+    expect(submission.status).toBe('intent');
+    const reply = submission.reply();
+    expect(reply).toMatchObject({
+      status: 'intent',
+      value: { email: '', items: [{ name: 'Milk' }] },
+      errors: {},
+      keys: { items: [`${reply.id}-0`] },
+    });
+
+    const inserted = await parseSubmission(
+      Order,
+      formOf([['items[0].name', 'Tea'], intent({ type: 'insert', name: 'items', index: 0 })]),
+    );
+    expect(inserted.reply().value).toEqual({ items: [undefined, { name: 'Tea' }] });
+
+    const moved = await parseSubmission(
+      Order,
+      formOf([
+        ['items[0].name', 'Tea'],
+        ['items[1].name', 'Milk'],
+        intent({ type: 'reorder', name: 'items', from: 1, to: 0 }),
+      ]),
+    );
+    expect(moved.reply().value).toEqual({ items: [{ name: 'Milk' }, { name: 'Tea' }] });
+
+    // An insert into a list that has no items yet.
+    const first = await parseSubmission(Order, formOf([intent({ type: 'insert', name: 'items' })]));
+    expect(first.reply().value).toEqual({ items: [undefined] });
+  });
+
+  it('answers the errors of one field for validate, and resets a field', async () => {
+    const validated = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'nope'],
+        ['items[0].name', ''],
+        intent({ type: 'validate', name: 'items' }),
+      ]),
+    );
+    expect(validated.reply().errors).toEqual({ 'items[0].name': ['Name the item'] });
+
+    const reset = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'nope'],
+        ['items[0].name', 'Tea'],
+        intent({ type: 'reset', name: 'items' }),
+      ]),
+    );
+    expect(reset.reply().value).toEqual({ email: 'nope' });
+  });
+
+  it.each([
+    'not json',
+    '{"type":"drop","name":"items"}',
+    '{"type":"remove","name":"items","index":5}',
+    '{"type":"remove","name":"email","index":0}',
+    '{"type":"remove","name":"__proto__","index":0}',
+    '{"type":"insert","name":"items","index":-1}',
+    '{"type":"reorder","name":"items","from":0,"to":9}',
+  ])('refuses the intent %s', async (value) => {
+    const submission = await parseSubmission(
+      Order,
+      formOf([
+        ['email', 'x'],
+        ['items[0].name', 'Tea'],
+        ['__intent', value],
+      ]),
+    );
+    expect(submission.status).toBe('error');
+    expect(submission.reply().formErrors).toEqual([
+      'The form asked for a change that it cannot make',
+    ]);
+    expect(Object.prototype).not.toHaveProperty('0');
+  });
+
+  it('refuses a list that grows past the largest index', async () => {
+    const entries: [string, string][] = Array.from({ length: 1000 }, (_, index) => [
+      `items[${index}].name`,
+      'x',
+    ]);
+    const submission = await parseSubmission(
+      Order,
+      formOf([...entries, intent({ type: 'insert', name: 'items' })]),
+    );
+    expect(submission.status).toBe('error');
   });
 });
 

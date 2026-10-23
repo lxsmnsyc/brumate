@@ -1,7 +1,8 @@
 <script>
+  import { createForm } from 'brumate/forms';
   import { href } from 'brumate/routes';
-  import { fieldErrors, getEvent, parseForm, redirect } from 'brumate/server';
-  import { $action, $isPending } from 'brumate/signals';
+  import { getEvent, parseSubmission, redirect } from 'brumate/server';
+  import { $isPending } from 'brumate/signals';
   import { LABELS } from '../../../labels.ts';
   import { NewIssue } from '../../../schema.ts';
   import { session } from '../../../session.ts';
@@ -15,16 +16,18 @@
     if (!user) {
       redirect('/sign-in?next=/issues/new');
     }
-    const result = await parseForm(NewIssue, form);
-    if (result.issues) {
-      // Without scripts the page renders again, so send back the title that was typed.
-      return { errors: fieldErrors(result.issues), title: String(form.get('title') ?? '') };
+    const submission = await parseSubmission(NewIssue, form);
+    if (submission.status !== 'success') {
+      // The page shows the errors, and the fields show what was typed, with or without scripts.
+      return submission.reply();
     }
-    const issue = addIssue({ ...result.value, author: user.name });
+    const issue = addIssue({ ...submission.value, author: user.name });
     redirect(href('/issues/[id]', { id: String(issue.id) }));
   }
 
-  const result = $action(create);
+  const { attrs, fields, result } = createForm(create, NewIssue, {
+    defaultValue: { title: '', body: '', labels: [] as string[] },
+  });
 </script>
 
 #head {
@@ -32,26 +35,29 @@
 }
 
 <h1>New issue</h1>
-<form action=create>
+<form action=create {...attrs}>
   <label>
     Title
-    <input name="title" value=(result?.title ?? '') aria-invalid=(result?.errors.title ? 'true' : undefined)>
+    <input {...fields.title.attrs}>
   </label>
-  #if (result?.errors.title) {
-    <p class="error" role="alert">{result.errors.title[0]}</p>
+  #if (fields.title.errors) {
+    <p class="error" {...fields.title.errorAttrs}>{fields.title.errors[0]}</p>
   }
   <label>
     Description
-    <textarea name="body" rows="5"></textarea>
+    <textarea name=(fields.body.name) id=(fields.body.id) rows="5">{fields.body.value ?? ''}</textarea>
   </label>
-  <fieldset>
+  <fieldset aria-describedby=(fields.labels.errors ? fields.labels.errorAttrs.id : undefined)>
     <legend>Labels</legend>
     #for (label of LABELS) {
-      <label class="check"><input type="checkbox" name="labels[]" value=label> {label}</label>
+      <label class="check">
+        <input type="checkbox" name="labels[]" value=label checked=(fields.labels.value?.includes(label))>
+        {label}
+      </label>
     }
   </fieldset>
-  #if (result?.errors.labels) {
-    <p class="error" role="alert">{result.errors.labels[0]}</p>
+  #if (fields.labels.errors) {
+    <p class="error" {...fields.labels.errorAttrs}>{fields.labels.errors[0]}</p>
   }
   <button disabled=($isPending(result))>Open the issue</button>
 </form>

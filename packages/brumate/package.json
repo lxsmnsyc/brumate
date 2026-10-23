@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "types.d.ts"
+    "types.d.ts",
+    "forms"
   ],
   "type": "module",
   "exports": {
@@ -70,6 +71,14 @@
     "./events": {
       "types": "./dist/runtime/events.d.ts",
       "default": "./dist/runtime/events.js"
+    },
+    "./forms": {
+      "types": "./forms/forms.brm.ts",
+      "default": "./forms/forms.brm.ts"
+    },
+    "./forms/core": {
+      "types": "./dist/runtime/forms.d.ts",
+      "default": "./dist/runtime/forms.js"
     },
     "./devtools": {
       "types": "./dist/runtime/devtools.d.ts",
@@ -134,5 +143,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "brumate": {
+    "version": 1,
+    "dir": "forms"
   }
 }

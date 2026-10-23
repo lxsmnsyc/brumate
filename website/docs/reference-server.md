@@ -61,14 +61,16 @@ See [Server functions](./server-functions.md) and [Cookies and sessions](./serve
 
 These check values with any [Standard Schema](https://standardschema.dev), such as a schema of Zod, Valibot or ArkType. See [Validating arguments](./server-functions.md#validating-arguments) and [Validating a form](./forms.md#validating-a-form).
 
-| Export                                               | What it does                                                                                                                 |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `parse(schema, value): Promise<T>`                   | The output of the schema. A value that does not match throws a `ValidationError` with status 400.                            |
-| `safeParse(schema, value)`                           | `{ value }` or `{ issues }`, without throwing.                                                                               |
-| `parseForm(schema, form)`                            | Turns the fields of a `FormData` into an object, and returns `{ value }` or `{ issues }`, without throwing.                  |
-| `fieldErrors(issues)`                                | The messages by field: `Record<string, string[]>`, keyed by the path joined with dots. Issues without a path are under `''`. |
-| `ValidationError`                                    | The `ServerError` that `parse` throws. Its `issues` stay on the server.                                                      |
-| `StandardSchemaV1`, `ValidationIssue`, `ParseResult` | The types of a schema, of an issue as plain data, and of the result of `safeParse` and `parseForm`.                          |
+| Export                                               | What it does                                                                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `parse(schema, value): Promise<T>`                   | The output of the schema. A value that does not match throws a `ValidationError` with status 400.                                   |
+| `safeParse(schema, value)`                           | `{ value }` or `{ issues }`, without throwing.                                                                                      |
+| `parseForm(schema, form)`                            | Turns the fields of a `FormData` into an object, and returns `{ value }` or `{ issues }`, without throwing.                         |
+| `fieldErrors(issues)`                                | The messages by field: `Record<string, string[]>`, keyed by the path joined with dots. Issues without a path are under `''`.        |
+| `parseSubmission(schema, form, options?)`            | Reads a form of `createForm`, applies the button that changes a list, and validates. See [Forms](./forms.md#forms-with-createform). |
+| `Submission`, `SubmissionResult`, `ReplyOptions`     | The types of a submission, of its reply, and of the options of `reply`.                                                             |
+| `ValidationError`                                    | The `ServerError` that `parse` throws. Its `issues` stay on the server.                                                             |
+| `StandardSchemaV1`, `ValidationIssue`, `ParseResult` | The types of a schema, of an issue as plain data, and of the result of `safeParse` and `parseForm`.                                 |
 
 These work anywhere:
 
