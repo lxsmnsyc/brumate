@@ -239,6 +239,17 @@ describe('rendering', () => {
     );
     expect(html.indexOf('modulepreload')).toBeLessThan(html.indexOf('</head>'));
 
+    // Under a policy with a nonce, the links carry it, as the scripts of the page do.
+    const strict = (await handleRoute(tree, new Request('http://localhost/todos/3'), {
+      hints,
+      nonce: 'n0nce',
+    }))!;
+    expect(await strict.text()).toContain(
+      '<link rel="modulepreload" nonce="n0nce" href="/assets/client.js">',
+    );
+    // A `Link` header cannot carry the nonce, so there is none.
+    expect(strict.headers.get('link')).toBeNull();
+
     // Client navigation and the request for a #defer body have the modules already.
     seen.length = 0;
     const navigation = (await handleRoute(
