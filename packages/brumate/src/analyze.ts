@@ -443,6 +443,11 @@ class Analyzer {
       }
       const imported = lookup(scope, node.callee.name)?.imported;
       const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
+      // `transition` acts when the handler runs, so the wrappers inside it still count.
+      if (name === 'transition' && node.arguments[0]) {
+        node = node.arguments[0];
+        continue;
+      }
       if (name === undefined || !WRAPPERS.has(name)) {
         break;
       }
@@ -1045,6 +1050,10 @@ class Analyzer {
       const imported = lookup(scope, node.callee.name)?.imported;
       const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
       const [handler, ...keys] = node.arguments;
+      if (name === 'transition' && handler) {
+        node = handler;
+        continue;
+      }
       if (name === undefined || !WRAPPERS.has(name) || !handler) {
         break;
       }

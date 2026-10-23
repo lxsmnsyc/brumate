@@ -2124,6 +2124,55 @@ describe('bindings', () => {
   });
 });
 
+describe('view transitions', () => {
+  it('runs a handler of transition inside a view transition, which waits for its updates', async () => {
+    const seen: { types?: string[]; html: string }[] = [];
+    type Options = (() => unknown) | { update: () => unknown; types: string[] };
+    const start = vi.fn<(options: Options) => unknown>((options) => {
+      const update = typeof options === 'function' ? options : options.update;
+      const types = typeof options === 'function' ? undefined : options.types;
+      const done = Promise.resolve()
+        .then(update)
+        .then(() => {
+          seen.push({ types, html: document.querySelector('.panel')?.outerHTML ?? '' });
+        });
+      return { updateCallbackDone: done, finished: done, ready: done, skipTransition() {} };
+    });
+    // A browser with types of transitions has them on the prototype.
+    vi.stubGlobal('ViewTransition', { prototype: { types: undefined } });
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    Object.assign(document, { startViewTransition: start });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      delete (document as { startViewTransition?: unknown }).startViewTransition;
+    });
+    await resume('viewTransition', {});
+    const link = document.querySelector('.toggle')!;
+    expect(link.getAttribute('b-on')).toMatch(/^click:prevent=/);
+    click(link);
+    // The update code loads inside the transition, and the new state is there when it ends.
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toEqual({ types: ['panel'], html: '<div class="panel">Panel</div>' });
+    click(link);
+    await waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen[1]!.html).toBe('');
+  });
+
+  it('runs the handler as it is with reduced motion', async () => {
+    const start = vi.fn<() => void>();
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    Object.assign(document, { startViewTransition: start });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      delete (document as { startViewTransition?: unknown }).startViewTransition;
+    });
+    await resume('viewTransition', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.panel')).not.toBeNull());
+    expect(start).not.toHaveBeenCalled();
+  });
+});
+
 describe('bindings with a setter', () => {
   it('calls the setter in place of writing, and the child shows what the parent keeps', async () => {
     await resume('bindSetter', {});

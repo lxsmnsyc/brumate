@@ -4,7 +4,7 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`) and two-way binding (`$bind`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`) and view transitions of handlers (`transition`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
@@ -14,7 +14,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Transitions](#transitions)                                           | Syntax  | High   | Medium |
+| [Element transitions](#element-transitions)                           | Syntax  | Low    | Medium |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
@@ -29,9 +29,9 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 
 ## Syntax
 
-### Transitions
+### Element transitions
 
-View transitions animate a change of page. Inside a page, an `#if` or `#for` body shows and goes at once, because the node is gone before CSS can animate it.
+`transition` of `brumate/events` animates the change of a handler with a view transition. A view transition snapshots the whole page, runs one at a time, and blocks clicks while it runs. A change that repeats fast, such as a list that filters as the user types, needs animations of its own elements.
 
 ```html
 #if (open) {
@@ -42,11 +42,11 @@ View transitions animate a change of page. Inside a page, an `#if` or `#for` bod
 }
 ```
 
-- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles. A transition that CSS does alone can be a class: `transition="fade"` adds `fade-in` and `fade-out`, as the `Transition` of Terracotta does.
+- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles.
 - `animate=fn` on the element of a list item moves it from its old place to its new one when the list changes order.
-- The server renders the elements as they are. A transition runs only for a change in the browser, so the first render shows no animation, and the code loads with the update that changes the block.
-- `brumate/transition` brings `fade`, `slide`, `scale` and `flip`, with the Web Animations API. `prefers-reduced-motion` turns them off.
-- The `Transition` of the UI components, in phase 2, builds on it.
+- An element that is inserted can already animate with `@starting-style` in CSS, so `in` matters less than `out`.
+
+Build it when an app needs animations that a view transition cannot do.
 
 Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
 
@@ -555,10 +555,9 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Transitions**: binding is done, so transitions come next. They are small, and useful without the UI components: any block can animate. The UI components need them later.
-2. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-3. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
-4. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
-5. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+1. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
+3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
+4. **When an app or the website needs them**: element transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

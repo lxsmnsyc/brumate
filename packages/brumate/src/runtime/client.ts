@@ -1415,14 +1415,32 @@ function trigger(scope: Scope, slot: number): void {
   }
   // The first write to a component loads its update code. Later writes wait in order, and
   // for the templates that the updates can render.
-  void loadModule(id).then(async (loaded) => {
+  const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
       await Promise.allSettled(loadingTemplates);
       run(loaded, code, scope, slot);
     }
   });
+  loadingUpdates.add(loading);
+  void loading.finally(() => loadingUpdates.delete(loading));
 }
+
+/** The updates that wait for their code. */
+const loadingUpdates = new Set<Promise<unknown>>();
+
+/**
+ * Resolves when the updates of the writes so far have run, including those
+ * whose code is loading. `transition` of `brumate/events` waits for it.
+ */
+export async function updated(): Promise<void> {
+  while (loadingUpdates.size > 0) {
+    // oxlint-disable-next-line no-await-in-loop -- An update can start more loads.
+    await Promise.allSettled(loadingUpdates);
+  }
+}
+
+(globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.updated')] = updated;
 
 // Effects wait until every other update of a write has run, and run once each.
 const pendingEffects = new Map<string, () => void>();
