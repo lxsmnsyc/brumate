@@ -1543,8 +1543,11 @@ export function writeText(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
     const written = textValue(value);
-    element.textContent = written;
-    if (element instanceof HTMLTextAreaElement) {
+    // Each is written only when it differs, as a write of the same text still notifies observers.
+    if (element.textContent !== written) {
+      element.textContent = written;
+    }
+    if (element instanceof HTMLTextAreaElement && element.value !== written) {
       element.value = written;
     }
   }
@@ -1567,10 +1570,12 @@ function write(
   ) {
     // Hidden text keeps its new value for when it shows.
     const saved = hiding?.nodes.get(first);
+    const text = String(value);
     if (saved) {
-      saved.v = String(value);
-    } else {
-      (first as Text).data = String(value);
+      saved.v = text;
+    } else if ((first as Text).data !== text) {
+      // The same text again changes nothing, and a write would still notify observers.
+      (first as Text).data = text;
     }
     return;
   }
@@ -1583,11 +1588,19 @@ function write(
 }
 
 function setAttribute(element: Element, name: string, value: unknown): void {
+  // A write of the same value changes nothing on screen, yet it still costs a style check and
+  // notifies observers, so each write is skipped when the element already has the value.
   if (name === 'value' || name === 'checked') {
-    (element as unknown as Record<string, unknown>)[name] =
-      name === 'checked' ? Boolean(value) : (value ?? '');
+    const field = element as unknown as Record<string, unknown>;
+    const next = name === 'checked' ? Boolean(value) : String(value ?? '');
+    if (field[name] !== next) {
+      field[name] = next;
+    }
   }
   const written = attributeText(name, value);
+  if (element.getAttribute(name) === (written ?? null)) {
+    return;
+  }
   if (written === undefined) {
     element.removeAttribute(name);
   } else {
@@ -2112,7 +2125,9 @@ export function list(
 export function setVar(scope: Scope, name: string, value: unknown): void {
   const css = value === null || value === undefined || value === false ? '' : String(value);
   for (const element of document.querySelectorAll<HTMLElement>(`[b-v="${scope.id}"]`)) {
-    element.style.setProperty(name, css);
+    if (element.style.getPropertyValue(name) !== css) {
+      element.style.setProperty(name, css);
+    }
   }
 }
 
