@@ -307,39 +307,73 @@ function readRecord([script, code]: StateRecord): void {
 /**
  * Updates scopes that the server rendered before values changed on the
  * client, such as the body of a `#loading` block that streams in after an
- * event. Effects do not run: they run only when a value changes.
+ * event. Effects do not run: they run only when a value changes. With
+ * `memosOnly`, as for scopes that the client just rendered with its values,
+ * only the memos run, so the ones that load start.
  */
-function refresh(added: Scope[]): void {
+function refresh(added: Scope[], memosOnly = false): void {
+  // The scopes of each module, which load it once.
+  const byModule = new Map<string, Scope[]>();
   for (const scope of added) {
     const id = rootOf(scope).m;
     if (!id) {
       continue;
     }
+    const list = byModule.get(id);
+    if (list) {
+      list.push(scope);
+    } else {
+      byModule.set(id, [scope]);
+    }
+  }
+  for (const [id, list] of byModule) {
     void loadModule(id, 'state').then(async (module) => {
-      const names = new Set<string>();
-      for (const slots of Object.values(module.g)) {
-        for (const entries of Object.values(slots)) {
-          for (const [kind, name] of entries) {
-            if (kind === scope.k && name[0] !== 'e') {
-              names.add(name);
-            }
-          }
+      // The names of the updates of each kind of scope, memos first, so the other updates read
+      // their new values.
+      const byKind = new Map<number, string[]>();
+      for (const scope of list) {
+        if (!byKind.has(scope.k)) {
+          byKind.set(scope.k, refreshNames(module, scope.k, memosOnly));
         }
       }
-      if (names.size === 0) {
+      let any = false;
+      for (const names of byKind.values()) {
+        any ||= names.length > 0;
+      }
+      if (!any) {
         return;
       }
       const updates = await loadPart(module, 'update', 'state');
-      // Memos first, so the other updates read their new values.
-      for (const name of [...names].toSorted(
-        (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
-      )) {
-        if (scopes.has(scope.id)) {
-          (updates[name] as (scope: Scope) => void)(scope);
+      for (const scope of list) {
+        for (const name of byKind.get(scope.k)!) {
+          if (scopes.has(scope.id)) {
+            (updates[name] as (scope: Scope) => void)(scope);
+          }
         }
       }
     });
   }
+}
+
+/** The names of the updates of a kind of scope that `refresh` runs, memos first. */
+function refreshNames(module: ClientModule, kind: number, memosOnly: boolean): string[] {
+  const memos = new Set<string>();
+  const others = new Set<string>();
+  for (const slots of Object.values(module.g)) {
+    for (const entries of Object.values(slots)) {
+      for (const [entryKind, name] of entries) {
+        if (entryKind !== kind || name[0] === 'e') {
+          continue;
+        }
+        if (name[0] === 'm') {
+          memos.add(name);
+        } else if (!memosOnly) {
+          others.add(name);
+        }
+      }
+    }
+  }
+  return [...memos, ...others];
 }
 
 /** Reads the groups of scope records back into one record per scope. See `PackedState`. */
@@ -1556,11 +1590,13 @@ export function descendants(scope: Scope, kind: number, result: Scope[] = []): S
 }
 
 function destroy(scope: Scope): void {
-  for (const child of Array.from(scope.children)) {
-    destroy(child);
+  if (scope.children.size > 0) {
+    for (const child of Array.from(scope.children)) {
+      destroy(child);
+    }
   }
   // The content of a `#portal` is elsewhere in the page, so it is removed by its markers.
-  const start = comments.get(`P${scope.id}`);
+  const start = portals > 0 ? comments.get(`P${scope.id}`) : undefined;
   if (start?.isConnected) {
     const end = rangeEnd(start);
     clear(start, end);
@@ -1576,10 +1612,15 @@ function destroy(scope: Scope): void {
  * so a load that settles later is not written. Its markup stays.
  */
 export function removeScope(scope: Scope): void {
-  for (const cleanup of scope.cleanups?.values() ?? []) {
-    cleanup();
+  if (scope.cleanups) {
+    for (const cleanup of scope.cleanups.values()) {
+      cleanup();
+    }
   }
-  for (let slot = 0; slot < scope.s.length; slot++) {
+  // The state of the slots that load or wait, which most scopes, such as rows of a list, have not.
+  const waiting =
+    memoControllers.size + timers.size + loads.size + loadingSlots.size + (guesses?.map.size ?? 0);
+  for (let slot = 0; waiting > 0 && slot < scope.s.length; slot++) {
     const key = `${scope.id}:${slot}`;
     memoControllers.get(key)?.abort();
     memoControllers.delete(key);
@@ -1613,20 +1654,38 @@ function markerKey(data: string): string {
   return data[0] === 'b' ? data.split(':').slice(0, 2).join(':') : data;
 }
 
+const SCOPE_MARKER = /^[tb](-?[\d.]+):/;
+
+/** How many `#portal` markers the page has had, so a scope looks for its own only when any have. */
+let portals = 0;
+
 /**
  * Indexes the markers and the bound elements under `root`, so that updates find them without a
  * search of the page. A search for each row of a long list takes time that grows with the list.
+ * With `ids`, it also collects the IDs of the scopes that the markup names. The IDs of scopes
+ * that the client made are negative.
  */
-function indexMarkers(root: Node): void {
+function indexMarkers(root: Node, ids?: Set<ScopeId>): void {
   if (root.nodeType === 1) {
-    indexElement(root as Element);
+    indexElement(root as Element, ids);
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_ELEMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (node.nodeType === 1) {
-      indexElement(node as Element);
-    } else if (MARKER.test((node as Comment).data)) {
-      comments.set(markerKey((node as Comment).data), node as Comment);
+      indexElement(node as Element, ids);
+      continue;
+    }
+    const data = (node as Comment).data;
+    if (!MARKER.test(data)) {
+      continue;
+    }
+    comments.set(markerKey(data), node as Comment);
+    if (data[0] === 'P') {
+      portals++;
+    }
+    const match = ids && SCOPE_MARKER.exec(data);
+    if (match) {
+      ids!.add(parseId(match[1]!));
     }
   }
 }
@@ -1656,11 +1715,13 @@ function sweepIndexes(): void {
   sweepAt = Math.max(4096, 2 * (comments.size + elements.size));
 }
 
-function indexElement(element: Element): void {
+function indexElement(element: Element, ids?: Set<ScopeId>): void {
   const key = element.getAttribute('b-b');
-  if (key !== null) {
-    elements.set(key, element);
+  if (key === null) {
+    return;
   }
+  elements.set(key, element);
+  ids?.add(parseId(key.slice(0, key.indexOf(':'))));
 }
 
 /** Indexes the markers in the nodes that mutation records added. */
@@ -1670,7 +1731,11 @@ function indexAdded(records: MutationRecord[]): void {
       if (node.nodeType === 1) {
         indexMarkers(node);
       } else if (node.nodeType === 8 && MARKER.test((node as Comment).data)) {
-        comments.set(markerKey((node as Comment).data), node as Comment);
+        const data = (node as Comment).data;
+        comments.set(markerKey(data), node as Comment);
+        if (data[0] === 'P') {
+          portals++;
+        }
       }
     }
   }
@@ -1731,9 +1796,14 @@ function rangeEnd(start: Comment): Comment {
 }
 
 function clear(start: Node, end: Node): void {
-  while (start.nextSibling && start.nextSibling !== end) {
-    start.nextSibling.remove();
+  if (start.nextSibling === end || !start.nextSibling) {
+    return;
   }
+  // One removal of the whole range, which costs less than one for each node of a long list.
+  const range = document.createRange();
+  range.setStartAfter(start);
+  range.setEndBefore(end);
+  range.deleteContents();
 }
 
 /**
@@ -1748,10 +1818,18 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
-  indexMarkers(fragment);
+  const ids = new Set<ScopeId>();
+  indexMarkers(fragment, ids);
   options.listen(fragment);
   watchTitles(fragment);
-  const server = serverScopes(fragment);
+  const server: Scope[] = [];
+  const client: Scope[] = [];
+  for (const id of ids) {
+    const scope = scopes.get(id);
+    if (scope) {
+      (typeof id === 'number' && id < 0 ? client : server).push(scope);
+    }
+  }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
   const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
   if ('parent' in before) {
@@ -1771,29 +1849,10 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (server.length > 0) {
     refresh(server);
   }
-}
-
-/**
- * Returns the scopes from the server that markup refers to. Markup that the
- * client renders has client scopes, so these come from HTML that the server
- * rendered, such as the `children` of a component.
- */
-function serverScopes(root: ParentNode): Scope[] {
-  const ids = new Set<ScopeId>();
-  for (const element of root.querySelectorAll('[b-b]')) {
-    ids.add(parseId(element.getAttribute('b-b')!.split(':')[0]!));
+  // Scopes that the client just rendered have its values, but the memos that load start here.
+  if (client.length > 0) {
+    refresh(client, true);
   }
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const match = /^[tb]([\d.]+):/.exec((node as Comment).data);
-    if (match) {
-      ids.add(parseId(match[1]!));
-    }
-  }
-  return [...ids].flatMap((id) => {
-    const scope = scopes.get(id);
-    return scope ? [scope] : [];
-  });
 }
 
 /**
@@ -2407,6 +2466,14 @@ export function list(
     }
   });
   const still = inPlace([...kept]);
+  // When no item stays, the old ones go first, in one removal, and the new ones go in after.
+  if (kept.size === 0 && previous.size > 0) {
+    for (const item of previous.values()) {
+      destroy(item.scope);
+    }
+    previous.clear();
+    clear(start, end);
+  }
   // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
   // New items next to each other go into the page with one insert.

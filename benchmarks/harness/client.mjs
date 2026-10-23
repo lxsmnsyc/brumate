@@ -228,8 +228,9 @@ function clickToPaint(events) {
   let end = click.ts + (click.dur ?? 0);
   for (const event of events) {
     if (event.pid !== click.pid || event.ts < click.ts) continue;
-    if (event.name === 'Paint' || event.name === 'Commit')
-      end = Math.max(end, event.ts + (event.dur ?? 0));
+    // The frames that the wait of the harness asks for commit with nothing to paint, so only a
+    // paint ends the span.
+    if (event.name === 'Paint') end = Math.max(end, event.ts + (event.dur ?? 0));
   }
   // Only the part of each task between the click and the paint counts.
   const cpu = tasksOf(events, click.pid, click.tid).reduce(

@@ -111,8 +111,16 @@ export type Core = (typeof Client)['loader'];
  * Imports the core. It reads one export by name, so a build keeps only it and
  * the helpers that compiled components call.
  */
+let corePromise: Promise<Core> | undefined;
 export const importCore = (): Promise<Core> =>
-  import('./client.ts').then((client) => client.loader);
+  (corePromise ??= import('./client.ts').then(
+    (client) => client.loader,
+    (error: unknown) => {
+      // A load that fails can start again, such as after the network comes back.
+      corePromise = undefined;
+      throw error;
+    },
+  ));
 
 /** Runs a function when the browser is idle. */
 const idle = (fn: () => void): unknown => (window.requestIdleCallback ?? setTimeout)(fn);
@@ -175,14 +183,37 @@ export function boot(
   // The parts that loaded or are loading. A list of 1,000 rows names the same handlers 1,000
   // times, and each part loads once.
   const warmed = new Set<string>();
-  const warm = (ref: string, reason: string): void => {
+  // The module and part of each ref, which repeats for each row of a list.
+  const parts = new Map<string, [id: string, part: string] | undefined>();
+  const partOf = (ref: string): [id: string, part: string] | undefined => {
+    if (parts.has(ref)) {
+      return parts.get(ref);
+    }
+    let found: [string, string] | undefined;
     // A built-in of the core, such as `$bind`, has no code of a component to load.
-    if (ref.startsWith('$')) {
+    if (!ref.startsWith('$')) {
+      // A handler that a spread passed on names its scope after `@`.
+      const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
+      found = [id, /^[hct]\d/.test(name) ? name : 'update'];
+    }
+    parts.set(ref, found);
+    return found;
+  };
+  const warmedAll = (element: Element): boolean => {
+    for (const entry of entries(element)) {
+      const found = partOf(entry.ref);
+      if (found && !warmed.has(`${found[0]}#${found[1]}`)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  const warm = (ref: string, reason: string): void => {
+    const found = partOf(ref);
+    if (!found) {
       return;
     }
-    // A handler that a spread passed on names its scope after `@`.
-    const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-    const part = /^[hct]\d/.test(name) ? name : 'update';
+    const [id, part] = found;
     const key = `${id}#${part}`;
     if (warmed.has(key)) {
       return;
@@ -295,20 +326,23 @@ export function boot(
   // Templates are started once, even when markup is scanned again.
   const started = new WeakSet<Element>();
   const select = (root: ParentNode, selector: string): Element[] => {
-    const found = [...root.querySelectorAll(selector)];
+    const found: Element[] = [];
+    const add = (element: Element): void => {
+      if (element.tagName === 'TEMPLATE') {
+        if (started.has(element)) {
+          return;
+        }
+        started.add(element);
+      }
+      found.push(element);
+    };
     if ((root as Element).matches?.(selector)) {
-      found.unshift(root as Element);
+      add(root as Element);
     }
-    return found.filter((element) => {
-      if (element.tagName !== 'TEMPLATE') {
-        return true;
-      }
-      if (started.has(element)) {
-        return false;
-      }
-      started.add(element);
-      return true;
-    });
+    for (const element of root.querySelectorAll(selector)) {
+      add(element);
+    }
+    return found;
   };
 
   const visible =
@@ -346,7 +380,8 @@ export function boot(
       for (const entry of entries(element)) {
         delegate(entry.type, prevents(entry));
       }
-      if (eager && strategy(element) === 'hover') {
+      // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
+      if (eager && strategy(element) === 'hover' && !warmedAll(element)) {
         eagerly.add(element);
         visible?.observe(element);
       }

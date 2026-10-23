@@ -9,6 +9,11 @@ export default component$(() => {
       <head>
         <meta charset="utf-8" />
         <title>bench</title>
+        <style
+          dangerouslySetInnerHTML={
+            'table{border-collapse:collapse}td{padding:4px 8px;border-top:1px solid #ddd}tr.danger{background:#f2dede}'
+          }
+        />
       </head>
       <body>
         <App initial={build(1, n)} />
