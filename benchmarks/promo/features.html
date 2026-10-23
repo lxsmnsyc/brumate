@@ -78,20 +78,20 @@
       .hero h1 { text-wrap: balance; font-size: 36px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
       .hero h1 span { color: var(--muted); }
 
-      .nav { grid-area: 1 / 1 / 2 / 3; }
-      .skew { grid-area: 1 / 3 / 2 / 4; }
-      .rate { grid-area: 1 / 4 / 2 / 5; }
-      .defer { grid-area: 2 / 1 / 4 / 3; }
-      .env { grid-area: 1 / 5 / 2 / 7; }
-      .test { grid-area: 2 / 5 / 3 / 6; }
-      .events { grid-area: 2 / 6 / 3 / 7; }
-      .hints { grid-area: 3 / 5 / 4 / 6; }
-      .budget { grid-area: 3 / 6 / 4 / 7; }
-      .wire { grid-area: 4 / 3 / 5 / 5; }
-      .timing { grid-area: 4 / 1 / 5 / 2; }
-      .errors { grid-area: 4 / 2 / 5 / 3; }
-      .batch { grid-area: 4 / 5 / 5 / 6; }
-      .trusted { grid-area: 4 / 6 / 5 / 7; }
+      .forms { grid-area: 1 / 1 / 2 / 3; }
+      .bind { grid-area: 1 / 3 / 2 / 4; }
+      .lists { grid-area: 1 / 4 / 2 / 5; }
+      .cache { grid-area: 2 / 1 / 4 / 3; }
+      .reveal { grid-area: 1 / 5 / 2 / 7; }
+      .devtools { grid-area: 2 / 5 / 3 / 6; }
+      .transition { grid-area: 2 / 6 / 3 / 7; }
+      .once { grid-area: 3 / 5 / 4 / 6; }
+      .gather { grid-area: 3 / 6 / 4 / 7; }
+      .serial { grid-area: 4 / 3 / 5 / 5; }
+      .handler { grid-area: 4 / 1 / 5 / 2; }
+      .shell { grid-area: 4 / 2 / 5 / 3; }
+      .state { grid-area: 4 / 5 / 5 / 6; }
+      .first { grid-area: 4 / 6 / 5 / 7; }
 
       .row2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 18px; }
       .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
@@ -103,107 +103,108 @@
     <div class="grid">
       <div class="tile hero">
         <div class="brand"><i></i>brumate</div>
-        <div class="big">0.2.0</div>
+        <div class="big">0.3.0</div>
         <h1>
-          Web apps that resume.<br /><span>Now with everything<br />around them.</span>
+          Web apps that resume.<br /><span>Now with forms, caching<br />and a closer look.</span>
         </h1>
       </div>
 
-      <div class="tile nav">
-        <div class="eyebrow">Navigation</div>
-        <h2>Pages load in place.</h2>
+      <div class="tile forms">
+        <div class="eyebrow">brumate/forms</div>
+        <h2>Forms that work without scripts.</h2>
         <div class="row2">
-          <p>Layouts keep their state.<br />Focus and screen readers follow.</p>
-          <div class="code">navigate(<span style="color:#9fd6a0">'/issues'</span>)</div>
+          <p>With scripts, they check<br />as the user types.</p>
+          <div class="code">createForm(save, <span style="color:#8ec5ff">Issue</span>)</div>
         </div>
       </div>
 
-      <div class="tile skew">
-        <div class="glyph">↻</div>
-        <h2 class="bottom">Skew protection</h2>
-        <p>A page from an old build reloads. It never breaks.</p>
+      <div class="tile bind small">
+        <div class="eyebrow">$bind</div>
+        <h2>Two-way binding.</h2>
+        <p>For fields and props.</p>
+        <div class="code bottom">value=$bind(name)</div>
       </div>
 
-      <div class="tile rate">
-        <div class="big" style="font-size: 88px">429</div>
-        <h2 class="bottom">Rate limits</h2>
-        <p>For every server function.</p>
+      <div class="tile lists">
+        <div class="big" style="font-size: 88px">11×</div>
+        <h2 class="bottom">Faster long lists</h2>
+        <p>10,000 new rows in under 0.4 s.</p>
       </div>
 
-      <div class="tile defer" style="--code: 26px">
-        <div class="eyebrow">#defer</div>
-        <h2>Render it later.<br />On the server.</h2>
-        <p>The body comes from the server when its trigger fires, with middleware and cookies.</p>
-        <pre><span class="k">#defer</span> (<span class="s">'visible'</span>) {
-  &lt;<span class="t">Comments</span> /&gt;
-} <span class="k">#else</span> {
-  &lt;<span class="t">p</span>&gt;Loading comments&lt;/<span class="t">p</span>&gt;
+      <div class="tile cache" style="--code: 22px">
+        <div class="eyebrow">Caching</div>
+        <h2>Cache pages and calls.<br />Never one user's data.</h2>
+        <p>Results last across requests, by key and tag, and a route can cache its page.</p>
+        <pre><span class="k">export const</span> cache = { maxAge: <span class="k">60</span> };
+
+<span class="k">const</span> feed = <span class="t">cached</span>(load, {
+  tags: (path) =&gt; [path],
+});</pre>
+      </div>
+
+      <div class="tile reveal">
+        <div class="eyebrow">#reveal</div>
+        <h2>Stream in the order you choose.</h2>
+        <pre><span class="k">#reveal</span> (<span class="s">'sequential'</span>) {
+  &lt;<span class="t">Feed</span> /&gt; &lt;<span class="t">Sidebar</span> /&gt;
 }</pre>
       </div>
 
-      <div class="tile env">
-        <div class="eyebrow">brumate/env</div>
-        <h2>Typed environment.</h2>
-        <pre>defineEnv({
-  server: { DATABASE_URL: v.<span class="t">string</span>() },
-})</pre>
+      <div class="tile devtools small">
+        <div class="eyebrow">Devtools</div>
+        <h2>See what a page does.</h2>
+        <p>State, effects, navigation and the server.</p>
       </div>
 
-      <div class="tile test">
-        <div class="eyebrow">Testing</div>
-        <h2>Test real routes.</h2>
-        <div class="code bottom">visit(<span style="color:#9fd6a0">'/cart'</span>)</div>
-      </div>
-
-      <div class="tile events small">
+      <div class="tile transition small">
         <div class="eyebrow">brumate/events</div>
-        <h2>Prevent before the code loads.</h2>
-        <div class="code bottom">prevent(move, <span style="color:#9fd6a0">'Enter'</span>)</div>
+        <h2>Animate with view transitions.</h2>
+        <div class="code bottom">transition(sort)</div>
       </div>
 
-      <div class="tile hints">
-        <div class="big" style="font-size: 88px">103</div>
-        <h2 class="bottom">Early Hints</h2>
-        <p>The loader is on its way first.</p>
+      <div class="tile once small">
+        <div class="eyebrow">brumate/server</div>
+        <h2>A double click saves once.</h2>
+        <div class="code bottom">idempotent(save)</div>
       </div>
 
-      <div class="tile budget">
-        <div class="eyebrow">Budgets</div>
-        <h2>One handler too big? The build fails.</h2>
-        <div class="code bottom">budget.event</div>
+      <div class="tile gather small">
+        <div class="eyebrow">brumate/stream</div>
+        <h2>Lists that grow from a stream.</h2>
+        <div class="code bottom">gather(tokens)</div>
       </div>
 
-      <div class="tile wire">
-        <div class="eyebrow">seroval-plugins</div>
-        <h2>Web values, over the wire.</h2>
+      <div class="tile serial">
+        <div class="eyebrow">src/serial.ts</div>
+        <h2>Your own classes, over the wire.</h2>
         <div class="chips">
-          <span>ReadableStream</span><span>FormData</span><span>Headers</span><span>Request</span
-          ><span>Response</span><span>AbortSignal</span><span>Event</span>
+          <span>definePlugin</span><span>page state</span><span>server calls</span
+          ><span>cached results</span>
         </div>
       </div>
 
-      <div class="tile timing small">
-        <div class="eyebrow">Signals</div>
-        <h2>Wait for a pause.</h2>
-        <div class="code bottom">$debounced(q, <span style="color:#ff8d6b">300</span>)</div>
+      <div class="tile handler small">
+        <div class="eyebrow">brumate/signals</div>
+        <h2>Handlers from scripts.</h2>
+        <div class="code bottom">$handler(open, id)</div>
       </div>
 
-      <div class="tile errors small">
-        <div class="eyebrow">await</div>
-        <h2>Wait for it, or stream it.</h2>
-        <div class="code bottom"><span style="color:#ff8d6b">await</span> $memo(getUser())</div>
+      <div class="tile shell small">
+        <div class="eyebrow">Prerendering</div>
+        <h2>Static pages with live holes.</h2>
+        <div class="code bottom">handle(req, { shell })</div>
       </div>
 
-      <div class="tile batch">
-        <div class="eyebrow">brumate/batch</div>
-        <h2>A list of reads. One call.</h2>
-        <div class="code bottom">batched()</div>
+      <div class="tile state small">
+        <div class="eyebrow">Page state</div>
+        <h2>Only what can change ships.</h2>
+        <p>A memo of a call that nothing refreshes stays on the server.</p>
       </div>
 
-      <div class="tile trusted small">
-        <div class="eyebrow">src/middleware.ts</div>
-        <h2>Every request, one place.</h2>
-        <div class="code bottom">event.locals</div>
+      <div class="tile first small">
+        <div class="eyebrow">Resuming</div>
+        <h2>The first click, a frame sooner.</h2>
+        <p>Preloaded code runs at once.</p>
       </div>
     </div>
   </body>
