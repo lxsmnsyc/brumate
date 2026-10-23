@@ -29,7 +29,7 @@ export default defineConfig({
 | `merge`      | `number`                                                                  | `4096`                                                           | A component whose client parts are smaller than this many bytes in all, after minifying, ships them in its entry. `0` keeps one module per part.                                                |
 | `exclude`    | `(directory: string) => boolean`                                          | skips `node_modules`, `dist` and directories that start with `.` | Directories that are not searched for `.brm` files.                                                                                                                                             |
 | `a11y`       | `boolean`                                                                 | `true`                                                           | Warns about common accessibility mistakes in markup.                                                                                                                                            |
-| `devtools`   | `boolean`                                                                 | `true`                                                           | Adds the devtools button to pages on the dev server. Builds never have it.                                                                                                                      |
+| `devtools`   | `boolean`                                                                 | `true`                                                           | Adds the devtools button to pages on the dev server, and shows errors in the devtools in place of Vite's overlay. Builds never have it.                                                         |
 | `report`     | `boolean`                                                                 | `false`                                                          | Prints what the client build ships. See [Inspect and devtools](./inspect.md#build-report).                                                                                                      |
 | `budget`     | `{ loader?: number; route?: number; event?: number; component?: number }` | none                                                             | Fails the client build when a size goes over it, in bytes after gzip.                                                                                                                           |
 
@@ -46,7 +46,7 @@ The client build must run first. The `_error.brm` of the root renders as `404.ht
 
 ## `errorPage(error, server)`
 
-`brumate/vite` exports `errorPage`, for a dev server that renders with `ssrLoadModule`. It returns a page that shows the error in Vite's error overlay:
+`brumate/vite` exports `errorPage`, for a dev server that renders with `ssrLoadModule`. It returns a page that shows the error in the **Errors** tab of the devtools. Without the devtools, it shows Vite's error overlay:
 
 ```ts
 } catch (error) {
@@ -56,8 +56,8 @@ The client build must run first. The `_error.brm` of the root renders as `404.ht
 }
 ```
 
-- A compile error shows the file, the line and the lines around it. A click on the file opens it in the editor.
-- Other errors show their stack, with lines of the source files.
+- A compile error shows the file, and the lines around its line, highlighted, with the line and the word at the column marked. A click on the file opens it in the editor.
+- Other errors show their stack. A click on a place of the stack shows its code.
 - The page loads again when a file changes, so a fix shows the page.
 - It logs the error in the terminal too.
 

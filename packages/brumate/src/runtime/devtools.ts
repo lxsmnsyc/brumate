@@ -25,6 +25,35 @@ export interface DevtoolsMeta {
   vite?: string;
 }
 
+/** An error for the Errors tab: of a render on the server, of Vite, or of code in the browser. */
+export interface ErrorEntry {
+  time: number;
+  source: 'server' | 'compile' | 'browser';
+  message: string;
+  stack?: string;
+  /** The lines around the error, as Vite's overlay shows them. */
+  frame?: string;
+  /** The place of the error, such as a compile error in a `.brm` file. */
+  loc?: { file: string; line: number; column: number };
+  /** The plugin that threw it, such as `brumate`. */
+  plugin?: string;
+}
+
+/** What Vite's overlay gets, and what `errorPage` sends. */
+export interface ErrorPayload {
+  message: string;
+  stack?: string;
+  frame?: string;
+  plugin?: string;
+  id?: string;
+  loc?: { file?: string; line: number; column: number };
+}
+
+/** The part of `import.meta.hot` that the devtools listen to. */
+interface HotContext {
+  on(event: string, listener: (payload: never) => void): void;
+}
+
 /** Code of a component that loaded, or is loading, for the Loading tab. */
 export interface LoadEntry {
   component: string;
@@ -82,11 +111,20 @@ export interface DevtoolsState {
   endpoint: string;
   /** The versions of brumate and Vite, from the plugin. */
   meta: DevtoolsMeta;
+  /** The errors of the page, oldest first. */
+  errors: ErrorEntry[];
+  /** Opens the panel on a tab, such as `errors`. */
+  open?: (tab: string) => void;
+  /** Shows the number of errors on the button. */
+  errorCount?: () => void;
   /** Called after each change, while the panel is open. */
   changed?: () => void;
 }
 
 const MAX_LOG = 300;
+
+/** The logo of brumate: a lowercase b on the orange of the site. */
+export const LOGO = `<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="brumate-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc38a"/><stop offset=".5" stop-color="#ee7a3e"/><stop offset="1" stop-color="#e0445a"/></linearGradient></defs><circle cx="16" cy="16" r="15" fill="url(#brumate-logo)"/><path d="M11.5 7.5v16" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="16.6" cy="18.4" r="5.1" fill="none" stroke="#fff" stroke-width="3.2"/></svg>`;
 
 /** The root scope of a scope, whose `m` names its component. */
 export function rootOf(scope: Scope): Scope {
@@ -229,11 +267,55 @@ export function scanBlocks(state: DevtoolsState): boolean {
   return changed;
 }
 
+/**
+ * Adds an error to the Errors tab. An error of the server or of Vite opens
+ * the panel on it, as Vite's overlay would. An error of the browser only
+ * counts on the button.
+ */
+export function reportError(
+  state: DevtoolsState,
+  payload: ErrorPayload,
+  source: ErrorEntry['source'],
+): void {
+  const file = payload.loc?.file ?? payload.id;
+  const entry: ErrorEntry = {
+    time: performance.now(),
+    // An error of a plugin, such as a compile error, is one, even when a render met it.
+    source: source === 'server' && payload.plugin ? 'compile' : source,
+    message: payload.message,
+    ...(payload.stack ? { stack: payload.stack } : {}),
+    ...(payload.frame ? { frame: payload.frame } : {}),
+    ...(payload.plugin ? { plugin: payload.plugin } : {}),
+    ...(payload.loc && file
+      ? { loc: { file, line: payload.loc.line, column: payload.loc.column } }
+      : {}),
+  };
+  // The same error again, such as on each request for the page, counts once.
+  const last = state.errors.at(-1);
+  if (last?.message !== entry.message || last.stack !== entry.stack) {
+    state.errors.push(entry);
+    if (state.errors.length > 50) {
+      state.errors.shift();
+    }
+  }
+  state.errorCount?.();
+  state.changed?.();
+  if (source !== 'browser') {
+    state.open?.('errors');
+  }
+}
+
+/** True for an error of code that is not of the page, such as of a browser extension. */
+const foreign = (stack: string | undefined, file = ''): boolean =>
+  /^[a-z-]+-extension:/.test(file) ||
+  (stack !== undefined && /[a-z-]+-extension:\/\//.test(stack) && !stack.includes(location.origin));
+
 /** Listens to the core, and adds the button that opens the panel. */
 export function installDevtools(
   endpoint = '/__brumate/inspect',
   rpc = '/_brumate',
   meta: DevtoolsMeta = {},
+  hot?: HotContext,
 ): DevtoolsState {
   const state: DevtoolsState = {
     log: [],
@@ -242,6 +324,7 @@ export function installDevtools(
     written: new Set(),
     endpoint,
     meta,
+    errors: [],
   };
   const load = (component: string, part: string, reason: string, done: Promise<unknown>): void => {
     const key = `${component}:${part}`;
@@ -391,17 +474,75 @@ export function installDevtools(
 
   const host = document.createElement('brumate-devtools');
   const root = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = `
+.open { position: fixed; right: 14px; bottom: 14px; z-index: 2147483647; width: 40px; height: 40px; padding: 5px; border-radius: 50%; border: 1px solid #ffffff1f; background: #19181a; box-shadow: 0 6px 20px #0006, 0 0 0 1px #0003; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.open:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 28px #0007, 0 0 0 3px #ee7a3e44; }
+.open:focus-visible { outline: 2px solid #ee7a3e; outline-offset: 2px; }
+.count { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; border: 2px solid #19181a; background: #e5484d; color: #fff; font: 700 10px/14px system-ui, sans-serif; text-align: center; }
+.count:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .open { transition: none; } }
+`;
   const button = document.createElement('button');
-  button.textContent = 'brm';
+  button.className = 'open';
   button.title = 'Open the brumate devtools';
-  button.setAttribute(
-    'style',
-    'position:fixed;right:12px;bottom:12px;z-index:2147483647;font:600 12px ui-monospace,monospace;padding:6px 10px;border-radius:999px;border:1px solid #8884;background:#111;color:#fff;cursor:pointer',
-  );
+  button.setAttribute('aria-label', 'Open the brumate devtools');
+  button.innerHTML = LOGO;
+  // The number of errors, in red on the button, so an error shows while the panel is closed.
+  const count = document.createElement('span');
+  count.className = 'count';
+  button.append(count);
+  state.errorCount = (): void => {
+    count.textContent = state.errors.length > 0 ? String(state.errors.length) : '';
+    button.title =
+      state.errors.length > 0
+        ? `Open the brumate devtools: ${state.errors.length} errors`
+        : 'Open the brumate devtools';
+  };
   button.addEventListener('click', () => {
     void import('./devtools-panel.ts').then(({ togglePanel }) => togglePanel(root, state));
   });
-  root.append(button);
+  state.open = (tab) => {
+    void import('./devtools-panel.ts').then(({ openPanel }) => openPanel(root, state, tab));
+  };
+  root.append(style, button);
+
+  // Errors of code of the page in the browser. Errors of other code are left out.
+  addEventListener('error', (event) => {
+    const stack = (event.error as Error | undefined)?.stack;
+    if (foreign(stack, event.filename)) {
+      return;
+    }
+    reportError(
+      state,
+      { message: event.message, stack: (event.error as Error | undefined)?.stack },
+      'browser',
+    );
+  });
+  addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason as Error | undefined;
+    if (foreign(reason?.stack)) {
+      return;
+    }
+    reportError(
+      state,
+      { message: reason?.message ?? String(event.reason), stack: reason?.stack },
+      'browser',
+    );
+  });
+  // Errors of Vite, such as a compile error after an edit, which its overlay would show. A good
+  // update after them clears them.
+  hot?.on('vite:error', (payload: { err: ErrorPayload }) => {
+    reportError(state, payload.err, 'compile');
+  });
+  hot?.on('vite:afterUpdate', () => {
+    const before = state.errors.length;
+    state.errors = state.errors.filter((error) => error.source !== 'compile');
+    if (state.errors.length !== before) {
+      state.errorCount?.();
+      state.changed?.();
+    }
+  });
   const append = (): void => {
     // Navigation replaces the body, so the button goes on the document element.
     document.documentElement.append(host);

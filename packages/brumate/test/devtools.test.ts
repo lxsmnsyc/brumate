@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DevtoolsHooks, Scope } from '../src/runtime/client.ts';
 
 const DEVTOOLS = Symbol.for('brumate.devtools');
-import { installDevtools, preview } from '../src/runtime/devtools.ts';
+import { installDevtools, preview, reportError } from '../src/runtime/devtools.ts';
 import { togglePanel } from '../src/runtime/devtools-panel.ts';
 
 function hooks(): DevtoolsHooks {
@@ -14,7 +14,9 @@ describe('devtools', () => {
   it('logs what the core reports, and shows scopes with the names of their slots', async () => {
     const state = installDevtools('/inspect');
     const host = document.querySelector('brumate-devtools')!;
-    expect(host.shadowRoot!.querySelector('button')!.textContent).toBe('brm');
+    expect(host.shadowRoot!.querySelector('button.open')!.getAttribute('aria-label')).toBe(
+      'Open the brumate devtools',
+    );
 
     const root: Scope = { id: 0, k: 0, m: 'Counter_1', s: [1], children: new Set() };
     const item: Scope = { id: 1, k: 1, p: root, s: ['a'], children: new Set() };
@@ -292,6 +294,52 @@ describe('devtools', () => {
     (shadow.querySelector('.body button') as HTMLElement).click();
     await expect.poll(() => requests).toEqual(['2 0:1']);
     expect(state.blocks.get('defer:2')!.fired).toBeTypeOf('number');
+    togglePanel(shadow, state);
+  });
+
+  it('collects errors, counts them on the button, and opens the panel for an error of the server', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    document.body.innerHTML = '';
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).startsWith('/__brumate/source')
+        ? new Response('<script>\n  const a = 1;\n  throw new Error("Boom");\n</script>\n')
+        : Response.json({})) as typeof fetch;
+    const state = installDevtools('/inspect', '/_brumate', { version: '1.2.3', vite: '8.0.0' });
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const count = (): string => shadow.querySelector('button.open .count')!.textContent!;
+
+    // An error of a browser extension is not an error of the page.
+    dispatchEvent(
+      new ErrorEvent('error', { message: 'Other', filename: 'chrome-extension://abc/x.js' }),
+    );
+    reportError(
+      state,
+      { message: 'In the browser', stack: 'Error\n    at f (http://localhost:3000/src/a.ts:1:1)' },
+      'browser',
+    );
+    expect(state.errors.map((error) => error.source)).toEqual(['browser']);
+    expect(count()).toBe('1');
+    expect(shadow.querySelector('.panel')).toBeNull();
+
+    reportError(
+      state,
+      {
+        message: 'Declare $signal with let',
+        plugin: 'brumate',
+        frame: '> 3 |   throw',
+        loc: { file: '/app/src/Page.brm', line: 3, column: 3 },
+      },
+      'server',
+    );
+    expect(state.errors.at(-1)!.source).toBe('compile');
+    await expect.poll(() => shadow.querySelector('.panel')).not.toBeNull();
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    await expect.poll(body).toContain('Declare $signal with let');
+    // The code around the place, highlighted, with its line marked.
+    await expect
+      .poll(() => shadow.querySelector('.code .error-line')?.textContent)
+      .toContain('throw');
+    expect(shadow.querySelector('.top')!.textContent).toContain('v1.2.3');
     togglePanel(shadow, state);
   });
 });

@@ -72,6 +72,10 @@
       "types": "./dist/runtime/events.d.ts",
       "default": "./dist/runtime/events.js"
     },
+    "./highlight": {
+      "types": "./dist/highlight.d.ts",
+      "default": "./dist/highlight.js"
+    },
     "./forms": {
       "types": "./forms/forms.brm.ts",
       "default": "./forms/forms.brm.ts"
@@ -107,6 +111,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@twinkleplop/core": "0.3.1",
+    "@twinkleplop/css": "0.1.7",
+    "@twinkleplop/theme-github": "0.2.4",
+    "@twinkleplop/tsx": "0.1.7",
     "oxc-parser": "^0.154.0",
     "postcss": "^8.5.31",
     "postcss-selector-parser": "^7.1.6",

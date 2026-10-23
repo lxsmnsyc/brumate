@@ -47,8 +47,9 @@ Use it when a component ships more than you expect. The "Changes on the client" 
 
 ## Devtools
 
-The dev server adds a `brm` button to each page. It opens a panel at the bottom of the page. Drag its top edge to change its height, which the browser keeps. Its header shows the versions of brumate and Vite, the page, and how many components, scopes and parts of code the page has, with the size of its state. It has eight tabs:
+The dev server adds a button with the logo of brumate to each page. It opens a panel at the bottom of the page. Drag its top edge to change its height, which the browser keeps. Its header shows the versions of brumate and Vite, the page, and how many components, scopes and parts of code the page has, with the size of its state. It has nine tabs:
 
+- **Errors** shows errors of a render on the server, of Vite, such as a compile error after an edit, and of code in the browser. The selected error shows the lines of its file, highlighted, with the line and the word at its column marked, and its stack. Click a place of the stack to see its code, or the file to open it in your editor. An error of the server or of Vite opens the panel on it, in place of Vite's overlay. An error of the browser counts on the button.
 - **Overview** shows the page, the versions, the size of the client code and the state, the blocks, and each component on the page with its file, instances, scopes and the parts of its code that loaded.
 
 - **Components** shows a tree of the components on the page and their scopes, and the signals and memos of the selected scope by name, with their type and value. A scope that just changed flashes. Filter the tree by a component or a value.

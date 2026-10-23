@@ -3,6 +3,9 @@
 // the bottom of the page, and its height can be dragged.
 //
 // - Overview: the versions, the page, and each component on it.
+// - Errors: errors of a render on the server, of Vite and of the browser,
+//   with the code of the selected place highlighted by twinkleplop, in place
+//   of Vite's overlay.
 // - Components: the scopes of each component, and the value of each slot by
 //   name. A value can be edited, which writes it as a handler does.
 // - Elements: the element that Pick found: its scope and anchor, its place in
@@ -15,10 +18,17 @@
 //   callbacks of the page, with their state. A trigger can fire now.
 // - Report: the inspect report of a component.
 
+import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
-import { PRELOADS, preview, rootOf } from './devtools.ts';
-import type { BlockEntry, DevtoolsEntry, DevtoolsState, LoadEntry } from './devtools.ts';
+import { LOGO, PRELOADS, preview, rootOf } from './devtools.ts';
+import type {
+  BlockEntry,
+  DevtoolsEntry,
+  DevtoolsState,
+  ErrorEntry,
+  LoadEntry,
+} from './devtools.ts';
 
 /** What the dev server tells about a component: see the inspect endpoint of the plugin. */
 interface ComponentInfo {
@@ -65,7 +75,7 @@ const STYLE = `
 .resize { position: absolute; top: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; }
 .top { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap; overflow: hidden; }
 .brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; letter-spacing: -0.01em; }
-.brand i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.brand i { display: inline-block; width: 18px; height: 18px; }
 .chip { padding: 1px 7px; border-radius: 999px; background: var(--raised); color: var(--dim); font: 11px var(--mono); }
 .chip.accent { background: #ee7a3e22; color: #ffb48a; }
 .route { font: 12px var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; }
@@ -86,6 +96,26 @@ select, input[type="search"] { background: var(--raised); border: 1px solid var(
 .badge:empty { display: none; }
 .tab[aria-selected="true"] .badge { background: var(--hover); }
 .badge.warn { background: #ffd16622; color: var(--yellow); }
+.badge.error, .tab[aria-selected="true"] .badge.error { background: #e5484d; color: #fff; }
+.error-message { margin: 0 0 8px; color: var(--red); font: 600 14px/1.4 var(--mono); white-space: pre-wrap; }
+.error-row { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; }
+.error-row[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 var(--red); }
+.error-row .text { display: block; color: var(--text); font: 12px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.error-row .when { color: var(--faint); font-size: 11px; }
+.code { margin: 6px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #0d1117; overflow: auto; }
+.code .twinkleplop { margin: 0; padding: 8px 0; font: 12px/1.6 var(--mono); background: none; white-space: normal; }
+.code .l { display: block; padding: 0 12px 0 0; white-space: pre; min-height: 1.6em; }
+.code .ln { display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--faint); user-select: none; }
+.code .l.error-line { background: #e5484d26; box-shadow: inset 3px 0 #e5484d; }
+.code .l.error-line .ln { color: var(--red); }
+.code .error-mark { text-decoration: wavy underline #e5484d; text-underline-offset: 3px; }
+.code pre.plain { margin: 0; padding: 8px 12px; font: 12px/1.6 var(--mono); white-space: pre; }
+.frames { display: flex; flex-direction: column; gap: 1px; }
+.frame { display: flex; gap: 10px; width: 100%; text-align: left; padding: 3px 8px; border-radius: 5px; font: 11.5px var(--mono); }
+.frame .fn { color: var(--text); white-space: nowrap; }
+.frame .where { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.frame.library .fn, .frame.library .where { color: var(--faint); }
+.frame[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 var(--accent); }
 .body { flex: 1; overflow: auto; padding: 12px 14px; min-width: 0; }
 .split { display: flex; height: calc(100% + 24px); margin: -12px -14px; }
 .split > .list { width: 280px; flex: none; overflow: auto; border-right: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 1px; }
@@ -167,9 +197,19 @@ pre.report { margin: 0; padding: 10px 12px; border: 1px solid var(--line); borde
 .outline { position: fixed; pointer-events: none; border: 2px solid #ee7a3e; background: #ee7a3e22; border-radius: 3px; z-index: 2147483646; }
 `;
 
-type Tab = 'overview' | 'scopes' | 'elements' | 'graph' | 'log' | 'loading' | 'blocks' | 'report';
+type Tab =
+  | 'overview'
+  | 'errors'
+  | 'scopes'
+  | 'elements'
+  | 'graph'
+  | 'log'
+  | 'loading'
+  | 'blocks'
+  | 'report';
 const TABS: [Tab, string][] = [
   ['overview', 'Overview'],
+  ['errors', 'Errors'],
   ['scopes', 'Components'],
   ['elements', 'Elements'],
   ['graph', 'Graph'],
@@ -494,20 +534,154 @@ function barClass(load: LoadEntry): string {
   return load.reason === 'event' || load.reason === 'block' ? '' : 'other';
 }
 
+/** A place in a file that a stack names. */
+interface Frame {
+  fn: string;
+  file: string;
+  line: number;
+  column: number;
+  /** True for code of a dependency, of the runtime of brumate, or of Node. */
+  library: boolean;
+  /** True for code that the browser ran, whose lines are of the compiled code. */
+  compiled: boolean;
+}
+
+/** The places of a stack, with their files as the dev server can read them. */
+function framesOf(stack: string | undefined): Frame[] {
+  const frames: Frame[] = [];
+  for (const line of (stack ?? '').split('\n')) {
+    const match = /^\s*at (?:(.*?) \()?(.+?):(\d+):(\d+)\)?\s*$/.exec(line);
+    if (!match) {
+      continue;
+    }
+    let file = match[2]!;
+    let compiled = false;
+    // Code of a browser extension, or code without a file, is not code of the app.
+    if (/^[a-z-]+-extension:/.test(file) || file.startsWith('<')) {
+      continue;
+    }
+    if (/^https?:/.test(file)) {
+      const url = new URL(file);
+      if (url.origin !== location.origin) {
+        continue;
+      }
+      compiled = true;
+      file = url.pathname.startsWith('/@fs/') ? url.pathname.slice(4) : url.pathname;
+    } else if (file.startsWith('file://')) {
+      file = decodeURIComponent(new URL(file).pathname);
+    }
+    frames.push({
+      fn: match[1] ?? '(anonymous)',
+      file,
+      line: Number(match[3]),
+      column: Number(match[4]),
+      library:
+        file.startsWith('node:') ||
+        file.includes('/node_modules/') ||
+        /\/brumate\/(?:src|dist)\/runtime\//.test(file) ||
+        file.includes('/@vite/'),
+      compiled,
+    });
+  }
+  return frames;
+}
+
+/** The highlighter, which loads with the first code that the Errors tab shows. */
+let highlighter: Promise<typeof Highlight> | undefined;
+/** The sources of files, by path. */
+const sources = new Map<string, Promise<string | undefined>>();
+
+function sourceOf(file: string): Promise<string | undefined> {
+  let text = sources.get(file);
+  if (!text) {
+    text = fetch(`/__brumate/source?file=${encodeURIComponent(file)}`)
+      .then((response) => (response.ok ? response.text() : undefined))
+      .catch(() => undefined);
+    sources.set(file, text);
+  }
+  return text;
+}
+
+/**
+ * The lines around a place of a file, highlighted by twinkleplop, with the
+ * line of the place and the word at its column marked. Without the source,
+ * the frame of the error is shown as it is.
+ */
+async function codeView(
+  place: { file: string; line: number; column: number },
+  fallback?: string,
+): Promise<HTMLElement> {
+  const box = element('div', { class: 'code' });
+  const [text, module] = await Promise.all([
+    sourceOf(place.file),
+    (highlighter ??= import('../highlight.ts')),
+  ]);
+  if (text === undefined) {
+    box.append(
+      element('pre', { class: 'plain' }, fallback ?? 'The dev server cannot read this file.'),
+    );
+    return box;
+  }
+  const lines = text.split('\n');
+  const start = Math.max(1, place.line - 6);
+  const end = Math.min(lines.length, place.line + 6);
+  const target = place.line - start + 1;
+  const word = /^[\w$.]*/.exec(lines[place.line - 1]?.slice(place.column - 1) ?? '')?.[0] ?? '';
+  // The colours of the theme, in the box, since the styles of the page do not reach the panel.
+  box.append(element('style', {}, module.themeCSS('dark')));
+  box.insertAdjacentHTML(
+    'beforeend',
+    module.highlightFile(place.file, lines.slice(start - 1, end).join('\n'), {
+      line_numbers: { start },
+      line: (index) => (index === target ? { class: 'error-line' } : undefined),
+      overlays:
+        word.length > 0
+          ? [
+              {
+                start: { line: target, character: place.column - 1 },
+                end: { line: target, character: place.column - 1 + word.length },
+                class: 'error-mark',
+              },
+            ]
+          : [],
+    }),
+  );
+  return box;
+}
+
 let panel: HTMLElement | undefined;
+/** Switches the tab of the open panel. */
+let showTab: ((tab: Tab) => void) | undefined;
+
+/** Opens the panel on a tab, or switches to it when the panel is open. */
+export function openPanel(root: ShadowRoot, state: DevtoolsState, tab: string): void {
+  if (panel) {
+    showTab?.(tab as Tab);
+  } else {
+    togglePanel(root, state, tab as Tab);
+  }
+}
 
 /** Opens the panel, or closes it when it is open. */
-export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
-  const opener = root.querySelector<HTMLElement>(':scope > button');
+export function togglePanel(
+  root: ShadowRoot,
+  state: DevtoolsState,
+  initial: Tab = 'overview',
+): void {
+  const opener = root.querySelector<HTMLElement>(':scope > button.open');
   if (panel) {
     panel.remove();
     panel = undefined;
     state.changed = undefined;
     document.documentElement.style.removeProperty('padding-bottom');
     opener?.style.removeProperty('display');
+    showTab = undefined;
     return;
   }
-  let tab: Tab = 'overview';
+  let tab: Tab = initial;
+  // The error and the place of its stack that the Errors tab shows.
+  let selectedError: ErrorEntry | undefined;
+  let selectedFrame = -1;
   let selected: string | undefined;
   let selectedScope: ScopeId | undefined;
   let editing: { scope: ScopeId; slot: number } | undefined;
@@ -528,6 +702,11 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     height = Number(localStorage.getItem(HEIGHT_KEY)) || height;
   } catch {
     // Storage can be off. The default height stays.
+  }
+  // The page of an error of the server has nothing else to show.
+  const errorPage = document.getElementById('brumate-error') !== null;
+  if (errorPage) {
+    height = window.innerHeight;
   }
 
   const body = element('div', { class: 'body' });
@@ -574,6 +753,8 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
       element('span', { class: 'chip', title: 'The version of Vite' }, `Vite ${state.meta.vite}`),
     );
   }
+  const logo = element('i');
+  logo.innerHTML = LOGO;
   const resize = element('div', { class: 'resize', title: 'Drag to resize' });
   panel = element(
     'div',
@@ -583,7 +764,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     element(
       'div',
       { class: 'top' },
-      element('span', { class: 'brand' }, element('i'), 'brumate'),
+      element('span', { class: 'brand' }, logo, 'brumate'),
       ...versions,
       routeText,
       stats,
@@ -595,6 +776,9 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
   );
   const applyHeight = (): void => {
     panel!.style.height = `${height}px`;
+    if (errorPage) {
+      panel!.style.maxHeight = 'none';
+    }
     // The page can scroll past the panel.
     document.documentElement.style.paddingBottom = `${height}px`;
   };
@@ -706,6 +890,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     const unused = loads.filter((load) => PRELOADS.has(load.reason) && !load.used).length;
     const waiting = [...state.blocks.values()].filter((block) => block.state === 'waiting').length;
     const counts: Partial<Record<Tab, [number, string?]>> = {
+      errors: [state.errors.length, 'Errors'],
       scopes: [new Set(list.map((scope) => scope.m)).size],
       log: [state.log.length],
       loading: unused > 0 ? [unused, 'Preloads that nothing used'] : [loads.length],
@@ -714,7 +899,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     for (const [name, badge] of badges) {
       const [count = 0, warning] = counts[name] ?? [];
       badge.textContent = count > 0 ? String(count) : '';
-      badge.className = `badge${warning ? ' warn' : ''}`;
+      badge.className = `badge${name === 'errors' ? ' error' : warning ? ' warn' : ''}`;
       badge.title = warning ?? '';
     }
   };
@@ -734,6 +919,113 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
       draw();
     });
     return select;
+  };
+
+  const drawErrors = async (): Promise<void> => {
+    if (state.errors.length === 0) {
+      body.replaceChildren(
+        element('h2', {}, 'Errors'),
+        element(
+          'p',
+          { class: 'sub' },
+          'No errors. Errors of a render on the server, of Vite, such as a compile error after an edit, and of code in the browser show here.',
+        ),
+      );
+      return;
+    }
+    if (!selectedError || !state.errors.includes(selectedError)) {
+      selectedError = state.errors.at(-1);
+      selectedFrame = -1;
+    }
+    const error = selectedError!;
+    const list = element('div', { class: 'list' });
+    for (const entry of state.errors.toReversed()) {
+      const button = element(
+        'button',
+        { class: 'error-row', 'aria-current': String(entry === error) },
+        element('span', { class: 'text' }, entry.message.split('\n')[0]!),
+        element('span', { class: 'when' }, `${entry.source} · ${seconds(entry.time)}`),
+      );
+      button.addEventListener('click', () => {
+        selectedError = entry;
+        selectedFrame = -1;
+        draw();
+      });
+      list.append(button);
+    }
+    const clear = element('button', { class: 'tool' }, 'Clear');
+    clear.addEventListener('click', () => {
+      state.errors.length = 0;
+      state.errorCount?.();
+      draw();
+    });
+    list.append(element('div', { style: 'margin-top: 8px' }, clear));
+
+    // The place to show: a frame that was clicked, the place of a compile error, or the first
+    // frame of the app's code.
+    const frames = framesOf(error.stack);
+    if (selectedFrame === -1) {
+      selectedFrame = error.loc
+        ? -2
+        : frames.findIndex((frame) => !frame.library && !frame.compiled);
+    }
+    const frame = selectedFrame >= 0 ? frames[selectedFrame] : undefined;
+    const place = selectedFrame === -2 ? error.loc : frame;
+    const detail = element('div', { class: 'detail' });
+    detail.append(
+      element('pre', { class: 'error-message' }, error.message),
+      element(
+        'div',
+        { class: 'toolbar' },
+        pill(error.source, error.source === 'browser' ? 'yellow' : 'red'),
+        error.plugin ? pill(`plugin ${error.plugin}`) : '',
+        place ? open(place) : '',
+      ),
+    );
+    if (place) {
+      detail.append(await codeView(place, error.frame));
+    } else if (error.frame) {
+      detail.append(
+        element('div', { class: 'code' }, element('pre', { class: 'plain' }, error.frame)),
+      );
+    }
+    if (frames.length > 0) {
+      const stack = element('div', { class: 'frames' });
+      frames.forEach((item, index) => {
+        const button = element(
+          'button',
+          {
+            class: `frame${item.library ? ' library' : ''}`,
+            'aria-current': String(index === selectedFrame),
+            title: item.compiled ? 'The lines of code that the browser ran' : 'Show this code',
+          },
+          element('span', { class: 'fn' }, item.fn),
+          element('span', { class: 'where' }, `${item.file}:${item.line}:${item.column}`),
+        );
+        button.addEventListener('click', () => {
+          selectedFrame = index;
+          draw();
+        });
+        stack.append(button);
+      });
+      detail.append(element('h3', {}, 'Stack'), stack);
+    }
+    body.replaceChildren(element('div', { class: 'split' }, list, detail));
+  };
+
+  /** A button that opens a place of a file in the editor. */
+  const open = (place: { file: string; line: number; column: number }): HTMLElement => {
+    const button = element(
+      'button',
+      { class: 'link', title: 'Open in the editor' },
+      `${place.file.replace(/^.*\/(src|test|routes)\//, '$1/')}:${place.line}:${place.column}`,
+    );
+    button.addEventListener('click', () => {
+      void fetch(
+        `/__open-in-editor?file=${encodeURIComponent(`${place.file}:${place.line}:${place.column}`)}`,
+      );
+    });
+    return button;
   };
 
   const drawOverview = async (): Promise<void> => {
@@ -1695,15 +1987,17 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     const drawn =
       tab === 'overview'
         ? drawOverview()
-        : tab === 'scopes'
-          ? drawScopes()
-          : tab === 'elements'
-            ? drawElements()
-            : tab === 'loading'
-              ? drawLoading()
-              : tab === 'graph'
-                ? drawGraph()
-                : drawReport();
+        : tab === 'errors'
+          ? drawErrors()
+          : tab === 'scopes'
+            ? drawScopes()
+            : tab === 'elements'
+              ? drawElements()
+              : tab === 'loading'
+                ? drawLoading()
+                : tab === 'graph'
+                  ? drawGraph()
+                  : drawReport();
     // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
       drawChrome();
@@ -1725,6 +2019,10 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
         }
       });
     }
+  };
+  showTab = (next) => {
+    tab = next;
+    draw();
   };
   draw();
 }

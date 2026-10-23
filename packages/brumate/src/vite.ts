@@ -8,6 +8,7 @@ import {
   isRunnableDevEnvironment,
   normalizePath,
   searchForWorkspaceRoot,
+  isFileLoadingAllowed,
   transformWithOxc,
   version as viteVersion,
 } from 'vite';
@@ -46,6 +47,7 @@ import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
 import { errorPayload } from './dev-error.ts';
+import { BRUMATE_VERSION } from './version.ts';
 import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
@@ -164,15 +166,10 @@ const SERVER_QUERY = '?brumate-server';
 const TESTING = 'virtual:brumate/testing';
 /** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
 const HINTS_FILE = '.brumate/hints.json';
-/** The version of brumate, which the devtools show. The file is next to `src` and `dist`. */
-const BRUMATE_VERSION: string = (
-  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
-    version: string;
-  }
-).version;
-
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
+/** The dev server sends the source of a file for the Errors tab of the devtools at this path. */
+const SOURCE = '/__brumate/source';
 
 /** What tells two lists of packages of components apart. */
 function packagesKey(list: BrumatePackage[]): string {
@@ -982,6 +979,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     config(config, env) {
       packages = findPackages(path.resolve(config.root ?? process.cwd()));
       const shared = packageConfig(config);
+      // The devtools show the errors of Vite, so its overlay does not cover them.
+      const hmr = config.server?.hmr;
+      if (
+        env.command === 'serve' &&
+        options.devtools !== false &&
+        hmr !== false &&
+        (typeof hmr !== 'object' || hmr.overlay === undefined)
+      ) {
+        shared.server = { hmr: { overlay: false } };
+      }
       if (!env.isSsrBuild) {
         const preload = config.build?.modulePreload;
         // The files of earlier builds stay, and the build removes the ones that are too old itself.
@@ -1260,7 +1267,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
-                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}));`,
+                // They show the errors of Vite, such as a compile error after an edit, in place of its overlay.
+                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}, import.meta.hot));`,
               ]
             : []),
         ].join('\n');
@@ -1507,6 +1515,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           isRunnableDevEnvironment(ssr)
         ) {
           void handleDevRPC(server, request, response);
+          return;
+        }
+        // The source of a file that an error names, for the code of the Errors tab. Only files
+        // that Vite would serve, by its `server.fs` options.
+        if (request.method === 'GET' && request.url?.startsWith(`${SOURCE}?`)) {
+          const asked = new URL(request.url, 'http://localhost').searchParams.get('file') ?? '';
+          const file = normalizePath(
+            path.isAbsolute(asked) && existsSync(asked)
+              ? asked
+              : path.join(server.config.root, asked),
+          );
+          if (!existsSync(file) || !isFileLoadingAllowed(server.config, file)) {
+            response.statusCode = 404;
+            response.end();
+            return;
+          }
+          response.setHeader('content-type', 'text/plain; charset=utf-8');
+          response.end(readFileSync(file, 'utf8'));
           return;
         }
         if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {
