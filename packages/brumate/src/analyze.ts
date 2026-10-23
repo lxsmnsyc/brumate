@@ -495,12 +495,13 @@ class Analyzer {
         specifier.local,
       );
       if (specifier.type !== 'ImportNamespaceSpecifier') {
-        const imported =
-          specifier.type === 'ImportDefaultSpecifier'
-            ? 'default'
-            : specifier.imported.type === 'Identifier'
+        let imported = 'default';
+        if (specifier.type !== 'ImportDefaultSpecifier') {
+          imported =
+            specifier.imported.type === 'Identifier'
               ? specifier.imported.name
               : specifier.imported.value;
+        }
         declaration.imported = { source: statement.source.value, name: imported };
       }
     }
@@ -624,11 +625,13 @@ class Analyzer {
               this.addDeclaration(scope, binding.name, 'props-rest', binding);
             }
           } else {
-            const key = property.computed
-              ? undefined
-              : property.key.type === 'Identifier'
-                ? property.key.name
-                : String((property.key as { value?: unknown }).value);
+            let key: string | undefined;
+            if (!property.computed) {
+              key =
+                property.key.type === 'Identifier'
+                  ? property.key.name
+                  : String((property.key as { value?: unknown }).value);
+            }
             for (const binding of getPatternNames(property.value)) {
               const declaration = this.addDeclaration(scope, binding.name, 'prop', binding);
               declaration.propKey = key;
@@ -1087,8 +1090,12 @@ class Analyzer {
 
   private visitAttributes(node: ElementNode | ComponentNode | DynamicTagNode, scope: Scope): void {
     const isComponent = node.kind === 'component';
-    const tag =
-      node.kind === 'element' ? node.tag : node.kind === 'component' ? node.name : 'dynamic';
+    let tag = 'dynamic';
+    if (node.kind === 'element') {
+      tag = node.tag;
+    } else if (node.kind === 'component') {
+      tag = node.name;
+    }
     for (const attribute of node.attributes) {
       if (
         !isComponent &&

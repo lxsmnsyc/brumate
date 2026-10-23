@@ -1201,14 +1201,14 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
     return false;
   }
   seen.add(value);
-  const items =
-    value instanceof Map
-      ? [...value.keys(), ...value.values()]
-      : value instanceof Set
-        ? [...value]
-        : Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype
-          ? Object.values(value)
-          : [];
+  let items: unknown[] = [];
+  if (value instanceof Map) {
+    items = [...value.keys(), ...value.values()];
+  } else if (value instanceof Set) {
+    items = [...value];
+  } else if (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype) {
+    items = Object.values(value);
+  }
   return items.some((item) => holds(item, target, seen));
 }
 
@@ -1369,8 +1369,8 @@ function groupSource(
   }
   const value = record(source[0])?.s?.[source[1]];
   // Seroval keeps the order of a Set. A Map's entries are new arrays, which the check below rejects.
-  const list = Array.isArray(value) ? value : value instanceof Set ? Array.from(value) : undefined;
-  if (!list || list.length < entries.length) {
+  const list = value instanceof Set ? Array.from(value) : value;
+  if (!Array.isArray(list) || list.length < entries.length) {
     return undefined;
   }
   for (let n = 0; n < entries.length; n++) {

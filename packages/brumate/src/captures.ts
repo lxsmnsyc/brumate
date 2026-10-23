@@ -91,12 +91,12 @@ function unsendableClass(node: oxc.Node): string | undefined {
     return undefined;
   }
   const callee = node.callee;
-  const name =
-    callee.type === 'Identifier'
-      ? callee.name
-      : callee.type === 'MemberExpression' && callee.property.type === 'Identifier'
-        ? callee.property.name
-        : 'class';
+  let name = 'class';
+  if (callee.type === 'Identifier') {
+    name = callee.name;
+  } else if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier') {
+    name = callee.property.name;
+  }
   return SENDABLE.has(name) ? undefined : name;
 }
 

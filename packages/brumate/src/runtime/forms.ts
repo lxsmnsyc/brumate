@@ -45,7 +45,11 @@ export function parsePath(name: string): PathSegment[] | undefined {
 export function formatPath(path: readonly PathSegment[]): string {
   let name = '';
   for (const segment of path) {
-    name += typeof segment === 'number' ? `[${segment}]` : name ? `.${segment}` : segment;
+    if (typeof segment === 'number') {
+      name += `[${segment}]`;
+    } else {
+      name += name ? `.${segment}` : segment;
+    }
   }
   return name;
 }
@@ -72,13 +76,14 @@ export function setAt(value: unknown, path: readonly PathSegment[], next: unknow
     return next;
   }
   const [segment, ...rest] = path as [PathSegment, ...PathSegment[]];
-  const copy: Record<PathSegment, unknown> | unknown[] = Array.isArray(value)
-    ? [...(value as unknown[])]
-    : typeof value === 'object' && value !== null
-      ? { ...value }
-      : typeof segment === 'number'
-        ? []
-        : {};
+  let copy: Record<PathSegment, unknown> | unknown[];
+  if (Array.isArray(value)) {
+    copy = [...(value as unknown[])];
+  } else if (typeof value === 'object' && value !== null) {
+    copy = { ...value };
+  } else {
+    copy = typeof segment === 'number' ? [] : {};
+  }
   const child = Object.hasOwn(copy, segment)
     ? (copy as Record<PathSegment, unknown>)[segment]
     : undefined;
@@ -547,7 +552,12 @@ export function formFields<T>(
   { checked, local, press }: FormState = {},
 ): Fields<T> {
   const changes = localSince(local, result);
-  const value = changes ? changes.value : result && !result.reset ? result.value : undefined;
+  let value: unknown;
+  if (changes) {
+    value = changes.value;
+  } else if (result && !result.reset) {
+    value = result.value;
+  }
   const submitted = result !== undefined;
   const keys = { ...(result && !result.reset ? result.keys : {}), ...changes?.keys };
   // The errors of the reply for the items of a list that the browser changed are of other items.

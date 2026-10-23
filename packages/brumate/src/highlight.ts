@@ -351,12 +351,14 @@ export function themeCSS(theme: 'dark' | 'light' = 'dark'): string {
 /** Highlights code of a file by its extension: `.brm`, `.css`, or TypeScript and the rest. */
 export function highlightFile(file: string, code: string, render?: RenderOptions): string {
   const extension = /\.(\w+)(?:\?.*)?$/.exec(file)?.[1] ?? '';
-  const run =
-    extension === 'brm'
-      ? (brmLanguage ??= tokenize())
-      : extension === 'css'
-        ? (cssLanguage ??= css())
-        : (tsxLanguage ??= tsx());
+  let run: ReturnType<LanguageFactory>;
+  if (extension === 'brm') {
+    run = brmLanguage ??= tokenize();
+  } else if (extension === 'css') {
+    run = cssLanguage ??= css();
+  } else {
+    run = tsxLanguage ??= tsx();
+  }
   return to_html(code, run(code), render);
 }
 

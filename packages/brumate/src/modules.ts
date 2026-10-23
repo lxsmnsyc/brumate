@@ -232,17 +232,18 @@ export function parseModule(module: ReactiveModule): ModuleInfo {
   for (const statement of program.body) {
     if (statement.type === 'ImportDeclaration') {
       for (const specifier of statement.specifiers) {
-        imports.set(specifier.local.name, {
-          specifier: statement.source.value,
-          imported:
-            specifier.type === 'ImportDefaultSpecifier'
-              ? 'default'
-              : specifier.type === 'ImportNamespaceSpecifier'
-                ? '*'
-                : specifier.imported.type === 'Identifier'
-                  ? specifier.imported.name
-                  : specifier.imported.value,
-        });
+        let imported: string;
+        if (specifier.type === 'ImportDefaultSpecifier') {
+          imported = 'default';
+        } else if (specifier.type === 'ImportNamespaceSpecifier') {
+          imported = '*';
+        } else {
+          imported =
+            specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : specifier.imported.value;
+        }
+        imports.set(specifier.local.name, { specifier: statement.source.value, imported });
       }
     } else if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
       declare(statement.declaration, true);
@@ -1012,13 +1013,14 @@ export function expandModules(
     lines.push(`\nimport { ${[...macrosToImport].join(', ')} } from '${SIGNALS_MODULE}';`);
   }
   for (const [alias, { specifier, imported: name }] of imports) {
-    lines.push(
-      name === '*'
-        ? `\nimport * as ${alias} from '${specifier}';`
-        : name === 'default'
-          ? `\nimport ${alias} from '${specifier}';`
-          : `\nimport { ${name === alias ? name : `${name} as ${alias}`} } from '${specifier}';`,
-    );
+    if (name === '*') {
+      lines.push(`\nimport * as ${alias} from '${specifier}';`);
+    } else if (name === 'default') {
+      lines.push(`\nimport ${alias} from '${specifier}';`);
+    } else {
+      const binding = name === alias ? name : `${name} as ${alias}`;
+      lines.push(`\nimport { ${binding} } from '${specifier}';`);
+    }
   }
   builder.add(lines.join(''), { offset: importsOffset }, false);
   const offset = builder.text.length;

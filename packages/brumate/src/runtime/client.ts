@@ -2442,7 +2442,10 @@ export function children(from: Scope | ScopeId | undefined, html: () => string):
 export type Component<P = any> = (props: P) => string;
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
-  return typeof scope === 'object' ? scope : scope === undefined ? undefined : scopes.get(scope);
+  if (typeof scope === 'object') {
+    return scope;
+  }
+  return scope === undefined ? undefined : scopes.get(scope);
 }
 
 /**

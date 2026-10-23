@@ -840,11 +840,12 @@ class ClientGenerator {
       const insert = this.findInsert(site);
       const anchor = insert && this.plan.anchors.get(insert);
       if (anchor !== undefined) {
-        const fn = this.plan.textContents.has(insert!)
-          ? 'writeText'
-          : this.plan.contents.has(insert!)
-            ? 'content'
-            : 'text';
+        let fn = 'text';
+        if (this.plan.textContents.has(insert!)) {
+          fn = 'writeText';
+        } else if (this.plan.contents.has(insert!)) {
+          fn = 'content';
+        }
         this.emit(
           `export function ${name('u')}($$s) {\n  $$b.${fn}($$s, ${anchor}, ${expression()});\n}`,
         );
@@ -1125,7 +1126,12 @@ class ClientGenerator {
       });
       const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
       const isCatch = block.kind === 'try' && block.fallback === body;
-      const params = isItem ? ', $$item, $$index' : isCatch ? ', $$error' : '';
+      let params = '';
+      if (isItem) {
+        params = ', $$item, $$index';
+      } else if (isCatch) {
+        params = ', $$error';
+      }
       emitter.line(`export function r${scope.id}($$p${params}) {`);
       emitter.line(`let $$html = '';`);
       if (block.kind === 'try' && isCatch) {

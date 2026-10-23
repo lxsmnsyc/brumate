@@ -102,7 +102,12 @@ export function parseEnvFile(source: string, filename: string): EnvFile {
       // The property with its comma, so the browser's copy stays valid code.
       const next = schema.properties[index + 1];
       const comma = source.indexOf(',', property.end);
-      const end = next ? next.start : comma !== -1 && comma < schema.end ? comma + 1 : property.end;
+      let end = property.end;
+      if (next) {
+        end = next.start;
+      } else if (comma !== -1 && comma < schema.end) {
+        end = comma + 1;
+      }
       result.serverRange = { start: property.start, end };
     }
   });

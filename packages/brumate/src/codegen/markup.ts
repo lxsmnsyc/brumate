@@ -75,6 +75,12 @@ function specialCall(
     : undefined;
 }
 
+/** The attribute that sets the method of a form, by the attribute that sets its action. */
+const FORM_METHODS = new Map([
+  ['action', 'method'],
+  ['formaction', 'formmethod'],
+]);
+
 /** The contexts that the runtime provides, by the compile-time function that reads them. */
 const BUILT_IN_CONTEXTS: Record<string, string> = {
   $route: '$$b.routeContext',
@@ -565,12 +571,12 @@ export class Emitter {
         );
         continue;
       }
-      const context =
-        call && BUILT_IN_CONTEXTS[call]
-          ? BUILT_IN_CONTEXTS[call]
-          : call === '$getContext' && init.arguments[0]
-            ? this.source(init.arguments[0])
-            : undefined;
+      let context: string | undefined;
+      if (call && BUILT_IN_CONTEXTS[call]) {
+        context = BUILT_IN_CONTEXTS[call];
+      } else if (call === '$getContext' && init.arguments[0]) {
+        context = this.source(init.arguments[0]);
+      }
       if (!context || declarator.id.type !== 'Identifier') {
         this.line(`${statement.kind} ${this.source(declarator)};`);
         continue;
@@ -915,7 +921,7 @@ export class Emitter {
     value: Expression,
     scope: Scope,
   ): string | undefined {
-    const method = name === 'action' ? 'method' : name === 'formaction' ? 'formmethod' : undefined;
+    const method = FORM_METHODS.get(name);
     if (!method || value.ast.type !== 'Identifier') {
       return undefined;
     }
@@ -1701,11 +1707,12 @@ export interface ClassPart {
   condition?: string;
 }
 
+/** The entities that escape the characters of a class in an attribute. */
+const CLASS_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '"': '&quot;' };
+
 /** Escapes a class for an attribute, as the runtime does. */
 function escapeClass(name: string): string {
-  return name.replace(/[&<"]/g, (char) =>
-    char === '&' ? '&amp;' : char === '<' ? '&lt;' : '&quot;',
-  );
+  return name.replace(/[&<"]/g, (char) => CLASS_ESCAPES[char]!);
 }
 
 /**
@@ -1751,12 +1758,12 @@ export function literalClasses(
         return false;
       }
       const { key } = property;
-      const name =
-        key.type === 'Identifier'
-          ? key.name
-          : key.type === 'Literal' && typeof key.value === 'string'
-            ? key.value
-            : undefined;
+      let name: string | undefined;
+      if (key.type === 'Identifier') {
+        name = key.name;
+      } else if (key.type === 'Literal' && typeof key.value === 'string') {
+        name = key.value;
+      }
       // The runtime puts keys like `1` first, `__proto__` sets the prototype, a key that
       // comes again keeps its first place, and an empty key adds a space.
       if (!name || /^\d+$/.test(name) || name === '__proto__' || names.has(name)) {

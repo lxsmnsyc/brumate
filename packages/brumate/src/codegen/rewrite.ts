@@ -401,12 +401,14 @@ export class Rewriter {
               const slot = slotIndex(this.plan, item);
               return slot === -1 ? [] : [`$$b.pending(${path(item)}, ${slot})`];
             });
-            const value =
-              checks.length === 0
-                ? 'false'
-                : checks.length === 1
-                  ? checks[0]!
-                  : `(${checks.join(' || ')})`;
+            let value: string;
+            if (checks.length === 0) {
+              value = 'false';
+            } else if (checks.length === 1) {
+              value = checks[0]!;
+            } else {
+              value = `(${checks.join(' || ')})`;
+            }
             patch.replace(node.start, node.end, value);
             return;
           }

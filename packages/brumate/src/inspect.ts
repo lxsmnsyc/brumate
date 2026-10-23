@@ -110,12 +110,12 @@ export function report(
       }
     };
     visit(site);
-    const kind =
-      site.kind === 'client'
-        ? `runs when the browser is ${site.trigger === 'load' ? 'loaded' : site.trigger}`
-        : site.kind === 'prop'
-          ? 'a function passed to a component'
-          : 'runs on the event';
+    let kind = 'runs on the event';
+    if (site.kind === 'client') {
+      kind = `runs when the browser is ${site.trigger === 'load' ? 'loaded' : site.trigger}`;
+    } else if (site.kind === 'prop') {
+      kind = 'a function passed to a component';
+    }
     roots.push({
       label: `${symbol}: ${site.label}`,
       at: at(source, site.range),

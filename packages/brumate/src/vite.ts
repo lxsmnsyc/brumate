@@ -1029,14 +1029,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // `--ssr <file>` names the entry, and wins over the input of the config, which can be the client's.
       const ssr = config.build?.ssr;
       const input = typeof ssr === 'string' ? ssr : config.build?.rolldownOptions?.input;
-      const entries =
-        typeof input === 'string'
-          ? { [path.basename(input).replace(/\.[^.]+$/, '')]: input }
-          : Array.isArray(input)
-            ? Object.fromEntries(
-                input.map((item) => [path.basename(item).replace(/\.[^.]+$/, ''), item]),
-              )
-            : { ...(input as Record<string, string> | undefined) };
+      let entries: Record<string, string>;
+      if (typeof input === 'string') {
+        entries = { [path.basename(input).replace(/\.[^.]+$/, '')]: input };
+      } else if (Array.isArray(input)) {
+        entries = Object.fromEntries(
+          input.map((item) => [path.basename(item).replace(/\.[^.]+$/, ''), item]),
+        );
+      } else {
+        entries = { ...(input as Record<string, string> | undefined) };
+      }
       return {
         ...shared,
         build: { ssr: true, rolldownOptions: { input: { ...entries, [PRERENDER_ENTRY]: ROUTES } } },
@@ -1397,8 +1399,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           // A DOM test imports the server code with the query, which Vite strips no types for.
           if (id.includes(SERVER_QUERY)) {
+            let lang: 'ts' | 'tsx' | 'jsx' = 'jsx';
+            if (/\.[cm]?ts$/.test(file)) {
+              lang = 'ts';
+            } else if (file.endsWith('.tsx')) {
+              lang = 'tsx';
+            }
             const result = await transformWithOxc(serverModule(code, file, fileId), file, {
-              lang: /\.[cm]?ts$/.test(file) ? 'ts' : file.endsWith('.tsx') ? 'tsx' : 'jsx',
+              lang,
               sourcemap: true,
             });
             return { code: result.code, map: result.map };

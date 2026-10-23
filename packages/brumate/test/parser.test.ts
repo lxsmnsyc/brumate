@@ -137,12 +137,12 @@ describe('attribute values', () => {
       throw new Error('Expected an element');
     }
     const value = element.attributes[0];
-    expect(
-      value && 'value' in value && value.value !== true && typeof value.value !== 'string'
-        ? value.value.code
-        : value && 'handler' in value
-          ? value.handler.code
-          : undefined,
-    ).toBe(code);
+    let actual: string | undefined;
+    if (value && 'value' in value && value.value !== true && typeof value.value !== 'string') {
+      actual = value.value.code;
+    } else if (value && 'handler' in value) {
+      actual = value.handler.code;
+    }
+    expect(actual).toBe(code);
   });
 });

@@ -14,7 +14,8 @@
       {
         "allow": ["**/*.css", "virtual:brumate/start"]
       }
-    ]
+    ],
+    "eslint/no-nested-ternary": "error"
   },
   "env": {
     "builtin": true

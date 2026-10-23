@@ -45,7 +45,13 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
     update();
     return;
   }
-  const types = [visit.init || visit.reload ? 'form' : visit.push ? 'push' : 'traverse'];
+  let type = 'traverse';
+  if (visit.init || visit.reload) {
+    type = 'form';
+  } else if (visit.push) {
+    type = 'push';
+  }
+  const types = [type];
   // Browsers that have transitions without types take only a callback.
   const started =
     typeof ViewTransition !== 'undefined' && 'types' in ViewTransition.prototype
