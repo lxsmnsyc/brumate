@@ -123,20 +123,61 @@ function styleValue(value: unknown): string {
 /** The brand of a binding of `$bind`, under the key of the registry. See `Binding`. */
 const BOUND = Symbol.for('brumate.binding');
 
+/** The words of an attribute that says `true` or `false` in its value. */
+const TRUE_FALSE = ['true', 'false'] as const;
+
+/**
+ * Attributes whose two states are words in the value, not whether the
+ * attribute is there, by their words for `true` and `false`. A missing
+ * attribute means a third state, such as the default of the element, so
+ * `false` must not remove it. `aria-*` and `data-*` are such attributes too.
+ */
+const SWITCHES = new Map<string, readonly [string, string]>([
+  ['contenteditable', TRUE_FALSE],
+  ['draggable', TRUE_FALSE],
+  ['spellcheck', TRUE_FALSE],
+  ['writingsuggestions', TRUE_FALSE],
+  // SVG.
+  ['focusable', TRUE_FALSE],
+  ['translate', ['yes', 'no']],
+  ['autocomplete', ['on', 'off']],
+  ['autocorrect', ['on', 'off']],
+]);
+
+/** The words of `true` and `false` for an attribute that says them in its value, or undefined. */
+function switchWords(name: string): readonly [string, string] | undefined {
+  const lower = name.toLowerCase();
+  if (lower.startsWith('aria-') || lower.startsWith('data-')) {
+    return TRUE_FALSE;
+  }
+  return SWITCHES.get(lower);
+}
+
 /**
  * Returns the text of an attribute, or undefined if the attribute is not
- * rendered. `true` renders as an empty value.
+ * rendered.
+ *
+ * - `null` and `undefined` leave the attribute out.
+ * - For an attribute whose value says its state, such as `aria-expanded`,
+ *   `draggable` or `translate`, `true` and `false` render as its words:
+ *   `"true"` and `"false"`, or `"yes"` and `"no"`, or `"on"` and `"off"`.
+ * - For other attributes, such as `disabled`, `true` renders the attribute
+ *   without a value, and `false` leaves it out.
  */
 export function attributeText(name: string, value: unknown): string | undefined {
   // `value=$bind(name)` on an element renders the value of the name.
   if (typeof value === 'object' && value !== null && BOUND in value) {
     value = (value as unknown as { value: unknown }).value;
   }
-  if (value === null || value === undefined || value === false || typeof value === 'function') {
+  if (value === null || value === undefined || typeof value === 'function') {
     return undefined;
   }
-  if (value === true) {
-    return '';
+  if (typeof value === 'boolean') {
+    const words = switchWords(name);
+    if (words) {
+      return value ? words[0] : words[1];
+    }
+    return value ? '' : undefined;
   }
   if (name === 'class') {
     const text = classValue(value);
@@ -159,7 +200,7 @@ export function attribute(name: string, value: unknown): string {
   if (text === undefined || !ATTRIBUTE_NAME.test(name)) {
     return '';
   }
-  return value === true ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
+  return value === true && text === '' ? ` ${name}` : ` ${name}="${escapeAttribute(text)}"`;
 }
 
 /**

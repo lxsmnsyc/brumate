@@ -1198,7 +1198,8 @@ export class Emitter {
     switch (attribute.kind) {
       case 'static':
         parts.push(
-          `{ ${JSON.stringify(attribute.name)}: ${attribute.value === true ? 'true' : JSON.stringify(decodeAttribute(attribute.value))} }`,
+          // An attribute without a value is empty, as HTML reads it, so `aria-hidden` stays empty.
+          `{ ${JSON.stringify(attribute.name)}: ${attribute.value === true ? "''" : JSON.stringify(decodeAttribute(attribute.value))} }`,
         );
         return true;
       case 'value':

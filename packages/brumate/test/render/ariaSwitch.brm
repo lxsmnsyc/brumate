@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  const extra = { title: 'Flag' };
+</script>
+
+<button class="toggle" aria-expanded=open onClick=(() => (open = !open))>Menu</button>
+<div class="menu" aria-hidden=(!open) draggable=open spellcheck=false translate=open>Items</div>
+<span class="flag" data-ready {...extra}>Ready</span>

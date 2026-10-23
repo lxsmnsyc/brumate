@@ -254,7 +254,7 @@ Markup between the tags of a component is its `children` prop. Insert it with `{
 </script>
 
 <section>
-  <button onClick=(() => (open = !open)) aria-expanded=(String(open))>{title}</button>
+  <button onClick=(() => (open = !open)) aria-expanded=open>{title}</button>
   #if (open) {
     <div>{children}</div>
   }

@@ -931,7 +931,7 @@ class ClientGenerator {
         }
         return item.kind === 'static'
           ? [
-              `{ ${JSON.stringify(item.name)}: ${item.value === true ? 'true' : JSON.stringify(decodeAttribute(item.value))} }`,
+              `{ ${JSON.stringify(item.name)}: ${item.value === true ? "''" : JSON.stringify(decodeAttribute(item.value))} }`,
             ]
           : [];
       });

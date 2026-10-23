@@ -82,7 +82,7 @@ A block body can start with a `<script>`. It runs for each instance of the body,
   <script>
     let open = $signal(false);
   </script>
-  <button onClick=(() => (open = !open)) aria-expanded=(String(open))>{question.title}</button>
+  <button onClick=(() => (open = !open)) aria-expanded=open>{question.title}</button>
   #if (open) {
     <p>{question.answer}</p>
   }
