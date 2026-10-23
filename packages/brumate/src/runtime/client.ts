@@ -1568,6 +1568,7 @@ function destroy(scope: Scope): void {
     end.remove();
   }
   removeScope(scope);
+  sweepIndexes();
 }
 
 /**
@@ -1612,13 +1613,53 @@ function markerKey(data: string): string {
   return data[0] === 'b' ? data.split(':').slice(0, 2).join(':') : data;
 }
 
+/**
+ * Indexes the markers and the bound elements under `root`, so that updates find them without a
+ * search of the page. A search for each row of a long list takes time that grows with the list.
+ */
 function indexMarkers(root: Node): void {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  if (root.nodeType === 1) {
+    indexElement(root as Element);
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_ELEMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const data = (node as Comment).data;
-    if (MARKER.test(data)) {
-      comments.set(markerKey(data), node as Comment);
+    if (node.nodeType === 1) {
+      indexElement(node as Element);
+    } else if (MARKER.test((node as Comment).data)) {
+      comments.set(markerKey((node as Comment).data), node as Comment);
     }
+  }
+}
+
+/** The size of the indexes at which they next drop the nodes that left the page. */
+let sweepAt = 4096;
+
+/**
+ * Drops the nodes that left the page from the indexes, once they have grown to twice their size
+ * after the last sweep, so a list that the client fills and empties again does not keep its old
+ * rows. A node that comes back is indexed again when it is inserted.
+ */
+function sweepIndexes(): void {
+  if (comments.size + elements.size < sweepAt) {
+    return;
+  }
+  for (const [key, node] of comments) {
+    if (!node.isConnected) {
+      comments.delete(key);
+    }
+  }
+  for (const [key, node] of elements) {
+    if (!node.isConnected) {
+      elements.delete(key);
+    }
+  }
+  sweepAt = Math.max(4096, 2 * (comments.size + elements.size));
+}
+
+function indexElement(element: Element): void {
+  const key = element.getAttribute('b-b');
+  if (key !== null) {
+    elements.set(key, element);
   }
 }
 
@@ -1659,12 +1700,15 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
-    element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
-    if (element) {
-      elements.set(key, element);
+    // As for markers: once the core starts, the index has every bound element in the page.
+    if (markerObserver) {
+      indexAdded(markerObserver.takeRecords());
+      element = elements.get(key);
+    } else {
+      element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
     }
   }
-  return element ?? null;
+  return element?.isConnected ? element : null;
 }
 
 /** Returns the marker that ends the range that `start` opens. */
@@ -1705,11 +1749,6 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     indexAdded(markerObserver.takeRecords());
   }
   indexMarkers(fragment);
-  // The bound elements of the insert, so that its updates find them without a search of the
-  // page. A search for each element of a long list takes time that grows with the list.
-  for (const element of fragment.querySelectorAll('[b-b]')) {
-    elements.set(element.getAttribute('b-b')!, element);
-  }
   options.listen(fragment);
   watchTitles(fragment);
   const server = serverScopes(fragment);

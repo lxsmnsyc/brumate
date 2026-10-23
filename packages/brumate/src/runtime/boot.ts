@@ -172,6 +172,9 @@ export function boot(
   // The core reports an error of the load when it runs the handler.
   // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
   // on idle or after `load`.
+  // The parts that loaded or are loading. A list of 1,000 rows names the same handlers 1,000
+  // times, and each part loads once.
+  const warmed = new Set<string>();
   const warm = (ref: string, reason: string): void => {
     // A built-in of the core, such as `$bind`, has no code of a component to load.
     if (ref.startsWith('$')) {
@@ -180,8 +183,14 @@ export function boot(
     // A handler that a spread passed on names its scope after `@`.
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
     const part = /^[hct]\d/.test(name) ? name : 'update';
+    const key = `${id}#${part}`;
+    if (warmed.has(key)) {
+      return;
+    }
+    warmed.add(key);
     const done = options.load(id)?.then((module) => module.load?.(part));
-    void done?.catch(() => {});
+    // A load that fails can start again, such as after the network comes back.
+    void done?.catch(() => warmed.delete(key));
     if (DEV && done) {
       devtools()?.load?.(id, part, reason, done);
     }
