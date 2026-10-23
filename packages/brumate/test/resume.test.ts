@@ -2503,6 +2503,25 @@ describe('view transitions', () => {
   });
 });
 
+describe('values of fields', () => {
+  it('keeps what the user checked while the value stays, and writes a value that changes', async () => {
+    await resume('fieldKeeps', {});
+    const box = document.querySelector<HTMLInputElement>('.box')!;
+    // The first update writes the value, as a form's reply does before the user checks a box.
+    click(document.querySelector('.rerun')!);
+    await new Promise((done) => setTimeout(done, 20));
+    box.checked = true;
+    click(document.querySelector('.rerun')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(box.checked).toBe(true);
+    // The value changes to true, then to false, and the box follows it.
+    click(document.querySelector('.post')!);
+    await new Promise((done) => setTimeout(done, 20));
+    click(document.querySelector('.post')!);
+    await waitFor(() => expect(box.checked).toBe(false));
+  });
+});
+
 describe('the serial entry', () => {
   it('sends a value of the app in the page state, and makes it again in the browser', async () => {
     // The copy that the compiled components import, as an app's components import its entry.

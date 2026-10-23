@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // `checked` reads a value that stays, and a count that changes, as validation reads the posted
+  // values of a form again.
+  let posted = $signal(false);
+  let runs = $signal(0);
+</script>
+
+<input class="box" type="checkbox" checked=(runs >= 0 && posted)>
+<button class="rerun" onClick=(() => runs++)>Run again</button>
+<button class="post" onClick=(() => (posted = !posted))>Post</button>
