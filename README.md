@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/banner.png" alt="brumate: web apps that resume, not hydrate. A component language and compiler for the web." width="100%"></p>
+
 # brumate
 
 > A component language and compiler for resumable web apps.
