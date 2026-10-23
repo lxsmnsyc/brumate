@@ -2221,6 +2221,20 @@ describe('bindings through spreads', () => {
   });
 });
 
+describe('spreads on components', () => {
+  it('updates the props of a spread, and passes a binding on', async () => {
+    await resume('spreadProps', {});
+    // A binding passes through the rest of a component to its child.
+    click(document.querySelector('.child.passed')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+    expect(text('.child.passed')).toBe('passed: open');
+    expect(text('.child.first')).toBe('first: open');
+    // A spread that changes updates the props, and a later prop wins over it.
+    click(document.querySelector('.relabel')!);
+    await waitFor(() => expect(text('.child.second')).toBe('second: open'));
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});

@@ -223,7 +223,7 @@ Passes a value that the receiver writes back.
 - On a component, the child's writes of the prop write the value. A binding of a `let` prop passes on to the parent of the component, through any number of levels.
 - On an element, the browser writes the value on `input`, or on `change` for a box and a `<select>`. It loads no code of the component to do it. A handler of the element, such as `onInput=search`, runs after it and reads the new value.
 - With `set`, a write calls `set(next)` in place of writing the value, so the parent can refuse a value or change it: `open=$bind(open, (next) => { if (!dirty) open = next; })`. The child then shows the value that the parent keeps. `set` is a function expression or a function of the script, and it loads with its own part, as a handler does.
-- A rest prop keeps the bindings that it holds. Spread on an element, it binds `value` and `checked`. A spread on a component cannot change in the browser yet, so it cannot pass a binding on.
+- A rest prop keeps the bindings that it holds. Spread on an element, it binds `value` and `checked`. Spread on a component, it binds the props of that component.
 - Only a prop of type `Bindable<T>` takes a binding. `brumate-tsc` reports a binding of another prop, or of another type.
 - The compiler warns about a prop that the type marks `Bindable` but that the component reads only with `const`.
 

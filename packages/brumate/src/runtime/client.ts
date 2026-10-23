@@ -2445,6 +2445,35 @@ function watchTitles(root: ParentNode): void {
 }
 
 /** Writes a prop of a child component. */
+// The keys that the spreads of child components passed last, by the child's scope and anchor.
+const spreadKeys = new WeakMap<Scope, Map<number, Set<string>>>();
+
+/**
+ * Updates the props of a child component from a spread. A key that the
+ * spread passed before and no longer has becomes undefined. `after` names
+ * the props after the spread, which win over it.
+ */
+export function spreadProps(
+  scope: Scope,
+  anchor: number,
+  value: Record<string, unknown> | null | undefined,
+  after: string[],
+): void {
+  const byAnchor = spreadKeys.get(scope) ?? new Map<number, Set<string>>();
+  spreadKeys.set(scope, byAnchor);
+  const before = byAnchor.get(anchor) ?? new Set();
+  const keys = new Set(Object.keys(value ?? {}).filter((key) => !after.includes(key)));
+  byAnchor.set(anchor, keys);
+  for (const key of keys) {
+    prop(scope, anchor, key, value![key]);
+  }
+  for (const key of before) {
+    if (!keys.has(key)) {
+      prop(scope, anchor, key, undefined);
+    }
+  }
+}
+
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
   if (isBinding(value)) {

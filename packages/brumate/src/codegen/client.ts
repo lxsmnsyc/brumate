@@ -898,7 +898,17 @@ class ClientGenerator {
     }
     if (owner.kind === 'component') {
       if (attribute.kind === 'spread') {
-        this.error('A spread on a component cannot change on the client yet', site.range);
+        // The props after the spread win over it, as on the server.
+        const after = owner.attributes
+          .slice(owner.attributes.indexOf(attribute) + 1)
+          .flatMap((item) =>
+            item.kind === 'static' || item.kind === 'value' || item.kind === 'event'
+              ? [item.name]
+              : [],
+          );
+        this.emit(
+          `export function ${name('u')}($$s) {\n  $$b.spreadProps($$s, ${anchor}, ${expression()}, ${JSON.stringify(after)});\n}`,
+        );
         return;
       }
       this.emit(
