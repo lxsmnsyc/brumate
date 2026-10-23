@@ -98,6 +98,26 @@ describe('cached', () => {
     expect([...values.keys()]).toEqual([expect.stringMatching(/^brumate:cache:one:/)]);
   });
 
+  it('reads and writes the raw values of an unstorage storage', async () => {
+    const values = new Map<string, string>();
+    setCacheStore(
+      storageStore({
+        // `getItem` of unstorage parses text that looks like JSON, so the store must not use it.
+        getItem: async () => {
+          throw new Error('parsed');
+        },
+        setItem: async () => {
+          throw new Error('parsed');
+        },
+        getItemRaw: async (key) => values.get(key) ?? null,
+        setItemRaw: async (key, value) => void values.set(key, value),
+      }),
+    );
+    const list = cached(async () => ({ items: [1] }), { maxAge: 30, name: 'list' });
+    await list();
+    expect(await list()).toEqual({ items: [1] });
+  });
+
   it('keeps at most size values in memory', async () => {
     setCacheStore(memoryStore(2));
     const load = vi.fn<(n: number) => Promise<number>>(async (n) => n);

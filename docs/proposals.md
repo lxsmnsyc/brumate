@@ -4,13 +4,12 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`) and view transitions of handlers (`transition`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) and caching (`cache`, `cached` and `revalidate`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
@@ -31,7 +30,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 
 ### Named view transitions
 
-`transition` of `brumate/events` runs a handler inside a view transition. An element animates on its own only when it has a `view-transition-name`, which the author writes by hand and keeps unique, such as `` style=(`view-transition-name: todo-${todo.id}`) `` in a `#for`. Every named element then takes part in every view transition of the page, including navigations.
+`transition` of `brumate/events` runs a handler inside a view transition. An element animates on its own only when it has a `view-transition-name`, which the author writes by hand and keeps unique, such as ``style=(`view-transition-name: todo-${todo.id}`)`` in a `#for`. Every named element then takes part in every view transition of the page, including navigations.
 
 ```html
 #for (todo of todos by todo.id) {
@@ -219,35 +218,6 @@ Cost: about 1 week.
 
 ## Server
 
-### Caching pages and data
-
-A response can set its own headers, through `event.headers`, but there is nothing between one request and the next. Each request renders the page and loads its data again. `#defer` makes caching more useful: the page can be cached for everyone, and its parts for one user render later.
-
-- A route sets how long its page can be cached, with an export of its file:
-
-```html
-<script module>
-  export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
-</script>
-```
-
-The server sends `cache-control` from it, and a page cache in the server, or a CDN, keeps the HTML. A page that reads the session, or sets a cookie, is never cached for everyone: the server sends `private` for it.
-
-- A server function can cache its result across requests, by its arguments, with a time and tags:
-
-```ts
-export const listIssues = cached(async (status: string) => db.issues(status), {
-  maxAge: 30,
-  tags: (status) => ['issues', `issues:${status}`],
-});
-```
-
-- `revalidate(tag)` drops the results and the pages that used that tag, such as after a server function changes the data. It works with `refresh(fn)`, which loads the memos of the page again in the browser.
-- The cache is an interface, with an in-memory store as the default. With Nitro, it uses Nitro's storage layer, unstorage, whose drivers cover Redis, Cloudflare KV and the stores of other hosts.
-- Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
-
-Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
-
 ### Prerendering with holes
 
 A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
@@ -265,7 +235,7 @@ Cost: about 1 week, after `#defer`. Most of it is rendering several targets in o
 A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
 
 - `idempotent(fn)` wraps a server function. The browser sends a key with each call, and sends the same key when it sends that call again.
-- The server keeps the result of a key for a time, in the store of [caching pages and data](#caching-pages-and-data), and answers a call with a key that it has seen with the result that it kept, without running the function.
+- The server keeps the result of a key for a time, in the store of `cached`, and answers a call with a key that it has seen with the result that it kept, without running the function.
 - A call with a key that is still running waits for that run.
 - Form posts without scripts get a key in a hidden field, so a second post of the same form is the same call.
 
@@ -572,7 +542,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+1. **Caching**: caching pages and data is done. Next are the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting can keep their results in the store of `cached`, and the serialization entry lets cached data hold classes.
 2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.

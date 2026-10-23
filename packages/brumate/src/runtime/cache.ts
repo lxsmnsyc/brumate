@@ -74,16 +74,26 @@ export function setCacheStore(next: CacheStore): void {
 interface Storage {
   getItem(key: string): Promise<unknown>;
   setItem(key: string, value: string, options?: { ttl?: number }): Promise<void>;
+  getItemRaw?(key: string): Promise<unknown>;
+  setItemRaw?(key: string, value: string, options?: { ttl?: number }): Promise<void>;
 }
 
-/** A store of `cached` from an unstorage storage, such as Nitro's `useStorage('cache')`. */
+/**
+ * A store of `cached` from an unstorage storage, such as Nitro's
+ * `useStorage('cache')`. It reads and writes the values as they are, since
+ * `getItem` would parse text that looks like JSON.
+ */
 export function storageStore(storage: Storage): CacheStore {
   return {
     get: async (key) => {
-      const value = await storage.getItem(key);
+      const value = await (storage.getItemRaw ?? storage.getItem).call(storage, key);
+      if (value instanceof Uint8Array) {
+        return new TextDecoder().decode(value);
+      }
       return typeof value === 'string' ? value : undefined;
     },
-    set: (key, value, maxAge) => storage.setItem(key, value, { ttl: maxAge }),
+    set: (key, value, maxAge) =>
+      (storage.setItemRaw ?? storage.setItem).call(storage, key, value, { ttl: maxAge }),
   };
 }
 
