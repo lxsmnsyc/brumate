@@ -45,6 +45,7 @@ import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule, resolveFromDisk } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
+import { originalPosition } from './sourcemap.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
 import { errorPayload } from './dev-error.ts';
 import { BRUMATE_VERSION } from './version.ts';
@@ -168,6 +169,8 @@ const TESTING = 'virtual:brumate/testing';
 const HINTS_FILE = '.brumate/hints.json';
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
+/** Maps a position of a module that the browser ran to its source, for the Errors tab. */
+const POSITION = '/__brumate/position';
 /** The dev server sends the source of a file for the Errors tab of the devtools at this path. */
 const SOURCE = '/__brumate/source';
 
@@ -595,14 +598,30 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     registered = packages.length > 0 ? reachable() : new Set();
     const keep = (file: string): boolean => registered.has(file) || !packageOf(packages, file);
     const components = [...files.values()].filter(keep);
-    const imports = components.map(
-      (file, index) => `import * as m${index} from ${JSON.stringify(file + query)};`,
-    );
+    // In development, a file that does not compile leaves out its functions, and the pages that
+    // import it show its error, so the other pages still work.
+    const importAll = (prefix: string, list: string[]): string[] => {
+      if (!isServe) {
+        return list.map(
+          (file, index) => `import * as ${prefix}${index} from ${JSON.stringify(file + query)};`,
+        );
+      }
+      if (list.length === 0) {
+        return [];
+      }
+      const loads = list.map((file) => `import(${JSON.stringify(file + query)})`);
+      const names = list.map((_, index) => `${prefix}${index}`);
+      return [
+        `const [${names.join(', ')}] = (await Promise.allSettled([${loads.join(', ')}])).map((result) => (result.status === 'fulfilled' ? result.value : {}));`,
+      ];
+    };
+    const imports = importAll('m', components);
     const spreads = components.map((_, index) => `  ...m${index}.rpc,`);
     // Each exported function of a file of server functions, under the ID that its stub calls.
     const functionFiles = [...serverFiles.entries()].filter(([, file]) => keep(file));
-    const fileImports = functionFiles.map(
-      ([, file], index) => `import * as f${index} from ${JSON.stringify(file + query)};`,
+    const fileImports = importAll(
+      'f',
+      functionFiles.map(([, file]) => file),
     );
     // The middleware of a file runs before each of its functions.
     const guards: string[] = [];
@@ -1547,6 +1566,33 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           response.setHeader('content-type', 'text/plain; charset=utf-8');
           response.end(readFileSync(file, 'utf8'));
+          return;
+        }
+        if (request.method === 'GET' && request.url?.startsWith(`${POSITION}?`)) {
+          const params = new URL(request.url, 'http://localhost').searchParams;
+          void server.environments.client.moduleGraph
+            .getModuleByUrl(params.get('url') ?? '')
+            .then((module) => {
+              const map = module?.transformResult?.map as
+                | { sources: (string | null)[]; mappings: string }
+                | null
+                | undefined;
+              const place =
+                map && module?.file
+                  ? originalPosition(map, Number(params.get('line')), Number(params.get('column')))
+                  : undefined;
+              // A source that starts with `/` is a path from the root of the app, as Vite writes it.
+              const file =
+                place &&
+                normalizePath(
+                  place.source.startsWith('/') && !existsSync(place.source)
+                    ? path.join(server.config.root, place.source)
+                    : path.resolve(path.dirname(module!.file!), place.source),
+                );
+              response.setHeader('content-type', 'application/json');
+              response.end(JSON.stringify(place ? { ...place, file } : null));
+            })
+            .catch(next);
           return;
         }
         if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {

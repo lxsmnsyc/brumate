@@ -260,6 +260,32 @@ describe('server modules', () => {
   });
 });
 
+describe('a route that does not compile in development', () => {
+  it('breaks only its own pages', async () => {
+    const directory = fileURLToPath(new URL('./.output/broken-route/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(`${directory}src/routes/index.brm`, '<h1>Home</h1>\n');
+    writeFileSync(`${directory}src/routes/broken.brm`, '<h1>{oops.</h1>\n');
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const home = await handle(new Request('http://localhost/'));
+      expect(home.status).toBe(200);
+      expect(await home.text()).toContain('<h1>Home</h1>');
+      await expect(handle(new Request('http://localhost/broken'))).rejects.toThrow(/broken\.brm/);
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
 describe('files of server functions', () => {
   it('gives the browser stubs, and answers their calls on the server', async () => {
     const directory = fileURLToPath(new URL('./.output/server-files/', import.meta.url));
