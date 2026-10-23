@@ -174,7 +174,7 @@ class Analyzer {
   private readonly scopes: Scope[] = [];
   private readonly declarations: Declaration[] = [];
   private readonly sites: Site[] = [];
-  readonly bindings: { call: oxc.CallExpression; declaration: Declaration }[] = [];
+  readonly bindings: SemanticModel['bindings'] = [];
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
   private readonly module: Scope;
@@ -915,6 +915,38 @@ class Analyzer {
   }
 
   /**
+   * The function of `$bind(name, fn)`, which a write of the binding calls
+   * with the new value in place of writing the name. It compiles as a
+   * handler does, with its own part.
+   */
+  declareSetter(
+    call: oxc.CallExpression,
+    scope: Scope,
+    isLocal: (name: string) => boolean,
+  ): Site | undefined {
+    const fn = call.arguments[1]!;
+    if (fn.type === 'SpreadElement' || !this.isHandlerFunction(fn, scope)) {
+      this.report(
+        'error',
+        'The second argument of $bind is a function that takes the new value: a function expression, or a function of the script',
+        fn,
+      );
+      return undefined;
+    }
+    for (const name of freeNames(fn)) {
+      if (isLocal(name)) {
+        this.report(
+          'error',
+          `The setter reads "${name}", a value of the function around $bind, which the browser does not have`,
+          fn,
+        );
+        return undefined;
+      }
+    }
+    return this.createSite('prop', scope, fn, 'setter', { setter: call });
+  }
+
+  /**
    * The modifiers of the wrappers around the function of `$handler`, such as
    * `prevent`, as `b-on` holds them. Markup that the browser renders writes
    * them without loading the code of the handler.
@@ -1507,9 +1539,13 @@ class Resolver {
       );
       return;
     }
-    const [target, ...rest] = call.arguments;
+    const [target, fn, ...rest] = call.arguments;
     if (!target || target.type !== 'Identifier' || rest.length > 0) {
-      this.analyzer.report('error', '$bind takes the name of a signal, such as $bind(open)', call);
+      this.analyzer.report(
+        'error',
+        '$bind takes the name of a signal, and a function that writes it, such as $bind(open) or $bind(open, (next) => (open = next))',
+        call,
+      );
       return;
     }
     const declaration = this.isLocal(target.name)
@@ -1527,7 +1563,11 @@ class Resolver {
       return;
     }
     declaration.bound = true;
-    this.analyzer.bindings.push({ call, declaration });
+    const setter =
+      fn === undefined
+        ? undefined
+        : this.analyzer.declareSetter(call, this.site.scope, (local) => this.isLocal(local));
+    this.analyzer.bindings.push({ call, declaration, setter });
   }
 
   private visitChildren(node: oxc.Node): void {

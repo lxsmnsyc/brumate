@@ -290,19 +290,25 @@ export class Emitter {
     if (!edited) {
       handlerEdits.set(this.patch, (edited = new Set()));
     }
-    for (const { call, declaration } of this.plan.graph.model.bindings) {
-      const target = call.arguments[0];
+    for (const { call, declaration, setter } of this.plan.graph.model.bindings) {
+      const [target, fn] = call.arguments;
       if (!target || edited.has(call)) {
         continue;
       }
       edited.add(call);
       const scope = this.scopeVar(instanceScope(this.plan, declaration.scope));
+      const slot = slotIndex(this.plan, declaration);
       this.patch.replace(call.start, target.start, '$$b.binding((');
-      this.patch.replace(
-        target.end,
-        call.end,
-        `), ${scope}, ${slotIndex(this.plan, declaration)})`,
-      );
+      const symbol = setter && this.plan.symbols.get(setter);
+      if (!fn || !setter || !symbol) {
+        this.patch.replace(target.end, call.end, `), ${scope}, ${slot})`);
+        continue;
+      }
+      // The setter loads with its own part, as a handler of `$handler` does.
+      const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+      const owner = this.scopeVar(instanceScope(this.plan, setter.scope));
+      this.patch.replace(target.end, fn.start, `), ${scope}, ${slot}, ${this.helper('fn')}(`);
+      this.patch.replace(fn.end, call.end, `, ${ref}, ${owner}))`);
     }
   }
 
@@ -911,6 +917,7 @@ export class Emitter {
     if (!binding) {
       return undefined;
     }
+    const setter = binding.setter && this.plan.symbols.get(binding.setter);
     const path = scopePath(
       this.plan,
       '$$s',
@@ -927,6 +934,10 @@ export class Emitter {
       attribute.name === 'checked' || box || node.tag.toLowerCase() === 'select'
         ? 'change'
         : 'input';
+    // `$bind(name, fn)` calls the setter with the value of the element.
+    if (setter) {
+      return `${event}=$set:${this.plan.id}#${setter}`;
+    }
     return `${event}=$bind#${hops}.${slotIndex(this.plan, binding.declaration)}`;
   }
 

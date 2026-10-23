@@ -175,6 +175,8 @@ export interface Site {
    * turns into a reference that a spread can pass on, with its arguments.
    */
   handler?: oxc.CallExpression;
+  /** For the function of `$bind(name, fn)`, the call, which passes it as the setter of the binding. */
+  setter?: oxc.CallExpression;
 }
 
 export type Severity = 'error' | 'warning';
@@ -192,7 +194,8 @@ export interface SemanticModel {
   declarations: Declaration[];
   sites: Site[];
   /** The `$bind(name)` calls, with the declaration of their name. */
-  bindings: { call: oxc.CallExpression; declaration: Declaration }[];
+  /** The `$bind` calls, with the declaration of their name and the site of their setter. */
+  bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
 }
 

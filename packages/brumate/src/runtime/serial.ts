@@ -89,18 +89,29 @@ const SlotPlugin = createPlugin<SlotReference, ReferenceNode>({
 });
 
 /** A binding that a rest prop holds: its value, and the scope and the slot it writes. */
-const BindingPlugin = createPlugin<Binding, { a: SerovalNode; b: SerovalNode; c: SerovalNode }>({
+const BindingPlugin = createPlugin<Binding, ReferenceNode>({
   tag: 'brumate/binding',
   skipPlainObjects: true,
   test: (value) => isBinding(value),
-  parse: parsers((value) => ({ a: value.value, b: value.ref.scope, c: value.ref.slot })),
+  parse: parsers((value) => {
+    const node: Record<string, unknown> = { a: value.value, b: value.ref.scope, c: value.ref.slot };
+    // The setter of `$bind(name, fn)`.
+    if (value.set !== undefined) {
+      node.d = value.set;
+    }
+    return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
+  }),
   serialize: (node, ctx) =>
-    `$b.b(${ctx.serialize(node.a)},${ctx.serialize(node.b)},${ctx.serialize(node.c)})`,
+    `$b.b(${[node.a, node.b, node.c, node.d]
+      .filter((part) => part !== undefined)
+      .map((part) => ctx.serialize(part!))
+      .join(',')})`,
   deserialize: (node, ctx) =>
     stateValues.b(
       ctx.deserialize(node.a),
-      ctx.deserialize<number>(node.b),
-      ctx.deserialize<number>(node.c),
+      ctx.deserialize<number>(node.b!),
+      ctx.deserialize<number>(node.c!),
+      node.d === undefined ? undefined : ctx.deserialize(node.d),
     ),
 });
 

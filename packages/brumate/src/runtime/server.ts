@@ -122,8 +122,8 @@ export { ElementReference, FunctionReference };
 export { unbind } from './shared.ts';
 
 /** What `$bind(name)` passes a child: the value of the name, and the scope and slot it writes. */
-export function binding<T>(value: T, scope: ScopeId, slot: number): Binding<T> {
-  return new Binding(value, new SlotReference(scope, slot));
+export function binding<T>(value: T, scope: ScopeId, slot: number, set?: unknown): Binding<T> {
+  return new Binding(value, new SlotReference(scope, slot), set);
 }
 export type { PageState, ScopeId, ScopeState };
 
@@ -639,7 +639,7 @@ export class Context {
     for (const [name, slot] of Object.entries(slots)) {
       const value = props[name];
       if (isBinding(value)) {
-        (this.entry(scope).record.b ??= {})[slot] = value.ref;
+        (this.entry(scope).record.b ??= {})[slot] = value.target;
       }
     }
   }

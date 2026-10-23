@@ -2124,6 +2124,33 @@ describe('bindings', () => {
   });
 });
 
+describe('bindings with a setter', () => {
+  it('calls the setter in place of writing, and the child shows what the parent keeps', async () => {
+    await resume('bindSetter', {});
+    const state = (): string[] => [text('.parent'), text('.child.guarded')];
+    click(document.querySelector('.child.guarded')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'guarded: open']));
+    // The setter refuses the value, so the child keeps the parent's.
+    click(document.querySelector('.lock')!);
+    click(document.querySelector('.child.guarded')!);
+    await new Promise((done) => setTimeout(done, 50));
+    expect(state()).toEqual(['open', 'guarded: open']);
+    // An element calls the setter with its value.
+    const field = document.querySelector<HTMLInputElement>('.name')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$set:/);
+    field.value = 'ada';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.name-out')).toBe('ADA'));
+    expect(field.value).toBe('ADA');
+    // A child that the browser renders calls the setter too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.child.later')).toBe('later: open'));
+    click(document.querySelector('.lock')!);
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'guarded: closed']));
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});

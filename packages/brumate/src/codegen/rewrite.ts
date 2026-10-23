@@ -1,6 +1,6 @@
 import type { Block, Range, SFCFile } from '../ast.ts';
 import { isWithin, lookup, upstreamMemos } from '../model.ts';
-import type { Declaration, Diagnostic, Reference, Scope, Site } from '../model.ts';
+import type { Declaration, Diagnostic, Reference, Scope, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
@@ -46,7 +46,7 @@ export class Rewriter {
   /** The sites of `$handler` calls, by call. */
   private readonly handlers = new Map<oxc.Node, Site>();
   /** The declarations of the names of `$bind` calls, by call. */
-  private readonly bindings = new Map<oxc.Node, Declaration>();
+  private readonly bindings = new Map<oxc.Node, SemanticModel['bindings'][number]>();
 
   constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[], shared?: SharedContext) {
     this.file = file;
@@ -58,8 +58,8 @@ export class Rewriter {
         this.handlers.set(site.handler, site);
       }
     }
-    for (const { call, declaration } of plan.graph.model.bindings) {
-      this.bindings.set(call, declaration);
+    for (const binding of plan.graph.model.bindings) {
+      this.bindings.set(binding.call, binding);
     }
   }
 
@@ -356,11 +356,30 @@ export class Rewriter {
           // `$bind(name)` passes a child the value of the name with its slot, which the child's
           // writes go to. The runtime's prop update takes the value.
           const bound = this.bindings.get(node);
-          const name = node.arguments[0];
+          const [name, setterFn] = node.arguments;
           if (bound && name) {
-            const path = scopePath(this.plan, scopeVar, base, bound.scope);
+            const { declaration, setter } = bound;
+            const path = scopePath(this.plan, scopeVar, base, declaration.scope);
+            const slot = slotIndex(this.plan, declaration);
+            const symbol = setter && this.plan.symbols.get(setter);
             patch.replace(node.start, name.start, '$$b.binding((');
-            patch.replace(name.end, node.end, `), ${path}, ${slotIndex(this.plan, bound)})`);
+            if (setterFn && setter && symbol) {
+              // The setter loads with its own part, so the binding holds its reference.
+              const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+              const owner = scopePath(
+                this.plan,
+                scopeVar,
+                base,
+                instanceScope(this.plan, setter.scope),
+              );
+              patch.replace(
+                name.end,
+                node.end,
+                `), ${path}, ${slot}, $$b.handlerProp(() => {}, ${ref}, ${owner}))`,
+              );
+            } else {
+              patch.replace(name.end, node.end, `), ${path}, ${slot})`);
+            }
             visit(name);
             return;
           }

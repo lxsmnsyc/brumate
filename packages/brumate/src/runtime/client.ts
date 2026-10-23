@@ -24,6 +24,7 @@ import {
   SlotReference,
   isAsyncIterable,
   isBinding,
+  isSlotReference,
   parseId,
   stateValues,
 } from './shared.ts';
@@ -105,7 +106,11 @@ export interface Scope {
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
   /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
-  b?: Record<number, SlotReference>;
+  /**
+   * What the bound props write, by the slot of the prop: a slot of a parent,
+   * or the setter of `$bind(name, fn)`, as a function or a reference.
+   */
+  b?: Record<number, unknown>;
   children: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
@@ -857,6 +862,14 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   }
   // `value=$bind(name)` on an element: the core writes the slot of the name, `hops` parents up
   // from the element's scope, from the value of the element, or whether a box is checked.
+  // `value=$bind(name, fn)`: the setter takes the value of the element. A ref names its scope
+  // after `@`, so the prefix is `$set:`.
+  if (ref.startsWith('$set:')) {
+    const field = element as HTMLInputElement;
+    return call(ref.slice(5), scope, [
+      /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value,
+    ]);
+  }
   if (ref.startsWith('$bind#')) {
     const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
     let target = scope;
@@ -988,7 +1001,31 @@ export function get(scope: Scope, slot: number): any {
 // The number of writes since the page loaded, so scopes that stream in later know to update.
 let writes = 0;
 
+/**
+ * Writes a slot from code of a component. A prop that a parent bound with
+ * `$bind` writes the parent's slot too, through any number of levels, and
+ * the parent's update of the prop then finds the value already there. A
+ * binding with a setter, `$bind(name, fn)`, calls it in place of the write,
+ * and the parent's update of the prop writes the value that it keeps.
+ */
 export function set<T>(scope: Scope, slot: number, value: T): T {
+  const bound = scope.b?.[slot];
+  if (bound === undefined || isSlotReference(bound)) {
+    writeSlot(scope, slot, value);
+    const target = bound && scopes.get(bound.scope);
+    if (target) {
+      set(target, bound.slot, value);
+    }
+  } else if (bound instanceof FunctionReference) {
+    void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
+  } else if (typeof bound === 'function') {
+    void bound(value);
+  }
+  return value;
+}
+
+/** Writes a slot, and updates what reads it. */
+function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
     scope.s[slot] = value;
@@ -996,20 +1033,21 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
       devtools()?.write?.(scope, slot, value);
     }
     trigger(scope, slot);
-    // A prop that a parent bound with `$bind` writes the parent's slot too, through any number
-    // of levels. The parent's update of the prop then finds the value already there.
-    const bound = scope.b?.[slot];
-    const target = bound && scopes.get(bound.scope);
-    if (target) {
-      set(target, bound.slot, value);
-    }
   }
-  return value;
 }
 
 /** What `$bind(name)` passes a child, in markup that the browser renders. */
-export function binding<T>(value: T, scope: Scope | ScopeId, slot: number): Binding<T> {
-  return new Binding(value, new SlotReference(typeof scope === 'object' ? scope.id : scope, slot));
+export function binding<T>(
+  value: T,
+  scope: Scope | ScopeId,
+  slot: number,
+  set?: unknown,
+): Binding<T> {
+  return new Binding(
+    value,
+    new SlotReference(typeof scope === 'object' ? scope.id : scope, slot),
+    set,
+  );
 }
 
 /**
@@ -1025,7 +1063,7 @@ export function bindings(
   for (const [name, slot] of Object.entries(slots)) {
     const value = props[name];
     if (target && isBinding(value)) {
-      (target.b ??= {})[slot] = value.ref;
+      (target.b ??= {})[slot] = value.target;
     }
   }
 }
@@ -2393,7 +2431,8 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
       if (isThenable(value)) {
         asyncMemo(child, slot, Promise.resolve(value));
       } else {
-        set(child, slot, value);
+        // The parent's value. A bound prop does not write it back.
+        writeSlot(child, slot, value);
       }
       return;
     }

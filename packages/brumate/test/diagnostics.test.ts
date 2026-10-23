@@ -265,3 +265,26 @@ function toggle() {
     ).toThrow('Pass $bind(name) as the value of a prop of a component');
   });
 });
+
+describe('setters of bindings', () => {
+  const compileBind = (script: string, markup: string) =>
+    compile(
+      `<script>\nimport { $bind, $signal } from 'brumate/signals';\nimport Child from './Child.brm';\n${script}\n</script>\n\n${markup}`,
+      { filename: 'Test.brm' },
+    );
+
+  it('takes a function as the setter', () => {
+    expect(() =>
+      compileBind(
+        'let open = $signal(false);',
+        '<Child open=$bind(open, (next) => (open = next)) />',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      compileBind('let open = $signal(false);', '<Child open=$bind(open, 1) />'),
+    ).toThrow('The second argument of $bind is a function that takes the new value');
+    expect(() =>
+      compileBind('let open = $signal(false);', '<Child open=$bind(open, () => {}, 1) />'),
+    ).toThrow('$bind takes the name of a signal, and a function that writes it');
+  });
+});

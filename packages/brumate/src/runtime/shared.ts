@@ -91,10 +91,18 @@ export function isBinding(value: unknown): value is Binding {
 export class Binding<T = unknown> {
   readonly value: T;
   readonly ref: SlotReference;
+  /** The function of `$bind(name, fn)`, which a write calls in place of writing the slot. */
+  readonly set: unknown;
 
-  constructor(value: T, ref: SlotReference) {
+  constructor(value: T, ref: SlotReference, set?: unknown) {
     this.value = value;
     this.ref = ref;
+    this.set = set;
+  }
+
+  /** What a write of the bound prop goes to: the setter, or else the slot. */
+  get target(): unknown {
+    return this.set ?? this.ref;
   }
 }
 
@@ -150,14 +158,14 @@ export const stateValues: {
   /** A slot of a scope, which a bound prop writes. */
   l: (scope: ScopeId, slot: number) => SlotReference;
   /** A binding that a rest prop holds, with its value and its slot. */
-  b: (value: unknown, scope: ScopeId, slot: number) => Binding;
+  b: (value: unknown, scope: ScopeId, slot: number, set?: unknown) => Binding;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
   c: (id) => Object.assign(() => '', { brumateId: id }),
   l: (scope, slot) => new SlotReference(scope, slot),
-  b: (value, scope, slot) => new Binding(value, new SlotReference(scope, slot)),
+  b: (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set),
 };
 
 /** True for a value that `for await` reads, such as the result of an async generator. */
@@ -194,8 +202,11 @@ export interface ScopeState {
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */
   c?: Record<number, ScopeId>;
-  /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
-  b?: Record<number, SlotReference>;
+  /**
+   * What the bound props of a component write, by the slot of the prop: a
+   * slot of a parent, or the function of `$bind(name, fn)`.
+   */
+  b?: Record<number, unknown>;
 }
 
 /** The state of a page, by scope ID. */
