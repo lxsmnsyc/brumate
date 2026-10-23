@@ -85,13 +85,25 @@ button, select, input { font: inherit; color: inherit; }
 button { background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
 button:hover { background: var(--hover); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.tool { border-color: var(--line); }
+button.tool { display: inline-flex; align-items: center; gap: 6px; border-color: var(--line); background: var(--surface); }
+button.tool .icon { color: var(--dim); flex: none; }
+button.tool:hover .icon { color: var(--text); }
+button.tool.only { padding: 3px 5px; }
+.link { display: inline-flex; align-items: center; gap: 4px; }
+.link .icon { opacity: 0.7; }
+.zoom button.tool { background: var(--raised); }
 button.tool[aria-pressed="true"] { border-color: var(--accent); background: #ee7a3e22; color: #ffb48a; }
 select, input[type="search"] { background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
 .main { flex: 1; display: flex; min-height: 0; }
-.nav { display: flex; flex-direction: column; gap: 1px; padding: 6px; width: 132px; flex: none; border-right: 1px solid var(--line); background: var(--surface); overflow: auto; }
+.nav { display: flex; flex-direction: column; gap: 1px; padding: 6px; width: 156px; flex: none; border-right: 1px solid var(--line); background: var(--surface); overflow: auto; }
 .nav .tab { display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 4px 8px; color: var(--dim); }
-.nav .tab[aria-selected="true"] { background: var(--raised); color: var(--text); box-shadow: inset 2px 0 var(--accent); }
+.nav .tab { gap: 8px; }
+.nav .tab .label { flex: 1; }
+.icon { flex: none; }
+.nav .tab .icon { color: var(--faint); transition: color 0.15s; }
+.nav .tab:hover .icon { color: var(--dim); }
+.nav .tab[aria-selected="true"] { background: var(--raised); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+.nav .tab[aria-selected="true"] .icon { color: var(--accent); }
 .badge { min-width: 16px; padding: 0 5px; border-radius: 999px; background: var(--raised); color: var(--dim); font: 10px/16px var(--mono); text-align: center; }
 .badge:empty { display: none; }
 .tab[aria-selected="true"] .badge { background: var(--hover); }
@@ -99,14 +111,14 @@ select, input[type="search"] { background: var(--raised); border: 1px solid var(
 .badge.error, .tab[aria-selected="true"] .badge.error { background: #e5484d; color: #fff; }
 .error-message { margin: 0 0 8px; color: var(--red); font: 600 14px/1.4 var(--mono); white-space: pre-wrap; }
 .error-row { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; }
-.error-row[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 var(--red); }
+.error-row[aria-current="true"] { background: #e5484d14; box-shadow: 0 0 0 1px #e5484d40; }
 .error-row .text { display: block; color: var(--text); font: 12px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error-row .when { color: var(--faint); font-size: 11px; }
 .code { margin: 6px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #0d1117; overflow: auto; }
 .code .twinkleplop { margin: 0; padding: 8px 0; font: 12px/1.6 var(--mono); background: none; white-space: normal; }
 .code .l { display: block; padding: 0 12px 0 0; white-space: pre; min-height: 1.6em; }
 .code .ln { display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--faint); user-select: none; }
-.code .l.error-line { background: #e5484d26; box-shadow: inset 3px 0 #e5484d; }
+.code .l.error-line { background: #e5484d24; }
 .code .l.error-line .ln { color: var(--red); }
 .code .error-mark { text-decoration: wavy underline #e5484d; text-underline-offset: 3px; }
 .code pre.plain { margin: 0; padding: 8px 12px; font: 12px/1.6 var(--mono); white-space: pre; }
@@ -115,7 +127,8 @@ select, input[type="search"] { background: var(--raised); border: 1px solid var(
 .frame .fn { color: var(--text); white-space: nowrap; }
 .frame .where { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .frame.library .fn, .frame.library .where { color: var(--faint); }
-.frame[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 var(--accent); }
+.frame[aria-current="true"] { background: #ee7a3e14; box-shadow: 0 0 0 1px #ee7a3e40; }
+.frame[aria-current="true"] .fn { color: #ffb48a; }
 .body { flex: 1; overflow: auto; padding: 12px 14px; min-width: 0; }
 .split { display: flex; height: calc(100% + 24px); margin: -12px -14px; }
 .split > .list { width: 280px; flex: none; overflow: auto; border-right: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 1px; }
@@ -148,7 +161,8 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .tree-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; text-align: left; padding: 2px 6px; border-radius: 5px; }
 .tree-row.component { font-weight: 600; margin-top: 4px; }
 .tree-row .file { color: var(--faint); font: 11px var(--mono); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tree-row[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 var(--accent); }
+.tree-row[aria-current="true"] { background: #ee7a3e14; box-shadow: 0 0 0 1px #ee7a3e40; }
+.tree-row[aria-current="true"] > span:first-child { color: #ffb48a; }
 .written { animation: flash 0.8s; }
 @keyframes flash { from { background: #ffd16633; } to { background: transparent; } }
 .slots td.name { color: #ffc28f; font-family: var(--mono); width: 1%; white-space: nowrap; }
@@ -178,14 +192,14 @@ tr.failed td:not(.bar-cell) { color: var(--red); }
 .zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 .zoom button { background: var(--raised); border-color: var(--line); min-width: 28px; }
 svg .node rect.box { fill: var(--surface); stroke: var(--line); }
-svg .node rect.kind { fill: var(--faint); }
+svg .node .kind { fill: var(--faint); }
 svg .node .name { fill: var(--text); font: 600 11.5px var(--mono); }
 svg .node .meta { fill: var(--dim); font: 10.5px var(--mono); }
 svg .node { cursor: pointer; }
 svg .node:hover rect.box { stroke: var(--dim); }
-svg .k-signal rect.kind, svg .k-prop rect.kind { fill: var(--blue); }
-svg .k-memo rect.kind { fill: var(--purple); }
-svg .k-effect rect.kind { fill: var(--green); }
+svg .k-signal .kind, svg .k-prop .kind { fill: var(--blue); }
+svg .k-memo .kind { fill: var(--purple); }
+svg .k-effect .kind { fill: var(--green); }
 svg .node.selected rect.box { stroke: var(--accent); stroke-width: 1.5; }
 svg .node.hot rect.box { fill: #3a3020; stroke: var(--yellow); }
 svg .node.faded { opacity: 0.3; }
@@ -269,6 +283,77 @@ function svg(
   }
   node.append(...children);
   return node;
+}
+
+/**
+ * The icons of the panel: strokes on a grid of 24, in the colour of the text.
+ */
+const ICONS = {
+  overview:
+    '<rect x="3.5" y="3.5" width="7" height="7" rx="1.75"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.75"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.75"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.75"/>',
+  errors:
+    '<path d="M10.3 4.6a2 2 0 0 1 3.4 0l7 12.2a2 2 0 0 1-1.7 3H5a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><path d="M12 16.8v.2"/>',
+  scopes:
+    '<rect x="9" y="3" width="6" height="5" rx="1.25"/><rect x="3" y="16" width="6" height="5" rx="1.25"/><rect x="15" y="16" width="6" height="5" rx="1.25"/><path d="M12 8v4M6 16v-2.25A1.75 1.75 0 0 1 7.75 12h8.5A1.75 1.75 0 0 1 18 13.75V16"/>',
+  elements: '<path d="M5 4.5 18 10l-5.5 2L10 17.5z"/><path d="m13 13 5.5 5.5"/>',
+  graph:
+    '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/>',
+  log: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
+  loading: '<path d="M4 6h7M8 12h9M13 18h7"/>',
+  blocks:
+    '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
+  report:
+    '<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h6"/>',
+  pick: '<circle cx="12" cy="12" r="7"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
+  close: '<path d="m6 9.5 6 6 6-6"/>',
+  trash:
+    '<path d="M4.5 7h15M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 7l.9 12.1a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>',
+  pause: '<path d="M9 5.5v13M15 5.5v13"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>',
+  fit: '<path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  bolt: '<path d="M13 3 5 13.5h6L10 21l9-11h-6z"/>',
+  open: '<path d="M14 4h6v6M20 4l-8.5 8.5M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>',
+} as const;
+
+/** An icon by its name, for a button or a tab. */
+function icon(name: keyof typeof ICONS, size = 14): SVGElement {
+  const node = svg('svg', {
+    class: 'icon',
+    viewBox: '0 0 24 24',
+    width: size,
+    height: size,
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': 1.8,
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    'aria-hidden': 'true',
+  });
+  node.innerHTML = ICONS[name];
+  return node;
+}
+
+/** A button with an icon, and its text or, for an icon alone, its label for screen readers. */
+function iconButton(
+  name: keyof typeof ICONS,
+  text: string,
+  attributes: Record<string, string> = {},
+  iconOnly = false,
+): HTMLButtonElement {
+  const button = element(
+    'button',
+    { class: `tool${iconOnly ? ' only' : ''}`, ...attributes },
+    icon(name),
+  );
+  if (iconOnly) {
+    button.setAttribute('aria-label', text);
+    button.title ||= text;
+  } else {
+    button.append(text);
+  }
+  return button;
 }
 
 /** A value that can be edited as text: what JSON can hold. */
@@ -427,7 +512,12 @@ function source(info: ComponentInfo | undefined, at = '1:1'): Node | string {
   if (!info.path) {
     return element('span', { class: 'mono sub' }, label);
   }
-  const open = element('button', { class: 'link', title: 'Open in the editor' }, label);
+  const open = element(
+    'button',
+    { class: 'link', title: 'Open in the editor' },
+    label,
+    icon('open', 12),
+  );
   open.addEventListener('click', () => {
     void fetch(`/__open-in-editor?file=${encodeURIComponent(`${info.path}:${at}`)}`);
   });
@@ -721,7 +811,8 @@ export function togglePanel(
     const button = element(
       'button',
       { class: 'tab', role: 'tab', 'data-tab': name },
-      element('span', {}, label),
+      icon(name === 'scopes' ? 'scopes' : name, 15),
+      element('span', { class: 'label' }, label),
       badge,
     );
     badges.set(name, badge);
@@ -734,16 +825,11 @@ export function togglePanel(
 
   const routeText = element('span', { class: 'route', title: 'The page' });
   const stats = element('span', { class: 'stats' });
-  const pick = element(
-    'button',
-    {
-      class: 'tool',
-      'aria-pressed': 'false',
-      title: 'Click an element of the page to see its scope, handlers and code',
-    },
-    'Pick',
-  );
-  const close = element('button', { class: 'tool', title: 'Close the devtools' }, 'Close');
+  const pick = iconButton('pick', 'Pick', {
+    'aria-pressed': 'false',
+    title: 'Click an element of the page to see its scope, handlers and code',
+  });
+  const close = iconButton('close', 'Close the devtools (Alt+Shift+D)', {}, true);
   close.addEventListener('click', () => togglePanel(root, state));
   const versions: HTMLElement[] = [
     element(
@@ -962,7 +1048,7 @@ export function togglePanel(
       });
       list.append(button);
     }
-    const clear = element('button', { class: 'tool' }, 'Clear');
+    const clear = iconButton('trash', 'Clear');
     clear.addEventListener('click', () => {
       state.errors.length = 0;
       state.errorCount?.();
@@ -1028,6 +1114,7 @@ export function togglePanel(
       'button',
       { class: 'link', title: 'Open in the editor' },
       `${place.file.replace(/^.*\/(src|test|routes)\//, '$1/')}:${place.line}:${place.column}`,
+      icon('open', 12),
     );
     button.addEventListener('click', () => {
       void fetch(
@@ -1237,7 +1324,7 @@ export function togglePanel(
     current.s.forEach((_, slot) =>
       slots.append(drawSlot(current, slot, plan?.slots[slot] ?? `slot ${slot}`)),
     );
-    const graph = element('button', { class: 'tool' }, 'Show the graph');
+    const graph = iconButton('graph', 'Show the graph');
     graph.addEventListener('click', () => {
       selected = component.m;
       tab = 'graph';
@@ -1326,7 +1413,7 @@ export function togglePanel(
 
   const drawElements = async (): Promise<void> => {
     if (!picked?.isConnected) {
-      const start = element('button', { class: 'tool' }, 'Pick an element');
+      const start = iconButton('pick', 'Pick an element');
       start.addEventListener('click', () => pick.click());
       body.replaceChildren(
         element('h2', {}, 'Elements'),
@@ -1503,7 +1590,7 @@ export function togglePanel(
         262,
         Math.max(
           112,
-          26 + 7 * Math.max(clip(parts[index]!.name).length, clip(parts[index]!.meta).length),
+          36 + 7 * Math.max(clip(parts[index]!.name).length, clip(parts[index]!.meta).length),
         ),
       );
     const position = layoutGraph(nodes, edges, widthOf);
@@ -1565,9 +1652,9 @@ export function togglePanel(
       if (related.size > 0 && !related.has(index)) {
         classes.push('faded');
       }
-      const name = svg('text', { class: 'name', x: x + 12, y: y + 16 });
+      const name = svg('text', { class: 'name', x: x + 23, y: y + 16 });
       name.textContent = clip(part.name);
-      const meta = svg('text', { class: 'meta', x: x + 12, y: y + 30 });
+      const meta = svg('text', { class: 'meta', x: x + 23, y: y + 30 });
       meta.textContent = clip(part.meta);
       const title = svg('title', {});
       title.textContent = `${node.kind} ${node.label}${part.value === undefined ? '' : ` = ${part.value}`}`;
@@ -1575,7 +1662,7 @@ export function togglePanel(
         'g',
         { class: classes.join(' '), 'data-node': index },
         svg('rect', { class: 'box', x, y, width: nodeWidth, height: 38, rx: 7 }),
-        svg('rect', { class: 'kind', x: x + 1, y: y + 6, width: 3, height: 26, rx: 1.5 }),
+        svg('circle', { class: 'kind', cx: x + 13, cy: y + 12.5, r: 3.5 }),
         name,
         meta,
         title,
@@ -1668,22 +1755,22 @@ export function togglePanel(
         draw();
       }
     });
-    const zoomButton = (label: string, title: string, factor: number): HTMLElement => {
-      const button = element('button', { title }, label);
+    const zoomButton = (name: 'plus' | 'minus', title: string, factor: number): HTMLElement => {
+      const button = iconButton(name, title, {}, true);
       button.addEventListener('click', () => {
         const box = frame.getBoundingClientRect();
         zoomAt(factor, box.width / 2, box.height / 2);
       });
       return button;
     };
-    const fitButton = element('button', { title: 'Fit the graph in view' }, 'Fit');
+    const fitButton = iconButton('fit', 'Fit the graph in view', {}, true);
     fitButton.addEventListener('click', fit);
     frame.append(
       element(
         'div',
         { class: 'zoom' },
-        zoomButton('−', 'Zoom out', 1 / 1.2),
-        zoomButton('+', 'Zoom in', 1.2),
+        zoomButton('minus', 'Zoom out', 1 / 1.2),
+        zoomButton('plus', 'Zoom in', 1.2),
         fitButton,
       ),
     );
@@ -1798,17 +1885,15 @@ export function togglePanel(
       next?.focus();
       next?.setSelectionRange(logSearch.length, logSearch.length);
     });
-    const pause = element(
-      'button',
-      { class: 'tool', 'aria-pressed': String(paused) },
-      paused ? 'Resume' : 'Pause',
-    );
+    const pause = iconButton(paused ? 'play' : 'pause', paused ? 'Resume' : 'Pause', {
+      'aria-pressed': String(paused),
+    });
     pause.addEventListener('click', () => {
       paused = !paused;
       frozen = paused ? [...state.log] : undefined;
       draw();
     });
-    const clear = element('button', { class: 'tool' }, 'Clear');
+    const clear = iconButton('trash', 'Clear');
     clear.addEventListener('click', () => {
       state.log.length = 0;
       frozen = paused ? [] : undefined;
@@ -1930,7 +2015,7 @@ export function togglePanel(
     for (const block of blocks) {
       const action = element('span');
       if (block.state === 'waiting' && (block.kind === 'defer' || block.kind === 'client')) {
-        const fire = element('button', { class: 'tool', title: 'Fire the trigger now' }, 'Fire');
+        const fire = iconButton('bolt', 'Fire', { title: 'Fire the trigger now' });
         fire.addEventListener('click', () => {
           state.fire?.(block);
           draw();
