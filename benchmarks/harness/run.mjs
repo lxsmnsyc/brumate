@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
+import { measureRows } from './client.mjs';
 import {
   measureBrowser,
   measureDashboard,
@@ -40,6 +41,8 @@ const HELP = `Usage: pnpm bench [options]
   --duration <ms>     Length of one SSR throughput round (default: 1000).
   --idle <ms>         Idle wait after load in the browser (default: 3000).
   --latency <ms>      Round trip latency of the throttled waterfall (default: 150).
+  --runs <n>          Runs of each operation of the rows scenario (default: 10).
+  --cpu <rate>        CPU slowdown of the rows scenario's measured clicks (default: 1).
   --install-browser   Download Playwright's Chromium when no Chrome is found.
   --help              Show this message.
 
@@ -56,6 +59,8 @@ const { values: flags } = parseArgs({
     duration: { type: 'string', default: '1000' },
     idle: { type: 'string', default: '3000' },
     latency: { type: 'string', default: '150' },
+    runs: { type: 'string', default: '10' },
+    cpu: { type: 'string', default: '1' },
     'install-browser': { type: 'boolean', default: false },
     help: { type: 'boolean', default: false },
   },
@@ -95,6 +100,8 @@ const options = {
   duration: Number(flags.duration),
   idleMs: Number(flags.idle),
   latency: Number(flags.latency),
+  runs: Number(flags.runs),
+  cpu: Number(flags.cpu),
 };
 
 const children = new Set();
@@ -164,6 +171,11 @@ async function build() {
       log(`building ${name} dashboard`);
       await rm(path.join(appDir(name), 'dashboard/dist'), { recursive: true, force: true });
       pnpm(['run', 'build:dashboard'], appDir(name));
+    }
+    if (scenarios.includes('rows')) {
+      log(`building ${name} rows`);
+      await rm(path.join(appDir(name), 'rows/dist'), { recursive: true, force: true });
+      pnpm(['run', 'build:rows'], appDir(name));
     }
   }
 }
@@ -281,8 +293,8 @@ for (const scenario of scenarios) {
 }
 
 // The SSR sizes: 0, 3 and 100 todos, or the one dashboard page.
-const SSR_SIZES = { todos: [0, 3, 100], dashboard: [0] };
-const SSR_SPEEDS = { todos: [3, 100], dashboard: [0] };
+const SSR_SIZES = { todos: [0, 3, 100], dashboard: [0], rows: [1000] };
+const SSR_SPEEDS = { todos: [3, 100], dashboard: [0], rows: [1000] };
 
 for (const scenario of scenarios) {
   if (!metrics.has('ssr-size') && !metrics.has('ssr-speed')) break;
@@ -304,7 +316,7 @@ for (const scenario of scenarios) {
                 perItemRaw: (size[100].raw - size[3].raw) / 97,
                 perItemGzip: (size[100].gzip - size[3].gzip) / 97,
               }
-            : size[0];
+            : size[SSR_SIZES[scenario][0]];
       }
     }
     if (metrics.has('ssr-speed')) {
@@ -338,7 +350,7 @@ for (const scenario of scenarios) {
             },
           ]),
         );
-        slot(name, scenario).ssrSpeed = scenario === 'todos' ? speed : speed[0];
+        slot(name, scenario).ssrSpeed = scenario === 'todos' ? speed : speed[ns[0]];
       }
     }
   } finally {
@@ -363,17 +375,22 @@ if (metrics.has('browser') || metrics.has('waterfall')) {
     try {
       for (const scenario of scenarios) {
         for (const name of frameworks) {
+          if (scenario === 'rows' && !metrics.has('browser')) continue;
           const { child, base } = await startServer(name, scenario);
           try {
             if (metrics.has('browser')) {
               log(`${prefix(scenario)}browser: ${name}`);
-              const measured =
-                scenario === 'todos'
-                  ? await measureBrowser(browser, base, { idleMs: options.idleMs, n: 3 })
-                  : await measureDashboard(browser, base, {
-                      idleMs: options.idleMs,
-                      preloadOption: (await loadApp(name, scenario)).preloadOption,
-                    });
+              let measured;
+              if (scenario === 'todos') {
+                measured = await measureBrowser(browser, base, { idleMs: options.idleMs, n: 3 });
+              } else if (scenario === 'rows') {
+                measured = await measureRows(browser, base, options);
+              } else {
+                measured = await measureDashboard(browser, base, {
+                  idleMs: options.idleMs,
+                  preloadOption: (await loadApp(name, scenario)).preloadOption,
+                });
+              }
               const tag = `${name}${scenario === 'todos' ? '' : ` ${scenario}`}`;
               if (measured.failed.length)
                 result.notes.push(`${tag}: interactions failed: ${measured.failed.join(', ')}`);
@@ -381,7 +398,7 @@ if (metrics.has('browser') || metrics.has('waterfall')) {
                 result.notes.push(`${tag}: page errors: ${measured.errors.join(' | ')}`);
               slot(name, scenario).browser = measured;
             }
-            if (metrics.has('waterfall')) {
+            if (metrics.has('waterfall') && scenario !== 'rows') {
               log(`${prefix(scenario)}waterfall: ${name}`);
               slot(name, scenario).waterfall =
                 scenario === 'todos'

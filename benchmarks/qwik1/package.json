@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build && vite build --ssr src/entry.ssr.tsx",
-    "build:dashboard": "node ../harness/dashboard.mjs qwik1 && vite build dashboard && vite build dashboard --ssr src/entry.ssr.tsx"
+    "build:dashboard": "node ../harness/dashboard.mjs qwik1 && vite build dashboard && vite build dashboard --ssr src/entry.ssr.tsx",
+    "build:rows": "vite build rows && vite build rows --ssr src/entry.ssr.tsx"
   },
   "devDependencies": {
     "@builder.io/qwik": "1.20.2",

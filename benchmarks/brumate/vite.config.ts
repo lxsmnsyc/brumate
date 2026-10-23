@@ -5,9 +5,13 @@ export default defineConfig({
   plugins: [
     brumate({
       navigate: false,
-      // The dashboard scenario is a separate build with its own root. See dashboard/.
+      // The dashboard and rows scenarios are separate builds with their own roots.
       exclude: (dir) =>
-        dir === 'node_modules' || dir === 'dist' || dir === 'dashboard' || dir.startsWith('.'),
+        dir === 'node_modules' ||
+        dir === 'dist' ||
+        dir === 'dashboard' ||
+        dir === 'rows' ||
+        dir.startsWith('.'),
     }),
   ],
   build: {

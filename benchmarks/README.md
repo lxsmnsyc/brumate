@@ -1,20 +1,21 @@
 # Benchmarks
 
-This folder compares brumate with Qwik 1, Qwik 2 and Marko 6. Each framework builds the same two pages, and one script builds, serves and measures all of them.
+This folder compares brumate with Qwik 1, Qwik 2 and Marko 6. Each framework builds the same three pages, and one script builds, serves and measures all of them.
 
 ```bash
 pnpm install
 pnpm bench
 ```
 
-The command prints a markdown table for each scenario and writes `results/<timestamp>.json` and `results/<timestamp>.md`. Git ignores the results. A full run takes about 4 to 5 minutes on an Apple M2.
+The command prints a markdown table for each scenario and writes `results/<timestamp>.json` and `results/<timestamp>.md`. Git ignores the results. The todos and dashboard scenarios take about 4 to 5 minutes on an Apple M2, and the rows scenario about 20 minutes with 10 runs.
 
 ## Scenarios
 
 - `todos`: a small page with a todo list and a counter. Every framework ships little code for it.
 - `dashboard`: a page with 50 different widgets that are rarely used. It tests the case that lazy loading is for.
+- `rows`: the table of [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/current.html). It measures the work of the browser after a click, once the code is loaded.
 
-`pnpm bench --scenario todos` or `--scenario dashboard` runs one of them. The default runs both.
+`pnpm bench --scenario todos`, `--scenario dashboard` or `--scenario rows` runs one of them. The default runs all three.
 
 ### Todos
 
@@ -43,6 +44,15 @@ The same handler code goes into every framework. Only the access to state differ
 
 The generated files are not checked in. The `build:dashboard` script of each app writes them into `dashboard/src/widgets` (`dashboard/src/tags` for Marko), then builds `dashboard/` as a separate Vite project with its own `dist`. The todos build does not see them, so its output does not change. Run `node harness/dashboard.mjs <folder>` to look at the files without a build.
 
+### Rows
+
+Every app renders the page of js-framework-benchmark, without its stylesheet:
+
+- Buttons with the IDs `run` (create 1,000 rows), `runlots` (create 10,000 rows), `add` (append 1,000 rows), `update` (add ` !!!` to every 10th label), `clear` and `swaprows` (swap the second and the 999th row).
+- A `tbody` with a `tr` for each row, keyed by ID. A row has its ID, a link that selects it, and a link that removes it. The selected row has the class `danger`.
+
+[`harness/rows.mjs`](./harness/rows.mjs) makes the rows and the new lists, and every app imports it, so the apps differ only in how they render and update. A label comes from the ID, not from a random generator, so the server and the browser make the same rows. The page server reads the number of rows from `?n=`, and defaults to 0.
+
 ### Folders
 
 | Folder     | Framework                                      |
@@ -64,6 +74,17 @@ The todos scenario:
 - `ssr-size`: The UTF-8 bytes of the HTML for 0, 3 and 100 todos. The cost per todo is the difference between 100 and 3 todos divided by 97. The worker also checks that the HTML shows the todos, the `N left` line and the counter.
 - `ssr-speed`: Each framework renders in its own process. After 300 warm-up renders per size, the runner asks one framework at a time to render for 1 s and counts the renders. Each render includes encoding the HTML to UTF-8 bytes, as a server must before it sends the page. It repeats this for 5 rounds, rotates the order each round, and reports the median with the min and max. See "SSR encoding" below.
 - `waterfall`: Chrome throttles the network to 150 ms of latency and about 1.6 Mbit/s, then clicks the counter. "After idle" throttles after the page loaded and idled. "Cold" throttles from the start and clicks right at `load`. The round trip (RT) count is the longest chain of requests in which each one starts after the previous one finished.
+
+The rows scenario:
+
+- `browser`, the operations of js-framework-benchmark. Each run opens a new page with no rows, does the warmup of the operation, such as 5 creates and clears, or 3 updates of every 10th row, and then the click that it measures. A Chrome trace of that click gives:
+  - The main thread time: the time that the main thread of the page spent in tasks, from the start of the click event to the end of the last paint after it. The report shows this one.
+  - The time to paint: the time that passed in the same span. A paint waits for the next frame, so this moves in steps of about 16 ms. The JSON has it.
+- `browser`, the JS heap after a page with no rows created 1,000 rows, after a garbage collection.
+- `browser`, a page that the server rendered with 1,000 rows. It records the main thread time and the longest task while the page loads and idles, and the JS heap. Then it measures the first select, the first update of every 10th row or the first remove, each on its own page. These include the work of resuming, or of hydrating for a framework that hydrates.
+- `dist`, `ssr-size` and `ssr-speed`: as for todos, with the page of 1,000 rows.
+
+`--runs` sets the runs of each operation, 10 by default. `--cpu 4` slows the CPU 4 times for the measured clicks, as js-framework-benchmark does for some operations.
 
 The dashboard scenario:
 
@@ -102,7 +123,7 @@ pnpm bench --rounds 9 --duration 2000
 
 | Option                | Default | Meaning                                                 |
 | --------------------- | ------- | ------------------------------------------------------- |
-| `--scenario <name>`   | all     | `todos`, `dashboard` or `all`.                          |
+| `--scenario <name>`   | all     | `todos`, `dashboard`, `rows` or `all`.                  |
 | `--only <names>`      | all     | Frameworks to run, by folder name.                      |
 | `--skip <metrics>`    | none    | Metrics to leave out.                                   |
 | `--metrics <metrics>` | all     | Metrics to run.                                         |
@@ -111,6 +132,8 @@ pnpm bench --rounds 9 --duration 2000
 | `--duration <ms>`     | 1000    | Length of one SSR throughput round.                     |
 | `--idle <ms>`         | 3000    | Idle wait after load in the browser.                    |
 | `--latency <ms>`      | 150     | Latency of the throttled waterfall.                     |
+| `--runs <n>`          | 10      | Runs of each operation of the rows scenario.            |
+| `--cpu <rate>`        | 1       | CPU slowdown of the measured clicks of rows.            |
 | `--install-browser`   | off     | Download Playwright's Chromium when no Chrome is found. |
 
 ## Chrome
@@ -126,6 +149,7 @@ The browser metrics use `playwright-core` with a Chrome that is already installe
 - The servers run on localhost with `cache-control: no-store`. Each browser session starts with an empty cache.
 - Qwik preloads code while idle. The "after idle" numbers show that. The "cold" waterfall shows what a click costs before the preload finishes. In the cold run, preload requests that are still in flight count as part of the click.
 - The waterfall depth comes from request start and finish times, so it is an estimate.
+- The rows page has no stylesheet, so layout and paint cost less than in js-framework-benchmark, which loads Bootstrap. Compare the rows numbers between the frameworks here, not with the numbers of that site.
 - The dashboard widgets come from one generator. Their handlers share many lines, so gzip compresses a bundle with all of them better than it would compress 50 handlers written by hand. This favors Marko, which ships them in one file. Each lazy chunk is compressed alone and gets little from gzip.
 - brumate preloads the code of every widget in or near the viewport, not only the ones that are clicked. Scrolling far down a page fetches the code of each widget passed on the way that came near the viewport. The harness scrolls straight to a widget, so it skips the ones in between.
 - `renderToString` of Qwik 1.20.2 drops the `preloader` option. The Qwik 1 dashboard renders with `renderToStream`, which `renderToString` calls with the same other options.
@@ -135,7 +159,8 @@ The browser metrics use `playwright-core` with a Chrome that is already installe
 1. Make a folder here, for example `benchmarks/solid/`, with a `package.json` named `bench-<folder>`, exact dependency versions and a `build` script that writes a production build to `dist/`.
 2. Build the same app as the other folders. Keep the markup the harness looks for: the counter `<button>` comes right after an `<h2>`, the todo items are `ul li button`, the done class is `done`, and the form has one `input` and one `button`.
 3. Add `adapter.js`. It exports a `label` and an async `load()` that returns `{ staticDir, render }`. `staticDir` is the folder with the client files. `render(n)` returns the full HTML of the page with `n` todos.
-4. For the dashboard, add a writer for the folder to `harness/dashboard.mjs`, a `build:dashboard` script and a `dashboard/` project. Export `loadDashboard()` from the adapter. It returns `{ staticDir, render, preloadOption }`. `render({ preload })` returns the page, with the idle preload off when `preload` is false. `preloadOption` is false when the framework has no preload to turn off.
-5. Run `pnpm install`, then `pnpm bench --only <folder>`.
+4. For the rows, add a `rows/` project and a `build:rows` script, and export `loadRows()` from the adapter. It returns `{ staticDir, render }`, where `render(n)` returns the page with `n` rows. Keep the IDs and classes of the page above.
+5. For the dashboard, add a writer for the folder to `harness/dashboard.mjs`, a `build:dashboard` script and a `dashboard/` project. Export `loadDashboard()` from the adapter. It returns `{ staticDir, render, preloadOption }`. `render({ preload })` returns the page, with the idle preload off when `preload` is false. `preloadOption` is false when the framework has no preload to turn off.
+6. Run `pnpm install`, then `pnpm bench --only <folder>`.
 
 The harness finds every folder with an `adapter.js`, so no registration is needed.

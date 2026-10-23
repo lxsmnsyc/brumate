@@ -1,3 +1,4 @@
+import { OPERATIONS, RESUMED } from './client.mjs';
 // Formats a result as a markdown report with one column per framework.
 const num = (value) => Math.round(value).toLocaleString('en-US');
 const kb = (bytes) => (bytes >= 1024 ? `${(bytes / 1024).toFixed(1)} kB` : `${bytes} B`);
@@ -164,6 +165,65 @@ function dashboardRows(result, metrics) {
   return rows;
 }
 
+const mb = (bytes) => `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+const spread = (entry) => entry && `${entry.median} (${entry.min}–${entry.max})`;
+
+function rowsRows(result, metrics) {
+  const r = (name) => result.frameworks[name].rows ?? {};
+  const rows = [];
+  if (metrics.has('browser')) {
+    const { runs, cpu } = result.options;
+    const slowdown = cpu > 1 ? `, ${cpu}× CPU slowdown` : '';
+    rows.push([
+      `**Main thread from click to paint, ms** (median of ${runs}, min–max${slowdown})`,
+      () => '',
+    ]);
+    for (const [key, operation] of Object.entries(OPERATIONS)) {
+      rows.push([operation.label, (n) => spread(r(n).browser?.operations[key]?.cpu)]);
+    }
+    rows.push([
+      'JS heap after creating 1,000 rows',
+      (n) => r(n).browser?.heapCreated && mb(r(n).browser.heapCreated),
+    ]);
+    rows.push(
+      [
+        `**1,000 rows from the server** (load and ${result.options.idleMs / 1000} s idle)`,
+        () => '',
+      ],
+      ['Main thread busy, ms', (n) => spread(r(n).browser?.load?.busy)],
+      ['Longest task, ms', (n) => spread(r(n).browser?.load?.longest)],
+      ['JS heap', (n) => r(n).browser?.load && mb(r(n).browser.load.heap)],
+    );
+    for (const [key, operation] of Object.entries(RESUMED)) {
+      rows.push([
+        `First click: ${operation.label}, main thread / to paint, ms`,
+        (n) => {
+          const entry = r(n).browser?.resumed[key];
+          return entry && `${entry.cpu.median} / ${entry.paint.median}`;
+        },
+      ]);
+    }
+  }
+  if (metrics.has('dist')) {
+    rows.push(['**Build**', () => ''], ['Client JS emitted in dist', (n) => js(r(n).dist)]);
+  }
+  if (metrics.has('ssr-size')) {
+    const s = (name) => r(name).ssrSize;
+    rows.push(
+      ['**SSR HTML** (raw / gzip -9)', () => ''],
+      ['1,000 rows', (n) => s(n) && size(s(n).raw, s(n).gzip)],
+    );
+  }
+  if (metrics.has('ssr-speed')) {
+    const s = (name) => r(name).ssrSpeed;
+    rows.push(
+      [`**SSR renders/s** (median of ${result.options.rounds}, min–max)`, () => ''],
+      ['1,000 rows', (n) => s(n) && `${num(s(n).median)} (${num(s(n).min)}–${num(s(n).max)})`],
+    );
+  }
+  return rows;
+}
+
 export function markdown(result, metrics) {
   const names = result.options.frameworks;
   const fw = result.frameworks;
@@ -201,5 +261,7 @@ export function markdown(result, metrics) {
     sections.push('', '## Todos', '', table(names, labels, todosRows(result, metrics)));
   if (scenarios.includes('dashboard'))
     sections.push('', '## Dashboard', '', table(names, labels, dashboardRows(result, metrics)));
+  if (scenarios.includes('rows'))
+    sections.push('', '## Rows', '', table(names, labels, rowsRows(result, metrics)));
   return `${[...header, ...sections, ...notes].join('\n')}\n`;
 }

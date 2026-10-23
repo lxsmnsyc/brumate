@@ -21,3 +21,11 @@ export async function loadDashboard() {
     render: () => server.render(),
   };
 }
+
+export async function loadRows() {
+  const server = await import(`${dir}rows/dist/server/server.js`);
+  return {
+    staticDir: `${dir}rows/dist/client`,
+    render: (n) => server.render(n),
+  };
+}

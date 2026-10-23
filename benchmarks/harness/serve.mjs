@@ -1,5 +1,6 @@
 // Serves one framework's build of a scenario: the SSR page at / and its static client files.
-// The todos page reads ?n=<todos>. The dashboard page turns the idle preload off with ?preload=off.
+// The todos page reads ?n=<todos>, and the rows page ?n=<rows>. The dashboard page turns the idle
+// preload off with ?preload=off.
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
@@ -26,7 +27,9 @@ const server = createServer(async (request, response) => {
       const html =
         scenario === 'dashboard'
           ? await app.render({ preload: url.searchParams.get('preload') !== 'off' })
-          : await app.render(Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3));
+          : scenario === 'rows'
+            ? await app.render(Number(url.searchParams.get('n') ?? 0))
+            : await app.render(Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3));
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end(html);
       return;

@@ -21,3 +21,11 @@ export async function loadDashboard() {
       (await server.default(preload ? {} : { preloader: false })).html,
   };
 }
+
+export async function loadRows() {
+  const server = await import(`${dir}rows/dist/server/entry.ssr.js`);
+  return {
+    staticDir: `${dir}rows/dist/client`,
+    render: async (n) => (await server.default({ serverData: { n } })).html,
+  };
+}
