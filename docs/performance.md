@@ -56,6 +56,60 @@ brumate can also help on its side. `isRaw` matches on a symbol key, so every pla
 ## Client loading
 
 - Done: the plugin's `merge` default is 4096 B. Each dashboard widget is now one module. Total JS after 3 widgets went from 46 files and 23.5 kB gzip to 13 files and 16.9 kB, and the idle preload from 21 files and 11.6 kB to 6 files and 8.6 kB.
-- The idle preload already loads only the entry and the handler parts, and `update` only for a handler that writes a slot that an update reads. `$client` parts wait for their trigger. The dashboard handlers all write such slots, so a split widget still preloads all of its parts.
+- The idle preload loads the entry, the handler parts and `update`, and the core reuses those loads on the first click. `$client` parts wait for their trigger.
 - Components too big to merge still take two round trips on a cold first event: the entry, then the part. Merged components take one, so the cold dashboard click is now 1 RT. Putting part URLs in the loader's registry would fix the rest, but it grows the loader with each part.
 - The loader is 2.1 kB gzip. Vite's preload helper is about 0.8 kB of that, because Vite 8 wraps every dynamic import in it. Replacing the helper for the whole app would break CSS preloading in user code.
+
+## Client updates
+
+Notes from the 2026-10-24 work on the `rows` scenario, which times the work of the browser after a click. See [`benchmarks/README.md`](../benchmarks/README.md).
+
+### Where brumate stands
+
+Against Marko 6 on an Apple M2, as the main thread time from the click to the paint:
+
+- Creating 1,000 rows takes 1.19 times as long, 10,000 rows 1.08 times, and replacing 1,000 rows 1.23 times.
+- Swap, remove and append are as fast as Marko 6 or faster. Select, update and clear are about equal.
+- The first select on a page of 1,000 rows from the server paints at the same time as Marko 6.
+
+### What the costs were
+
+The first guess was Array methods and short-lived functions. They were a small part. These were the large ones, all fixed in #73 and #74:
+
+- Each update of a new row searched the page for its element with `document.querySelector`, so creating rows took time that grew with the square of the list. 10,000 rows took 4.2 s.
+- Once one item of a list moved, every item after it moved too. A longest increasing subsequence now picks the items that stay.
+- An insert took the scopes that the client had just rendered for scopes from the server, and ran all of their updates again.
+- The loader's MutationObserver scanned each row again after the core had scanned the insert.
+- The first click imported again the modules that the loader had preloaded. In Chrome, an `import()` of a module that is loaded already still resolves in a task of its own, which can run after the next frame.
+
+### What is left on create
+
+Creating 1,000 rows costs about 5 ms more than Marko 6, of about 28 ms. Layout and paint cost the same. The rest:
+
+- Parsing the HTML string costs about 1 ms more than cloning a template would.
+- The loader's scan for event delegation costs about 1 ms.
+- Making the scopes and the HTML string of the rows costs about 1.5 ms.
+- Garbage collection, and parsing the `b-b` and `b-on` attributes of each row, cost the rest.
+
+### Templates
+
+Rendering with `<template>` and `cloneNode`, as Marko 6 and Solid do, was measured and not done:
+
+- `innerHTML` of 1,000 rows takes 3.0 ms. Cloning a row template 1,000 times and filling it takes 2.1 ms. Layout takes about 10 ms either way.
+- With references to the elements kept from the clone, new rows would need no `b-b` and no index. The estimate is 2 to 3 ms less for each 1,000 rows, which brings create to within 5 to 10% of Marko 6.
+- It needs a second output of the client in `codegen/markup.ts`, which writes one string format for the server and the client now. Components, `children`, `raw()`, spreads, SVG, `#await`, `#loading`, `#reveal`, `<title>` and scoped CSS each need their own path or a fallback to strings, and the two outputs can disagree.
+
+Only bulk creation gains, and apps rarely create 1,000 rows in one click. Do it only if an app shows bulk creation as its bottleneck.
+
+A smaller idea: make the `children` set of a scope only when it gets a child, so each row allocates less.
+
+### Measuring
+
+- The report shows the main thread time, not the time to the paint. A paint waits for the next frame, so the time to the paint moves in steps of about 16 ms.
+- The span ends at the last `Paint` event. The frames that the harness waits for commit with nothing to paint, and ending at a `Commit` added a frame to some runs.
+- Every rows app has the same small stylesheet. Without one, selecting a row paints nothing.
+- For readable profiles, build with `npx vite build rows --outDir dist/client --minify false` in `benchmarks/brumate`, and run `pnpm run build:rows` after.
+- A CDP `Profiler` sample of 20 to 50 µs shows the time of each function. A Chrome trace with the `devtools.timeline` categories splits a click into script, `ParseHTML`, `Layout` and garbage collection.
+- To find a wait, record `performance.now()` in a `pointerdown` listener on `window` in the capture phase, and in a MutationObserver on the list. A `click` listener on `document` runs after Marko's handler.
+- The functions of Playwright, such as `_matchesCSS` and `query`, show up in profiles. They are not brumate's.
+- Other work on the machine changes the timings a lot. Compare the ratios to Marko 6 within one run.
