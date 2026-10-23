@@ -1624,6 +1624,52 @@ describe('#defer', () => {
     expect(body).not.toContain('b-l="0"');
   });
 
+  it('sends a prerendered page, then the bodies of its blocks in the same response', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const shell = page.html + page.state;
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const answer = (await handleRoute(tree, request, { shell }))!;
+    expect(answer.headers.get('cache-control')).toBe('private, no-cache');
+    const html = await answer.text();
+    // The shell comes first, with the block marked, then the body of the block for this user.
+    expect(html.startsWith(shell.replace('b-defer="idle:1:0"', 'b-defer="idle:1:0" b-hole'))).toBe(
+      true,
+    );
+    expect(html).toContain('<template b-l="1"><p class="greeting">Hello Ada</p>');
+    // A request for a body, and client navigation, render the route as usual.
+    const body = (await handleRoute(
+      tree,
+      new Request('http://localhost/', { headers: { 'x-brumate-defer': '1 0:1' } }),
+      { shell },
+    ))!;
+    expect(body.headers.get('x-brumate-defer')).toBe('1');
+  });
+
+  it('swaps in the bodies that the response brings, without asking for them', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), {
+      shell: page.html + page.state,
+    }))!;
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+    const [shell, ...bodies] = (await answer.text()).split(/(?=<template b-l=)/);
+    // The loader starts before the body arrives, as on a slow response, and leaves the block alone.
+    show(shell!);
+    await startLoader();
+    await new Promise((done) => setTimeout(done, 20));
+    for (const body of bodies) {
+      appendChunk(body);
+    }
+    await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('puts the body in place of the fallback when its trigger fires', async () => {
     await withRoute('deferred', async (fetch) => {
       await resume('deferred', {});

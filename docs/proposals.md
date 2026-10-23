@@ -4,11 +4,10 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`) and forms that run once (`idempotent`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`), progressive forms (`brumate/forms`), two-way binding (`$bind`), view transitions of handlers (`transition`) caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`) and prerendered pages with their `#defer` bodies in one response (`shell`) after it, so they are no longer here.
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
@@ -188,18 +187,6 @@ Cost: about 1 week.
 ## Routing
 
 ## Server
-
-### Prerendering with holes
-
-A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
-
-- A prerendered page keeps its `#defer` blocks as holes. The build writes the HTML of the shell, and the boundary of each hole.
-- For a request, the server sends the shell from the file or a cache at once, then renders every hole in defer mode and streams each body as a ready `#loading` body, in the same response.
-- The render of the holes is the one that `#defer` requests make: the route again, with the bodies around each target, and no other body. One render can give all the holes of a page.
-- Without a server, on a static host, the shell is the whole answer, and each hole asks for its body when its trigger fires, as now.
-- It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
-
-Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
 
 ### Idempotent calls
 
@@ -510,7 +497,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Caching**: caching pages and data, the serial entry and idempotent forms are done. Next is prerendering with holes. Keys for calls that the browser sends again wait for the offline queue.
+1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.

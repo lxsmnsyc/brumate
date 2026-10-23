@@ -2826,6 +2826,14 @@ function viewComponent(view: ResolvedView, props: Record<string, unknown>): Comp
 
 export interface RouteOptions extends DocumentOptions, RequestOptions {
   /**
+   * The HTML that the build prerendered for the path, for a server that has
+   * the file. The server sends it at once, then renders the `#defer` blocks
+   * with the `load` or `idle` trigger in the same response, in place of a
+   * request for each. Requests for a `#defer` body and client navigation
+   * render the route as usual.
+   */
+  shell?: string;
+  /**
    * Keeps the pages that `cache` makes public in the store of `cached`, and
    * answers the next request for the same URL from it until `maxAge` ends or
    * `revalidate` drops a tag that the page used. Defaults to true. A CDN in
@@ -3108,6 +3116,14 @@ export async function handleRoute(
   request: Request,
   options: RouteOptions = {},
 ): Promise<Response | undefined> {
+  if (
+    options.shell !== undefined &&
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    !deferTarget(request) &&
+    !request.headers.has('x-brumate-base')
+  ) {
+    return fillHoles(tree, request, options.shell, options);
+  }
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);
   // One event for the request: middleware, endpoints, a form's server function and the page
@@ -3144,6 +3160,75 @@ async function requestKind(request: Request, match: RouteMatch | undefined): Pro
     }
   }
   return 'page';
+}
+
+/**
+ * The `#defer` blocks of a prerendered page that the server renders in the
+ * response: those with the `load` or `idle` trigger. A `visible` block is
+ * far down the page, so it waits for the browser to ask for it.
+ */
+const HOLE = /<template b-b="([^"]+)" b-defer="(?:load|idle):([^:"]+):([^"]*)"/g;
+
+/**
+ * Answers with a prerendered page, then with the body of each of its
+ * `#defer` blocks as it is ready, as a `#loading` body streams. Each body
+ * renders in a request of its own, as when the browser asks for it, so
+ * middleware runs for it. The loader leaves the marked blocks alone, and a
+ * block whose body fails keeps its fallback.
+ */
+function fillHoles(
+  tree: RouteNode,
+  request: Request,
+  shell: string,
+  options: RouteOptions,
+): Response {
+  const holes = [...shell.matchAll(HOLE)];
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+  if (holes.length === 0) {
+    return new Response(request.method === 'HEAD' ? null : shell, { headers });
+  }
+  // The bodies are for the user who asks, so the response is not cached for everyone.
+  headers.set('cache-control', 'private, no-cache');
+  headers.append('vary', 'x-brumate-defer');
+  headers.append('vary', 'x-brumate-base');
+  const marked = shell.replace(HOLE, (template) => `${template} b-hole`);
+  const bodies = holes.map(async ([, at, boundary, base]) => {
+    const asked = new Headers(request.headers);
+    asked.set('x-brumate-defer', `${boundary} ${at}`);
+    asked.set('x-brumate-base', base!);
+    try {
+      const answer = await handleRoute(tree, new Request(request.url, { headers: asked }), {
+        ...options,
+        shell: undefined,
+        event: undefined,
+      });
+      return answer?.ok && answer.headers.get('x-brumate-defer') === boundary
+        ? await answer.text()
+        : '';
+    } catch (error) {
+      console.error(error);
+      return '';
+    }
+  });
+  const body = new ReadableStream<string>({
+    async start(controller) {
+      controller.enqueue(marked);
+      // Each body as it is ready, so a slow one does not hold back the others.
+      const pending = new Map(
+        bodies.map((body, index) => [index, body.then((html) => ({ html, index }))]),
+      );
+      while (pending.size > 0) {
+        // oxlint-disable-next-line no-await-in-loop -- The bodies stream in the order they are ready.
+        const { html, index } = await Promise.race(pending.values());
+        pending.delete(index);
+        if (html) {
+          controller.enqueue(html);
+        }
+      }
+      controller.close();
+    },
+  }).pipeThrough(new TextEncoderStream());
+  return new Response(request.method === 'HEAD' ? null : body, { headers });
 }
 
 /** A response with more headers, such as cookies that middleware set. */

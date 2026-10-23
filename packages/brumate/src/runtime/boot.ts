@@ -358,7 +358,8 @@ export function boot(
         );
       }
     }
-    for (const template of select(root, 'template[b-client],template[b-defer]')) {
+    // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
+    for (const template of select(root, 'template[b-client],template[b-defer]:not([b-hole])')) {
       const client = template.getAttribute('b-client');
       const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
         client ? '=' : ':',

@@ -226,16 +226,20 @@ Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerend
 
 ### `#defer` on prerendered pages
 
-The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. The browser asks for it at the URL of the page, with the header `x-brumate-defer`. A server that serves prerendered files sends those requests to the routes instead:
+The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. A server that has the prerendered file passes it to the routes as `shell`:
 
 ```ts
-if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
-  // Serve the prerendered file, if there is one.
-}
-// Render the route.
+const html = await readFile(path.join('dist/client', url.pathname, 'index.html'), 'utf8').catch(
+  () => undefined,
+);
+const answer = await handle(request, html === undefined ? { scripts } : { shell: html });
 ```
 
-A static host without a server answers with the file, and the block keeps its fallback.
+- The routes send the shell at once, then the body of each `#defer` block with the `load` or `idle` trigger, in the same response, as a `#loading` body streams. The browser does not ask for them.
+- Each body renders in a request of its own, so middleware runs for it, and it can read the user. The response is `private, no-cache`.
+- A `visible` block, and a block whose body fails, keep their fallback until the browser asks, as on a page without a shell.
+- The request for a `#defer` body, with the header `x-brumate-defer`, and client navigation render the route as usual, whatever `shell` is.
+- A static host without a server answers with the file. The browser asks for each body when its trigger fires, and without a server the block keeps its fallback.
 
 ### Content Security Policy for prerendered pages
 
