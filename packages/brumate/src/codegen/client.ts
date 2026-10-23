@@ -356,8 +356,10 @@ class ClientGenerator {
     const result = new Set<Declaration>();
     for (const site of sites) {
       // Shared code of a module function imports what it needs itself. The part only builds its
-      // cells, which read values and functions of the component.
-      const shared = this.shared?.find(site.node) !== undefined;
+      // cells, which read values and functions of the component. Code whose names have no value
+      // in the browser, such as a constant of the module script, is copied with its imports.
+      const shared =
+        this.rewriter.sharedCall(site, '$$s', instanceScope(this.plan, site.scope)) !== undefined;
       for (const read of site.reads) {
         if (!shared || read.declaration.kind !== 'import') {
           result.add(read.declaration);

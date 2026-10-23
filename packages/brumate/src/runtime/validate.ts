@@ -2,8 +2,7 @@
 // a schema of Zod, Valibot or ArkType. The helpers run in the body of a
 // server function, so they never reach the browser.
 
-import { parsePath } from './forms.ts';
-import type { PathSegment } from './forms.ts';
+import { formValues } from './forms.ts';
 import { ServerError } from './request.ts';
 import type { StandardSchemaV1 } from './standard-schema.ts';
 
@@ -112,82 +111,6 @@ export async function parse<S extends StandardSchemaV1>(
     throw new ValidationError(result.issues);
   }
   return result.value;
-}
-
-/**
- * Turns the entries of a form into a plain object:
- *
- * - A name that appears once holds its value.
- * - A name that appears more than once holds an array of its values.
- * - A name that ends with `[]` always holds an array, under the name without `[]`.
- * - Dots nest objects: `address.city` is `{ address: { city } }`.
- * - An index in brackets makes a list: `items[0].name` is `{ items: [{ name }] }`.
- * - Values stay strings and files.
- *
- * A name with an empty part, a part such as `__proto__`, an index above
- * 999, or one that needs an object where another field holds a value, is
- * an issue, and the schema does not run.
- */
-export function formValues(
-  form: FormData,
-  skip?: (name: string) => boolean,
-): ParseResult<Record<string, unknown>> {
-  const root: Record<string, unknown> = {};
-  // The objects and lists of items that this function made, so a field value is never taken for one.
-  const containers = new Set<unknown>([root]);
-  // The arrays of the values of a repeated name.
-  const repeated = new Set<unknown>();
-  const issues: ValidationIssue[] = [];
-  for (const [name, value] of form) {
-    if (skip?.(name)) {
-      continue;
-    }
-    const list = name.endsWith('[]');
-    const parts = parsePath(list ? name.slice(0, -2) : name);
-    if (!parts) {
-      issues.push({ message: 'The form has a field name that is not allowed' });
-      continue;
-    }
-    let target = root as Record<PathSegment, unknown>;
-    let conflict = false;
-    for (const [index, part] of parts.slice(0, -1).entries()) {
-      const next = Object.hasOwn(target, part) ? target[part] : undefined;
-      // A list takes only indexes, and an object only keys.
-      if (Array.isArray(target) !== (typeof part === 'number')) {
-        conflict = true;
-        break;
-      }
-      if (next === undefined) {
-        const child = typeof parts[index + 1] === 'number' ? [] : {};
-        containers.add(child);
-        target[part] = child;
-        target = child as Record<PathSegment, unknown>;
-      } else if (containers.has(next)) {
-        target = next as Record<PathSegment, unknown>;
-      } else {
-        conflict = true;
-        break;
-      }
-    }
-    const last = parts.at(-1)!;
-    const current = Object.hasOwn(target, last) ? target[last] : undefined;
-    if (
-      conflict ||
-      containers.has(current) ||
-      Array.isArray(target) !== (typeof last === 'number')
-    ) {
-      issues.push({ message: `Field "${name}" conflicts with another field`, path: parts });
-    } else if (repeated.has(current)) {
-      (current as unknown[]).push(value);
-    } else if (current !== undefined || list) {
-      const values = current === undefined ? [value] : [current, value];
-      repeated.add(values);
-      target[last] = values;
-    } else {
-      target[last] = value;
-    }
-  }
-  return issues.length > 0 ? { issues } : { value: root };
 }
 
 /**

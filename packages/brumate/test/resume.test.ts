@@ -1953,23 +1953,23 @@ function pressSubmit(form: HTMLFormElement, button: Element): void {
   form.dispatchEvent(event);
 }
 
-describe('createForm', () => {
-  /** Renders the order form, resumes it, and answers its posts with its server functions. */
-  async function showOrder(): Promise<HTMLFormElement> {
-    vi.resetModules();
-    const server = await import(file('orderForm.brm.ts'));
-    const runtime = await import('../src/runtime/server.ts');
-    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
-      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
-    );
-    const { html, state } = await runtime.render(server.default, {});
-    show(html + state);
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: (id) => import(modules.get(id)!) });
-    return document.querySelector<HTMLFormElement>('.order')!;
-  }
+/** Renders the order form, resumes it, and answers its posts with its server functions. */
+async function showOrder(): Promise<HTMLFormElement> {
+  vi.resetModules();
+  const server = await import(file('orderForm.brm.ts'));
+  const runtime = await import('../src/runtime/server.ts');
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+  );
+  const { html, state } = await runtime.render(server.default, {});
+  show(html + state);
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  return document.querySelector<HTMLFormElement>('.order')!;
+}
 
+describe('createForm', () => {
   it('renders the fields with names, IDs and default values', async () => {
     const form = await showOrder();
     const email = form.querySelector<HTMLInputElement>('.email')!;
@@ -2007,18 +2007,50 @@ describe('createForm', () => {
     form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
     pressSubmit(form, form.querySelector('.insert')!);
     await waitFor(() => expect(form.querySelectorAll('.item')).toHaveLength(2));
-    const items = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
-    expect(items().map((item) => [item.name, item.value])).toEqual([
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
       ['items[0].name', 'Tea'],
       ['items[1].name', ''],
     ]);
     // An intent shows no errors, for fields that the user has not filled yet.
     expect(document.querySelector('.item-error')).toBeNull();
-    items()[1]!.value = 'Milk';
+    itemInputs()[1]!.value = 'Milk';
     pressSubmit(form, form.querySelectorAll('.remove')[0]!);
-    await waitFor(() => expect(items().map((item) => item.value)).toEqual(['Milk']));
-    expect(items()[0]!.name).toBe('items[0].name');
+    await waitFor(() => expect(itemInputs().map((item) => item.value)).toEqual(['Milk']));
+    expect(itemInputs()[0]!.name).toBe('items[0].name');
     expect(form.querySelector<HTMLInputElement>('.email')!.value).toBe('ada@example.com');
+  });
+
+  it('validates in the browser when the user leaves a field, then as the user types', async () => {
+    const form = await showOrder();
+    expect(form.getAttribute('b-on')).toMatch(/focusout=\S+ input=\S+/);
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    // Typing in a field that the user has not left shows nothing yet.
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    email.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    // The item is not touched, so its error does not show.
+    expect(document.querySelector('.item-error')).toBeNull();
+    email.value = 'ada@example.com';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(document.querySelector('.email-error')).toBeNull());
+    expect(email.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('validates every field as the user types after a submit', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    const item = form.querySelector<HTMLInputElement>('.item')!;
+    item.value = '';
+    item.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.item-error')).toBe('Name the item'));
+    expect(text('.email-error')).toBe('Enter an email address');
   });
 
   it('shows the errors of the form, and resets the form after a save', async () => {

@@ -265,10 +265,23 @@ The buttons of a list are submit buttons with the name `__intent`. The server ap
 
 Enter in a field presses the first submit button of the form. `defaultSubmit` is a hidden submit button. Put it first, so Enter saves the form instead of pressing "Remove".
 
+### Validating in the browser
+
+`attrs` holds an `onFocusout` and an `onInput` handler. They validate the fields with the schema in the browser, so errors show before a submit:
+
+- A field shows its errors once the user leaves it. After that, they change as the user types.
+- After a submit, every field shows its errors as the user types.
+- The errors of the browser replace those of the reply, until the next reply.
+- The errors of the whole form come from the browser only after a submit. Before, they are those of the reply, such as a check against the database.
+- The schema loads with the first focus out or input, not with the page.
+
+The schema runs in the browser, so it must not import server code. A check that needs the server, such as a database, goes in the server function, with `reply({ formErrors })` or `reply({ fieldErrors })`.
+
 ### With and without scripts
 
 - Without scripts, the form posts, and the page renders again with the reply. The fields show what was posted, with their errors.
 - With scripts, the reply arrives without loading the page. The items of a list that a button changed render again.
+- With the code of the form loaded, the fields validate as the user leaves them and types.
 - A reply with `reset: true` sets the fields back to their default values.
 
 ## Redirects after a post

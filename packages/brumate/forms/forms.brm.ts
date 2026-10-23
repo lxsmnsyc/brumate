@@ -2,9 +2,9 @@
 // function, so the compiler copies it into the component that calls it, and
 // its state resumes with the page.
 
-import { $action, $effect, $id, $memo } from 'brumate/signals';
-import { DEFAULT_SUBMIT, formFields } from 'brumate/forms/core';
-import type { SubmissionResult } from 'brumate/forms/core';
+import { $action, $effect, $handler, $id, $memo, $signal } from 'brumate/signals';
+import { DEFAULT_SUBMIT, checkField, formErrorsOf, formFields } from 'brumate/forms/core';
+import type { CheckedErrors, SubmissionResult } from 'brumate/forms/core';
 import type { StandardSchemaV1 } from 'brumate/server';
 
 export type {
@@ -58,13 +58,33 @@ export interface FormOptions<T> {
  */
 export function createForm<S extends StandardSchemaV1, D = StandardSchemaV1.InferInput<S>>(
   action: (form: FormData) => Promise<SubmissionResult>,
-  _schema: S,
+  schema: S,
   options: FormOptions<D> = {},
 ) {
   const result = $action(action);
   const id = $id();
-  const fields = $memo(formFields(id, options.defaultValue as FormValue<S, D> | undefined, result));
-  const errors = $memo(result && result.formErrors.length > 0 ? result.formErrors : undefined);
+  // The errors that the browser found since the last reply.
+  let checked = $signal<CheckedErrors | undefined>(undefined);
+  const fields = $memo(
+    formFields(id, options.defaultValue as FormValue<S, D> | undefined, result, checked),
+  );
+  const errors = $memo(formErrorsOf(result, checked));
+
+  // Validates with the schema when the user leaves a field, and as the user types in a field
+  // that shows its errors. The code of the schema loads with the first of these events.
+  async function check(event: Event) {
+    const next = await checkField(
+      schema,
+      document.getElementById(id) as HTMLFormElement | null,
+      (event.target as HTMLInputElement).name,
+      event.type === 'focusout',
+      checked,
+      result,
+    );
+    if (next) {
+      checked = next;
+    }
+  }
 
   // A reply that resets the form sets the fields back to their default values,
   // which the browser keeps in their attributes.
@@ -74,5 +94,11 @@ export function createForm<S extends StandardSchemaV1, D = StandardSchemaV1.Infe
     }
   });
 
-  return { result, fields, errors, attrs: { id }, defaultSubmit: DEFAULT_SUBMIT };
+  return {
+    result,
+    fields,
+    errors,
+    attrs: { id, onFocusout: $handler(check), onInput: $handler(check) },
+    defaultSubmit: DEFAULT_SUBMIT,
+  };
 }

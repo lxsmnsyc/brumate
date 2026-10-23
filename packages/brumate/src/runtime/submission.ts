@@ -1,10 +1,19 @@
 // The server side of progressive forms: reads a submission, applies its
 // intent, validates it, and builds the reply that `createForm` shows.
 
-import { INTENT, applyIntent, formatPath, getAt, parseIntent, parsePath } from './forms.ts';
+import {
+  INTENT,
+  applyIntent,
+  formValues,
+  formatPath,
+  getAt,
+  groupIssues,
+  parseIntent,
+  parsePath,
+} from './forms.ts';
 import type { Intent, PathSegment, SubmissionResult } from './forms.ts';
 import type { StandardSchemaV1 } from './standard-schema.ts';
-import { formValues, safeParse } from './validate.ts';
+import { safeParse } from './validate.ts';
 import type { ValidationIssue } from './validate.ts';
 
 /** What a server function adds to the reply of a submission. */
@@ -84,25 +93,6 @@ function echo(value: unknown, hidden: Set<string>, path: PathSegment[] = []): un
     return copy;
   }
   return value;
-}
-
-/** The errors of issues by field name, such as `items[0].name`, and those of the whole form. */
-function groupIssues(issues: readonly ValidationIssue[]): {
-  errors: Record<string, string[]>;
-  formErrors: string[];
-} {
-  const errors: Record<string, string[]> = {};
-  const formErrors: string[] = [];
-  for (const issue of issues) {
-    const path = issue.path ?? [];
-    const name = path.length > 0 && typeof path[0] === 'string' ? formatPath(path) : '';
-    if (name === '' || !parsePath(name)) {
-      formErrors.push(issue.message);
-    } else {
-      (Object.hasOwn(errors, name) ? errors[name]! : (errors[name] = [])).push(issue.message);
-    }
-  }
-  return { errors, formErrors };
 }
 
 /** A new ID for a reply, which the keys of the items of a changed list start with. */

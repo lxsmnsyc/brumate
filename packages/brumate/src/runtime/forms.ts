@@ -86,6 +86,155 @@ export function setAt(value: unknown, path: readonly PathSegment[], next: unknow
   return copy;
 }
 
+/** A problem that a schema found in the values of a form. */
+export interface FormIssue {
+  message: string;
+  path?: PathSegment[];
+}
+
+/** The errors of a form: those of each field by field name, and those of the whole form. */
+export interface FormErrors {
+  errors: Record<string, string[]>;
+  formErrors: string[];
+}
+
+/**
+ * Turns the entries of a form into a plain object:
+ *
+ * - A name that appears once holds its value.
+ * - A name that appears more than once holds an array of its values.
+ * - A name that ends with `[]` always holds an array, under the name without `[]`.
+ * - Dots nest objects: `address.city` is `{ address: { city } }`.
+ * - An index in brackets makes a list: `items[0].name` is `{ items: [{ name }] }`.
+ * - Values stay strings and files.
+ *
+ * A name with an empty part, a part such as `__proto__`, an index above
+ * 999, or one that needs an object where another field holds a value, is
+ * an issue, and the schema does not run.
+ */
+export function formValues(
+  form: FormData,
+  skip?: (name: string) => boolean,
+):
+  | { value: Record<string, unknown>; issues?: undefined }
+  | { value?: undefined; issues: FormIssue[] } {
+  const root: Record<string, unknown> = {};
+  // The objects and lists of items that this function made, so a field value is never taken for one.
+  const containers = new Set<unknown>([root]);
+  // The arrays of the values of a repeated name.
+  const repeated = new Set<unknown>();
+  const issues: FormIssue[] = [];
+  for (const [name, value] of form) {
+    if (skip?.(name)) {
+      continue;
+    }
+    const list = name.endsWith('[]');
+    const parts = parsePath(list ? name.slice(0, -2) : name);
+    if (!parts) {
+      issues.push({ message: 'The form has a field name that is not allowed' });
+      continue;
+    }
+    let target = root as Record<PathSegment, unknown>;
+    let conflict = false;
+    for (const [index, part] of parts.slice(0, -1).entries()) {
+      const next = Object.hasOwn(target, part) ? target[part] : undefined;
+      // A list takes only indexes, and an object only keys.
+      if (Array.isArray(target) !== (typeof part === 'number')) {
+        conflict = true;
+        break;
+      }
+      if (next === undefined) {
+        const child = typeof parts[index + 1] === 'number' ? [] : {};
+        containers.add(child);
+        target[part] = child;
+        target = child as Record<PathSegment, unknown>;
+      } else if (containers.has(next)) {
+        target = next as Record<PathSegment, unknown>;
+      } else {
+        conflict = true;
+        break;
+      }
+    }
+    const last = parts.at(-1)!;
+    const current = Object.hasOwn(target, last) ? target[last] : undefined;
+    if (
+      conflict ||
+      containers.has(current) ||
+      Array.isArray(target) !== (typeof last === 'number')
+    ) {
+      issues.push({ message: `Field "${name}" conflicts with another field`, path: parts });
+    } else if (repeated.has(current)) {
+      (current as unknown[]).push(value);
+    } else if (current !== undefined || list) {
+      const values = current === undefined ? [value] : [current, value];
+      repeated.add(values);
+      target[last] = values;
+    } else {
+      target[last] = value;
+    }
+  }
+  return issues.length > 0 ? { issues } : { value: root };
+}
+
+/** The errors of issues by field name, such as `items[0].name`, and those of the whole form. */
+export function groupIssues(issues: readonly FormIssue[]): FormErrors {
+  const errors: Record<string, string[]> = {};
+  const formErrors: string[] = [];
+  for (const issue of issues) {
+    const path = issue.path ?? [];
+    const name = path.length > 0 && typeof path[0] === 'string' ? formatPath(path) : '';
+    if (name === '' || !parsePath(name)) {
+      formErrors.push(issue.message);
+    } else {
+      (Object.hasOwn(errors, name) ? errors[name]! : (errors[name] = [])).push(issue.message);
+    }
+  }
+  return { errors, formErrors };
+}
+
+/** The schema of a form, as `createForm` reads it: a Standard Schema of version 1. */
+interface FormSchema {
+  readonly '~standard': {
+    readonly validate: (value: unknown) => unknown;
+  };
+}
+
+/**
+ * Validates the fields of a form in the browser, with the schema that the
+ * server uses, and groups the errors as `reply` does.
+ */
+export async function validateForm(schema: FormSchema, form: FormData): Promise<FormErrors> {
+  const values = formValues(form, (name) => name === INTENT);
+  if (values.issues) {
+    return groupIssues(values.issues);
+  }
+  const result = (await schema['~standard'].validate(values.value)) as {
+    issues?: readonly { message: string; path?: readonly (PathSegment | { key: PropertyKey })[] }[];
+  };
+  return groupIssues(
+    (result.issues ?? []).map((issue) => ({
+      message: String(issue.message),
+      path: issue.path?.map((segment) => {
+        const key = typeof segment === 'object' ? segment.key : segment;
+        return typeof key === 'number' ? key : String(key);
+      }),
+    })),
+  );
+}
+
+/**
+ * The errors that the browser found since the last reply: the fields that
+ * the user left or changed, and the errors of the form at that time.
+ */
+export interface CheckedErrors extends FormErrors {
+  /** The ID of the reply that the check came after, or undefined before the first submit. */
+  reply: string | undefined;
+  /** The names of the fields that the user left, whose errors show. */
+  touched: string[];
+  /** True when the errors of every field show, as after a submit. */
+  all: boolean;
+}
+
 /**
  * A change that a submit button asks for, instead of a submit. The server
  * applies it to the posted values, and answers with them.
@@ -306,17 +455,26 @@ export function formFields<T>(
   id: string,
   defaultValue: T | undefined,
   result: SubmissionResult | undefined,
+  checked?: CheckedErrors,
 ): Fields<T> {
   const value = result && !result.reset ? result.value : undefined;
   const submitted = result !== undefined;
-  const errors = result && !result.reset ? result.errors : {};
+  const replied = result && !result.reset ? result.errors : {};
   const keys = (result && !result.reset && result.keys) || {};
+  // The errors that the browser found replace those of the reply, for the fields that it checked.
+  const current = checkedSince(checked, result);
+  const shows = (name: string): boolean =>
+    current !== undefined && (current.all || current.touched.includes(name));
+  const errorsOf = (name: string): string[] | undefined => {
+    const source = shows(name) ? current!.errors : replied;
+    return Object.hasOwn(source, name) ? source[name] : undefined;
+  };
 
   const state = (path: PathSegment[], shown: unknown): FieldState => {
     const name = formatPath(path);
     const fieldId = `${id}-${name}`;
     const errorId = `${fieldId}-error`;
-    const messages = Object.hasOwn(errors, name) ? errors[name] : undefined;
+    const messages = errorsOf(name);
     const attrs: FieldAttributes = { name, id: fieldId };
     if (messages) {
       attrs['aria-invalid'] = 'true';
@@ -391,6 +549,56 @@ export function formFields<T>(
   };
 
   return field([], defaultValue, value) as Fields<T>;
+}
+
+/** The check of the browser when it came after the last reply, or undefined when a reply came after it. */
+export function checkedSince(
+  checked: CheckedErrors | undefined,
+  result: SubmissionResult | undefined,
+): CheckedErrors | undefined {
+  return checked && checked.reply === result?.id ? checked : undefined;
+}
+
+/**
+ * The errors of the whole form: those that the browser found, when it
+ * checked every field since the last reply, or else those of the reply.
+ */
+export function formErrorsOf(
+  result: SubmissionResult | undefined,
+  checked: CheckedErrors | undefined,
+): string[] | undefined {
+  const current = checkedSince(checked, result);
+  const errors = current?.all ? current.formErrors : result?.formErrors;
+  return errors && errors.length > 0 ? errors : undefined;
+}
+
+/**
+ * The next check of the browser, after the user leaves or changes a field.
+ * A field counts once the user leaves it. After a submit, every field counts.
+ * Undefined when the event changes nothing, such as typing in a field that
+ * the user has not left yet.
+ */
+export async function checkField(
+  schema: FormSchema,
+  form: HTMLFormElement | null,
+  name: string,
+  left: boolean,
+  checked: CheckedErrors | undefined,
+  result: SubmissionResult | undefined,
+): Promise<CheckedErrors | undefined> {
+  const current = checkedSince(checked, result);
+  const all = result !== undefined && !result.reset;
+  const touched = current?.touched ?? [];
+  if (!form || !name || name === INTENT || (!left && !all && !touched.includes(name))) {
+    return undefined;
+  }
+  const report = await validateForm(schema, new FormData(form));
+  return {
+    ...report,
+    reply: result?.id,
+    touched: touched.includes(name) ? touched : [...touched, name],
+    all,
+  };
 }
 
 /**

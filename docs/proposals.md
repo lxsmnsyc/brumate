@@ -602,7 +602,7 @@ A form library for brumate, `brumate/forms`. Its server side and wire format fol
 
 brumate forms already post without scripts, with `action=fn`, `parseForm` and `$action`. This adds lists, echoed values, form-level errors, accessibility attributes and validation in the browser on top.
 
-Step 1 is done: `parseSubmission`, bracket indexes in `parseForm`, `reply`, and `createForm` with fields and intent buttons. See [Forms with createForm](../website/docs/forms.md#forms-with-createform). It differs from the design below in these ways:
+Steps 1 and 2 are done: `parseSubmission`, bracket indexes in `parseForm`, `reply`, `createForm` with fields and intent buttons, and validation in the browser. See [Forms with createForm](../website/docs/forms.md#forms-with-createform). It differs from the design below in these ways:
 
 - `parseSubmission(schema, form, options)` comes from `brumate/server`, with the arguments in the order of `parseForm`. Every import of a `.brm.ts` module is a module function, which a component calls only at the top level of a script, so the server code cannot come from `brumate/forms`.
 - The fields of an object are under `fields`, as in `fields.address.fields.city`, so a field named `name` or `attrs` does not clash with the state of its object.
@@ -742,7 +742,7 @@ What a form without scripts has to handle:
 #### Plan
 
 1. Done. The wire format and the server: `parseSubmission`, bracket paths in `parseForm`, `reply`, and the field and list helpers with plain attributes. It works without scripts and through `$action`.
-2. Validation in the browser through the `onFocusout` and `onInput` of the form, loaded when first used. The handlers in `attrs` use [`$handler`](../website/docs/components.md#handlers-that-a-script-makes). About 3 to 4 days.
+2. Done. Validation in the browser through the `onFocusout` and `onInput` of the form, loaded when first used. The handlers in `attrs` use [`$handler`](../website/docs/components.md#handlers-that-a-script-makes).
 3. Intents in the browser, through the handlers of intent buttons, which `$handler` gives to the buttons of new items too. About 2 to 3 days.
 
 It lives at `brumate/forms` while the page format still changes, and can move to its own package later.
@@ -760,7 +760,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Progressive forms, steps 2 and 3.** Step 1 and handlers from scripts, which steps 2 and 3 need, are done.
+1. **Progressive forms, step 3.** Steps 1 and 2, and handlers from scripts, are done.
 2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
 3. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
 4. **The UI components**, starting with the `Select` spike.
