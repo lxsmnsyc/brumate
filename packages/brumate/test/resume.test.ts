@@ -2098,6 +2098,32 @@ describe('createForm', () => {
   });
 });
 
+describe('bindings', () => {
+  it('writes the parent signal from a bound prop, and the copy of an unbound one', async () => {
+    await resume('bindParent', {});
+    const state = (): string[] => [text('.parent'), text('.child.bound'), text('.child.own')];
+    expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']);
+    // The bound child writes the parent's signal, which the other child gets as a prop.
+    click(document.querySelector('.child.bound')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: open']));
+    // The other child writes its own copy.
+    click(document.querySelector('.child.own')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: closed']));
+    // A new value from the parent replaces the copy.
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']));
+    // A child that binds the prop that its parent bound writes through both.
+    click(document.querySelector('.child.deep')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: open']));
+    expect(text('.child.deep')).toBe('deep: open');
+    // A child that the browser renders binds too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.child.later')).toBe('later: open'));
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']));
+  });
+});
+
 describe('refresh', () => {
   it('loads again the memos that call a server function that another one refreshed', async () => {
     vi.resetModules();

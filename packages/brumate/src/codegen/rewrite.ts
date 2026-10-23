@@ -45,6 +45,8 @@ export class Rewriter {
 
   /** The sites of `$handler` calls, by call. */
   private readonly handlers = new Map<oxc.Node, Site>();
+  /** The declarations of the names of `$bind` calls, by call. */
+  private readonly bindings = new Map<oxc.Node, Declaration>();
 
   constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[], shared?: SharedContext) {
     this.file = file;
@@ -55,6 +57,9 @@ export class Rewriter {
       if (site.handler) {
         this.handlers.set(site.handler, site);
       }
+    }
+    for (const { call, declaration } of plan.graph.model.bindings) {
+      this.bindings.set(call, declaration);
     }
   }
 
@@ -348,6 +353,17 @@ export class Rewriter {
           // `$handler(fn, ...args)` in code that the browser runs, such as a function that renders
           // the items of a list: a handler with its reference, which a spread passes on. The
           // function is the code of its own site.
+          // `$bind(name)` passes a child the value of the name with its slot, which the child's
+          // writes go to. The runtime's prop update takes the value.
+          const bound = this.bindings.get(node);
+          const name = node.arguments[0];
+          if (bound && name) {
+            const path = scopePath(this.plan, scopeVar, base, bound.scope);
+            patch.replace(node.start, name.start, '$$b.binding((');
+            patch.replace(name.end, node.end, `), ${path}, ${slotIndex(this.plan, bound)})`);
+            visit(name);
+            return;
+          }
           const handler = this.handlers.get(node);
           if (handler) {
             const [fn, ...args] = node.arguments;

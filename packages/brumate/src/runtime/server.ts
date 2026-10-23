@@ -18,6 +18,7 @@ import type { Raw } from './html.ts';
 import { callPlugins, disabledFeatures, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
+  Binding,
   CHILDREN,
   ElementReference,
   FunctionReference,
@@ -27,7 +28,9 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  SlotReference,
   isAsyncIterable,
+  isBinding,
   parseId,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
@@ -116,6 +119,12 @@ export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
+export { unbind } from './shared.ts';
+
+/** What `$bind(name)` passes a child: the value of the name, and the scope and slot it writes. */
+export function binding<T>(value: T, scope: ScopeId, slot: number): Binding<T> {
+  return new Binding(value, new SlotReference(scope, slot));
+}
 export type { PageState, ScopeId, ScopeState };
 
 /** The scope and the slot that hold the list of a list item. */
@@ -618,6 +627,20 @@ export class Context {
     entry.record.s = values;
     if (names) {
       entry.names = names;
+    }
+  }
+
+  /**
+   * Records the props that a parent bound with `$bind`, among the props that
+   * the component writes: `slots` has the slot of each, by its name. Its
+   * writes in the browser go to the parent's slots.
+   */
+  bindings(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
+    for (const [name, slot] of Object.entries(slots)) {
+      const value = props[name];
+      if (isBinding(value)) {
+        (this.entry(scope).record.b ??= {})[slot] = value.ref;
+      }
     }
   }
 

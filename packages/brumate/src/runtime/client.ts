@@ -11,6 +11,7 @@ import {
 } from './html.ts';
 import type { Raw } from './html.ts';
 import {
+  Binding,
   CHILDREN,
   ElementReference,
   FunctionReference,
@@ -20,7 +21,9 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  SlotReference,
   isAsyncIterable,
+  isBinding,
   parseId,
   stateValues,
 } from './shared.ts';
@@ -42,7 +45,7 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference } from './shared.ts';
+export { ElementReference, FunctionReference, unbind } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -101,6 +104,8 @@ export interface Scope {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
+  b?: Record<number, SlotReference>;
   children: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
@@ -387,6 +392,7 @@ function addScopes(state: PageState, root: string): Scope[] {
       c: record.c,
       v: record.v,
       x: record.x,
+      b: record.b,
       children: new Set(),
       r: root,
     };
@@ -976,8 +982,38 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
       devtools()?.write?.(scope, slot, value);
     }
     trigger(scope, slot);
+    // A prop that a parent bound with `$bind` writes the parent's slot too, through any number
+    // of levels. The parent's update of the prop then finds the value already there.
+    const bound = scope.b?.[slot];
+    const target = bound && scopes.get(bound.scope);
+    if (target) {
+      set(target, bound.slot, value);
+    }
   }
   return value;
+}
+
+/** What `$bind(name)` passes a child, in markup that the browser renders. */
+export function binding<T>(value: T, scope: Scope | ScopeId, slot: number): Binding<T> {
+  return new Binding(value, new SlotReference(typeof scope === 'object' ? scope.id : scope, slot));
+}
+
+/**
+ * Records the props that a parent bound with `$bind`, among the props that a
+ * component the browser renders writes: `slots` has the slot of each, by its name.
+ */
+export function bindings(
+  scope: Scope | ScopeId,
+  props: Record<string, unknown>,
+  slots: Record<string, number>,
+): void {
+  const target = typeof scope === 'object' ? scope : scopes.get(scope);
+  for (const [name, slot] of Object.entries(slots)) {
+    const value = props[name];
+    if (target && isBinding(value)) {
+      (target.b ??= {})[slot] = value.ref;
+    }
+  }
 }
 
 /**
@@ -2324,6 +2360,10 @@ function watchTitles(root: ParentNode): void {
 
 /** Writes a prop of a child component. */
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
+  // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
+  if (isBinding(value)) {
+    value = value.value;
+  }
   const id = scope.c?.[anchor];
   const child = id === undefined ? undefined : scopes.get(id);
   if (!child?.m) {

@@ -29,7 +29,8 @@ import { isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
-import { ElementReference, stateValues } from './shared.ts';
+import { ElementReference, isBinding, isSlotReference, stateValues } from './shared.ts';
+import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
 type ReferenceNode = { a: SerovalNode; b: SerovalNode; c?: SerovalNode; d?: SerovalNode };
@@ -75,6 +76,32 @@ const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
   serialize: (node, ctx) => `$b.e(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
   deserialize: (node, ctx) =>
     stateValues.e(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
+});
+
+const SlotPlugin = createPlugin<SlotReference, ReferenceNode>({
+  tag: 'brumate/slot',
+  skipPlainObjects: true,
+  test: (value) => isSlotReference(value),
+  parse: parsers((value) => ({ a: value.scope, b: value.slot })),
+  serialize: (node, ctx) => `$b.l(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  deserialize: (node, ctx) =>
+    stateValues.l(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
+});
+
+/** A binding that a rest prop holds: its value, and the scope and the slot it writes. */
+const BindingPlugin = createPlugin<Binding, { a: SerovalNode; b: SerovalNode; c: SerovalNode }>({
+  tag: 'brumate/binding',
+  skipPlainObjects: true,
+  test: (value) => isBinding(value),
+  parse: parsers((value) => ({ a: value.value, b: value.ref.scope, c: value.ref.slot })),
+  serialize: (node, ctx) =>
+    `$b.b(${ctx.serialize(node.a)},${ctx.serialize(node.b)},${ctx.serialize(node.c)})`,
+  deserialize: (node, ctx) =>
+    stateValues.b(
+      ctx.deserialize(node.a),
+      ctx.deserialize<number>(node.b),
+      ctx.deserialize<number>(node.c),
+    ),
 });
 
 const FunctionPlugin = createPlugin<object, ReferenceNode>({
@@ -199,6 +226,8 @@ const BodyRequestPlugin: typeof RequestPlugin = {
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
 const valuePlugins: Plugin<any, any>[] = [
   ElementPlugin,
+  SlotPlugin,
+  BindingPlugin,
   FunctionPlugin,
   RawPlugin,
   ComponentPlugin,

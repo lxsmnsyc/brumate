@@ -134,6 +134,15 @@ export function $action<F extends (...args: never[]) => unknown>(
 }
 
 /**
+ * Passes a child a signal, or a prop that the component writes, so a write
+ * of the prop in the child writes it. The child destructures the prop with
+ * `let`. Pass it as the value of a prop: `<Dialog open=$bind(open) />`.
+ */
+export function $bind<T>(_signal: T): T {
+  return compileTimeOnly('$bind');
+}
+
+/**
  * Marks a function that a script makes as an event handler, so a spread can
  * pass it on, as it passes on a handler that a caller writes in markup.
  * `args` are JSON values that go with the handler, and it runs as

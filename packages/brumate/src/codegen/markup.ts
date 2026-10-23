@@ -120,6 +120,7 @@ const CLIENT_HELPERS: Record<string, string> = {
   portal: 'addPortal',
   style: 'addStyle',
   fn: 'handlerProp',
+  bindings: 'bindings',
   after: 'afterInsert',
   title: 'title',
 };
@@ -233,6 +234,7 @@ export class Emitter {
       this.sitesByNode.set(site.node, site);
     }
     this.addHandlerEdits();
+    this.addBindEdits();
     for (const declaration of plan.graph.model.declarations) {
       for (const ref of declaration.refs) {
         this.refTargets.set(ref.attribute, declaration);
@@ -275,6 +277,31 @@ export class Emitter {
         this.patch.replace(fn.end, args[0]!.start, `, ${ref}, ${scope}, [`);
         this.patch.replace(args.at(-1)!.end, call.end, '])');
       }
+    }
+  }
+
+  /**
+   * `$bind(name)` passes the child the value of the name with its slot,
+   * `binding(name, scope, slot)`, so the child's writes reach it.
+   */
+  private addBindEdits(): void {
+    let edited = handlerEdits.get(this.patch);
+    if (!edited) {
+      handlerEdits.set(this.patch, (edited = new Set()));
+    }
+    for (const { call, declaration } of this.plan.graph.model.bindings) {
+      const target = call.arguments[0];
+      if (!target || edited.has(call)) {
+        continue;
+      }
+      edited.add(call);
+      const scope = this.scopeVar(instanceScope(this.plan, declaration.scope));
+      this.patch.replace(call.start, target.start, '$$b.binding((');
+      this.patch.replace(
+        target.end,
+        call.end,
+        `), ${scope}, ${slotIndex(this.plan, declaration)})`,
+      );
     }
   }
 
@@ -403,6 +430,19 @@ export class Emitter {
       this.line(
         `${this.helper('slots')}(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`,
       );
+    }
+    // The props that the component writes, which a parent can bind with `$bind`.
+    if (scope.kind === 'component') {
+      const bindable = slots.flatMap((slot, index) =>
+        slot.kind === 'prop' && slot.writable && slot.propKey !== undefined
+          ? [`${JSON.stringify(slot.propKey)}: ${index}`]
+          : [],
+      );
+      if (bindable.length > 0) {
+        this.line(
+          `${this.helper('bindings')}(${this.scopeVar(scope)}, $$props, { ${bindable.join(', ')} });`,
+        );
+      }
     }
   }
 

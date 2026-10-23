@@ -61,6 +61,17 @@ export function promiseName(name: string): string {
  * `$$p_<name>`, because it can hold a promise that is awaited where it is read.
  * The memos in `inline` are plain values on the server too.
  */
+/** The name of the key of a property, or undefined for a computed key. */
+function keyName(property: oxc.BindingProperty): string | undefined {
+  if (property.computed) {
+    return undefined;
+  }
+  if (property.key.type === 'Identifier') {
+    return property.key.name;
+  }
+  return property.key.type === 'Literal' ? String(property.key.value) : undefined;
+}
+
 export function addValueEdits(
   patch: Patch,
   file: SFCFile,
@@ -69,6 +80,29 @@ export function addValueEdits(
   inline: Set<Declaration> = new Set(),
 ): void {
   const sitesByNode = new Map<object, Site>();
+  // The names that each `$props()` destructures, by the call.
+  const propNames = new Map<oxc.Node, string[]>();
+  for (const statement of file.instanceScript?.program.body ?? []) {
+    if (statement.type !== 'VariableDeclaration') {
+      continue;
+    }
+    for (const declarator of statement.declarations) {
+      const init = declarator.init;
+      if (
+        init?.type === 'CallExpression' &&
+        calleeName(init) === '$props' &&
+        declarator.id.type === 'ObjectPattern'
+      ) {
+        propNames.set(
+          init,
+          declarator.id.properties.flatMap((property) => {
+            const name = property.type === 'Property' ? keyName(property) : undefined;
+            return name === undefined ? [] : [name];
+          }),
+        );
+      }
+    }
+  }
   // Reads of memos with `await`, by the start of the `await` expression.
   const awaits = new Map<number, Reference>();
   // Reads that the edits of a memo replace, which the visit must leave alone.
@@ -101,7 +135,14 @@ export function addValueEdits(
       const name = node.callee.name;
       const argument = node.arguments[0];
       if (name === '$props') {
-        patch.replace(node.start, node.end, '$$props');
+        // The props that the component destructures by name get the values of their bindings, and
+        // a rest prop keeps them, so a spread passes them on. See `unbind`.
+        const names = propNames.get(node);
+        patch.replace(
+          node.start,
+          node.end,
+          names ? `$$b.unbind($$props, ${JSON.stringify(names)})` : '$$b.unbind($$props)',
+        );
         return;
       }
       if (name === '$action') {

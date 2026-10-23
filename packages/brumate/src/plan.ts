@@ -210,7 +210,13 @@ export function clientState(graph: Graph): {
       [...scope.declarations.values()].filter(
         (declaration) =>
           !NO_SLOT.has(declaration.kind) &&
-          declaration.reads.some((read) => clientSites.has(read.site)),
+          (declaration.reads.some((read) => clientSites.has(read.site)) ||
+            // A binding writes the slot of its name, and a bound prop writes the parent's
+            // through its own, so they need slots without a read in the browser.
+            declaration.bound === true ||
+            (declaration.kind === 'prop' &&
+              declaration.writable === true &&
+              declaration.writes.some((write) => clientSites.has(write.site)))),
       ),
     );
   }

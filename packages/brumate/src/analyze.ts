@@ -174,6 +174,7 @@ class Analyzer {
   private readonly scopes: Scope[] = [];
   private readonly declarations: Declaration[] = [];
   private readonly sites: Site[] = [];
+  readonly bindings: { call: oxc.CallExpression; declaration: Declaration }[] = [];
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
   private readonly module: Scope;
@@ -218,6 +219,7 @@ class Analyzer {
       scopes: this.scopes,
       declarations: this.declarations,
       sites: this.sites,
+      bindings: this.bindings,
       diagnostics: this.diagnostics,
     };
   }
@@ -612,8 +614,10 @@ class Analyzer {
       if (!isComponent) {
         this.report('error', '$props() can only be called in the component script', declarator);
       }
-      if (kind !== 'const') {
-        this.report('error', 'Assign $props() to a const', declarator);
+      // `let` makes the props that it destructures writable: the component writes its own copy,
+      // or, when a parent binds the prop with `$bind`, the parent's signal.
+      if (kind !== 'const' && kind !== 'let') {
+        this.report('error', 'Assign $props() to a const or a let', declarator);
       }
       if (call.arguments.length > 0) {
         this.report('error', '$props() takes no arguments', call);
@@ -635,6 +639,9 @@ class Analyzer {
             for (const binding of getPatternNames(property.value)) {
               const declaration = this.addDeclaration(scope, binding.name, 'prop', binding);
               declaration.propKey = key;
+              if (kind === 'let') {
+                declaration.writable = true;
+              }
             }
           }
         }
@@ -1469,6 +1476,44 @@ class Resolver {
     return reference;
   }
 
+  /**
+   * `$bind(name)` passes a child a reference to a signal, or to a prop that
+   * the component writes, so the child's writes reach it. It is the whole
+   * value of a prop of a component. The name gets a slot, which the
+   * reference points to.
+   */
+  private declareBinding(call: oxc.CallExpression): void {
+    let node: oxc.Node = this.site.node;
+    while (node.type === 'ParenthesizedExpression') {
+      node = node.expression;
+    }
+    if (this.site.kind !== 'prop' || node !== call) {
+      this.analyzer.report('error', 'Pass $bind(name) as the value of a prop of a component', call);
+      return;
+    }
+    const [target, ...rest] = call.arguments;
+    if (!target || target.type !== 'Identifier' || rest.length > 0) {
+      this.analyzer.report('error', '$bind takes the name of a signal, such as $bind(open)', call);
+      return;
+    }
+    const declaration = this.isLocal(target.name)
+      ? undefined
+      : lookup(this.site.scope, target.name);
+    if (
+      !declaration ||
+      !(declaration.kind === 'signal' || (declaration.kind === 'prop' && declaration.writable))
+    ) {
+      this.analyzer.report(
+        'error',
+        `$bind takes a signal, or a prop that the component destructures with let, and "${target.name}" is not one`,
+        target,
+      );
+      return;
+    }
+    declaration.bound = true;
+    this.analyzer.bindings.push({ call, declaration });
+  }
+
   private visitChildren(node: oxc.Node): void {
     for (const [key, child] of children(node)) {
       if (!TYPE_KEYS.has(key)) {
@@ -1689,6 +1734,13 @@ class Resolver {
               );
             }
             for (const argument of recipe ? [recipe, ...rest] : rest) {
+              this.visit(argument);
+            }
+            return;
+          }
+          if (name === '$bind') {
+            this.declareBinding(node);
+            for (const argument of node.arguments) {
               this.visit(argument);
             }
             return;

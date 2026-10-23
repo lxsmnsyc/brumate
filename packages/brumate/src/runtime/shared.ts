@@ -56,6 +56,71 @@ export class FunctionReference {
   }
 }
 
+// Brands of bindings and slot references, under keys of the registry, so two copies of the
+// runtime, such as a component's and the render context's, know each other's.
+const BINDING = Symbol.for('brumate.binding');
+const SLOT = Symbol.for('brumate.slot');
+
+/** A slot of a scope, which a write of a bound prop goes to. */
+export class SlotReference {
+  readonly scope: ScopeId;
+  readonly slot: number;
+
+  constructor(scope: ScopeId, slot: number) {
+    this.scope = scope;
+    this.slot = slot;
+  }
+}
+
+(SlotReference.prototype as unknown as Record<symbol, boolean>)[SLOT] = true;
+
+/** True for a slot reference of any copy of the runtime. */
+export function isSlotReference(value: unknown): value is SlotReference {
+  return typeof value === 'object' && value !== null && SLOT in value;
+}
+
+/** True for a binding of any copy of the runtime. */
+export function isBinding(value: unknown): value is Binding {
+  return typeof value === 'object' && value !== null && BINDING in value;
+}
+
+/**
+ * What `$bind(name)` passes a child: the value of the name, and its slot,
+ * which the child's writes of the prop go to.
+ */
+export class Binding<T = unknown> {
+  readonly value: T;
+  readonly ref: SlotReference;
+
+  constructor(value: T, ref: SlotReference) {
+    this.value = value;
+    this.ref = ref;
+  }
+}
+
+(Binding.prototype as unknown as Record<symbol, boolean>)[BINDING] = true;
+
+/**
+ * The props that a component destructures, with the values of their
+ * bindings. `names` are the props that it destructures by name: the others,
+ * which a rest prop holds, keep their bindings, so a spread passes them on.
+ * Without `names`, every binding gives its value.
+ */
+export function unbind(
+  props: Record<string, unknown>,
+  names?: readonly string[],
+): Record<string, unknown> {
+  let result: Record<string, unknown> | undefined;
+  for (const key of names ?? Object.keys(props)) {
+    const value = props[key];
+    if (isBinding(value)) {
+      result ??= { ...props };
+      result[key] = value.value;
+    }
+  }
+  return result ?? props;
+}
+
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
@@ -82,11 +147,17 @@ export const stateValues: {
    * changes the value uses the component's render module instead.
    */
   c: (id: string) => ComponentValue;
+  /** A slot of a scope, which a bound prop writes. */
+  l: (scope: ScopeId, slot: number) => SlotReference;
+  /** A binding that a rest prop holds, with its value and its slot. */
+  b: (value: unknown, scope: ScopeId, slot: number) => Binding;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
   c: (id) => Object.assign(() => '', { brumateId: id }),
+  l: (scope, slot) => new SlotReference(scope, slot),
+  b: (value, scope, slot) => new Binding(value, new SlotReference(scope, slot)),
 };
 
 /** True for a value that `for await` reads, such as the result of an async generator. */
@@ -123,6 +194,8 @@ export interface ScopeState {
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */
   c?: Record<number, ScopeId>;
+  /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
+  b?: Record<number, SlotReference>;
 }
 
 /** The state of a page, by scope ID. */
