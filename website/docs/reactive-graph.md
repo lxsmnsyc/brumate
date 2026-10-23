@@ -1,6 +1,151 @@
 # Reactive graph
 
-The compiler decides what ships to the browser from a graph of what reads what, which it builds once, when it compiles. This page describes the graph, how the compiler walks it, and the code that comes out.
+The compiler decides what ships to the browser from a graph of what reads what, which it builds once, when it compiles. This page first follows one component from its source to a click that updates the page. The sections after it describe each part in detail.
+
+## Step by step
+
+This section follows one component from its source to a click that updates the page:
+
+```brm
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  const label = 'Clicks';
+  let count = $signal(0);
+  const double = $memo(count * 2);
+</script>
+
+<h1>{label}</h1>
+<button onClick=(() => count++)>+</button>
+<p>{count} / {double}</p>
+```
+
+### 1. The compiler builds the graph
+
+Each declaration and each read in the markup is a node. An edge goes from a value to each node that reads it:
+
+```text
+onClick (client root) --writes--> count
+count  --> double
+count  --> {count}
+double --> {double}
+label  --> {label}
+```
+
+The graph is built once, when the file compiles. The browser never builds it.
+
+### 2. The compiler finds what can change
+
+It starts at each client root and follows the edges:
+
+- The click handler writes `count`, so `count` can change in the browser.
+- `double` and `{count}` read `count`, so they can change too. `{double}` reads `double`, so it can change.
+- Nothing writes `label`, and no root reaches it. It is a constant, so `<h1>Clicks</h1>` ships as HTML only.
+
+Only the nodes that a root reaches get a slot in the page state and code in the browser.
+
+### 3. The server renders HTML with markers
+
+The server module renders the component as strings. Live values get slots, and the markup around them gets markers:
+
+```ts
+const $$s1 = $$ctx.scope(1, undefined, "Counter_24o7ge");
+const label = 'Clicks';
+let count = (0);
+const double = (count * 2);
+$$html += "<h1>" + … + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_24o7ge#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
+$$ctx.slots($$s1, [count, double], ["count", "double"]);
+```
+
+- `$$ctx.scope(1, …)` makes a scope for this instance. `1` is its kind, and the page numbers the instance.
+- `count` is slot 0 and `double` is slot 1. `label` has no slot.
+- On the server, the memo is plain code that runs once. It does not track anything.
+
+The HTML of the page:
+
+```html
+<h1>Clicks</h1>
+<button b-b="0:0" b-on="click=Counter_24o7ge#h4">+</button>
+<p><!--t0:1-->0<!--/t--> / <!--t0:2-->0<!--/t--></p>
+```
+
+- `b-b="0:0"` is element 0 of scope 0. `b-on` names the event and the handler that answers it: export `h4` of the component `Counter_24o7ge`.
+- `<!--t0:1-->` and `<!--t0:2-->` mark text 1 and text 2 of scope 0, so the browser can find them without rendering again.
+
+### 4. The server writes the state
+
+The slots go into the page as a script:
+
+```html
+<script b-state b-scopes b-next="1">…$bR(($R,$b)=>(({0:{k:1,m:"Counter_24o7ge",s:[0,0]}})))</script>
+```
+
+- Scope `0` has kind `k: 1`, the module `m` of its component, and its slots `s`: `count` and `double`.
+- [seroval](https://github.com/lxsmnsyc/seroval) writes the values as code, so dates, maps, sets, shared references and promises keep their types. A promise that has not settled streams in a later script. See [Serialization](./reference-serialization.md).
+- The value of `double` is in the state, so the browser does not compute it again to resume.
+- A page with many scopes of the same shape, such as the items of a list, packs them into groups. See [Page format](./page-format.md).
+
+### 5. The browser waits
+
+The page works without any component code. The only script that runs is the loader. It listens on `document` for the events that `b-on` names. See [Client modules](./client-modules.md).
+
+### 6. A click loads the handler
+
+On the click, the loader walks from the target to the element with `b-on`, and reads `b-b="0:0"`. It imports the core and the client entry of `Counter_24o7ge`, which loads the part of the handler:
+
+```ts
+export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
+const update = () => import("./Counter.brm?brumate-client&part=update");
+const parts = {
+  "h4": () => (update().catch(() => {}), import("./Counter.brm?brumate-client&part=h4")),
+  "update": update,
+};
+```
+
+- `g` is the graph of step 1, kept for the browser. For scopes of kind 1, a write to slot 0 runs `m2` and then `u5`, and a write to slot 1 runs `u6`.
+- Loading the handler also starts loading the update code, since the handler writes a slot.
+
+The core reads the state script and makes scope 0, with its slots `[0, 0]`. Then it calls the handler with that scope:
+
+```ts
+export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
+```
+
+`count++` became `update(scope, slot 0, +1)`. Reads of slots become `get(scope, slot)` and writes become `set(scope, slot, value)`.
+
+### 7. The write runs the code that reads it
+
+`set` stores the new value in slot 0, and runs each entry of `g[1][0]` in order:
+
+```ts
+export function m2($$s) {
+  $$b.memo($$s, 1, () => $$b.get($$s, 0) * 2);
+}
+export function u5($$s) {
+  $$b.text($$s, 1, $$b.get($$s, 0));
+}
+export function u6($$s) {
+  $$b.text($$s, 2, $$b.get($$s, 1));
+}
+```
+
+1. `m2` computes `double` and writes it to slot 1. That write runs `g[1][1]`, which is `u6`, and `u6` sets text 2 to `2`.
+2. `u5` sets text 1 to `1`.
+
+The page shows `1 / 2`. Nothing else ran: the heading, the button and the rest of the page were not touched.
+
+- A write runs only the entries of its slot, so its cost does not grow with the size of the component.
+- An entry for another kind, such as the items of a list that read a slot of the list's scope, runs on each scope of that kind inside the one that was written.
+- A write of the same value, by `Object.is`, runs nothing.
+- Effects wait until the other updates of a write have run, and run once each.
+
+### Names of the exports
+
+- `h<n>` are event handlers and function props, and `c<n>` are `$client` callbacks.
+- `m<n>` compute memos, `u<n>` update text, attributes and props, `e<n>` run effects, and `b<n>` update blocks.
+- `r<n>` render the body of a block, `a<n>` write a new list item into its scope, and `k<n>` render a `#client` block.
+- Local functions become module functions that take the scope as their first argument. Server functions become stubs that call the server.
+- A value of an outer scope is read through the parent of the scope, `.p`.
 
 ## Pipeline
 
@@ -72,83 +217,6 @@ A scope holds the state of one instance:
 Each scope that client code needs gets a number at render time, unique in the page. Elements with handlers name their scope in an attribute, so a handler finds its state. [Page format](./page-format.md) describes the numbers and markers.
 
 A scope also has a kind: its number in the compiled component, which selects the update code that applies to it. The page state records it as `k`.
-
-## The code that comes out
-
-For this component:
-
-```brm
-<script>
-  import { $memo, $signal } from 'brumate/signals';
-
-  const label = 'Clicks';
-  let count = $signal(0);
-  const double = $memo(count * 2);
-</script>
-
-<h1>{label}</h1>
-<button onClick=(() => count++)>+</button>
-<p>{count} / {double}</p>
-```
-
-The server module renders strings, and records the slots of the scope:
-
-```ts
-export default async function Counter($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
-  let $$html = '';
-  const $$s1 = $$ctx.scope(1, undefined, "Counter_24o7ge");
-  const label = 'Clicks';
-  let count = (0);
-  const $$p_double = $$b.memo(() => (count * 2));
-  const double = await $$b.wait($$p_double);
-  $$html += "<h1>" + await $$b.insert((label), $$ctx, $$s1) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_24o7ge#h4\">+</button><p><!--t" + $$s1 + ":1-->" + await $$b.insert((count), $$ctx, $$s1) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + await $$b.insert((double), $$ctx, $$s1) + "<!--/t--></p>";
-  $$ctx.slots($$s1, [count, double]);
-  return $$html;
-}
-```
-
-- `label` is a constant, so it is plain HTML, and it is not sent.
-- `count` and `double` are slots 0 and 1 of the scope. Their inserts have markers.
-
-The client entry maps each slot to the code that reads it, and loads the parts on demand:
-
-```ts
-export const id = "Counter_24o7ge";
-export const props = {  };
-export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
-const parts = {
-  "h4": () => import("./Counter.brm?brumate-client&part=h4"),
-  "update": () => import("./Counter.brm?brumate-client&part=update"),
-};
-export function load(part) {
-  return parts[part]();
-}
-```
-
-The handler part and the update part:
-
-```ts
-// h4
-export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
-
-// update
-export function m2($$s) {
-  $$b.memo($$s, 1, () => $$b.get($$s, 0) * 2);
-}
-export function u5($$s) {
-  $$b.text($$s, 1, $$b.get($$s, 0));
-}
-export function u6($$s) {
-  $$b.text($$s, 2, $$b.get($$s, 1));
-}
-```
-
-- Reads of slots become `$$b.get(scope, slot)`, and writes become `$$b.set(scope, slot, value)`. A value of an outer scope is read through `.p`.
-- `g` maps a scope kind and a slot to the exports that read it. Writing slot 0 runs `m2` and `u5`, and `m2` writing slot 1 runs `u6`.
-- `h<n>` exports are event handlers and function props. `c<n>` are `$client` callbacks. `m<n>` compute memos, `u<n>` update text, attributes and props, `e<n>` run effects, and `b<n>` update blocks. `r<n>` render the body of a block, `a<n>` write a new list item into its scope, and `k<n>` render a `#client` block.
-- Local functions become module functions that take the scope as their first argument. Server functions become stubs that call the server.
-
-[Client modules](./client-modules.md) describes how the parts load.
 
 ## Render modules
 

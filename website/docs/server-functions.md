@@ -72,7 +72,7 @@ export async function saveTodo(todo: Todo) {
 - The browser gets a stub for each export, which calls the server. The code of the file, and everything that it imports, never ships.
 - The file exports only functions. A constant or a class is a build error, because the browser could only get a stub of it.
 - Any code can import the file, including other `.ts` files. On the server, the calls are plain function calls.
-- `event.refresh(fn)` works with the functions of a file too. Memos of components that call `fn` from the file load again.
+- [`event.refresh(fn)`](./async-data.md#loading-again) works with the functions of a file too. Memos of components that call `fn` from the file load again.
 
 There is no `'use client'`. The compiler decides what reaches the browser by following event handlers and other client code. See [What runs where](./what-runs-where.md).
 
@@ -241,6 +241,7 @@ async function login(name: string) {
 - `event.request` is the web `Request` of the call, with its headers and its `signal`.
 - `event.headers` are headers to add to the response, such as `cache-control`.
 - `redirect(location)` stops the function, and the browser goes to `location`. It needs no event.
+- `event.waitUntil(promise)` keeps work going after the response ends, such as a log line or analytics. On a host that stops a function when its response ends, such as Cloudflare Workers, pass the host's `waitUntil` in the options of `handle`, and the promise goes to it. Elsewhere the promise runs on its own, and its error is logged.
 
 **Why before the first `await`:** a server handles many requests at once, and other requests run while one waits. The runtime sets the event while it starts the function, and clears it at the function's first `await`. After that, `getEvent()` throws, so it never returns the event of another request. The event in your variable stays right after any number of awaits.
 
@@ -269,43 +270,10 @@ async function search(query: string) {
 }
 ```
 
-## Request locals
+When the browser leaves while a page streams, `getEvent().signal` aborts too: for a page, a server function call and the request for a [`#defer`](./async-data.md#defer) body. The bodies that are not sent yet are not sent.
 
-Middleware hands what it finds, such as the user, to the rest of the request through `event.locals`. Components, server functions and endpoints read it with `getEvent().locals`:
-
-```ts
-// src/middleware.ts
-import { defineMiddleware } from 'brumate/server';
-
-export default defineMiddleware(async (event, next) => {
-  event.locals.user = await readUser(event);
-  return next();
-});
-```
-
-```ts
-async function listOrders() {
-  'use server';
-  const { user } = getEvent().locals;
-  return user ? db.orders.of(user.id) : [];
-}
-```
-
-Its type comes from the `Locals` interface of `brumate/server`, which the app adds to:
-
-```ts
-// src/locals.d.ts
-declare module 'brumate/server' {
-  interface Locals {
-    user?: { id: string; name: string; admin: boolean };
-  }
-}
-```
-
-- It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
-- `event.waitUntil(promise)` keeps work going after the response ends, such as a log line or analytics. On a host that stops a function when its response ends, such as Cloudflare Workers, pass the host's `waitUntil` in the options of `handle`, and the promise goes to it. Elsewhere the promise runs on its own, and its error is logged.
-
-See [Middleware](./routing.md#middleware).
+- Work that must finish, such as a log line, does not read the signal, and passes its promise to `getEvent().waitUntil` where the server has it.
+- It needs the host to report a closed connection. Node's streams do, and Nitro passes it on for most presets.
 
 ## Cookies and sessions
 
@@ -374,47 +342,6 @@ export async function currentUser() {
 
 A custom Node server sends the cookies with `toNodeHeaders(answer.headers)`, which keeps each one apart. See [Deploying](./deploying.md).
 
-## Refreshing data
-
-A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `event.refresh` with the function that reads it. Every memo on the page that calls that function loads again.
-
-```brm live
-<script module>
-  // Kept in memory for the sample. A real app would use a database.
-  const names: string[] = ['Ada'];
-</script>
-
-<script>
-  import { $memo, $signal } from 'brumate/signals';
-  import { getEvent } from 'brumate/server';
-
-  async function list() {
-    'use server';
-    return [...names];
-  }
-
-  async function add(name: string) {
-    'use server';
-    names.push(name);
-    getEvent().refresh(list);
-  }
-
-  const people = $memo(list());
-  let draft = $signal('');
-</script>
-
-<input aria-label="Name" value=draft onInput=((event) => (draft = event.currentTarget.value))>
-<button onClick=(() => add(draft))>Add</button>
-<ul>
-  #for (person of people by person) {
-    <li>{person}</li>
-  }
-</ul>
-```
-
-- `event.refresh` takes a server function of the same component, or a function of a `'use server'` file.
-- The memos load again in every component on the page that calls the function.
-
 ## Files
 
 Pass a `File` or a `Blob` as an argument, or inside an array or a plain object. The server function gets a `File`.
@@ -447,57 +374,53 @@ Pass a `File` or a `Blob` as an argument, or inside an array or a plain object. 
 
 A server function can return a promise or an async iterable, alone or inside other values. Each one settles in the browser as soon as the server has it, while the rest of the answer is still on its way. A `$memo` of an async iterable shows each value in turn. See [Async data](./async-data.md#streams).
 
-## Rate limiting
+## One call for the same arguments
 
-Server functions are public endpoints: anyone can call them with `fetch`, as often as they like. A sign-in, a search or a form that sends mail needs a limit. `rateLimit` counts the calls of each key and refuses the ones over the limit:
+While a page renders, calls of the same server function with the same arguments share one result. Two components that load `getUser(1)` make one call:
 
 ```ts
-import { rateLimit } from 'brumate/server';
+// Header.brm and Sidebar.brm, on one page
+const user = $memo(getUser(id));
+```
 
-async function signIn(email: string, password: string) {
-  'use server';
-  await rateLimit({ ...rateLimit.strict, key: () => email.toLowerCase() });
-  // …
+- It holds for the server functions of components and of `'use server'` files.
+- Arguments are compared by value, as they would be sent, so `getUser({ id: 1 })` twice is one call.
+- Each render starts with no results, so a new request loads fresh data.
+- Calls from the browser, such as from a handler, always run. A function that changes something, such as `save(todo)`, runs each time it is called.
+
+## One call for many keys
+
+A list whose rows each load one thing, such as the profile of each player, makes one call per row. `batched` from `brumate/batch` turns the calls of one moment in the browser into one call with every key:
+
+```ts
+// profiles.ts
+'use server';
+
+export async function getProfiles(ids: string[]): Promise<Map<string, Profile>> {
+  return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
 }
 ```
 
-- Call it first thing in the function, before its first `await`, as `getEvent()`. After `max` calls in the window for one key, a call rejects with a `RateLimitError`: status 429, `Retry-After`, and the seconds to wait in `retryAfter`, in the browser too. The rest of the function does not run.
-- The window is a length such as `'10s'`, `'1m'` or `'1h'`, or a number of milliseconds. The count slides: it weighs the last window by how much of it is still inside the window, so a burst at the edge of a window does not get through.
-- Each call counts before the limit decides, with one atomic increment, so calls that arrive at the same time cannot all pass. A refused call counts too, so a client that keeps trying stays refused until it slows down.
-- `rateLimit.strict`, 3 calls in 10 seconds, is a preset for functions that guess at secrets, such as a sign-in or a code check.
-- `rateLimit.middleware({ max, window })` limits every request under a folder of routes, endpoints and pages included, as its `_middleware.ts`, or every request of the app as the entry middleware. A request over the limit answers 429 with the message.
-- Limits count unless `configureRateLimit({ enabled: false })` or `enabled: false` on one limit turns them off. Pages that the build prerenders never count.
-- The counts live in memory, per process. An app with more than one server passes a store to `configureRateLimit({ store })`, or to one limit. Its `increment(key, ttl)` adds one and returns the new count in one atomic step, such as `INCR` with `EXPIRE` on Redis, and `get(key)` reads a count.
-
-### Keys
-
-`key: (event, args) => …` says what to count by. `args` are the arguments of the call, which middleware sees too. Each server function counts on its own, and each route for middleware, whatever the key.
-
-- **Key by the target** for a form that guesses at a secret, such as a sign-in or a code check: the email of the account, as above. Guesses at one account are limited from any number of addresses.
-- **Key by the user** for actions of a signed-in user, such as `key: (event) => event.locals.user?.id`, which middleware sets. The user is limited wherever they sign in from.
-- A cookie is not a key for a caller who is not signed in, since a client can drop it and start a new count.
-- Without a key, or when it returns undefined, the limit counts by the address of the client.
-
-### The address of the client
-
-The address of the client comes from the server. A server passes it to `handle` as `address`, such as the remote address of the socket. Behind a proxy, the address the server sees is the proxy's, and the client's is in `X-Forwarded-For`. The header is read only when the address that the server passed is one of the proxies that the app names, as addresses or CIDR ranges, and from the right, past them, because a client can write anything at its left:
-
 ```ts
-import { configureRateLimit } from 'brumate/server';
+// profile.ts, a plain module, since a 'use server' file exports only server functions
+import { batched } from 'brumate/batch';
+import { getProfiles } from './profiles.ts';
 
-configureRateLimit({ proxies: ['10.0.0.0/8'] });
+export const getProfile = batched(getProfiles, (found, id: string) => found.get(id) ?? null, {
+  limit: 50,
+});
 ```
 
-A range that is not an address, or an address with a prefix length, such as `10.0.0.0/` or `10.0.0.0/33`, throws. `clientAddress(event)` gives the address that the limits use. An IPv6 address counts by its /64, since one client often holds a whole subnet.
-
-A limit with no key and no address would count every caller together, so one client could use up the limit of all. In production, it throws an error that names the function or the route. In development, it warns once and does not count. Pass `address` to the handler of the server, or set `key`. See [Deploying](./deploying.md) for passing the address.
-
-## Calls from other sites
-
-A call carries the cookies of the user, so the server refuses calls from pages of other sites with status 403. To allow another origin of your own, such as an admin app on another domain, list it in the plugin options:
-
-```ts
-brumate({ origins: ['https://admin.example.com'] });
+```html
+<!-- Row.brm: each row asks for one profile. -->
+<script>
+  const profile = $memo(getProfile(id));
+</script>
 ```
 
-[Security](./reference-security.md) describes the check.
+- `batched(readMany, lookup, options)` gives a function of one key. The calls made before the next task, such as the rows of a list that the browser renders, become one call of `readMany` with every distinct key. Each call gets its value from `lookup`.
+- `key` says what makes two keys the same, for keys that are objects. `limit` splits a large batch into several calls. `wait` gathers for that many milliseconds.
+- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
+- On the server, each call reads its own key at once. The server renders the rows of a list one after another, so their calls never happen at the same time, and calls of one key in a render still share one result. A page that renders many rows on the server reads faster with one call in the list, such as `$memo(getProfiles(ids))`, whose result it hands to the rows.
+- `refresh(getProfiles)` does not load the memos that call `getProfile` again, since the compiler sees only `getProfile`. Refresh the memo of the list instead, or load the page again.
+- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. Read many keys with one query there.

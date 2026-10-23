@@ -1,0 +1,129 @@
+<script>
+  // When the main thread of the browser is busy after the HTML of a page arrives, with hydration
+  // and with brumate. It is a picture of the steps, not a measurement.
+</script>
+
+<figure class="strips">
+  <svg viewBox="0 0 760 210" role="img" aria-labelledby="strips-title strips-desc">
+    <title id="strips-title">When the browser is busy, with hydration and with brumate</title>
+    <desc id="strips-desc">Two strips of time. With hydration of the whole page, the main thread reads the HTML, then stays busy running the code of every component and rendering the page again. Clicks work only after that. With brumate, the main thread reads the HTML and runs a small loader, and clicks work from then on. The thread stays idle until a click, which runs one handler.</desc>
+
+    <text x="0" y="56" class="wf-lane">Hydration</text>
+    <rect x="110" y="36" width="640" height="30" rx="6" class="wf-track"></rect>
+    <rect x="110" y="36" width="70" height="30" rx="6" class="wf-html"></rect>
+    <text x="145" y="56" class="wf-in">HTML</text>
+    <rect x="184" y="36" width="330" height="30" rx="6" class="wf-busy"></rect>
+    <text x="349" y="56" class="wf-in">Run the code of every component again</text>
+    <line x1="518" y1="26" x2="518" y2="76" class="wf-ready"></line>
+    <circle cx="518" cy="26" r="4" class="wf-ready-dot"></circle>
+    <text x="526" y="30" class="wf-note">Clicks work</text>
+
+    <text x="0" y="146" class="wf-lane accent">brumate</text>
+    <rect x="110" y="126" width="640" height="30" rx="6" class="wf-track"></rect>
+    <rect x="110" y="126" width="70" height="30" rx="6" class="wf-html"></rect>
+    <text x="145" y="146" class="wf-in">HTML</text>
+    <rect x="184" y="126" width="8" height="30" rx="3" class="wf-busy"></rect>
+    <line x1="196" y1="116" x2="196" y2="166" class="wf-ready"></line>
+    <circle cx="196" cy="116" r="4" class="wf-ready-dot"></circle>
+    <text x="204" y="120" class="wf-note">Clicks work</text>
+    <text x="204" y="176" class="wf-note muted">Loader</text>
+    <text x="400" y="146" class="wf-note muted">Idle</text>
+    <rect x="600" y="126" width="10" height="30" rx="3" class="wf-busy"></rect>
+    <text x="605" y="176" class="wf-note">A click runs one handler</text>
+
+    <g class="wf-legend" transform="translate(110 200)">
+      <rect x="0" y="-9" width="12" height="10" rx="2" class="wf-busy"></rect>
+      <text x="18" y="0">Main thread busy</text>
+      <rect x="140" y="-9" width="12" height="10" rx="2" class="wf-track"></rect>
+      <text x="158" y="0">Idle</text>
+    </g>
+    <text x="750" y="200" class="wf-axis end">time → · not to scale</text>
+  </svg>
+  <figcaption>
+    While the browser is idle, brumate preloads the core and the handlers near the viewport. A click before that waits one round trip for them.
+  </figcaption>
+</figure>
+
+<style>
+  /* When the main thread is busy, with hydration and with brumate. */
+
+  .strips {
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .strips figcaption {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .strips svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    font-family: var(--font);
+  }
+
+  .wf-lane {
+    fill: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .wf-lane.accent {
+    fill: var(--accent-strong);
+  }
+
+  .wf-note {
+    fill: var(--text);
+    font-size: 12px;
+  }
+
+  .wf-in {
+    fill: var(--bg);
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  .wf-note.muted,
+  .wf-axis,
+  .wf-legend text {
+    fill: var(--muted);
+    font-size: 11px;
+  }
+
+  .wf-note.muted {
+    font-size: 12px;
+  }
+
+  .wf-axis.end {
+    text-anchor: end;
+  }
+
+  .wf-track {
+    fill: var(--bg);
+    stroke: var(--border);
+  }
+
+  .wf-html {
+    fill: var(--muted);
+  }
+
+  .wf-busy {
+    fill: var(--cool);
+  }
+
+  .wf-ready {
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+
+  .wf-ready-dot {
+    fill: var(--accent);
+  }
+</style>

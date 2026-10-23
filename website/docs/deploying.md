@@ -4,41 +4,6 @@ A brumate app builds into client files and a server bundle. The server renders p
 
 [Nitro](https://nitro.build) builds the app for a host, such as Node, Bun, Deno, Cloudflare or Vercel, without a server of your own. See [Deploying with Nitro](#deploying-with-nitro). The sections after it describe a server that you write yourself.
 
-## Build
-
-The client and the server build separately, the client first:
-
-```bash
-vite build --outDir dist/client
-vite build --ssr src/server.ts --outDir dist/server
-```
-
-The Vite config needs the manifest of the client build, so the server can find the client entry:
-
-```ts
-// vite.config.ts
-import brumate from 'brumate/vite';
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-  plugins: [brumate()],
-  build: {
-    manifest: true,
-    rolldownOptions: { input: 'src/client.ts' },
-  },
-});
-```
-
-The server entry exports the two request handlers that the plugin builds:
-
-```ts
-// src/server.ts
-// Server function calls.
-export { handle } from 'virtual:brumate/server';
-// Pages, endpoints and middleware of the route files.
-export { handle as route } from 'virtual:brumate/routes';
-```
-
 ## Deploying with Nitro
 
 Add Nitro's Vite plugin after brumate's, and name the client entry:
@@ -87,35 +52,47 @@ export default {
 - `vite dev` runs the app. Nitro renders pages in a worker, and calls of server functions go to the entry, so they share its memory. Edits update the page as in [Edit while it runs](./getting-started.md#edit-while-it-runs).
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
-- Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./server-functions.md#rate-limiting).
+- Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./security.md#rate-limiting).
 - A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
 [`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
 
-## Skew protection
+## Build
 
-A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
+The client and the server build separately, the client first:
 
-- Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
-- The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.
-- A form that posts to a server function carries the ID in its URL, as `__build`, so a post without scripts is checked too. A post from another build to a function that is gone answers 303 to its page, from `Referer`, or to `/` when the page is on another site. The page then loads with the new build.
-- When the code of a handler fails to load, the browser asks the server for its build. When it differs, the files of the old build may be gone, and the page loads again. Any other error, such as a module that throws when it loads, goes to the nearest `#try`, as the error of a handler does.
-- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, because the layouts that it would keep are code of the old build.
-- A page loads again, or in full, once for each build in a tab. The tab keeps the builds in session storage. So a deploy whose files are broken, a cache that still serves the old page, or two builds that answer in turn during a deploy cannot load pages in a loop. The next time, the error goes to `#try`, or client navigation swaps the page in. Without session storage, the page does not load again.
-- The page gets a `brumate:skew` event when it notices a deploy, with `'call'`, `'code'` or `'defer'` in `detail`, before anything loads again. An app can save a draft in it.
+```bash
+vite build --outDir dist/client
+vite build --ssr src/server.ts --outDir dist/server
+```
 
-The files of the client build have hashes in their names, so the files of earlier builds can stay next to the new ones for the pages that are still open. `skew: { keep: 2 }` keeps the files of the two builds before the last one: the build does not empty `dist/client`, lists its builds in `.brumate/builds.json`, and removes the files of older builds itself. A host that serves the directory as it is then serves old pages their code for two deploys.
+The Vite config needs the manifest of the client build, so the server can find the client entry:
 
 ```ts
 // vite.config.ts
+import brumate from 'brumate/vite';
+import { defineConfig } from 'vite';
+
 export default defineConfig({
-  plugins: [brumate({ skew: { keep: 2 } })],
+  plugins: [brumate()],
+  build: {
+    manifest: true,
+    rolldownOptions: { input: 'src/client.ts' },
+  },
 });
 ```
 
-The dev server has no build ID, so nothing is checked there.
+The server entry exports the two request handlers that the plugin builds:
+
+```ts
+// src/server.ts
+// Server function calls.
+export { handle } from 'virtual:brumate/server';
+// Pages, endpoints and middleware of the route files.
+export { handle as route } from 'virtual:brumate/routes';
+```
 
 ## A production server
 
@@ -163,7 +140,7 @@ createServer(async (incoming, outgoing) => {
 }).listen(3000);
 ```
 
-`toRequest` and `send` turn Node's request and response into web ones. [`examples/todos`](../../examples/todos) has them in `node.ts`, with the full server in `server.prod.ts`, which also sets content types and refuses paths outside `dist/client`.
+`toRequest` and `send` turn Node's request and response into web ones. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has them in `node.ts`, with the full server in `server.prod.ts`, which also sets content types and refuses paths outside `dist/client`.
 
 - `route` returns `undefined` when no route matches and there is no root `_error.brm`. `send` answers with a 404 then.
 - `send` writes the headers with `toNodeHeaders` from `brumate/server`, which keeps each `set-cookie` apart. `Object.fromEntries(answer.headers)` would join them, and the browser would keep only one cookie.
@@ -248,7 +225,7 @@ Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerend
 
 ### `#defer` on prerendered pages
 
-The body of a [`#defer`](./control-flow.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. The browser asks for it at the URL of the page, with the header `x-brumate-defer`. A server that serves prerendered files sends those requests to the routes instead:
+The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. The browser asks for it at the URL of the page, with the header `x-brumate-defer`. A server that serves prerendered files sends those requests to the routes instead:
 
 ```ts
 if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
@@ -291,6 +268,29 @@ A policy with hashes cannot cover a page that the server renders on each request
 ```ts
 const html = (await readFile(file, 'utf8')).replaceAll('<script', `<script nonce="${nonce}"`);
 ```
+
+## Skew protection
+
+A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
+
+- Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
+- The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.
+- A form that posts to a server function carries the ID in its URL, as `__build`, so a post without scripts is checked too. A post from another build to a function that is gone answers 303 to its page, from `Referer`, or to `/` when the page is on another site. The page then loads with the new build.
+- When the code of a handler fails to load, the browser asks the server for its build. When it differs, the files of the old build may be gone, and the page loads again. Any other error, such as a module that throws when it loads, goes to the nearest `#try`, as the error of a handler does.
+- Client navigation compares the build of the next page with its own, and loads the page in full when they differ, because the layouts that it would keep are code of the old build.
+- A page loads again, or in full, once for each build in a tab. The tab keeps the builds in session storage. So a deploy whose files are broken, a cache that still serves the old page, or two builds that answer in turn during a deploy cannot load pages in a loop. The next time, the error goes to `#try`, or client navigation swaps the page in. Without session storage, the page does not load again.
+- The page gets a `brumate:skew` event when it notices a deploy, with `'call'`, `'code'` or `'defer'` in `detail`, before anything loads again. An app can save a draft in it.
+
+The files of the client build have hashes in their names, so the files of earlier builds can stay next to the new ones for the pages that are still open. `skew: { keep: 2 }` keeps the files of the two builds before the last one: the build does not empty `dist/client`, lists its builds in `.brumate/builds.json`, and removes the files of older builds itself. A host that serves the directory as it is then serves old pages their code for two deploys.
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  plugins: [brumate({ skew: { keep: 2 } })],
+});
+```
+
+The dev server has no build ID, so nothing is checked there.
 
 ## Checklist
 

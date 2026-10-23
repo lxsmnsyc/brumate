@@ -1,7 +1,7 @@
 <script>
   import { $client, $effect, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import type { LiveFile, LiveOutput } from '../live/run.ts';
-  import { highlight } from '../playground/highlight.ts';
+  import { highlight } from '../repl/highlight.ts';
 
   // A code sample of the docs that runs in the page. Editing it runs it again.
   const { files } = $props<{ files: LiveFile[] }>();
@@ -13,6 +13,8 @@
   let output = $signal<LiveOutput>();
   let running = $signal(false);
   let runs = $signal(0);
+  // The sources of the last run, so the first run of the effect does not run the sample twice.
+  let ranWith = $signal<string[]>();
   let result = $signal<HTMLElement>();
   let backdrop = $signal<HTMLElement>();
 
@@ -21,6 +23,10 @@
   const code = $memo(highlight(`${sources[active]}\n`, language(files[active]!.name)));
 
   async function run() {
+    if (sources === ranWith) {
+      return;
+    }
+    ranWith = sources;
     // Only the latest run writes its result, so an older run that finishes later is dropped.
     runs++;
     const id = runs;
@@ -108,7 +114,7 @@
     <div class="live-output">
       #for (module of output.modules by module.name) {
         <p class="live-module">{module.name}</p>
-        <div class="code">{highlight(module.code, 'ts')}</div>
+        <div class="code">{highlight(module.code, module.language)}</div>
       }
     </div>
   }
@@ -120,3 +126,147 @@
     </ul>
   }
 </figure>
+
+<style>
+  /* Live samples of the docs */
+
+  .live {
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+
+  .live-bar,
+  .live-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--surface);
+    font: 0.8rem var(--mono);
+  }
+
+  .live-bar {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .live-tabs {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .live-bar button,
+  .live-tabs button {
+    padding: 0.15rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .live-bar button.active,
+  .live-tabs button.active {
+    border-color: var(--border);
+    background: var(--code-bg);
+    color: var(--text);
+  }
+
+  .live-file {
+    color: var(--muted);
+  }
+
+  .live-hint,
+  .live-status {
+    margin-left: auto;
+    color: var(--muted);
+  }
+
+  .live-editor {
+    position: relative;
+  }
+
+  .live-backdrop,
+  .live-editor textarea {
+    margin: 0;
+    padding: 0.9rem 1.1rem;
+    font: 0.85rem/1.6 var(--mono);
+    white-space: pre;
+    overflow-x: auto;
+    overflow-y: hidden;
+    tab-size: 2;
+  }
+
+  .live-backdrop.code {
+    border: 0;
+    border-radius: 0;
+    pointer-events: none;
+  }
+
+  .live-editor textarea {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--text);
+    resize: none;
+  }
+
+  .live-editor textarea:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: -2px;
+  }
+
+  .live-editor textarea::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: transparent;
+  }
+
+  .live-result {
+    padding: 1rem 1.1rem;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .live-result.hidden {
+    display: none;
+  }
+
+  .live-placeholder {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .live-error {
+    margin: 0;
+    padding: 0.75rem 1.1rem;
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in srgb, #e5484d 12%, var(--bg));
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+
+  .live-output {
+    padding: 0.75rem 1.1rem;
+  }
+
+  .live-module {
+    margin: 0.5rem 0 0.25rem;
+    color: var(--muted);
+    font: 0.8rem var(--mono);
+  }
+
+  .live-warnings {
+    margin: 0;
+    padding: 0.5rem 1.1rem 0.5rem 2rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>

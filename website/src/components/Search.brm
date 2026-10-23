@@ -75,3 +75,90 @@
     </div>
   }
 </div>
+
+<style>
+  /* Search */
+
+  .search {
+    position: relative;
+    flex: 0 1 18rem;
+    margin: 0 1rem;
+  }
+
+  .search input {
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .search input:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 1px;
+  }
+
+  .search-results {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    left: 0;
+    min-width: 20rem;
+    max-height: 70vh;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    overflow-y: auto;
+  }
+
+  .search-results a {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .search-results a:hover,
+  .search-results a:focus {
+    background: var(--surface);
+  }
+
+  .search-results small {
+    color: var(--accent-strong);
+    font-size: 0.75rem;
+  }
+
+  .search-results span {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .search-empty {
+    margin: 0;
+    padding: 0.6rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 800px) {
+    .search {
+        flex-basis: 9rem;
+        margin: 0 0.5rem;
+      }
+  }
+
+  @media (max-width: 640px) {
+    .search {
+        order: 1;
+        flex: 1 1 100%;
+        margin: 0;
+      }
+  }
+</style>

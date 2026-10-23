@@ -28,8 +28,8 @@ export interface LiveFile {
 }
 
 export interface LiveOutput {
-  /** The compiled modules of the entry file, by name, for the output tab. */
-  modules: { name: string; code: string }[];
+  /** The compiled modules of the files, by name, for the output tab. */
+  modules: { name: string; code: string; language: 'ts' | 'css'; client: boolean }[];
   warnings: string[];
 }
 
@@ -98,7 +98,7 @@ function rewrite(code: string, resolve: (specifier: string) => string): string {
 
 let runs = 0;
 /** Server functions of every sample on the page, by ID. */
-const functions: Record<string, (...args: unknown[]) => unknown> = {};
+const functions: Record<string, (...args: unknown[]) => unknown> = Object.create(null);
 
 let answering = false;
 
@@ -112,7 +112,13 @@ function answerCalls(): void {
   globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    if (url.origin === location.origin && url.pathname.startsWith('/_brumate/')) {
+    const id = decodeURIComponent(url.pathname.slice('/_brumate/'.length));
+    // Only the calls of sample functions are answered here. Others go to the server.
+    if (
+      url.origin === location.origin &&
+      url.pathname.startsWith('/_brumate/') &&
+      id in functions
+    ) {
       const answer = await server.handleRequest(functions, request);
       if (answer) {
         return answer;
@@ -157,6 +163,9 @@ export async function runSample(
   /** False when a newer run of the same sample started, so this one does not write over it. */
   isLatest: () => boolean = () => true,
 ): Promise<LiveOutput | undefined> {
+  if (!files[0]?.name.endsWith('.brm')) {
+    throw new Error('The first file renders the page, so it must be a component, a .brm file.');
+  }
   const run = ++runs;
   const folder = `live${run}`;
   const path = (name: string): string => `${folder}/${name}`;
@@ -306,29 +315,42 @@ export async function runSample(
     return undefined;
   }
   // Every file of the sample, in the order of the sample, with each name before its modules.
-  const outputs: { name: string; code: string }[] = [];
+  const outputs: LiveOutput['modules'] = [];
   for (const file of files) {
     const name = path(file.name);
     const result = compiled.get(name);
     if (result) {
       outputs.push(
-        { name: `${file.name}: client entry`, code: result.client },
+        { name: `${file.name}: client entry`, code: result.client, language: 'ts', client: true },
         ...Object.entries(result.parts).map(([part, code]) => ({
           name: `${file.name}: part ${part}`,
           code,
+          language: 'ts' as const,
+          client: true,
         })),
-        { name: `${file.name}: server`, code: result.server },
+        { name: `${file.name}: server`, code: result.server, language: 'ts', client: false },
+        { name: `${file.name}: render`, code: result.render, language: 'ts', client: true },
       );
+      if (result.css) {
+        outputs.push({
+          name: `${file.name}: css`,
+          code: result.css,
+          language: 'css',
+          client: false,
+        });
+      }
     } else if (file.name.endsWith('.brm.ts')) {
       // A module of reactive logic: components copy its functions, and the browser shares this code.
       outputs.push({
         name: `${file.name}: shared browser code`,
         code: generateShared({ path: name, source: file.source }).code,
+        language: 'ts',
+        client: true,
       });
     }
   }
-  return {
-    modules: outputs.map((module) => ({ name: module.name, code: clean(module.code) })),
-    warnings,
-  };
+  for (const module of outputs) {
+    module.code = clean(module.code);
+  }
+  return { modules: outputs, warnings };
 }

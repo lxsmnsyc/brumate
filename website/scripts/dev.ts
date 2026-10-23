@@ -23,7 +23,7 @@ const http = createHTTPServer((request, response) => {
         response.end('Not found');
         return;
       }
-      // The playground runs a WebAssembly parser with threads, which needs cross-origin isolation.
+      // The REPL runs a WebAssembly parser with threads, which needs cross-origin isolation.
       response.setHeader('cross-origin-opener-policy', 'same-origin');
       response.setHeader('cross-origin-embedder-policy', 'require-corp');
       response.writeHead(answer.status, toNodeHeaders(answer.headers));

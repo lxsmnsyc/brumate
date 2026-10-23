@@ -46,125 +46,9 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - `await` works in the expression: `$memo(await load(id))`.
 - The type of the memo is the value, not the promise. `$memo(getUser(id))` has the type of the user.
 
-## `await`
-
-`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback:
-
-```brm
-<script>
-  import { $memo, $props } from 'brumate/signals';
-  import { fetchSettings, fetchUser, listTags } from './data.server';
-
-  const { id } = $props<{ id: string }>();
-  // The server waits here. A constant: it does not load again in the browser.
-  const settings = await fetchSettings();
-  // A memo that the page waits for. It loads again when `id` changes.
-  const user = await $memo(fetchUser(id));
-  // A memo that streams, unless an `await` reads it.
-  const tags = $memo(listTags());
-</script>
-
-<p>{settings.theme}</p>
-#loading {
-  <!-- The page waits for the user. The tags can show the fallback. -->
-  <h1>{user.name}</h1>
-  <p>{tags.join(', ')}</p>
-} #else {
-  <p>Loading…</p>
-}
-```
-
-- In a script, `await` of a promise works as in JavaScript. The script runs on the server only, so the value is a constant. A component whose script awaits a promise renders only on the server: the browser throws when it renders the component, such as inside a block of a parent that changes.
-- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. In the browser it is a memo like any other: it loads again when what it reads changes.
-- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it. Outside every `#loading` body, the page waits. Inside a `#loading` body, the render around the block waits before it reaches the block: the page, or the body of a `#loading` around it. Inside a `#defer` body, the request for the body waits.
-- In the browser, the value of a memo is settled when the code that reads it runs, so `await name` is a plain read. Code that the browser renders or updates, such as a branch of an `#if` that changes, can await nothing other than a memo. The compiler reports it in the same file.
-- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time. Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript. A memo that reads another one waits for it by itself, so in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` runs when `foo()` settles. When a memo fails, the error comes where the run waits.
-
-## On the server
-
-The server renders the page once, so it waits for the values that the page needs:
-
-- Markup outside every `#loading` block waits for the memos it reads. The page starts to stream after they settle.
-- Markup inside a `#loading` block does not hold up the page. When the values that the body reads are ready as the block renders, the body renders in place. Otherwise the fallback goes out with the first render, and the body streams in when its values settle.
-- A page that waits for every value it loads has one state record, and nothing streams after it.
-
-### Pages for readers without scripts
-
-A `#loading` body streams in a `<template>` that a script swaps in. A reader that runs no scripts, such as a crawler, would keep the fallback. For such a reader, the server renders every `#loading` and `#defer` body in place, in the order of the page: it waits for each body and writes it where the block is, with no `<template>` and no swap. The page arrives later, and complete, and resumes as it does when it streams.
-
-- `inOrder` in the options of `handle`, `render` or `renderToStream` decides. `'bots'`, the default, does it for requests whose `User-Agent` is a known crawler or link preview. `true` does it for every request, `false` for none, and a function of the request decides for each.
-- A `#defer` body renders with the page, since a crawler does not fire its trigger.
-- A `#client` body has no server markup, so a crawler sees its `#else` body.
-
-### When the reader leaves
-
-When the browser leaves while a page streams, `getEvent().signal` aborts: for a page, a server function call and the request for a `#defer` body. The bodies that are not sent yet are not sent. Pass the signal to work that can stop, so nothing runs for a reader that is gone:
-
-```ts
-async function listIssues() {
-  'use server';
-  return db.issues.list({ signal: getEvent().signal });
-}
-```
-
-- It aborts when `request.signal` aborts too, as for a call that the browser cancels.
-- Work that must finish, such as a log line, does not read the signal, and passes its promise to `getEvent().waitUntil` where the server has it.
-- It needs the host to report a closed connection. Node's streams do, and Nitro passes it on for most presets.
-
-### One call for the same arguments
-
-While a page renders, calls of the same server function with the same arguments share one result. Two components that load `getUser(1)` make one call:
-
-```ts
-// Header.brm and Sidebar.brm, on one page
-const user = $memo(getUser(id));
-```
-
-- It holds for the server functions of components and of `'use server'` files.
-- Arguments are compared by value, as they would be sent, so `getUser({ id: 1 })` twice is one call.
-- Each render starts with no results, so a new request loads fresh data.
-- Calls from the browser, such as from a handler, always run. A function that changes something, such as `save(todo)`, runs each time it is called.
-
-### One call for many keys
-
-A list whose rows each load one thing, such as the profile of each player, makes one call per row. `batched` from `brumate/batch` turns the calls of one moment in the browser into one call with every key:
-
-```ts
-// profiles.ts
-'use server';
-
-export async function getProfiles(ids: string[]): Promise<Map<string, Profile>> {
-  return new Map((await db.profiles(ids)).map((profile) => [profile.id, profile]));
-}
-```
-
-```ts
-// profile.ts, a plain module, since a 'use server' file exports only server functions
-import { batched } from 'brumate/batch';
-import { getProfiles } from './profiles.ts';
-
-export const getProfile = batched(getProfiles, (found, id: string) => found.get(id) ?? null, {
-  limit: 50,
-});
-```
-
-```html
-<!-- Row.brm: each row asks for one profile. -->
-<script>
-  const profile = $memo(getProfile(id));
-</script>
-```
-
-- `batched(readMany, lookup, options)` gives a function of one key. The calls made before the next task, such as the rows of a list that the browser renders, become one call of `readMany` with every distinct key. Each call gets its value from `lookup`.
-- `key` says what makes two keys the same, for keys that are objects. `limit` splits a large batch into several calls. `wait` gathers for that many milliseconds.
-- A failed read rejects only the calls that it read for, and a `lookup` that throws rejects only the calls of its key.
-- On the server, each call reads its own key at once. The server renders the rows of a list one after another, so their calls never happen at the same time, and calls of one key in a render still share one result. A page that renders many rows on the server reads faster with one call in the list, such as `$memo(getProfiles(ids))`, whose result it hands to the rows.
-- `refresh(getProfiles)` does not load the memos that call `getProfile` again, since the compiler sees only `getProfile`. Refresh the memo of the list instead, or load the page again.
-- A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. Read many keys with one query there.
-
 ## `#loading`
 
-`#loading` shows a fallback while the values that its body reads load:
+`#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them:
 
 ```brm live
 <script>
@@ -189,17 +73,8 @@ export const getProfile = batched(getProfiles, (found, id: string) => found.get(
 
 - The heading shows at once. The quote streams in after a second and a half.
 - Without `#loading`, the whole page waits for the quote.
-- When the values that the body reads are ready as the block renders, such as a value the page waited for with `await`, the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
+- When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
-
-## On the client
-
-When a value that the memo reads changes in the browser, the memo runs again:
-
-- The page keeps the old value until the new one arrives, so content does not disappear while it loads.
-- Only the latest run is written. When you type quickly, an older answer that arrives late is dropped.
-- A newer run aborts the server function calls of the older one. A server function sees this on [the request](./server-functions.md#the-request), with `getEvent().request.signal`.
-- If the promise rejects, the memo keeps its old value and the error is logged. Handle errors in the function when the page should show them, such as by returning `{ error }`.
 
 ## `$isPending`
 
@@ -214,6 +89,86 @@ const busy = $isPending(count);
 
 - On the server it is always false, because the server waits for the value before it renders.
 - Pass the memo itself, not an expression.
+
+## On the client
+
+When a value that the memo reads changes in the browser, the memo runs again:
+
+- The page keeps the old value until the new one arrives, so content does not disappear while it loads.
+- Only the latest run is written. When you type quickly, an older answer that arrives late is dropped.
+- A newer run aborts the server function calls of the older one. A server function sees this on [the request](./server-functions.md#the-request), with `getEvent().signal`.
+- If the promise rejects, the memo keeps its old value and the error is logged. Handle errors in the function when the page should show them, such as by returning `{ error }`.
+
+## Waiting for a pause
+
+A search field that loads results as the user types should wait for a pause. `$debounced(value, ms)` is a memo that takes the value once it stops changing for `ms` milliseconds:
+
+```brm
+<script>
+  import { $debounced, $isPending, $memo, $signal } from 'brumate/signals';
+  import { search } from './search.ts';
+
+  let query = $signal('');
+  const settled = $debounced(query, 300);
+  const results = $memo(search(settled));
+</script>
+
+<input type="search" value=query onInput=((event) => (query = event.currentTarget.value))>
+#if ($isPending(settled)) {
+  <p>Waiting for you to stop typing…</p>
+}
+<ul>
+  #for (result of results by result.id) {
+    <li>{result.title}</li>
+  }
+</ul>
+```
+
+- `$throttled(value, ms)` takes the value at most once every `ms` milliseconds: the first change at once, and the last one after the wait. Use it for values that change all the time, such as the position of the pointer.
+- On the server, both are the value itself, so the page renders the results for the query that it has.
+- In the browser, the memo is pending while it waits, so `$isPending` is true.
+- `ms` is a number, such as `300`.
+
+## Loading again
+
+A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `event.refresh` with the function that reads it. Every memo on the page that calls that function loads again.
+
+```brm live
+<script module>
+  // Kept in memory for the sample. A real app would use a database.
+  const names: string[] = ['Ada'];
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { getEvent } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    return [...names];
+  }
+
+  async function add(name: string) {
+    'use server';
+    names.push(name);
+    getEvent().refresh(list);
+  }
+
+  const people = $memo(list());
+  let draft = $signal('');
+</script>
+
+<input aria-label="Name" value=draft onInput=((event) => (draft = event.currentTarget.value))>
+<button onClick=(() => add(draft))>Add</button>
+<ul>
+  #for (person of people by person) {
+    <li>{person}</li>
+  }
+</ul>
+```
+
+- `event.refresh` takes a server function of the same component, or a function of a `'use server'` file.
+- The memos load again in every component on the page that calls the function.
 
 ## Promises as props
 
@@ -281,3 +236,77 @@ A server function can be an async generator. A memo of it takes each value as it
 - A newer run of the memo stops reading the older stream.
 - The server renders the first value only, because the page renders once.
 - `$memo` gives the type of the values, so `status` above is a `string`.
+
+## `await`
+
+`await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback:
+
+```brm
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { fetchSettings, fetchUser, listTags } from './data.server';
+
+  const { id } = $props<{ id: string }>();
+  // The server waits here. A constant: it does not load again in the browser.
+  const settings = await fetchSettings();
+  // A memo that the page waits for. It loads again when `id` changes.
+  const user = await $memo(fetchUser(id));
+  // A memo that streams, unless an `await` reads it.
+  const tags = $memo(listTags());
+</script>
+
+<p>{settings.theme}</p>
+#loading {
+  <!-- The page waits for the user. The tags can show the fallback. -->
+  <h1>{user.name}</h1>
+  <p>{tags.join(', ')}</p>
+} #else {
+  <p>Loading…</p>
+}
+```
+
+- In a script, `await` of a promise works as in JavaScript. The script runs on the server only, so the value is a constant. A component whose script awaits a promise renders only on the server: the browser throws when it renders the component, such as inside a block of a parent that changes.
+- `const name = await $memo(value)` declares a memo that the page waits for where it is declared. In the browser it is a memo like any other: it loads again when what it reads changes.
+- `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it. Outside every `#loading` body, the page waits. Inside a `#loading` body, the render around the block waits before it reaches the block: the page, or the body of a `#loading` around it. Inside a `#defer` body, the request for the body waits.
+- In the browser, the value of a memo is settled when the code that reads it runs, so `await name` is a plain read. Code that the browser renders or updates, such as a branch of an `#if` that changes, can await nothing other than a memo. The compiler reports it in the same file.
+- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time. Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript. A memo that reads another one waits for it by itself, so in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` runs when `foo()` settles. When a memo fails, the error comes where the run waits.
+
+## On the server
+
+The server renders the page once, so it waits for the values that the page needs:
+
+- Markup outside every `#loading` block waits for the memos it reads. The page starts to stream after they settle.
+- Markup inside a `#loading` block does not hold up the page. When the values that the body reads are ready as the block renders, the body renders in place. Otherwise the fallback goes out with the first render, and the body streams in when its values settle.
+- A page that waits for every value it loads has one state record, and nothing streams after it.
+
+### Pages for readers without scripts
+
+A `#loading` body streams in a `<template>` that a script swaps in. A reader that runs no scripts, such as a crawler, would keep the fallback. For such a reader, the server renders every `#loading` and `#defer` body in place, in the order of the page: it waits for each body and writes it where the block is, with no `<template>` and no swap. The page arrives later, and complete, and resumes as it does when it streams.
+
+- `inOrder` in the options of `handle`, `render` or `renderToStream` decides. `'bots'`, the default, does it for requests whose `User-Agent` is a known crawler or link preview. `true` does it for every request, `false` for none, and a function of the request decides for each.
+- A `#defer` body renders with the page, since a crawler does not fire its trigger.
+- A `#client` body has no server markup, so a crawler sees its `#else` body.
+
+## `#defer`
+
+`#defer` renders its body on the server later, in a request of its own. The page has the `#else` body until the trigger fires, with the same triggers as [`#client`](./effects.md#client-blocks). The browser then asks the server for the body, which replaces the fallback:
+
+```brm
+#defer ('visible') {
+  <Recommendations user=user />
+} #else {
+  <p>Loading recommendations…</p>
+}
+```
+
+Use it for markup that the server renders but that the first response does not need, such as content far below the fold, or the parts of a cached page that depend on the user.
+
+- The body renders on the server, with the same route, request, cookies and values as the page. It can call server functions and read the database.
+- The request goes to the URL of the page, so middleware runs for it as it does for the page. The answer has `vary: x-brumate-defer`, and so does the page.
+- The server renders the route again for the request, up to the block. It renders the `#loading` and `#defer` bodies around the block, without sending them, and no other body. Data that the page loads before the block loads again. Data that only the body needs is not loaded for the page: put it in the body, such as in a component inside it.
+- If the page's data changed since it loaded, and the block is not where the browser has it, the fallback stays.
+- Without scripts, the fallback stays. A prerendered page needs a server for the request.
+- A `#defer` block can be inside a `#loading` or `#defer` body. It cannot be inside a `#client` body, or in markup that the browser renders, such as a branch of an `#if` that changes. The compiler reports it in the same file.
+- A component with a `#defer` block that the browser renders, such as inside the `#client` body of its parent, keeps the fallback. The compiler cannot see this across files.
+
+`#client` renders its body in the browser, for markup that needs the browser. `#defer` renders it on the server, for markup that needs the server.

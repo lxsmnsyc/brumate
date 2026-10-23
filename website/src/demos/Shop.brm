@@ -1,0 +1,261 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  // A product page. `data-xray` names what each part ships, for the X-ray view of the home page.
+  const colors = [
+    { name: 'Ember', from: '#f6a679', to: '#d4612a' },
+    { name: 'Lagoon', from: '#8fd3f4', to: '#2f7fbf' },
+    { name: 'Moss', from: '#b8e0a2', to: '#4d8b3a' },
+  ];
+
+  let color = $signal(0);
+  let quantity = $signal(1);
+  let cart = $signal(0);
+  let saved = $signal(false);
+  const total = $memo((quantity * 24).toFixed(2));
+</script>
+
+<div class="shop">
+  <header class="shop-nav">
+    <span class="shop-logo" data-xray="html">Kettle &amp; Co.</span>
+    <span class="shop-cart" data-xray="update">Cart <b>{cart}</b></span>
+  </header>
+  <div class="shop-main">
+    <div class="shop-photo" style={ '--from': colors[color]!.from, '--to': colors[color]!.to } data-xray="update">
+      <span class="shop-kettle" aria-hidden="true"></span>
+    </div>
+    <div class="shop-info">
+      <div data-xray="html">
+        <h3>Pour-over kettle</h3>
+        <p class="shop-stars" aria-label="4.8 out of 5">★★★★★ <span>4.8 · 312 reviews</span></p>
+        <p class="shop-copy">A gooseneck spout for a slow, even pour. Holds 0.9 L and works on every stove.</p>
+      </div>
+      <div class="shop-swatches" role="radiogroup" aria-label="Color" data-xray="handler">
+        #for (option, index of colors by option.name) {
+          <button
+            role="radio"
+            aria-checked=(index === color)
+            aria-label=(option.name)
+            class={ swatch: true, active: index === color }
+            style={ '--from': option.from, '--to': option.to }
+            onClick=(() => (color = index))
+          ></button>
+        }
+      </div>
+      <div class="shop-buy" data-xray="handler">
+        <div class="shop-qty">
+          <button aria-label="One less" onClick=(() => (quantity = Math.max(1, quantity - 1)))>−</button>
+          <span>{quantity}</span>
+          <button aria-label="One more" onClick=(() => quantity++)>+</button>
+        </div>
+        <button class="shop-add" onClick=(() => (cart += quantity))>Add · ${total}</button>
+        <button class={ 'shop-save': true, saved } aria-pressed=saved aria-label="Save for later" onClick=(() => (saved = !saved))>{saved ? '♥' : '♡'}</button>
+      </div>
+      <ul class="shop-specs" data-xray="html">
+        <li>Stainless steel, 0.9 L</li>
+        <li>Thermometer in the lid</li>
+        <li>Free shipping over $50</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+  .shop {
+    padding: 1rem 1.25rem 1.25rem;
+    background: var(--bg);
+  }
+
+  .shop-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shop-logo {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .shop-cart b {
+    display: inline-block;
+    min-width: 1.4rem;
+    margin-left: 0.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .shop-main {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 1.25rem;
+  }
+
+  .shop-photo {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border-radius: var(--radius);
+    background: linear-gradient(145deg, var(--from), var(--to));
+    transition: background 0.3s;
+  }
+
+  /* A kettle drawn with CSS: a body, a lid knob and a spout. */
+
+  .shop-kettle {
+    position: relative;
+    width: 46%;
+    aspect-ratio: 1.15;
+    border-radius: 45% 45% 18% 18%;
+    background: rgb(255 255 255 / 85%);
+    box-shadow: 0 10px 20px rgb(0 0 0 / 15%);
+  }
+
+  .shop-kettle::before {
+    content: '';
+    position: absolute;
+    top: -12%;
+    left: 42%;
+    width: 16%;
+    height: 14%;
+    border-radius: 50% 50% 20% 20%;
+    background: rgb(255 255 255 / 85%);
+  }
+
+  .shop-kettle::after {
+    content: '';
+    position: absolute;
+    top: 34%;
+    left: -30%;
+    width: 40%;
+    height: 9%;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 85%);
+    transform: rotate(-30deg);
+    transform-origin: right center;
+  }
+
+  .shop-info h3 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  .shop-stars {
+    margin: 0.2rem 0 0.5rem;
+    color: #e3a008;
+    font-size: 0.9rem;
+  }
+
+  .shop-stars span,
+  .shop-copy,
+  .shop-specs {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .shop-copy {
+    margin: 0 0 0.75rem;
+  }
+
+  .shop-swatches {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .swatch {
+    width: 1.6rem;
+    height: 1.6rem;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--from), var(--to));
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+  }
+
+  .swatch.active {
+    box-shadow: 0 0 0 2px var(--text);
+  }
+
+  .shop-buy {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .shop-qty {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .shop-qty button,
+  .shop-save {
+    width: 2rem;
+    height: 2.2rem;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .shop-qty span {
+    min-width: 1.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .shop-add {
+    height: 2.2rem;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font: 600 0.9rem var(--font);
+    cursor: pointer;
+  }
+
+  .shop-add:hover {
+    background: var(--accent-strong);
+  }
+
+  .shop-save {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1.1rem;
+  }
+
+  .shop-save.saved {
+    color: #d64545;
+  }
+
+  .shop-specs {
+    margin: 0.9rem 0 0;
+    padding-left: 1.1rem;
+  }
+
+  @media (max-width: 40rem) {
+    .shop-main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+    .shop-photo {
+        aspect-ratio: 2;
+      }
+
+    .shop-kettle {
+        width: 22%;
+      }
+  }
+</style>

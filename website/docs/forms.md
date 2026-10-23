@@ -207,7 +207,7 @@ Set `enctype="multipart/form-data"`, so the browser sends the files when scripts
 
 ## Refreshing other data
 
-After a form changes data, call `event.refresh(fn)` in its function with the server function that reads the data. Memos that call it load again. See [Refreshing data](./server-functions.md#refreshing-data). Without scripts, the page renders again, so its memos are new anyway.
+After a form changes data, call `event.refresh(fn)` in its function with the server function that reads the data. Memos that call it load again. See [Loading again](./async-data.md#loading-again). Without scripts, the page renders again, so its memos are new anyway.
 
 ## Showing a guess while it posts
 

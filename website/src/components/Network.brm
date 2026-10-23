@@ -13,3 +13,71 @@
     <li class="empty">Nothing yet</li>
   </ol>
 </aside>
+
+<style>
+  .network {
+    position: sticky;
+    top: calc(var(--header-height) + 1rem);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    overflow: hidden;
+  }
+
+  .network header {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .network header strong {
+    color: var(--accent-strong);
+  }
+
+  .network ol {
+    margin: 0;
+    padding: 0.3rem 0;
+    list-style: none;
+    counter-reset: request;
+  }
+
+  .network :global(li) {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0.8rem;
+    animation: arrive 0.6s ease-out;
+  }
+
+  .network :global(li .file) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .network :global(li .size) {
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .network :global(li.empty) {
+    color: var(--muted);
+    animation: none;
+  }
+
+  @keyframes arrive {
+    from {
+      background: var(--accent-soft);
+    }
+  }
+
+  @media (max-width: 800px) {
+    .network {
+        position: static;
+      }
+  }
+</style>

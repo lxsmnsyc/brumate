@@ -1,0 +1,274 @@
+<script>
+  // A wireframe of an app, and the parts of it that ship code to the browser: with brumate,
+  // only the parts that respond to the user; with hydration, all of it. Two radio buttons and
+  // :has switch the view, with no script.
+</script>
+
+<figure class="ships">
+  <div class="ships-switch" role="radiogroup" aria-label="Which code ships">
+    <label><input type="radio" name="ships" value="brumate" checked> brumate</label>
+    <label><input type="radio" name="ships" value="hydration" class="ships-hydration"> Hydration</label>
+  </div>
+  <svg viewBox="0 0 720 460" role="img" aria-labelledby="ships-title ships-desc">
+    <title id="ships-title">The code an app ships to the browser</title>
+    <desc id="ships-desc">A wireframe of a shop: a header with a search field and a cart, a sidebar with a filter switch, a banner, tabs and three product cards with buttons, and a footer. With brumate, only the search field, the filter switch, the tabs and the buttons ship code, which loads on their events, and the cart badge updates. The rest ships as HTML only. With hydration, every part of the page ships its code and runs again in the browser.</desc>
+
+    <rect x="10" y="10" width="700" height="440" rx="12" class="sm-frame"></rect>
+    <line x1="10" y1="40" x2="710" y2="40" class="sm-rule"></line>
+    <circle cx="30" cy="25" r="5" class="sm-dot"></circle>
+    <circle cx="46" cy="25" r="5" class="sm-dot"></circle>
+    <circle cx="62" cy="25" r="5" class="sm-dot"></circle>
+    <rect x="90" y="17" width="260" height="16" rx="8" class="sm-dot"></rect>
+
+    <g class="sm-static">
+      <rect x="30" y="62" width="70" height="20" rx="4"></rect>
+      <rect x="120" y="68" width="40" height="8" rx="4"></rect>
+      <rect x="172" y="68" width="48" height="8" rx="4"></rect>
+      <rect x="232" y="68" width="36" height="8" rx="4"></rect>
+
+      <rect x="30" y="118" width="90" height="10" rx="4"></rect>
+      <rect x="30" y="142" width="120" height="8" rx="4"></rect>
+      <rect x="30" y="162" width="100" height="8" rx="4"></rect>
+      <rect x="30" y="182" width="112" height="8" rx="4"></rect>
+      <rect x="30" y="202" width="90" height="8" rx="4"></rect>
+      <rect x="30" y="222" width="106" height="8" rx="4"></rect>
+      <rect x="74" y="257" width="70" height="8" rx="4"></rect>
+
+      <rect x="190" y="112" width="500" height="110" rx="8"></rect>
+
+      <rect x="190" y="274" width="160" height="130" rx="8"></rect>
+      <rect x="360" y="274" width="160" height="130" rx="8"></rect>
+      <rect x="530" y="274" width="160" height="130" rx="8"></rect>
+
+      <rect x="30" y="424" width="120" height="8" rx="4"></rect>
+      <rect x="170" y="424" width="80" height="8" rx="4"></rect>
+      <rect x="600" y="424" width="90" height="8" rx="4"></rect>
+    </g>
+    <g class="sm-static sm-deep">
+      <rect x="214" y="140" width="220" height="16" rx="4"></rect>
+      <rect x="214" y="166" width="300" height="8" rx="4"></rect>
+      <rect x="214" y="182" width="260" height="8" rx="4"></rect>
+      <rect x="200" y="284" width="140" height="60" rx="6"></rect>
+      <rect x="370" y="284" width="140" height="60" rx="6"></rect>
+      <rect x="540" y="284" width="140" height="60" rx="6"></rect>
+      <rect x="200" y="354" width="100" height="8" rx="4"></rect>
+      <rect x="200" y="368" width="60" height="8" rx="4"></rect>
+      <rect x="370" y="354" width="90" height="8" rx="4"></rect>
+      <rect x="370" y="368" width="70" height="8" rx="4"></rect>
+      <rect x="540" y="354" width="110" height="8" rx="4"></rect>
+      <rect x="540" y="368" width="50" height="8" rx="4"></rect>
+    </g>
+
+    <g class="sm-live">
+      <rect x="440" y="60" width="180" height="24" rx="12"></rect>
+      <rect x="30" y="252" width="36" height="18" rx="9"></rect>
+      <rect x="190" y="238" width="70" height="22" rx="6"></rect>
+      <rect x="266" y="238" width="70" height="22" rx="6"></rect>
+      <rect x="342" y="238" width="70" height="22" rx="6"></rect>
+      <rect x="290" y="378" width="50" height="20" rx="6"></rect>
+      <rect x="460" y="378" width="50" height="20" rx="6"></rect>
+      <rect x="630" y="378" width="50" height="20" rx="6"></rect>
+    </g>
+    <g class="sm-update">
+      <circle cx="660" cy="72" r="13"></circle>
+      <circle cx="671" cy="61" r="6"></circle>
+    </g>
+
+    <g class="sm-tags">
+      <g transform="translate(486 92)"><rect width="96" height="22" rx="11"></rect><text x="48" y="15.5">on input</text></g>
+      <g transform="translate(30 276)"><rect width="104" height="22" rx="11"></rect><text x="52" y="15.5">on change</text></g>
+      <g transform="translate(418 238)"><rect width="88" height="22" rx="11"></rect><text x="44" y="15.5">on click</text></g>
+      <g transform="translate(198 377)"><rect width="88" height="22" rx="11"></rect><text x="44" y="15.5">on click</text></g>
+      <g class="sm-tag-update" transform="translate(612 92)"><rect width="84" height="22" rx="11"></rect><text x="42" y="15.5">updates</text></g>
+    </g>
+    <g class="sm-tag-all" transform="translate(360 210)">
+      <rect x="-210" y="-20" width="420" height="40" rx="20"></rect>
+      <text y="6">Every part ships its code and runs again</text>
+    </g>
+  </svg>
+  <figcaption>
+    <span class="ships-brumate">With brumate, only the parts that respond to the user ship code, and each loads on its own event. The rest is HTML.</span>
+    <span class="ships-hydration-text">With hydration, the browser loads the code of every part of the page and renders it again, static parts included.</span>
+  </figcaption>
+</figure>
+
+<style>
+  .ships {
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .ships svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 0.75rem;
+    font-family: var(--mono);
+  }
+
+  .ships-switch {
+    display: inline-flex;
+    padding: 0.2rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+  }
+
+  .ships-switch label {
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ships-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ships-switch label:has(input:checked) {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .ships-switch label:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .ships figcaption {
+    margin-top: 0.75rem;
+    color: var(--muted);
+  }
+
+  .sm-frame {
+    fill: var(--bg);
+    stroke: var(--border);
+  }
+
+  .sm-rule {
+    stroke: var(--border);
+  }
+
+  .sm-dot {
+    fill: var(--surface-strong);
+  }
+
+  .sm-static rect,
+  .sm-deep rect,
+  .sm-live rect,
+  .sm-update circle {
+    transition:
+      fill 0.4s,
+      stroke 0.4s,
+      opacity 0.4s;
+  }
+
+  .sm-static rect {
+    fill: var(--surface);
+    stroke: var(--border);
+  }
+
+  .sm-deep rect {
+    fill: var(--surface-strong);
+    stroke: none;
+  }
+
+  .sm-live rect {
+    fill: var(--accent);
+    animation: sm-pulse 2.4s ease-in-out infinite;
+  }
+
+  .sm-update circle {
+    fill: none;
+    stroke: var(--cool);
+    stroke-width: 3;
+  }
+
+  .sm-update circle + circle {
+    fill: var(--cool);
+    stroke: none;
+  }
+
+  .sm-tags rect {
+    fill: var(--accent);
+  }
+
+  .sm-tags text,
+  .sm-tag-all text {
+    fill: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  .sm-tags .sm-tag-update rect {
+    fill: var(--cool);
+  }
+
+  .sm-tag-all {
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .sm-tag-all rect {
+    fill: var(--cool);
+  }
+
+  .sm-tag-all text {
+    font-family: var(--font);
+    font-size: 18px;
+  }
+
+  .sm-tags {
+    transition: opacity 0.4s;
+  }
+
+  @keyframes sm-pulse {
+    50% {
+      opacity: 0.65;
+    }
+  }
+
+  .ships-hydration-text {
+    display: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-static rect,
+  .ships:has(.ships-hydration:checked) .sm-live rect {
+    fill: color-mix(in srgb, var(--cool) 35%, var(--bg));
+    stroke: var(--cool);
+    animation: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-deep rect {
+    fill: color-mix(in srgb, var(--cool) 60%, var(--bg));
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-tags {
+    opacity: 0;
+  }
+
+  .ships:has(.ships-hydration:checked) .sm-tag-all {
+    opacity: 1;
+  }
+
+  .ships:has(.ships-hydration:checked) .ships-brumate {
+    display: none;
+  }
+
+  .ships:has(.ships-hydration:checked) .ships-hydration-text {
+    display: inline;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sm-live rect {
+        animation: none;
+      }
+  }
+</style>

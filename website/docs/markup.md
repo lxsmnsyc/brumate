@@ -65,7 +65,7 @@ Shorthands:
 <p style={ fontSize: `${size}px`, color: on ? 'crimson' : undefined }>Some text</p>
 ```
 
-`{ on }` is the class `on` while `on` is true. A style property whose value is `null`, `undefined` or `false` is left out.
+`{ on }` is the class `on` while `on` is true. In an array, such as `class=(['task', on && 'on'])`, empty and false items are skipped. A style property whose value is `null`, `undefined` or `false` is left out.
 
 ## Dynamic tags
 
@@ -204,3 +204,46 @@ The compiler warns about common accessibility mistakes. The warnings show in the
 - A link or a button without text or `aria-label`. An image with `alt` text counts as text.
 
 An element with a spread or a computed attribute is not checked, because any attribute can be in it. `a11y: false` in the [plugin options](./reference-plugin.md) turns the warnings off.
+
+## `$id`
+
+`$id()` returns an ID that is unique in the page. Use it to connect a label or a description to a field:
+
+```brm live
+<script>
+  import { $id } from 'brumate/signals';
+
+  const field = $id();
+  const hint = $id();
+</script>
+
+<label for=field>Email</label>
+<input id=field type="email" aria-describedby=hint>
+<p id=hint>We never share your email.</p>
+```
+
+- The server and the browser make the same ID, so a component that the browser renders later gets the same IDs as it would on the server.
+- Each instance of a component gets its own IDs, so a component can be used many times on a page.
+- An ID has only letters, digits, `-` and `_`, such as `b3-0`, so it also works in a CSS selector, as `#b3-0`.
+- In the [script of a block](./control-flow.md#a-script-in-a-block), such as the body of a `#for`, each item gets its own IDs:
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let fields = $signal(['Name', 'Email']);
+</script>
+
+#for (name of fields by name) {
+  <script>
+    import { $id } from 'brumate/signals';
+
+    const id = $id();
+  </script>
+  <p>
+    <label for=id>{name}</label>
+    <input id=id>
+  </p>
+}
+<button onClick=(() => (fields = [...fields, `Field ${fields.length + 1}`]))>Add a field</button>
+```

@@ -62,7 +62,7 @@ A page gets the dynamic segments of its path as `params`. `RouteParams` from `br
 
 - Every param is a string. Convert it yourself, such as with `Number(params.id)`.
 - A `[...path]` param holds the rest of the path with its slashes, such as `guide/install`.
-- The query string is on the request: `new URL(getEvent().request.url).searchParams`, with `getEvent` from `brumate/server`.
+- The query string is in `$route().search`. See [The route](./navigation.md#the-route).
 
 ## Layouts
 
@@ -212,7 +212,7 @@ export default defineMiddleware(async (event, next) => {
 
 - `event` is the `RequestEvent` of the request, the one that `getEvent()` returns. `event.kind` says what the request is for: `'page'`, `'endpoint'`, `'call'` for a server function call or a form post to one, or `'defer'` for the body of a `#defer` block.
 - For a call, and for a form that posts to a page with `?__action=<id>`, `event.call` has the ID of the server function and its arguments, read already, so a check can depend on them.
-- `event.locals` holds what the middleware finds, such as the user, for the components, server functions and endpoints of the request. See [Request locals](./server-functions.md#request-locals).
+- `event.locals` holds what the middleware finds, such as the user, for the components, server functions and endpoints of the request. See [Request locals](#request-locals).
 - It runs first, before the `_middleware.ts` of the folders. A call from a page of another site is refused before it runs. See [Security](./reference-security.md).
 - The `middleware` option of the plugin names another file. `false` runs none.
 
@@ -235,6 +235,31 @@ export async function middleware(request: Request, next: () => Promise<Response>
 ```
 
 The middleware of each folder on the path runs from the outside in.
+
+### Request locals
+
+Middleware hands what it finds, such as the user, to the rest of the request through `event.locals`, as above. Components, server functions and endpoints read it with `getEvent().locals`:
+
+```ts
+async function listOrders() {
+  'use server';
+  const { user } = getEvent().locals;
+  return user ? db.orders.of(user.id) : [];
+}
+```
+
+Its type comes from the `Locals` interface of `brumate/server`, which the app adds to:
+
+```ts
+// src/locals.d.ts
+declare module 'brumate/server' {
+  interface Locals {
+    user?: { id: string; name: string; admin: boolean };
+  }
+}
+```
+
+- It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
 
 ## Links
 
@@ -265,4 +290,4 @@ const response = await handle(request, {
 
 It returns `undefined` when no route matches and the app has no entry middleware, and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404. [Deploying](./deploying.md) shows a full server for development and production.
 
-[`examples/todos`](../../examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](../../examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.
+[`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](https://github.com/lxsmnsyc/brumate/tree/main/examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.

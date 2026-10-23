@@ -42,3 +42,47 @@
     }
   </ul>
 </div>
+
+<style>
+  .shipped {
+    padding: 0.75rem 1rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .shipped table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .shipped th,
+  .shipped td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .shipped th {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .shipped .num {
+    font-family: var(--mono);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .shipped-sum {
+    margin: 0.75rem 0 0.25rem;
+  }
+
+  .shipped-roots {
+    margin: 0.5rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>

@@ -9,6 +9,7 @@
   "buildCommand": "pnpm --filter \"website^...\" build && pnpm build",
   "outputDirectory": "dist/client",
   "cleanUrls": true,
+  "redirects": [{ "source": "/playground", "destination": "/repl", "permanent": true }],
   "headers": [
     {
       "source": "/(.*)",
