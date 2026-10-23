@@ -2151,6 +2151,27 @@ describe('bindings with a setter', () => {
   });
 });
 
+describe('bindings through spreads', () => {
+  it('binds an element from a rest prop', async () => {
+    await resume('bindSpread', {});
+    const field = document.querySelector<HTMLInputElement>('.field.text')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$bind#0\.\d+@\d+$/);
+    field.value = 'hi';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|false'));
+    const box = document.querySelector<HTMLInputElement>('.field.box')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|true'));
+    // A setter passes through the spread too.
+    const upper = document.querySelector<HTMLInputElement>('.field.upper')!;
+    expect(upper.getAttribute('b-on')).toMatch(/^input=\$set:/);
+    upper.value = 'ada';
+    upper.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.upper-out')).toBe('ADA'));
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});

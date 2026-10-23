@@ -5,6 +5,7 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  bindEntry,
   handlerEntry,
   spread as spreadText,
   textValue,
@@ -663,9 +664,21 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
           handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
         );
       }
+      // A binding that a rest prop passed on writes its slot, or calls its setter.
+      if ((name === 'value' || name === 'checked') && isBinding(value)) {
+        on.push(bindEntry(name, value.ref, setterReference(value.set)));
+      }
     }
   }
   return spreadText(attributes);
+}
+
+/** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
+function setterReference(set: unknown): FunctionReference | undefined {
+  if (set instanceof FunctionReference) {
+    return set;
+  }
+  return typeof set === 'function' ? handlerReferences.get(set) : undefined;
 }
 
 /** Replaces function references with functions that call them. */

@@ -1,0 +1,14 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import BindField from './BindField.brm';
+
+  let draft = $signal('');
+  let done = $signal(false);
+  let upper = $signal('');
+</script>
+
+<BindField label="text" value=$bind(draft) />
+<BindField label="box" type="checkbox" checked=$bind(done) />
+<BindField label="upper" value=$bind(upper, (next: string) => (upper = next.toUpperCase())) />
+<p class="upper-out">{upper}</p>
+<p class="out">{draft}|{String(done)}</p>

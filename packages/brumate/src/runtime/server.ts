@@ -5,6 +5,7 @@ import {
   actionAttributes,
   escape,
   escapeAttribute,
+  bindEntry,
   handlerEntry,
   insertValue,
   isRaw,
@@ -3146,6 +3147,12 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
     if (reference) {
       const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
       on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
+    }
+    // A binding that a rest prop passed on writes its slot, or calls its setter.
+    if (on && (name === 'value' || name === 'checked') && isBinding(value)) {
+      const setter =
+        typeof value.set === 'function' ? functionReferences.get(value.set) : undefined;
+      on.push(bindEntry(name, value.ref, setter));
     }
   }
   return spreadAttributes(attributes);
