@@ -44,6 +44,14 @@ const files = new Map(
   const { as } = $props<{ as: string }>();
 </script>
 <{as}>Text</>`,
+    '/app/Pressable.brm': `<script>
+  const { as = 'button' } = $props<{ as?: string }>();
+</script>
+<{as}>Press</>`,
+    '/app/Link.brm': `<script>
+  const { as } = $props<{ as?: string }>();
+</script>
+<{as ?? 'a'}>Go</>`,
     '/app/Fancy.brm': `<script>
   import Chart from 'charts/Chart.brm';
 </script>
@@ -70,6 +78,11 @@ describe('classifyComponents', () => {
     expect(classes.get('/app/Toolbar.brm')!.selfContained).toBe(true);
     // A component that renders itself is self-contained when it is otherwise.
     expect(classes.get('/app/Comment.brm')!.selfContained).toBe(true);
+    // Every context has a default, so a part works without a provider.
+    expect(classes.get('/app/Themed.brm')!.selfContained).toBe(true);
+    // A dynamic tag with an element to fall back to.
+    expect(classes.get('/app/Pressable.brm')!.selfContained).toBe(true);
+    expect(classes.get('/app/Link.brm')!.selfContained).toBe(true);
   });
 
   it('finds what a component needs, also through the components that it renders', () => {
@@ -77,7 +90,6 @@ describe('classifyComponents', () => {
     expect(needs('/app/Page.brm')).toEqual(['server feed via /app/Feed.brm']);
     expect(needs('/app/Status.brm')).toEqual(['request getEvent']);
     expect(needs('/app/Crumbs.brm')).toEqual(['route $route']);
-    expect(needs('/app/Themed.brm')).toEqual(['context $getContext']);
     expect(needs('/app/Later.brm')).toEqual(['defer #defer']);
     expect(needs('/app/Any.brm')).toEqual(['dynamic <{…}>']);
     expect(needs('/app/Fancy.brm')).toEqual(['component charts/Chart.brm']);

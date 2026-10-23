@@ -78,7 +78,7 @@ export function workbenchPage(base: string): string {
 
   /* Kinds of needs */
   .k-server { --k: var(--blue); } .k-request { --k: var(--purple); } .k-route { --k: var(--green); }
-  .k-context { --k: var(--yellow); } .k-action { --k: var(--red); } .k-defer { --k: var(--accent); }
+  .k-action { --k: var(--red); } .k-defer { --k: var(--accent); }
   .k-dynamic { --k: var(--dim); } .k-component { --k: var(--faint); }
   .dot { background: var(--k); }
   .tag {
@@ -237,7 +237,6 @@ const KINDS = {
   server: ['Server', 'calls the server function'],
   request: ['Request', 'reads the request with'],
   route: ['Route', 'reads the route with'],
-  context: ['Context', 'reads a context with'],
   action: ['Action', 'has the form action'],
   defer: ['Defer', 'has a block that the server renders later:'],
   dynamic: ['Dynamic tag', 'renders a dynamic tag'],

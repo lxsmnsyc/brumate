@@ -89,8 +89,8 @@ A component that needs more than its props, itself or through a component that i
 
 - It calls a server function, of a `'use server'` file or one that it declares.
 - It reads the request, through an import of `brumate/server`.
-- It reads the route with `$route` or `$navigation`, or a context with `$getContext`.
-- It has a form action of `$action`, a `#defer` block or a dynamic tag.
+- It reads the route with `$route` or `$navigation`.
+- It has a form action of `$action`, a `#defer` block, or a dynamic tag with no element to fall back to, such as `<{as ?? 'button'}>` has.
 - It renders a component that the workbench cannot find.
 
 A component in the workbench has no layout around it, so the styles of a layout, such as `:global` rules of `_layout.brm`, are not there.

@@ -276,15 +276,15 @@ A workbench helps with small components that depend only on their props, such as
 
 The project analysis classifies each component by what it depends on, itself and through the components that it renders:
 
-| Kind                  | What it depends on                                                                                                                  | In the workbench                                                |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Self-contained        | Its props, its own state, and contexts with a default                                                                               | Listed, with controls for its props                             |
-| Needs the environment | A server function, the request (`getEvent`, cookies, `locals`), the route, a context without a default, a `#defer` or a form action | Listed only with a story file that gives what it needs          |
-| Route or layout       | A file of `src/routes`                                                                                                              | Never. `visit` from `brumate/testing` and e2e tests cover these |
+| Kind                  | What it depends on                                                                                                                                     | In the workbench                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Self-contained        | Its props, its own state, and the contexts it reads                                                                                                    | Listed, with controls for its props                             |
+| Needs the environment | A server function, the request (`getEvent`, cookies, `locals`), the route, a `#defer`, a form action, or a dynamic tag with no element to fall back to | Listed only with a story file that gives what it needs          |
+| Route or layout       | A file of `src/routes`                                                                                                                                 | Never. `visit` from `brumate/testing` and e2e tests cover these |
 
 - The analyzer already sees each of these in a file, and the project analysis already knows which components each file renders. The classification combines the two.
 - The line is what a component depends on, not where it is. An app has small components, such as in `src/components`, and a package can have components that call its own server functions.
-- When the analysis cannot tell, such as for a dynamic component (`<{as}>`) whose tag comes from a prop, the component counts as one that needs the environment.
+- When the analysis cannot tell, such as for a dynamic tag (`<{as}>`) whose tag comes from a prop with no element as its default, the component counts as one that needs the environment. Every context has a default, so reading one needs no provider.
 
 #### How it works
 
