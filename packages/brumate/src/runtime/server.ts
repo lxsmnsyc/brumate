@@ -169,6 +169,9 @@ interface IdSpace {
   scope: number;
   /** The counter of boundary IDs, which blocks take their IDs from too. */
   boundary: number;
+  /** The number of the first scope, and the scopes from there on, so an ID finds its scope. */
+  first: number;
+  entries: (ScopeEntry | undefined)[];
 }
 
 function spaceId(space: IdSpace, n: number): ScopeId {
@@ -189,20 +192,53 @@ function madeAfter(mark: Mark, id: ScopeId): boolean {
   return dot === -1 ? Number(rest) >= mark.scope : Number(rest.slice(0, dot)) >= mark.boundary;
 }
 
+/** A scope of a render: its record, and what the server keeps of it while the page renders. */
+export interface ScopeEntry {
+  id: ScopeId;
+  /** The prefix of the ID and the number after it, such as `'5.'` and `1`, or `''` and `3`. */
+  prefix: string;
+  n: number;
+  record: ScopeState;
+  /** The render whose state holds the record. */
+  ctx: Context | undefined;
+  /** The ID space that finds the scope by its ID, for a scope that `scope()` made. */
+  space?: IdSpace;
+  /** The scope that the contexts of this one are found in. */
+  parent?: ScopeId;
+  /** The values of contexts that this scope provides. */
+  values?: Map<string, unknown>;
+  /** The names of the slots, so an error can name a value that cannot be sent. */
+  names?: string[];
+  /** The scope and the slot that hold the list of this list item. */
+  source?: ItemSource;
+}
+
 /**
  * Tracks the scopes of one render. A `#loading` body renders in a child
  * context, so its scopes are written with its markup.
  */
 export class Context {
   /**
-   * The records of the scopes of this render, by scope ID. A map, since the
-   * IDs inside blocks are strings, which would turn an object into a slow
-   * dictionary.
+   * The scopes of this render, in the order it made them, with their
+   * records. A record that this render adds to a scope of another render,
+   * such as a link from a `#loading` body to a scope of the page, is here
+   * too, as a scope of its own.
    */
-  readonly state: StateMap = new Map();
-  /** The scope that `record` read last, and its record. */
-  private lastScope: ScopeId | undefined;
-  private lastRecord: ScopeState | undefined;
+  readonly scopes: ScopeEntry[] = [];
+  /**
+   * Every ID space of the page, across the renders of `#loading` bodies, on
+   * the root context. A scope is found by its ID in the entries of its space.
+   * The spaces are put in a map by prefix only when a scope is looked up
+   * outside the blocks that are open, since a render makes many and looks
+   * up few, and each string key costs a hash.
+   */
+  private readonly made: IdSpace[] = [];
+  private byPrefix: Map<string, IdSpace> | undefined;
+  private indexed = 0;
+  /** The records that this render adds to scopes of other renders, by ID. */
+  private partials: Map<ScopeId, ScopeEntry> | undefined;
+  /** The scope that the render used last, since it uses one a few times in a row. */
+  private last: ScopeEntry | undefined;
   private readonly root: Context;
   /** The ID spaces of the blocks that the render is in, from the outside in. */
   private readonly spaces: IdSpace[];
@@ -221,8 +257,6 @@ export class Context {
   /** The titles that this render set, and whether they all came from a `<title>` in `#head`. */
   private titles = { count: 0, markup: true };
   private onBoundary: ((boundary: Boundary) => void) | undefined;
-  /** The scope tree of the whole page, for finding contexts across `#loading` bodies. */
-  private readonly tree = new Map<ScopeId, { parent?: ScopeId; values?: Map<string, unknown> }>();
   /** The scope that renders the next component, which becomes its owner. */
   private owner: ScopeId | undefined;
   /**
@@ -237,8 +271,6 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
-  /** The names of the slots of each scope, so an error can name a value that cannot be sent. */
-  readonly slotNames: Map<ScopeId, string[]> = new Map();
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -274,9 +306,9 @@ export class Context {
     if (rpc) {
       this.rpcPrefix = rpc;
     }
-    this.spaces = [
-      prefix ? { prefix, scope: 0, boundary: 0 } : { prefix, scope: base, boundary: base },
-    ];
+    const first = prefix ? 0 : base;
+    this.spaces = [{ prefix, scope: first, boundary: first, first, entries: [] }];
+    this.root.made.push(this.spaces[0]!);
     this.baseId = base;
   }
 
@@ -312,7 +344,9 @@ export class Context {
    * would get in a stream.
    */
   enter(id: ScopeId = spaceId(this.space, this.space.boundary++)): void {
-    this.spaces.push({ prefix: `${id}.`, scope: 0, boundary: 0 });
+    const space: IdSpace = { prefix: `${id}.`, scope: 0, boundary: 0, first: 0, entries: [] };
+    this.spaces.push(space);
+    this.root.made.push(space);
   }
 
   /** Ends the block that `enter` started. */
@@ -337,8 +371,10 @@ export class Context {
    */
   scope(kind: number, parent?: ScopeId, module?: string): ScopeId {
     const root = this.root;
-    const id = spaceId(this.space, this.space.scope++);
-    const record = this.record(id);
+    const space = this.space;
+    const n = space.scope++;
+    const id = space.prefix ? `${space.prefix}${n}` : n;
+    const record: ScopeState = {};
     record.k = kind;
     if (parent !== undefined) {
       record.p = parent;
@@ -359,8 +395,39 @@ export class Context {
       up = inserted.at;
       record.t = inserted.at;
     }
-    root.tree.set(id, { parent: up });
+    const entry: ScopeEntry = { id, prefix: space.prefix, n, record, ctx: this, parent: up, space };
+    this.scopes.push(entry);
+    space.entries.push(entry);
+    this.last = entry;
     return id;
+  }
+
+  /** The scope of the page with an ID, from any render. */
+  private find(id: ScopeId): ScopeEntry | undefined {
+    const root = this.root;
+    if (typeof id === 'number') {
+      const page = root.made[0]!;
+      return page.entries[id - page.first];
+    }
+    const dot = id.lastIndexOf('.');
+    let n = 0;
+    for (let i = dot + 1; i < id.length; i++) {
+      n = n * 10 + id.charCodeAt(i) - 48;
+    }
+    // The scope is usually in a block that is still open, such as the item of a list.
+    for (let i = this.spaces.length - 1; i >= 0; i--) {
+      const space = this.spaces[i]!;
+      if (space.prefix.length === dot + 1 && id.startsWith(space.prefix)) {
+        return space.entries[n - space.first];
+      }
+    }
+    const byPrefix = (root.byPrefix ??= new Map());
+    for (; root.indexed < root.made.length; root.indexed++) {
+      const space = root.made[root.indexed]!;
+      byPrefix.set(space.prefix, space);
+    }
+    const space = byPrefix.get(id.slice(0, dot + 1));
+    return space?.entries[n - space.first];
   }
 
   /**
@@ -395,7 +462,7 @@ export class Context {
 
   /** Provides a value of a context to the scopes inside `scope`. */
   provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
-    const node = this.root.tree.get(scope)!;
+    const node = this.find(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
     const record = this.record(scope);
@@ -415,7 +482,7 @@ export class Context {
       record.x[context.key] = slot;
     }
     for (let id: ScopeId | undefined = scope; id !== undefined;) {
-      const node = this.root.tree.get(id);
+      const node = this.find(id);
       if (node?.values?.has(context.key)) {
         return node.values.get(context.key) as T;
       }
@@ -470,46 +537,77 @@ export class Context {
    * scopes stay.
    */
   private drop(mark: Mark): void {
-    this.lastScope = undefined;
-    this.lastRecord = undefined;
-    for (const id of this.state.keys()) {
-      if (madeAfter(mark, id)) {
-        this.state.delete(id);
-        this.root.slotNames.delete(id);
-        this.root.tree.delete(id);
-        this.sources.delete(id);
+    this.last = undefined;
+    // The scopes are kept in place, since a spread of a long list would pass too many arguments.
+    const { scopes } = this;
+    let kept = 0;
+    for (const entry of scopes) {
+      if (!madeAfter(mark, entry.id)) {
+        scopes[kept++] = entry;
+        continue;
+      }
+      const { space } = entry;
+      if (space?.entries[entry.n - space.first] === entry) {
+        space.entries[entry.n - space.first] = undefined;
+      }
+      this.partials?.delete(entry.id);
+    }
+    scopes.length = kept;
+  }
+
+  /** The scope of this render with an ID, or the record that this render adds to another's. */
+  private entry(scope: ScopeId): ScopeEntry {
+    const last = this.last;
+    if (last && last.id === scope) {
+      return last;
+    }
+    let entry = this.find(scope);
+    if (entry?.ctx !== this) {
+      this.partials ??= new Map();
+      entry = this.partials.get(scope);
+      if (!entry) {
+        const [prefix, n] = splitId(scope);
+        entry = { id: scope, prefix, n, record: {}, ctx: this };
+        this.partials.set(scope, entry);
+        this.scopes.push(entry);
       }
     }
+    this.last = entry;
+    return entry;
   }
 
   private record(scope: ScopeId): ScopeState {
-    // A scope's record is read a few times in a row as it renders, and a string ID is slower
-    // to look up than to compare.
-    if (scope === this.lastScope && this.lastRecord) {
-      return this.lastRecord;
-    }
-    let record = this.state.get(scope);
-    if (!record) {
-      record = {};
-      this.state.set(scope, record);
-    }
-    this.lastScope = scope;
-    this.lastRecord = record;
-    return record;
+    return this.entry(scope).record;
   }
 
-  slots(scope: ScopeId, values: unknown[], names?: string[]): void {
-    this.record(scope).s = values;
-    if (names) {
-      this.root.slotNames.set(scope, names);
-    }
+  /** The record of a scope in the state of this render, if it is there. */
+  ownRecord(scope: ScopeId): ScopeState | undefined {
+    const entry = this.find(scope);
+    return entry?.ctx === this ? entry.record : this.partials?.get(scope)?.record;
+  }
+
+  /** The records of the scopes of this render, by ID, in the order the render made them. */
+  get state(): StateMap {
+    return new Map(this.scopes.map((entry) => [entry.id, entry.record]));
   }
 
   /**
    * The list of each list item scope whose list is a slot of an enclosing
    * scope, as `[scope, slot]`. The items of a list share one array.
    */
-  readonly sources: Map<ScopeId, ItemSource> = new Map();
+  get sources(): Map<ScopeId, ItemSource> {
+    return new Map(
+      this.scopes.flatMap((entry) => (entry.source ? [[entry.id, entry.source] as const] : [])),
+    );
+  }
+
+  slots(scope: ScopeId, values: unknown[], names?: string[]): void {
+    const entry = this.entry(scope);
+    entry.record.s = values;
+    if (names) {
+      entry.names = names;
+    }
+  }
 
   /**
    * Records the item of a list that can change on the client. `source` is
@@ -517,9 +615,10 @@ export class Context {
    * the client can take the item from there.
    */
   item(scope: ScopeId, value: unknown, source?: ItemSource): void {
-    this.record(scope).i = value;
+    const entry = this.entry(scope);
+    entry.record.i = value;
     if (source) {
-      this.sources.set(scope, source);
+      entry.source = source;
     }
   }
 
@@ -1099,16 +1198,16 @@ function unsendable(error: unknown, ctx: Context): Error {
   if (target === undefined) {
     return error instanceof Error ? error : new Error(String(error));
   }
-  for (const [id, record] of ctx.state) {
+  for (const { record, names } of ctx.scopes) {
     const index = (record.s ?? []).findIndex((value) => holds(value, target));
     if (index === -1) {
       continue;
     }
     let owner: ScopeState | undefined = record;
     while (owner && owner.m === undefined && owner.p !== undefined) {
-      owner = ctx.state.get(owner.p);
+      owner = ctx.ownRecord(owner.p);
     }
-    const name = ctx.slotNames.get(id)?.[index] ?? `slot ${index}`;
+    const name = names?.[index] ?? `slot ${index}`;
     if (secret !== undefined) {
       return new Error(
         `The value of "${name}" in ${owner?.m ?? 'a component'} is the value of a server environment variable, and code that runs in the browser reads it. Read the variable in a server function, and send the browser only what it needs.`,
@@ -1172,9 +1271,8 @@ interface PackGroup {
   m: string | undefined;
   /** The prefix of the IDs inside a `#loading` body, or `''`. */
   prefix: string;
-  ids: ScopeId[];
-  /** The number of each ID after its prefix. */
-  numbers: number[];
+  /** The scopes of the group, with their numbers after the prefix. */
+  entries: ScopeEntry[];
 }
 
 /** The prefix of an ID and its number after it, such as `['', 3]` or `['5.', 1]`. */
@@ -1198,27 +1296,35 @@ function toStateMap(state: PageState | StateMap): StateMap {
 }
 
 /**
- * The IDs of a state in the order of the keys of an object: number IDs
- * ascending, then string IDs in the order they were made.
+ * Visits the scopes of a state in the order of the keys of an object: number
+ * IDs ascending, then string IDs in the order they were made. A render makes
+ * its number IDs in order, so the scopes are only copied to sort them when
+ * they are not.
  */
-function orderedIds(state: StateMap): ScopeId[] {
-  const numbers: number[] = [];
-  const strings: string[] = [];
-  let sorted = true;
-  for (const id of state.keys()) {
-    if (typeof id === 'number') {
-      if (numbers.length > 0 && id < numbers.at(-1)!) {
-        sorted = false;
+function visitOrdered(entries: readonly ScopeEntry[], visit: (entry: ScopeEntry) => void): void {
+  let numbers: readonly ScopeEntry[] = entries;
+  let last = -Infinity;
+  for (const entry of entries) {
+    if (typeof entry.id === 'number') {
+      if (entry.id < last) {
+        numbers = entries
+          .filter((item) => typeof item.id === 'number')
+          .toSorted((a, b) => (a.id as number) - (b.id as number));
+        break;
       }
-      numbers.push(id);
-    } else {
-      strings.push(id);
+      last = entry.id;
     }
   }
-  if (!sorted) {
-    numbers.sort((a, b) => a - b);
+  for (const entry of numbers) {
+    if (typeof entry.id === 'number') {
+      visit(entry);
+    }
   }
-  return [...numbers, ...strings];
+  for (const entry of entries) {
+    if (typeof entry.id !== 'number') {
+      visit(entry);
+    }
+  }
 }
 
 /**
@@ -1229,23 +1335,23 @@ function orderedIds(state: StateMap): ScopeId[] {
  * same values. Otherwise the items are written.
  */
 function groupSource(
-  state: StateMap,
-  sources: Map<ScopeId, ItemSource>,
+  record: (id: ScopeId) => ScopeState | undefined,
   group: PackGroup,
 ): ItemSource | undefined {
-  const source = sources.get(group.ids[0]!);
+  const { entries } = group;
+  const source = entries[0]!.source;
   if (!source || !(group.flags & (ITEM | ITEM_SLOT))) {
     return undefined;
   }
-  const value = state.get(source[0])?.s?.[source[1]];
+  const value = record(source[0])?.s?.[source[1]];
   // Seroval keeps the order of a Set. A Map's entries are new arrays, which the check below rejects.
   const list = Array.isArray(value) ? value : value instanceof Set ? Array.from(value) : undefined;
-  if (!list || list.length < group.ids.length) {
+  if (!list || list.length < entries.length) {
     return undefined;
   }
-  for (let n = 0; n < group.ids.length; n++) {
-    const id = group.ids[n]!;
-    if (sources.get(id) !== source || !Object.is(list[n], state.get(id)!.i)) {
+  for (let n = 0; n < entries.length; n++) {
+    const entry = entries[n]!;
+    if (entry.source !== source || !Object.is(list[n], entry.record.i)) {
       return undefined;
     }
   }
@@ -1263,14 +1369,25 @@ export function packState(
   sources?: Map<ScopeId, ItemSource>,
 ): PackedState {
   const state = toStateMap(input);
+  const entries = Array.from(state, ([id, record]): ScopeEntry => {
+    const [prefix, n] = splitId(id);
+    return { id, prefix, n, record, ctx: undefined, source: sources?.get(id) };
+  });
+  return packEntries(entries, (id) => state.get(id));
+}
+
+/** Packs the scopes of a render. `lookup` finds the record of a scope in the same state. */
+function packEntries(
+  scopes: readonly ScopeEntry[],
+  lookup: (id: ScopeId) => ScopeState | undefined,
+): PackedState {
   const result: PackedState = {};
   const groups = new Map<string, PackGroup>();
   const recent: PackGroup[] = [];
   // Number IDs come in ascending order, and the IDs inside blocks in the order the render made
   // them, as an object orders its keys, so the gaps are positive and the output stays the same.
-  for (const id of orderedIds(state)) {
-    const record = state.get(id)!;
-    const [prefix, n] = splitId(id);
+  visitOrdered(scopes, (entry) => {
+    const { id, record, prefix, n } = entry;
     // The root scope of a component in a list item has its own owner, the item, at the same
     // distance before it in each item. The parent of other scopes is the same for the group.
     let base: ScopeId | undefined = record.p;
@@ -1285,7 +1402,7 @@ export function packState(
       !Object.keys(record).every((field) => PACKED_FIELDS.has(field))
     ) {
       result[id] = record;
-      continue;
+      return;
     }
     const slots = record.s ?? [];
     let flags = record.p === undefined ? OWNER : 0;
@@ -1320,8 +1437,7 @@ export function packState(
           count: slots.length,
           m: record.m,
           prefix,
-          ids: [],
-          numbers: [],
+          entries: [],
         };
         groups.set(name, group);
       }
@@ -1330,18 +1446,17 @@ export function packState(
         recent.pop();
       }
     }
-    group.ids.push(id);
-    group.numbers.push(n);
-  }
+    group.entries.push(entry);
+  });
   const packed: unknown[][] = [];
   for (const group of groups.values()) {
-    const { ids } = group;
+    const { entries } = group;
     // A group of one scope is no shorter than its record.
-    if (ids.length === 1) {
-      result[ids[0]!] = state.get(ids[0]!)!;
+    if (entries.length === 1) {
+      result[entries[0]!.id] = entries[0]!.record;
       continue;
     }
-    const source = sources && sources.size > 0 ? groupSource(state, sources, group) : undefined;
+    const source = groupSource(lookup, group);
     let flags = source ? group.flags | SOURCE : group.flags;
     if (group.prefix) {
       flags |= PREFIX;
@@ -1361,20 +1476,17 @@ export function packState(
     const item = !source && flags & ITEM;
     // Inside a `#loading` body, and for component root scopes, the first gap is from 0.
     let last = flags & (OWNER | PREFIX) ? 0 : (group.base as number);
-    for (let index = 0; index < ids.length; index++) {
-      const id = ids[index]!;
-      const number = group.numbers[index]!;
-      const record = state.get(id)!;
+    for (const { n: number, record: scope } of entries) {
       values.push(number - last);
-      const slots = record.s ?? [];
+      const slots = scope.s ?? [];
       for (let n = from; n < slots.length; n++) {
         values.push(slots[n]);
       }
       if (item) {
-        values.push(record.i);
+        values.push(scope.i);
       }
       if (flags & CHILDREN) {
-        values.push(record.c);
+        values.push(scope.c);
       }
       last = number;
     }
@@ -1397,7 +1509,7 @@ export function packState(
  * promise makes `crossSerialize` throw, and then it streams as usual.
  */
 function serializeState(
-  state: PageState | StateMap,
+  state: PageState | StateMap | Context,
   refs: Map<unknown, number>,
   onRecord: (code: string, initial: boolean) => void,
   onError: (error: unknown) => void,
@@ -1405,7 +1517,10 @@ function serializeState(
   sources?: Map<ScopeId, ItemSource>,
   last = false,
 ): void {
-  const packed = packState(state, sources);
+  const packed =
+    state instanceof Context
+      ? packEntries(state.scopes, (id) => state.ownRecord(id))
+      : packState(state, sources);
   // A record that holds the value of a server variable is not sent, nor any after it.
   let leaked = false;
   const send = (code: string, initial: boolean): void => {
@@ -1760,7 +1875,7 @@ export async function render<P>(
   ): void => {
     open++;
     serializeState(
-      target.state,
+      target,
       refs,
       (code, initial) => {
         if (initial) {
@@ -1783,7 +1898,7 @@ export async function render<P>(
       },
       onError,
       finish,
-      target.sources,
+      undefined,
       last,
     );
   };
