@@ -140,6 +140,20 @@ describe('route files', () => {
     expect(hinted).toContain(', hints: ["/assets/client.js"], ...options');
   });
 
+  it('loads each route when a request needs it in development', () => {
+    // A file that does not compile then breaks only its own pages.
+    const code = routeModule(
+      routeFiles(['index.brm', 'about.brm']),
+      (file) => `/r/${file}`,
+      '/_b',
+      [],
+      true,
+    );
+    expect(code).not.toContain('import * as');
+    expect(code).toContain('page: () => import("/r/index.brm")');
+    expect(code).toContain('page: () => import("/r/about.brm")');
+  });
+
   it('rejects two dynamic segments in one folder', () => {
     expect(() => routeFiles(['[a].brm', '[b].brm'])).toThrow(/\[a\] and \[b\]/);
   });

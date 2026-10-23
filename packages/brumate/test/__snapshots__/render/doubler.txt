@@ -10,7 +10,7 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
-  const $$p_doubled = $$b.memo(() => (double(count)), $$ctx);
+  const $$p_doubled = $$b.memo(() => (double(count)), $$ctx, "doubled");
   const doubled = (($$t = $$b.ready($$p_doubled)) instanceof Promise ? await $$t : $$t);
   $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Doubler_1bxsryb#h2\">" + $$b.insert((count)) + "</button><p b-b=\"" + $$s1 + ":1\">" + (typeof ($$t = $$b.insert((doubled), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.enter();

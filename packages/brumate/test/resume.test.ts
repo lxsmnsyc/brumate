@@ -5,9 +5,16 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
+import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
-import { handleRoute, render as renderParts, stateScript } from '../src/runtime/server.ts';
+import {
+  handleRoute,
+  render as renderParts,
+  stateScript,
+  useSerialEntry,
+} from '../src/runtime/server.ts';
 import type { PageState } from '../src/runtime/server.ts';
+import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -26,6 +33,15 @@ beforeAll(() => {
   );
   // Compiled as the Vite plugin does, with the props that parents can change.
   const liveProps = analyzeProject(sources);
+  // `brumate/forms`, a module function of the package, as if it were next to the components.
+  const forms = {
+    path: join(input, 'forms.brm.ts'),
+    source: readFileSync(resolve(import.meta.dirname, '../forms/forms.brm.ts'), 'utf8'),
+  };
+  writeFileSync(join(output, 'forms.brm.ts'), forms.source);
+  writeFileSync(join(output, 'forms.brm.ts.shared.ts'), generateShared(forms).code);
+  const resolveModule = (specifier: string, importer: string) =>
+    specifier === 'brumate/forms' ? forms : resolveFromDisk(specifier, importer);
   for (const name of readdirSync(input)) {
     if (!name.endsWith('.brm')) {
       copyFileSync(join(input, name), join(output, name));
@@ -40,6 +56,9 @@ beforeAll(() => {
       filename: name,
       liveProps: liveProps.get(name),
       path: join(input, name),
+      resolveModule,
+      // The class of the serial entry of the tests, `render/money.ts`.
+      sendableClasses: ['Money'],
     });
     for (const [part, code] of Object.entries(parts)) {
       writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
@@ -119,19 +138,25 @@ type PartDelays = Record<string, number>;
 /** The parts that the loader and the core loaded, as `<component>:<part>`. */
 const loadedParts: string[] = [];
 
-async function resume(name: string, props: unknown, delays: PartDelays = {}): Promise<void> {
+async function resume(
+  name: string,
+  props: unknown,
+  delays: PartDelays = {},
+  serial?: SerialEntry,
+): Promise<void> {
   const server = await import(file(`${name}.brm.ts`));
   const { html, state } = await renderParts(server.default, props);
   show(html + state);
-  await startLoader(delays);
+  await startLoader(delays, serial);
 }
 
 /** Starts the loader on the page that is shown, with the compiled client modules. */
-async function startLoader(delays: PartDelays = {}): Promise<void> {
+async function startLoader(delays: PartDelays = {}, serial?: SerialEntry): Promise<void> {
   loadedParts.length = 0;
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({
+    ...(serial ? { serial: async () => serial } : {}),
     load: async (id) => {
       const module = await import(modules.get(id)!);
       return {
@@ -613,6 +638,41 @@ describe('resume', () => {
     expect(event.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('parent'));
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
+  });
+
+  it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {
+    const server = await import(file('scriptHandlers.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(/class="one" b-on="click:prevent=ScriptHandlers_\w+#h\d+@\d+"/);
+    expect(html).toMatch(/class="add5" b-on="click=ScriptHandlers_\w+#h\d+@\d+@%5B5%5D"/);
+    await resume('scriptHandlers', {});
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('.one')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    click(document.querySelector('.add5')!);
+    await waitFor(() => expect(text('.count')).toBe('6'));
+    click(document.querySelector('.add10')!);
+    await waitFor(() => expect(text('.count')).toBe('16'));
+  });
+
+  it('passes on the handlers of spreads in markup that the browser renders', async () => {
+    await resume('scriptHandlerList', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1', 'item2']));
+    // A button that the browser rendered: its `$handler` with its argument and its wrapper.
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.remove')[2]!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(texts('.item')).toEqual(['a', 'item1']));
+    // A handler that the parent passed through the spread of a component the browser rendered.
+    const forward = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelectorAll('.forward')[1]!.dispatchEvent(forward);
+    expect(forward.defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.log')).toBe('item1'));
+    click(document.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(texts('.item')).toEqual(['item1']));
   });
 
   it('removes the attributes that a spread drops, and keeps the element own', async () => {
@@ -1478,6 +1538,201 @@ async function withRoute(
   }
 }
 
+describe('gather', () => {
+  it('renders the list empty on the server, and fills it as the stream sends values', async () => {
+    const server = await import(file('gatherList.brm.ts'));
+    const page = await renderParts(server.default, {});
+    expect(page.html).toContain('<li class="empty">Nothing yet</li>');
+    await resume('gatherList', {});
+    click(document.querySelector('.ask')!);
+    // The items arrive one by one, and the list shows the first before the stream ends.
+    const seen = new Set<number>();
+    const counter = new MutationObserver(() =>
+      seen.add(document.querySelectorAll('li:not(.empty)').length),
+    );
+    counter.observe(document.querySelector('ol')!, { childList: true, subtree: true });
+    await waitFor(() =>
+      expect([...document.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        'word 1',
+        'word 2',
+        'word 3',
+      ]),
+    );
+    counter.disconnect();
+    expect([...seen]).toEqual([1, 2, 3]);
+  });
+});
+
+describe('fallbacks kept in development', () => {
+  it('keeps the fallback and the body of each swap, by boundary', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const done: Record<string, () => void> = {};
+    const wait = Object.fromEntries(
+      ['first', 'second', 'third'].map((name) => [
+        name,
+        new Promise<void>((resolve) => (done[name] = resolve)),
+      ]),
+    );
+    const page = await renderParts(server.default, { wait }, { dev: true });
+    show(page.html + page.state);
+    const chunks = page.pending[Symbol.asyncIterator]();
+    done.first!();
+    appendChunk((await chunks.next()).value as string);
+    const kept = (globalThis as { $bD?: Record<string, { f: Node[]; b: Node[] }> }).$bD!['0']!;
+    expect(kept.f.map((node) => (node as Element).outerHTML)).toEqual([
+      '<p class="wait-first">Loading first</p>',
+    ]);
+    expect((kept.b[0] as Element).textContent).toBe('first');
+    delete (globalThis as { $bD?: unknown }).$bD;
+  });
+});
+
+describe('the trace of a render', () => {
+  it('ends the page with what the server did, in development', async () => {
+    const server = await import(file('awaitedStream.brm.ts'));
+    const tree = { page: async () => server };
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), { dev: true }))!;
+    const reading = answer.text();
+    server.release(['a', 'b']);
+    const html = await reading;
+    const script = /<script type="application\/json" b-trace>(.*?)<\/script>$/.exec(html);
+    expect(script).not.toBeNull();
+    const trace = JSON.parse(script![1]!) as {
+      entries: { kind: string; label: string; end?: number }[];
+    };
+    expect(trace.entries.map((entry) => [entry.kind, entry.label])).toEqual(
+      expect.arrayContaining([
+        ['render', '/'],
+        ['memo', 'tags'],
+        ['body', '#loading 0'],
+        ['stream', 'the rest of the page'],
+      ]),
+    );
+    expect(trace.entries.every((entry) => entry.end !== undefined)).toBe(true);
+    // Without dev, the page has no trace.
+    server.release(['a']);
+    const plain = await (await handleRoute(tree, new Request('http://localhost/')))!.text();
+    expect(plain).not.toContain('b-trace');
+  });
+});
+
+describe('#reveal', () => {
+  /** Promises that the test settles, by name. */
+  function waits(): { wait: Record<string, Promise<void>>; go: (name: string) => void } {
+    const done: Record<string, () => void> = {};
+    const wait: Record<string, Promise<void>> = {};
+    for (const name of ['first', 'second', 'third']) {
+      wait[name] = new Promise<void>((resolve) => (done[name] = resolve));
+    }
+    return { wait, go: (name) => done[name]!() };
+  }
+
+  it('sends the bodies in the order of the markup, and shows one fallback at a time', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    // Only the fallback of the first body shows. The others wait in templates.
+    expect(page.html).toContain('<p class="wait-first">Loading first</p>');
+    expect(page.html).toMatch(/<template b-f="1"><p class="wait-second">/);
+    expect(page.html).toMatch(/<template b-f="2"><p class="wait-third">/);
+    const chunks: string[] = [];
+    const reading = (async () => {
+      for await (const chunk of page.pending) {
+        chunks.push(chunk);
+      }
+    })();
+    // The data arrives backwards, and the bodies still show from the first.
+    go('third');
+    go('second');
+    await new Promise((done) => setTimeout(done, 20));
+    expect(chunks.join('')).not.toContain('b-l=');
+    go('first');
+    await reading;
+    const order = [...chunks.join('').matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1]);
+    expect(order).toEqual(['0', '1', '2']);
+    // The body that shows brings the fallback of the next one in.
+    const first = chunks.join('').split('<template b-l="1">')[0]!;
+    expect(first).toContain('$bS(0);function $bF(i)');
+    expect(first).toContain('$bF(1)');
+  });
+
+  /** The bodies of a page in the order that its stream sends them, as the data arrives in `arrive`. */
+  async function streamOrder(name: string, arrive: string[]): Promise<string[]> {
+    const server = await import(file(`${name}.brm.ts`));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    const sent: string[] = [];
+    const reading = (async () => {
+      for await (const chunk of page.pending) {
+        sent.push(...[...chunk.matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1]!));
+      }
+    })();
+    for (const name of arrive) {
+      go(name);
+      // oxlint-disable-next-line no-await-in-loop -- Each arrives on its own.
+      await new Promise((done) => setTimeout(done, 5));
+    }
+    await reading;
+    return sent;
+  }
+
+  it('sends the bodies from the last with backwards, and at once with together', async () => {
+    expect(await streamOrder('revealBackwards', ['first', 'second', 'third'])).toEqual([
+      '2',
+      '1',
+      '0',
+    ]);
+    expect(await streamOrder('revealTogether', ['second', 'first', 'third'])).toEqual([
+      '0',
+      '1',
+      '2',
+    ]);
+    expect(await streamOrder('revealOrder', ['second', 'third', 'first'])).toEqual(['0', '1', '2']);
+  });
+
+  it('orders the #loading blocks of the components that it renders', async () => {
+    expect(await streamOrder('revealParts', ['third', 'second', 'first'])).toEqual(['0', '1', '2']);
+    const server = await import(file('revealParts.brm.ts'));
+    const page = await renderParts(server.default, waits());
+    // Only the fallback of the first component shows.
+    expect(page.html).toContain('<p class="wait-first">Loading first</p>');
+    expect(page.html).toMatch(/<template b-f="1"><p class="wait-second">/);
+  });
+
+  it('lets a body that fails take its turn, so the bodies after it still show', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const failing = Promise.reject(new Error('the profile service is down'));
+    failing.catch(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const page = await renderParts(server.default, { wait: { ...wait, first: failing } });
+    go('second');
+    go('third');
+    const sent = await allPending(page.pending);
+    expect([...sent.matchAll(/<template b-l="(\d+)">/g)].map((match) => match[1])).toEqual([
+      '1',
+      '2',
+    ]);
+    // The fallback of the second body still comes out of its template.
+    expect(sent.indexOf('$bF(1)')).toBeLessThan(sent.indexOf('<template b-l="1">'));
+    error.mockRestore();
+  });
+
+  it('swaps the bodies and the fallbacks in the browser', async () => {
+    const server = await import(file('revealOrder.brm.ts'));
+    const { wait, go } = waits();
+    const page = await renderParts(server.default, { wait });
+    show(page.html + page.state);
+    const chunks = page.pending[Symbol.asyncIterator]();
+    go('first');
+    appendChunk((await chunks.next()).value as string);
+    expect(text('.first')).toBe('first');
+    // The second fallback came out of its template, and the third still waits.
+    expect(text('.wait-second')).toBe('Loading second');
+    expect(document.querySelector('.wait-third')).toBeNull();
+  });
+});
+
 describe('#defer', () => {
   it('renders the fallback in the page, and the body in a request of its own', async () => {
     const server = await import(file('deferred.brm.ts'));
@@ -1562,6 +1817,52 @@ describe('#defer', () => {
     expect(body).toContain('<template b-l="0.1"><p class="greeting">Hello guest</p>');
     // Only the target body is sent, not the #loading body around it.
     expect(body).not.toContain('b-l="0"');
+  });
+
+  it('sends a prerendered page, then the bodies of its blocks in the same response', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const shell = page.html + page.state;
+    const request = new Request('http://localhost/', { headers: { 'x-user': 'Ada' } });
+    const answer = (await handleRoute(tree, request, { shell }))!;
+    expect(answer.headers.get('cache-control')).toBe('private, no-cache');
+    const html = await answer.text();
+    // The shell comes first, with the block marked, then the body of the block for this user.
+    expect(html.startsWith(shell.replace('b-defer="idle:1:0"', 'b-defer="idle:1:0" b-hole'))).toBe(
+      true,
+    );
+    expect(html).toContain('<template b-l="1"><p class="greeting">Hello Ada</p>');
+    // A request for a body, and client navigation, render the route as usual.
+    const body = (await handleRoute(
+      tree,
+      new Request('http://localhost/', { headers: { 'x-brumate-defer': '1 0:1' } }),
+      { shell },
+    ))!;
+    expect(body.headers.get('x-brumate-defer')).toBe('1');
+  });
+
+  it('swaps in the bodies that the response brings, without asking for them', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), {
+      shell: page.html + page.state,
+    }))!;
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+    const [shell, ...bodies] = (await answer.text()).split(/(?=<template b-l=)/);
+    // The loader starts before the body arrives, as on a slow response, and leaves the block alone.
+    show(shell!);
+    await startLoader();
+    await new Promise((done) => setTimeout(done, 20));
+    for (const body of bodies) {
+      appendChunk(body);
+    }
+    await waitFor(() => expect(text('.greeting')).toBe('Hello guest'));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('puts the body in place of the fallback when its trigger fires', async () => {
@@ -1840,6 +2141,32 @@ describe('$action', () => {
     expect(posted.html).toContain('Enter an email address');
   });
 
+  it('sends the key of an idempotent form, and gives the form a new one after the answer', async () => {
+    vi.resetModules();
+    const server = await import(file('signup.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      urls.push(url);
+      return runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { html, state } = await runtime.render(server.default, {});
+    // The server puts a key in the URL of a form of a function that `idempotent` made.
+    show(html.replace('__action=', '__key=first-key-0001&amp;__action=') + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    const form = document.querySelector<HTMLFormElement>('.signup')!;
+    form.querySelector('input')!.value = 'nope';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.error')).toBe('Enter an email address'));
+    expect(urls[0]).toMatch(/\?__key=first-key-0001$/);
+    // The next post is one that the user means again, so it has a new key.
+    await waitFor(() => expect(form.getAttribute('action')).not.toContain('first-key-0001'));
+    expect(form.getAttribute('action')).toMatch(/__key=[\w-]{36}/);
+    expect(form.getAttribute('action')).toContain('__action=');
+  });
+
   it('sends the form with fetch and writes the result into the page', async () => {
     vi.resetModules();
     const server = await import(file('signup.brm.ts'));
@@ -1917,6 +2244,336 @@ describe('attributes with true and false', () => {
     expect(document.querySelector('.flag')!.getAttribute('data-ready')).toBe('');
     click(toggle);
     await waitFor(() => expect(words()).toEqual(['true', 'false', 'true', 'false', 'yes']));
+  });
+});
+
+/** Presses a submit button of a form, as a browser does. */
+function pressSubmit(form: HTMLFormElement, button: Element): void {
+  const event = new Event('submit', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'submitter', { value: button });
+  form.dispatchEvent(event);
+}
+
+/** Renders the order form, resumes it, and answers its posts with its server functions. */
+async function showOrder(): Promise<HTMLFormElement> {
+  vi.resetModules();
+  const server = await import(file('orderForm.brm.ts'));
+  const runtime = await import('../src/runtime/server.ts');
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+  );
+  const { html, state } = await runtime.render(server.default, {});
+  show(html + state);
+  vi.resetModules();
+  const { start } = await import('../src/runtime/loader.ts');
+  stop = start({ load: (id) => import(modules.get(id)!) });
+  return document.querySelector<HTMLFormElement>('.order')!;
+}
+
+describe('createForm', () => {
+  it('renders the fields with names, IDs and default values', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    expect(email.name).toBe('email');
+    expect(form.querySelector('label')!.getAttribute('for')).toBe(email.id);
+    expect(email.id).toBe(`${form.id}-email`);
+    expect([...form.querySelectorAll<HTMLInputElement>('.item')].map((item) => item.name)).toEqual([
+      'items[0].name',
+    ]);
+    const insert = form.querySelector<HTMLButtonElement>('.insert')!;
+    expect(insert.name).toBe('__intent');
+    expect(insert.hasAttribute('formnovalidate')).toBe(true);
+    expect(JSON.parse(insert.value)).toEqual({ type: 'insert', name: 'items' });
+    expect(form.querySelector('.default')!.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('shows the errors of each field, with the values that were posted', async () => {
+    const form = await showOrder();
+    form.querySelector<HTMLInputElement>('.email')!.value = 'nope';
+    // happy-dom leaves empty values out of the body of a request, so each field has one.
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(email.getAttribute('aria-describedby')).toBe(`${email.id}-error`);
+    expect(document.querySelector('.email-error')!.id).toBe(`${email.id}-error`);
+    expect(document.querySelector('.email-error')!.getAttribute('role')).toBe('alert');
+    expect(email.getAttribute('value')).toBe('nope');
+  });
+
+  it('applies intents on the server, and keeps what was typed', async () => {
+    const form = await showOrder();
+    form.querySelector<HTMLInputElement>('.email')!.value = 'ada@example.com';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.insert')!);
+    await waitFor(() => expect(form.querySelectorAll('.item')).toHaveLength(2));
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
+      ['items[0].name', 'Tea'],
+      ['items[1].name', ''],
+    ]);
+    // An intent shows no errors, for fields that the user has not filled yet.
+    expect(document.querySelector('.item-error')).toBeNull();
+    itemInputs()[1]!.value = 'Milk';
+    pressSubmit(form, form.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(itemInputs().map((item) => item.value)).toEqual(['Milk']));
+    expect(itemInputs()[0]!.name).toBe('items[0].name');
+    expect(form.querySelector<HTMLInputElement>('.email')!.value).toBe('ada@example.com');
+  });
+
+  it('validates in the browser when the user leaves a field, then as the user types', async () => {
+    const form = await showOrder();
+    expect(form.getAttribute('b-on')).toMatch(/focusout=\S+ input=\S+/);
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    // Typing in a field that the user has not left shows nothing yet.
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    email.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    // The item is not touched, so its error does not show.
+    expect(document.querySelector('.item-error')).toBeNull();
+    email.value = 'ada@example.com';
+    email.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(document.querySelector('.email-error')).toBeNull());
+    expect(email.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('validates every field as the user types after a submit', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'nope';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.email-error')).toBe('Enter an email address'));
+    const item = form.querySelector<HTMLInputElement>('.item')!;
+    item.value = '';
+    item.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.item-error')).toBe('Name the item'));
+    expect(text('.email-error')).toBe('Enter an email address');
+  });
+
+  it('applies the buttons of a list in the browser, without a post', async () => {
+    const form = await showOrder();
+    const posts = vi.fn<typeof fetch>(globalThis.fetch);
+    vi.stubGlobal('fetch', posts);
+    const insert = form.querySelector('.insert')!;
+    expect(insert.getAttribute('b-on')).toMatch(/^click:prevent=/);
+    const itemInputs = () => [...form.querySelectorAll<HTMLInputElement>('.item')];
+    itemInputs()[0]!.value = 'Tea';
+    const first = itemInputs()[0];
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    insert.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(itemInputs()).toHaveLength(2));
+    // The first item keeps its element and what was typed in it.
+    expect(itemInputs()[0]).toBe(first);
+    expect(itemInputs().map((item) => [item.name, item.value])).toEqual([
+      ['items[0].name', 'Tea'],
+      ['items[1].name', ''],
+    ]);
+    itemInputs()[1]!.value = 'Milk';
+    const second = itemInputs()[1];
+    // The new item, which the browser rendered, has a button that works too.
+    click(form.querySelectorAll('.remove')[0]!);
+    await waitFor(() => expect(itemInputs()).toEqual([second]));
+    expect(second!.name).toBe('items[0].name');
+    expect(second!.value).toBe('Milk');
+    expect(posts).not.toHaveBeenCalled();
+  });
+
+  it('shows the errors of the form, and resets the form after a save', async () => {
+    const form = await showOrder();
+    const email = form.querySelector<HTMLInputElement>('.email')!;
+    email.value = 'taken@example.com';
+    form.querySelector<HTMLInputElement>('.item')!.value = 'Tea';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.form-error')).toBe('That email has an order already'));
+    email.value = 'ada@example.com';
+    pressSubmit(form, form.querySelector('.save')!);
+    await waitFor(() => expect(text('.saved')).toBe('Saved'));
+    await waitFor(() => expect(document.querySelector('.form-error')).toBeNull());
+    await waitFor(() => expect(email.value).toBe(''));
+    expect(form.querySelector<HTMLInputElement>('.item')!.value).toBe('');
+  });
+});
+
+describe('bindings', () => {
+  it('writes the parent signal from a bound prop, and the copy of an unbound one', async () => {
+    await resume('bindParent', {});
+    const state = (): string[] => [text('.parent'), text('.child.bound'), text('.child.own')];
+    expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']);
+    // The bound child writes the parent's signal, which the other child gets as a prop.
+    click(document.querySelector('.child.bound')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: open']));
+    // The other child writes its own copy.
+    click(document.querySelector('.child.own')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: closed']));
+    // A new value from the parent replaces the copy.
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']));
+    // A child that binds the prop that its parent bound writes through both.
+    click(document.querySelector('.child.deep')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'bound: open', 'own: open']));
+    expect(text('.child.deep')).toBe('deep: open');
+    // A child that the browser renders binds too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.child.later')).toBe('later: open'));
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'bound: closed', 'own: closed']));
+  });
+});
+
+describe('view transitions', () => {
+  it('runs a handler of transition inside a view transition, which waits for its updates', async () => {
+    const seen: { types?: string[]; html: string }[] = [];
+    type Options = (() => unknown) | { update: () => unknown; types: string[] };
+    const start = vi.fn<(options: Options) => unknown>((options) => {
+      const update = typeof options === 'function' ? options : options.update;
+      const types = typeof options === 'function' ? undefined : options.types;
+      const done = Promise.resolve()
+        .then(update)
+        .then(() => {
+          seen.push({ types, html: document.querySelector('.panel')?.outerHTML ?? '' });
+        });
+      return { updateCallbackDone: done, finished: done, ready: done, skipTransition() {} };
+    });
+    // A browser with types of transitions has them on the prototype.
+    vi.stubGlobal('ViewTransition', { prototype: { types: undefined } });
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    Object.assign(document, { startViewTransition: start });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      delete (document as { startViewTransition?: unknown }).startViewTransition;
+    });
+    await resume('viewTransition', {});
+    const link = document.querySelector('.toggle')!;
+    expect(link.getAttribute('b-on')).toMatch(/^click:prevent=/);
+    click(link);
+    // The update code loads inside the transition, and the new state is there when it ends.
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toEqual({ types: ['panel'], html: '<div class="panel">Panel</div>' });
+    click(link);
+    await waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen[1]!.html).toBe('');
+  });
+
+  it('runs the handler as it is with reduced motion', async () => {
+    const start = vi.fn<() => void>();
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    Object.assign(document, { startViewTransition: start });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      delete (document as { startViewTransition?: unknown }).startViewTransition;
+    });
+    await resume('viewTransition', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.panel')).not.toBeNull());
+    expect(start).not.toHaveBeenCalled();
+  });
+});
+
+describe('the serial entry', () => {
+  it('sends a value of the app in the page state, and makes it again in the browser', async () => {
+    // The copy that the compiled components import, as an app's components import its entry.
+    const entry = (await import(file('money.ts'))) as SerialEntry;
+    useSerialEntry(entry);
+    await resume('serialMoney', {}, {}, entry);
+    expect(document.querySelector('script[b-state]')!.textContent).toContain('$b.u("test/money"');
+    expect(text('.price')).toBe('5.00 EUR');
+    // The handler calls a method of the value, so the browser made a Money again.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.price')).toBe('6.00 EUR'));
+  });
+});
+
+describe('bindings with a setter', () => {
+  it('calls the setter in place of writing, and the child shows what the parent keeps', async () => {
+    await resume('bindSetter', {});
+    const state = (): string[] => [text('.parent'), text('.child.guarded')];
+    click(document.querySelector('.child.guarded')!);
+    await waitFor(() => expect(state()).toEqual(['open', 'guarded: open']));
+    // The setter refuses the value, so the child keeps the parent's.
+    click(document.querySelector('.lock')!);
+    click(document.querySelector('.child.guarded')!);
+    await new Promise((done) => setTimeout(done, 50));
+    expect(state()).toEqual(['open', 'guarded: open']);
+    // An element calls the setter with its value.
+    const field = document.querySelector<HTMLInputElement>('.name')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$set:/);
+    field.value = 'ada';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.name-out')).toBe('ADA'));
+    expect(field.value).toBe('ADA');
+    // A child that the browser renders calls the setter too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.child.later')).toBe('later: open'));
+    click(document.querySelector('.lock')!);
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(state()).toEqual(['closed', 'guarded: closed']));
+  });
+});
+
+describe('bindings through spreads', () => {
+  it('binds an element from a rest prop', async () => {
+    await resume('bindSpread', {});
+    const field = document.querySelector<HTMLInputElement>('.field.text')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$bind#0\.\d+@\d+$/);
+    field.value = 'hi';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|false'));
+    const box = document.querySelector<HTMLInputElement>('.field.box')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|true'));
+    // A setter passes through the spread too.
+    const upper = document.querySelector<HTMLInputElement>('.field.upper')!;
+    expect(upper.getAttribute('b-on')).toMatch(/^input=\$set:/);
+    upper.value = 'ada';
+    upper.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.upper-out')).toBe('ADA'));
+  });
+});
+
+describe('spreads on components', () => {
+  it('updates the props of a spread, and passes a binding on', async () => {
+    await resume('spreadProps', {});
+    // A binding passes through the rest of a component to its child.
+    click(document.querySelector('.child.passed')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+    expect(text('.child.passed')).toBe('passed: open');
+    expect(text('.child.first')).toBe('first: open');
+    // A spread that changes updates the props, and a later prop wins over it.
+    click(document.querySelector('.relabel')!);
+    await waitFor(() => expect(text('.child.second')).toBe('second: open'));
+  });
+});
+
+describe('bindings of elements', () => {
+  it('writes a signal from the value of an input, a box and a select', async () => {
+    await resume('bindInputs', {});
+    const field = document.querySelector<HTMLInputElement>('.text')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$bind#0\.\d+ input=/);
+    expect(document.querySelector('.box')!.getAttribute('b-on')).toMatch(/^change=\$bind#0\.\d+$/);
+    field.value = 'hi';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    // The handler of the element runs after the binding, so it reads the new value.
+    await waitFor(() => expect(text('.out')).toBe('hi|false|b|hi'));
+    const box = document.querySelector<HTMLInputElement>('.box')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    const pick = document.querySelector<HTMLSelectElement>('.pick')!;
+    pick.value = 'a';
+    pick.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|true|a|hi'));
+    // An input in an item writes the signal of the component, a scope up.
+    const inner = document.querySelector<HTMLInputElement>('.inner')!;
+    expect(inner.getAttribute('b-on')).toMatch(/^input=\$bind#1\.\d+$/);
+    inner.value = 'deep';
+    inner.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('deep|true|a|hi'));
+    expect(field.value).toBe('deep');
   });
 });
 

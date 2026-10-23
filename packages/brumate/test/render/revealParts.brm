@@ -1,0 +1,12 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import RevealPart from './RevealPart.brm';
+
+  const { wait } = $props<{ wait: Record<string, Promise<unknown>> }>();
+</script>
+
+#reveal ('sequential', collapsed) {
+  <RevealPart name="first" ready=(wait.first) />
+  <RevealPart name="second" ready=(wait.second) />
+  <RevealPart name="third" ready=(wait.third) />
+}

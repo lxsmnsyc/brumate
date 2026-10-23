@@ -1,0 +1,13 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  // A #loading block of a component, which the #reveal of its parent orders.
+  const { name, ready } = $props<{ name: string; ready: Promise<unknown> }>();
+  const value = $memo(ready.then(() => name));
+</script>
+
+#loading {
+  <p class=(name)>{value}</p>
+} #else {
+  <p class=(`wait-${name}`)>Loading {name}</p>
+}

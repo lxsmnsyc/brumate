@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "types.d.ts"
+    "types.d.ts",
+    "forms"
   ],
   "type": "module",
   "exports": {
@@ -71,6 +72,26 @@
       "types": "./dist/runtime/events.d.ts",
       "default": "./dist/runtime/events.js"
     },
+    "./stream": {
+      "types": "./dist/runtime/gather.d.ts",
+      "default": "./dist/runtime/gather.js"
+    },
+    "./serial": {
+      "types": "./dist/runtime/values.d.ts",
+      "default": "./dist/runtime/values.js"
+    },
+    "./highlight": {
+      "types": "./dist/highlight.d.ts",
+      "default": "./dist/highlight.js"
+    },
+    "./forms": {
+      "types": "./forms/forms.brm.ts",
+      "default": "./forms/forms.brm.ts"
+    },
+    "./forms/core": {
+      "types": "./dist/runtime/forms.d.ts",
+      "default": "./dist/runtime/forms.js"
+    },
     "./devtools": {
       "types": "./dist/runtime/devtools.d.ts",
       "default": "./dist/runtime/devtools.js"
@@ -98,6 +119,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@twinkleplop/core": "0.3.1",
+    "@twinkleplop/css": "0.1.7",
+    "@twinkleplop/theme-github": "0.2.4",
+    "@twinkleplop/tsx": "0.1.7",
     "oxc-parser": "^0.154.0",
     "postcss": "^8.5.31",
     "postcss-selector-parser": "^7.1.6",
@@ -134,5 +159,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "brumate": {
+    "version": 1,
+    "dir": "forms"
   }
 }

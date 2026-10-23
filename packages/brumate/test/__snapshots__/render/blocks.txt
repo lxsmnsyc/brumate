@@ -6,7 +6,7 @@ let $$t: any;
 export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Blocks_jlmev2");
-  const { items, tab: initialTab } = $$props;
+  const { items, tab: initialTab } = $$b.unbind($$props, ["items","tab"]);
   let tab = (initialTab);
   let list = (items);
   let input = undefined;
@@ -200,7 +200,7 @@ import * as $$b from 'brumate/client';
 export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Blocks_jlmev2");
-  const { items, tab: initialTab } = $$props;
+  const { items, tab: initialTab } = $$b.unbind($$props, ["items","tab"]);
   let tab = (initialTab);
   let list = (items);
   let input = undefined;

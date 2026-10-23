@@ -1,3 +1,8 @@
+<script module>
+  // The page is the same for everyone, so the server keeps it for a minute.
+  export const cache = { maxAge: 60 };
+</script>
+
 <script>
   import { $action, $isPending, $memo, $signal } from 'brumate/signals';
   import { getEvent } from 'brumate/server';

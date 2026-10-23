@@ -432,9 +432,9 @@ describe('await', () => {
       `${header}  const user = await $memo(load(id));\n  const tags = await $memo(loadTags(user));\n</script>\n<p>{user.name} {tags.length}</p>\n<button onClick=(() => id++)>+</button>`,
       { filename: 'T.brm' },
     );
-    expect(server).toContain('const $$p_user = $$b.memo(() => (load(id)), $$ctx);');
+    expect(server).toContain('const $$p_user = $$b.memo(() => (load(id)), $$ctx, "user");');
     expect(server).toContain(
-      'const $$p_tags = $$b.memo(() => (loadTags($$b.read($$p_user))), $$ctx);',
+      'const $$p_tags = $$b.memo(() => (loadTags($$b.read($$p_user))), $$ctx, "tags");',
     );
     expect(server).toContain(
       'if (($$t = $$b.waitAll([$$p_user, $$p_tags])) !== undefined) await $$t;',
@@ -485,7 +485,9 @@ describe('await', () => {
     expect(server).toContain(
       'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
     );
-    expect(server).toContain('$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx)');
+    expect(server).toContain(
+      '$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx, "upper")',
+    );
     expect(server).not.toContain('$$b.waitAll(');
     expect(server).toContain('$$b.insert(((user).name)');
     // In the browser the value is settled, so the memo and the update code do not wait.
@@ -511,7 +513,7 @@ describe('await', () => {
       'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
     );
     // The body renders in place when the tags are ready too, and streams otherwise.
-    expect(server).toContain('if ($$b.settled([$$p_tags])) {');
+    expect(server).toContain('if ($$b.settled([$$p_tags]) && $$ctx.mayShow()) {');
     expect(server).toContain('$$ctx.enter($$boundary0);');
     expect(server).toContain('const tags = $$b.read($$p_tags);');
     expect(server).toContain('$$ctx.defer($$boundary0, async ($$ctx) => {');
@@ -529,7 +531,7 @@ describe('await', () => {
     expect(server.indexOf('const user = (($$t = $$b.ready($$p_user))')).toBeGreaterThan(
       server.indexOf('$$ctx.defer($$boundary0'),
     );
-    expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user])) {');
+    expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user]) && $$ctx.mayShow()) {');
     expect(server).toMatch(
       /defer\(\$\$boundary0, async \(\$\$ctx\) => \{\n\s+let \$\$html = '';\n\s+const tags = .*\n\s+const user = /,
     );
@@ -652,5 +654,27 @@ describe('character references', () => {
       'a b & © AB &unknown;',
     );
     expect(decodeAttribute('&#x110000; &#0; &#xD800;')).toBe('� � �');
+  });
+});
+
+describe('anchors', () => {
+  it('knows the scope of every anchor, for the Elements tab of the devtools', () => {
+    const { plan } = compile(
+      `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+</script>
+
+<p>{count}</p>
+<button onClick=(() => count++)>{count} and {count * 2}</button>
+#if (count > 1) {
+  <span>{count}</span>
+}`,
+      { filename: 'Anchors.brm' },
+    );
+    expect(plan.anchors.size).toBeGreaterThan(0);
+    for (const target of plan.anchors.keys()) {
+      expect(plan.anchorScopes.get(target)).toBeDefined();
+    }
   });
 });

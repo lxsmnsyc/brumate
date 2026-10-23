@@ -4,22 +4,22 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0. These shipped after it, so they are no longer here:
+
+- Handlers from scripts (`$handler`) and progressive forms (`brumate/forms`).
+- Two-way binding (`$bind`) and view transitions of handlers (`transition`).
+- Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
+- The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Handlers from scripts](#handlers-from-scripts)                       | Syntax  | High   | Medium |
-| [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
-| [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
-| [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
+| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Transitions](#transitions)                                           | Syntax  | High   | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
-| [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
+| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
@@ -27,129 +27,47 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, so they ar
 | [Observability](#observability)                                       | Runtime | Medium | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Progressive forms](#progressive-forms)                               | Library | High   | Medium |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
 
 ## Syntax
 
-### Handlers from scripts
+### Named view transitions
 
-A handler reaches the browser only when the compiler saw it in markup: it gives the code a part and a name, and the page refers to it in `b-on`. A handler that a caller passes as a prop goes through `{...rest}`, because the caller's markup named it. A function that a script or a module function makes, such as the `onClick` in an object of attributes, refers to nothing in the browser, so a spread leaves it out. Libraries that give attributes with behavior, such as the list helpers of [progressive forms](#progressive-forms) or the parts of [headless UI components](#headless-ui-components), need it to work.
-
-`$handler(fn, ...args)` from `brumate/signals` marks a function as a handler, as if it were written in markup:
-
-```ts
-// forms.brm.ts
-import { $handler, $signal } from 'brumate/signals';
-import { prevent } from 'brumate/events';
-
-export function list(path: string[]) {
-  let keys = $signal<string[]>([]);
-  function removeAt(index: number) {
-    keys = keys.filter((_, at) => at !== index);
-  }
-  return {
-    keys,
-    // The attributes of an intent button. Without scripts, it posts the intent.
-    remove: (index: number) => ({
-      type: 'submit',
-      name: '__intent',
-      value: JSON.stringify({ type: 'remove', name: path.join('.'), index }),
-      formnovalidate: true,
-      onClick: $handler(prevent(removeAt), index),
-    }),
-  };
-}
-```
-
-```brm
-#for (key, index of items.keys by key) {
-  <button {...items.remove(index)}>Remove</button>
-}
-```
-
-- `fn` is a function that the compiler can see: a function expression, or the name of a local or module function, in wrappers such as `prevent` or not. It compiles as a handler in markup does: a part of its own, whose reads and writes of signals are the slots of the scope where `$handler` is called.
-- `args` are the values that change with each call, such as `index`. They go with the reference, so they must be [sendable](../website/docs/reference-serialization.md). The handler runs as `fn(...args, event)`.
-- It can be called at the top of a component or block script, and in a module function, which the compiler copies into the component. A value that `fn` reads and that is neither a slot of the scope nor an argument is a compile error.
-- The server writes the reference into `b-on` with the modifiers of its wrappers and its arguments, such as `click:prevent=Forms_x1#h9@3[1]`. The loader applies `:prevent` before the code loads, and calls `h9(scope, 1, event)` on the click.
-- Wrappers such as `prevent` keep their names. They are functions at run time that the compiler also reads, and a `$` names a function that only the compiler runs.
-
-Markup that the browser renders, such as a new item of a `#for`, must get the handlers of its spreads too, which it does not yet. A list that grows in the browser is what forms need most, so this comes with it.
-
-Cost: about 1 week. The compiler reuses the extraction and the capture analysis of handlers in markup. The loader reads arguments in `b-on`, which changes the page format. Most of the time goes to the handlers of markup that the browser renders.
-
-### Two-way binding
-
-Fields repeat the same pair of attributes:
+`transition` of `brumate/events` runs a handler inside a view transition. An element animates on its own only when it has a `view-transition-name`, which the author writes by hand and keeps unique, such as ``style=(`view-transition-name: todo-${todo.id}`)`` in a `#for`. Every named element then takes part in every view transition of the page, including navigations.
 
 ```html
-<input value=draft onInput=((event) => (draft = event.currentTarget.value))>
-```
-
-A `bind:` attribute writes it once:
-
-```html
-<input bind:value=draft>
-<input type="checkbox" bind:checked=done>
-<select bind:value=choice>…</select>
-```
-
-- `bind:value` and `bind:checked` compile to the attribute and the handler above. The handler is a client root like any other, so it loads on the first input.
-- The target must be a signal, so the compiler checks the write.
-
-#### Bindable props
-
-A component such as a dialog, a tab list or a select has state that its parent sometimes wants to own, and sometimes not. Svelte 4 said so with `export let`, a prop that the child can write. Svelte 5 kept the idea inside its props, with `$bindable`, which fits `$props` here too:
-
-```html
-<!-- Dialog.brm -->
-<script>
-  import { $bindable, $props } from 'brumate/signals';
-
-  let { open = $bindable(false), title } = $props<{ open?: boolean; title: string }>();
-</script>
-
-<button onClick=(() => (open = !open))>{title}</button>
-#if (open) {
-  <div role="dialog">…</div>
-}
-```
-
-```html
-<!-- A parent that owns the state, and one that does not. -->
-<Dialog title="Settings" bind:open=settingsOpen />
-<Dialog title="Help" />
-```
-
-- `let { name = $bindable(initial) } = $props()` declares a prop that the component can write. Other props stay `const`, so a write to them is a compile error, as now.
-- With `bind:name=signal`, the parent owns the value: a write in the child writes the parent's signal, and the parent's change reaches the child as any prop does. The target must be a signal of the parent.
-- With a plain `name=value`, or no attribute, the child owns it: a write changes the child's copy. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes.
-- `initial` is the value when the parent passes nothing.
-- On the server, nothing writes, so a bindable prop is its value. A bound child keeps its parent's scope and slot in the page state, so its writes in the browser go up without a request.
-- The type checker types `bind:name` as the prop's type, and reports it on a prop that is not bindable.
-
-`export let` would mean two ways to declare props. `$bindable` keeps one: `$props()`, with a marker on the props that the component writes.
-
-### Transitions
-
-View transitions animate a change of page. Inside a page, an `#if` or `#for` body shows and goes at once, because the node is gone before CSS can animate it.
-
-```html
-#if (open) {
-  <div class="panel" transition=fade(200)>…</div>
-}
 #for (todo of todos by todo.id) {
-  <li animate=flip(150)>{todo.title}</li>
+  <li viewTransition="todo">{todo.title}</li>
+}
+#if (open) {
+  <div class="panel" viewTransition="panel">…</div>
 }
 ```
 
-- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles. A transition that CSS does alone can be a class: `transition="fade"` adds `fade-in` and `fade-out`, as the `Transition` of Terracotta does.
-- `animate=fn` on the element of a list item moves it from its old place to its new one when the list changes order.
-- The server renders the elements as they are. A transition runs only for a change in the browser, so the first render shows no animation, and the code loads with the update that changes the block.
-- `brumate/transition` brings `fade`, `slide`, `scale` and `flip`, with the Web Animations API. `prefers-reduced-motion` turns them off.
-- The `Transition` of the UI components, in phase 2, builds on it.
+```css
+::view-transition-group(.todo) { animation-duration: 200ms; }
+::view-transition-new(.todo):only-child { animation: fade-in 150ms; }
+::view-transition-old(.todo):only-child { animation: fade-out 150ms; }
+```
 
-Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
+- `viewTransition="todo"` marks an element. It renders as an attribute, and the element gets `view-transition-class: todo`.
+- The core names a marked element only while a transition of brumate runs: before the browser captures the old page, and again after the updates for the elements that they added. It removes the names when the transition finishes.
+- The name comes from the element itself, such as `todo-7`, not from the key of `by`. A key can be any value, such as an object, and two keys such as `1` and `'1'` would give one name. Keyed lists keep the element of an item, so an element that moves keeps its name and slides. A new element fades in, and a removed one fades out.
+- `viewTransitionName=(expression)` gives a name of the author, which pairs two different elements, such as a picture on a list page and on its detail page. A navigation needs it, because the new page has new elements. Elements of layouts that stay keep their names.
+- Only marked elements near the viewport get a name, because each named element is a capture of its own. An element that comes from far off screen fades in instead of sliding.
+- In development, two rendered elements with the same name of the author are an error in the Errors tab, since the browser skips such a transition without one.
+- A name that the CSS of the author gives an element stays.
+
+Limits:
+
+- A named element inside another one animates in a flat group, so the order of painting can be wrong while it runs, until browsers support `view-transition-group: contain`.
+- The writes of a handler after its first `await` change the page without an animation, as with `transition` now.
+
+Test first that the names reach elements that an update inserted after its code loaded, and how fast a list of 200 items reorders in Chrome and Safari.
+
+Build it when an app animates lists or shared elements. The manual names work until then, and the UI components animate overlays with CSS and `Transition`.
+
+Cost: about 2 to 3 days. The compiler only renders the attribute.
 
 ### Long lists
 
@@ -170,94 +88,21 @@ Cost: about 2 weeks, most of it for scrolling, focus and the items of different 
 
 ### Streaming lists
 
-A memo of a stream takes each value as it arrives, so a list that grows, such as the reply of a language model, search results or log lines, has to gather its items by hand.
+`gather` from `brumate/stream` gives the list of the values of a stream so far, which a memo renders with `#for` as it grows in the browser. The server renders the empty list, because it reads only the first value of a memo.
 
-```html
-<script>
-  import { $props } from 'brumate/signals';
-  import { reply } from './chat.server';
+- `#for await (item of stream) { … } #else { … }` would be the same without the memo, and the server would stream the items of a stream that starts with the page, as `#loading` bodies stream, with the browser reading on from there.
 
-  const { prompt } = $props<{ prompt: string }>();
-</script>
+Cost: about 1 to 2 weeks for the server part, when a page needs a stream that starts with it. Handing the stream from the server to the browser without reading it twice is most of it.
 
-<ol>
-  #for await (token of reply(prompt)) {
-    <li>{token}</li>
-  } #else {
-    <li>Thinking…</li>
-  }
-</ol>
-```
+### Reveal order of `#defer` blocks
 
-- `#for await (item of stream)` renders an item for each value of an async iterable, such as a server function that yields, as it arrives. `#else` shows until the first one.
-- On the server, the items stream into the page in the order they come, as `#loading` bodies do, and the page does not wait for the stream to end.
-- In the browser, the core appends the items that arrive after the page, from the render module, and the list keeps them as signals of its own. When the expression gives a new stream, such as for a new prompt, the list starts again.
-- `by key` keeps items when a stream sends a value with a key that it sent before, so a stream can update an item in place.
-- The memo of the stream keeps its last value, as now, for code that only needs the latest.
+`#reveal` orders the `#loading` bodies that stream from the server. `#defer` blocks inside it show when each body arrives.
 
-Cost: about 1 to 2 weeks. Memos already read streams, and lists already add items in the browser.
+- The module that loads `#defer` bodies would wait to put a body in until the ones before it are in, in the order of the `#reveal` around them.
 
-### Reveal order
-
-`#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. React's `SuspenseList` and Solid 2.0's `<Reveal>` let siblings show in an order, or together. In brumate, a body only goes from its fallback to its content once, while the page streams: a memo that loads again in the browser keeps its last value. So the order is about the stream, which the server controls.
-
-```html
-#reveal ('sequential', collapsed) {
-  #loading { <Profile /> } #else { <p>Loading the profile…</p> }
-  #loading { <Posts /> } #else { <p>Loading the posts…</p> }
-  #loading { <Friends /> } #else { <p>Loading the friends…</p> }
-}
-```
-
-- `'sequential'`, the default, shows the bodies in the order of the markup. When a body is ready, the server holds what it sends for it, the `<template b-l>`, the swap and its state record, until every body before it is sent. The data still loads at the same time. Only the showing waits.
-- `'backwards'` does the same from the last body to the first, as React's `revealOrder="backwards"`.
-- `'together'` holds every body of the group until the last one is ready, and sends them at once.
-- `'natural'` shows each body when it is ready, as now.
-- `collapsed`, with an order, shows only the fallback of the next body to show. The server renders the other fallbacks in `<template b-f="id">`, and the chunk that shows a body also moves the next fallback in, with a small `$bF(id)` script like `$bS`. It needs no core and no client code.
-- The names follow Solid 2.0, with `'backwards'` from React.
-
-How it fits:
-
-- Each body renders in its own ID space, such as `5.0`, so holding one back changes no other ID.
-- A `#reveal` inside a `#loading` body orders the bodies of that body, as nested lists do in React.
-- Rendering in order, for readers without scripts, puts bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
-- Pages that client navigation loads stream through the same path, so they keep the order.
-- `#defer` blocks in a `#reveal` can follow the same order in the browser: the module that loads them waits to put a body in until the ones before it are in.
-- Without `#reveal`, nothing changes.
-
-Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0's `<Reveal>`, with `order` and `collapsed`. Solid 2.0 is in beta, so its details can still change.
-
-Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
+Cost: a day or two, when a page needs it.
 
 ## Data
-
-### Serialization entry
-
-The page state and server function calls hold the values that seroval and brumate's plugins can write. A class of the app, such as `Money`, a `Decimal` or a Temporal value, has to be sent as a plain object and made again by hand, and the serializer options are fixed.
-
-```ts
-// src/serial.ts
-import { definePlugin } from 'brumate/serial';
-import { Money } from './money';
-
-export const plugins = [
-  definePlugin({
-    tag: 'app/money',
-    test: (value) => value instanceof Money,
-    toData: (money: Money) => [money.amount, money.currency],
-    fromData: ([amount, currency]) => new Money(amount, currency),
-  }),
-];
-```
-
-- An entry file, `src/serial.ts` by default and set with the `serial` option of the plugin, as SolidStart reads its own entries, exports `plugins` and the options that it changes.
-- `definePlugin` makes a seroval plugin from `toData` and `fromData`. In the page state, a value is written as `$b.u('app/money', data)`, so the record does not need the class in scope.
-- The browser makes the value with `fromData` when the core reads the record. The entry loads with the core, not with the loader, so a page that is never used does not load the class.
-- `disabledFeatures` and `depthLimit` can change. Turning on a feature that brumate turns off, such as `RegExp`, warns, because brumate turns it off on purpose.
-- The type checker accepts a value of a class with a plugin in the state.
-- The same plugins write server function calls and their answers, and the stubs of two-way realtime.
-
-Cost: about 1 week, most of it for loading the entry with the core and for the types.
 
 ### Worker functions
 
@@ -303,57 +148,13 @@ Cost: about 1 week.
 
 ## Server
 
-### Caching pages and data
-
-A response can set its own headers, through `event.headers`, but there is nothing between one request and the next. Each request renders the page and loads its data again. `#defer` makes caching more useful: the page can be cached for everyone, and its parts for one user render later.
-
-- A route sets how long its page can be cached, with an export of its file:
-
-```html
-<script module>
-  export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
-</script>
-```
-
-The server sends `cache-control` from it, and a page cache in the server, or a CDN, keeps the HTML. A page that reads the session, or sets a cookie, is never cached for everyone: the server sends `private` for it.
-
-- A server function can cache its result across requests, by its arguments, with a time and tags:
-
-```ts
-export const listIssues = cached(async (status: string) => db.issues(status), {
-  maxAge: 30,
-  tags: (status) => ['issues', `issues:${status}`],
-});
-```
-
-- `revalidate(tag)` drops the results and the pages that used that tag, such as after a server function changes the data. It works with `refresh(fn)`, which loads the memos of the page again in the browser.
-- The cache is an interface, with an in-memory store as the default. With Nitro, it uses Nitro's storage layer, unstorage, whose drivers cover Redis, Cloudflare KV and the stores of other hosts.
-- Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
-
-Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
-
-### Prerendering with holes
-
-A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
-
-- A prerendered page keeps its `#defer` blocks as holes. The build writes the HTML of the shell, and the boundary of each hole.
-- For a request, the server sends the shell from the file or a cache at once, then renders every hole in defer mode and streams each body as a ready `#loading` body, in the same response.
-- The render of the holes is the one that `#defer` requests make: the route again, with the bodies around each target, and no other body. One render can give all the holes of a page.
-- Without a server, on a static host, the shell is the whole answer, and each hole asks for its body when its trigger fires, as now.
-- It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
-
-Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
 ### Idempotent calls
 
-A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
+`idempotent(fn)` makes forms that run once for each render: a second post of the same form gets the first result. Calls from the browser, such as from a handler, have no key yet, because nothing sends a call again.
 
-- `idempotent(fn)` wraps a server function. The browser sends a key with each call, and sends the same key when it sends that call again.
-- The server keeps the result of a key for a time, in the store of [caching pages and data](#caching-pages-and-data), and answers a call with a key that it has seen with the result that it kept, without running the function.
-- A call with a key that is still running waits for that run.
-- Form posts without scripts get a key in a hidden field, so a second post of the same form is the same call.
+- When the offline queue or a reconnect sends calls again, the browser sends a key with each call, and the same key when it sends that call again. The server already keeps the result of a key.
 
-Cost: a few days, after the store of caching.
+Cost: a day, with the first feature that sends calls again.
 
 ### Two-way realtime
 
@@ -463,7 +264,7 @@ How it ships:
 - The panel stays in the page in development, so it needs no extension, and loads only when opened.
 - A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
 
-Cost: about 3 to 4 weeks for all of it. Elements, loading and blocks first, about 1 week, since the runtime already reports most of what they need.
+Elements, loading, blocks with their fallbacks, errors, page state, effects, navigation and server are done, with a timeline and outlines of the elements that change: see [Devtools](../website/docs/inspect.md#devtools). History and a browser extension are left, about 2 weeks.
 
 ### Component workbench
 
@@ -575,7 +376,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 #### What the compiler needs first
 
 1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
-2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. A part that makes its own handlers, and markup that the browser renders, need [handlers from scripts](#handlers-from-scripts). See [Components](../website/docs/components.md#handlers-in-a-spread).
+2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. A part that makes its own handlers gives them with [`$handler`](../website/docs/components.md#handlers-that-a-script-makes), and markup that the browser renders gets the handlers of its spreads. See [Components](../website/docs/components.md#handlers-in-a-spread).
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
 #### Questions to answer with a spike
@@ -608,16 +409,16 @@ Cost: about 2 weeks for the compiler work, then the phases of the roadmap below.
 
 The parts come from `react-aria-components` 1.22.1 (2026-10-09). Each phase ships when its parts have tests that follow React Aria's behaviour, an accessibility check, docs and live samples. A phase builds on the ones before it.
 
-| Phase                      | Parts                                                                                                                                                                                                                                                                                                | Needs                                                                                              | Cost                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                              | 3 to 4 weeks, with the compiler work |
-| 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [progressive forms](#progressive-forms).                      | 3 to 4 weeks                         |
-| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work. | 4 to 5 weeks                         |
-| 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                      | 6 to 8 weeks                         |
-| 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                           | 2 weeks                              |
-| 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                      | 4 to 6 weeks                         |
-| 6. Data                    | `Table` with sorting, selection and column resizing, `Tree`, `NavigationTree`, `TokenField`, `Virtualizer`, drag and drop with `DropZone`, and list and tree data helpers                                                                                                                            | Phase 3                                                                                            | 6 to 8 weeks                         |
-| 7. Color                   | `ColorPicker`, `ColorArea`, `ColorSlider`, `ColorWheel`, `ColorThumb`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`                                                                                                                                                                              | Phases 1 and 4                                                                                     | 3 to 4 weeks                         |
+| Phase                      | Parts                                                                                                                                                                                                                                                                                                | Needs                                                                                                | Cost                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                                | 3 to 4 weeks, with the compiler work |
+| 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [`createForm`](../website/docs/forms.md#forms-with-createform). | 3 to 4 weeks                         |
+| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work.   | 4 to 5 weeks                         |
+| 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                        | 6 to 8 weeks                         |
+| 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                             | 2 weeks                              |
+| 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                        | 4 to 6 weeks                         |
+| 6. Data                    | `Table` with sorting, selection and column resizing, `Tree`, `NavigationTree`, `TokenField`, `Virtualizer`, drag and drop with `DropZone`, and list and tree data helpers                                                                                                                            | Phase 3                                                                                              | 6 to 8 weeks                         |
+| 7. Color                   | `ColorPicker`, `ColorArea`, `ColorSlider`, `ColorWheel`, `ColorThumb`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`                                                                                                                                                                              | Phases 1 and 4                                                                                       | 3 to 4 weeks                         |
 
 Notes for each phase:
 
@@ -643,149 +444,6 @@ Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 month
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
 
-### Progressive forms
-
-A form library for brumate, `brumate/forms`. Its server side and wire format follow [Conform](https://conform.guide), which builds forms that work without scripts in Remix and Next.js. Its component API follows [Formisch](https://formisch.dev), which types field paths from the schema and keeps form state in signals. It is written in brumate. No React code runs.
-
-brumate forms already post without scripts, with `action=fn`, `parseForm` and `$action`. This adds lists, echoed values, form-level errors, accessibility attributes and validation in the browser on top.
-
-#### Libraries compared
-
-| Library       | Model                                                        | Without scripts | Lists                                              | Fit                                                         |
-| ------------- | ------------------------------------------------------------ | --------------- | -------------------------------------------------- | ----------------------------------------------------------- |
-| Conform       | Server first, built on `FormData`                            | Yes, by design  | Path names and intent buttons                      | The protocol to copy. Its API is made for React.            |
-| Superforms    | Server first, on SvelteKit form actions                      | Yes             | Yes. Its JSON mode for complex data needs scripts. | Close in spirit, tied to SvelteKit.                         |
-| Formisch      | Client first, one small core for many frameworks, on signals | No              | Typed paths from the schema                        | The API to copy. It has no story for forms without scripts. |
-| TanStack Form | Client first, with a store, and server validation in Start   | Not built in    | Yes                                                | Heavy, and its store does not resume.                       |
-
-So `brumate/forms` takes the wire format from Conform and the shape of the API from Formisch. Validation uses Standard Schema, as `parse` and `parseForm` do.
-
-#### Wire format
-
-- Field names are paths: `email`, `address.city`, `items[0].name`. `parseForm` learns bracket indexes too, so `items[0].name` makes an array. Its current rules for `a.b`, repeated names and `tags[]` stay.
-- An intent is a submit button with a reserved name. A button posts its value only when it is clicked, so intents work without scripts:
-
-  ```html
-  <button name="__intent" value='{"type":"remove","name":"items","index":1}' formnovalidate>Remove</button>
-  ```
-
-  The types are `insert`, `remove`, `reorder`, `reset` and `validate`.
-
-- The reply is data, so it goes through `$action` and the page state:
-
-  ```ts
-  type SubmissionResult = {
-    status: 'success' | 'error' | 'intent';
-    // The values as posted, after the intent. Files and passwords are left out.
-    value: unknown;
-    // The errors of each field, by path name.
-    errors: Record<string, string[]>;
-    // The errors of the whole form. They replace errors[''] of fieldErrors.
-    formErrors: string[];
-    // Stable keys of list items, for `#for … by`.
-    keys: Record<string, string[]>;
-  };
-  ```
-
-#### Server
-
-```ts
-import { parseSubmission } from 'brumate/forms';
-
-async function save(data: FormData) {
-  'use server';
-  const submission = await parseSubmission(data, Order);
-  if (submission.status !== 'success') {
-    // An intent, or values that failed the schema: send the values back.
-    return submission.reply();
-  }
-  if (await db.orders.exists(submission.value.id)) {
-    return submission.reply({ formErrors: ['That order exists already'] });
-  }
-  await db.orders.save(submission.value);
-  return submission.reply({ reset: true });
-}
-```
-
-- An intent changes the posted values. It inserts, removes or moves a list item and keeps the keys of the others. It reports no errors on fields that were not touched.
-- An intent is input from the browser, so it is checked: its path must exist in the posted values, indexes must be in range, lists have a maximum length, and path parts such as `__proto__` are rejected, as in `parseForm`.
-
-#### Component
-
-`createForm(fn, schema, options)` is a function of a `.brm.ts` module that ships with brumate. It makes the `$action` of `fn`, and keeps the state of the form in signals, so it resumes like any reactive module. A component destructures what it returns, as with any module function.
-
-```html
-<script>
-  import { createForm } from 'brumate/forms';
-
-  const { attrs, fields, errors, defaultSubmit } = createForm(save, Order, {
-    defaultValue: { items: [{ name: '' }] },
-  });
-</script>
-
-<form action=save {...attrs}>
-  <button {...defaultSubmit}></button>
-
-  <label for=(fields.email.id)>Email</label>
-  <input {...fields.email.attrs} type="email" required>
-  #if (fields.email.errors) {
-    <p {...fields.email.errorAttrs}>{fields.email.errors[0]}</p>
-  }
-
-  #for (item of fields.items.list by item.key) {
-    <input {...item.fields.name.attrs}>
-    <button {...item.remove}>Remove</button>
-  }
-  <button {...fields.items.insert}>Add an item</button>
-
-  #if (errors) {
-    <p role="alert">{errors[0]}</p>
-  }
-  <button>Save</button>
-</form>
-```
-
-- `fields` is a tree typed by the output of the schema: `fields.email`, `fields.address.city`, `fields.items`. A field has:
-  - `attrs`: `name`, `id`, `aria-invalid`, `aria-describedby`, and the echoed `value`, `checked` or `selected`.
-  - `errors`, `errorAttrs` (the id of the error, and `role="alert"` after a submit), and its typed default value.
-- A list field has `list`, its items with their keys, indexes and `fields`, and `insert`, the attributes of an intent button. Each item has `remove`, `moveUp` and `moveDown`. `fields.at(path)` takes a path as a string or an array, for a path that is not known in the code.
-- `errors` holds the errors of the whole form.
-- `attrs` holds the handlers of the form, `onFocusout`, `onInput` and `onClick`, made with [`$handler`](#handlers-from-scripts), so the `<form>` needs only `action` and the spread. `action=save` stays in the markup, since the compiler reads it.
-- The attributes of intent buttons hold a handler made with `$handler(prevent(…))`, so a click with scripts never posts the form, even before the code loads.
-- `defaultSubmit` is a hidden submit button. Enter in a field submits the first submit button of the form, so without it, Enter could press "Remove". The accessibility checks warn about a form that has intent buttons and no `defaultSubmit` first.
-- An echoed value never replaces what the user is typing. The value of a field changes only when its value came from the server, or when the reply resets the form (`reply({ reset: true })`), and not when a reply arrives while the field was edited after the post.
-- A module function can call `$action`, as it can `$effect` and `$client`. This needs a test before the work starts.
-
-#### Without scripts
-
-The same markup works in three states:
-
-1. Without scripts, the form posts and the page renders again with the result. The fields show what was typed and their errors. An intent button posts the whole form, and the server applies the intent, so what was typed in other fields stays.
-2. With scripts, before the code of the form loads, `$action` sends the form with `fetch`, and the page does not load again.
-3. With the code of the form loaded, it validates as fields change and applies intents at once.
-
-What a form without scripts has to handle:
-
-- The constraint attributes of the browser, such as `required` and `type="email"`, still block a submit. Intent buttons have `formnovalidate`, so a list can grow while the form is incomplete.
-- A checkbox that is not checked is not posted. The schema must read a missing value as `false`.
-- A file input cannot be filled again. After an error, the user picks the file again, and only the error shows.
-- Passwords are not echoed.
-- Each post loads the page, so focus and scroll start over. A summary of errors should link to its fields, such as `<a href="#email">`.
-
-#### In the browser
-
-- The `onFocusout` and `onInput` of the form see every field, because brumate delegates events. They validate with the same schema and show the errors of fields that were touched, and of every field after a submit, as Conform does.
-- The handlers of intent buttons apply the intent to the values at once. Their `prevent` stops the post before their code loads.
-- The schema and the validation code load with the first focus out or input, not with the page, so a form costs nothing until someone uses it.
-
-#### Plan
-
-1. The wire format and the server: `parseSubmission`, bracket paths in `parseForm`, `reply`, and the field and list helpers with plain attributes. It works without scripts and through `$action`. About 1 week with tests and docs.
-2. Validation in the browser through the `onFocusout` and `onInput` of the form, loaded when first used. It needs [handlers from scripts](#handlers-from-scripts) for the handlers in `attrs`. About 3 to 4 days.
-3. Intents in the browser, through the handlers of intent buttons. It needs handlers from scripts in markup that the browser renders, for the buttons of new items. About 2 to 3 days.
-
-It lives at `brumate/forms` while the page format still changes, and can move to its own package later.
-
 ### Markdown with components
 
 Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
@@ -799,13 +457,9 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Handlers from scripts, and progressive forms step 1.** `$handler` is compiler and loader work, and the server side of forms is a library, so they go side by side. Forms and the UI components both need `$handler`.
-2. **Progressive forms, steps 2 and 3**, on top of `$handler`.
-3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
-4. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
-5. **The UI components**, starting with the `Select` spike.
-6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-7. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-8. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
+2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them. Next is the component workbench, which is an exploration first.
+3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
+4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

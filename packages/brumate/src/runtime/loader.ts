@@ -111,7 +111,10 @@ function navigation({
             }
           },
           enter: () => {
-            void core()?.then((client) => client.init({ ...options, listen: scan }));
+            // The core took the serial entry when it started.
+            void core()?.then((client) =>
+              client.init({ ...options, serial: undefined, listen: scan }),
+            );
             // Code that reads the route, such as in a layout that stays, gets the new one.
             void reader(ROUTE_KEY)?.then((client) => client.updateRoute());
             page = location.href.split('#')[0]!;

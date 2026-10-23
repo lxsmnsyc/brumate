@@ -9,9 +9,30 @@ function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
 }
 
-/** Returns the props of the component. Destructure the call to keep each prop reactive. */
+declare const BINDABLE: unique symbol;
+
+/** The mark of a prop that a parent can bind. It has no value at runtime. */
+export interface BindableMark<T> {
+  readonly [BINDABLE]: T;
+}
+
+/**
+ * Marks a prop that a parent can bind with `$bind`, such as
+ * `open?: Bindable<boolean>`. The parent passes `T` or `$bind(name)`.
+ * Inside the component, `$props<T>()` gives `T`.
+ */
+export type Bindable<T> = T | BindableMark<T>;
+
+/** The props as the component reads them, with `Bindable<T>` as `T`. */
+export type Unbound<T> = { [K in keyof T]: Exclude<T[K], BindableMark<unknown>> };
+
+/**
+ * Returns the props of the component. Destructure the call to keep each prop
+ * reactive. Destructure it with `let` to write props, such as
+ * `let { open = false } = $props()`.
+ */
 // oxlint-disable-next-line typescript/no-explicit-any -- Props are any object unless typed.
-export function $props<T = Record<string, any>>(): T {
+export function $props<T = Record<string, any>>(): Unbound<T> {
   return compileTimeOnly('$props');
 }
 
@@ -131,4 +152,36 @@ export function $action<F extends (...args: never[]) => unknown>(
   _fn: F,
 ): Awaited<ReturnType<F>> | undefined {
   return compileTimeOnly('$action');
+}
+
+/**
+ * Passes a child a signal, or a prop that the component writes, so a write
+ * of the prop in the child writes it. The child destructures the prop with
+ * `let`. Pass it as the value of a prop: `<Dialog open=$bind(open) />`.
+ *
+ * - Only a prop of type `Bindable<T>` takes it.
+ * - With `set`, a write calls `set(next)` in place of writing the signal.
+ */
+export function $bind<T>(signal: T, set?: (next: T) => unknown): BindableMark<T>;
+export function $bind(): never {
+  return compileTimeOnly('$bind');
+}
+
+/**
+ * Marks a function that a script makes as an event handler, so a spread can
+ * pass it on, as it passes on a handler that a caller writes in markup.
+ * `args` are JSON values that go with the handler, and it runs as
+ * `fn(...args, event)`.
+ */
+export function $handler<A extends unknown[], E = Event>(
+  fn: (...args: [...A, E]) => unknown,
+  ...args: A
+): (event: E) => unknown;
+/** A function that does not read the event. */
+export function $handler<A extends unknown[]>(
+  fn: (...args: A) => unknown,
+  ...args: A
+): (event: Event) => unknown;
+export function $handler(): never {
+  return compileTimeOnly('$handler');
 }

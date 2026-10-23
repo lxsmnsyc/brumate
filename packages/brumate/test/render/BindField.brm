@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // The rest keeps the bindings, so the spread binds the input.
+  const { label, ...rest } = $props();
+</script>
+
+<label>{label}<input class=(`field ${label}`) {...rest}></label>

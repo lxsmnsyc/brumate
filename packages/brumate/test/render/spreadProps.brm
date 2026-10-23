@@ -1,0 +1,13 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import BindChild from './BindChild.brm';
+  import BindPass from './BindPass.brm';
+
+  let open = $signal(false);
+  let extra = $signal<Record<string, unknown>>({ label: 'first' });
+</script>
+
+<p class="parent">{open ? 'open' : 'closed'}</p>
+<BindPass open=$bind(open) />
+<button class="relabel" onClick=(() => (extra = { label: 'second', open: false }))>Relabel</button>
+<BindChild {...extra} open=open />

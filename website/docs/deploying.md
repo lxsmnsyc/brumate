@@ -55,6 +55,7 @@ export default {
 - Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./security.md#rate-limiting).
 - A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
 - `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
+- Keep the results of [`cached`](./server-functions.md#results-that-requests-share) and the pages that the server keeps in Nitro's storage, so every instance of the app shares them: `setCacheStore(storageStore(useStorage('cache')))` at the top of the entry, with `useStorage` from `nitro/storage`. Configure the `cache` mount with a driver such as Redis in the options of `nitro()`.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
 [`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
@@ -225,16 +226,20 @@ Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerend
 
 ### `#defer` on prerendered pages
 
-The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. The browser asks for it at the URL of the page, with the header `x-brumate-defer`. A server that serves prerendered files sends those requests to the routes instead:
+The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. A server that has the prerendered file passes it to the routes as `shell`:
 
 ```ts
-if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
-  // Serve the prerendered file, if there is one.
-}
-// Render the route.
+const html = await readFile(path.join('dist/client', url.pathname, 'index.html'), 'utf8').catch(
+  () => undefined,
+);
+const answer = await handle(request, html === undefined ? { scripts } : { shell: html });
 ```
 
-A static host without a server answers with the file, and the block keeps its fallback.
+- The routes send the shell at once, then the body of each `#defer` block with the `load` or `idle` trigger, in the same response, as a `#loading` body streams. The browser does not ask for them.
+- Each body renders in a request of its own, so middleware runs for it, and it can read the user. The response is `private, no-cache`.
+- A `visible` block, and a block whose body fails, keep their fallback until the browser asks, as on a page without a shell.
+- The request for a `#defer` body, with the header `x-brumate-defer`, and client navigation render the route as usual, whatever `shell` is.
+- A static host without a server answers with the file. The browser asks for each body when its trigger fires, and without a server the block keeps its fallback.
 
 ### Content Security Policy for prerendered pages
 

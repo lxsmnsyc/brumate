@@ -151,7 +151,12 @@ export function printAST(file: SFCFile): string {
         nodes(item.children, depth + 1);
         break;
       case 'fragment':
-        write(depth, 'fragment');
+        write(
+          depth,
+          item.reveal
+            ? `reveal ('${item.reveal.order}'${item.reveal.collapsed ? ', collapsed' : ''})`
+            : 'fragment',
+        );
         nodes(item.children, depth + 1);
         break;
       case 'listener':

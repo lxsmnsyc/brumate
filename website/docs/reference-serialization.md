@@ -41,8 +41,41 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Regular expressions                         | Send the source and the flags, and make the `RegExp` on the other side. A pattern from a client could take the server a long time to match. |
 | Other functions                             | Keep them out of signals and memos. Call them where they are defined.                                                                       |
-| Instances of classes                        | Send their data as a plain object.                                                                                                          |
+| Instances of classes                        | Send their data as a plain object, or add a plugin for the class in the [serial entry](#the-serial-entry).                                  |
 | `File` and `Blob` in answers or in the page | Send a URL to the file instead.                                                                                                             |
+
+## The serial entry
+
+`src/serial.ts` changes what brumate sends. It exports `plugins` for classes of the app, and the options of the serializer that it changes. The server and the browser both load it:
+
+```ts
+// src/serial.ts
+import { definePlugin } from 'brumate/serial';
+import { Money } from './money';
+
+export const plugins = [
+  definePlugin({
+    tag: 'app/money',
+    test: (value) => value instanceof Money,
+    toData: (money: Money) => [money.amount, money.currency],
+    fromData: ([amount, currency]) => new Money(amount, currency),
+  }),
+];
+
+declare module 'brumate/serial' {
+  interface SendableValues {
+    money: Money;
+  }
+}
+```
+
+- `toData` turns a value into data that brumate sends, and `fromData` makes the value again, in the browser or on the server. The page state writes it as `$b.u('app/money', data)`.
+- The same plugins write the arguments and answers of server function calls, and the results of [`cached`](./server-functions.md#results-that-requests-share).
+- The browser loads the entry with the core, before it reads the page state. A page that never runs code does not load it.
+- The compiler lets a signal hold a class that the entry tests with `instanceof`, such as `$signal(new Money(5, 'EUR'))`.
+- Add each class to `SendableValues`, so the type checker accepts it in a signal or a memo.
+- `export const depthLimit = 100` limits how deep a value can be. `export const disabledFeatures`, the `Feature` flags of seroval, replaces the features that are off. Turning on `RegExp` or `ErrorPrototypeStack`, which brumate turns off, warns.
+- The `serial` option of the plugin names another file, and `false` uses none.
 
 ## When a value fails
 

@@ -16,30 +16,30 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
   const parity = (count % 2 ? 'odd' : 'even');
   const size = (items.length * 1);
   const text = (`${quad} and ${size}`);
-  const $$p_named = $$b.memo(() => (label(count)), $$ctx);
+  const $$p_named = $$b.memo(() => (label(count)), $$ctx, "named");
   const named = (($$t = $$b.ready($$p_named)) instanceof Promise ? await $$t : $$t);
-  const $$p_both = $$b.memo(() => (`${$$b.read($$p_named)} ${quad}`), $$ctx);
+  const $$p_both = $$b.memo(() => (`${$$b.read($$p_named)} ${quad}`), $$ctx, "both");
   const both = (($$t = $$b.ready($$p_both)) instanceof Promise ? await $$t : $$t);
   let steps = (0);
   let copy = (count);
   let loaded = (0);
   let typed = ('');
   const same = (copy);
-  const $$p_late = $$b.memo(() => (items.length + double), $$ctx);
+  const $$p_late = $$b.memo(() => (items.length + double), $$ctx, "late");
   $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert((named), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert((both), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + (typeof ($$t = $$b.insert((loaded), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><input" + $$b.attribute("value", (typed)) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
   const $$boundary0 = $$ctx.boundary();
-  if ($$b.settled([$$p_late])) {
+  if ($$b.settled([$$p_late]) && $$ctx.mayShow()) {
     $$ctx.enter($$boundary0);
     const late = $$b.read($$p_late);
     const $$s2 = $$ctx.scope(2, $$s1);
     $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
     $$ctx.leave();
   } else {
-    $$html += "<!--l" + $$boundary0 + "-->";
+    $$html += "<!--l" + $$boundary0 + "-->" + $$ctx.fallbackStart($$boundary0);
     {
       $$html += "<p>Loading</p>";
     }
-    $$html += "<!--/l-->";
+    $$html += $$ctx.fallbackEnd($$boundary0) + "<!--/l-->";
     $$ctx.defer($$boundary0, async ($$ctx) => {
       let $$html = '';
       const late = (($$t = $$b.ready($$p_late)) instanceof Promise ? await $$t : $$t);

@@ -166,6 +166,33 @@ Handlers run as if each element had its own listener. Those wrapped by `capture`
 
 A modifier after the event name, as in `onSubmit:prevent=send`, does the same, with a warning that points to the wrapper. It goes in a later version. A modifier on a component is a compile error: the component puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
 
+### Animating a change
+
+`transition(handler)` from `brumate/events` runs the handler inside a [view transition](https://developer.mozilla.org/docs/Web/API/View_Transition_API). The browser animates from the page before the handler to the page after it, including elements that `#if` or `#for` removes and items that change order. CSS styles the animation.
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+  import { transition } from 'brumate/events';
+
+  let items = $signal(['Ada', 'Grace', 'Linus']);
+</script>
+
+<button onClick=(transition(() => (items = [...items].reverse())))>Reverse</button>
+<ul>
+  #for (item of items by item) {
+    <li style=(`view-transition-name: item-${item}`)>{item}</li>
+  }
+</ul>
+```
+
+- The transition holds the writes that the handler makes before its first `await`. Writes after it, such as after a server call, change the page without an animation.
+- On the first write to a component, the transition waits while its update code loads. The browser keeps the old page on screen until then.
+- `transition(handler, ...types)` gives the transition types, which CSS matches with `:active-view-transition-type(type)`.
+- Without view transitions, or with `prefers-reduced-motion`, the handler runs as it is.
+- It nests with the other wrappers, in any order: `transition(prevent(save))`.
+- The browser runs one view transition at a time, and blocks clicks while it runs. Keep them short, and use CSS transitions for changes that repeat fast, such as typing.
+
 ### Loading handlers early
 
 The code of a handler loads when the pointer moves over its element, or when the element gets focus, so it is often ready before the click. Once the page has loaded and the browser is idle, it also loads for elements in or near the viewport. See [Idle preload](./client-modules.md#idle-preload). `prefetch` on the element changes when:

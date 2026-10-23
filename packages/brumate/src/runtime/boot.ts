@@ -4,7 +4,16 @@
 // its bundle.
 
 import type * as Client from './client.ts';
-import type { ClientModule } from './client.ts';
+import type { ClientModule, DevtoolsHooks } from './client.ts';
+import type { SerialEntry } from './values.ts';
+
+/** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
+const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+
+/** The hooks of the devtools overlay, under the same key as the core's. */
+function devtools(): DevtoolsHooks | undefined {
+  return (globalThis as Record<symbol, DevtoolsHooks | undefined>)[Symbol.for('brumate.devtools')];
+}
 
 export interface LoaderOptions {
   /**
@@ -14,6 +23,8 @@ export interface LoaderOptions {
   load: (id: string) => Promise<ClientModule> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
+  /** Imports the serial entry, which the core takes before it reads the page state. */
+  serial?: () => Promise<SerialEntry>;
   /**
    * Loads pages without a full page load: links to the same origin, the back
    * and forward buttons, forms that post to a server function, and redirects
@@ -147,9 +158,10 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
+  // The serial entry loads with the core, so the core can make the values of the app.
   const loadCore = (): Promise<Core> =>
-    (core ??= load().then((client) => {
-      client.init({ ...options, listen: scan });
+    (core ??= Promise.all([load(), options.serial?.()]).then(([client, serial]) => {
+      client.init({ ...options, listen: scan, serial });
       return client;
     }));
 
@@ -158,18 +170,26 @@ export function boot(
 
   // Starts loading the module of a handler and its part, as one step when the module holds them.
   // The core reports an error of the load when it runs the handler.
-  const warm = (ref: string): void => {
+  // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
+  // on idle or after `load`.
+  const warm = (ref: string, reason: string): void => {
+    // A built-in of the core, such as `$bind`, has no code of a component to load.
+    if (ref.startsWith('$')) {
+      return;
+    }
     // A handler that a spread passed on names its scope after `@`.
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-    void options
-      .load(id)
-      ?.then((module) => module.load?.(/^[hct]\d/.test(name) ? name : 'update'))
-      .catch(() => {});
+    const part = /^[hct]\d/.test(name) ? name : 'update';
+    const done = options.load(id)?.then((module) => module.load?.(part));
+    void done?.catch(() => {});
+    if (DEV && done) {
+      devtools()?.load?.(id, part, reason, done);
+    }
   };
 
   const run = (element: Element, ref: string, event?: Event): void => {
     // The module loads while the core does, not after it.
-    warm(ref);
+    warm(ref, event ? 'event' : 'block');
     void loadCore().then((client) => client.handle(element, ref, event));
   };
 
@@ -290,7 +310,7 @@ export function boot(
             for (const record of records) {
               if (record.isIntersecting) {
                 visible!.unobserve(record.target);
-                preload(record.target);
+                preload(record.target, eagerly.has(record.target) ? 'eager' : 'visible');
               }
             }
           },
@@ -298,6 +318,8 @@ export function boot(
           { rootMargin: '25%' },
         );
   removers.push(() => visible?.disconnect());
+  // Elements that preload near the viewport because the page is idle after `load`.
+  const eagerly = new WeakSet<Element>();
 
   // True once the page is idle after `load`, when elements with the default strategy preload
   // as they come near the viewport. See `preload` in the options.
@@ -306,7 +328,7 @@ export function boot(
   const scan = (root: ParentNode): void => {
     for (const element of select(root, '[data-prefetch=visible],[data-prefetch=idle]')) {
       if (strategy(element) === 'idle' || !visible) {
-        idle(() => preload(element));
+        idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
       } else {
         visible.observe(element);
       }
@@ -316,6 +338,7 @@ export function boot(
         delegate(entry.type, prevents(entry));
       }
       if (eager && strategy(element) === 'hover') {
+        eagerly.add(element);
         visible?.observe(element);
       }
     }
@@ -335,16 +358,23 @@ export function boot(
         );
       }
     }
-    for (const template of select(root, 'template[b-client],template[b-defer]')) {
+    // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
+    for (const template of select(root, 'template[b-client],template[b-defer]:not([b-hole])')) {
       const client = template.getAttribute('b-client');
       const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
         client ? '=' : ':',
       ) as [string, string];
       // A `#defer` block asks the server for its body, with a module that only it needs.
-      const go = (): void =>
-        client
-          ? run(template, ref)
-          : void import('./defer.ts').then((module) => module.loadDeferred(template));
+      const go = (): void => {
+        if (client) {
+          run(template, ref);
+          return;
+        }
+        const done = import('./defer.ts').then((module) => module.loadDeferred(template));
+        if (DEV) {
+          devtools()?.defer?.(template, done);
+        }
+      };
       // The element that a `$client` callback reads through `ref`, or the one after the marker.
       const near = template.getAttribute('b-near');
       const next =
@@ -369,21 +399,21 @@ export function boot(
 
   // Preloads the core and the parts of an element's handlers, so its first event does not wait for them.
   const preloaded = new WeakSet<Element>();
-  const preload = (element: Element): void => {
+  const preload = (element: Element, reason: string): void => {
     if (preloaded.has(element)) {
       return;
     }
     preloaded.add(element);
     void importCore();
     for (const entry of entries(element)) {
-      warm(entry.ref);
+      warm(entry.ref, reason);
     }
   };
 
   const hover = (event: Event): void => {
     const element = (event.target as Element).closest?.('[b-on]');
     if (element && strategy(element) === 'hover') {
-      preload(element);
+      preload(element, 'hover');
     }
   };
   listen(document, 'pointerover', hover, { passive: true });

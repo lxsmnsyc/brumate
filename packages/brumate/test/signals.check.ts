@@ -1,5 +1,6 @@
 // Type-checked with the package. It fails to compile if the declarations of brumate/signals are wrong.
 import {
+  $bind,
   $client,
   $effect,
   $memo,
@@ -8,6 +9,7 @@ import {
   $signal,
   $untrack,
 } from '../src/runtime/signals.ts';
+import type { Bindable } from '../src/runtime/signals.ts';
 
 interface Todo {
   id: string;
@@ -39,3 +41,24 @@ async function* ticks(): AsyncGenerator<number> {
 }
 const tick: number = $memo(ticks());
 void tick;
+
+// `$bind` passes only to a prop that is `Bindable`, of the same type.
+interface DialogProps {
+  title: string;
+  open?: Bindable<boolean>;
+  count?: number;
+}
+export function bindings(open: boolean, label: string): DialogProps[] {
+  const { open: shown } = $props<DialogProps>();
+  const value: boolean | undefined = shown;
+  return [
+    { title: 'a', open },
+    { title: 'b', open: $bind(open) },
+    { title: 'c', open: $bind(open, (next) => next satisfies boolean) },
+    // @ts-expect-error A prop that is not Bindable does not take a binding.
+    { title: 'd', count: $bind(1) },
+    // @ts-expect-error A binding of another type.
+    { title: 'e', open: $bind(label) },
+    { title: String(value) },
+  ];
+}

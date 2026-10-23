@@ -174,3 +174,52 @@ export function finish(
     },
   };
 }
+
+/**
+ * The place in a source that a position of generated code came from, by a
+ * source map. Lines and columns count from 1. Undefined when the map has no
+ * mapping on that line at or before the column.
+ */
+export function originalPosition(
+  map: { sources: (string | null)[]; mappings: string },
+  line: number,
+  column: number,
+): { source: string; line: number; column: number } | undefined {
+  // The fields of a segment are relative to the segment before, across lines but the column.
+  const state = [0, 0, 0, 0];
+  let found: number[] | undefined;
+  const lines = map.mappings.split(';');
+  for (let index = 0; index < line && index < lines.length; index++) {
+    let generated = 0;
+    for (const segment of lines[index]!.split(',')) {
+      if (!segment) {
+        continue;
+      }
+      const fields: number[] = [];
+      let value = 0;
+      let shift = 0;
+      for (const char of segment) {
+        const digit = BASE64.indexOf(char);
+        value += (digit & 31) << shift;
+        if (digit & 32) {
+          shift += 5;
+        } else {
+          fields.push(value & 1 ? -(value >>> 1) : value >>> 1);
+          value = 0;
+          shift = 0;
+        }
+      }
+      generated += fields[0]!;
+      if (fields.length >= 4) {
+        state[1]! += fields[1]!;
+        state[2]! += fields[2]!;
+        state[3]! += fields[3]!;
+      }
+      if (index === line - 1 && fields.length >= 4 && generated <= column - 1) {
+        found = [state[1]!, state[2]!, state[3]!];
+      }
+    }
+  }
+  const source = found && map.sources[found[0]!];
+  return found && source ? { source, line: found[1]! + 1, column: found[2]! + 1 } : undefined;
+}

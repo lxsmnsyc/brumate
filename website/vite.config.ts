@@ -24,15 +24,16 @@ function label(source: string): string {
   const component = /([\w.[\]-]+)\.brm\?brumate-client(?:&part=(\w+))?$/.exec(source);
   if (component) {
     const [, name, part] = component;
-    const what = !part
-      ? 'entry'
-      : part === 'all'
-        ? 'handlers and updates'
-        : part === 'update'
-          ? 'updates'
-          : part === 'shared'
-            ? 'shared code'
-            : `handler ${part}`;
+    let what = `handler ${part}`;
+    if (!part) {
+      what = 'entry';
+    } else if (part === 'all') {
+      what = 'handlers and updates';
+    } else if (part === 'update') {
+      what = 'updates';
+    } else if (part === 'shared') {
+      what = 'shared code';
+    }
     return `${name}: ${what}`;
   }
   return source.split('/').pop()!;
