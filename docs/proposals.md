@@ -4,14 +4,15 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
+Middleware entry, request locals and timing helpers shipped in 0.2.0, so they are no longer here.
+
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
+| [Handlers from scripts](#handlers-from-scripts)                       | Syntax  | High   | Medium |
 | [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
 | [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
 | [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
 | [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Middleware entry](#middleware-entry)                                 | Server  | High   | Small  |
-| [Request locals](#request-locals)                                     | Server  | Medium | Small  |
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
@@ -30,6 +31,52 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
 
 ## Syntax
+
+### Handlers from scripts
+
+A handler reaches the browser only when the compiler saw it in markup: it gives the code a part and a name, and the page refers to it in `b-on`. A handler that a caller passes as a prop goes through `{...rest}`, because the caller's markup named it. A function that a script or a module function makes, such as the `onClick` in an object of attributes, refers to nothing in the browser, so a spread leaves it out. Libraries that give attributes with behavior, such as the list helpers of [progressive forms](#progressive-forms) or the parts of [headless UI components](#headless-ui-components), need it to work.
+
+`$handler(fn, ...args)` from `brumate/signals` marks a function as a handler, as if it were written in markup:
+
+```ts
+// forms.brm.ts
+import { $handler, $signal } from 'brumate/signals';
+import { prevent } from 'brumate/events';
+
+export function list(path: string[]) {
+  let keys = $signal<string[]>([]);
+  function removeAt(index: number) {
+    keys = keys.filter((_, at) => at !== index);
+  }
+  return {
+    keys,
+    // The attributes of an intent button. Without scripts, it posts the intent.
+    remove: (index: number) => ({
+      type: 'submit',
+      name: '__intent',
+      value: JSON.stringify({ type: 'remove', name: path.join('.'), index }),
+      formnovalidate: true,
+      onClick: $handler(prevent(removeAt), index),
+    }),
+  };
+}
+```
+
+```brm
+#for (key, index of items.keys by key) {
+  <button {...items.remove(index)}>Remove</button>
+}
+```
+
+- `fn` is a function that the compiler can see: a function expression, or the name of a local or module function, in wrappers such as `prevent` or not. It compiles as a handler in markup does: a part of its own, whose reads and writes of signals are the slots of the scope where `$handler` is called.
+- `args` are the values that change with each call, such as `index`. They go with the reference, so they must be [sendable](../website/docs/reference-serialization.md). The handler runs as `fn(...args, event)`.
+- It can be called at the top of a component or block script, and in a module function, which the compiler copies into the component. A value that `fn` reads and that is neither a slot of the scope nor an argument is a compile error.
+- The server writes the reference into `b-on` with the modifiers of its wrappers and its arguments, such as `click:prevent=Forms_x1#h9@3[1]`. The loader applies `:prevent` before the code loads, and calls `h9(scope, 1, event)` on the click.
+- Wrappers such as `prevent` keep their names. They are functions at run time that the compiler also reads, and a `$` names a function that only the compiler runs.
+
+Markup that the browser renders, such as a new item of a `#for`, must get the handlers of its spreads too, which it does not yet. A list that grows in the browser is what forms need most, so this comes with it.
+
+Cost: about 1 week. The compiler reuses the extraction and the capture analysis of handlers in markup. The loader reads arguments in `b-on`, which changes the page format. Most of the time goes to the handlers of markup that the browser renders.
 
 ### Two-way binding
 
@@ -297,51 +344,6 @@ A prerendered page is the same for everyone, so a `#defer` body asks for its par
 
 Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
 
-### Middleware entry
-
-`_middleware.ts` runs before the routes of its folder, pages and endpoints. Server function calls, at `/_brumate/<id>`, go past it, so each server function checks the user itself, and a function that forgets is open.
-
-```ts
-// src/middleware.ts
-import { defineMiddleware, redirect } from 'brumate/server';
-
-export default defineMiddleware(async (event, next) => {
-  event.locals.user = await readUser(event);
-  if (event.kind === 'call' && event.call.id.startsWith('admin') && !event.locals.user?.admin) {
-    return new Response('Forbidden', { status: 403 });
-  }
-  return next();
-});
-```
-
-- An entry file, `src/middleware.ts` by default and set with the `middleware` option of the plugin, runs for every request: pages, endpoints, server function calls, form posts, `#defer` bodies and `?__action` posts.
-- `event.kind` says which one it is: `'page'`, `'endpoint'`, `'call'` or `'defer'`. For a call, `event.call` has the ID of the function and its arguments, after they are read, so a check can depend on them.
-- It runs first, before the `_middleware.ts` of the folders. Those stay for what belongs to one part of the site.
-- A `'use server'` file can export `middleware` too, which runs before each of its functions only, for a group of functions with the same rule.
-- Cross-site calls are refused before any middleware runs, as now.
-
-Cost: a few days. The routes already run middleware in a chain, and calls get the same chain.
-
-### Request locals
-
-Middleware has no typed way to hand what it finds, such as the user or a client of the database, to the components and server functions of the request.
-
-```ts
-// src/locals.d.ts
-declare module 'brumate/server' {
-  interface Locals {
-    user?: { id: string; name: string; admin: boolean };
-  }
-}
-```
-
-- `event.locals` is an object for the request. Middleware writes it, and components, server functions and endpoints read it with `getEvent().locals`.
-- Its type comes from the `Locals` interface, which the app adds to by declaration merging, as SvelteKit's `App.Locals`.
-- It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
-- `getEvent().waitUntil(promise)` keeps work going after the response ends, such as analytics or a log line. On a host that stops a function when its response ends, such as Cloudflare Workers or Vercel's functions, it passes the promise to the platform's `waitUntil`, which Nitro exposes. On Node, or on a server of the app's own, it keeps the promise and logs its error. An app that wants `after(fn)` writes it on top in two lines.
-
-Cost: a few days.
-
 ### Idempotent calls
 
 A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
@@ -573,7 +575,7 @@ Native features cover parts of the behaviour with no script: `<dialog>` with `sh
 #### What the compiler needs first
 
 1. Conditional `preventDefault`. Done as `prevent(handler, 'ArrowDown', 'Enter')` from `brumate/events`, which the loader applies by key. See [Markup](../website/docs/markup.md#before-the-handler-loads).
-2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. Markup that the browser renders gets the attributes of a spread, and not its handlers yet. See [Components](../website/docs/components.md#handlers-in-a-spread).
+2. Handlers in spreads. Done for the handlers that a caller passes on, which a spread writes into `b-on` with the scope of their owner and their wrappers. A part that makes its own handlers, and markup that the browser renders, need [handlers from scripts](#handlers-from-scripts). See [Components](../website/docs/components.md#handlers-in-a-spread).
 3. Components from packages. The Vite plugin finds `.brm` files only under the app root and skips `node_modules`, and component IDs come from the path under the root. A published package needs discovery from dependencies, and IDs that include the package name.
 
 #### Questions to answer with a spike
@@ -710,48 +712,49 @@ async function save(data: FormData) {
 
 #### Component
 
-`form(schema, result, options)` is a function of a `.brm.ts` module that ships with brumate. Its state is signals, so it resumes like any reactive module.
+`createForm(fn, schema, options)` is a function of a `.brm.ts` module that ships with brumate. It makes the `$action` of `fn`, and keeps the state of the form in signals, so it resumes like any reactive module. A component destructures what it returns, as with any module function.
 
 ```html
 <script>
-  import { $action } from 'brumate/signals';
-  import { form as createForm } from 'brumate/forms';
+  import { createForm } from 'brumate/forms';
 
-  const result = $action(save);
-  const form = createForm(Order, result, { defaultValue: { items: [{ name: '' }] } });
-  const items = form.list(['items']);
+  const { attrs, fields, errors, defaultSubmit } = createForm(save, Order, {
+    defaultValue: { items: [{ name: '' }] },
+  });
 </script>
 
-<form action=save {...form.attrs} onFocusout=form.blur onInput=form.input onClick=form.intent>
-  <button {...form.defaultSubmit}></button>
+<form action=save {...attrs}>
+  <button {...defaultSubmit}></button>
 
-  <label for=(form.field(['email']).id)>Email</label>
-  <input {...form.field(['email']).attrs} type="email" required>
-  #if (form.field(['email']).errors) {
-    <p {...form.field(['email']).errorAttrs}>{form.field(['email']).errors[0]}</p>
+  <label for=(fields.email.id)>Email</label>
+  <input {...fields.email.attrs} type="email" required>
+  #if (fields.email.errors) {
+    <p {...fields.email.errorAttrs}>{fields.email.errors[0]}</p>
   }
 
-  #for (item of items.items by item.key) {
-    <input {...form.field(['items', item.index, 'name']).attrs}>
-    <button {...items.remove(item.index)}>Remove</button>
+  #for (item of fields.items.list by item.key) {
+    <input {...item.fields.name.attrs}>
+    <button {...item.remove}>Remove</button>
   }
-  <button {...items.insert()}>Add an item</button>
+  <button {...fields.items.insert}>Add an item</button>
 
-  #if (form.errors) {
-    <p role="alert">{form.errors[0]}</p>
+  #if (errors) {
+    <p role="alert">{errors[0]}</p>
   }
   <button>Save</button>
 </form>
 ```
 
-- `form.field(path)` takes a path as an array, typed by the output of the schema. A string such as `'items[0].name'` also works. It returns:
+- `fields` is a tree typed by the output of the schema: `fields.email`, `fields.address.city`, `fields.items`. A field has:
   - `attrs`: `name`, `id`, `aria-invalid`, `aria-describedby`, and the echoed `value`, `checked` or `selected`.
-  - `errors`, `errorAttrs` (the id of the error, and `role="alert"` after a submit), and the typed default value.
-- `form.list(path)` returns the items with their keys and indexes, and `insert()`, `remove(index)` and `reorder(from, to)`, which give the attributes of intent buttons.
-- `form.fieldset(path)` gives the same helpers below a path, for a part of the form in its own component.
-- `form.errors` holds the errors of the whole form.
-- `form.defaultSubmit` is a hidden submit button. Enter in a field submits the first submit button of the form, so without it, Enter could press "Remove".
-- Every helper gives plain attributes. No field or button has a handler, so spreads work as they do today.
+  - `errors`, `errorAttrs` (the id of the error, and `role="alert"` after a submit), and its typed default value.
+- A list field has `list`, its items with their keys, indexes and `fields`, and `insert`, the attributes of an intent button. Each item has `remove`, `moveUp` and `moveDown`. `fields.at(path)` takes a path as a string or an array, for a path that is not known in the code.
+- `errors` holds the errors of the whole form.
+- `attrs` holds the handlers of the form, `onFocusout`, `onInput` and `onClick`, made with [`$handler`](#handlers-from-scripts), so the `<form>` needs only `action` and the spread. `action=save` stays in the markup, since the compiler reads it.
+- The attributes of intent buttons hold a handler made with `$handler(prevent(…))`, so a click with scripts never posts the form, even before the code loads.
+- `defaultSubmit` is a hidden submit button. Enter in a field submits the first submit button of the form, so without it, Enter could press "Remove". The accessibility checks warn about a form that has intent buttons and no `defaultSubmit` first.
+- An echoed value never replaces what the user is typing. The value of a field changes only when its value came from the server, or when the reply resets the form (`reply({ reset: true })`), and not when a reply arrives while the field was edited after the post.
+- A module function can call `$action`, as it can `$effect` and `$client`. This needs a test before the work starts.
 
 #### Without scripts
 
@@ -771,16 +774,15 @@ What a form without scripts has to handle:
 
 #### In the browser
 
-- `onFocusout=form.blur` and `onInput=form.input` on the `<form>` see every field, because brumate delegates events. They validate with the same schema and show the errors of fields that were touched, and of every field after a submit, as Conform does.
-- `onClick=form.intent` handles clicks on intent buttons. It applies the intent to the values at once and stops the post.
+- The `onFocusout` and `onInput` of the form see every field, because brumate delegates events. They validate with the same schema and show the errors of fields that were touched, and of every field after a submit, as Conform does.
+- The handlers of intent buttons apply the intent to the values at once. Their `prevent` stops the post before their code loads.
 - The schema and the validation code load with the first focus out or input, not with the page, so a form costs nothing until someone uses it.
-- `form.intent` must stop the click before it submits the form. Handlers run after their code loads, so this needs `:prevent` on the button, or one of the conditional `preventDefault` options in [Headless UI components](#headless-ui-components). Until then, an intent goes to the server through `$action`, which works, but slower.
 
 #### Plan
 
 1. The wire format and the server: `parseSubmission`, bracket paths in `parseForm`, `reply`, and the field and list helpers with plain attributes. It works without scripts and through `$action`. About 1 week with tests and docs.
-2. Validation in the browser through `onFocusout` and `onInput` on the form, loaded when first used. About 3 to 4 days.
-3. Intents in the browser, once the click can be stopped. About 2 to 3 days.
+2. Validation in the browser through the `onFocusout` and `onInput` of the form, loaded when first used. It needs [handlers from scripts](#handlers-from-scripts) for the handlers in `attrs`. About 3 to 4 days.
+3. Intents in the browser, through the handlers of intent buttons. It needs handlers from scripts in markup that the browser renders, for the buttons of new items. About 2 to 3 days.
 
 It lives at `brumate/forms` while the page format still changes, and can move to its own package later.
 
@@ -797,12 +799,13 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Progressive forms, steps 1 and 2.** They need no compiler work, because their helpers give plain attributes and their handlers sit on the `<form>`.
-2. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 6.
-3. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
-4. **Progressive forms, step 3, and the UI components**, starting with the `Select` spike.
-5. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-6. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-7. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Timing helpers are done, and persisted signals are a cookie and an effect.
+1. **Handlers from scripts, and progressive forms step 1.** `$handler` is compiler and loader work, and the server side of forms is a library, so they go side by side. Forms and the UI components both need `$handler`.
+2. **Progressive forms, steps 2 and 3**, on top of `$handler`.
+3. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 7.
+4. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
+5. **The UI components**, starting with the `Select` spike.
+6. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+7. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
+8. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
-Content mappers for TypeScript 7 are done in #3, so they are in no step.
+Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
