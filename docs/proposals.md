@@ -608,10 +608,10 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
-2. **The UI components**, starting with the `Select` spike.
-3. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-4. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading and blocks are done), and the component workbench, which is an exploration first.
+1. **Binding and transitions**: `bind:value`, `bind:checked` and bindable props, then transitions. They are small, and useful without the UI components: forms get shorter fields, and any block can animate. The UI components need both later.
+2. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+3. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
+4. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 5. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
