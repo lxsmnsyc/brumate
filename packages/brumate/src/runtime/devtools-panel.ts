@@ -27,6 +27,7 @@ import type {
   DevtoolsEntry,
   DevtoolsState,
   ErrorEntry,
+  Interaction,
   LoadEntry,
 } from './devtools.ts';
 
@@ -182,6 +183,22 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .bar.failed { background: var(--red); }
 tr.unused td:not(.bar-cell) { color: var(--yellow); }
 tr.failed td:not(.bar-cell) { color: var(--red); }
+.run { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.run-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.run-head .what { font-weight: 600; }
+.run-head .ref { color: var(--dim); font: 11.5px var(--mono); }
+.run-row { display: grid; grid-template-columns: 170px 1fr 90px; align-items: center; gap: 10px; font: 11.5px var(--mono); color: var(--dim); }
+.run-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-row .took { text-align: right; color: var(--text); }
+.track { position: relative; height: 14px; border-radius: 4px; background: #ffffff08; }
+.seg { position: absolute; top: 3px; height: 8px; min-width: 2px; border-radius: 3px; }
+.seg.wait { background: repeating-linear-gradient(45deg, var(--faint) 0 3px, transparent 3px 6px); }
+.seg.run { background: var(--blue); }
+.seg.async { background: #7cb7ff55; }
+.seg.call { background: #ff9ecf88; }
+.seg.server { background: #ff9ecf; }
+.seg.update { background: var(--green); }
+.seg.failed { background: var(--red); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--dim); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .graph-wrap { display: flex; gap: 10px; height: calc(100% - 42px); min-height: 180px; }
@@ -223,6 +240,7 @@ type Tab =
   | 'elements'
   | 'graph'
   | 'log'
+  | 'timeline'
   | 'loading'
   | 'blocks'
   | 'report';
@@ -233,6 +251,7 @@ const TABS: [Tab, string][] = [
   ['elements', 'Elements'],
   ['graph', 'Graph'],
   ['log', 'Log'],
+  ['timeline', 'Timeline'],
   ['loading', 'Loading'],
   ['blocks', 'Blocks'],
   ['report', 'Report'],
@@ -305,6 +324,7 @@ const ICONS = {
     '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/>',
   log: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
   loading: '<path d="M4 6h7M8 12h9M13 18h7"/>',
+  timeline: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.6M10 3h4"/>',
   blocks:
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
   report:
@@ -745,6 +765,12 @@ async function codeView(
   );
   return box;
 }
+
+/** The name of a handler, such as `Index h16`, once the dev server said the component. */
+const handlerName = (ref: string): string => {
+  const [component, name = ''] = ref.split('#') as [string, string];
+  return `${known.get(component)?.name ?? component} ${name}`;
+};
 
 let panel: HTMLElement | undefined;
 /** Switches the tab of the open panel. */
@@ -2130,6 +2156,227 @@ export function togglePanel(
     );
   };
 
+  const drawTimeline = async (): Promise<void> => {
+    const runs = state.timeline.toReversed().slice(0, 40);
+    await Promise.all(
+      [...new Set(runs.map((run) => run.ref.split('#')[0]!))].map((id) => componentInfo(state, id)),
+    );
+    if (runs.length === 0) {
+      body.replaceChildren(
+        element('h2', {}, 'Timeline'),
+        element(
+          'p',
+          { class: 'sub' },
+          'Each handler that runs shows here, with the time its code took to load, its own run, the server functions it called and the updates that followed.',
+        ),
+      );
+      return;
+    }
+    const now = performance.now();
+    const totals = runs.map((run) => (run.settled ?? now) - run.begun);
+    const segment = (
+      run: Interaction,
+      scale: number,
+      start: number,
+      end: number,
+      kind: string,
+      title: string,
+    ): HTMLElement =>
+      element('span', {
+        class: `seg ${kind}`,
+        style: `left:${((start - run.begun) / scale) * 100}%;width:${(Math.max(end - start, 0) / scale) * 100}%`,
+        title,
+      });
+    const list = element('div');
+    runs.forEach((run, index) => {
+      const total = totals[index]!;
+      const last = Math.max(
+        run.settled ?? now,
+        ...run.calls.map((call) => call.end ?? now),
+        ...run.updates.map((update) => update.end),
+      );
+      const scale = Math.max(last - run.begun, 1);
+      const handler = element(
+        'div',
+        { class: 'track' },
+        ...(run.ready - run.begun > 0.5
+          ? [
+              segment(
+                run,
+                scale,
+                run.begun,
+                run.ready,
+                'wait',
+                `waiting for its code and the handlers before it: ${ms(run.ready - run.begun)}`,
+              ),
+            ]
+          : []),
+        segment(
+          run,
+          scale,
+          run.ready,
+          run.end,
+          run.failed ? 'failed' : 'run',
+          `its run: ${ms(run.end - run.ready)}`,
+        ),
+        ...(run.settled !== undefined && run.settled - run.end > 0.5
+          ? [
+              segment(
+                run,
+                scale,
+                run.end,
+                run.settled,
+                'async',
+                `its promise: ${ms(run.settled - run.end)}`,
+              ),
+            ]
+          : []),
+      );
+      const rows: HTMLElement[] = [
+        element(
+          'div',
+          { class: 'run-row' },
+          element('span', { class: 'name' }, 'handler'),
+          handler,
+          element('span', { class: 'took' }, run.settled === undefined ? '…' : ms(total)),
+        ),
+      ];
+      for (const call of run.calls) {
+        const end = call.end ?? now;
+        const parts = [
+          segment(
+            run,
+            scale,
+            call.start,
+            end,
+            call.status === 'failed' ? 'failed' : 'call',
+            `the round trip: ${ms(end - call.start)}`,
+          ),
+        ];
+        if (call.server !== undefined) {
+          // The time on the server, in the middle of the round trip.
+          const middle = call.start + (end - call.start - call.server) / 2;
+          parts.push(
+            segment(
+              run,
+              scale,
+              middle,
+              middle + call.server,
+              'server',
+              `on the server: ${ms(call.server)}`,
+            ),
+          );
+        }
+        rows.push(
+          element(
+            'div',
+            { class: 'run-row' },
+            element('span', { class: 'name', title: call.name }, `call ${handlerName(call.name)}`),
+            element('div', { class: 'track' }, ...parts),
+            element(
+              'span',
+              { class: 'took' },
+              call.end === undefined
+                ? '…'
+                : `${ms(end - call.start)}${call.server === undefined ? '' : ` (${ms(call.server)})`}`,
+            ),
+          ),
+        );
+      }
+      for (const update of run.updates) {
+        rows.push(
+          element(
+            'div',
+            { class: 'run-row' },
+            element('span', { class: 'name' }, `${update.count} updates`),
+            element(
+              'div',
+              { class: 'track' },
+              segment(
+                run,
+                scale,
+                update.start,
+                update.end,
+                'update',
+                `${update.count} updates and their effects`,
+              ),
+            ),
+            element('span', { class: 'took' }, ms(update.end - update.start)),
+          ),
+        );
+      }
+      const speed = total < 100 ? 'green' : total < 300 ? 'yellow' : 'red';
+      list.append(
+        element(
+          'div',
+          { class: 'run' },
+          element(
+            'div',
+            { class: 'run-head' },
+            element('span', { class: 'what' }, run.label),
+            element('span', { class: 'ref' }, handlerName(run.ref)),
+            element('span', { class: 'spacer' }),
+            run.failed ? pill('failed', 'red') : '',
+            pill(
+              run.settled === undefined ? 'running' : ms(total),
+              run.settled === undefined ? 'blue' : speed,
+            ),
+            element('span', { class: 'sub' }, seconds(run.begun)),
+          ),
+          ...rows,
+        ),
+      );
+    });
+    const settled = totals.filter((_, index) => runs[index]!.settled !== undefined);
+    const clear = iconButton('trash', 'Clear');
+    clear.addEventListener('click', () => {
+      state.timeline.length = 0;
+      draw();
+    });
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card('Handlers', String(state.timeline.length), 'the last 40 show here'),
+        card(
+          'Slowest',
+          settled.length > 0 ? ms(Math.max(...settled)) : '—',
+          'from the event to the end of its promise',
+        ),
+        card(
+          'Server calls',
+          String(runs.reduce((sum, run) => sum + run.calls.length, 0)),
+          'made by these handlers',
+        ),
+      ),
+      element(
+        'div',
+        { class: 'toolbar', style: 'margin-top: 8px' },
+        element(
+          'div',
+          { class: 'legend' },
+          element(
+            'span',
+            {},
+            element('i', {
+              style:
+                'background: repeating-linear-gradient(45deg, var(--faint) 0 2px, transparent 2px 4px)',
+            }),
+            'waiting for code',
+          ),
+          key('var(--blue)', 'run'),
+          key('#7cb7ff55', 'its promise'),
+          key('#ff9ecf88', 'server call'),
+          key('#ff9ecf', 'on the server'),
+          key('var(--green)', 'updates'),
+        ),
+        element('span', { class: 'spacer' }),
+        clear,
+      ),
+      list,
+    );
+  };
+
   const drawBlocks = (): void => {
     const blocks = [...state.blocks.values()];
     const table = element(
@@ -2214,9 +2461,11 @@ export function togglePanel(
               ? drawElements()
               : tab === 'loading'
                 ? drawLoading()
-                : tab === 'graph'
-                  ? drawGraph()
-                  : drawReport();
+                : tab === 'timeline'
+                  ? drawTimeline()
+                  : tab === 'graph'
+                    ? drawGraph()
+                    : drawReport();
     // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
       drawChrome();

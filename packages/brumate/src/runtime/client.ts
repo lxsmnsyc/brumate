@@ -176,6 +176,22 @@ export interface DevtoolsHooks {
   /** A part of a component's client code loaded. */
   part?(component: string, name: string): void;
   /**
+   * A handler ran: when its event came, when its code was ready and the
+   * handlers before it had started, when the call returned, and what it
+   * returned, which is a promise for an async handler.
+   */
+  handled?(run: {
+    ref: string;
+    element: Element;
+    event?: string;
+    begun: number;
+    ready: number;
+    end: number;
+    result: unknown;
+  }): void;
+  /** The updates of a write ran: how many, and how long they took with their effects. */
+  updated?(count: number, start: number, end: number): void;
+  /**
    * Code of a component starts to load: its entry, or a part, and why.
    * `done` settles when it has loaded.
    */
@@ -834,6 +850,7 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
     return Promise.resolve();
   }
   const args = event ? [...bound, withTarget(event, element)] : bound;
+  const begun = DEV ? performance.now() : 0;
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
   }
@@ -842,7 +859,23 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   const loaded = resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
-    .then((handler) => ({ value: handler(scope, ...args) }));
+    .then((handler) => {
+      if (!DEV) {
+        return { value: handler(scope, ...args) };
+      }
+      const ready = performance.now();
+      const value = handler(scope, ...args);
+      devtools()?.handled?.({
+        ref,
+        element,
+        event: event?.type,
+        begun,
+        ready,
+        end: performance.now(),
+        result: value,
+      });
+      return { value };
+    });
   lastHandler = started.catch(() => {});
   // An error of the handler, or of the promise that an async one returns, goes to the nearest
   // `#try` around its scope.
@@ -1297,7 +1330,15 @@ let flushing = false;
 /** Counts changes to the scope tree, so `run` knows when the descendants it found are out of date. */
 let treeChanges = 0;
 
+/** The updates that ran since the outermost `run` started, and when it started, for the devtools. */
+let updateCount = 0;
+let updateStart = 0;
+
 function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+  if (DEV && running === 0) {
+    updateCount = 0;
+    updateStart = performance.now();
+  }
   running++;
   // The descendants of each kind, found once while the tree does not change.
   let found: Map<number, Scope[]> | undefined;
@@ -1328,11 +1369,17 @@ function run(module: ClientModule, updates: Part, scope: Scope, slot: number): v
   }
   if (running === 0) {
     flushEffects();
+    if (DEV) {
+      devtools()?.updated?.(updateCount, updateStart, performance.now());
+    }
   }
 }
 
 /** Runs an update on a scope. An effect waits until the other updates have run. */
 function runUpdate(fn: (scope: Scope) => void, name: string, target: Scope): void {
+  if (DEV) {
+    updateCount++;
+  }
   if (name[0] === 'e') {
     pendingEffects.set(`${target.id}:${name}`, () => {
       if (scopes.has(target.id)) {

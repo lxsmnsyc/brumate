@@ -840,9 +840,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
+      const began = performance.now();
       const answer: Response = await handle(webRequest, {
         address: request.socket.remoteAddress,
       });
+      // How long the server function took on the server, for the Timeline of the devtools.
+      answer.headers.append(
+        'server-timing',
+        `brumate;dur=${(performance.now() - began).toFixed(1)};desc="server function"`,
+      );
       response.statusCode = answer.status;
       // Each cookie stays apart, as `forEach` would set only the last one.
       for (const [name, value] of Object.entries(toNodeHeaders(answer.headers))) {

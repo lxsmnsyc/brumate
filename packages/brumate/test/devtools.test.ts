@@ -400,4 +400,48 @@ describe('devtools', () => {
     expect(shadow.querySelector('.inspect-card')).toBeNull();
     togglePanel(shadow, state);
   });
+
+  it('times handlers, with the server calls and the updates that ran meanwhile', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).startsWith('/_brumate/')
+        ? new Response('{}', {
+            headers: { 'server-timing': 'brumate;dur=12.5;desc="server function"' },
+          })
+        : Response.json({
+            name: 'Cart',
+            file: 'src/Cart.brm',
+            scopes: {},
+            text: '',
+          })) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    let finish!: () => void;
+    const begun = performance.now();
+    hooks().handled!({
+      ref: 'Cart_1#h2',
+      element: document.createElement('button'),
+      event: 'click',
+      begun,
+      ready: begun + 1,
+      end: begun + 2,
+      result: new Promise<void>((resolve) => (finish = resolve)),
+    });
+    await fetch('/_brumate/Cart_1%23save', { method: 'POST' });
+    hooks().updated!(3, performance.now(), performance.now() + 1);
+    finish();
+    await expect.poll(() => state.timeline[0]?.settled).toBeTypeOf('number');
+    const [run] = state.timeline;
+    expect(run!.label).toBe('click on <button>');
+    expect(run!.calls).toMatchObject([{ name: 'Cart_1#save', status: 200, server: 12.5 }]);
+    expect(run!.updates.map((update) => update.count)).toEqual([3]);
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="timeline"]') as HTMLElement).click();
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    await expect.poll(body).toContain('click on <button>');
+    expect(body()).toContain('Cart h2');
+    expect(body()).toContain('call Cart save');
+    expect(body()).toContain('3 updates');
+    togglePanel(shadow, state);
+  });
 });

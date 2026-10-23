@@ -72,6 +72,43 @@ export interface LoadEntry {
   used: boolean;
 }
 
+/** A server function call, for the Timeline tab. */
+export interface CallTiming {
+  name: string;
+  start: number;
+  end?: number;
+  /** The status of the answer, `redirect` for a redirect, or `failed`. */
+  status?: number | 'redirect' | 'failed';
+  /** How long the function took on the server, from the `Server-Timing` of the dev server. */
+  server?: number;
+}
+
+/** A batch of updates that a write ran, with its effects. */
+export interface UpdateTiming {
+  count: number;
+  start: number;
+  end: number;
+}
+
+/**
+ * A handler that ran, for the Timeline tab: when its event came, when its
+ * code was ready and the handlers before it had started, when its call
+ * returned, and when the promise of an async handler settled. The server
+ * calls and the updates that ran meanwhile are its own.
+ */
+export interface Interaction {
+  ref: string;
+  /** What happened, such as `click on <button>`. */
+  label: string;
+  begun: number;
+  ready: number;
+  end: number;
+  settled?: number;
+  failed?: boolean;
+  calls: CallTiming[];
+  updates: UpdateTiming[];
+}
+
 /** A block of the page that renders later, for the Blocks tab. */
 export interface BlockEntry {
   kind: 'loading' | 'defer' | 'client' | '$client';
@@ -114,6 +151,8 @@ export interface DevtoolsState {
   meta: DevtoolsMeta;
   /** The errors of the page, oldest first. */
   errors: ErrorEntry[];
+  /** The handlers that ran, oldest first, with their calls and updates. */
+  timeline: Interaction[];
   /** Opens the panel on a tab, such as `errors`. */
   open?: (tab: string) => void;
   /** Shows the number of errors on the tab. */
@@ -452,7 +491,19 @@ export function installDevtools(
     endpoint,
     meta,
     errors: [],
+    timeline: [],
     flash: false,
+  };
+  /** The handler that a server call or an update that starts now belongs to. */
+  const owner = (time: number): Interaction | undefined => {
+    for (let index = state.timeline.length - 1; index >= 0; index--) {
+      const run = state.timeline[index]!;
+      // An update of the answer of a call comes a moment after the handler settled.
+      if (run.begun <= time && (run.settled === undefined || time <= run.settled + 32)) {
+        return run;
+      }
+    }
+    return undefined;
   };
   const load = (component: string, part: string, reason: string, done: Promise<unknown>): void => {
     const key = `${component}:${part}`;
@@ -494,6 +545,42 @@ export function installDevtools(
       state.changed?.();
     },
     load,
+    handled(run) {
+      const entry: Interaction = {
+        ref: run.ref,
+        label: `${run.event ?? 'call'} on <${run.element.tagName.toLowerCase()}>`,
+        begun: run.begun,
+        ready: run.ready,
+        end: run.end,
+        calls: [],
+        updates: [],
+      };
+      if (run.result instanceof Promise) {
+        run.result.then(
+          () => {
+            entry.settled = performance.now();
+            state.changed?.();
+          },
+          () => {
+            entry.settled = performance.now();
+            entry.failed = true;
+            state.changed?.();
+          },
+        );
+      } else {
+        entry.settled = run.end;
+      }
+      state.timeline.push(entry);
+      if (state.timeline.length > 100) {
+        state.timeline.shift();
+      }
+      state.changed?.();
+    },
+    updated(count, start, end) {
+      if (count > 0) {
+        owner(start)?.updates.push({ count, start, end });
+      }
+    },
     defer(template, done) {
       deferred(template, done);
     },
@@ -544,16 +631,27 @@ export function installDevtools(
     }
     const name = decodeURIComponent(url.pathname.slice(rpc.length + 1));
     const started = performance.now();
+    const call: CallTiming = { name, start: started };
+    owner(started)?.calls.push(call);
     try {
       const response = await original(input, init);
       const took = Math.round(performance.now() - started);
       const redirect = response.headers.get('x-brumate-redirect');
+      call.end = performance.now();
+      call.status = redirect ? 'redirect' : response.status;
+      const server = /brumate;dur=([\d.]+)/.exec(response.headers.get('server-timing') ?? '');
+      if (server) {
+        call.server = Number(server[1]);
+      }
+      state.changed?.();
       add({
         kind: 'call',
         text: `${name}: ${redirect ? `redirect to ${redirect}` : response.status} in ${took} ms`,
       });
       return response;
     } catch (error) {
+      call.end = performance.now();
+      call.status = 'failed';
       add({
         kind: 'call',
         text: `${name}: failed, ${error instanceof Error ? error.message : String(error)}`,
