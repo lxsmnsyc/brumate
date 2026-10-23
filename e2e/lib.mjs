@@ -194,7 +194,7 @@ const IGNORED = [/\/favicon\.ico$/];
  * Collects the uncaught errors and console errors of a page.
  * A 404 of the favicon is the only error that is left out.
  */
-export function watch(page) {
+export function watch(page, { scripts = true } = {}) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(`page error: ${error.stack ?? error.message}`));
   page.on('console', (message) => {
@@ -210,8 +210,10 @@ export function watch(page) {
   page.on('requestfailed', (request) => {
     if (!IGNORED.some((pattern) => pattern.test(request.url()))) {
       const reason = request.failure()?.errorText ?? '';
-      // A navigation or a newer fetch cancels a request, which is not an error.
-      if (reason !== 'net::ERR_ABORTED') {
+      // A navigation or a newer fetch cancels a request, which is not an error. Without scripts,
+      // Chrome blocks the module preloads of the page, which could not run anyway.
+      const preload = !scripts && request.resourceType() === 'script';
+      if (reason !== 'net::ERR_ABORTED' && !preload) {
         errors.push(`request failed: ${request.url()} ${reason}`);
       }
     }
