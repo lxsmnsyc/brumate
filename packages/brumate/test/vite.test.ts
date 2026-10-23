@@ -256,12 +256,15 @@ describe('server modules', () => {
         return (await render(module.default, {})).html;
       };
       expect(await html()).toContain('Before');
+      // A reload of the writes before the server started is not the one that the test waits for.
+      send.mockClear();
       writeFileSync(`${directory}data.ts`, "export const title = 'After';\n");
       // The file watcher can take a while to notice the change while other tests run.
       await vi.waitFor(() => expect(send).toHaveBeenCalledWith({ type: 'full-reload' }), {
         timeout: 15_000,
       });
-      expect(await html()).toContain('After');
+      // The reload and the new module come from the same change, which can reach them apart.
+      await vi.waitFor(async () => expect(await html()).toContain('After'), { timeout: 15_000 });
     } finally {
       await dev.close();
     }

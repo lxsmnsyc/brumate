@@ -458,7 +458,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
-2. **Streaming and tools**: reveal order and lists that grow in the browser are done. Next are the rest of the devtools (elements, loading, blocks, errors, page state, effects, navigation, server and a timeline are done), and the component workbench, which is an exploration first.
+2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them. Next is the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
