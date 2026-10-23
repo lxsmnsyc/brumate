@@ -687,6 +687,8 @@ interface Frame {
   library: boolean;
   /** True for code that the browser ran, whose lines are of the compiled code. */
   compiled: boolean;
+  /** The URL of the module that the browser ran, for a frame that no source map maps. */
+  url?: string;
 }
 
 /** The places of a stack, with their files as the dev server can read them. */
@@ -729,10 +731,82 @@ function framesOf(stack: string | undefined): Frame[] {
   return frames;
 }
 
+/** The places in the sources of frames that the browser ran, by their compiled place. */
+const mapped = new Map<string, Promise<Frame>>();
+
+/**
+ * Maps the frames that the browser ran to their sources, by the source maps
+ * of the dev server, so a frame of a component or a module function names
+ * its own file and line. A frame that the dev server cannot map stays as it is.
+ */
+function mapFrames(frames: Frame[], urls: string[]): Promise<Frame[]> {
+  return Promise.all(
+    frames.map((frame, index) => {
+      const url = urls[index];
+      if (!frame.compiled || frame.library || !url) {
+        return frame;
+      }
+      // A frame that the source map does not map shows the code that the browser ran.
+      const unmapped = { ...frame, url };
+      const key = `${url}:${frame.line}:${frame.column}`;
+      let result = mapped.get(key);
+      if (!result) {
+        const query = new URLSearchParams({
+          url,
+          line: String(frame.line),
+          column: String(frame.column),
+        });
+        result = fetch(`/__brumate/position?${query}`)
+          .then((response) => (response.ok ? response.json() : null))
+          .then((place: { file: string; line: number; column: number } | null) =>
+            place ? { ...frame, ...place, compiled: false } : unmapped,
+          )
+          .catch(() => unmapped);
+        mapped.set(key, result);
+      }
+      return result;
+    }),
+  );
+}
+
+/** The URLs that the frames of a stack name, as the dev server knows the modules. */
+function frameUrls(stack: string | undefined): string[] {
+  const urls: string[] = [];
+  for (const line of (stack ?? '').split('\n')) {
+    const match = /^\s*at (?:(.*?) \()?(.+?):(\d+):(\d+)\)?\s*$/.exec(line);
+    const file = match?.[2];
+    if (!file || /^[a-z-]+-extension:/.test(file) || file.startsWith('<')) {
+      continue;
+    }
+    if (/^https?:/.test(file)) {
+      const url = new URL(file);
+      urls.push(url.origin === location.origin ? url.pathname + url.search : '');
+      if (url.origin !== location.origin) {
+        urls.pop();
+      }
+    } else {
+      urls.push('');
+    }
+  }
+  return urls;
+}
+
 /** The highlighter, which loads with the first code that the Errors tab shows. */
 let highlighter: Promise<typeof Highlight> | undefined;
 /** The sources of files, by path. */
 const sources = new Map<string, Promise<string | undefined>>();
+
+/** The code of a module as the dev server sent it to the browser. */
+function compiledOf(url: string): Promise<string | undefined> {
+  let text = sources.get(url);
+  if (!text) {
+    text = fetch(url)
+      .then((response) => (response.ok ? response.text() : undefined))
+      .catch(() => undefined);
+    sources.set(url, text);
+  }
+  return text;
+}
 
 function sourceOf(file: string): Promise<string | undefined> {
   let text = sources.get(file);
@@ -751,12 +825,12 @@ function sourceOf(file: string): Promise<string | undefined> {
  * the frame of the error is shown as it is.
  */
 async function codeView(
-  place: { file: string; line: number; column: number },
+  place: { file: string; line: number; column: number; url?: string },
   fallback?: string,
 ): Promise<HTMLElement> {
   const box = element('div', { class: 'code' });
   const [text, module] = await Promise.all([
-    sourceOf(place.file),
+    place.url ? compiledOf(place.url) : sourceOf(place.file),
     (highlighter ??= import('../highlight.ts')),
   ]);
   if (text === undefined) {
@@ -768,14 +842,16 @@ async function codeView(
   const lines = text.split('\n');
   const start = Math.max(1, place.line - 6);
   const end = Math.min(lines.length, place.line + 6);
-  const target = place.line - start + 1;
+  const target = place.line;
   const word = /^[\w$.]*/.exec(lines[place.line - 1]?.slice(place.column - 1) ?? '')?.[0] ?? '';
   // The colours of the theme, in the box, since the styles of the page do not reach the panel.
   box.append(element('style', {}, module.themeCSS('dark')));
+  // The whole file is highlighted, so lines inside a script or a comment have their context. Then
+  // only the lines around the place stay, each line one `.l` element.
   box.insertAdjacentHTML(
     'beforeend',
-    module.highlightFile(place.file, lines.slice(start - 1, end).join('\n'), {
-      line_numbers: { start },
+    module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
+      line_numbers: { start: 1 },
       line: (index) => (index === target ? { class: 'error-line' } : undefined),
       overlays:
         word.length > 0
@@ -789,6 +865,16 @@ async function codeView(
           : [],
     }),
   );
+  const shown = [...box.querySelectorAll('code > .l')];
+  shown.forEach((line, index) => {
+    if (index + 1 < start || index + 1 > end) {
+      // The line break after a line goes with it.
+      if (line.nextSibling?.nodeType === Node.TEXT_NODE) {
+        line.nextSibling.remove();
+      }
+      line.remove();
+    }
+  });
   return box;
 }
 
@@ -1256,7 +1342,7 @@ export function togglePanel(
 
     // The place to show: a frame that was clicked, the place of a compile error, or the first
     // frame of the app's code.
-    const frames = framesOf(error.stack);
+    const frames = await mapFrames(framesOf(error.stack), frameUrls(error.stack));
     if (selectedFrame === -1) {
       selectedFrame = error.loc
         ? -2
@@ -1272,7 +1358,7 @@ export function togglePanel(
         { class: 'toolbar' },
         pill(error.source, error.source === 'browser' ? 'yellow' : 'red'),
         error.plugin ? pill(`plugin ${error.plugin}`) : '',
-        place ? open(place) : '',
+        place && !('url' in place && place.url) ? open(place) : '',
       ),
     );
     if (place) {

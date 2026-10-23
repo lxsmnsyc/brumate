@@ -819,9 +819,11 @@ export function installDevtools(
     if (foreign(stack, event.filename)) {
       return;
     }
+    const error = event.error as Error | undefined;
+    // The message of the error, without the `Uncaught` that the browser puts before it.
     reportError(
       state,
-      { message: event.message, stack: (event.error as Error | undefined)?.stack },
+      { message: error?.message ?? event.message, stack: error?.stack },
       'browser',
     );
   });
@@ -833,6 +835,16 @@ export function installDevtools(
     reportError(
       state,
       { message: reason?.message ?? String(event.reason), stack: reason?.stack },
+      'browser',
+    );
+  });
+  // Errors of handlers and updates that no `#try` caught. The core catches them, so they do not
+  // reach the listeners above.
+  addEventListener('brumate:error', (event) => {
+    const error = (event as CustomEvent<{ error: unknown }>).detail.error as Error | undefined;
+    reportError(
+      state,
+      { message: error?.message ?? String(error), stack: error?.stack },
       'browser',
     );
   });
