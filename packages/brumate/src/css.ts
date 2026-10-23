@@ -75,6 +75,39 @@ type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0
  */
 const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
   selectorParser((selectors) => {
+    // `:global(h1, h2)` is a list: the selector around it becomes one selector for each item.
+    for (let index = 0; index < selectors.nodes.length; index++) {
+      const selector = selectors.nodes[index]!;
+      let list: selectorParser.Pseudo | undefined;
+      selector.walkPseudos((pseudo) => {
+        if (!list && pseudo.value === ':global' && pseudo.nodes.length > 1) {
+          list = pseudo;
+        }
+      });
+      if (!list) {
+        continue;
+      }
+      const items = list.nodes;
+      const copies = items.map((_, item) => {
+        const copy = selector.clone() as selectorParser.Selector;
+        let found: selectorParser.Pseudo | undefined;
+        copy.walkPseudos((pseudo) => {
+          if (!found && pseudo.value === ':global' && pseudo.nodes.length > 1) {
+            found = pseudo;
+          }
+        });
+        const only = found!.nodes[item]!;
+        // The space after the comma of the list.
+        if (only.first) {
+          only.first.spaces.before = '';
+        }
+        found!.nodes = [only];
+        return copy;
+      });
+      selector.replaceWith(...copies);
+      // The copies can hold another list, so they are looked at again.
+      index--;
+    }
     selectors.each((selector) => {
       // Split the selector into compounds at combinators.
       const compounds: SelectorPart[][] = [[]];

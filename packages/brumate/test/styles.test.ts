@@ -123,6 +123,21 @@ describe('scope attribute', () => {
     expect(tags(markup, '  .on { color: red; }')).toEqual(['b+', 'i+', 'u+', 's', 'p+']);
   });
 
+  it('makes a selector for each item of a list in :global', () => {
+    const result = compile(
+      '<div class="card"><h1>Hi</h1></div>\n<style>\n  :global(h1, h2) { margin: 0; }\n  .card :global(h1, h2) span { color: red; }\n</style>',
+      {
+        filename: 'List.brm',
+      },
+    );
+    const [plain, scoped] = result.plan.styles.css.split('\n').map((line) => line.trim());
+    expect(plain).toBe('h1,h2 { margin: 0; }');
+    // The scoped parts around the list are in each selector.
+    expect(scoped).toMatch(
+      /^\.card\[[\w-]+\] h1 span\[[\w-]+\],\.card\[[\w-]+\] h2 span\[[\w-]+\] \{/,
+    );
+  });
+
   it('marks no element when every rule is global', () => {
     expect(
       tags('<div class="a"><p>Hi</p></div>', '  :global(.a) :global(p) { margin: 0; }'),
