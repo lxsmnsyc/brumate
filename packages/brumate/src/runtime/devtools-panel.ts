@@ -183,7 +183,7 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .bar.failed { background: var(--red); }
 tr.unused td:not(.bar-cell) { color: var(--yellow); }
 tr.failed td:not(.bar-cell) { color: var(--red); }
-.run { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.interaction { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .run-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .run-head .what { font-weight: 600; }
 .run-head .ref { color: var(--dim); font: 11.5px var(--mono); }
@@ -2373,7 +2373,7 @@ export function togglePanel(
       list.append(
         element(
           'div',
-          { class: 'run' },
+          { class: 'interaction' },
           element(
             'div',
             { class: 'run-head' },
