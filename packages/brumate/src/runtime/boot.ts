@@ -4,7 +4,7 @@
 // its bundle.
 
 import type * as Client from './client.ts';
-import type { ClientModule, DevtoolsHooks } from './client.ts';
+import type { ClientModule, DevtoolsHooks, Part } from './client.ts';
 import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
@@ -166,10 +166,41 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
+  // The modules and parts that the loader asked for, which the core takes, so a handler whose
+  // code loaded runs without another `import()`. In Chrome, an `import()` of a module that is
+  // loaded already still resolves in a task of its own, which can wait for the next frame.
+  const modules = new Map<string, Promise<ClientModule> | undefined>();
+  const loadModule = (id: string): Promise<ClientModule> | undefined => {
+    if (modules.has(id)) {
+      return modules.get(id);
+    }
+    const promise = options.load(id);
+    modules.set(id, promise);
+    // A load that fails can start again, such as after the network comes back.
+    promise?.catch(() => modules.delete(id));
+    return promise;
+  };
+  const partLoads = new Map<string, Promise<Part>>();
+  const loadPart = (module: ClientModule, part: string): Promise<Part> => {
+    const key = `${module.id}#${part}`;
+    let promise = partLoads.get(key);
+    if (!promise) {
+      promise = module.load!(part);
+      partLoads.set(key, promise);
+      promise.catch(() => partLoads.delete(key));
+    }
+    return promise;
+  };
   // The serial entry loads with the core, so the core can make the values of the app.
+  let serialLoad: Promise<SerialEntry> | undefined;
+  const loadSerial = (): Promise<SerialEntry> | undefined => {
+    serialLoad ??= options.serial?.();
+    serialLoad?.catch(() => (serialLoad = undefined));
+    return serialLoad;
+  };
   const loadCore = (): Promise<Core> =>
-    (core ??= Promise.all([load(), options.serial?.()]).then(([client, serial]) => {
-      client.init({ ...options, listen: scan, serial });
+    (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
+      client.init({ ...options, load: loadModule, loadPart, listen: scan, serial });
       return client;
     }));
 
@@ -219,7 +250,16 @@ export function boot(
       return;
     }
     warmed.add(key);
-    const done = options.load(id)?.then((module) => module.load?.(part));
+    // The updates of the module too, which the handler's writes run.
+    const done = loadModule(id)?.then((module) => {
+      if (!module.load) {
+        return undefined;
+      }
+      if (part !== 'update') {
+        loadPart(module, 'update').catch(() => {});
+      }
+      return loadPart(module, part);
+    });
     // A load that fails can start again, such as after the network comes back.
     void done?.catch(() => warmed.delete(key));
     if (DEV && done) {
@@ -483,6 +523,7 @@ export function boot(
     }
     preloaded.add(element);
     void importCore();
+    loadSerial()?.catch(() => {});
     for (const entry of entries(element)) {
       warm(entry.ref, reason);
     }

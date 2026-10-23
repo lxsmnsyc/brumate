@@ -134,6 +134,8 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /** Imports a part of a module, once for each part, as the loader preloads it. */
+  loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
@@ -794,15 +796,19 @@ export function loadPart(
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
-    promise = (module.load ? module.load(name) : Promise.resolve(module as unknown as Part)).then(
-      (part) => {
-        loadedParts.set(key, part);
-        if (DEV) {
-          devtools()?.part?.(module.id, name);
-        }
-        return part;
-      },
-    );
+    let loaded: Promise<Part>;
+    if (!module.load) {
+      loaded = Promise.resolve(module as unknown as Part);
+    } else {
+      loaded = options.loadPart ? options.loadPart(module, name) : module.load(name);
+    }
+    promise = loaded.then((part) => {
+      loadedParts.set(key, part);
+      if (DEV) {
+        devtools()?.part?.(module.id, name);
+      }
+      return part;
+    });
     parts.set(key, promise);
     if (DEV) {
       devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);

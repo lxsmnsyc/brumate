@@ -490,9 +490,9 @@ describe('resume', () => {
     await resume('disclosure', {});
     window.dispatchEvent(new Event('load'));
     const id = 'Disclosure_104dejl';
-    // The toggle's part loads while the page is idle. The `$client` part does not, and the
-    // button in the closed #if is not in the page yet.
-    await waitFor(() => expect(loadedParts).toEqual([`${id}:h4`]));
+    // The toggle's part and the updates load while the page is idle. The `$client` part does
+    // not, and the button in the closed #if is not in the page yet.
+    await waitFor(() => expect(loadedParts.toSorted()).toEqual([`${id}:h4`, `${id}:update`]));
 
     // The #if renders with the updates that the toggle's part loaded with it.
     click(document.querySelector('.toggle')!);

@@ -148,14 +148,11 @@ describe('idle preload', () => {
     window.dispatchEvent(new Event('load'));
     runIdle();
     observer().show();
-    await vi.waitFor(() => expect(part).toHaveBeenCalledTimes(2));
-    // The handler parts only: a `$client` part waits for its own trigger.
-    expect(part.mock.calls).toEqual([['h0'], ['h3']]);
-    expect(load.mock.calls.map(([id]) => id).toSorted()).toEqual([
-      'Merged_1',
-      'Split_1',
-      'Split_1',
-    ]);
+    await vi.waitFor(() => expect(part).toHaveBeenCalledTimes(3));
+    // The handler parts and the updates, once: a `$client` part waits for its own trigger.
+    expect(part.mock.calls.map(([name]) => name).toSorted()).toEqual(['h0', 'h3', 'update']);
+    // Each module loads once, for all of its handlers.
+    expect(load.mock.calls.map(([id]) => id).toSorted()).toEqual(['Merged_1', 'Split_1']);
   });
 
   it('still loads on hover with the default strategy', async () => {
