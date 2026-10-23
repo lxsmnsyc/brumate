@@ -53,6 +53,42 @@ export interface RequestEventOptions {
  * a page render, or a call of middleware or an endpoint. Its methods read
  * the request and change the response. Get it with `getEvent()`.
  */
+/** The headers that tell who the user is. */
+const PERSONAL = new Set(['cookie', 'authorization']);
+
+/**
+ * Calls `read` when code reads the headers that tell who the user is, by
+ * name or by going through all the headers.
+ */
+function watchPersonal(headers: Headers, read: () => void): void {
+  const get = headers.get.bind(headers);
+  const has = headers.has.bind(headers);
+  Object.assign(headers, {
+    get: (name: string) => {
+      if (PERSONAL.has(name.toLowerCase())) {
+        read();
+      }
+      return get(name);
+    },
+    has: (name: string) => {
+      if (PERSONAL.has(name.toLowerCase())) {
+        read();
+      }
+      return has(name);
+    },
+  });
+  for (const method of ['entries', 'forEach', 'values', Symbol.iterator] as const) {
+    const all = (headers[method] as (...args: unknown[]) => unknown).bind(headers);
+    Object.defineProperty(headers, method, {
+      value: (...args: unknown[]) => {
+        read();
+        return all(...args);
+      },
+      configurable: true,
+    });
+  }
+}
+
 export class RequestEvent {
   readonly request: Request;
   /** What the request is for. */
@@ -79,6 +115,12 @@ export class RequestEvent {
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
+  /**
+   * True once the request read its cookies or its `authorization` header, or
+   * set a cookie, such as for a session. The answer then depends on the user,
+   * so a page with `cache` is not cached for everyone.
+   */
+  personal = false;
   private readonly controller = new AbortController();
   /**
    * Aborts when the request no longer needs an answer: the request's own
@@ -95,6 +137,9 @@ export class RequestEvent {
     this.keepGoing = options.waitUntil;
     this.address = options.address;
     this.prerender = options.prerender ?? false;
+    watchPersonal(request.headers, () => {
+      this.personal = true;
+    });
     const outer = request.signal;
     if (outer?.aborted) {
       this.controller.abort(outer.reason);

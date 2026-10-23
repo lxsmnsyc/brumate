@@ -261,6 +261,29 @@ declare module 'brumate/server' {
 
 - It never goes to the browser. A component that sends a value from it, such as the user's name, reads the field it needs, as it does with any server value.
 
+## Caching pages
+
+A route exports `cache` from its module script to let a browser or a CDN keep the page:
+
+```brm
+<script module>
+  export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
+</script>
+
+<h1>About</h1>
+#defer ('load') {
+  <p>Signed in as {user}.</p>
+}
+```
+
+- The server sends `cache-control: public, max-age=60, stale-while-revalidate=600`.
+- A layout's `cache` applies to the pages below it. The nearest one wins.
+- The page is public only when nothing in the request read who the user is. Reading cookies or the `authorization` header, or setting a cookie, makes it `private, no-cache`. Middleware counts too, such as middleware that reads the session for every request.
+- Put what depends on the user in a `#defer` body. It renders in a request of its own, so the rest of the page stays public.
+- A page with `cache` renders in full before its headers go out, so a `#loading` body that reads the user makes it private too. Such a page does not stream.
+- Only `GET` and `HEAD` requests with status 200 are cached.
+- The dev server sends `no-cache`, so pages change as you edit, and says what the page would get in `x-brumate-cache`. It warns when a page with `cache` turns out private.
+
 ## Links
 
 Links are plain `<a>` elements. `href` from `brumate/routes` writes the URL of a route from its path in the route files, and TypeScript checks both:

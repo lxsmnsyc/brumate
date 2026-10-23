@@ -2645,7 +2645,50 @@ interface ResolvedView {
   slots: Record<string, ResolvedView>;
   /** `_loading.brm`: the view streams in, and this shows until then. */
   loading?: Component;
+  /** The `cache` export of the module script of the file. */
+  cache?: PageCache;
 }
+
+/**
+ * How long a page can be cached for everyone, as a route exports it from
+ * its module script: `export const cache = { maxAge: 60 }`. A layout's
+ * applies to the pages below it, and the nearest one wins.
+ */
+export interface PageCache {
+  /** Seconds that a cache can serve the page without asking again. */
+  maxAge: number;
+  /** Seconds after `maxAge` that a cache can serve the old page while it gets a new one. */
+  staleWhileRevalidate?: number;
+}
+
+/** The `cache` of the page of a view: the nearest one along its `children`. */
+function pageCache(view: ResolvedView): PageCache | undefined {
+  const inner = view.slots.children;
+  return (inner && pageCache(inner)) ?? view.cache;
+}
+
+/**
+ * The `cache-control` of a page with `cache`. It is public only when the
+ * request did not read or set anything of the user, and the page is a
+ * success without cookies.
+ */
+function cacheControl(
+  cache: PageCache,
+  event: RequestEvent | undefined,
+  response: Response,
+): string {
+  if (event?.personal || response.status !== 200 || response.headers.getSetCookie().length > 0) {
+    return 'private, no-cache';
+  }
+  const parts = ['public', `max-age=${Math.max(0, Math.floor(cache.maxAge))}`];
+  if (cache.staleWhileRevalidate !== undefined) {
+    parts.push(`stale-while-revalidate=${Math.max(0, Math.floor(cache.staleWhileRevalidate))}`);
+  }
+  return parts.join(', ');
+}
+
+// Pages that `cache` made private in development, so each warns once.
+const warnedPrivate = new Set<string>();
 
 /** Imports every module of a matched route before it renders. */
 async function resolveView(view: RouteView): Promise<ResolvedView> {
@@ -2659,6 +2702,7 @@ async function resolveView(view: RouteView): Promise<ResolvedView> {
     key: view.key,
     component: module.default,
     loading: loading?.default,
+    cache: (module as { cache?: PageCache }).cache,
     slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
   };
 }
@@ -2827,7 +2871,32 @@ async function renderPage(
   const body = streamParts(parts, { ...options, head: preload + (options.head ?? '') }).pipeThrough(
     new TextEncoderStream(),
   );
-  return respond(body, { status: extra.status ?? parts.status, headers });
+  const cache = request.method === 'GET' || request.method === 'HEAD' ? pageCache(view) : undefined;
+  if (!cache) {
+    return respond(body, { status: extra.status ?? parts.status, headers });
+  }
+  // A page with `cache` renders in full before its headers go out, so a `#loading` body that
+  // reads the user makes it private too.
+  const response = respond(await new Response(body).arrayBuffer(), {
+    status: extra.status ?? parts.status,
+    headers,
+  });
+  const control = cacheControl(cache, options.event, response);
+  if (options.dev) {
+    // A browser would keep the page while the files change, so the dev server only says what
+    // the page would get.
+    response.headers.set('cache-control', 'no-cache');
+    response.headers.set('x-brumate-cache', control);
+    if (control.startsWith('private') && !warnedPrivate.has(view.key)) {
+      warnedPrivate.add(view.key);
+      console.warn(
+        `The page ${new URL(request.url).pathname} exports cache, but it read cookies or the authorization header, or set a cookie, so it is not cached for everyone. Move what reads the user into #defer.`,
+      );
+    }
+  } else {
+    response.headers.set('cache-control', control);
+  }
+  return response;
 }
 
 /**
@@ -3004,6 +3073,10 @@ function withHeaders(answer: Response, headers: Headers): Response {
   const result = respond(answer.body, answer);
   for (const cookie of cookies) {
     result.headers.append('set-cookie', cookie);
+  }
+  // A cookie is for one user, so a page with it is not cached for everyone.
+  if (/^\s*public\b/.test(result.headers.get('cache-control') ?? '')) {
+    result.headers.set('cache-control', 'private, no-cache');
   }
   return result;
 }
