@@ -77,6 +77,9 @@ describe('vite plugin', () => {
     const info = (await response.json()) as {
       name: string;
       scopes: Record<number, { label: string; slots: string[] }>;
+      anchors: Record<number, Record<number, object>>;
+      url: string;
+      path: string;
       text: string;
     };
     expect(info.name).toBe('Counter');
@@ -84,6 +87,16 @@ describe('vite plugin', () => {
       { label: 'component', slots: ['count', 'double'] },
     ]);
     expect(info.text).toContain('Client code');
+    // Each anchor, with its place in the file and what it reads, for the Elements tab.
+    expect(Object.values(info.anchors)).toEqual([
+      {
+        0: { label: '<button>', at: '10:1', reads: [] },
+        1: { label: 'insert', at: '11:4', reads: ['count'] },
+        2: { label: 'insert', at: '11:14', reads: ['double'] },
+      },
+    ]);
+    expect(info.url).toBe('/counter.brm');
+    expect(info.path).toMatch(/\/test\/render\/counter\.brm$/);
     expect(missing.status).toBe(404);
   });
 

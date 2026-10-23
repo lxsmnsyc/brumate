@@ -47,18 +47,21 @@ Use it when a component ships more than you expect. The "Changes on the client" 
 
 ## Devtools
 
-The dev server adds a `brm` button to each page. It opens a panel with four tabs:
+The dev server adds a `brm` button to each page. It opens a panel with seven tabs:
 
 - **Scopes** shows each component on the page, with the value of each of its signals and memos by name. A scope that just changed flashes.
+- **Elements** shows the element that **Pick** found: its component, its scope and anchor, its place in the `.brm` file, its handlers with the part of each one and whether it loaded, and the values that its updates read. The inserts and blocks inside it are listed too. Click the place in the file to open it in your editor.
 - **Graph** shows what changes in the browser in a component, left to right: its signals and props, its memos, and the markup and effects that read them, with the current value of each. A value that changes marks its box and every box after it in yellow for a moment, so you can see what an event updated.
 - **Log** lists each handler that ran, each module of client code that loaded, each value that changed, and each server function call with its status and how long it took. Filter it by kind, pause it, or clear it.
+- **Loading** lists each part of client code that loaded, in order: why it loaded, how long it took and its size. The reasons are an event, a block, a write and the like, or a preload on hover, near the viewport, on idle or after the page loaded. A preload that nothing has run yet is marked, so you can see code that loads for nothing. Sizes are those of the dev server, which does not minify.
+- **Blocks** lists the `#loading`, `#defer` and `#client` blocks and the `$client` callbacks of the page, with their trigger and state: `streaming`, `waiting`, `loading` or `rendered`, and when they rendered. **Fire** runs the trigger of a `#defer` or `#client` block now, to see its body without scrolling to it.
 - **Report** shows the `brumate inspect` report of a component.
 
 In Scopes:
 
 - Click a value to change it. Type JSON, or text for a string, and press Enter. The page updates as if a handler wrote the value. Elements and functions cannot be changed.
 - Hover the label of a scope to outline its elements on the page.
-- Press **Pick**, then click an element of the page, to find its scope.
+- Press **Pick**, then click an element of the page. The **Elements** tab shows it.
 
 Until you press the button, only a small listener runs, so the page behaves as in production. Opening the panel loads the core of the page, so it can show the components before any event. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
 

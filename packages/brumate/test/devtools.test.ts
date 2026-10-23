@@ -136,4 +136,149 @@ describe('devtools', () => {
     await expect.poll(() => body().textContent).not.toContain('Counter count = 42');
     togglePanel(shadow, state);
   });
+
+  it('shows a picked element with its place, its handlers and what it reads', async () => {
+    document.body.innerHTML =
+      '<div b-b="5:0" b-on="click:prevent=Counter_3#h1"><span class="inner">hi</span> <!--t5:1-->2<!--/t--></div>';
+    document.querySelector('brumate-devtools')?.remove();
+    const opened: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input).startsWith('/__open-in-editor')) {
+        opened.push(decodeURIComponent(String(input).split('file=')[1]!));
+        return new Response(null);
+      }
+      return Response.json({
+        name: 'Counter',
+        file: 'src/Counter.brm',
+        path: '/app/src/Counter.brm',
+        url: '/src/Counter.brm',
+        scopes: { 0: { label: 'component', slots: ['count', 'double'] } },
+        anchors: {
+          0: {
+            0: { label: '<div>', at: '9:1', reads: ['count'] },
+            1: { label: 'insert', at: '9:30', reads: ['double'] },
+          },
+        },
+        text: '',
+      });
+    }) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const root: Scope = { id: 5, k: 0, m: 'Counter_3', s: [1, 2], children: new Set() };
+    hooks().attach!({ scopes: new Map([[5, root]]), set: () => {} });
+    hooks().load!('Counter_3', 'h1', 'hover', Promise.resolve());
+    await Promise.resolve();
+    togglePanel(shadow, state);
+
+    const pick = [...shadow.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Pick',
+    )!;
+    pick.click();
+    document.querySelector('[b-b]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    await expect.poll(body).toContain('<div> · Counter');
+    expect(body()).toContain('src/Counter.brm:9:1');
+    expect(body()).toContain('count = 1');
+    expect(body()).toContain('click:prevent');
+    expect(body()).toMatch(/loaded in \d+ ms \(hover\)/);
+    // The insert inside it, which has a marker instead of `b-b`.
+    expect(body()).toContain('double = 2');
+    const source = [...shadow.querySelectorAll('.body button')].find(
+      (button) => button.textContent === 'src/Counter.brm:9:1',
+    ) as HTMLElement;
+    source.click();
+    expect(opened).toEqual(['/app/src/Counter.brm:9:1']);
+    togglePanel(shadow, state);
+  });
+
+  it('lists what loaded and why, and marks preloads that nothing used', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    globalThis.fetch = (async () =>
+      Response.json({ name: 'List', file: 'List.brm', scopes: {}, text: '' })) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    hooks().load!('List_1', 'entry', 'event', Promise.resolve());
+    hooks().load!('List_1', 'h2', 'event', Promise.resolve());
+    hooks().load!('List_1', 'h4', 'visible', Promise.resolve());
+    hooks().load!('List_1', 'h5', 'hover', Promise.resolve());
+    let fail!: (error: Error) => void;
+    hooks().load!('List_1', 'update', 'write', new Promise((_, reject) => (fail = reject)));
+    // The core loads the preloaded part for an event, so it was used.
+    hooks().load!('List_1', 'h5', 'event', Promise.resolve());
+    fail(new Error('gone'));
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(
+      [...state.loads.values()].map((load) => [load.part, load.reason, load.used, !!load.failed]),
+    ).toEqual([
+      ['entry', 'event', false, false],
+      ['h2', 'event', false, false],
+      ['h4', 'visible', false, false],
+      ['h5', 'hover', true, false],
+      ['update', 'write', false, true],
+    ]);
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="loading"]') as HTMLElement).click();
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    await expect.poll(body).toContain('5 loads. 1 preloads that nothing used');
+    expect(shadow.querySelectorAll('tr.unused')).toHaveLength(1);
+    expect(shadow.querySelectorAll('tr.failed')).toHaveLength(1);
+    togglePanel(shadow, state);
+  });
+
+  it('follows the blocks of the page, and fires a trigger now', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    document.body.innerHTML = [
+      '<!--l1-->Loading<!--/l-->',
+      '<template b-b="0:1" b-defer="visible:2:/"></template><!--l2-->Later<!--/l-->',
+      '<template b-b="0:2" b-client="idle=Map_1#k3"></template><!--b0:2-->Map<!--/b-->',
+      '<template b-b="0:3" b-client="load=Map_1#c4"></template>',
+    ].join('');
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const handled: string[] = [];
+    hooks().attach!({
+      scopes: new Map(),
+      set: () => {},
+      handle: async (_element, ref) => {
+        handled.push(ref);
+      },
+    });
+    const states = () =>
+      Object.fromEntries(
+        [...state.blocks.values()].map((block) => [`${block.kind} ${block.id}`, block.state]),
+      );
+    expect(states()).toEqual({
+      'defer 2': 'waiting',
+      'loading 1': 'streaming',
+      'client 0:2': 'waiting',
+      '$client 0:3': 'waiting',
+    });
+
+    // The body of `#loading` arrives, `#client` renders, and `$client` runs.
+    const comments = [...document.body.childNodes].filter(
+      (node) => node.nodeType === 8,
+    ) as Comment[];
+    comments[0]!.remove();
+    comments[1]!.remove();
+    comments.find((node) => node.data === 'b0:2')!.data = 'b0:2:1';
+    hooks().handler!('Map_1#c4', document.querySelector('[b-client$="#c4"]')!);
+    await expect.poll(() => states()['loading 1']).toBe('rendered');
+    expect(states()['client 0:2']).toBe('rendered');
+    expect(states()['$client 0:3']).toBe('rendered');
+
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="blocks"]') as HTMLElement).click();
+    const body = (): string => shadow.querySelector('.body')!.textContent!;
+    expect(body()).toContain('#defer2visiblewaiting');
+    // Fire asks the server for the body of `#defer` now.
+    const requests: string[] = [];
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push(new Headers(init?.headers).get('x-brumate-defer')!);
+      return new Response('', { status: 404 });
+    }) as typeof fetch;
+    (shadow.querySelector('.body button') as HTMLElement).click();
+    await expect.poll(() => requests).toEqual(['2 0:1']);
+    expect(state.blocks.get('defer:2')!.fired).toBeTypeOf('number');
+    togglePanel(shadow, state);
+  });
 });

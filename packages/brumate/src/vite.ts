@@ -38,7 +38,7 @@ import {
 } from './packages.ts';
 import type { BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
-import { formatReport, report, scopeLabel } from './inspect.ts';
+import { anchorLabel, formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule, resolveFromDisk } from './modules.ts';
 import { forEachNode } from './project.ts';
@@ -741,8 +741,55 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         .filter((edge) => indexes.has(edge.from) && indexes.has(edge.to))
         .map((edge) => [indexes.get(edge.from)!, indexes.get(edge.to)!]),
     };
+    // Each anchor of each scope: what it is, its place in the file and the values its updates
+    // read, for the Elements tab, which finds them by the `b-b` of an element.
+    const anchors: Record<
+      number,
+      Record<number, { label: string; at?: string; reads: string[] }>
+    > = {};
+    for (const [target, index] of plan.anchors) {
+      const scope = plan.anchorScopes.get(target)!;
+      const at = result.locate('range' in target ? target.range.start : target.start);
+      const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+      const reads = new Set<string>();
+      for (const edge of plan.graph.edges) {
+        const node = edge.to;
+        if (node.kind === 'source' || node.kind === 'memo') {
+          continue;
+        }
+        const site = node.site;
+        const range = !('range' in target) && target.kind === 'insert' ? target : undefined;
+        if (
+          site === target ||
+          site.owner === target ||
+          site.block === target ||
+          (range && site.range.start >= range.start && site.range.end <= range.end)
+        ) {
+          if (edge.from.kind === 'source' || edge.from.kind === 'memo') {
+            reads.add(edge.from.declaration.name);
+          }
+        }
+      }
+      (anchors[scope.id] ??= {})[index] = {
+        label: anchorLabel(target),
+        ...(where ? { at: `${where.line}:${where.column}` } : {}),
+        reads: [...reads],
+      };
+    }
     const text = formatReport(report(source, result, liveProps.get(file)));
-    return { name: plan.name, file: nameOf(file), scopes, graph, text };
+    return {
+      name: plan.name,
+      file: nameOf(file),
+      // The absolute path, for the editor, and the URL that the browser loads the code from.
+      path: file,
+      url: file.startsWith(`${normalizePath(root)}/`)
+        ? file.slice(normalizePath(root).length)
+        : `/@fs${file}`,
+      scopes,
+      anchors,
+      graph,
+      text,
+    };
   };
 
   const handleDevRPC = async (

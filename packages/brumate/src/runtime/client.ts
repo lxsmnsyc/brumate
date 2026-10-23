@@ -168,11 +168,20 @@ export interface DevtoolsHooks {
   attach?(core: {
     scopes: Map<ScopeId, Scope>;
     set: (scope: Scope, slot: number, value: unknown) => void;
+    /** Runs the code of a reference for an element, as an event or a trigger does. */
+    handle?: (element: Element, ref: string, event?: Event) => Promise<unknown>;
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
   /** A part of a component's client code loaded. */
   part?(component: string, name: string): void;
+  /**
+   * Code of a component starts to load: its entry, or a part, and why.
+   * `done` settles when it has loaded.
+   */
+  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
+  /** The loader asks the server for the body of a `#defer` block. */
+  defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
   write?(scope: Scope, slot: number, value: unknown): void;
 }
@@ -267,7 +276,7 @@ function refresh(added: Scope[]): void {
     if (!id) {
       continue;
     }
-    void loadModule(id).then(async (module) => {
+    void loadModule(id, 'state').then(async (module) => {
       const names = new Set<string>();
       for (const slots of Object.values(module.g)) {
         for (const entries of Object.values(slots)) {
@@ -281,7 +290,7 @@ function refresh(added: Scope[]): void {
       if (names.size === 0) {
         return;
       }
-      const updates = await loadPart(module, 'update');
+      const updates = await loadPart(module, 'update', 'state');
       // Memos first, so the other updates read their new values.
       for (const name of [...names].toSorted(
         (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
@@ -596,7 +605,7 @@ export function init(value: CoreOptions): void {
   indexMarkers(document.documentElement);
   watchTitles(document);
   if (DEV) {
-    devtools()?.attach?.({ scopes, set });
+    devtools()?.attach?.({ scopes, set, handle });
   }
 }
 
@@ -656,7 +665,22 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-export function loadModule(id: string): Promise<ClientModule> {
+/**
+ * Why the core loads code, for the Loading tab of the devtools: an event,
+ * a call of a function prop, a template, the scopes of a state record, a
+ * write, an error, a reset of `#try`, or a prop of a child.
+ */
+export type LoadReason =
+  | 'event'
+  | 'call'
+  | 'template'
+  | 'state'
+  | 'write'
+  | 'error'
+  | 'reset'
+  | 'prop';
+
+export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -666,11 +690,18 @@ export function loadModule(id: string): Promise<ClientModule> {
       return module;
     });
     loading.set(id, promise);
+    if (DEV) {
+      devtools()?.load?.(id, 'entry', reason, promise);
+    }
   }
   return promise;
 }
 
-export function loadPart(module: ClientModule, name: string): Promise<Part> {
+export function loadPart(
+  module: ClientModule,
+  name: string,
+  reason: LoadReason = 'write',
+): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -684,6 +715,9 @@ export function loadPart(module: ClientModule, name: string): Promise<Part> {
       },
     );
     parts.set(key, promise);
+    if (DEV) {
+      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
+    }
   }
   return promise;
 }
@@ -693,11 +727,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string): Promise<Handler> {
+async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id);
-    const part = await loadPart(module, partOf(name));
+    const module = await loadModule(id, reason);
+    const part = await loadPart(module, partOf(name), reason);
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -737,7 +771,7 @@ async function serverBuild(): Promise<string | undefined> {
 }
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  return (await resolve(ref))(scope, ...args);
+  return (await resolve(ref, 'call'))(scope, ...args);
 }
 
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
@@ -755,7 +789,7 @@ const loadingTemplates = new Set<Promise<unknown>>();
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
   let render: Handler | undefined;
   // A template that fails to load stops holding up updates too, and its error is reported.
-  const code: Promise<unknown> = resolve(ref)
+  const code: Promise<unknown> = resolve(ref, 'template')
     .then((handler) => {
       render = handler;
     })
@@ -805,7 +839,7 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref);
+  const loaded = resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => ({ value: handler(scope, ...args) }));
@@ -835,7 +869,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id);
+      const module = await loadModule(id, 'error');
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -863,7 +897,7 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update');
+  const updates = await loadPart(module, 'update', 'error');
   const start = findComment(`b${owner.id}:${anchor}`);
   if (!start) {
     return;
@@ -1745,7 +1779,7 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id), 'update');
+  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
   const start = findComment(`b${scope.id}:${anchor}`);
   if (!start) {
     return;
@@ -2268,7 +2302,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m).then(apply);
+    void loadModule(child.m, 'prop').then(apply);
   }
 }
 

@@ -415,7 +415,7 @@ How it ships:
 - The panel stays in the page in development, so it needs no extension, and loads only when opened.
 - A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
 
-Cost: about 3 to 4 weeks for all of it. Elements, loading and blocks first, about 1 week, since the runtime already reports most of what they need.
+Elements, loading and blocks are done: see [Devtools](../website/docs/inspect.md#devtools). Showing a block's fallback again is not, since the page drops the fallback when the body arrives. The rest costs about 2 to 3 weeks.
 
 ### Component workbench
 
@@ -608,11 +608,10 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Devtools: elements, loading and blocks.** They show what makes a brumate page different, from data that the runtime already reports. The rest of the devtools comes in step 5.
-2. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
-3. **The UI components**, starting with the `Select` spike.
-4. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-5. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools, and the component workbench, which is an exploration first.
-6. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+1. **What the UI components need first**: bindable props and transitions. Handlers in spreads are done, and element behaviors are `$client` with `ref`. Bindable props carry the controlled and uncontrolled split of the parts.
+2. **The UI components**, starting with the `Select` spike.
+3. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
+4. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading and blocks are done), and the component workbench, which is an exploration first.
+5. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

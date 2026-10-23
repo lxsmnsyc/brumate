@@ -4,6 +4,7 @@ import { compile } from './compile.ts';
 import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import type { GraphNode } from './graph.ts';
+import type { AnchorTarget } from './plan.ts';
 import type { Declaration, Scope, Site } from './model.ts';
 import { forEachNode } from './project.ts';
 
@@ -42,6 +43,27 @@ function siteLabel(source: string, site: Site): string {
 }
 
 /** A short name for a scope, such as `body of #for (12:3)`. */
+/** A short name of an anchor for the devtools: its tag, its block, or `$client`. */
+export function anchorLabel(target: AnchorTarget): string {
+  if ('range' in target) {
+    return target.kind === 'client' ? '$client' : target.label;
+  }
+  switch (target.kind) {
+    case 'element':
+      return `<${target.tag}>`;
+    case 'component':
+      return `<${target.name}>`;
+    case 'dynamic':
+      return '<dynamic tag>';
+    case 'listener':
+      return `#${target.target} listener`;
+    case 'insert':
+      return 'insert';
+    default:
+      return `#${target.kind}`;
+  }
+}
+
 export function scopeLabel(source: string, scope: Scope): string {
   if (scope.kind === 'body' && scope.block) {
     return `body of #${scope.block.kind} (${at(source, scope.block)})`;

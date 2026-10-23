@@ -9,11 +9,17 @@
 //   browser, and what reads what. A write marks its node and the nodes after it.
 // - Log: handlers, loaded parts, writes and server function calls.
 // - Report: the inspect report of a component.
+// - Elements: the element that Pick found: its scope and anchor, its place in
+//   the file, its handlers with their parts, and the values its updates read.
+// - Loading: each part of client code that loaded, why, how long it took and
+//   its size. Preloads that nothing used are marked.
+// - Blocks: the `#loading`, `#defer`, `#client` blocks and `$client`
+//   callbacks of the page, with their state and timing. A trigger can fire now.
 
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
-import { preview, rootOf } from './devtools.ts';
-import type { DevtoolsEntry, DevtoolsState } from './devtools.ts';
+import { PRELOADS, preview, rootOf } from './devtools.ts';
+import type { BlockEntry, DevtoolsEntry, DevtoolsState } from './devtools.ts';
 
 /** What the dev server tells about a component: see the inspect endpoint of the plugin. */
 interface ComponentInfo {
@@ -28,6 +34,12 @@ interface ComponentInfo {
   };
   /** The inspect report as text. */
   text: string;
+  /** The absolute path of the file, for the editor. */
+  path?: string;
+  /** The URL that the browser loads the client code of the component from. */
+  url?: string;
+  /** Each anchor of each scope: what it is, its place in the file and what its updates read. */
+  anchors?: Record<number, Record<number, { label: string; at?: string; reads: string[] }>>;
 }
 
 const STYLE = `
@@ -70,10 +82,18 @@ svg .hot rect { fill: #fd03; stroke: #fd0; }
 .legend .signal { color: #9cf; } .legend .memo { color: #c9f; } .legend .effect { color: #9e9; } .legend .hot { color: #fd0; }
 svg line { stroke: #8886; }
 svg .hot-edge { stroke: #fd0; }
+.rows { width: 100%; border-collapse: collapse; }
+.rows th { text-align: left; color: #aaa; font-weight: normal; }
+.rows td, .rows th { padding: 1px 6px 1px 0; border-bottom: 1px solid #8882; vertical-align: top; }
+.unused { color: #fc9; }
+.failed { color: #f88; }
+.state-waiting { color: #aaa; } .state-loading, .state-streaming { color: #9cf; } .state-rendered { color: #9e9; } .state-failed { color: #f88; }
+.field { color: #aaa; }
+h3 { margin: 0 0 6px; font-size: 13px; }
 .outline { position: fixed; pointer-events: none; border: 2px solid #9cf; background: #9cf2; border-radius: 3px; z-index: 2147483646; }
 `;
 
-type Tab = 'scopes' | 'graph' | 'log' | 'report';
+type Tab = 'scopes' | 'elements' | 'graph' | 'log' | 'loading' | 'blocks' | 'report';
 const KINDS: DevtoolsEntry['kind'][] = ['handler', 'part', 'write', 'call'];
 /** How long a write marks the nodes of the graph. */
 const HOT_MS = 1500;
@@ -160,6 +180,47 @@ function describe(entry: DevtoolsEntry): string {
     : entry.text;
 }
 
+const ms = (time: number): string => `${Math.round(time)} ms`;
+
+/** The size of the code of a part, as the dev server sent it, from the timing of its request. */
+const sizeOf = (info: ComponentInfo | undefined, part: string): string => {
+  if (!info?.url || typeof performance.getEntriesByType !== 'function') {
+    return '';
+  }
+  const entry = (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).find(
+    (item) => {
+      const url = new URL(item.name, location.href);
+      return (
+        url.pathname === info.url &&
+        url.searchParams.has('brumate-client') &&
+        (part === 'entry' || part === 'all'
+          ? !url.searchParams.has('part')
+          : url.searchParams.get('part') === part)
+      );
+    },
+  );
+  const bytes = entry && (entry.encodedBodySize || entry.transferSize);
+  return bytes ? `${(bytes / 1024).toFixed(1)} kB` : '';
+};
+
+/** The value of a name that a scope or one of the scopes around it holds. */
+const valueOf = (scope: Scope, name: string): string | undefined => {
+  for (let current: Scope | undefined = scope; current; current = current.p) {
+    const slots = known.get(rootOf(current).m ?? '')?.scopes[current.k]?.slots;
+    const slot = slots?.indexOf(name) ?? -1;
+    if (slot !== -1) {
+      return preview(current.s[slot]);
+    }
+    if (current.m !== undefined) {
+      break;
+    }
+  }
+  return undefined;
+};
+
+const blockLabel = (block: BlockEntry): string =>
+  block.kind === '$client' ? '$client' : `#${block.kind}`;
+
 let panel: HTMLElement | undefined;
 
 /** Opens the panel, or closes it when it is open. */
@@ -172,6 +233,8 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
   }
   let tab: Tab = 'scopes';
   let selected: string | undefined;
+  // The element that Pick found, for the Elements tab.
+  let picked: Element | undefined;
   let selectedScope: ScopeId | undefined;
   let editing: { scope: ScopeId; slot: number } | undefined;
   let paused = false;
@@ -183,8 +246,11 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
   const bar = element('div', { class: 'bar', role: 'tablist' });
   for (const [name, label] of [
     ['scopes', 'Scopes'],
+    ['elements', 'Elements'],
     ['graph', 'Graph'],
     ['log', 'Log'],
+    ['loading', 'Loading'],
+    ['blocks', 'Blocks'],
     ['report', 'Report'],
   ] as const) {
     const button = element('button', { class: 'tab', role: 'tab', 'data-tab': name }, label);
@@ -199,7 +265,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     {
       class: 'end',
       'aria-pressed': 'false',
-      title: 'Click an element of the page to find its scope',
+      title: 'Click an element of the page to see its scope, handlers and code',
     },
     'Pick',
   );
@@ -233,18 +299,21 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
 
   // Pick: the next click on the page selects the scope of its element.
   const onPick = (event: MouseEvent): void => {
-    const target = (event.target as Element | null)?.closest?.('[b-b]');
-    if (!target || event.composedPath().includes(panel!)) {
+    const clicked = event.target as Element | null;
+    if (!clicked?.closest || event.composedPath().includes(panel!)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
     stopPicking();
-    const id = target.getAttribute('b-b')!.split(':')[0]!;
-    selectedScope = /^-?\d+$/.test(id) ? Number(id) : id;
-    const scope = state.scopes?.get(selectedScope);
-    selected = scope ? rootOf(scope).m : selected;
-    tab = 'scopes';
+    picked = clicked;
+    const id = clicked.closest('[b-b]')?.getAttribute('b-b')!.split(':')[0];
+    if (id !== undefined) {
+      selectedScope = /^-?\d+$/.test(id) ? Number(id) : id;
+      const scope = state.scopes?.get(selectedScope);
+      selected = scope ? rootOf(scope).m : selected;
+    }
+    tab = 'elements';
     draw();
   };
   const stopPicking = (): void => {
@@ -569,6 +638,279 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
     );
   };
 
+  /** A row of cells, as a table row. */
+  const row = (cells: (Node | string)[], tag: 'td' | 'th' = 'td'): HTMLElement =>
+    element('tr', {}, ...cells.map((cell) => element(tag, {}, cell)));
+
+  /** The handlers of an element, from its `b-on`, with the state of the code of each one. */
+  const drawHandlers = (target: Element): HTMLElement => {
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['event', 'handler', 'part', 'code'], 'th'),
+    );
+    for (const raw of (target.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
+      const [head, ref = ''] = raw.split('=') as [string, string];
+      const [type, ...modifiers] = head.split(':');
+      const [component, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
+      const part = /^[hct]\d/.test(name) ? name : 'update';
+      const load = state.loads.get(`${component}:${part}`) ?? state.loads.get(`${component}:all`);
+      const info = known.get(component);
+      const status = !load
+        ? 'not loaded'
+        : load.end === undefined
+          ? 'loading'
+          : `${load.failed ? 'failed' : 'loaded'} in ${ms(load.end - load.start)} (${load.reason})`;
+      table.append(
+        row([
+          [type, ...modifiers].join(':'),
+          `${info?.name ?? component} ${name}`,
+          part,
+          [status, sizeOf(info, load?.part ?? part)].filter(Boolean).join(', '),
+        ]),
+      );
+    }
+    return table;
+  };
+
+  const scopeOf = (id: string): Scope | undefined =>
+    state.scopes?.get(/^-?\d+$/.test(id) ? Number(id) : id);
+
+  /** What the dev server says about an anchor of a scope, with the component that has it. */
+  const anchorOf = async (scope: Scope, anchor: number) => {
+    const component = rootOf(scope);
+    const info = component.m ? await componentInfo(state, component.m) : undefined;
+    return { info, root: component, place: info?.anchors?.[scope.k]?.[anchor] };
+  };
+
+  /** A button that opens a place of a file in the editor, through the dev server. */
+  const source = (info: ComponentInfo | undefined, at: string | undefined): Node | string => {
+    if (!info || !at) {
+      return '';
+    }
+    if (!info.path) {
+      return `${info.file}:${at}`;
+    }
+    const open = element('button', { title: 'Open in the editor' }, `${info.file}:${at}`);
+    open.addEventListener('click', () => {
+      void fetch(`/__open-in-editor?file=${encodeURIComponent(`${info.path}:${at}`)}`);
+    });
+    return open;
+  };
+
+  /** The names that an anchor reads, with their values in the scope. */
+  const drawReads = (scope: Scope, reads: string[]): Node[] =>
+    reads.map((name) => {
+      const value = valueOf(scope, name);
+      return element(
+        'span',
+        { class: 'slot' },
+        element('span', { class: 'name' }, name),
+        value === undefined ? '' : ` = ${value}`,
+        ' ',
+      );
+    });
+
+  const drawElements = async (): Promise<void> => {
+    if (!picked?.isConnected) {
+      body.replaceChildren(
+        element('div', { class: 'empty' }, 'Press Pick, then click an element of the page.'),
+      );
+      return;
+    }
+    const tag = `<${picked.tagName.toLowerCase()}>`;
+    const content = element('div');
+    const anchored = picked.closest('[b-b]');
+    const [id = '', anchorText = '0'] = anchored?.getAttribute('b-b')!.split(':') ?? [];
+    const scope = anchored ? scopeOf(id) : undefined;
+    if (!scope) {
+      content.append(
+        element('h3', {}, tag),
+        element(
+          'div',
+          { class: 'empty' },
+          anchored
+            ? `Scope ${id} is not in the browser yet.`
+            : 'Nothing in the browser updates this element or the elements around it.',
+        ),
+      );
+    } else {
+      const anchor = Number(anchorText);
+      const { info, root: component, place } = await anchorOf(scope, anchor);
+      content.append(
+        element(
+          'h3',
+          {},
+          picked === anchored ? (place?.label ?? tag) : `${tag} in ${place?.label ?? 'an element'}`,
+          ` · ${info?.name ?? component.m}`,
+        ),
+      );
+      if (place?.at) {
+        content.append(
+          element(
+            'div',
+            {},
+            element('span', { class: 'field' }, 'source '),
+            source(info, place.at),
+          ),
+        );
+      }
+      const scopeButton = element(
+        'button',
+        { title: 'Show the scope' },
+        `scope ${scope.id}${info?.scopes[scope.k] ? ` · ${info.scopes[scope.k]!.label}` : ''}`,
+      );
+      scopeButton.addEventListener('click', () => {
+        selectedScope = scope.id;
+        tab = 'scopes';
+        draw();
+      });
+      content.append(
+        element('div', {}, element('span', { class: 'field' }, 'scope '), scopeButton),
+        element('div', {}, element('span', { class: 'field' }, 'anchor '), String(anchor)),
+      );
+      if (place && place.reads.length > 0) {
+        content.append(
+          element(
+            'div',
+            {},
+            element('span', { class: 'field' }, 'reads '),
+            ...drawReads(scope, place.reads),
+          ),
+        );
+      }
+      const handled = picked.closest('[b-on]');
+      if (handled && anchored!.contains(handled)) {
+        content.append(element('h3', {}, 'Handlers'), drawHandlers(handled));
+      }
+    }
+    // The inserts and blocks inside the element, which have markers instead of `b-b`.
+    const inside = element('table', { class: 'rows' }, row(['marker', 'source', 'reads'], 'th'));
+    const markers: { data: string; scope: Scope; anchor: number }[] = [];
+    const walker = document.createTreeWalker(picked, NodeFilter.SHOW_COMMENT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const data = (node as Comment).data;
+      const match = /^[tb](-?[\d.]+):(\d+)/.exec(data);
+      const markerScope = match && scopeOf(match[1]!);
+      if (markerScope) {
+        markers.push({ data, scope: markerScope, anchor: Number(match![2]) });
+      }
+    }
+    const places = await Promise.all(
+      markers.map((marker) => anchorOf(marker.scope, marker.anchor)),
+    );
+    markers.forEach((marker, index) => {
+      const { info, place } = places[index]!;
+      inside.append(
+        row([
+          place?.label ?? marker.data,
+          source(info, place?.at),
+          element('span', {}, ...drawReads(marker.scope, place?.reads ?? [])),
+        ]),
+      );
+    });
+    if (inside.childElementCount > 1) {
+      content.append(element('h3', {}, 'Inside it'), inside);
+    }
+    body.replaceChildren(content);
+  };
+
+  const drawLoading = async (): Promise<void> => {
+    const loads = [...state.loads.values()].toSorted((a, b) => a.start - b.start);
+    await Promise.all(
+      [...new Set(loads.map((load) => load.component))].map((id) => componentInfo(state, id)),
+    );
+    const unused = loads.filter((load) => PRELOADS.has(load.reason) && !load.used).length;
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['at', 'component', 'part', 'why', 'took', 'size'], 'th'),
+    );
+    for (const load of loads) {
+      const info = known.get(load.component);
+      const marks = load.failed
+        ? 'failed'
+        : PRELOADS.has(load.reason) && !load.used
+          ? 'unused'
+          : '';
+      const tr = row([
+        `${(load.start / 1000).toFixed(2)}s`,
+        info?.name ?? load.component,
+        load.part,
+        load.reason,
+        load.end === undefined ? '…' : ms(load.end - load.start),
+        sizeOf(info, load.part),
+      ]);
+      if (marks) {
+        tr.className = marks;
+        tr.title =
+          marks === 'unused' ? 'Preloaded, and nothing has run it yet' : 'It failed to load';
+      }
+      table.append(tr);
+    }
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'legend' },
+        `${loads.length} loads. ${unused} preloads that nothing used are `,
+        element('b', { class: 'unused' }, 'marked'),
+        '. Sizes are of the dev server, which does not minify.',
+      ),
+      ...(loads.length > 0 ? [table] : [element('div', { class: 'empty' }, 'No code loaded yet.')]),
+    );
+  };
+
+  const drawBlocks = (): void => {
+    const blocks = [...state.blocks.values()];
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['block', 'id', 'trigger', 'state', 'fired', 'rendered', ''], 'th'),
+    );
+    for (const block of blocks) {
+      const action = element('span');
+      if (block.state === 'waiting' && (block.kind === 'defer' || block.kind === 'client')) {
+        const fire = element('button', { title: 'Fire the trigger now' }, 'Fire');
+        fire.addEventListener('click', () => {
+          state.fire?.(block);
+          draw();
+        });
+        action.append(fire);
+      }
+      const took =
+        block.rendered === undefined
+          ? ''
+          : block.fired === undefined
+            ? `${(block.rendered / 1000).toFixed(2)}s`
+            : `+${ms(block.rendered - block.fired)}`;
+      const status = element('span', { class: `state-${block.state}` }, block.state);
+      const tr = row([
+        blockLabel(block),
+        block.id,
+        block.trigger ?? '',
+        status,
+        block.fired === undefined ? '' : `${(block.fired / 1000).toFixed(2)}s`,
+        took,
+        action,
+      ]);
+      table.append(tr);
+    }
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'legend' },
+        'Blocks that render after the page. ',
+        element('b', { class: 'state-streaming' }, 'streaming'),
+        ' bodies come with the page, ',
+        element('b', { class: 'state-waiting' }, 'waiting'),
+        ' ones wait for their trigger.',
+      ),
+      ...(blocks.length > 0
+        ? [table]
+        : [element('div', { class: 'empty' }, 'No blocks that render later on this page.')]),
+    );
+  };
+
   let queued = false;
   const draw = (): void => {
     for (const button of bar.querySelectorAll('.tab')) {
@@ -578,7 +920,20 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState): void {
       drawLog();
       return;
     }
-    const drawn = tab === 'scopes' ? drawScopes() : tab === 'graph' ? drawGraph() : drawReport();
+    if (tab === 'blocks') {
+      drawBlocks();
+      return;
+    }
+    const drawn =
+      tab === 'scopes'
+        ? drawScopes()
+        : tab === 'elements'
+          ? drawElements()
+          : tab === 'loading'
+            ? drawLoading()
+            : tab === 'graph'
+              ? drawGraph()
+              : drawReport();
     // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
       if (tab === 'scopes') {
