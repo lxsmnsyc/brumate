@@ -211,8 +211,9 @@ export function addValueEdits(
             argument.start,
             site!.awaits ? '$$b.memo(async () => (' : '$$b.memo(() => (',
           );
-          // The render context, so server functions that the memo calls read the event of the page.
-          patch.replace(argument.end, node.end, '), $$ctx)');
+          // The render context, so server functions that the memo calls read the event of the page,
+          // and the name of the memo, for the trace of the devtools.
+          patch.replace(argument.end, node.end, `), $$ctx, ${JSON.stringify(declaration.name)})`);
         } else if (site?.awaits) {
           // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');

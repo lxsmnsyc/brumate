@@ -21,7 +21,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
   const { initial } = $$b.unbind($$props, ["initial"]);
   let todos = (initial);
   let draft = ('');
-  const $$p_left = $$b.memo(() => (todos.filter((todo) => !todo.done).length), $$ctx);
+  const $$p_left = $$b.memo(() => (todos.filter((todo) => !todo.done).length), $$ctx, "left");
   const left = (($$t = $$b.ready($$p_left)) instanceof Promise ? await $$t : $$t);
   async function add() {
     todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false, at: new Date() }];

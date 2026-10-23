@@ -53,6 +53,32 @@ export interface RequestEventOptions {
  * a page render, or a call of middleware or an endpoint. Its methods read
  * the request and change the response. Get it with `getEvent()`.
  */
+/** A step of the render of a page, for the Server tab of the devtools. */
+export interface TraceEntry {
+  kind: 'render' | 'stream' | 'memo' | 'call' | 'body';
+  label: string;
+  start: number;
+  /** Undefined while it runs. */
+  end?: number;
+  failed?: boolean;
+}
+
+function noTrace(): void {}
+
+/** Ends an entry of the trace when a value settles, if it is a promise, or at once. */
+export function traceValue<T>(value: T, end: (failed?: boolean) => void): T {
+  const thenable = value as unknown as PromiseLike<unknown> | null | undefined;
+  if (thenable && typeof thenable.then === 'function') {
+    thenable.then(
+      () => end(),
+      () => end(true),
+    );
+  } else {
+    end();
+  }
+  return value;
+}
+
 /** The headers that tell who the user is. */
 const PERSONAL = new Set(['cookie', 'authorization']);
 
@@ -121,6 +147,30 @@ export class RequestEvent {
    * so a page with `cache` is not cached for everyone.
    */
   personal = false;
+  /**
+   * In development, what the render of the page did and when, in
+   * milliseconds from its start, for the Server tab of the devtools.
+   */
+  trace?: TraceEntry[];
+  /** When the trace started, by `performance.now()`. */
+  traceStart = 0;
+
+  /** Starts an entry of the trace, when there is one, and returns what ends it. */
+  traced(kind: TraceEntry['kind'], label: string): (failed?: boolean) => void {
+    const trace = this.trace;
+    if (!trace) {
+      return noTrace;
+    }
+    const entry: TraceEntry = { kind, label, start: performance.now() - this.traceStart };
+    trace.push(entry);
+    return (failed) => {
+      entry.end = performance.now() - this.traceStart;
+      if (failed) {
+        entry.failed = true;
+      }
+    };
+  }
+
   /**
    * The tags of the `cached` functions that the request called, with the
    * version that each had then, so `revalidate` drops the page that it renders.
@@ -363,7 +413,7 @@ export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string)
       return fn(...args);
     }
     if (!cache.has(key)) {
-      cache.set(key, fn(...args));
+      cache.set(key, traceValue(fn(...args), current?.traced('call', id) ?? noTrace));
     }
     return cache.get(key);
   }) as F;

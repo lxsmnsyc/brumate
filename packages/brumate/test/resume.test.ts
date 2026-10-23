@@ -1563,6 +1563,35 @@ describe('gather', () => {
   });
 });
 
+describe('the trace of a render', () => {
+  it('ends the page with what the server did, in development', async () => {
+    const server = await import(file('awaitedStream.brm.ts'));
+    const tree = { page: async () => server };
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), { dev: true }))!;
+    const reading = answer.text();
+    server.release(['a', 'b']);
+    const html = await reading;
+    const script = /<script type="application\/json" b-trace>(.*?)<\/script>$/.exec(html);
+    expect(script).not.toBeNull();
+    const trace = JSON.parse(script![1]!) as {
+      entries: { kind: string; label: string; end?: number }[];
+    };
+    expect(trace.entries.map((entry) => [entry.kind, entry.label])).toEqual(
+      expect.arrayContaining([
+        ['render', '/'],
+        ['memo', 'tags'],
+        ['body', '#loading 0'],
+        ['stream', 'the rest of the page'],
+      ]),
+    );
+    expect(trace.entries.every((entry) => entry.end !== undefined)).toBe(true);
+    // Without dev, the page has no trace.
+    server.release(['a']);
+    const plain = await (await handleRoute(tree, new Request('http://localhost/')))!.text();
+    expect(plain).not.toContain('b-trace');
+  });
+});
+
 describe('#reveal', () => {
   /** Promises that the test settles, by name. */
   function waits(): { wait: Record<string, Promise<void>>; go: (name: string) => void } {

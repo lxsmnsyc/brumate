@@ -432,9 +432,9 @@ describe('await', () => {
       `${header}  const user = await $memo(load(id));\n  const tags = await $memo(loadTags(user));\n</script>\n<p>{user.name} {tags.length}</p>\n<button onClick=(() => id++)>+</button>`,
       { filename: 'T.brm' },
     );
-    expect(server).toContain('const $$p_user = $$b.memo(() => (load(id)), $$ctx);');
+    expect(server).toContain('const $$p_user = $$b.memo(() => (load(id)), $$ctx, "user");');
     expect(server).toContain(
-      'const $$p_tags = $$b.memo(() => (loadTags($$b.read($$p_user))), $$ctx);',
+      'const $$p_tags = $$b.memo(() => (loadTags($$b.read($$p_user))), $$ctx, "tags");',
     );
     expect(server).toContain(
       'if (($$t = $$b.waitAll([$$p_user, $$p_tags])) !== undefined) await $$t;',
@@ -485,7 +485,9 @@ describe('await', () => {
     expect(server).toContain(
       'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
     );
-    expect(server).toContain('$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx)');
+    expect(server).toContain(
+      '$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx, "upper")',
+    );
     expect(server).not.toContain('$$b.waitAll(');
     expect(server).toContain('$$b.insert(((user).name)');
     // In the browser the value is settled, so the memo and the update code do not wait.

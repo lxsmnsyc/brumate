@@ -264,7 +264,7 @@ How it ships:
 - The panel stays in the page in development, so it needs no extension, and loads only when opened.
 - A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
 
-Elements, loading, blocks, errors, page state, effects and navigation are done, with a timeline and outlines of the elements that change: see [Devtools](../website/docs/inspect.md#devtools). Showing a block's fallback again is not, since the page drops the fallback when the body arrives. The rest costs about 2 to 3 weeks.
+Elements, loading, blocks, errors, page state, effects, navigation and server are done, with a timeline and outlines of the elements that change: see [Devtools](../website/docs/inspect.md#devtools). Showing a block's fallback again is not, since the page drops the fallback when the body arrives. The rest costs about 2 to 3 weeks.
 
 ### Component workbench
 
@@ -458,7 +458,7 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
-2. **Streaming and tools**: reveal order and lists that grow in the browser are done. Next are the rest of the devtools (elements, loading, blocks, errors, page state, effects, navigation and a timeline are done), and the component workbench, which is an exploration first.
+2. **Streaming and tools**: reveal order and lists that grow in the browser are done. Next are the rest of the devtools (elements, loading, blocks, errors, page state, effects, navigation, server and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 

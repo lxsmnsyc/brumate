@@ -18,6 +18,7 @@
 //   callbacks of the page, with their state. A trigger can fire now.
 // - Report: the inspect report of a component.
 
+import type { TraceEntry } from './request.ts';
 import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
@@ -185,6 +186,7 @@ tr.ended td { color: var(--faint); }
 .bar.preload { background: var(--purple); } .bar.other { background: var(--faint); }
 .bar.unused { background: repeating-linear-gradient(45deg, var(--purple) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--purple); }
 .bar.failed { background: var(--red); }
+.bar.render { background: var(--accent); } .bar.memo { background: var(--green); } .bar.body { background: var(--purple); } .bar.stream { background: var(--faint); }
 tr.unused td:not(.bar-cell) { color: var(--yellow); }
 tr.failed td:not(.bar-cell) { color: var(--red); }
 .interaction { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
@@ -253,6 +255,7 @@ type Tab =
   | 'state'
   | 'effects'
   | 'navigation'
+  | 'server'
   | 'blocks'
   | 'report';
 const TABS: [Tab, string][] = [
@@ -267,6 +270,7 @@ const TABS: [Tab, string][] = [
   ['state', 'Page state'],
   ['effects', 'Effects'],
   ['navigation', 'Navigation'],
+  ['server', 'Server'],
   ['blocks', 'Blocks'],
   ['report', 'Report'],
 ];
@@ -343,6 +347,8 @@ const ICONS = {
   effects: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4h-4"/>',
   navigation:
     '<path d="M4 7h11M4 7l3.5-3.5M4 7l3.5 3.5"/><path d="M20 17H9M20 17l-3.5-3.5M20 17l-3.5 3.5"/>',
+  server:
+    '<rect x="4" y="4" width="16" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5"/><path d="M7.5 7.25h.01M7.5 16.75h.01" stroke-width="2.6"/>',
   timeline: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.6M10 3h4"/>',
   blocks:
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
@@ -2568,6 +2574,94 @@ export function togglePanel(
     );
   };
 
+  /**
+   * What the server did for the last page that loaded: the render until the
+   * page could stream, each memo that loaded and each server function call,
+   * each `#loading` body, and the rest of the stream, on one scale. The
+   * server writes it at the end of the page, in development.
+   */
+  const drawServer = async (): Promise<void> => {
+    const script = [...document.querySelectorAll('script[b-trace]')].at(-1);
+    let trace: { route: string; entries: TraceEntry[] } | undefined;
+    try {
+      trace = script ? JSON.parse(script.textContent ?? '') : undefined;
+    } catch {
+      trace = undefined;
+    }
+    if (!trace) {
+      body.replaceChildren(
+        element(
+          'div',
+          { class: 'empty' },
+          'No trace yet. The dev server writes one at the end of each page that it renders.',
+        ),
+      );
+      return;
+    }
+    const entries = trace.entries.toSorted((a, b) => a.start - b.start);
+    const total = Math.max(1, ...entries.map((entry) => entry.end ?? entry.start));
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['step', 'what', 'took', `when, 0 to ${ms(total)}`], 'th'),
+    );
+    for (const entry of entries) {
+      const end = entry.end ?? total;
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, pill(entry.kind, entry.failed ? 'red' : '')),
+        element('td', { class: 'mono' }, entry.label),
+        element('td', { class: 'mono' }, entry.end === undefined ? '…' : ms(end - entry.start)),
+        element(
+          'td',
+          { class: 'bar-cell' },
+          element(
+            'div',
+            { class: 'bar-track' },
+            element('span', {
+              class: `bar ${entry.failed ? 'failed' : entry.kind}`,
+              style: `left:${(entry.start / total) * 100}%;width:${((end - entry.start) / total) * 100}%`,
+              title: `${ms(entry.start)} to ${ms(end)}`,
+            }),
+          ),
+        ),
+      );
+      if (entry.failed) {
+        tr.className = 'failed';
+      }
+      table.append(tr);
+    }
+    const render = entries.find((entry) => entry.kind === 'render');
+    const count = (kind: TraceEntry['kind']): number =>
+      entries.filter((entry) => entry.kind === kind).length;
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card(
+          'Until it streamed',
+          render?.end === undefined ? '…' : ms(render.end),
+          `the render of ${trace.route}`,
+        ),
+        card('Whole page', ms(total), 'until the last body streamed'),
+        card('Memos that loaded', String(count('memo')), `${count('call')} server function calls`),
+        card('Bodies', String(count('body')), '#loading bodies that streamed'),
+      ),
+      element(
+        'div',
+        { class: 'legend', style: 'margin: 10px 0 6px' },
+        key('var(--accent)', 'render'),
+        key('var(--green)', 'memo'),
+        key('var(--blue)', 'server function call'),
+        key('var(--purple)', '#loading body'),
+        key('var(--faint)', 'the rest of the stream'),
+        element('span', { class: 'sub' }, 'Of the last page that the dev server rendered.'),
+      ),
+      table,
+    );
+  };
+
   const drawTimeline = async (): Promise<void> => {
     const runs = state.timeline.toReversed().slice(0, 40);
     await Promise.all(
@@ -2887,6 +2981,7 @@ export function togglePanel(
     state: drawState,
     effects: drawEffects,
     navigation: drawNavigation,
+    server: drawServer,
     timeline: drawTimeline,
     graph: drawGraph,
     report: drawReport,

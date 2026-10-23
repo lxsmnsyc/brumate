@@ -48,7 +48,7 @@ import {
   unwrap,
   withEvent,
 } from './request.ts';
-import type { EntryMiddleware, RequestKind } from './request.ts';
+import type { EntryMiddleware, RequestKind, TraceEntry } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export {
@@ -401,6 +401,11 @@ export class Context {
       throw new Error('getEvent() works while a page renders with a request, such as in a route');
     }
     return event;
+  }
+
+  /** Starts an entry of the trace of the request, in development. */
+  traced(kind: TraceEntry['kind'], label: string): ((failed?: boolean) => void) | undefined {
+    return this.root.event?.traced(kind, label);
   }
 
   /** Marks the request of the page as one that depends on the user, so the page is not cached for everyone. */
@@ -976,9 +981,19 @@ export class Context {
     child.inTarget = inTarget;
     const group = this.reveal;
     group?.add(id);
+    const end = around ? undefined : this.traced('body', `#loading ${id}`);
     const boundary: Boundary = {
       id,
-      render: renderBody(child).then((html) => ({ html, ctx: child })),
+      render: renderBody(child).then(
+        (html) => {
+          end?.();
+          return { html, ctx: child };
+        },
+        (error: unknown) => {
+          end?.(true);
+          throw error;
+        },
+      ),
       around,
       group,
     };
@@ -1033,11 +1048,13 @@ export interface Memo<T = unknown> {
   value?: unknown;
   error?: unknown;
   load?: Promise<unknown>;
+  /** The name of the memo, for the trace of the devtools. */
+  name?: string;
 }
 
 /** Declares a memo. Its value is computed when it is first read. */
-export function memo<T>(compute: () => T, ctx?: Context): Memo<T> {
-  return { compute, ctx, state: 'idle' };
+export function memo<T>(compute: () => T, ctx?: Context, name?: string): Memo<T> {
+  return { compute, ctx, state: 'idle', name };
 }
 
 /**
@@ -1073,8 +1090,11 @@ export function read(node: Memo): any {
     (typeof (value as PromiseLike<unknown>).then === 'function' || isAsyncIterable(value))
   ) {
     node.state = 'pending';
+    // A memo that loads is a step of the render, in the trace of the devtools.
+    const end = node.ctx?.traced('memo', node.name ?? 'memo');
     node.load = Promise.resolve(value)
       .then(firstValue)
+      .finally(() => end?.())
       .then(
         (result) => {
           node.state = 'done';
@@ -3092,6 +3112,14 @@ async function renderPage(
   if (defer) {
     return renderDeferred(view, props, request, options, defer, base);
   }
+  // In development, the render records what it does and when, for the Server tab of the devtools.
+  const event = options.event;
+  if (options.dev && event) {
+    event.trace = [];
+    event.traceStart = performance.now();
+  }
+  const path = new URL(request.url).pathname;
+  const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
   const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
   const links = hints.map((url) => `<${url}>; rel=modulepreload`);
@@ -3113,6 +3141,8 @@ async function renderPage(
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
     },
   );
+  endRender();
+  const endStream = event?.traced('stream', 'the rest of the page') ?? (() => {});
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
   // The same URL answers the request for a `#defer` body with that body only, and a navigation,
@@ -3122,9 +3152,21 @@ async function renderPage(
   for (const link of links) {
     headers.append('link', link);
   }
-  const body = streamParts(parts, { ...options, head: preload + (options.head ?? '') }).pipeThrough(
-    new TextEncoderStream(),
-  );
+  let html = streamParts(parts, { ...options, head: preload + (options.head ?? '') });
+  if (event?.trace) {
+    // The trace goes last, once every body has streamed, as JSON that the devtools read.
+    const trace = event.trace;
+    html = html.pipeThrough(
+      new TransformStream<string, string>({
+        flush(controller) {
+          endStream();
+          const json = JSON.stringify({ route: path, entries: trace }).replace(/</g, '\\u003c');
+          controller.enqueue(`<script type="application/json" b-trace>${json}</script>`);
+        },
+      }),
+    );
+  }
+  const body = html.pipeThrough(new TextEncoderStream());
   const cache = request.method === 'GET' || request.method === 'HEAD' ? pageCache(view) : undefined;
   if (!cache) {
     return respond(body, { status: extra.status ?? parts.status, headers });
