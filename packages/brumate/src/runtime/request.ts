@@ -121,6 +121,11 @@ export class RequestEvent {
    * so a page with `cache` is not cached for everyone.
    */
   personal = false;
+  /**
+   * The tags of the `cached` functions that the request called, with the
+   * version that each had then, so `revalidate` drops the page that it renders.
+   */
+  readonly cacheTags: Map<string, string | undefined> = new Map();
   private readonly controller = new AbortController();
   /**
    * Aborts when the request no longer needs an answer: the request's own
@@ -250,6 +255,11 @@ export function withEvent<T>(
     current = outer;
     currentCalls = outerCalls;
   }
+}
+
+/** The event of the request being handled, or undefined, without throwing as `getEvent` does. */
+export function currentEvent(): RequestEvent | undefined {
+  return current;
 }
 
 /**

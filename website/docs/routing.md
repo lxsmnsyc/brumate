@@ -284,6 +284,13 @@ A route exports `cache` from its module script to let a browser or a CDN keep th
 - Only `GET` and `HEAD` requests with status 200 are cached.
 - The dev server sends `no-cache`, so pages change as you edit, and says what the page would get in `x-brumate-cache`. It warns when a page with `cache` turns out private.
 
+The server also keeps each public page, in the store of [`cached`](./server-functions.md#results-that-requests-share), and answers the next request for the same URL from it, with `x-brumate-cache: hit`:
+
+- Middleware runs first, so a check of access still runs for each request. A request that read the user before the page, such as in middleware, gets a page rendered for it.
+- A page records the tags of the `cached` functions that it called. `revalidate(tag)` drops the pages that used the tag, with the results.
+- A kept page is used until `max-age` ends. `stale-while-revalidate` is for the CDN or the browser: the server renders again after `max-age`.
+- `handle(request, { pageCache: false })` turns it off, such as when a CDN keeps the pages.
+
 ## Links
 
 Links are plain `<a>` elements. `href` from `brumate/routes` writes the URL of a route from its path in the route files, and TypeScript checks both:

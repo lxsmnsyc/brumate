@@ -4,7 +4,7 @@
 // drops every result of a tag.
 
 import { fromJSON, toJSON } from 'seroval';
-import { withEvent } from './request.ts';
+import { currentEvent, withEvent } from './request.ts';
 import { disabledFeatures, syncPlugins } from './serial.ts';
 
 /**
@@ -133,7 +133,19 @@ export function cached<A extends unknown[], R>(
     }
     const key = `brumate:cache:${id}:${JSON.stringify(write(args))}`;
     const tags = typeof options.tags === 'function' ? options.tags(...args) : (options.tags ?? []);
+    // A page that uses the result depends on its tags too.
+    const event = currentEvent();
+    for (const tag of tags) {
+      if (!event?.cacheTags.has(tag)) {
+        event?.cacheTags.set(tag, undefined);
+      }
+    }
     const versions = await tagVersions(tags);
+    for (const tag of tags) {
+      if (event?.cacheTags.get(tag) === undefined) {
+        event?.cacheTags.set(tag, versions[tag]);
+      }
+    }
     const kept = await store.get(key);
     if (kept) {
       const entry = JSON.parse(kept) as Entry;
@@ -165,11 +177,16 @@ export function cached<A extends unknown[], R>(
   };
 }
 
+/** The store of `cached`, which the page cache of the server shares. */
+export function cacheStore(): CacheStore {
+  return store;
+}
+
 /** The versions of tags. A tag that was never revalidated has version `0`. */
-async function tagVersions(tags: string[]): Promise<Record<string, string>> {
+export async function tagVersions(tags: Iterable<string>): Promise<Record<string, string>> {
   const versions: Record<string, string> = {};
   await Promise.all(
-    tags.map(async (tag) => {
+    [...tags].map(async (tag) => {
       versions[tag] = (await store.get(`brumate:tag:${tag}`)) ?? '0';
     }),
   );

@@ -1,5 +1,6 @@
 import { crossSerialize, crossSerializeStream, fromJSON } from 'seroval';
 import type { SerovalJSON } from 'seroval';
+import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
@@ -2663,6 +2664,64 @@ export interface PageCache {
   staleWhileRevalidate?: number;
 }
 
+/** A page that the server keeps, as the store holds it. */
+interface KeptPage {
+  status: number;
+  headers: [string, string][];
+  body: string;
+  /** When the page expires, in milliseconds since 1970. */
+  expires: number;
+  /** The versions of the tags of the `cached` functions that the page called. */
+  tags: Record<string, string>;
+}
+
+/** The key of a page in the store: its URL, and the base of a client navigation, by build. */
+function pageKey(url: URL, request: Request, build: string | undefined): string {
+  const base = request.headers.get('x-brumate-base') ?? '';
+  return `brumate:page:${build ?? ''}:${base}:${url.pathname}${url.search}`;
+}
+
+/** The page that the store keeps for a key, when it is still fresh. */
+async function keptPage(key: string): Promise<Response | undefined> {
+  const text = await cacheStore().get(key);
+  if (!text) {
+    return undefined;
+  }
+  const page = JSON.parse(text) as KeptPage;
+  const tags = Object.keys(page.tags);
+  const versions = await tagVersions(tags);
+  if (page.expires <= Date.now() || tags.some((tag) => versions[tag] !== page.tags[tag])) {
+    return undefined;
+  }
+  const headers = new Headers(page.headers);
+  const maxAge = Number(/max-age=(\d+)/.exec(headers.get('cache-control') ?? '')?.[1] ?? 0);
+  headers.set('age', String(Math.max(0, Math.floor(maxAge - (page.expires - Date.now()) / 1000))));
+  headers.set('x-brumate-cache', 'hit');
+  return new Response(page.body, { status: page.status, headers });
+}
+
+/** Keeps a public page in the store until its `max-age` ends. */
+async function keepPage(key: string, response: Response, event: RequestEvent): Promise<void> {
+  const maxAge = Number(
+    /max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0,
+  );
+  if (maxAge <= 0) {
+    return;
+  }
+  const missing = [...event.cacheTags].filter(([, version]) => version === undefined);
+  const versions = await tagVersions(missing.map(([tag]) => tag));
+  const page: KeptPage = {
+    status: response.status,
+    headers: [...response.headers].filter(([name]) => name !== 'set-cookie'),
+    body: await response.clone().text(),
+    expires: Date.now() + maxAge * 1000,
+    tags: Object.fromEntries(
+      [...event.cacheTags].map(([tag, version]) => [tag, version ?? versions[tag]!]),
+    ),
+  };
+  await cacheStore().set(key, JSON.stringify(page), maxAge);
+}
+
 /** The `cache` of the page of a view: the nearest one along its `children`. */
 function pageCache(view: ResolvedView): PageCache | undefined {
   const inner = view.slots.children;
@@ -2749,6 +2808,13 @@ function viewComponent(view: ResolvedView, props: Record<string, unknown>): Comp
 }
 
 export interface RouteOptions extends DocumentOptions, RequestOptions {
+  /**
+   * Keeps the pages that `cache` makes public in the store of `cached`, and
+   * answers the next request for the same URL from it until `maxAge` ends or
+   * `revalidate` drops a tag that the page used. Defaults to true. A CDN in
+   * front of the server can keep them instead.
+   */
+  pageCache?: boolean;
   /**
    * Throws errors that are not a `ServerError` instead of rendering
    * `_error.brm`, so a dev server can show them, such as with `errorPage`
@@ -3171,9 +3237,30 @@ async function renderRoute(
     }
     actions = outcome.actions;
   }
+  // A page that the server kept, for a request that has not read the user so far. Middleware
+  // ran before, so a check of access still runs.
+  const keep =
+    !event.call &&
+    !options.dev &&
+    options.pageCache !== false &&
+    event.kind === 'page' &&
+    (request.method === 'GET' || request.method === 'HEAD');
+  const key = keep ? pageKey(url, request, options.build) : undefined;
+  if (key && !event.personal) {
+    const kept = await keptPage(key);
+    if (kept) {
+      return kept;
+    }
+  }
   try {
     const view = await resolveView(match.view);
-    return await renderPage(view, { params: match.params }, request, options, { actions });
+    const response = await renderPage(view, { params: match.params }, request, options, {
+      actions,
+    });
+    if (key && /^\s*public\b/.test(response.headers.get('cache-control') ?? '')) {
+      await keepPage(key, response, event);
+    }
+    return response;
   } catch (error) {
     if (isRedirect(error)) {
       return new Response(null, {
