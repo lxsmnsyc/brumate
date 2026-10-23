@@ -134,8 +134,12 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /** Imports a part of a module, once for each part, as the loader preloads it. */
+  loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
+  /** Tells the loader that the markup that `listen` scanned is in the page now. */
+  inserted?: () => void;
   /** The URL prefix of server function calls. Defaults to `/_brumate`. */
   rpc?: string;
   /** The ID of the build of the page, for skew protection. Calls send it, and a deploy is noticed. */
@@ -307,39 +311,73 @@ function readRecord([script, code]: StateRecord): void {
 /**
  * Updates scopes that the server rendered before values changed on the
  * client, such as the body of a `#loading` block that streams in after an
- * event. Effects do not run: they run only when a value changes.
+ * event. Effects do not run: they run only when a value changes. With
+ * `memosOnly`, as for scopes that the client just rendered with its values,
+ * only the memos run, so the ones that load start.
  */
-function refresh(added: Scope[]): void {
+function refresh(added: Scope[], memosOnly = false): void {
+  // The scopes of each module, which load it once.
+  const byModule = new Map<string, Scope[]>();
   for (const scope of added) {
     const id = rootOf(scope).m;
     if (!id) {
       continue;
     }
+    const list = byModule.get(id);
+    if (list) {
+      list.push(scope);
+    } else {
+      byModule.set(id, [scope]);
+    }
+  }
+  for (const [id, list] of byModule) {
     void loadModule(id, 'state').then(async (module) => {
-      const names = new Set<string>();
-      for (const slots of Object.values(module.g)) {
-        for (const entries of Object.values(slots)) {
-          for (const [kind, name] of entries) {
-            if (kind === scope.k && name[0] !== 'e') {
-              names.add(name);
-            }
-          }
+      // The names of the updates of each kind of scope, memos first, so the other updates read
+      // their new values.
+      const byKind = new Map<number, string[]>();
+      for (const scope of list) {
+        if (!byKind.has(scope.k)) {
+          byKind.set(scope.k, refreshNames(module, scope.k, memosOnly));
         }
       }
-      if (names.size === 0) {
+      let any = false;
+      for (const names of byKind.values()) {
+        any ||= names.length > 0;
+      }
+      if (!any) {
         return;
       }
       const updates = await loadPart(module, 'update', 'state');
-      // Memos first, so the other updates read their new values.
-      for (const name of [...names].toSorted(
-        (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
-      )) {
-        if (scopes.has(scope.id)) {
-          (updates[name] as (scope: Scope) => void)(scope);
+      for (const scope of list) {
+        for (const name of byKind.get(scope.k)!) {
+          if (scopes.has(scope.id)) {
+            (updates[name] as (scope: Scope) => void)(scope);
+          }
         }
       }
     });
   }
+}
+
+/** The names of the updates of a kind of scope that `refresh` runs, memos first. */
+function refreshNames(module: ClientModule, kind: number, memosOnly: boolean): string[] {
+  const memos = new Set<string>();
+  const others = new Set<string>();
+  for (const slots of Object.values(module.g)) {
+    for (const entries of Object.values(slots)) {
+      for (const [entryKind, name] of entries) {
+        if (entryKind !== kind || name[0] === 'e') {
+          continue;
+        }
+        if (name[0] === 'm') {
+          memos.add(name);
+        } else if (!memosOnly) {
+          others.add(name);
+        }
+      }
+    }
+  }
+  return [...memos, ...others];
 }
 
 /** Reads the groups of scope records back into one record per scope. See `PackedState`. */
@@ -604,6 +642,8 @@ export function leavePage(): void {
   scopes.clear();
   comments.clear();
   elements.clear();
+  unindexed.length = 0;
+  rendered.length = 0;
   pendingEffects.clear();
   hiding = undefined;
   loads.clear();
@@ -760,15 +800,19 @@ export function loadPart(
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
-    promise = (module.load ? module.load(name) : Promise.resolve(module as unknown as Part)).then(
-      (part) => {
-        loadedParts.set(key, part);
-        if (DEV) {
-          devtools()?.part?.(module.id, name);
-        }
-        return part;
-      },
-    );
+    let loaded: Promise<Part>;
+    if (!module.load) {
+      loaded = Promise.resolve(module as unknown as Part);
+    } else {
+      loaded = options.loadPart ? options.loadPart(module, name) : module.load(name);
+    }
+    promise = loaded.then((part) => {
+      loadedParts.set(key, part);
+      if (DEV) {
+        devtools()?.part?.(module.id, name);
+      }
+      return part;
+    });
     parts.set(key, promise);
     if (DEV) {
       devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
@@ -1556,11 +1600,13 @@ export function descendants(scope: Scope, kind: number, result: Scope[] = []): S
 }
 
 function destroy(scope: Scope): void {
-  for (const child of Array.from(scope.children)) {
-    destroy(child);
+  if (scope.children.size > 0) {
+    for (const child of Array.from(scope.children)) {
+      destroy(child);
+    }
   }
   // The content of a `#portal` is elsewhere in the page, so it is removed by its markers.
-  const start = comments.get(`P${scope.id}`);
+  const start = portals > 0 ? comments.get(`P${scope.id}`) : undefined;
   if (start?.isConnected) {
     const end = rangeEnd(start);
     clear(start, end);
@@ -1568,6 +1614,7 @@ function destroy(scope: Scope): void {
     end.remove();
   }
   removeScope(scope);
+  sweepIndexes();
 }
 
 /**
@@ -1575,10 +1622,15 @@ function destroy(scope: Scope): void {
  * so a load that settles later is not written. Its markup stays.
  */
 export function removeScope(scope: Scope): void {
-  for (const cleanup of scope.cleanups?.values() ?? []) {
-    cleanup();
+  if (scope.cleanups) {
+    for (const cleanup of scope.cleanups.values()) {
+      cleanup();
+    }
   }
-  for (let slot = 0; slot < scope.s.length; slot++) {
+  // The state of the slots that load or wait, which most scopes, such as rows of a list, have not.
+  const waiting =
+    memoControllers.size + timers.size + loads.size + loadingSlots.size + (guesses?.map.size ?? 0);
+  for (let slot = 0; waiting > 0 && slot < scope.s.length; slot++) {
     const key = `${scope.id}:${slot}`;
     memoControllers.get(key)?.abort();
     memoControllers.delete(key);
@@ -1612,14 +1664,115 @@ function markerKey(data: string): string {
   return data[0] === 'b' ? data.split(':').slice(0, 2).join(':') : data;
 }
 
-function indexMarkers(root: Node): void {
+const SCOPE_MARKER = /^[tb](-?[\d.]+):/;
+
+/** True for markup that names a scope from the server: a `b-b` or marker with an ID that is not negative. */
+const SERVER_SCOPES = /b-b="\d|<!--[tb]\d/;
+
+/** The scopes that the client made since the last insert, which the next insert holds. */
+const rendered: Scope[] = [];
+
+/** How many `#portal` markers the page has had, so a scope looks for its own only when any have. */
+let portals = 0;
+
+/**
+ * Indexes the markers and the bound elements under `root`, so that updates find them without a
+ * search of the page. A search for each row of a long list takes time that grows with the list.
+ * With `ids`, it also collects the IDs of the scopes that the markup names. The IDs of scopes
+ * that the client made are negative.
+ */
+function indexMarkers(root: Node, ids?: Set<ScopeId>, withElements = true): void {
+  // The query finds the bound elements in native code, and the walk visits only comments, so
+  // the code here runs for each marker, not for each node of a long list.
+  if (withElements) {
+    indexElements(root, ids);
+  }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const data = (node as Comment).data;
-    if (MARKER.test(data)) {
-      comments.set(markerKey(data), node as Comment);
+    if (!MARKER.test(data)) {
+      continue;
+    }
+    comments.set(markerKey(data), node as Comment);
+    if (data[0] === 'P') {
+      portals++;
+    }
+    const match = ids && SCOPE_MARKER.exec(data);
+    if (match) {
+      ids!.add(parseId(match[1]!));
     }
   }
+}
+
+/** The size of the indexes at which they next drop the nodes that left the page. */
+let sweepAt = 4096;
+
+/**
+ * Drops the nodes that left the page from the indexes, once they have grown to twice their size
+ * after the last sweep, so a list that the client fills and empties again does not keep its old
+ * rows. A node that comes back is indexed again when it is inserted.
+ */
+function sweepIndexes(): void {
+  if (comments.size + elements.size < sweepAt) {
+    return;
+  }
+  for (const [key, node] of comments) {
+    if (!node.isConnected) {
+      comments.delete(key);
+    }
+  }
+  for (const [key, node] of elements) {
+    if (!node.isConnected) {
+      elements.delete(key);
+    }
+  }
+  sweepAt = Math.max(4096, 2 * (comments.size + elements.size));
+}
+
+function indexElements(root: Node, ids?: Set<ScopeId>): void {
+  if (root.nodeType === 1) {
+    indexElement(root as Element, ids);
+  }
+  if (root.nodeType === 1 || root.nodeType === 9 || root.nodeType === 11) {
+    for (const element of (root as ParentNode).querySelectorAll('[b-b]')) {
+      indexElement(element, ids);
+    }
+  }
+}
+
+/**
+ * The nodes that inserts of the client put in the page, from the first to the last of each,
+ * whose bound elements are not indexed yet. A list that the client creates is often never
+ * updated row by row, so its elements are indexed when an update first needs one of them.
+ */
+const unindexed: [first: Node, last: Node][] = [];
+
+function indexInserts(): void {
+  for (const [first, last] of unindexed.splice(0)) {
+    if (first.isConnected) {
+      for (let node: Node | null = first; node; node = node.nextSibling) {
+        indexElements(node);
+        if (node === last) {
+          break;
+        }
+      }
+    } else if (last.isConnected) {
+      // The first nodes left the page, such as the first rows of a list that were removed, so
+      // the walk goes back from the last node, past the start of the insert if it must.
+      for (let node: Node | null = last; node; node = node.previousSibling) {
+        indexElements(node);
+      }
+    }
+  }
+}
+
+function indexElement(element: Element, ids?: Set<ScopeId>): void {
+  const key = element.getAttribute('b-b');
+  if (key === null) {
+    return;
+  }
+  elements.set(key, element);
+  ids?.add(parseId(key.slice(0, key.indexOf(':'))));
 }
 
 /** Indexes the markers in the nodes that mutation records added. */
@@ -1629,7 +1782,11 @@ function indexAdded(records: MutationRecord[]): void {
       if (node.nodeType === 1) {
         indexMarkers(node);
       } else if (node.nodeType === 8 && MARKER.test((node as Comment).data)) {
-        comments.set(markerKey((node as Comment).data), node as Comment);
+        const data = (node as Comment).data;
+        comments.set(markerKey(data), node as Comment);
+        if (data[0] === 'P') {
+          portals++;
+        }
       }
     }
   }
@@ -1659,12 +1816,23 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
-    element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
-    if (element) {
-      elements.set(key, element);
+    // As for markers: once the core starts, the index has every bound element in the page,
+    // with those of the inserts that are waiting.
+    if (markerObserver) {
+      indexAdded(markerObserver.takeRecords());
+      indexInserts();
+      element = elements.get(key);
+    }
+    // An insert whose first node left the page, such as the first row of a list that was
+    // removed, has elements that the walk did not reach.
+    if (!element?.isConnected) {
+      element = document.querySelector(`[b-b="${key}"]`) ?? undefined;
+      if (element) {
+        elements.set(key, element);
+      }
     }
   }
-  return element ?? null;
+  return element?.isConnected ? element : null;
 }
 
 /** Returns the marker that ends the range that `start` opens. */
@@ -1687,9 +1855,14 @@ function rangeEnd(start: Comment): Comment {
 }
 
 function clear(start: Node, end: Node): void {
-  while (start.nextSibling && start.nextSibling !== end) {
-    start.nextSibling.remove();
+  if (start.nextSibling === end || !start.nextSibling) {
+    return;
   }
+  // One removal of the whole range, which costs less than one for each node of a long list.
+  const range = document.createRange();
+  range.setStartAfter(start);
+  range.setEndBefore(end);
+  range.deleteContents();
 }
 
 /**
@@ -1704,15 +1877,29 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
-  indexMarkers(fragment);
-  // The bound elements of the insert, so that its updates find them without a search of the
-  // page. A search for each element of a long list takes time that grows with the list.
-  for (const element of fragment.querySelectorAll('[b-b]')) {
-    elements.set(element.getAttribute('b-b')!, element);
-  }
+  // The scopes that the renders since the last insert made, whose markup this is.
+  const client = rendered.splice(0);
+  // Markup from the server, such as `children`, names scopes with IDs that are not negative.
+  // Only then are the elements of the insert read for them now.
+  const fromServer = SERVER_SCOPES.test(html);
+  const ids = fromServer ? new Set<ScopeId>() : undefined;
+  indexMarkers(fragment, ids, fromServer);
   options.listen(fragment);
   watchTitles(fragment);
-  const server = serverScopes(fragment);
+  const server: Scope[] = [];
+  for (const id of ids ?? []) {
+    const scope = typeof id === 'number' && id < 0 ? undefined : scopes.get(id);
+    if (scope) {
+      server.push(scope);
+    }
+  }
+  if (!fromServer && fragment.firstChild) {
+    unindexed.push([fragment.firstChild, fragment.lastChild!]);
+    // Many inserts that no update read are indexed at once, so they do not hold their nodes.
+    if (unindexed.length > 256) {
+      indexInserts();
+    }
+  }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
   const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
   if ('parent' in before) {
@@ -1723,8 +1910,9 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (added) {
     hiding!.added(added);
   }
-  // The records of this insert, whose markers are indexed already.
+  // The records of this insert, whose markers are indexed and whose handlers listen already.
   markerObserver?.takeRecords();
+  options.inserted?.();
   for (const fn of afterInsert.splice(0)) {
     fn();
   }
@@ -1732,29 +1920,11 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   if (server.length > 0) {
     refresh(server);
   }
-}
-
-/**
- * Returns the scopes from the server that markup refers to. Markup that the
- * client renders has client scopes, so these come from HTML that the server
- * rendered, such as the `children` of a component.
- */
-function serverScopes(root: ParentNode): Scope[] {
-  const ids = new Set<ScopeId>();
-  for (const element of root.querySelectorAll('[b-b]')) {
-    ids.add(parseId(element.getAttribute('b-b')!.split(':')[0]!));
+  // Scopes that the client just rendered have its values, but the memos that load start here.
+  const live = client.filter((scope) => scopes.has(scope.id));
+  if (live.length > 0) {
+    refresh(live, true);
   }
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const match = /^[tb]([\d.]+):/.exec((node as Comment).data);
-    if (match) {
-      ids.add(parseId(match[1]!));
-    }
-  }
-  return [...ids].flatMap((id) => {
-    const scope = scopes.get(id);
-    return scope ? [scope] : [];
-  });
 }
 
 /**
@@ -2289,12 +2459,25 @@ function createHiding(): Hiding {
 
 interface Item {
   scope: Scope;
-  nodes: Node[];
+  /** The first and last node of the item, which are the same node for one element. */
+  first: Node;
+  last: Node;
   /** The place of the item in the list before the update. */
   position: number;
+  /** True for an item whose key is in the new list. */
+  kept: boolean;
+  /** True for a kept item that stays in place. */
+  still: boolean;
 }
 
+const ITEM_MARKER = /^i(-?[\d.]+)$/;
+
 /** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
+/** The items of a `#for` list: an array as it is, since `list` only reads it, or any iterable as an array. */
+export function listOf(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
+  return Array.isArray(value) ? value : Array.from(value);
+}
+
 export function list(
   scope: Scope,
   anchor: number,
@@ -2311,34 +2494,43 @@ export function list(
   }
   const end = rangeEnd(start);
   const previous = new Map<unknown, Item>();
-  const others: Node[] = [];
+  let others: Node[] | undefined;
   let position = 0;
   for (let node = start.nextSibling; node && node !== end;) {
-    const data = node.nodeType === 8 ? (node as Comment).data : undefined;
     // An item between `<!--i…-->` and `<!--/i-->`, or one element whose `b-b` names the scope.
-    const id = data
-      ? /^i(-?[\d.]+)$/.exec(data)?.[1]
-      : (node as Element).getAttribute?.('b-b')?.split(':')[0];
+    let data: string | undefined;
+    let id: string | undefined;
+    if (node.nodeType === 8) {
+      data = (node as Comment).data;
+      id = ITEM_MARKER.exec(data)?.[1];
+    } else if (node.nodeType === 1) {
+      const bound = (node as Element).getAttribute('b-b');
+      id = bound === null ? undefined : bound.slice(0, bound.indexOf(':'));
+    }
     const item = id === undefined ? undefined : scopes.get(parseId(id));
     let last: Node = node;
     // The elements of the fallback have scopes of its kinds.
-    if (item && (data || (item.p === scope && !fallbackKinds.includes(item.k)))) {
-      if (data) {
+    if (item && (data !== undefined || (item.p === scope && !fallbackKinds.includes(item.k)))) {
+      if (data !== undefined) {
         last = rangeEnd(node as Comment);
       }
-      const nodes = [node];
-      for (let current = node; current !== last;) {
-        nodes.push((current = current.nextSibling!));
-      }
-      previous.set(key(item.i, position), { scope: item, nodes, position: position++ });
+      previous.set(key(item.i, position), {
+        scope: item,
+        first: node,
+        last,
+        position: position++,
+        kept: false,
+        still: false,
+      });
     } else {
-      others.push(node);
+      (others ??= []).push(node);
     }
     node = last.nextSibling;
   }
 
-  if (items.length === 0) {
-    if (previous.size === 0 && others.length > 0) {
+  const count = items.length;
+  if (count === 0) {
+    if (previous.size === 0 && others) {
       return;
     }
     for (const item of previous.values()) {
@@ -2352,80 +2544,110 @@ export function list(
   }
 
   disposeKinds(scope, fallbackKinds);
-  for (const node of others) {
-    node.parentNode?.removeChild(node);
+  if (others) {
+    for (const node of others) {
+      node.parentNode?.removeChild(node);
+    }
   }
   const parent = end.parentNode!;
-  // The items that stay, in the new order, and the ones that stay in place: the longest run of
-  // them that keeps the old order. Only the others move, because moving a node restarts its
-  // animations and drops its focus.
-  // A key that repeats keeps its item once, as below.
-  const kept = new Set<Item>();
-  items.forEach((value, index) => {
-    const item = previous.get(key(value, index));
-    if (item) {
-      kept.add(item);
+  // The key of each item, and the items that stay, in the new order. A key that repeats keeps
+  // its item once, as below.
+  const keys: unknown[] = Array.from({ length: count });
+  const kept: Item[] = [];
+  for (let index = 0; index < count; index++) {
+    const id = (keys[index] = key(items[index], index));
+    const item = previous.get(id);
+    if (item && !item.kept) {
+      item.kept = true;
+      kept.push(item);
     }
-  });
-  const still = inPlace([...kept]);
+  }
+  // The items that stay in place: the longest run of them that keeps the old order. Only the
+  // others move, because moving a node restarts its animations and drops its focus.
+  markInPlace(kept);
+  // When no item stays, the old ones go first, in one removal, and the new ones go in after.
+  if (kept.length === 0 && previous.size > 0) {
+    for (const item of previous.values()) {
+      destroy(item.scope);
+    }
+    previous.clear();
+    clear(start, end);
+  }
   // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
   // New items next to each other go into the page with one insert.
   let added = '';
-  const flush = (): void => {
+  for (let index = 0; index < count; index++) {
+    const id = keys[index];
+    const item = previous.get(id);
+    if (!item) {
+      added += render(scope, items[index], index);
+      continue;
+    }
+    // Before the item's updates run, so they see the new items before it.
     if (added) {
       insertHTML(cursor, added);
       added = '';
     }
-  };
-  items.forEach((value, index) => {
-    const id = key(value, index);
-    const item = previous.get(id);
-    if (item) {
-      // Before the item's updates run, so they see the new items before it.
-      flush();
-      previous.delete(id);
-      // Slots that keep their values do not trigger updates.
-      assign(item.scope, value, index);
-      if (still.has(item)) {
-        // The nodes between the cursor and the item belong to items that move or go.
-        cursor = item.nodes.at(-1)!.nextSibling!;
-      } else {
-        for (const node of item.nodes) {
-          parent.insertBefore(node, cursor);
-        }
-      }
+    previous.delete(id);
+    // Slots that keep their values do not trigger updates.
+    assign(item.scope, items[index], index);
+    if (item.still) {
+      // The nodes between the cursor and the item belong to items that move or go.
+      cursor = item.last.nextSibling!;
     } else {
-      added += render(scope, value, index);
+      for (let node = item.first; ;) {
+        const next = node.nextSibling;
+        parent.insertBefore(node, cursor);
+        if (node === item.last) {
+          break;
+        }
+        node = next!;
+      }
     }
-  });
-  flush();
+  }
+  if (added) {
+    insertHTML(cursor, added);
+  }
   for (const item of previous.values()) {
     destroy(item.scope);
-    for (const node of item.nodes) {
+    for (let node: Node | null = item.first; node;) {
+      const next: Node | null = node === item.last ? null : node.nextSibling;
       node.parentNode?.removeChild(node);
+      node = next;
     }
   }
 }
 
 /**
- * The items of a list that keep their places: the longest run of `kept`, the items that stay
- * in their new order, whose old positions go up.
+ * Marks the items of a list that keep their places: the longest run of `kept`, the items that
+ * stay in their new order, whose old positions go up.
  */
-function inPlace(kept: Item[]): Set<Item> {
-  if (kept.every((item, index) => index === 0 || kept[index - 1]!.position < item.position)) {
-    return new Set(kept);
+function markInPlace(kept: Item[]): void {
+  let sorted = true;
+  for (let index = 1; index < kept.length; index++) {
+    if (kept[index - 1]!.position > kept[index]!.position) {
+      sorted = false;
+      break;
+    }
+  }
+  if (sorted) {
+    for (const item of kept) {
+      item.still = true;
+    }
+    return;
   }
   // `tails[length - 1]` is the index of the item that ends the run of that length with the
   // lowest position, and `before` links each item to the item before it in its run.
   const tails: number[] = [];
   const before: number[] = [];
-  kept.forEach((item, index) => {
+  for (let index = 0; index < kept.length; index++) {
+    const position = kept[index]!.position;
     let low = 0;
     let high = tails.length;
     while (low < high) {
       const middle = (low + high) >> 1;
-      if (kept[tails[middle]!]!.position < item.position) {
+      if (kept[tails[middle]!]!.position < position) {
         low = middle + 1;
       } else {
         high = middle;
@@ -2433,12 +2655,10 @@ function inPlace(kept: Item[]): Set<Item> {
     }
     before[index] = low > 0 ? tails[low - 1]! : -1;
     tails[low] = index;
-  });
-  const still = new Set<Item>();
-  for (let index = tails.at(-1) ?? -1; index >= 0; index = before[index]!) {
-    still.add(kept[index]!);
   }
-  return still;
+  for (let index = tails.at(-1) ?? -1; index >= 0; index = before[index]!) {
+    kept[index]!.still = true;
+  }
 }
 
 /** Sets a style variable on the top-level elements of a component instance. */
@@ -2767,15 +2987,18 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   const id = nextId--;
   const parentScope = resolveScope(parent);
   const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  rendered.push(created);
   if (module !== undefined && owner) {
     created.o = owner;
     owner = undefined;
   }
   // A scope at the top of children that are inserted elsewhere finds its contexts there.
   const up = created.o ?? parentScope;
-  const inserted = insertedChildren.findLast((entry) => entry.from === up);
-  if (inserted) {
-    created.t = inserted.at;
+  for (let index = insertedChildren.length - 1; index >= 0; index--) {
+    if (insertedChildren[index]!.from === up) {
+      created.t = insertedChildren[index]!.at;
+      break;
+    }
   }
   parentScope?.children.add(created);
   treeChanges++;
@@ -2865,12 +3088,13 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
   // A render function computes a memo that loads as a promise, which the first compute of the
   // memo takes. Its failure is the memo's to report, not an unhandled rejection.
-  values.forEach((value, slot) => {
+  for (let slot = 0; slot < values.length; slot++) {
+    const value = values[slot];
     if (isThenable(value)) {
       renderedLoads.add(`${id}:${slot}`);
       Promise.resolve(value).catch(noop);
     }
-  });
+  }
 }
 
 export function setItem(id: ScopeId, value: unknown): void {

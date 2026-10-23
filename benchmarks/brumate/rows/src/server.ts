@@ -7,7 +7,10 @@ export async function page(n: number, scripts: string): Promise<string> {
     App,
     { initial: build(1, n) },
     {
-      start: '<!doctype html><html><head><meta charset="utf-8"><title>bench</title></head><body>',
+      start:
+        '<!doctype html><html><head><meta charset="utf-8"><title>bench</title>' +
+        // The same stylesheet in every app, so that selecting a row paints it.
+        '<style>table{border-collapse:collapse}td{padding:4px 8px;border-top:1px solid #ddd}tr.danger{background:#f2dede}</style></head><body>',
       end: '</body></html>',
       scripts,
     },

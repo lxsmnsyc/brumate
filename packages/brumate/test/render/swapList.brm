@@ -9,6 +9,12 @@
     [next[1], next[4]] = [rows[4]!, rows[1]!];
     rows = next;
   }
+  function dropAdded() {
+    rows = rows.filter((row) => row.id !== 7);
+  }
+  function rename() {
+    rows = rows.map((row) => ({ ...row, label: `${row.label}!` }));
+  }
   function add() {
     rows = [...rows, ...[7, 8, 9].map((id) => ({ id, label: `Row ${id}` }))];
   }
@@ -16,6 +22,8 @@
 
 <button class="swap" onClick=swap>Swap</button>
 <button class="add" onClick=add>Add</button>
+<button class="drop" onClick=dropAdded>Drop 7</button>
+<button class="rename" onClick=rename>Rename</button>
 <ul>
   #for (row of rows by row.id) {
     <li class=(selected === row.id ? 'on' : '')><a onClick=(() => (selected = row.id))>{row.label}</a></li>

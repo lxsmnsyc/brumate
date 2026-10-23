@@ -108,7 +108,7 @@ export function u5($$s) {
   $$b.text($$s, 0, $$b.get($$s, 0) + 1);
 }
 export function b8($$s) {
-  $$b.list($$s, 2, Array.from($$b.get($$s, 0)), ($$item, $$index) => $$index, r3, a3, undefined, []);
+  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => $$index, r3, a3, undefined, []);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;

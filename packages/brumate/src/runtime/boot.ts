@@ -4,7 +4,7 @@
 // its bundle.
 
 import type * as Client from './client.ts';
-import type { ClientModule, DevtoolsHooks } from './client.ts';
+import type { ClientModule, DevtoolsHooks, Part } from './client.ts';
 import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
@@ -111,8 +111,16 @@ export type Core = (typeof Client)['loader'];
  * Imports the core. It reads one export by name, so a build keeps only it and
  * the helpers that compiled components call.
  */
+let corePromise: Promise<Core> | undefined;
 export const importCore = (): Promise<Core> =>
-  import('./client.ts').then((client) => client.loader);
+  (corePromise ??= import('./client.ts').then(
+    (client) => client.loader,
+    (error: unknown) => {
+      // A load that fails can start again, such as after the network comes back.
+      corePromise = undefined;
+      throw error;
+    },
+  ));
 
 /** Runs a function when the browser is idle. */
 const idle = (fn: () => void): unknown => (window.requestIdleCallback ?? setTimeout)(fn);
@@ -158,10 +166,41 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
+  // The modules and parts that the loader asked for, which the core takes, so a handler whose
+  // code loaded runs without another `import()`. In Chrome, an `import()` of a module that is
+  // loaded already still resolves in a task of its own, which can wait for the next frame.
+  const modules = new Map<string, Promise<ClientModule> | undefined>();
+  const loadModule = (id: string): Promise<ClientModule> | undefined => {
+    if (modules.has(id)) {
+      return modules.get(id);
+    }
+    const promise = options.load(id);
+    modules.set(id, promise);
+    // A load that fails can start again, such as after the network comes back.
+    promise?.catch(() => modules.delete(id));
+    return promise;
+  };
+  const partLoads = new Map<string, Promise<Part>>();
+  const loadPart = (module: ClientModule, part: string): Promise<Part> => {
+    const key = `${module.id}#${part}`;
+    let promise = partLoads.get(key);
+    if (!promise) {
+      promise = module.load!(part);
+      partLoads.set(key, promise);
+      promise.catch(() => partLoads.delete(key));
+    }
+    return promise;
+  };
   // The serial entry loads with the core, so the core can make the values of the app.
+  let serialLoad: Promise<SerialEntry> | undefined;
+  const loadSerial = (): Promise<SerialEntry> | undefined => {
+    serialLoad ??= options.serial?.();
+    serialLoad?.catch(() => (serialLoad = undefined));
+    return serialLoad;
+  };
   const loadCore = (): Promise<Core> =>
-    (core ??= Promise.all([load(), options.serial?.()]).then(([client, serial]) => {
-      client.init({ ...options, listen: scan, serial });
+    (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
+      client.init({ ...options, load: loadModule, loadPart, listen: scanInsert, inserted, serial });
       return client;
     }));
 
@@ -172,16 +211,57 @@ export function boot(
   // The core reports an error of the load when it runs the handler.
   // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
   // on idle or after `load`.
-  const warm = (ref: string, reason: string): void => {
+  // The parts that loaded or are loading. A list of 1,000 rows names the same handlers 1,000
+  // times, and each part loads once.
+  const warmed = new Set<string>();
+  // The module and part of each ref, which repeats for each row of a list.
+  const parts = new Map<string, [id: string, part: string] | undefined>();
+  const partOf = (ref: string): [id: string, part: string] | undefined => {
+    if (parts.has(ref)) {
+      return parts.get(ref);
+    }
+    let found: [string, string] | undefined;
     // A built-in of the core, such as `$bind`, has no code of a component to load.
-    if (ref.startsWith('$')) {
+    if (!ref.startsWith('$')) {
+      // A handler that a spread passed on names its scope after `@`.
+      const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
+      found = [id, /^[hct]\d/.test(name) ? name : 'update'];
+    }
+    parts.set(ref, found);
+    return found;
+  };
+  const warmedAll = (element: Element): boolean => {
+    for (const entry of entries(element)) {
+      const found = partOf(entry.ref);
+      if (found && !warmed.has(`${found[0]}#${found[1]}`)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  const warm = (ref: string, reason: string): void => {
+    const found = partOf(ref);
+    if (!found) {
       return;
     }
-    // A handler that a spread passed on names its scope after `@`.
-    const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-    const part = /^[hct]\d/.test(name) ? name : 'update';
-    const done = options.load(id)?.then((module) => module.load?.(part));
-    void done?.catch(() => {});
+    const [id, part] = found;
+    const key = `${id}#${part}`;
+    if (warmed.has(key)) {
+      return;
+    }
+    warmed.add(key);
+    // The updates of the module too, which the handler's writes run.
+    const done = loadModule(id)?.then((module) => {
+      if (!module.load) {
+        return undefined;
+      }
+      if (part !== 'update') {
+        loadPart(module, 'update').catch(() => {});
+      }
+      return loadPart(module, part);
+    });
+    // A load that fails can start again, such as after the network comes back.
+    void done?.catch(() => warmed.delete(key));
     if (DEV && done) {
       devtools()?.load?.(id, part, reason, done);
     }
@@ -286,20 +366,23 @@ export function boot(
   // Templates are started once, even when markup is scanned again.
   const started = new WeakSet<Element>();
   const select = (root: ParentNode, selector: string): Element[] => {
-    const found = [...root.querySelectorAll(selector)];
+    const found: Element[] = [];
+    const add = (element: Element): void => {
+      if (element.tagName === 'TEMPLATE') {
+        if (started.has(element)) {
+          return;
+        }
+        started.add(element);
+      }
+      found.push(element);
+    };
     if ((root as Element).matches?.(selector)) {
-      found.unshift(root as Element);
+      add(root as Element);
     }
-    return found.filter((element) => {
-      if (element.tagName !== 'TEMPLATE') {
-        return true;
-      }
-      if (started.has(element)) {
-        return false;
-      }
-      started.add(element);
-      return true;
-    });
+    for (const element of root.querySelectorAll(selector)) {
+      add(element);
+    }
+    return found;
   };
 
   const visible =
@@ -325,75 +408,117 @@ export function boot(
   // as they come near the viewport. See `preload` in the options.
   let eager = false;
 
-  const scan = (root: ParentNode): void => {
-    for (const element of select(root, '[data-prefetch=visible],[data-prefetch=idle]')) {
-      if (strategy(element) === 'idle' || !visible) {
-        idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
-      } else {
-        visible.observe(element);
-      }
-    }
-    for (const element of select(root, '[b-on]:not(template)')) {
+  // The values of `b-on` whose event types the document listens to already. The rows of a
+  // list repeat the same few values.
+  const delegated = new Set<string>();
+  // The values of `b-on` whose parts loaded, so the elements with them have nothing to preload.
+  const ready = new Set<string>();
+  const onElement = (element: Element): void => {
+    const value = element.getAttribute('b-on')!;
+    if (!delegated.has(value)) {
+      delegated.add(value);
       for (const entry of entries(element)) {
         delegate(entry.type, prevents(entry));
       }
-      if (eager && strategy(element) === 'hover') {
-        eagerly.add(element);
-        visible?.observe(element);
-      }
     }
-    for (const template of select(root, 'template[b-listen]')) {
-      const target = template.getAttribute('b-listen') === 'window' ? window : document;
-      for (const entry of entries(template)) {
-        // Markup that is gone, such as a page that navigation replaced, no longer listens.
-        listen(
-          target,
-          entry.type,
-          (event) => {
-            if (template.isConnected) {
-              apply(event, template, entry);
-            }
-          },
-          { capture: entry.modifiers.includes('capture'), passive: !prevents(entry) },
-        );
-      }
+    // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
+    if (!eager || ready.has(value) || strategy(element) !== 'hover') {
+      return;
     }
-    // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
-    for (const template of select(root, 'template[b-client],template[b-defer]:not([b-hole])')) {
-      const client = template.getAttribute('b-client');
-      const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
-        client ? '=' : ':',
-      ) as [string, string];
-      // A `#defer` block asks the server for its body, with a module that only it needs.
-      const go = (): void => {
-        if (client) {
-          run(template, ref);
-          return;
-        }
-        const done = import('./defer.ts').then((module) => module.loadDeferred(template));
-        if (DEV) {
-          devtools()?.defer?.(template, done);
-        }
-      };
-      // The element that a `$client` callback reads through `ref`, or the one after the marker.
-      const near = template.getAttribute('b-near');
-      const next =
-        (near &&
-          (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
-        template.nextElementSibling;
-      if (trigger === 'idle') {
-        idle(go);
-      } else if (trigger === 'visible' && next && visible) {
-        const observer = new IntersectionObserver((records) => {
-          if (records.some((record) => record.isIntersecting)) {
-            observer.disconnect();
-            go();
+    if (warmedAll(element)) {
+      ready.add(value);
+      return;
+    }
+    eagerly.add(element);
+    visible?.observe(element);
+  };
+  const onListener = (template: Element): void => {
+    const target = template.getAttribute('b-listen') === 'window' ? window : document;
+    for (const entry of entries(template)) {
+      // Markup that is gone, such as a page that navigation replaced, no longer listens.
+      listen(
+        target,
+        entry.type,
+        (event) => {
+          if (template.isConnected) {
+            apply(event, template, entry);
           }
-        });
-        observer.observe(next);
-      } else {
-        go();
+        },
+        { capture: entry.modifiers.includes('capture'), passive: !prevents(entry) },
+      );
+    }
+  };
+  // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
+  const onBlock = (root: ParentNode, template: Element): void => {
+    const client = template.getAttribute('b-client');
+    const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
+      client ? '=' : ':',
+    ) as [string, string];
+    // A `#defer` block asks the server for its body, with a module that only it needs.
+    const go = (): void => {
+      if (client) {
+        run(template, ref);
+        return;
       }
+      const done = import('./defer.ts').then((module) => module.loadDeferred(template));
+      if (DEV) {
+        devtools()?.defer?.(template, done);
+      }
+    };
+    // The element that a `$client` callback reads through `ref`, or the one after the marker.
+    const near = template.getAttribute('b-near');
+    const next =
+      (near &&
+        (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
+      template.nextElementSibling;
+    if (trigger === 'idle') {
+      idle(go);
+    } else if (trigger === 'visible' && next && visible) {
+      const observer = new IntersectionObserver((records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          observer.disconnect();
+          go();
+        }
+      });
+      observer.observe(next);
+    } else {
+      go();
+    }
+  };
+  const SCANNED =
+    '[data-prefetch=visible],[data-prefetch=idle],[b-on],template[b-listen],template[b-client],template[b-defer]';
+  // One query of the markup for everything that the loader starts. The blocks start after the
+  // rest, as they did when each kind had its own query.
+  const scan = (root: ParentNode): void => {
+    const blocks: Element[] = [];
+    for (const element of select(root, SCANNED)) {
+      if (element.tagName === 'TEMPLATE') {
+        if (element.hasAttribute('b-listen')) {
+          onListener(element);
+        } else if (
+          element.hasAttribute('b-client') ||
+          (element.hasAttribute('b-defer') && !element.hasAttribute('b-hole'))
+        ) {
+          blocks.push(element);
+        }
+        continue;
+      }
+      if (element.hasAttribute('data-prefetch')) {
+        const prefetch = element.getAttribute('data-prefetch');
+        if (prefetch === 'visible' || prefetch === 'idle') {
+          if (strategy(element) === 'idle' || !visible) {
+            idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
+          } else {
+            visible.observe(element);
+          }
+        }
+      }
+      if (element.hasAttribute('b-on')) {
+        onElement(element);
+      }
+    }
+    for (const template of blocks) {
+      onBlock(root, template);
     }
   };
 
@@ -405,6 +530,7 @@ export function boot(
     }
     preloaded.add(element);
     void importCore();
+    loadSerial()?.catch(() => {});
     for (const entry of entries(element)) {
       warm(entry.ref, reason);
     }
@@ -439,7 +565,7 @@ export function boot(
 
   scan(document);
   // Markup that streams in later, such as a `#loading` body, has handlers too.
-  const observer = new MutationObserver((records) => {
+  const scanAdded = (records: MutationRecord[]): void => {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (node.nodeType === 1) {
@@ -447,8 +573,19 @@ export function boot(
         }
       }
     }
-  });
+  };
+  const observer = new MutationObserver(scanAdded);
   observer.observe(document, { childList: true, subtree: true });
+  // The core scans the markup that it inserts before the insert, so the records of the insert
+  // are dropped instead of scanned again. The markup that others inserted first is scanned
+  // first.
+  const scanInsert = (root: ParentNode): void => {
+    scanAdded(observer.takeRecords());
+    scan(root);
+  };
+  const inserted = (): void => {
+    observer.takeRecords();
+  };
 
   // After `load`, so the page's own requests go first, and only when the browser is idle.
   // `2g` matches `slow-2g` too.

@@ -81,7 +81,7 @@ export function b5($$s) {
   $$b.branch($$s, 1, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
 }
 export function b6($$s) {
-  $$b.list($$s, 2, Array.from($$b.get($$s, 1)), ($$item) => $$item, r3, a3, undefined, []);
+  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 1)), ($$item) => $$item, r3, a3, undefined, []);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;

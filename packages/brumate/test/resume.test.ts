@@ -490,9 +490,9 @@ describe('resume', () => {
     await resume('disclosure', {});
     window.dispatchEvent(new Event('load'));
     const id = 'Disclosure_104dejl';
-    // The toggle's part loads while the page is idle. The `$client` part does not, and the
-    // button in the closed #if is not in the page yet.
-    await waitFor(() => expect(loadedParts).toEqual([`${id}:h4`]));
+    // The toggle's part and the updates load while the page is idle. The `$client` part does
+    // not, and the button in the closed #if is not in the page yet.
+    await waitFor(() => expect(loadedParts.toSorted()).toEqual([`${id}:h4`, `${id}:update`]));
 
     // The #if renders with the updates that the toggle's part loaded with it.
     click(document.querySelector('.toggle')!);
@@ -2526,6 +2526,18 @@ describe('long lists', () => {
     );
     observer.disconnect();
     expect(moved.filter((node) => node.nodeType === 1)).toHaveLength(2);
+  });
+
+  it('updates the items that the client added after the first of them is gone', async () => {
+    await resume('swapList', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(9));
+    // Row 7 is the first node of the insert of rows 7 to 9.
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(8));
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(text('li:nth-child(8)')).toBe('Row 9!'));
+    expect(text('li:nth-child(7)')).toBe('Row 8!');
   });
 
   it('updates the items that the client added', async () => {
