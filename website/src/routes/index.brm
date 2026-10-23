@@ -2,6 +2,7 @@
   import Meta from '../components/Meta.brm';
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
+  import ShipsMap from '../components/ShipsMap.brm';
   import Waterfall from '../components/Waterfall.brm';
   import { serverFunctions, streaming, typed } from '../home/snippets.ts';
   import * as counter from '../demos/Counter.brm?inspect';
@@ -37,6 +38,15 @@
       <a class="button" href=(`${base}docs`)>Read the docs</a>
     </div>
     <pre class="install"><span class="prompt">$</span> pnpm add brumate</pre>
+  </section>
+
+  <section class="section">
+    <h2>What ships to the browser</h2>
+    <p class="section-lead">
+      The server renders the whole page as HTML. The browser gets code only for the parts that respond to the user,
+      and each part loads when its event fires.
+    </p>
+    <ShipsMap />
   </section>
 
   <section class="section">
