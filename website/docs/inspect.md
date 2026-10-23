@@ -81,10 +81,11 @@ The dev server has a workbench at `/__brumate/workbench`. It lists the component
 
 - Each component renders on the server with the props of the controls, and resumes in the browser, as a page does. So what it shows, and the code that it loads, is what a page gets. The devtools are in the frame too.
 - The controls come from the type of `$props<T>()`: a text field for `string`, a number field for `number`, a box for `boolean`, a list for a union of literals, such as `'info' | 'warning'`, and JSON for the rest. A prop starts at the default of its destructuring. A function prop, such as a handler, has no control.
-- **Open alone** opens the frame in its own tab.
+- The toolbar sets the width of the frame, to fill the canvas or as a phone, a tablet or a desktop, and the background around it. It renders the component again, or opens it alone in a new tab. Click the file to open it in your editor.
+- **Reset** puts each prop back to its start, and the arrow next to a prop resets that one.
 - The files of `src/routes` are not listed. Pages are what `visit` from [`brumate/testing`](./testing.md) and end-to-end tests are for.
 
-A component is not listed when it needs more than its props, itself or through a component that it renders. The list says why for each one under **Need the environment**:
+A component that needs more than its props, itself or through a component that it renders, is under **Needs the environment**, with a dot for each kind of need. Pick it to see what it needs:
 
 - It calls a server function, of a `'use server'` file or one that it declares.
 - It reads the request, through an import of `brumate/server`.
