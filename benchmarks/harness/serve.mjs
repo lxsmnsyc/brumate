@@ -24,12 +24,14 @@ const server = createServer(async (request, response) => {
   response.setHeader('cache-control', 'no-store');
   try {
     if (url.pathname === '/') {
-      const html =
-        scenario === 'dashboard'
-          ? await app.render({ preload: url.searchParams.get('preload') !== 'off' })
-          : scenario === 'rows'
-            ? await app.render(Number(url.searchParams.get('n') ?? 0))
-            : await app.render(Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3));
+      let html;
+      if (scenario === 'dashboard') {
+        html = await app.render({ preload: url.searchParams.get('preload') !== 'off' });
+      } else if (scenario === 'rows') {
+        html = await app.render(Number(url.searchParams.get('n') ?? 0));
+      } else {
+        html = await app.render(Number(url.searchParams.get('n') ?? process.env.BENCH_TODOS ?? 3));
+      }
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end(html);
       return;
