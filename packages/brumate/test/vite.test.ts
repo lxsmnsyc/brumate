@@ -89,8 +89,11 @@ describe('vite plugin', () => {
     };
     expect(info.name).toBe('Counter');
     expect(Object.values(info.scopes)).toEqual([
-      { label: 'component', slots: ['count', 'double'] },
+      // The code of the browser that reads each value, for the Page state tab.
+      { label: 'component', slots: ['count', 'double'], readers: expect.any(Array) },
     ]);
+    const [{ readers }] = Object.values(info.scopes) as unknown as [{ readers: string[][] }];
+    expect(readers[0]!.some((reader) => reader.startsWith('memo double'))).toBe(true);
     expect(info.text).toContain('Client code');
     // Each anchor, with its place in the file and what it reads, for the Elements tab.
     expect(Object.values(info.anchors)).toEqual([

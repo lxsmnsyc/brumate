@@ -130,6 +130,25 @@ export interface BlockEntry {
 /** The loads that are preloads, which the Loading tab marks when nothing used them. */
 export const PRELOADS: ReadonlySet<string> = new Set(['hover', 'visible', 'idle', 'eager']);
 
+/** An effect or a `$client` callback of a scope, with how it ran. */
+export interface EffectEntry {
+  scope: ScopeId;
+  /** The ID of the component of the scope, and the scope's number in it. */
+  component: string;
+  k: number;
+  /** Its name in the update code: `e<n>` for an effect, `c<n>` for a `$client` callback. */
+  name: string;
+  runs: number;
+  /** When its last runs were, the newest last, at most 50. */
+  recent: number[];
+  /** The time of all its runs, in milliseconds. */
+  time: number;
+  cleanups: number;
+  lastCleanup?: number;
+  /** False once its cleanup ran and it has not run again, such as in a removed scope. */
+  active: boolean;
+}
+
 export interface DevtoolsState {
   scopes?: Map<ScopeId, Scope>;
   /** Writes a slot, as a handler does, so the page updates. */
@@ -153,6 +172,8 @@ export interface DevtoolsState {
   errors: ErrorEntry[];
   /** The handlers that ran, oldest first, with their calls and updates. */
   timeline: Interaction[];
+  /** The effects and `$client` callbacks that ran, by scope and name. */
+  effects: Map<string, EffectEntry>;
   /** Opens the panel on a tab, such as `errors`. */
   open?: (tab: string) => void;
   /** Shows the number of errors on the tab. */
@@ -500,6 +521,7 @@ export function installDevtools(
     meta,
     errors: [],
     timeline: [],
+    effects: new Map(),
     flash: false,
   };
   /** The handler that a server call or an update that starts now belongs to. */
@@ -616,6 +638,39 @@ export function installDevtools(
     },
     part(component, name) {
       add({ kind: 'part', text: `loaded ${component} ${name}` });
+    },
+    effect(scope, name, kind, time) {
+      const key = `${scope.id}:${name}`;
+      let entry = state.effects.get(key);
+      if (!entry) {
+        entry = {
+          scope: scope.id,
+          component: rootOf(scope).m ?? '',
+          k: scope.k,
+          name,
+          runs: 0,
+          recent: [],
+          time: 0,
+          cleanups: 0,
+          active: false,
+        };
+        state.effects.set(key, entry);
+      }
+      const now = performance.now();
+      if (kind === 'run') {
+        entry.runs++;
+        entry.time += time;
+        entry.recent.push(now);
+        if (entry.recent.length > 50) {
+          entry.recent.shift();
+        }
+        entry.active = true;
+      } else {
+        entry.cleanups++;
+        entry.lastCleanup = now;
+        entry.active = false;
+      }
+      state.changed?.();
     },
     write(scope, slot, value) {
       state.written.add(scope.id);

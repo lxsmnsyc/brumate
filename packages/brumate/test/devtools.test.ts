@@ -239,6 +239,63 @@ describe('devtools', () => {
     togglePanel(shadow, state);
   });
 
+  it('sizes the values of the page state, with the code that reads each', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    globalThis.fetch = (async () =>
+      Response.json({
+        name: 'Rows',
+        file: 'Rows.brm',
+        scopes: {
+          1: { label: 'component', slots: ['rows', 'title'], readers: [['for 3:1'], []] },
+        },
+        text: '',
+      })) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const scope = {
+      id: 0,
+      k: 1,
+      m: 'Rows_1',
+      s: [Array.from({ length: 200 }, (_, index) => ({ id: index, text: `row ${index}` })), 'Hi'],
+      children: [],
+    } as unknown as Scope;
+    hooks().attach!({ scopes: new Map([[0, scope]]), set: () => {} });
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="state"]') as HTMLElement).click();
+    const rows = (): string[] =>
+      [...shadow.querySelectorAll('.rows tr')].map((tr) => tr.textContent ?? '');
+    await expect.poll(() => rows().length).toBe(3);
+    // The largest value first, marked, with the code that reads it.
+    expect(rows()[1]).toMatch(/^Rowscomponentrows1\d+\.\d kBfor 3:1$/);
+    expect(shadow.querySelectorAll('tr.large')).toHaveLength(1);
+    expect(rows()[2]).toContain('title');
+    togglePanel(shadow, state);
+  });
+
+  it('counts the runs and cleanups of effects, and marks one that runs too often', async () => {
+    document.querySelector('brumate-devtools')?.remove();
+    globalThis.fetch = (async () =>
+      Response.json({ name: 'Clock', file: 'Clock.brm', scopes: {}, text: '' })) as typeof fetch;
+    const state = installDevtools('/inspect');
+    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
+    const scope = { id: 3, k: 1, m: 'Clock_1', s: [], children: [] } as unknown as Scope;
+    for (let run = 0; run < 12; run++) {
+      hooks().effect!(scope, 'e2', 'run', 1);
+      hooks().effect!(scope, 'e2', 'cleanup', 0);
+    }
+    hooks().effect!(scope, 'e2', 'run', 1);
+    hooks().effect!(scope, 'c4', 'run', 2);
+    hooks().effect!(scope, 'c4', 'cleanup', 0);
+    expect(state.effects.get('3:e2')).toMatchObject({ runs: 13, cleanups: 12, active: true });
+    expect(state.effects.get('3:c4')).toMatchObject({ runs: 1, cleanups: 1, active: false });
+    togglePanel(shadow, state);
+    (shadow.querySelector('[data-tab="effects"]') as HTMLElement).click();
+    await expect.poll(() => shadow.querySelectorAll('.rows tr').length).toBe(3);
+    expect(shadow.querySelectorAll('tr.busy')).toHaveLength(1);
+    expect(shadow.querySelectorAll('tr.ended')).toHaveLength(1);
+    togglePanel(shadow, state);
+  });
+
   it('follows the blocks of the page, and fires a trigger now', async () => {
     document.querySelector('brumate-devtools')?.remove();
     document.body.innerHTML = [

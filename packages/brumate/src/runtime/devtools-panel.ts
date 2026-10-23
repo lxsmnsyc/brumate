@@ -36,7 +36,7 @@ interface ComponentInfo {
   name: string;
   file: string;
   /** Each scope of the component, by its number in the compiled component. */
-  scopes: Record<number, { label: string; slots: string[] }>;
+  scopes: Record<number, { label: string; slots: string[]; readers?: string[][] }>;
   graph?: {
     nodes: GraphNode[];
     /** Pairs of node indexes: the first is read by the second. */
@@ -176,6 +176,8 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .entry .time { color: var(--faint); white-space: nowrap; width: 1%; }
 .kind-handler { color: var(--blue); } .kind-part { color: var(--green); } .kind-write { color: var(--yellow); } .kind-call { color: #ff9ecf; }
 .bar-cell { width: 40%; min-width: 160px; }
+tr.large td, tr.busy td { color: var(--yellow); }
+tr.ended td { color: var(--faint); }
 .bar-track { position: relative; height: 12px; }
 .bar { position: absolute; top: 2px; height: 8px; min-width: 3px; border-radius: 3px; background: var(--blue); }
 .bar.preload { background: var(--purple); } .bar.other { background: var(--faint); }
@@ -246,6 +248,8 @@ type Tab =
   | 'log'
   | 'timeline'
   | 'loading'
+  | 'state'
+  | 'effects'
   | 'blocks'
   | 'report';
 const TABS: [Tab, string][] = [
@@ -257,6 +261,8 @@ const TABS: [Tab, string][] = [
   ['log', 'Log'],
   ['timeline', 'Timeline'],
   ['loading', 'Loading'],
+  ['state', 'Page state'],
+  ['effects', 'Effects'],
   ['blocks', 'Blocks'],
   ['report', 'Report'],
 ];
@@ -328,6 +334,9 @@ const ICONS = {
     '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/>',
   log: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
   loading: '<path d="M4 6h7M8 12h9M13 18h7"/>',
+  state:
+    '<ellipse cx="12" cy="6" rx="7.5" ry="2.75"/><path d="M4.5 6v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6"/><path d="M4.5 12v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6"/>',
+  effects: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4h-4"/>',
   timeline: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.6M10 3h4"/>',
   blocks:
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
@@ -471,6 +480,56 @@ function codeBytes(state: DevtoolsState): number {
     bytes += bytesOf(known.get(load.component), load.part);
   }
   return bytes;
+}
+
+/** The keys and values of an object, a map or a set, or the items of an array, in a row. */
+function entriesOf(value: object): unknown[] {
+  if (value instanceof Map) {
+    return [...value].flat();
+  }
+  if (value instanceof Set || Array.isArray(value)) {
+    return [...value];
+  }
+  return Object.entries(value).flat();
+}
+
+/**
+ * About how many bytes a value takes in the page state. The state is code
+ * that seroval writes, which this follows closely enough to compare values.
+ */
+function sizeOf(value: unknown, seen = new Set<object>()): number {
+  if (value === null || value === undefined) {
+    return 6;
+  }
+  switch (typeof value) {
+    case 'string':
+      return value.length + 2;
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return String(value).length;
+    case 'function':
+      // A reference to client code: its ID and its scope.
+      return 24;
+    case 'object': {
+      if (seen.has(value)) {
+        // A reference to a value that is in the state already.
+        return 6;
+      }
+      seen.add(value);
+      if (value instanceof Date) {
+        return 30;
+      }
+      const entries = entriesOf(value);
+      let bytes = 2;
+      for (const entry of entries) {
+        bytes += sizeOf(entry, seen) + 1;
+      }
+      return bytes;
+    }
+    default:
+      return 8;
+  }
 }
 
 /** The bytes of the state records of the page. */
@@ -2286,6 +2345,159 @@ export function togglePanel(
     );
   };
 
+  /**
+   * The values that the page state sends, by the slot that holds them, with
+   * about how many bytes each takes and the client code that reads it, which
+   * is why it is sent.
+   */
+  const drawState = async (): Promise<void> => {
+    const scopes = [...(state.scopes?.values() ?? [])].filter(
+      // The scopes that the browser made are not in the state that the server sent.
+      (scope) => typeof scope.id !== 'number' || scope.id >= 0,
+    );
+    const ids = [...new Set(scopes.map((scope) => rootOf(scope).m ?? ''))].filter(Boolean);
+    await Promise.all(ids.map((id) => componentInfo(state, id)));
+    // The slots of every instance of a scope add up, such as the items of a list.
+    const slots = new Map<
+      string,
+      { component: string; k: number; slot: number; bytes: number; count: number }
+    >();
+    for (const scope of scopes) {
+      const component = rootOf(scope).m ?? '';
+      scope.s.forEach((value, slot) => {
+        const key = `${component}:${scope.k}:${slot}`;
+        const entry = slots.get(key) ?? { component, k: scope.k, slot, bytes: 0, count: 0 };
+        entry.bytes += sizeOf(value);
+        entry.count++;
+        slots.set(key, entry);
+      });
+    }
+    const sorted = [...slots.values()].toSorted((a, b) => b.bytes - a.bytes);
+    const first = document.querySelector('script[b-state][b-scopes]')?.textContent?.length ?? 0;
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['component', 'scope', 'value', 'instances', 'about', 'read in the browser by'], 'th'),
+    );
+    for (const entry of sorted.slice(0, 200)) {
+      const info = known.get(entry.component);
+      const layout = info?.scopes[entry.k];
+      const readers = layout?.readers?.[entry.slot] ?? [];
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, info?.name ?? entry.component),
+        element('td', { class: 'mono' }, layout?.label ?? String(entry.k)),
+        element('td', { class: 'mono' }, layout?.slots[entry.slot] ?? `slot ${entry.slot}`),
+        element('td', { class: 'mono' }, String(entry.count)),
+        element('td', { class: 'mono', style: 'white-space: nowrap' }, kilobytes(entry.bytes)),
+        element('td', { class: 'mono' }, readers.join(', ') || '—'),
+      );
+      // A large value is worth a look: does the browser need all of it?
+      if (entry.bytes > 1024) {
+        tr.className = 'large';
+        tr.title = 'More than 1 kB. Send only the fields that the browser reads.';
+      }
+      table.append(tr);
+    }
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card('Page state', kilobytes(stateBytes()), 'every state record of the page'),
+        card('First record', kilobytes(first), 'the state that the page started with'),
+        card('Values', String(slots.size), `in ${scopes.length} scopes`),
+      ),
+      element(
+        'div',
+        { class: 'legend', style: 'margin: 10px 0 6px' },
+        element(
+          'span',
+          { class: 'sub' },
+          'A value is sent because code in the browser reads it. Sizes are about what the state takes, and a value of many instances adds them up.',
+        ),
+      ),
+      slots.size > 0 ? table : element('div', { class: 'empty' }, 'The page sent no state.'),
+    );
+  };
+
+  /** The effects and `$client` callbacks, with how often each ran and when its cleanup ran. */
+  const drawEffects = async (): Promise<void> => {
+    const effects = [...state.effects.values()];
+    await Promise.all(
+      [...new Set(effects.map((effect) => effect.component))].map((id) => componentInfo(state, id)),
+    );
+    const now = performance.now();
+    // Runs in the last second, which is how an effect that runs too often shows.
+    const lastSecond = (recent: number[]): number => recent.filter((at) => now - at < 1000).length;
+    const sorted = effects.toSorted(
+      (a, b) => lastSecond(b.recent) - lastSecond(a.recent) || b.runs - a.runs,
+    );
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(
+        ['component', 'scope', 'name', 'runs', 'last second', 'time', 'cleanups', 'last run'],
+        'th',
+      ),
+    );
+    for (const effect of sorted) {
+      const info = known.get(effect.component);
+      const recent = lastSecond(effect.recent);
+      const last = effect.recent.at(-1);
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, info?.name ?? effect.component),
+        element('td', { class: 'mono' }, info?.scopes[effect.k]?.label ?? String(effect.scope)),
+        element(
+          'td',
+          {},
+          pill(
+            effect.name.startsWith('c') ? '$client' : '$effect',
+            effect.name.startsWith('c') ? 'purple' : 'blue',
+          ),
+          ' ',
+          element('span', { class: 'mono' }, effect.name),
+        ),
+        element('td', { class: 'mono' }, String(effect.runs)),
+        element('td', { class: 'mono' }, String(recent)),
+        element('td', { class: 'mono' }, ms(effect.time)),
+        element('td', { class: 'mono' }, String(effect.cleanups)),
+        element('td', { class: 'mono' }, last === undefined ? '' : `${seconds(now - last)} ago`),
+      );
+      if (recent >= 10) {
+        tr.className = 'busy';
+        tr.title = 'It ran 10 times or more in the last second. Check what it reads.';
+      } else if (!effect.active) {
+        tr.className = 'ended';
+        tr.title = 'Its cleanup ran, and it has not run again, such as in a scope that went.';
+      }
+      table.append(tr);
+    }
+    const active = effects.filter((effect) => effect.active).length;
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card('Active', String(active), `of ${effects.length} that ran`),
+        card(
+          'Runs',
+          String(effects.reduce((sum, effect) => sum + effect.runs, 0)),
+          'since the page loaded',
+        ),
+        card(
+          'Busy',
+          String(effects.filter((effect) => lastSecond(effect.recent) >= 10).length),
+          'ran 10 times or more in the last second',
+        ),
+      ),
+      effects.length > 0
+        ? table
+        : element('div', { class: 'empty' }, 'No effect or $client callback has run yet.'),
+    );
+  };
+
   const drawTimeline = async (): Promise<void> => {
     const runs = state.timeline.toReversed().slice(0, 40);
     await Promise.all(
@@ -2602,6 +2814,8 @@ export function togglePanel(
     scopes: drawScopes,
     elements: drawElements,
     loading: drawLoading,
+    state: drawState,
+    effects: drawEffects,
     timeline: drawTimeline,
     graph: drawGraph,
     report: drawReport,

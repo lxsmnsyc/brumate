@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { parseSync } from 'oxc-parser';
+import type { Site } from './model.ts';
 import type { oxc } from './oxc.ts';
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -782,11 +783,29 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     const { source, result } = await compileFile(file);
     const { plan } = result;
-    const scopes: Record<number, { label: string; slots: string[] }> = {};
+    const scopes: Record<number, { label: string; slots: string[]; readers: string[][] }> = {};
+    // The code of the browser that reads each slot, such as a handler or an update, which is
+    // why its value is in the page state, for the Page state tab.
+    const siteLabel = (site: Site): string => {
+      const at = result.locate(site.range.start);
+      const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+      return where ? `${site.label} ${where.line}:${where.column}` : site.label;
+    };
+    // Updates of markup and memos run in the browser as nodes of the graph that can change.
+    const liveSites = new Set(
+      [...plan.graph.live].flatMap((node) => ('site' in node ? [node.site] : [])),
+    );
     for (const layout of plan.scopes.values()) {
       scopes[layout.scope.id] = {
         label: scopeLabel(result.file.source, layout.scope),
         slots: layout.slots.map((slot) => slot.name),
+        readers: layout.slots.map((slot) => [
+          ...new Set(
+            slot.reads
+              .filter((ref) => plan.graph.reached.has(ref.site) || liveSites.has(ref.site))
+              .map((ref) => siteLabel(ref.site)),
+          ),
+        ]),
       };
     }
     // The nodes that can change in the browser, with the slot of each value, so the panel

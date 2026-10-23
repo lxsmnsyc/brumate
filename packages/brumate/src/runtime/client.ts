@@ -215,6 +215,11 @@ export interface DevtoolsHooks {
   defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
   write?(scope: Scope, slot: number, value: unknown): void;
+  /**
+   * An effect or a `$client` callback, by its name in the update code, ran
+   * and took `time` milliseconds, or its cleanup ran.
+   */
+  effect?(scope: Scope, name: string, kind: 'run' | 'cleanup', time: number): void;
 }
 
 /** The global key of the devtools hooks. */
@@ -2525,6 +2530,7 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
+  const start = DEV ? performance.now() : 0;
   try {
     cleanup = callback();
   } catch (error) {
@@ -2532,7 +2538,18 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
     fail(scope, error);
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
-  scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
+  let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
+  if (DEV) {
+    devtools()?.effect?.(scope, name, 'run', performance.now() - start);
+    // Each way that a cleanup runs calls this function: the next run, a removed scope, a hidden
+    // `#offscreen` body, or a page that navigation leaves.
+    const own = stored;
+    stored = () => {
+      devtools()?.effect?.(scope, name, 'cleanup', 0);
+      own();
+    };
+  }
+  scope.cleanups.set(name, stored);
 }
 
 function noop(): void {}
