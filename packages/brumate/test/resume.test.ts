@@ -2247,6 +2247,35 @@ describe('attributes with true and false', () => {
   });
 });
 
+describe('writes that change nothing', () => {
+  it('leaves the page alone when a list comes again with new objects of the same values', async () => {
+    await resume('starList', {});
+    const changed: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        changed.push(record.target);
+      }
+    });
+    observer.observe(document.querySelector('ul')!, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      characterData: true,
+    });
+    // Each item reruns its updates, and each write finds the value already there.
+    click(document.querySelector('.reload')!);
+    click(document.querySelector('.star')!);
+    await waitFor(() =>
+      expect(texts('.mark').filter((mark) => mark === 'starred')).toHaveLength(1),
+    );
+    observer.disconnect();
+    const rows = new Set(
+      changed.map((node) => (node instanceof Element ? node : node.parentElement)!.closest('li')),
+    );
+    expect([...rows].map((row) => row?.title)).toEqual(['Item 5']);
+  });
+});
+
 /** Presses a submit button of a form, as a browser does. */
 function pressSubmit(form: HTMLFormElement, button: Element): void {
   const event = new Event('submit', { bubbles: true, cancelable: true });

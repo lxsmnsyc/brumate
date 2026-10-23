@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // A list that the list owns: starring an item makes a new list. A reload makes new objects with
+  // the same values, as a list from the server does.
+  let items = $signal(
+    Array.from({ length: 100 }, (_, index) => ({ id: index, title: `Item ${index}`, starred: false })),
+  );
+</script>
+
+<button class="reload" onClick=(() => (items = items.map((item) => ({ ...item }))))>Reload</button>
+<button
+  class="star"
+  onClick=(() => (items = items.map((item) => (item.id === 5 ? { ...item, starred: !item.starred } : item))))
+>Star 5</button>
+<ul>
+  #for (item of items by item.id) {
+    <li class={ starred: item.starred } title=item.title>
+      <span class="title">{item.title}</span> <span class="mark">{item.starred ? 'starred' : 'not starred'}</span>
+    </li>
+  }
+</ul>
