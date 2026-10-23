@@ -2124,6 +2124,33 @@ describe('bindings', () => {
   });
 });
 
+describe('bindings of elements', () => {
+  it('writes a signal from the value of an input, a box and a select', async () => {
+    await resume('bindInputs', {});
+    const field = document.querySelector<HTMLInputElement>('.text')!;
+    expect(field.getAttribute('b-on')).toMatch(/^input=\$bind#0\.\d+ input=/);
+    expect(document.querySelector('.box')!.getAttribute('b-on')).toMatch(/^change=\$bind#0\.\d+$/);
+    field.value = 'hi';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    // The handler of the element runs after the binding, so it reads the new value.
+    await waitFor(() => expect(text('.out')).toBe('hi|false|b|hi'));
+    const box = document.querySelector<HTMLInputElement>('.box')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    const pick = document.querySelector<HTMLSelectElement>('.pick')!;
+    pick.value = 'a';
+    pick.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('hi|true|a|hi'));
+    // An input in an item writes the signal of the component, a scope up.
+    const inner = document.querySelector<HTMLInputElement>('.inner')!;
+    expect(inner.getAttribute('b-on')).toMatch(/^input=\$bind#1\.\d+$/);
+    inner.value = 'deep';
+    inner.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFor(() => expect(text('.out')).toBe('deep|true|a|hi'));
+    expect(field.value).toBe('deep');
+  });
+});
+
 describe('refresh', () => {
   it('loads again the memos that call a server function that another one refreshed', async () => {
     vi.resetModules();

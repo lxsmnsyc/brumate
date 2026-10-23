@@ -169,6 +169,10 @@ export function boot(
   // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
   // on idle or after `load`.
   const warm = (ref: string, reason: string): void => {
+    // A built-in of the core, such as `$bind`, has no code of a component to load.
+    if (ref.startsWith('$')) {
+      return;
+    }
     // A handler that a spread passed on names its scope after `@`.
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
     const part = /^[hct]\d/.test(name) ? name : 'update';

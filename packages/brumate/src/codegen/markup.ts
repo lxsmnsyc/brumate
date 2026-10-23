@@ -12,6 +12,7 @@ import type {
   RepeatBlock,
   SFCFile,
   TemplateDecl,
+  ValueAttribute,
 } from '../ast.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
@@ -891,6 +892,44 @@ export class Emitter {
     }
   }
 
+  /**
+   * The `b-on` entry of `value=$bind(name)` or `checked=$bind(name)` on an
+   * element: `input=$bind#<hops>.<slot>`, where `hops` counts the parents
+   * from the scope of the element to the scope of the name. The core writes
+   * the slot from the element without loading any code of the component.
+   */
+  private bindEntry(
+    node: ElementNode,
+    attribute: ValueAttribute,
+    scope: Scope,
+  ): string | undefined {
+    let value: oxc.Node = attribute.value.ast;
+    while (value.type === 'ParenthesizedExpression') {
+      value = value.expression;
+    }
+    const binding = this.plan.graph.model.bindings.find((item) => item.call === value);
+    if (!binding) {
+      return undefined;
+    }
+    const path = scopePath(
+      this.plan,
+      '$$s',
+      instanceScope(this.plan, scope),
+      instanceScope(this.plan, binding.declaration.scope),
+    );
+    const hops = path.split('.p').length - 1;
+    const type = node.attributes.find((item) => item.kind === 'static' && item.name === 'type') as
+      | { value: string | true }
+      | undefined;
+    const box = type && typeof type.value === 'string' && /^(checkbox|radio)$/i.test(type.value);
+    // A box and a select change at once. A text field writes as the user types.
+    const event =
+      attribute.name === 'checked' || box || node.tag.toLowerCase() === 'select'
+        ? 'change'
+        : 'input';
+    return `${event}=$bind#${hops}.${slotIndex(this.plan, binding.declaration)}`;
+  }
+
   private eventEntry({ event, modifiers, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
     // The modifiers of the attribute name, and those of the wrappers of `brumate/events`.
@@ -1058,6 +1097,12 @@ export class Emitter {
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
           );
+          // `value=$bind(name)` writes the name back as the element changes, before the element's
+          // own handlers run.
+          const bound = this.bindEntry(node, attribute, scope);
+          if (bound) {
+            events.unshift(bound);
+          }
           break;
         }
         case 'spread':

@@ -855,6 +855,20 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
   }
+  // `value=$bind(name)` on an element: the core writes the slot of the name, `hops` parents up
+  // from the element's scope, from the value of the element, or whether a box is checked.
+  if (ref.startsWith('$bind#')) {
+    const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
+    let target = scope;
+    for (let hop = 0; hop < hops; hop++) {
+      target = target?.p;
+    }
+    const field = element as HTMLInputElement;
+    if (target) {
+      set(target, slot, /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value);
+    }
+    return Promise.resolve();
+  }
   const args = event ? [...bound, withTarget(event, element)] : bound;
   const begun = DEV ? performance.now() : 0;
   if (DEV) {
@@ -1739,6 +1753,9 @@ function write(
 }
 
 function setAttribute(element: Element, name: string, value: unknown): void {
+  if (isBinding(value)) {
+    value = value.value;
+  }
   if (name === 'value' || name === 'checked') {
     (element as unknown as Record<string, unknown>)[name] =
       name === 'checked' ? Boolean(value) : (value ?? '');

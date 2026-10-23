@@ -120,11 +120,18 @@ function styleValue(value: unknown): string {
   return String(value);
 }
 
+/** The brand of a binding of `$bind`, under the key of the registry. See `Binding`. */
+const BOUND = Symbol.for('brumate.binding');
+
 /**
  * Returns the text of an attribute, or undefined if the attribute is not
  * rendered. `true` renders as an empty value.
  */
 export function attributeText(name: string, value: unknown): string | undefined {
+  // `value=$bind(name)` on an element renders the value of the name.
+  if (typeof value === 'object' && value !== null && BOUND in value) {
+    value = (value as unknown as { value: unknown }).value;
+  }
   if (value === null || value === undefined || value === false || typeof value === 'function') {
     return undefined;
   }

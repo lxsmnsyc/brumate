@@ -1487,8 +1487,24 @@ class Resolver {
     while (node.type === 'ParenthesizedExpression') {
       node = node.expression;
     }
-    if (this.site.kind !== 'prop' || node !== call) {
-      this.analyzer.report('error', 'Pass $bind(name) as the value of a prop of a component', call);
+    const owner = this.site.owner;
+    // On an element, it is the value of an input, a select or a text area, or whether a box is checked.
+    const element =
+      this.site.kind === 'attribute' && owner?.kind === 'element'
+        ? owner.attributes.find(
+            (attribute) => attribute.kind === 'value' && attribute.value.ast === this.site.node,
+          )
+        : undefined;
+    const onElement =
+      element?.kind === 'value' &&
+      (element.name === 'value' || element.name === 'checked') &&
+      ['input', 'select', 'textarea'].includes((owner as { tag: string }).tag.toLowerCase());
+    if (!(this.site.kind === 'prop' || onElement) || node !== call) {
+      this.analyzer.report(
+        'error',
+        'Pass $bind(name) as the value of a prop of a component, or of value or checked of an input, a select or a textarea',
+        call,
+      );
       return;
     }
     const [target, ...rest] = call.arguments;
