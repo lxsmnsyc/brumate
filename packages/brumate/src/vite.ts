@@ -1474,6 +1474,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         normalized !== middlewareFile() &&
         normalized !== envFile()
       ) {
+        // A module that the server code imports, such as data or Markdown that a page renders,
+        // changes the HTML of the page, and the browser has no code that could update it. Vite
+        // invalidates the module for the next render, and the page reloads to get it.
+        if (environment.moduleGraph.getModulesByFile(normalized)?.size) {
+          server.environments.client.hot.send({ type: 'full-reload' });
+        }
         return undefined;
       }
       const invalidated = new Set<EnvironmentModuleNode>();
