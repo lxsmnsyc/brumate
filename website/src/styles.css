@@ -24,20 +24,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-      --bg: #141210;
-      --surface: #1d1a17;
-      --surface-strong: #27231f;
-      --text: #efe9e2;
-      --muted: #a39a90;
-      --border: #2f2a25;
-      --accent: #f08a52;
-      --accent-strong: #f6a679;
-      --accent-soft: #3a2116;
-      --cool: #6fb2e6;
-      --code-bg: #1a1714;
-      --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
-      color-scheme: dark;
-    }
+    --bg: #141210;
+    --surface: #1d1a17;
+    --surface-strong: #27231f;
+    --text: #efe9e2;
+    --muted: #a39a90;
+    --border: #2f2a25;
+    --accent: #f08a52;
+    --accent-strong: #f6a679;
+    --accent-soft: #3a2116;
+    --cool: #6fb2e6;
+    --code-bg: #1a1714;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+    color-scheme: dark;
+  }
 }
 
 :root[data-theme='dark'] {
@@ -195,8 +195,8 @@ pre {
 
 @media (max-width: 640px) {
   :root {
-      --header-height: 6.5rem;
-    }
+    --header-height: 6.5rem;
+  }
 }
 
 /* Highlighted code from twinkleplop is a <pre> of its own. */
@@ -219,6 +219,6 @@ pre {
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
-      animation: none;
-    }
+    animation: none;
+  }
 }
