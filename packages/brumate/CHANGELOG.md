@@ -1,5 +1,75 @@
 # brumate
 
+## 0.3.0
+
+### Minor Changes
+
+- 73fb78a: `true` and `false` render as words for attributes that say their state in their value: `aria-*` and `data-*`, `contenteditable`, `draggable`, `spellcheck` and `writingsuggestions` say `"true"` or `"false"`, `translate` says `"yes"` or `"no"`, and `autocomplete` and `autocorrect` say `"on"` or `"off"`. Before, `false` removed them and `true` left them empty, so `aria-hidden=true` did not hide anything. Other attributes, such as `disabled`, are still there for `true` and left out for `false`, and `null` and `undefined` still leave any attribute out.
+- 7ede95e: Components can write their props, and parents can bind them.
+
+  - `let { open = false } = $props()` declares props that the component writes. Without a binding, the component writes its own copy, and a new value from the parent replaces it.
+  - `$bind(name)` from `brumate/signals`, as the value of a prop, passes a signal or a `let` prop to a child. The child's writes change it, through any number of levels.
+  - `value=$bind(draft)` and `checked=$bind(done)` on an input, a select or a textarea write the signal as the user types, without loading code of the component.
+  - `$bind(name, fn)` calls `fn(next)` for each write in place of writing the name, so the parent can refuse a value or change it.
+  - A rest prop keeps its bindings, and a spread on an element binds `value` and `checked` from them.
+  - `Bindable<T>` marks a prop that a parent can bind. `$props<T>()` gives it as `T`. `brumate-tsc` reports a binding of a prop that is not `Bindable`, and the compiler warns about a `Bindable` prop that the component reads only with `const`.
+
+- 397f442: Pages and data can be cached across requests, without one user's data reaching another.
+
+  - A route exports `cache` from its module script, such as `export const cache = { maxAge: 60, staleWhileRevalidate: 600 }`, and the server sends `cache-control` for the page. A layout's `cache` applies to the pages below it.
+  - A page is public only when the request did not read cookies or the `authorization` header and set no cookie, in middleware too. Otherwise it gets `private, no-cache`. A page with `cache` renders in full before its headers go out.
+  - `cached(fn, { maxAge, tags })` from `brumate/server` keeps the results of a function by its arguments. The function runs without the request, so `getEvent()` throws in it. A `'use server'` file can export a function that `cached` makes.
+  - The server keeps public pages too, and answers the next request for the same URL from them until `max-age` ends. Middleware still runs for each request. Pass `pageCache: false` to `handle` to turn it off.
+  - `revalidate(...tags)` drops the results and the pages that used a tag.
+  - Results and pages live in memory by default. `setCacheStore(storageStore(storage))` keeps them in an unstorage storage, such as Redis through Nitro's `useStorage()`.
+
+- f62c5c3: A spread on a component can change in the browser, such as `<Button {...rest} />` with props that a parent changes. A key that the spread no longer has becomes undefined, and a prop after the spread wins over it. A binding in the spread passes on to the component.
+- 397f442: The devtools show much more of what a page does, and errors show there in place of Vite's overlay.
+
+  - **Errors** lists errors of the server, of Vite and of the browser, including handlers that no `#try` catches. The selected error shows its file highlighted, with the place marked, and its stack, whose browser frames map to their files and lines. `errorPage` opens the devtools on the error.
+  - **Elements** shows a picked element with its place in the `.brm` file, its handlers and the values that its updates read. A card follows the pointer while picking.
+  - **Loading** lists each part of client code that loaded, with why, how long it took and its size, and marks preloads that nothing used.
+  - **Page state** lists each value that the page sent, with about how many bytes it takes and the code of the browser that reads it.
+  - **Effects** counts the runs and cleanups of each `$effect` and `$client` callback, and marks one that runs too often.
+  - **Timeline** shows each handler with its server calls and updates, and **Server** shows what the dev server did for the page: its render, its memos, its calls and its `#loading` bodies.
+  - **Navigation** shows the routes that each client navigation kept and replaced.
+  - **Blocks** lists the `#loading`, `#defer` and `#client` blocks, fires a trigger now, and shows the fallback of a body again.
+  - The page can outline the elements that change. The button shows the logo of brumate and the number of errors.
+  - `brumate/highlight` exports the twinkleplop language of `.brm` files.
+
+- 397f442: Progressive forms with `createForm` from `brumate/forms`. A form works without scripts, and with them it validates and changes its lists in the browser.
+
+  - `createForm(fn, schema, { defaultValue })` gives the attributes of a form and its fields: names, IDs, the posted values, errors with their ARIA attributes, and buttons that add, remove and move the items of a list.
+  - `parseSubmission(schema, form)` from `brumate/server` reads such a form, applies the button that changed a list, validates, and builds the reply with `reply()`. `parseForm` reads indexes in brackets, so `items[0].name` makes a list.
+  - With scripts, the form validates in the browser with the schema, which loads with the first focus out or input. A field shows its errors once the user leaves it, and every field does after a submit.
+  - With scripts, the buttons of a list change it in the browser at once, and the items that stay keep their elements and what was typed in them. The buttons prevent the post even before their code loads.
+  - A package can export a `.brm.ts` module under a name without the extension, such as `@acme/ui/forms`.
+  - Code of a module function that the compiler copies into a component keeps the imports that it needs in the browser parts.
+
+- f20217c: `gather(stream, { key })` from `brumate/stream` gives the list of a stream's values so far, so a memo of it renders a list that grows with `#for`, such as the tokens of a reply. A value with a key that came before updates its item. The server renders the empty list without starting the stream, and the list fills in the browser.
+- 32f9996: `idempotent(fn)` from `brumate/server` makes a server function of a `'use server'` file run once for each form that the server renders for it. A second post of the same form, such as a double click or a post again after a reload, gets the result or the redirect of the first. With scripts, the form gets a new key after each answer. A form's `action` can now also be a server function that the component imports from a `'use server'` file.
+- 0aaf002: `handle(request, { shell })` takes the HTML that the build prerendered for the path. The server sends it at once, then renders the `#defer` blocks with the `load` or `idle` trigger and streams their bodies in the same response, so the browser makes no request for each. A server that serves prerendered files passes the file as `shell` instead of sending it.
+- 63d070d: `#reveal ('sequential', collapsed) { … }` shows the `#loading` bodies inside it in an order while the page streams: `'sequential'` in the order of the markup, `'backwards'` from the last, `'together'` at once, or `'natural'` as they are ready. `collapsed` shows only the fallback of the next body to show. The data still loads at once, and the server does the ordering, so it needs no code in the browser.
+- de590c9: `$handler(fn, ...args)` from `brumate/signals` marks a function that a script makes as an event handler, so a spread passes it on, as it passes on a handler that a caller writes in markup. Its arguments are JSON values that go with it, and it runs as `fn(...args, event)`, such as `onClick: $handler(prevent(removeAt), index)` in a function that makes the attributes of a button. A module function can call it too.
+
+  Spreads in markup that the browser renders, such as a new item of a `#for`, now pass on their handlers, with the modifiers of their wrappers. Before, they kept only the attributes.
+
+- 1b378a4: A serial entry, `src/serial.ts` or the `serial` option of the plugin, lets the page state, server function calls and `cached` results hold classes of the app. It exports `plugins` made with `definePlugin` from `brumate/serial`, which turn a value into data and back, and can set `depthLimit` and `disabledFeatures` of the serializer. The server and the browser load it, the compiler lets a signal hold a class that it tests with `instanceof`, and `SendableValues` tells the type checker about the class.
+- 8786dba: `transition(handler, ...types)` from `brumate/events` runs a handler inside a view transition, so the browser animates the change, such as an element that `#if` removes or a list that changes order. The transition waits for the update code of the first write. Without view transitions, or with `prefers-reduced-motion`, the handler runs as it is.
+
+### Patch Changes
+
+- 397f442: A route that does not compile breaks only its own pages in development, and the other pages of the dev server still render.
+- ddcd3c3: A field keeps what the user typed or checked while the value of its `value` or `checked` stays the same, such as the posted values of a form that validation reads again. Before, each update wrote the value back over the user's change.
+- af923d7: The first click on a page shows its result a frame or two sooner. The core takes the modules and parts that the loader preloaded instead of importing them again, and the loader preloads the serial entry and the updates of a component with its handlers.
+- 7b6e85f: `:global(h1, h2)` with a list now applies to every item of the list. Before, only the first one, such as `h1`, got the rule.
+- 43ac335: The first click on a page with a long list from the server runs faster. The bound elements of the page are indexed with its markers, so each update finds its element without a search of the page, and each handler of a list preloads once instead of once for each row.
+- 50503a9: Lists update with less work in the browser. Rows that the client renders no longer run their updates again after they go into the page, a list whose items all change removes the old ones at once, and the loader does not watch new rows whose code has loaded.
+- 43ac8c4: Long lists update faster. Rows that the client adds find their elements without a search of the page, so creating 10,000 rows takes about 370 ms instead of 4 s. A change of order moves only the items that change places, so swapping 2 of 1,000 rows moves 2 rows instead of about 1,000.
+- e707f76: Under a policy with a nonce, the `modulepreload` links of a page carry the nonce, and the page has no `Link` header, which cannot carry one. Before, a strict policy blocked them.
+- f7ee96f: A memo that calls a server function of a `'use server'` file renders on the server only, unless the app passes that function to `refresh` somewhere. Before, every such memo sent its value to the browser with update code, in case a call refreshed it.
+- cce5d4a: An update that writes the value an element already has leaves the element alone. A list that comes again with new objects of the same values, such as from the server after a refresh, no longer writes to the rows that did not change.
+
 ## 0.2.0
 
 ### Minor Changes
