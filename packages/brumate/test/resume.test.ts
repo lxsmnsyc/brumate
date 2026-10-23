@@ -693,6 +693,12 @@ describe('resume', () => {
 
   it('passes handlers through a dynamic tag, also when it names a component', async () => {
     await resume('asPage', {});
+    // The class of the caller adds to the class of the tag, for an element and for a component.
+    expect(document.querySelector('.plain')!.className).toBe('as-button plain');
+    expect(document.querySelector('.link')!.className.split(' ').toSorted()).toEqual([
+      'as-button',
+      'link',
+    ]);
     click(document.querySelector('.plain')!);
     await waitFor(() => expect(text('.outer')).toBe('1'));
     await waitFor(() => expect(text('.plain-box .own')).toBe('1'));

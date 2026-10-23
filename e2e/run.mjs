@@ -13,9 +13,10 @@ import * as kit from './suites/kit.mjs';
 import * as nitro from './suites/nitro.mjs';
 import * as todos from './suites/todos.mjs';
 import * as tracker from './suites/tracker.mjs';
+import * as ui from './suites/ui.mjs';
 import * as website from './suites/website.mjs';
 
-const SUITES = { website, todos, tracker, nitro, kit };
+const SUITES = { website, todos, tracker, nitro, kit, ui };
 
 const { values } = parseArgs({
   options: {
@@ -29,7 +30,7 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`pnpm e2e [options]
-  --only website,todos,tracker,nitro,kit  run these suites (default: all)
+  --only website,todos,tracker,nitro,kit,ui  run these suites (default: all)
   --no-build                              use the builds that are there
   --headed                                show the browser
   --install-browser                       download Playwright's Chromium when no Chrome is found`);

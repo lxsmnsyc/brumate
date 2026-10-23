@@ -1322,6 +1322,38 @@ export class Emitter {
     return name;
   }
 
+  /**
+   * The attributes of a dynamic tag. With a spread, they merge as the attributes of an element
+   * do: a later one wins, and a `class` adds to the others, so a part that takes `as` keeps its
+   * own class and the caller's.
+   */
+  private dynamicProps(attributes: Attribute[], scope: Scope, extra: string[]): string {
+    if (!attributes.some((attribute) => attribute.kind === 'spread')) {
+      return this.props(attributes, scope, extra);
+    }
+    const parts: string[] = [];
+    let run: Attribute[] = [];
+    const flush = (): void => {
+      if (run.length > 0) {
+        parts.push(this.props(run, scope));
+        run = [];
+      }
+    };
+    for (const attribute of attributes) {
+      if (attribute.kind === 'spread') {
+        flush();
+        parts.push(this.expression(attribute.value));
+      } else {
+        run.push(attribute);
+      }
+    }
+    flush();
+    if (extra.length > 0) {
+      parts.push(`{ ${extra.join(', ')} }`);
+    }
+    return `$$b.mergeAttributes([${parts.join(', ')}])`;
+  }
+
   private props(attributes: Attribute[], scope: Scope, extra: string[] = []): string {
     const entries: string[] = [];
     for (const attribute of attributes) {
@@ -1462,7 +1494,7 @@ export class Emitter {
     }
     this.code(
       this.ready(
-        `$$b.dynamic(${this.expression(node.tag)}, ${this.props(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+        `$$b.dynamic(${this.expression(node.tag)}, ${this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
       ),
     );
   }

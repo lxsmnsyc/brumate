@@ -915,7 +915,37 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   };
 
   /** The components of the app for the workbench, with what each one needs and its controls. */
-  const workbenchComponents = async (): Promise<unknown[]> => {
+  /**
+   * The stories of a component: the named exports of the `.stories.ts` file next to it, each a
+   * set of props. Values that JSON cannot hold, such as functions, are left out.
+   */
+  const workbenchStories = async (
+    server: ViteDevServer,
+    file: string,
+  ): Promise<{ stories: { name: string; props: unknown }[]; storiesError?: string }> => {
+    const storiesFile = file.replace(/\.brm$/, '.stories.ts');
+    if (!existsSync(storiesFile)) {
+      return { stories: [] };
+    }
+    try {
+      const module = (await server.ssrLoadModule(storiesFile)) as Record<string, unknown>;
+      const stories = Object.entries(module)
+        .filter(([name, props]) => name !== 'default' && props && typeof props === 'object')
+        .map(([name, props]) => ({ name, props: JSON.parse(JSON.stringify(props)) as unknown }));
+      return { stories };
+    } catch (error) {
+      return { stories: [], storiesError: error instanceof Error ? error.message : String(error) };
+    }
+  };
+
+  /** The group of a component of a package: its name, and the folder under the directory of its files. */
+  const packageGroup = (owner: BrumatePackage, file: string): string => {
+    const directory = owner.directories.find((item) => file.startsWith(`${item}/`)) ?? owner.root;
+    const folder = path.posix.dirname(file.slice(directory.length + 1));
+    return folder === '.' ? owner.name : `${owner.name}/${folder}`;
+  };
+
+  const workbenchComponents = async (server: ViteDevServer): Promise<unknown[]> => {
     const routes = `${routesDirectory()}/`;
     const list = [...new Set(files.values())];
     const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
@@ -925,9 +955,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       serverImport: (file, specifier, name) => serverImport(file, specifier, name) !== undefined,
     });
     const relative = (file: string): string => normalizePath(path.relative(root, file));
-    return list
-      .filter((file) => !file.startsWith(routes) && classes.has(file))
-      .map((file) => {
+    const shown = list.filter((file) => !file.startsWith(routes) && classes.has(file));
+    const stories = await Promise.all(shown.map((file) => workbenchStories(server, file)));
+    return shown
+      .map((file, index) => {
         const found = classes.get(file)!;
         let controls: unknown[] = [];
         try {
@@ -935,12 +966,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         } catch {
           // The compile of the file reports the error.
         }
+        // A component of a package is grouped under the name of the package, and the others by
+        // their folder.
+        const owner = packageOf(packages, file);
         return {
           file: relative(file),
+          group: owner ? packageGroup(owner, file) : path.posix.dirname(relative(file)),
+          // The name that the page shows: the import of a component of a package, or its path.
+          label: owner ? `${packageGroup(owner, file)}/${path.basename(file)}` : relative(file),
           name: path.basename(file, '.brm'),
           selfContained: found.selfContained,
           needs: found.needs.map((need) => ({ ...need, via: need.via && relative(need.via) })),
           controls,
+          ...stories[index],
         };
       })
       .sort((a, b) => a.file.localeCompare(b.file));
@@ -963,7 +1001,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     if (url.pathname === `${WORKBENCH}/components`) {
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(await workbenchComponents()));
+      response.end(JSON.stringify(await workbenchComponents(server)));
       return;
     }
     if (url.pathname !== `${WORKBENCH}/frame`) {

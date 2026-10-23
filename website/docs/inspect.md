@@ -83,6 +83,18 @@ The dev server has a workbench at `/__brumate/workbench`. It lists the component
 - The controls come from the type of `$props<T>()`: a text field for `string`, a number field for `number`, a box for `boolean`, a list for a union of literals, such as `'info' | 'warning'`, and JSON for the rest. A prop starts at the default of its destructuring. A function prop, such as a handler, has no control.
 - The toolbar sets the width of the frame, to fill the canvas or as a phone, a tablet or a desktop, and the background around it. It renders the component again, or opens it alone in a new tab. Click the file to open it in your editor.
 - **Reset** puts each prop back to its start, and the arrow next to a prop resets that one.
+- The components of a package, such as `@brumate/ui`, are listed under the name of the package.
+
+A story file names sets of props for a component, so the workbench can show its states. It is a `.stories.ts` file next to the component, and each named export is a set of props:
+
+```ts
+// Button.stories.ts
+export const Primary = { label: 'Save', tone: 'primary' };
+export const Disabled = { label: 'Save', disabled: true };
+```
+
+The stories are listed above the controls. Picking one starts the controls from its props, and the address of the page names it, so a link opens it. Values that JSON cannot hold, such as functions, are left out.
+
 - The files of `src/routes` are not listed. Pages are what `visit` from [`brumate/testing`](./testing.md) and end-to-end tests are for.
 
 A component that needs more than its props, itself or through a component that it renders, is under **Needs the environment**, with a dot for each kind of need. Pick it to see what it needs:

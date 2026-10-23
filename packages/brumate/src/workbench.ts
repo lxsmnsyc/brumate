@@ -388,7 +388,11 @@ export function propControls(file: SFCFile): Control[] {
           member.key.type === 'Identifier'
             ? member.key.name
             : String((member.key as { value?: unknown }).value);
-        const control = controlOf(member.typeAnnotation?.typeAnnotation);
+        // The children of a part are text in the workbench, whatever their type says.
+        const control =
+          name === 'children'
+            ? { kind: 'text' as const }
+            : controlOf(member.typeAnnotation?.typeAnnotation);
         if (!control) {
           continue;
         }
