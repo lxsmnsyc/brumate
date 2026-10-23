@@ -748,7 +748,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       Record<number, { label: string; at?: string; reads: string[] }>
     > = {};
     for (const [target, index] of plan.anchors) {
-      const scope = plan.anchorScopes.get(target)!;
+      const scope = plan.anchorScopes.get(target);
+      if (!scope) {
+        continue;
+      }
       const at = result.locate('range' in target ? target.range.start : target.start);
       const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
       const reads = new Set<string>();
@@ -769,6 +772,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             reads.add(edge.from.declaration.name);
           }
         }
+      }
+      // An insert that is the whole content of its element shares the element's anchor.
+      const known = anchors[scope.id]?.[index];
+      if (known) {
+        known.reads = [...new Set([...known.reads, ...reads])];
+        continue;
       }
       (anchors[scope.id] ??= {})[index] = {
         label: anchorLabel(target),

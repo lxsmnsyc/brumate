@@ -654,3 +654,25 @@ describe('character references', () => {
     expect(decodeAttribute('&#x110000; &#0; &#xD800;')).toBe('� � �');
   });
 });
+
+describe('anchors', () => {
+  it('knows the scope of every anchor, for the Elements tab of the devtools', () => {
+    const { plan } = compile(
+      `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+</script>
+
+<p>{count}</p>
+<button onClick=(() => count++)>{count} and {count * 2}</button>
+#if (count > 1) {
+  <span>{count}</span>
+}`,
+      { filename: 'Anchors.brm' },
+    );
+    expect(plan.anchors.size).toBeGreaterThan(0);
+    for (const target of plan.anchors.keys()) {
+      expect(plan.anchorScopes.get(target)).toBeDefined();
+    }
+  });
+});

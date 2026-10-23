@@ -349,6 +349,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         }
         if (content) {
           anchors.set(content, anchors.get(node)!);
+          anchorScopes.set(content, scope);
           contents.add(content);
           if (node.kind === 'element' && RAW_TEXT.has(node.tag.toLowerCase())) {
             textContents.add(content);
