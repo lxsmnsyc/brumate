@@ -9,9 +9,30 @@ function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
 }
 
-/** Returns the props of the component. Destructure the call to keep each prop reactive. */
+declare const BINDABLE: unique symbol;
+
+/** The mark of a prop that a parent can bind. It has no value at runtime. */
+export interface BindableMark<T> {
+  readonly [BINDABLE]: T;
+}
+
+/**
+ * Marks a prop that a parent can bind with `$bind`, such as
+ * `open?: Bindable<boolean>`. The parent passes `T` or `$bind(name)`.
+ * Inside the component, `$props<T>()` gives `T`.
+ */
+export type Bindable<T> = T | BindableMark<T>;
+
+/** The props as the component reads them, with `Bindable<T>` as `T`. */
+export type Unbound<T> = { [K in keyof T]: Exclude<T[K], BindableMark<unknown>> };
+
+/**
+ * Returns the props of the component. Destructure the call to keep each prop
+ * reactive. Destructure it with `let` to write props, such as
+ * `let { open = false } = $props()`.
+ */
 // oxlint-disable-next-line typescript/no-explicit-any -- Props are any object unless typed.
-export function $props<T = Record<string, any>>(): T {
+export function $props<T = Record<string, any>>(): Unbound<T> {
   return compileTimeOnly('$props');
 }
 

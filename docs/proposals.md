@@ -108,7 +108,7 @@ Three parts, each with one job:
 
 #### On elements
 
-- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and an input handler. The handler is small and loads on the first input. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
+- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and a `b-on` entry of the core, `input=$bind#<hops>.<slot>`. The core writes the slot without loading code of the component. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
 
 #### Through rest props and spreads
 
