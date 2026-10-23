@@ -3,3 +3,6 @@ results/*
 # The dashboard widgets, written by harness/dashboard.mjs at build time.
 */dashboard/src/widgets/
 marko/dashboard/src/tags/
+
+# Images that harness/promo.mjs writes.
+promo/*.png
