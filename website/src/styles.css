@@ -634,8 +634,8 @@ pre {
   display: inline;
 }
 
-/* Hydration and resuming, as a waterfall over time. A line sweeps across it. */
-.waterfall {
+/* When the main thread is busy, with hydration and with brumate. */
+.strips {
   margin: 0;
   padding: 1.25rem;
   border: 1px solid var(--border);
@@ -643,22 +643,17 @@ pre {
   background: var(--surface);
 }
 
-.waterfall figcaption {
+.strips figcaption {
   margin-top: 0.5rem;
   color: var(--muted);
   font-size: 0.85rem;
 }
 
-.waterfall svg {
+.strips svg {
   display: block;
   width: 100%;
   height: auto;
   font-family: var(--font);
-}
-
-.wf-grid line {
-  stroke: var(--border);
-  stroke-dasharray: 2 4;
 }
 
 .wf-lane {
@@ -678,8 +673,9 @@ pre {
 
 .wf-in {
   fill: var(--bg);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
+  text-anchor: middle;
 }
 
 .wf-note.muted,
@@ -689,39 +685,25 @@ pre {
   font-size: 11px;
 }
 
+.wf-note.muted {
+  font-size: 12px;
+}
+
 .wf-axis.end {
   text-anchor: end;
+}
+
+.wf-track {
+  fill: var(--bg);
+  stroke: var(--border);
 }
 
 .wf-html {
   fill: var(--muted);
 }
 
-.wf-js {
+.wf-busy {
   fill: var(--cool);
-}
-
-.wf-cpu {
-  fill: color-mix(in srgb, var(--cool) 55%, var(--text));
-}
-
-.wf-preload {
-  fill: none;
-  stroke: var(--cool);
-  stroke-dasharray: 3 2;
-}
-
-.wf-dead {
-  fill: url(#waterfall-hatch);
-}
-
-.wf-dead-bg {
-  fill: color-mix(in srgb, #d64545 12%, transparent);
-}
-
-.wf-dead-line {
-  stroke: color-mix(in srgb, #d64545 45%, transparent);
-  stroke-width: 3;
 }
 
 .wf-ready {
@@ -731,28 +713,6 @@ pre {
 
 .wf-ready-dot {
   fill: var(--accent);
-}
-
-.wf-click {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-}
-
-.wf-playhead {
-  stroke: var(--text);
-  stroke-width: 1;
-  opacity: 0.35;
-  animation: playhead 6s linear infinite;
-}
-
-@keyframes playhead {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(640px);
-  }
 }
 
 /* The shop demo, and its X-ray view: a checkbox and :has, with no script. */
@@ -1349,7 +1309,6 @@ pre {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wf-playhead,
   .sm-live rect,
   .stream-loaded,
   .wire-packet {

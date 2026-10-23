@@ -3,7 +3,7 @@
   import Network from '../components/Network.brm';
   import Shipped from '../components/Shipped.brm';
   import ShipsMap from '../components/ShipsMap.brm';
-  import Waterfall from '../components/Waterfall.brm';
+  import BusyStrips from '../components/BusyStrips.brm';
   import { serverFunctions, streaming, typed } from '../home/snippets.ts';
   import * as counter from '../demos/Counter.brm?inspect';
   import * as todos from '../demos/Todos.brm?inspect';
@@ -58,7 +58,7 @@
       A page that hydrates runs every component again in the browser before the first click works.
       A brumate page picks up where the server left off.
     </p>
-    <Waterfall />
+    <BusyStrips />
   </section>
 
   <section class="section">
