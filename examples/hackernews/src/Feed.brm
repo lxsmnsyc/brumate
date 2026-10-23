@@ -1,0 +1,121 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { feed } from './api.ts';
+  import { FEEDS } from './feeds.ts';
+  import type { FeedPath } from './feeds.ts';
+  import type { Story } from './hn.ts';
+
+  const { path, page } = $props<{ path: FeedPath; page: number }>();
+  const stories = await $memo(feed(path, page));
+  const pages = FEEDS[path].pages;
+  const first = (page - 1) * 30 + 1;
+
+  /** Where a story leads: its page here for Ask HN and jobs, which have no link of their own. */
+  function link(story: Story): string {
+    return story.url.startsWith('item?id=') ? `/item/${story.id}` : story.url;
+  }
+
+  const pageLink = (to: number): string => (to === 1 ? path : `${path}?page=${to}`);
+</script>
+
+#head {
+  <title>{`${FEEDS[path].title} | Hacker News`}</title>
+}
+
+<ol class="stories" start=(first)>
+  #for (story of stories by story.id) {
+    <li class="story">
+      <a class="title" href=(link(story))>{story.title}</a>
+      #if (story.domain) {
+        <span class="domain">({story.domain})</span>
+      }
+      <div class="meta">
+        #if (story.type !== 'job') {
+          <span>{story.points ?? 0} points</span>
+          #if (story.user) {
+            <span>by <a href=(`/user/${story.user}`)>{story.user}</a></span>
+          }
+        }
+        <span>{story.time_ago}</span>
+        #if (story.type !== 'job') {
+          <a class="comments" href=(`/item/${story.id}`)>
+            {story.comments_count === 0 ? 'discuss' : `${story.comments_count} comments`}
+          </a>
+        }
+      </div>
+    </li>
+  } #else {
+    <li class="none">No stories on this page.</li>
+  }
+</ol>
+
+<nav class="pager" aria-label="Pages">
+  #if (page > 1) {
+    <a rel="prev" href=(pageLink(page - 1))>← Prev</a>
+  } #else {
+    <span class="off">← Prev</span>
+  }
+  <span class="where">Page {page} of {pages}</span>
+  #if (page < pages) {
+    <a rel="next" href=(pageLink(page + 1))>More →</a>
+  } #else {
+    <span class="off">More →</span>
+  }
+</nav>
+
+<style>
+  .stories {
+    margin: 0;
+    padding-left: 2.5rem;
+  }
+  .story {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .story::marker {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .title {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .title:visited {
+    color: var(--muted);
+  }
+  .domain {
+    margin-left: 0.35rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.75rem;
+    margin-top: 0.15rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .meta a {
+    color: inherit;
+  }
+  .none {
+    list-style: none;
+    color: var(--muted);
+  }
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .where {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .off {
+    color: var(--line);
+  }
+</style>
