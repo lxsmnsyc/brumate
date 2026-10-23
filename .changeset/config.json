@@ -5,7 +5,7 @@
   "format": "auto",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "ignore": ["website", "example-todos"],
+  "ignore": ["website", "example-todos", "example-ui-kit"],
   "fixed": [],
   "linked": [],
   "updateInternalDependencies": "patch",
