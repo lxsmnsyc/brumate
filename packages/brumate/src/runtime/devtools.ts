@@ -126,8 +126,11 @@ export interface DevtoolsState {
 
 const MAX_LOG = 300;
 
-/** The logo of brumate: a lowercase b on the orange of the site. */
-export const LOGO = `<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="brumate-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc38a"/><stop offset=".5" stop-color="#ee7a3e"/><stop offset="1" stop-color="#e0445a"/></linearGradient></defs><circle cx="16" cy="16" r="15" fill="url(#brumate-logo)"/><path d="M11.5 7.5v16" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="16.6" cy="18.4" r="5.1" fill="none" stroke="#fff" stroke-width="3.2"/></svg>`;
+/**
+ * The logo of brumate: the pole and the bowl of a b, in outline, where the
+ * pole runs through the left of the bowl. The part they share is orange.
+ */
+export const LOGO = `<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="brumate-logo-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc38a"/><stop offset=".5" stop-color="#ee7a3e"/><stop offset="1" stop-color="#e0445a"/></linearGradient><clipPath id="brumate-logo-pole"><rect x="7.5" y="2.5" width="8" height="27" rx="4"/></clipPath></defs><circle cx="18" cy="19.5" r="10" fill="url(#brumate-logo-fill)" clip-path="url(#brumate-logo-pole)"/><g fill="none" stroke="#ece8e4" stroke-width="2.2"><rect x="7.5" y="2.5" width="8" height="27" rx="4"/><circle cx="18" cy="19.5" r="10"/></g></svg>`;
 
 /** The root scope of a scope, whose `m` names its component. */
 export function rootOf(scope: Scope): Scope {
