@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let rows = $signal([1, 2, 3, 4, 5, 6].map((id) => ({ id, label: `Row ${id}` })));
+  let selected = $signal(0);
+
+  function swap() {
+    const next = rows.slice();
+    [next[1], next[4]] = [rows[4]!, rows[1]!];
+    rows = next;
+  }
+  function add() {
+    rows = [...rows, ...[7, 8, 9].map((id) => ({ id, label: `Row ${id}` }))];
+  }
+</script>
+
+<button class="swap" onClick=swap>Swap</button>
+<button class="add" onClick=add>Add</button>
+<ul>
+  #for (row of rows by row.id) {
+    <li class=(selected === row.id ? 'on' : '')><a onClick=(() => (selected = row.id))>{row.label}</a></li>
+  }
+</ul>

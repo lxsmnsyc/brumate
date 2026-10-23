@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:dashboard": "node ../harness/dashboard.mjs marko && cd dashboard && vite build"
+    "build:dashboard": "node ../harness/dashboard.mjs marko && cd dashboard && vite build",
+    "build:rows": "cd rows && vite build"
   },
   "devDependencies": {
     "@marko/vite": "6.1.13",

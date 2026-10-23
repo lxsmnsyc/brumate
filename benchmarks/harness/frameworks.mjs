@@ -32,12 +32,15 @@ export async function loadAdapter(name) {
   return import(path.join(appDir(name), 'adapter.js'));
 }
 
-export const SCENARIOS = ['todos', 'dashboard'];
+export const SCENARIOS = ['todos', 'dashboard', 'rows'];
 
-// The app of a scenario: `load()` of the adapter for todos, `loadDashboard()` for the dashboard.
+// The app of a scenario: `load()` of the adapter for todos, `loadDashboard()` for the
+// dashboard and `loadRows()` for the rows.
 export async function loadApp(name, scenario = 'todos') {
   const adapter = await loadAdapter(name);
-  return scenario === 'dashboard' ? adapter.loadDashboard() : adapter.load();
+  if (scenario === 'dashboard') return adapter.loadDashboard();
+  if (scenario === 'rows') return adapter.loadRows();
+  return adapter.load();
 }
 
 // The versions of the dependencies that each app has installed.

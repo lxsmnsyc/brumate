@@ -3,6 +3,7 @@
 import { gzipSync } from 'node:zlib';
 import { widgets } from './dashboard.mjs';
 import { loadApp } from './frameworks.mjs';
+import { label } from './rows.mjs';
 
 const [name, scenario = 'todos'] = process.argv.slice(2);
 const app = await loadApp(name, scenario);
@@ -34,7 +35,16 @@ function checkDashboard(html) {
   );
 }
 
-const check = scenario === 'dashboard' ? checkDashboard : checkTodos;
+// Checks that the page shows every row with its ID and label.
+function checkRows(html, n) {
+  const body = text(html);
+  return [1, n]
+    .filter((id) => !body.includes(label(id)))
+    .map((id) => `missing "${label(id)}" of row ${id}`);
+}
+
+const CHECKS = { todos: checkTodos, dashboard: checkDashboard, rows: checkRows };
+const check = CHECKS[scenario];
 
 // Encodes a render result to UTF-8 bytes, as a server must before it sends it. A string is
 // encoded whole, the way `res.end(html)` does it. A stream or other iterable of chunks is

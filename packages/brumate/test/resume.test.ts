@@ -2503,22 +2503,60 @@ describe('view transitions', () => {
   });
 });
 
+describe('long lists', () => {
+  it('moves only the items that change places', async () => {
+    await resume('swapList', {});
+    const moved: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        moved.push(...record.removedNodes);
+      }
+    });
+    observer.observe(document.querySelector('ul')!, { childList: true });
+    click(document.querySelector('.swap')!);
+    await waitFor(() =>
+      expect([...document.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        'Row 1',
+        'Row 5',
+        'Row 3',
+        'Row 4',
+        'Row 2',
+        'Row 6',
+      ]),
+    );
+    observer.disconnect();
+    expect(moved.filter((node) => node.nodeType === 1)).toHaveLength(2);
+  });
+
+  it('updates the items that the client added', async () => {
+    await resume('swapList', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(9));
+    click(document.querySelector('li:nth-child(8) a')!);
+    await waitFor(() => expect(document.querySelector('li:nth-child(8)')!.className).toBe('on'));
+  });
+});
+
 describe('values of fields', () => {
   it('keeps what the user checked while the value stays, and writes a value that changes', async () => {
     await resume('fieldKeeps', {});
     const box = document.querySelector<HTMLInputElement>('.box')!;
+    const runs = (count: string) => waitFor(() => expect(text('.runs')).toBe(count));
     // The first update writes the value, as a form's reply does before the user checks a box.
     click(document.querySelector('.rerun')!);
-    await new Promise((done) => setTimeout(done, 20));
+    await runs('1');
     box.checked = true;
     click(document.querySelector('.rerun')!);
-    await new Promise((done) => setTimeout(done, 20));
+    await runs('2');
     expect(box.checked).toBe(true);
     // The value changes to true, then to false, and the box follows it.
     click(document.querySelector('.post')!);
-    await new Promise((done) => setTimeout(done, 20));
+    await waitFor(() => expect(box.checked).toBe(true));
+    box.checked = false;
     click(document.querySelector('.post')!);
     await waitFor(() => expect(box.checked).toBe(false));
+    click(document.querySelector('.post')!);
+    await waitFor(() => expect(box.checked).toBe(true));
   });
 });
 

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
-    "build:dashboard": "node ../harness/dashboard.mjs brumate && vite build dashboard --outDir dist/client && vite build dashboard --ssr src/server.ts --outDir dist/server"
+    "build:dashboard": "node ../harness/dashboard.mjs brumate && vite build dashboard --outDir dist/client && vite build dashboard --ssr src/server.ts --outDir dist/server",
+    "build:rows": "vite build rows --outDir dist/client && vite build rows --ssr src/server.ts --outDir dist/server"
   },
   "dependencies": {
     "brumate": "workspace:*"

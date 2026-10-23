@@ -33,3 +33,12 @@ export async function loadDashboard() {
     render: ({ preload = true } = {}) => server.page(preload ? scripts : SAVE_DATA + scripts),
   };
 }
+
+export async function loadRows() {
+  const server = await import(`${dir}rows/dist/server/server.js`);
+  const scripts = await entry(`${dir}rows`);
+  return {
+    staticDir: `${dir}rows/dist/client`,
+    render: (n) => server.page(n, scripts),
+  };
+}
