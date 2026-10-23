@@ -14,7 +14,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 | [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Element transitions](#element-transitions)                           | Syntax  | Low    | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
 | [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
@@ -29,26 +29,43 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 
 ## Syntax
 
-### Element transitions
+### Named view transitions
 
-`transition` of `brumate/events` animates the change of a handler with a view transition. A view transition snapshots the whole page, runs one at a time, and blocks clicks while it runs. A change that repeats fast, such as a list that filters as the user types, needs animations of its own elements.
+`transition` of `brumate/events` runs a handler inside a view transition. An element animates on its own only when it has a `view-transition-name`, which the author writes by hand and keeps unique, such as `` style=(`view-transition-name: todo-${todo.id}`) `` in a `#for`. Every named element then takes part in every view transition of the page, including navigations.
 
 ```html
-#if (open) {
-  <div class="panel" transition=fade(200)>…</div>
-}
 #for (todo of todos by todo.id) {
-  <li animate=flip(150)>{todo.title}</li>
+  <li viewTransition="todo">{todo.title}</li>
+}
+#if (open) {
+  <div class="panel" viewTransition="panel">…</div>
 }
 ```
 
-- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles.
-- `animate=fn` on the element of a list item moves it from its old place to its new one when the list changes order.
-- An element that is inserted can already animate with `@starting-style` in CSS, so `in` matters less than `out`.
+```css
+::view-transition-group(.todo) { animation-duration: 200ms; }
+::view-transition-new(.todo):only-child { animation: fade-in 150ms; }
+::view-transition-old(.todo):only-child { animation: fade-out 150ms; }
+```
 
-Build it when an app needs animations that a view transition cannot do.
+- `viewTransition="todo"` marks an element. It renders as an attribute, and the element gets `view-transition-class: todo`.
+- The core names a marked element only while a transition of brumate runs: before the browser captures the old page, and again after the updates for the elements that they added. It removes the names when the transition finishes.
+- The name comes from the element itself, such as `todo-7`, not from the key of `by`. A key can be any value, such as an object, and two keys such as `1` and `'1'` would give one name. Keyed lists keep the element of an item, so an element that moves keeps its name and slides. A new element fades in, and a removed one fades out.
+- `viewTransitionName=(expression)` gives a name of the author, which pairs two different elements, such as a picture on a list page and on its detail page. A navigation needs it, because the new page has new elements. Elements of layouts that stay keep their names.
+- Only marked elements near the viewport get a name, because each named element is a capture of its own. An element that comes from far off screen fades in instead of sliding.
+- In development, two rendered elements with the same name of the author are an error in the Errors tab, since the browser skips such a transition without one.
+- A name that the CSS of the author gives an element stays.
 
-Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
+Limits:
+
+- A named element inside another one animates in a flat group, so the order of painting can be wrong while it runs, until browsers support `view-transition-group: contain`.
+- The writes of a handler after its first `await` change the page without an animation, as with `transition` now.
+
+Test first that the names reach elements that an update inserted after its code loaded, and how fast a list of 200 items reorders in Chrome and Safari.
+
+Build it when an app animates lists or shared elements. The manual names work until then, and the UI components animate overlays with CSS and `Transition`.
+
+Cost: about 2 to 3 days. The compiler only renders the attribute.
 
 ### Long lists
 
@@ -558,6 +575,6 @@ Each step lists what it holds and why it comes there. A step can start before th
 1. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
 2. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
 3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
-4. **When an app or the website needs them**: element transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
