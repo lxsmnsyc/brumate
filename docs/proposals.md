@@ -328,8 +328,27 @@ Settled on 2026-10-24:
 - **Browser support.** A part uses a feature of the platform only when at least 95% of global usage supports it. The share is the global usage of each browser version, from caniuse, summed over the versions that MDN's compatibility data marks as supporting the feature. The client of brumate will be checked against the same rule.
 - **No native popover or dialog.** Overlays follow React Aria and Terracotta, which use neither: they render with `#portal`, and the shared modules place them, keep focus in them and give it back, close them on Escape or a click outside, and hide the rest of the page from assistive technology.
 - **React Aria and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they do, and their tests and docs are the specification.
+- **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. React Aria and Terracotta mount every overlay at the end of `<body>`, so this is where the parts differ from them.
 - **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
 - **Bindable state.** The state props of the parts, such as `open`, `value` and `checked`, are bindable, so a caller writes `open=$bind(settingsOpen)`.
+
+#### Layers
+
+Each floating part renders a layer: an element that the part owns, and that holds the panel that the caller styles. An overlay that opens from inside a floating part mounts at the end of that part's layer, so the layers form a tree that follows the nesting of the parts.
+
+- The overlay paints above its parent, because it comes last in the parent's layer, and the parent is above the page. Only the root layer needs a `z-index`.
+- The page sees the nesting. A click in a popover of a dialog is a click inside the dialog, focus that stays in the dialog can go to its popovers, the `aria-hidden` that hides the page behind the dialog does not hide them, and closing the dialog removes them. CSS custom properties of the dialog reach them too.
+- The server renders an overlay in its place, after its parent's panel, so the browser moves nothing when the page resumes.
+
+Rules:
+
+1. An overlay mounts in its parent's layer, not in the panel. The layer has no `overflow`, `transform` or `contain`, so a panel that scrolls or animates with a transform does not clip its overlays or change where they are placed.
+2. Overlays are placed with `top` and `left`, never with `transform`, so a layer is never the containing block of the overlays in it.
+3. An overlay that is not inside a floating part mounts in the root layer, at the end of `<body>`. Toasts always do.
+4. A `container` prop overrides this: an element, a selector, or `false` to render in place.
+5. Overlays of the same layer stack in the order that they opened.
+
+A `LAYER` context holds the layer of each floating part, and its default is the root layer, so an overlay finds its layer with `$getContext(LAYER)`.
 
 What the 95% rule allows, measured on 2026-10-24:
 
