@@ -29,7 +29,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Each button in the result of a sample clicks without an error.
 - The counter sample of the state page counts, and its memo follows.
 - The validation sample of the forms page shows both field errors for bad input, and the success message for good input.
-- The counter demo of the home page counts.
+- The shop demo of the home page adds to the cart.
 - A link from the home page to the docs and a link in the sidebar navigate without loading a new page. The back button goes back the same way.
 
 `todos` serves the production build of `examples/todos` with a content security policy of `script-src 'nonce-…' 'strict-dynamic'`, and a new nonce for each page.

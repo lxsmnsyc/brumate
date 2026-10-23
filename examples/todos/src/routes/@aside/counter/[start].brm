@@ -4,4 +4,21 @@
   const { params } = $props<{ params: { start: string } }>();
 </script>
 
-<p>The counter started at {params.start}.</p>
+<div class="tip">
+  <h2>From the URL</h2>
+  <p>The counter started at {params.start}. The layout above kept its state on the way here.</p>
+</div>
+
+<style>
+  .tip {
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: var(--soft);
+  }
+  .tip h2 {
+    font-size: 0.95rem;
+  }
+  .tip p {
+    margin: 0.5rem 0 0;
+  }
+</style>

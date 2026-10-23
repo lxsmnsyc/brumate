@@ -36,18 +36,59 @@
   <title>Guestbook</title>
 }
 
-<h1>Guestbook</h1>
-<form action=sign>
-  <input name="name" placeholder="Your name" aria-label="Your name">
-  <button disabled=($isPending(result))>Sign</button>
-</form>
-#if (result?.error) {
-  <p class="error">{result.error}</p>
-} #else if (result) {
-  <p class="signed">Thanks for signing. {result.signed} people have signed.</p>
-}
-<ul>
-  #for (entry of names by entry) {
-    <li>{entry}</li>
+<section class="card">
+  <h1>Guestbook</h1>
+  <p class="intro">Leave your name. The form works without scripts, too.</p>
+  <form class="sign" action=sign>
+    <input class="field" name="name" placeholder="Your name" aria-label="Your name">
+    <button class="primary" disabled=($isPending(result))>Sign</button>
+  </form>
+  #if (result?.error) {
+    <p class="error">{result.error}</p>
+  } #else if (result) {
+    <p class="signed">Thanks for signing. {result.signed} people have signed.</p>
   }
-</ul>
+  <ul class="names">
+    #for (entry of names by entry) {
+      <li>{entry}</li>
+    } #else {
+      <li class="none">No one has signed yet.</li>
+    }
+  </ul>
+</section>
+
+<style>
+  .intro {
+    margin: 0.25rem 0 1rem;
+    color: var(--muted);
+  }
+  .sign {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .signed {
+    margin: 0.75rem 0 0;
+    color: var(--accent);
+  }
+  .error {
+    margin-top: 0.75rem;
+  }
+  .names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .names li {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: var(--soft);
+  }
+  .names .none {
+    padding: 0;
+    background: none;
+    color: var(--muted);
+  }
+</style>

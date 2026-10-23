@@ -10,4 +10,7 @@
   <title>Not found</title>
 }
 
-<h1>No page at /{params.rest}</h1>
+<section class="card">
+  <h1>No page at /{params.rest}</h1>
+  <p><a href="/">Back to the todos</a></p>
+</section>

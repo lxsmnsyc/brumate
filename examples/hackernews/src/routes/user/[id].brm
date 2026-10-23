@@ -1,0 +1,70 @@
+<script module>
+  export const cache = { maxAge: 300 };
+</script>
+
+<script>
+  import { raw } from 'brumate/html';
+  import { getEvent } from 'brumate/server';
+  import { $memo, $props } from 'brumate/signals';
+  import { user } from '../../api.ts';
+
+  const { params } = $props<{ params: { id: string } }>();
+  const found = await $memo(user(params.id));
+  if (!found) {
+    getEvent().setStatus(404);
+  }
+</script>
+
+#head {
+  <title>{`${params.id} | Hacker News`}</title>
+}
+
+#if (found) {
+  <h1>{found.id}</h1>
+  <dl class="facts">
+    <dt>Created</dt>
+    <dd>{found.created}</dd>
+    <dt>Karma</dt>
+    <dd>{found.karma.toLocaleString('en')}</dd>
+  </dl>
+  #if (found.about) {
+    <div class="about">{raw(found.about)}</div>
+  }
+  <p class="links">
+    <a href=(`https://news.ycombinator.com/submitted?id=${found.id}`)>Submissions</a>
+    <a href=(`https://news.ycombinator.com/threads?id=${found.id}`)>Comments</a>
+  </p>
+} #else {
+  <h1>No user named {params.id}</h1>
+  <p><a href="/">Back to the top stories</a></p>
+}
+
+<style>
+  h1 {
+    font-size: 1.35rem;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 1rem 0 0;
+  }
+  dt {
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+  }
+  .about {
+    margin-top: 1rem;
+    overflow-wrap: anywhere;
+  }
+  .about :global(p) {
+    margin: 0.5rem 0 0;
+  }
+  .links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+</style>

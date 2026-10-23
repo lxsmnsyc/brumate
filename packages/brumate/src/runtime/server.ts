@@ -3130,12 +3130,15 @@ async function renderPage(
   const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
   const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
-  const links = hints.map((url) => `<${url}>; rel=modulepreload`);
+  // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
+  // header cannot, so the links are in the head only.
+  const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
+  const links = nonce ? [] : hints.map((url) => `<${url}>; rel=modulepreload`);
   if (links.length > 0) {
     options.earlyHints?.(links);
   }
   const preload = hints
-    .map((url) => `<link rel="modulepreload" href="${escapeAttribute(url)}">`)
+    .map((url) => `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`)
     .join('');
   const parts = await render(
     viewComponent(view, props),

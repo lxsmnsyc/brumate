@@ -315,14 +315,12 @@ export async function run({ browser, url, runner }) {
     const page = await browser.newPage();
     const errors = watch(page);
     const flow = runner.flow('website', { page, errors });
-    await flow('/: the home page loads and its counter demo counts', async () => {
+    await flow('/: the home page loads and its shop demo adds to the cart', async () => {
       await page.goto(url, { waitUntil: 'load' });
-      const button = page.locator('.demo-counter button');
+      const button = page.locator('.shop-add');
       await button.scrollIntoViewIfNeeded();
       await button.click();
-      await page
-        .locator('.demo-counter button', { hasText: 'Clicked 1 times' })
-        .waitFor({ timeout: 5000 });
+      await page.locator('.shop-cart b', { hasText: '1' }).waitFor({ timeout: 5000 });
     });
     await flow('/: a link to the docs navigates on the client', async () => {
       await page.evaluate(() => (window.__e2eSamePage = true));

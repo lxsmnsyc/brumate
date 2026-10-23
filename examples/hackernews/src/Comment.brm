@@ -1,0 +1,86 @@
+<script>
+  import { raw } from 'brumate/html';
+  import { $props, $signal } from 'brumate/signals';
+  import Comment from './Comment.brm';
+  import type { Comment as Data } from './hn.ts';
+
+  const { comment } = $props<{ comment: Data }>();
+  let open = $signal(true);
+
+  /** The comments under a comment, at every depth. */
+  function count(of: Data): number {
+    return of.comments.reduce((sum, reply) => sum + 1 + count(reply), 0);
+  }
+  // The comment renders on the server. Only `open` and this count go to the browser, so a
+  // thread folds without loading its text again.
+  const hidden = count(comment) + 1;
+</script>
+
+<li class="comment">
+  <div class="meta">
+    <button class="fold" onClick=(() => (open = !open)) aria-expanded=(open)>{open ? '−' : `+${hidden}`}</button>
+    #if (comment.user) {
+      <a class="who" href=(`/user/${comment.user}`)>{comment.user}</a>
+    } #else {
+      <span class="who">[deleted]</span>
+    }
+    <span>{comment.time_ago}</span>
+  </div>
+  <div class="thread" hidden=(!open)>
+    <div class="text">{raw(comment.content)}</div>
+    #if (comment.comments.length > 0) {
+      <ul class="replies">
+        #for (reply of comment.comments by reply.id) {
+          <Comment comment=reply />
+        }
+      </ul>
+    }
+  </div>
+</li>
+
+<style>
+  .comment {
+    margin-top: 1rem;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .fold {
+    min-width: 2rem;
+    padding: 0 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .who {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .text {
+    margin-top: 0.35rem;
+    overflow-wrap: anywhere;
+  }
+  .text :global(p) {
+    margin: 0.5rem 0 0;
+  }
+  .text :global(pre) {
+    overflow-x: auto;
+    padding: 0.5rem;
+    border-radius: 6px;
+    background: var(--soft);
+  }
+  .replies {
+    margin: 0;
+    padding-left: 1rem;
+    border-left: 2px solid var(--line);
+    list-style: none;
+  }
+</style>

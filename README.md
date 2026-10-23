@@ -61,6 +61,8 @@ pnpm --filter example-todos dev
 
 [`examples/tracker`](./examples/tracker) is a small issue tracker with sign-in, middleware, form validation, optimistic updates, streaming and a prerendered page. Run it with `pnpm --filter example-tracker dev`.
 
+[`examples/hackernews`](./examples/hackernews) is a Hacker News reader with feeds, threads of comments and users, cached on the server. Run it with `pnpm --filter example-hackernews dev`.
+
 [`examples/ui-kit`](./examples/ui-kit) is a package of components, and [`examples/kit-app`](./examples/kit-app) is an app that uses it.
 
 ## Documents

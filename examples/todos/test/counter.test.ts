@@ -8,6 +8,6 @@ it('counts after the page resumes', async () => {
   // The click loads the handler, so its update arrives a moment later.
   page.click('button');
   await page.waitFor(() => expect(page.text('button')).toBe('Clicked 2 times'));
-  expect(page.text('p')).toBe('Double: 4');
+  expect(page.text('.double')).toBe('Double: 4');
   page.unmount();
 });

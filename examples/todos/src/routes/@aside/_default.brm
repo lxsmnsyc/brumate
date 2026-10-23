@@ -1,1 +1,18 @@
-<p>Click a todo to mark it done.</p>
+<div class="tip">
+  <h2>Tip</h2>
+  <p>The server renders each page. The browser loads the code of a button the first time it is used, and nothing before.</p>
+</div>
+
+<style>
+  .tip {
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: var(--soft);
+  }
+  .tip h2 {
+    font-size: 0.95rem;
+  }
+  .tip p {
+    margin: 0.5rem 0 0;
+  }
+</style>

@@ -1,0 +1,14 @@
+<script module>
+  // Every visitor sees the same page, so the server keeps it for a minute.
+  export const cache = { maxAge: 60 };
+</script>
+
+<script>
+  import { getEvent } from 'brumate/server';
+  import Feed from '../Feed.brm';
+  import { pageOf } from '../feeds.ts';
+
+  const page = pageOf(getEvent().request.url);
+</script>
+
+<Feed path="/" page=page />

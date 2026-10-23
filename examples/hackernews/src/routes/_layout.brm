@@ -1,0 +1,121 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { children } = $props();
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Hacker News, rendered on the server with brumate">
+  </head>
+  <body>
+    <header class="bar">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true">Y</span> Hacker News</a>
+      <nav>
+        <a href="/new">new</a>
+        <a href="/show">show</a>
+        <a href="/ask">ask</a>
+        <a href="/jobs">jobs</a>
+      </nav>
+    </header>
+    <main class="page">{children}</main>
+    <footer class="foot">
+      Built with brumate, from the <a href="https://github.com/tastejs/hacker-news-pwas">HNPWA API</a>.
+    </footer>
+  </body>
+</html>
+
+<style>
+  :global(:root) {
+    --ink: #1f1d1b;
+    --muted: #77716a;
+    --line: #e8e3dc;
+    --soft: #f4f1ec;
+    --card: #fff;
+    --paper: #f7f5f1;
+    --orange: #ff6600;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root) {
+      --ink: #ece7e1;
+      --muted: #a49c93;
+      --line: #35302b;
+      --soft: #26221f;
+      --card: #1c1917;
+      --paper: #141210;
+      --orange: #ff7a1f;
+    }
+  }
+  :global(*, *::before, *::after) {
+    box-sizing: border-box;
+  }
+  :global(body) {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, sans-serif;
+  }
+  :global(a) {
+    color: var(--orange);
+  }
+  :global(h1, h2) {
+    margin: 0;
+    line-height: 1.25;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding: 0.6rem max(1rem, calc((100% - 52rem) / 2));
+    background: var(--orange);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .logo {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #fff;
+    font-size: 0.85rem;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+  }
+  nav a {
+    color: #fff;
+    opacity: 0.9;
+    text-decoration: none;
+  }
+  nav a:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+  .page {
+    max-width: 52rem;
+    margin: 1.25rem auto;
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+  }
+  .foot {
+    max-width: 52rem;
+    margin: 0 auto 2rem;
+    padding: 0 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+</style>

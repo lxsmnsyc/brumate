@@ -33,44 +33,123 @@
   <title>{`${left} left`}</title>
 }
 
-<h1>Todos</h1>
-<form onSubmit=(prevent(add))>
-  <input value=draft placeholder="What needs doing?" aria-label="New todo" onInput=((event) => (draft = event.currentTarget.value))>
-  <button>Add</button>
-</form>
-<ul>
-  #for (todo of todos by todo.id) {
-    <script>
-      function toggle() {
-        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+<div class="stack">
+  <section class="card">
+    <div class="head">
+      <h1>Todos</h1>
+      <p class="left">{left} left</p>
+    </div>
+    <form class="add" onSubmit=(prevent(add))>
+      <input class="field" value=draft placeholder="What needs doing?" aria-label="New todo" onInput=((event) => (draft = event.currentTarget.value))>
+      <button class="primary">Add</button>
+    </form>
+    <ul class="list">
+      #for (todo of todos by todo.id) {
+        <script>
+          function toggle() {
+            todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+          }
+        </script>
+        <li class={ done: todo.done }>
+          <button class="todo" onClick=toggle aria-pressed=(todo.done)>{todo.title}</button>
+        </li>
+      } #else {
+        <li class="empty">Nothing to do.</li>
       }
-    </script>
-    <li class={ done: todo.done }><button class="todo" onClick=toggle>{todo.title}</button></li>
-  } #else {
-    <li>Nothing to do.</li>
-  }
-</ul>
-<p>{left} left</p>
+    </ul>
+  </section>
 
-#loading {
-  <blockquote>{quote}</blockquote>
-} #else {
-  <p>Loading a quote…</p>
-}
+  <section class="card quote">
+    <h2>Quote of the day</h2>
+    #loading {
+      <blockquote>{quote}</blockquote>
+    } #else {
+      <p class="waiting">Loading a quote…</p>
+    }
+  </section>
 
-<h2>Counter</h2>
-<Counter start=3 />
+  <section class="card">
+    <h2>Counter</h2>
+    <Counter start=3 />
+  </section>
+</div>
 
 <style>
-  /* A todo is a button, so a keyboard can toggle it too. */
-  .todo {
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .left {
+    margin: 0;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .add {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+  }
+  .list {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0;
     padding: 0;
+    list-style: none;
+  }
+  /* A todo is a button, so a keyboard can toggle it too. The circle is drawn, so the text of
+     the button is the title alone. */
+  .todo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.6rem 0.5rem;
     border: 0;
+    border-radius: 10px;
     background: none;
-    font: inherit;
+    text-align: left;
     cursor: pointer;
   }
+  .todo:hover {
+    background: var(--soft);
+  }
+  .todo::before {
+    content: '';
+    flex: none;
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 2px solid var(--line);
+    border-radius: 50%;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
   .done .todo {
+    color: var(--done);
     text-decoration: line-through;
+  }
+  .done .todo::before {
+    border-color: var(--accent);
+    background: var(--accent)
+      url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 8.5l2.5 2.5L12 5.5" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+      center / 80% no-repeat;
+  }
+  .empty {
+    padding: 0.6rem 0.5rem;
+    color: var(--muted);
+  }
+  .quote blockquote {
+    margin: 0.75rem 0 0;
+    font-size: 1.15rem;
+    font-style: italic;
+  }
+  .waiting {
+    margin: 0.75rem 0 0;
+    color: var(--muted);
+  }
+  section > h2 + :global(*) {
+    margin-top: 0.75rem;
   }
 </style>

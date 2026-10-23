@@ -17,6 +17,7 @@ import {
 } from 'vite';
 import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
 import { entryClasses } from './captures.ts';
+import { refreshedNames } from './refreshes.ts';
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
@@ -403,6 +404,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const shapes = new Map<string, Shape>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
+  /** The names of the server functions that the app refreshes, or undefined before the first scan. */
+  let refreshed: Set<string> | undefined;
 
   /** The dependencies of the app that ship `.brm` files. See `packages.ts`. */
   let packages: BrumatePackage[] = [];
@@ -532,6 +535,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
     const sources = new Map(list.map((file, index) => [file, contents[index]!]));
     liveProps = analyzeProject(sources, resolveComponent);
+    // The server functions that the app refreshes, from its components and its scripts.
+    const scripts = await findScripts(root, exclude);
+    const scriptSources = await Promise.all(
+      [...new Set([...scripts, ...serverFiles.values()])].map((file) =>
+        readFile(file, 'utf8').catch(() => ''),
+      ),
+    );
+    refreshed = refreshedNames([...contents, ...scriptSources]);
     compiled.clear();
   };
 
@@ -539,6 +550,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const compileOptions = (file: string): CompileOptions => ({
     filename: nameOf(file),
     liveProps: liveProps.get(file),
+    refreshed,
     path: file,
     merge: options.merge ?? DEFAULT_MERGE,
     a11y: options.a11y,

@@ -227,7 +227,7 @@ export async function run({ browser, url, runner }) {
   // Without scripts, the forms still post, and the page shows the errors.
   const context = await browser.newContext({ javaScriptEnabled: false });
   const plain = await context.newPage();
-  const plainErrors = watch(plain);
+  const plainErrors = watch(plain, { scripts: false });
   const noScript = runner.flow('tracker', { page: plain, errors: plainErrors });
   await noScript('without scripts: sign in, and a short title shows its error', async () => {
     await plain.goto(`${url}/issues/new`);

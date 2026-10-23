@@ -1,4 +1,5 @@
 import { checkAccessibility } from './a11y.ts';
+import { ANY } from './refreshes.ts';
 import { checkCaptures } from './captures.ts';
 import { checkEnv } from './env-check.ts';
 import type { EnvImport } from './env-check.ts';
@@ -45,6 +46,13 @@ export interface CompileOptions {
    * server function calls `refresh` with it. The Vite plugin passes it.
    */
   serverImport?: (specifier: string, name: string) => string | undefined;
+  /**
+   * The names of the server functions that the project passes to
+   * `refresh`, from `refreshedNames`. A memo that calls an imported server
+   * function outside it renders on the server only. Without it, any imported
+   * server function can be refreshed.
+   */
+  refreshed?: ReadonlySet<string>;
   /**
    * The names of the server environment variables that an import gives,
    * such as `import env from './env.ts'`, or undefined for other imports.
@@ -325,8 +333,11 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
         declaration.imported.name,
       );
       if (declaration.serverImport !== undefined) {
-        // Any server function can refresh it, so the memos that call it load again on the client.
-        declaration.refreshed = true;
+        // A server function that the project refreshes, or any when the project is not known:
+        // the memos that call it load again on the client.
+        const name = declaration.imported.name;
+        declaration.refreshed =
+          !options.refreshed || options.refreshed.has(ANY) || options.refreshed.has(name);
         for (const read of declaration.reads) {
           read.site.calls.add(declaration);
         }

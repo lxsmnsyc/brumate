@@ -1,0 +1,111 @@
+<script module>
+  // Every visitor sees the same story, so the server keeps the page for a minute.
+  export const cache = { maxAge: 60 };
+</script>
+
+<script>
+  import { raw } from 'brumate/html';
+  import { getEvent } from 'brumate/server';
+  import { $memo, $props } from 'brumate/signals';
+  import Comment from '../../Comment.brm';
+  import { item } from '../../api.ts';
+
+  const { params } = $props<{ params: { id: string } }>();
+  const story = await $memo(item(Number(params.id)));
+  if (!story) {
+    getEvent().setStatus(404);
+  }
+</script>
+
+#head {
+  <title>{`${story?.title ?? 'Not found'} | Hacker News`}</title>
+}
+
+#if (story) {
+  <article class="story">
+    <h1>
+      #if (story.url.startsWith('item?id=')) {
+        {story.title}
+      } #else {
+        <a class="title" href=(story.url)>{story.title}</a>
+      }
+    </h1>
+    #if (story.domain) {
+      <p class="domain">{story.domain}</p>
+    }
+    <p class="meta">
+      #if (story.type !== 'job') {
+        <span>{story.points ?? 0} points</span>
+        <span>by <a href=(`/user/${story.user}`)>{story.user}</a></span>
+      }
+      <span>{story.time_ago}</span>
+    </p>
+    #if (story.content) {
+      <div class="text">{raw(story.content)}</div>
+    }
+  </article>
+
+  <section class="comments">
+    <h2>{story.comments_count === 1 ? '1 comment' : `${story.comments_count} comments`}</h2>
+    <ul class="comment-list">
+      #for (comment of story.comments by comment.id) {
+        <Comment comment=comment />
+      } #else {
+        <li class="none">No comments yet.</li>
+      }
+    </ul>
+  </section>
+} #else {
+  <h1>No story with the ID {params.id}</h1>
+  <p><a href="/">Back to the top stories</a></p>
+}
+
+<style>
+  .story {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  h1 {
+    font-size: 1.35rem;
+  }
+  .title {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .domain,
+  .meta {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.75rem;
+  }
+  .meta a {
+    color: inherit;
+  }
+  .text {
+    margin-top: 1rem;
+    overflow-wrap: anywhere;
+  }
+  .text :global(p) {
+    margin: 0.5rem 0 0;
+  }
+  .comments {
+    margin-top: 1.25rem;
+  }
+  h2 {
+    font-size: 1rem;
+  }
+  .comment-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .none {
+    margin-top: 0.75rem;
+    color: var(--muted);
+  }
+</style>

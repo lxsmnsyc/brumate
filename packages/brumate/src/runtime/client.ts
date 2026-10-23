@@ -1841,6 +1841,9 @@ function write(
   insertHTML(end ?? { parent }, insertValue(value));
 }
 
+/** The `value` and `checked` that updates last wrote to each field. */
+const fieldValues = new WeakMap<Element, Map<string, unknown>>();
+
 function setAttribute(element: Element, name: string, value: unknown): void {
   if (isBinding(value)) {
     value = value.value;
@@ -1850,7 +1853,15 @@ function setAttribute(element: Element, name: string, value: unknown): void {
   if (name === 'value' || name === 'checked') {
     const field = element as unknown as Record<string, unknown>;
     const next = name === 'checked' ? Boolean(value) : String(value ?? '');
-    if (field[name] !== next) {
+    // The field takes the value when it differs from the value that updates wrote last, not each
+    // time an update runs, so what the user typed or checked stays while the value stays, such
+    // as the posted values of a form that validation reads again. Before the first write, the
+    // field is compared as it is now.
+    const written = fieldValues.get(element) ?? new Map<string, unknown>();
+    fieldValues.set(element, written);
+    const before = written.has(name) ? written.get(name) : field[name];
+    written.set(name, next);
+    if (!Object.is(before, next) && field[name] !== next) {
       field[name] = next;
     }
   }
