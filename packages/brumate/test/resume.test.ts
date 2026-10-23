@@ -1900,6 +1900,26 @@ describe('validation with $action', () => {
   });
 });
 
+describe('attributes with true and false', () => {
+  it('renders and updates the words of attributes that say their state', async () => {
+    await resume('ariaSwitch', {});
+    const toggle = document.querySelector('.toggle')!;
+    const menu = document.querySelector('.menu')!;
+    const words = (): (string | null)[] => [
+      toggle.getAttribute('aria-expanded'),
+      menu.getAttribute('aria-hidden'),
+      menu.getAttribute('draggable'),
+      menu.getAttribute('spellcheck'),
+      menu.getAttribute('translate'),
+    ];
+    expect(words()).toEqual(['false', 'true', 'false', 'false', 'no']);
+    // An attribute without a value stays empty when a spread merges with it.
+    expect(document.querySelector('.flag')!.getAttribute('data-ready')).toBe('');
+    click(toggle);
+    await waitFor(() => expect(words()).toEqual(['true', 'false', 'true', 'false', 'yes']));
+  });
+});
+
 describe('refresh', () => {
   it('loads again the memos that call a server function that another one refreshed', async () => {
     vi.resetModules();

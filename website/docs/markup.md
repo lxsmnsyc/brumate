@@ -38,7 +38,11 @@ An attribute takes a quoted string, a value without quotes, or an expression in 
 - A quoted value is a plain string.
 - A value without quotes is a name, a property path or a call, such as `draft`, `user.avatar` or `format(date)`. Numbers, objects, arrays and template strings work without parentheses too.
 - Anything else, such as an operator, needs parentheses: `(count > 0)`.
-- `true` renders the attribute without a value, and `false`, `null` and `undefined` leave it out. Use `String(open)` for an attribute that must say `false`, such as `aria-expanded`.
+- `null` and `undefined` leave the attribute out.
+- `true` and `false` depend on the attribute:
+  - An attribute that says its state in its value gets the word: `aria-*` and `data-*`, `contenteditable`, `draggable`, `spellcheck` and `writingsuggestions` say `"true"` or `"false"`, `translate` says `"yes"` or `"no"`, and `autocomplete` and `autocorrect` say `"on"` or `"off"`. So `aria-expanded=open` renders `aria-expanded="false"` when `open` is `false`.
+  - Any other attribute, such as `disabled` or `open`, is there for `true`, without a value, and left out for `false`.
+- An attribute without a value in the markup, such as `<input disabled>` or `<div data-ready>`, renders as it is written.
 
 Shorthands:
 

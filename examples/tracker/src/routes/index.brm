@@ -75,7 +75,7 @@
       <button
         class={ star: true, on: issue.starred }
         aria-label=(`Star #${issue.id}`)
-        aria-pressed=(String(issue.starred))
+        aria-pressed=issue.starred
         onClick=(() => star(issue.id))
       >{issue.starred ? '★' : '☆'}</button>
       <div>

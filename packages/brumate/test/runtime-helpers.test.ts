@@ -68,6 +68,30 @@ describe('classValue', () => {
   });
 });
 
+describe('attributes with true and false', () => {
+  it('renders the words of an attribute that says its state in its value', () => {
+    expect(attribute('aria-hidden', true)).toBe(' aria-hidden="true"');
+    expect(attribute('aria-expanded', false)).toBe(' aria-expanded="false"');
+    expect(attribute('data-active', false)).toBe(' data-active="false"');
+    expect(attribute('draggable', true)).toBe(' draggable="true"');
+    expect(attribute('contentEditable', false)).toBe(' contentEditable="false"');
+    expect(attribute('spellcheck', false)).toBe(' spellcheck="false"');
+    expect(attribute('translate', false)).toBe(' translate="no"');
+    expect(attribute('autocomplete', false)).toBe(' autocomplete="off"');
+    expect(attribute('autocorrect', true)).toBe(' autocorrect="on"');
+  });
+
+  it('keeps the presence of other attributes, and leaves any attribute out for null', () => {
+    expect(attribute('disabled', true)).toBe(' disabled');
+    expect(attribute('disabled', false)).toBe('');
+    expect(attribute('pill', false)).toBe('');
+    expect(attribute('aria-expanded', null)).toBe('');
+    expect(attribute('aria-expanded', undefined)).toBe('');
+    expect(attribute('aria-label', 'Close')).toBe(' aria-label="Close"');
+    expect(attribute('hidden', 'until-found')).toBe(' hidden="until-found"');
+  });
+});
+
 describe('the first render', () => {
   it('finds the head and body end in any case', async () => {
     const html = await text(renderToStream(Upper, {}, { head: '<meta a>', scripts: '<s>' }));

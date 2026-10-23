@@ -14,7 +14,7 @@
     <li
       class="option"
       role="option"
-      aria-selected=(String(select?.value === option))
+      aria-selected=(select?.value === option)
       onClick=(() => select?.choose(option))
     >{item ? item({ option, selected: select?.value === option }) : option}</li>
   }
