@@ -201,6 +201,8 @@ export interface ScopeEntry {
   record: ScopeState;
   /** The render whose state holds the record. */
   ctx: Context | undefined;
+  /** The ID space that finds the scope by its ID, for a scope that `scope()` made. */
+  space?: IdSpace;
   /** The scope that the contexts of this one are found in. */
   parent?: ScopeId;
   /** The values of contexts that this scope provides. */
@@ -393,7 +395,7 @@ export class Context {
       up = inserted.at;
       record.t = inserted.at;
     }
-    const entry: ScopeEntry = { id, prefix: space.prefix, n, record, ctx: this, parent: up };
+    const entry: ScopeEntry = { id, prefix: space.prefix, n, record, ctx: this, parent: up, space };
     this.scopes.push(entry);
     space.entries.push(entry);
     this.last = entry;
@@ -536,21 +538,21 @@ export class Context {
    */
   private drop(mark: Mark): void {
     this.last = undefined;
-    const kept = this.scopes.filter((entry) => {
+    // The scopes are kept in place, since a spread of a long list would pass too many arguments.
+    const { scopes } = this;
+    let kept = 0;
+    for (const entry of scopes) {
       if (!madeAfter(mark, entry.id)) {
-        return true;
+        scopes[kept++] = entry;
+        continue;
       }
-      if (entry.ctx === this) {
-        // A `#try` body that threw is rare, so its spaces are looked for one by one.
-        const space = this.root.made.find((item) => item.prefix === entry.prefix);
-        if (space?.entries[entry.n - space.first] === entry) {
-          space.entries[entry.n - space.first] = undefined;
-        }
+      const { space } = entry;
+      if (space?.entries[entry.n - space.first] === entry) {
+        space.entries[entry.n - space.first] = undefined;
       }
       this.partials?.delete(entry.id);
-      return false;
-    });
-    this.scopes.splice(0, this.scopes.length, ...kept);
+    }
+    scopes.length = kept;
   }
 
   /** The scope of this render with an ID, or the record that this render adds to another's. */
