@@ -48,22 +48,3 @@ export const typed = highlight(
 <button onClick=(() => price++)>{format(price)}</button>`,
   'brm',
 );
-
-// What the compiler makes of the server function above, shortened: the server keeps the body,
-// and the click handler of the browser calls it by its ID.
-export const serverSide = highlight(
-  `import { db } from '../db.ts';
-
-async function like(id: number) {
-  return db.posts.like(id);
-}`,
-  'ts',
-);
-
-export const browserSide = highlight(
-  `const like = (...args) =>
-  rpc('Post#like', args);
-
-likes = await like(1);`,
-  'ts',
-);

@@ -1202,50 +1202,80 @@ pre {
   }
 }
 
-.split-arrow,
-.split-call {
-  margin: 0;
-  color: var(--muted);
+/* A call of a server function: the arguments go to the server, and the result comes back. */
+.wire {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
   font-size: 0.85rem;
 }
 
-.split {
+.wire-end {
   display: grid;
-  gap: 0.6rem;
-}
-
-.split-side {
-  min-width: 0;
+  gap: 0.15rem;
+  padding: 0.5rem 0.8rem;
   border: 1px solid var(--border);
-  border-top: 3px solid var(--muted);
-  border-radius: var(--radius);
-  background: var(--code-bg);
-  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 600;
+  text-align: center;
 }
 
-.split-side.browser {
-  border-top-color: var(--accent);
+.wire-end.server {
+  border-color: var(--accent);
 }
 
-.split-label {
-  margin: 0;
-  padding: 0.4rem 0.75rem 0;
+.wire-end small {
   color: var(--muted);
   font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 400;
 }
 
-.split-side.browser .split-label {
-  color: var(--accent-strong);
+.wire-lines {
+  display: grid;
+  gap: 1.1rem;
 }
 
-.split-side .code {
-  margin: 0;
-  border: 0;
-  background: transparent;
+/* Each line is an arrow, with its value on it. */
+.wire-line {
+  position: relative;
+  height: 2px;
+  background: var(--muted);
+  text-align: center;
+}
+
+.wire-line code {
+  position: relative;
+  top: -0.7rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
   font-size: 0.75rem;
+}
+
+.wire-line.back code {
+  background: var(--cool);
+}
+
+.wire-line::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  border: 5px solid transparent;
+}
+
+.wire-line.out::after {
+  right: -2px;
+  border-left: 8px solid var(--muted);
+  border-right: 0;
+}
+
+.wire-line.back::after {
+  left: -2px;
+  border-right: 8px solid var(--muted);
+  border-left: 0;
 }
 
 .type-error {

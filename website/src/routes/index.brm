@@ -4,7 +4,7 @@
   import Shipped from '../components/Shipped.brm';
   import ShipsMap from '../components/ShipsMap.brm';
   import BusyStrips from '../components/BusyStrips.brm';
-  import { browserSide, serverFunctions, serverSide, streaming, typed } from '../home/snippets.ts';
+  import { serverFunctions, streaming, typed } from '../home/snippets.ts';
   import * as counter from '../demos/Counter.brm?inspect';
   import * as todos from '../demos/Todos.brm?inspect';
   import Shop from '../demos/Shop.brm';
@@ -148,18 +148,14 @@
       </div>
       <div class="row-media">
         <div class="code">{serverFunctions}</div>
-        <p class="split-arrow">The compiler splits it in two:</p>
-        <div class="split">
-          <div class="split-side">
-            <p class="split-label">Server: the body stays here</p>
-            <div class="code">{serverSide}</div>
-          </div>
-          <div class="split-side browser">
-            <p class="split-label">Browser: the click handler gets this</p>
-            <div class="code">{browserSide}</div>
-          </div>
+        <div class="wire" role="img" aria-label="The browser calls like(1). The server runs the body of like with the database and sends back the result, 13 likes.">
+          <span class="wire-end">Browser<small>on click</small></span>
+          <span class="wire-lines">
+            <span class="wire-line out"><code>like(1)</code></span>
+            <span class="wire-line back"><code>13</code></span>
+          </span>
+          <span class="wire-end server">Server<small>runs the body, with <code>db</code></small></span>
         </div>
-        <p class="split-call">A click posts <code>[1]</code> to <code>/_brumate/Post#like</code>. The server runs <code>like(1)</code> and sends back the result.</p>
       </div>
     </article>
 
