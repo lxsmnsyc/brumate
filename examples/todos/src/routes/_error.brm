@@ -8,5 +8,14 @@
   <title>{`Error ${error.status}`}</title>
 }
 
-<h1>Something went wrong</h1>
-<p class="error">{error.status}: {error.message}</p>
+<section class="card">
+  <h1>Something went wrong</h1>
+  <p class="error">{error.status}: {error.message}</p>
+  <p><a href="/">Back to the todos</a></p>
+</section>
+
+<style>
+  .error {
+    margin-top: 0.5rem;
+  }
+</style>

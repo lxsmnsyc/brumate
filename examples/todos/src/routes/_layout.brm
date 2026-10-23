@@ -8,28 +8,192 @@
   let wide = $signal(false);
 </script>
 
-<style>
-  .page {
-    display: flex;
-    gap: 2rem;
-  }
-  .wide {
-    gap: 6rem;
-  }
-</style>
-
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
-    <nav><a href="/">Todos</a> | <a href=(href('/counter/[start]', { start: '10' }))>Counter</a> | <a href="/guestbook">Guestbook</a>
-      <button class="toggle" onClick=(() => (wide = !wide))>{wide ? 'Narrow' : 'Wide'}</button>
-    </nav>
+    <header class={ bar: true, wide }>
+      <a class="brand" href="/"><span class="mark" aria-hidden="true">✓</span> Todos</a>
+      <nav>
+        <a href="/">Todos</a>
+        <a href=(href('/counter/[start]', { start: '10' }))>Counter</a>
+        <a href="/guestbook">Guestbook</a>
+      </nav>
+      <button class="toggle" onClick=(() => (wide = !wide)) aria-pressed=(wide)>{wide ? 'Narrow' : 'Wide'}</button>
+    </header>
     <div class={ page: true, wide }>
       <main>{children}</main>
       <aside>{aside}</aside>
     </div>
   </body>
 </html>
+
+<style>
+  :global(:root) {
+    --ink: #24211e;
+    --muted: #6f675f;
+    --line: #e6dfd6;
+    --soft: #f6f1ea;
+    --card: #fffdfa;
+    --paper: #fbf8f3;
+    --accent: #e0633a;
+    --accent-ink: #fff;
+    --done: #8a8178;
+    --danger: #c0392b;
+    --radius: 14px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root) {
+      --ink: #eee8e1;
+      --muted: #a89f95;
+      --line: #3a342f;
+      --soft: #2a2622;
+      --card: #211e1b;
+      --paper: #181513;
+      --accent: #f08158;
+      --accent-ink: #1b1411;
+      --done: #7d746b;
+      --danger: #f08a7c;
+    }
+  }
+  :global(*, *::before, *::after) {
+    box-sizing: border-box;
+  }
+  :global(body) {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, sans-serif;
+  }
+  :global(h1, h2) {
+    margin: 0;
+    line-height: 1.2;
+  }
+  :global(h1) {
+    font-size: 1.6rem;
+  }
+  :global(h2) {
+    font-size: 1.1rem;
+  }
+  :global(a) {
+    color: var(--accent);
+  }
+  :global(button, input) {
+    font: inherit;
+    color: inherit;
+  }
+  /* Buttons that do something, such as Add and Sign. */
+  :global(.primary) {
+    padding: 0.55rem 1rem;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  :global(.primary:disabled) {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  :global(.field) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--paper);
+  }
+  :global(.field:focus-visible, .primary:focus-visible, button:focus-visible, a:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  :global(.card) {
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+  }
+  :global(.stack) {
+    display: grid;
+    gap: 1rem;
+  }
+  :global(.error) {
+    margin: 0;
+    color: var(--danger);
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: inherit;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .mark {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 0.9rem;
+  }
+  nav {
+    display: flex;
+    gap: 1.25rem;
+  }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  .toggle {
+    margin-left: auto;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: 1.5rem;
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 0 1rem 3rem;
+  }
+  /* The wide layout gives the page the whole width, and puts the aside under it. */
+  .page.wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wide {
+    max-width: 80rem;
+  }
+  aside {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  @media (max-width: 44rem) {
+    .page {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

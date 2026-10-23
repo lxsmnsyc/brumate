@@ -6,5 +6,32 @@
   const double = $memo(count * 2);
 </script>
 
-<button onClick=(() => count++)>Clicked {count} times</button>
-<p>Double: {double}</p>
+<div class="counter">
+  <button class="count" onClick=(() => count++)>Clicked {count} times</button>
+  <p class="double">Double: {double}</p>
+</div>
+
+<style>
+  .counter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+  .count {
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--soft);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .count:hover {
+    border-color: var(--accent);
+  }
+  .double {
+    margin: 0;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

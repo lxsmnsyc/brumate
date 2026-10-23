@@ -9,4 +9,15 @@
   <title>Counter</title>
 }
 
-<Counter start=(Number(params.start)) />
+<section class="card">
+  <h1>Counter</h1>
+  <p class="intro">It starts at the number in the URL. Try /counter/42.</p>
+  <Counter start=(Number(params.start)) />
+</section>
+
+<style>
+  .intro {
+    margin: 0.25rem 0 1rem;
+    color: var(--muted);
+  }
+</style>

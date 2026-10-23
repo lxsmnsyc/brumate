@@ -9,9 +9,9 @@ it('toggles a todo, streams the quote, and resumes the counter inside it', async
       { id: '2', title: 'Ship it', done: false },
     ],
   });
-  expect(page.text('ul + p')).toBe('2 left');
+  expect(page.text('.left')).toBe('2 left');
   page.click('li button');
-  await page.waitFor(() => expect(page.text('ul + p')).toBe('1 left'));
+  await page.waitFor(() => expect(page.text('.left')).toBe('1 left'));
   expect(page.get('li').className).toBe('done');
 
   // The quote streams in after the rest of the page.
@@ -21,7 +21,7 @@ it('toggles a todo, streams the quote, and resumes the counter inside it', async
     3000,
   );
 
-  page.click('h2 + button');
-  await page.waitFor(() => expect(page.text('h2 + button')).toBe('Clicked 4 times'));
+  page.click('.count');
+  await page.waitFor(() => expect(page.text('.count')).toBe('Clicked 4 times'));
   page.unmount();
 });

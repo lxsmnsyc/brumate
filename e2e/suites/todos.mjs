@@ -37,11 +37,11 @@ export async function run({ browser, url, runner }) {
   });
 
   await step('/: toggling a todo updates the count', async () => {
-    const before = await text(page, 'main p');
+    const before = await text(page, '.left');
     assert(before === '1 left', `the page starts with "${before}"`);
     await page.click('button.todo >> nth=1');
     await page.waitForFunction(
-      () => document.querySelector('main p').textContent.trim() === '0 left',
+      () => document.querySelector('.left').textContent.trim() === '0 left',
       null,
       { timeout: TIMEOUT },
     );
@@ -56,7 +56,7 @@ export async function run({ browser, url, runner }) {
       TRICKY,
       { timeout: TIMEOUT },
     );
-    assert((await text(page, 'main p')) === '1 left', 'the count did not include the new todo');
+    assert((await text(page, '.left')) === '1 left', 'the count did not include the new todo');
     assert(
       (await page.inputValue('input[aria-label="New todo"]')) === '',
       'the input was not cleared',
@@ -95,10 +95,10 @@ export async function run({ browser, url, runner }) {
     await page.click('nav a[href="/"]');
     await page.waitForURL(`${url}/`, { timeout: TIMEOUT });
     await page.waitForSelector('blockquote', { timeout: TIMEOUT });
-    const before = await text(page, 'main p');
+    const before = await text(page, '.left');
     await page.click('button.todo >> nth=1');
     await page.waitForFunction(
-      (previous) => document.querySelector('main p').textContent.trim() !== previous,
+      (previous) => document.querySelector('.left').textContent.trim() !== previous,
       before,
       { timeout: TIMEOUT },
     );
