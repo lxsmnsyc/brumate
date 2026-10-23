@@ -1612,6 +1612,15 @@ describe('#reveal', () => {
     expect(await streamOrder('revealOrder', ['second', 'third', 'first'])).toEqual(['0', '1', '2']);
   });
 
+  it('orders the #loading blocks of the components that it renders', async () => {
+    expect(await streamOrder('revealParts', ['third', 'second', 'first'])).toEqual(['0', '1', '2']);
+    const server = await import(file('revealParts.brm.ts'));
+    const page = await renderParts(server.default, waits());
+    // Only the fallback of the first component shows.
+    expect(page.html).toContain('<p class="wait-first">Loading first</p>');
+    expect(page.html).toMatch(/<template b-f="1"><p class="wait-second">/);
+  });
+
   it('lets a body that fails take its turn, so the bodies after it still show', async () => {
     const server = await import(file('revealOrder.brm.ts'));
     const { wait, go } = waits();

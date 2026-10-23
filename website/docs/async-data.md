@@ -95,7 +95,7 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - `collapsed`, with `'sequential'`, shows only the fallback of the next body to show. The others appear one at a time, as the body before each shows.
 - The data of every body still loads at once. Only the showing waits, on the server, so it needs no code in the browser.
 - A body that fails keeps its fallback and takes its turn, so the bodies after it still show.
-- It orders the `#loading` blocks in its markup, in the same file. A block inside a component that it renders shows when it is ready, as the component has no `#reveal` of its own.
+- It orders the `#loading` blocks in its markup, and those of the components that it renders, such as a list of cards that each load their own data.
 - A `#reveal` inside a `#loading` body orders the bodies of that body. Markup that the browser renders has no stream, so there `#reveal` renders its children as they are. `#defer` blocks inside it are not ordered.
 
 ## `$isPending`

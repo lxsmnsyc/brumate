@@ -511,7 +511,7 @@ describe('await', () => {
       'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
     );
     // The body renders in place when the tags are ready too, and streams otherwise.
-    expect(server).toContain('if ($$b.settled([$$p_tags])) {');
+    expect(server).toContain('if ($$b.settled([$$p_tags]) && $$ctx.mayShow()) {');
     expect(server).toContain('$$ctx.enter($$boundary0);');
     expect(server).toContain('const tags = $$b.read($$p_tags);');
     expect(server).toContain('$$ctx.defer($$boundary0, async ($$ctx) => {');
@@ -529,7 +529,7 @@ describe('await', () => {
     expect(server.indexOf('const user = (($$t = $$b.ready($$p_user))')).toBeGreaterThan(
       server.indexOf('$$ctx.defer($$boundary0'),
     );
-    expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user])) {');
+    expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user]) && $$ctx.mayShow()) {');
     expect(server).toMatch(
       /defer\(\$\$boundary0, async \(\$\$ctx\) => \{\n\s+let \$\$html = '';\n\s+const tags = .*\n\s+const user = /,
     );

@@ -925,18 +925,11 @@ export class Context {
   }
 
   /** Renders a `#loading` body after the rest of the page, in its own context and ID space. */
-  defer(
-    id: ScopeId,
-    ...args:
-      | [renderBody: (ctx: Context) => Promise<string>]
-      | [inReveal: true, renderBody: (ctx: Context) => Promise<string>]
-  ): void {
-    // A block that the compiler found inside a `#reveal` of its file joins the group of the block.
-    const inReveal = args.length === 2;
-    const renderBody = args.at(-1) as (ctx: Context) => Promise<string>;
+  defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
     const target = this.root.target;
     if (!target || this.inTarget) {
-      this.register(id, renderBody, this.inTarget, false, inReveal);
+      // A block in the markup of a `#reveal`, or in a component that it renders, joins its group.
+      this.register(id, renderBody, this.inTarget);
     } else if (holdsBoundary(id, target.boundary)) {
       // The request for a `#defer` body renders the bodies around it, without sending them.
       this.register(id, renderBody, false, true);
@@ -978,11 +971,10 @@ export class Context {
     renderBody: (ctx: Context) => Promise<string>,
     inTarget: boolean,
     around = false,
-    inReveal = false,
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
-    const group = inReveal ? this.reveal : undefined;
+    const group = this.reveal;
     group?.add(id);
     const boundary: Boundary = {
       id,
