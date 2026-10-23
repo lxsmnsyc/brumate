@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import BindChild from './BindChild.brm';
+
+  // The rest keeps the binding, so the spread binds the child's prop.
+  const { ...rest } = $props();
+</script>
+
+<BindChild label="passed" {...rest} />

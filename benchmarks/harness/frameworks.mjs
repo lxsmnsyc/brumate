@@ -13,7 +13,15 @@ export function discover() {
       (entry) => entry.isDirectory() && existsSync(path.join(benchDir, entry.name, 'adapter.js')),
     )
     .map((entry) => entry.name)
-    .toSorted((a, b) => (a === 'brumate' ? -1 : b === 'brumate' ? 1 : a.localeCompare(b)));
+    .toSorted((a, b) => {
+      if (a === 'brumate') {
+        return -1;
+      }
+      if (b === 'brumate') {
+        return 1;
+      }
+      return a.localeCompare(b);
+    });
 }
 
 export function appDir(name) {

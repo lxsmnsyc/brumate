@@ -47,6 +47,8 @@ const UNSHARED = new Set([
   '$title',
   '$action',
   '$props',
+  // The reference of a handler names a part of the component that calls the function.
+  '$handler',
 ]);
 
 interface Analysis {
@@ -181,16 +183,18 @@ function analyze(module: ReactiveModule): Analysis {
         }
       });
       const findWrites = (current: oxc.Node): void => {
-        const target =
-          current.type === 'AssignmentExpression'
-            ? current.left
-            : current.type === 'UpdateExpression'
-              ? current.argument
-              : current.type === 'CallExpression' &&
-                  current.callee.type === 'Identifier' &&
-                  macros.get(current.callee.name) === '$produce'
-                ? current.arguments[0]
-                : undefined;
+        let target: oxc.Node | undefined;
+        if (current.type === 'AssignmentExpression') {
+          target = current.left;
+        } else if (current.type === 'UpdateExpression') {
+          target = current.argument;
+        } else if (
+          current.type === 'CallExpression' &&
+          current.callee.type === 'Identifier' &&
+          macros.get(current.callee.name) === '$produce'
+        ) {
+          target = current.arguments[0];
+        }
         if (target?.type === 'Identifier' && locals.has(target.name)) {
           writes.add(target.name);
         }

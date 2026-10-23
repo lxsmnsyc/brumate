@@ -53,3 +53,21 @@ it('serves the client entry, and answers a form post with the page', async () =>
   // The page renders again with the new note, in the element that marks its item.
   expect(await answer.text()).toMatch(/<li b-b="[\d.:]+">From the test<\/li>/);
 });
+
+it('keeps the page, and drops it when a note is added', async () => {
+  const page = (): Promise<Response> => fetch(`http://localhost:${port}/`);
+  expect((await page()).headers.get('cache-control')).toBe('public, max-age=60');
+  // The server answers from the page that it kept.
+  expect((await page()).headers.get('x-brumate-cache')).toBe('hit');
+  const html = await (await page()).text();
+  const action = /<form action="([^"]+)"/.exec(html)![1]!.replaceAll('&amp;', '&');
+  await fetch(`http://localhost:${port}/${action}`, {
+    method: 'POST',
+    body: new URLSearchParams({ text: 'Kept no more' }),
+    headers: { origin: `http://localhost:${port}` },
+  });
+  // Adding the note revalidated the tag of the list, so the page renders again with it.
+  const after = await page();
+  expect(after.headers.get('x-brumate-cache')).toBeNull();
+  expect(await after.text()).toContain('Kept no more');
+});

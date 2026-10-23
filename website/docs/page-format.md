@@ -34,7 +34,7 @@ An anchor is a node that client code must find. Each anchor has an index within 
 
 - `b-b` is the anchor.
 - An element whose only client code is its handlers has no `b-b` when an element around it in the same scope has one. The core finds the scope of its handlers with `closest('[b-b]')`. The compiler does this only when that element is one the browser keeps whole, so not a `<p>`, a heading, a table section or a `<select>`.
-- `b-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`.
+- `b-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`. A handler that a spread passed on adds `@<scope>`, the scope it runs in, and one that `$handler` made adds `@<arguments>`, its arguments as JSON encoded with `encodeURIComponent`, such as `click:prevent=Page_x1#h9@3@%5B1%5D`.
 - `data-prefetch` is the `prefetch` strategy, when it is set.
 - `b-v="<scope>"` marks a top-level element of a component whose style variables can change.
 
@@ -106,6 +106,8 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 - The state record holds the scopes of the body. It comes after the swap, so the markup of its scopes is in the page when the core reads it.
 
 If the body fails, the fallback stays.
+
+In a `#reveal (collapsed)` block, a fallback that waits for its turn is in `<template b-f="<id>">` between the markers. The script that shows the body before it also calls `$bF(<id>)`, which moves the fallback out of its template. The first such script defines `$bF`.
 
 A body whose values are ready when the block renders, and that renders no component, dynamic tag, template or prop, renders in place: no markers, no `<template>` and no swap script. Its scopes get the IDs of the boundary, such as `0.0`, as they would in a stream, and they are in the page state.
 

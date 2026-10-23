@@ -1,0 +1,77 @@
+<script module>
+  import type { StandardSchemaV1 } from 'brumate/server';
+
+  type Order = { email: string; items: { name: string }[] };
+
+  // A schema written by hand: an email, and items that each need a name.
+  const Order: StandardSchemaV1<unknown, Order> = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      validate(value) {
+        const { email, items = [] } = value as { email?: string; items?: { name?: string }[] };
+        const issues: StandardSchemaV1.Issue[] = [];
+        if (!email?.includes('@')) {
+          issues.push({ message: 'Enter an email address', path: ['email'] });
+        }
+        items.forEach((item, index) => {
+          if (!item?.name) {
+            issues.push({ message: 'Name the item', path: ['items', index, 'name'] });
+          }
+        });
+        return issues.length > 0
+          ? { issues }
+          : { value: { email: email!, items: items as { name: string }[] } };
+      },
+    },
+  };
+</script>
+
+<script>
+  import { createForm } from 'brumate/forms';
+  import { parseSubmission } from 'brumate/server';
+
+  async function save(form: FormData) {
+    'use server';
+    const submission = await parseSubmission(Order, form);
+    if (submission.status !== 'success') {
+      return submission.reply();
+    }
+    if (submission.value.email === 'taken@example.com') {
+      return submission.reply({ formErrors: ['That email has an order already'] });
+    }
+    return submission.reply({ reset: true });
+  }
+
+  const { attrs, fields, errors, defaultSubmit, result } = createForm(save, Order, {
+    defaultValue: { email: '', items: [{ name: '' }] },
+  });
+</script>
+
+<form class="order" action=save {...attrs}>
+  <button class="default" {...defaultSubmit}></button>
+  <label for=(fields.email.id)>Email</label>
+  <input class="email" {...fields.email.attrs}>
+  #if (fields.email.errors) {
+    <p class="email-error" {...fields.email.errorAttrs}>{fields.email.errors[0]}</p>
+  }
+  <ul>
+    #for (item of fields.items.list by item.key) {
+      <li>
+        <input class="item" {...item.fields.name.attrs}>
+        #if (item.fields.name.errors) {
+          <span class="item-error">{item.fields.name.errors[0]}</span>
+        }
+        <button class="remove" {...item.remove}>Remove</button>
+      </li>
+    }
+  </ul>
+  <button class="insert" {...fields.items.insert}>Add an item</button>
+  #if (errors) {
+    <p class="form-error" role="alert">{errors[0]}</p>
+  }
+  #if (result?.status === 'success') {
+    <p class="saved">Saved</p>
+  }
+  <button class="save">Save</button>
+</form>

@@ -356,8 +356,10 @@ class ClientGenerator {
     const result = new Set<Declaration>();
     for (const site of sites) {
       // Shared code of a module function imports what it needs itself. The part only builds its
-      // cells, which read values and functions of the component.
-      const shared = this.shared?.find(site.node) !== undefined;
+      // cells, which read values and functions of the component. Code whose names have no value
+      // in the browser, such as a constant of the module script, is copied with its imports.
+      const shared =
+        this.rewriter.sharedCall(site, '$$s', instanceScope(this.plan, site.scope)) !== undefined;
       for (const read of site.reads) {
         if (!shared || read.declaration.kind !== 'import') {
           result.add(read.declaration);
@@ -838,11 +840,12 @@ class ClientGenerator {
       const insert = this.findInsert(site);
       const anchor = insert && this.plan.anchors.get(insert);
       if (anchor !== undefined) {
-        const fn = this.plan.textContents.has(insert!)
-          ? 'writeText'
-          : this.plan.contents.has(insert!)
-            ? 'content'
-            : 'text';
+        let fn = 'text';
+        if (this.plan.textContents.has(insert!)) {
+          fn = 'writeText';
+        } else if (this.plan.contents.has(insert!)) {
+          fn = 'content';
+        }
         this.emit(
           `export function ${name('u')}($$s) {\n  $$b.${fn}($$s, ${anchor}, ${expression()});\n}`,
         );
@@ -895,7 +898,17 @@ class ClientGenerator {
     }
     if (owner.kind === 'component') {
       if (attribute.kind === 'spread') {
-        this.error('A spread on a component cannot change on the client yet', site.range);
+        // The props after the spread win over it, as on the server.
+        const after = owner.attributes
+          .slice(owner.attributes.indexOf(attribute) + 1)
+          .flatMap((item) =>
+            item.kind === 'static' || item.kind === 'value' || item.kind === 'event'
+              ? [item.name]
+              : [],
+          );
+        this.emit(
+          `export function ${name('u')}($$s) {\n  $$b.spreadProps($$s, ${anchor}, ${expression()}, ${JSON.stringify(after)});\n}`,
+        );
         return;
       }
       this.emit(
@@ -1123,7 +1136,12 @@ class ClientGenerator {
       });
       const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
       const isCatch = block.kind === 'try' && block.fallback === body;
-      const params = isItem ? ', $$item, $$index' : isCatch ? ', $$error' : '';
+      let params = '';
+      if (isItem) {
+        params = ', $$item, $$index';
+      } else if (isCatch) {
+        params = ', $$error';
+      }
       emitter.line(`export function r${scope.id}($$p${params}) {`);
       emitter.line(`let $$html = '';`);
       if (block.kind === 'try' && isCatch) {

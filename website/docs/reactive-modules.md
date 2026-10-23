@@ -98,6 +98,8 @@ Here `area` follows `size`, because the memo reads the component's signal. With 
 
 A module function can use `$effect`, `$client`, `$produce`, `$untrack` and the rest. They behave as in the component that calls the function.
 
+A function that gives a handler with [`$handler`](./components.md#handlers-that-a-script-makes) is compiled into each component that calls it, rather than shared, because its handler is a part of that component.
+
 ```brm live
 <script>
   import { clock } from './clock.brm.ts';

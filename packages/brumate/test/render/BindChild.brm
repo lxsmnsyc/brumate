@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { label } = $props();
+  // A prop that the component writes: its own copy, or the parent's signal when the parent binds it.
+  let { open = false } = $props();
+</script>
+
+<button class=(`child ${label}`) onClick=(() => (open = !open))>{label}: {open ? 'open' : 'closed'}</button>

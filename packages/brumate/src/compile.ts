@@ -53,6 +53,11 @@ export interface CompileOptions {
    */
   envImport?: EnvImport;
   /**
+   * Classes that the plugins of the serial entry send, such as `Money`, so a
+   * signal can hold an instance. The Vite plugin reads them from the entry.
+   */
+  sendableClasses?: readonly string[];
+  /**
    * Server function IDs use a hash of each function's name instead of the
    * name, so the browser does not see it. The Vite plugin sets it in builds.
    */
@@ -346,7 +351,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     fail(styleErrors);
   }
   const captures = [
-    ...checkCaptures(file, plan),
+    ...checkCaptures(file, plan, options.sendableClasses),
     ...(options.envImport ? checkEnv(file, plan, options.envImport) : []),
   ];
   if (captures.length > 0) {

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { navigate, prefetch } from '../src/runtime/navigate.ts';
+import type { NavigationReport } from '../src/runtime/navigate.ts';
 
 /** A response that sends its body in the given pieces, one at a time. */
 function respond(
@@ -305,6 +306,9 @@ describe('navigate', () => {
       return response;
     });
     vi.stubGlobal('fetch', fetch);
+    // The devtools learn what the navigation kept and replaced.
+    const navigated = vi.fn<(report: NavigationReport) => void>();
+    vi.stubGlobal(Symbol.for('brumate.devtools') as never, { navigated });
     let partial: boolean | undefined;
     await navigate({
       url: '/b',
@@ -317,6 +321,14 @@ describe('navigate', () => {
     // The server starts the new page above the IDs of this one.
     expect(new Headers(fetch.mock.calls[0]![1].headers).get('x-brumate-base')).toBe('2');
     expect(partial).toBe(true);
+    expect(navigated.mock.calls[0]![0]).toMatchObject({
+      url: '/b',
+      kind: 'push',
+      full: false,
+      replaced: [{ slot: 'children', from: '/a', to: '/b' }],
+    });
+    // The root layout stayed. It is outside every slot.
+    expect(navigated.mock.calls[0]![0].kept).toEqual(['root']);
     expect(document.querySelector('nav')).toBe(nav);
     expect(document.querySelector('main')!.innerHTML).toBe(
       `<!--R2:children:3:${encodeURIComponent('/b')}--><p>/b</p><!--/R-->`,
@@ -377,6 +389,8 @@ describe('navigate', () => {
         return response;
       }),
     );
+    const navigated = vi.fn<(report: NavigationReport) => void>();
+    vi.stubGlobal(Symbol.for('brumate.devtools') as never, { navigated });
     let partial: boolean | undefined;
     await navigate({
       url: '/b',
@@ -387,6 +401,8 @@ describe('navigate', () => {
       enter: () => {},
     });
     expect(partial).toBe(true);
+    // The devtools learn how far the IDs of the new page moved.
+    expect(navigated.mock.calls[0]![0].shift).toBe(2);
     expect(document.querySelector('nav')).toBe(nav);
     // The IDs of the new route start above the IDs of the page: 2.
     expect(document.querySelector('main')!.innerHTML).toBe(

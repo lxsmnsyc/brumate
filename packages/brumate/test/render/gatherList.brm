@@ -1,0 +1,23 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gather } from 'brumate/stream';
+
+  async function* words(count: number) {
+    for (let index = 1; index <= count; index++) {
+      await new Promise((done) => setTimeout(done, 5));
+      yield { id: index, text: `word ${index}` };
+    }
+  }
+
+  let count = $signal(0);
+  const items = $memo(gather(words(count), { key: (item) => item.id }));
+</script>
+
+<button class="ask" onClick=(() => (count = 3))>Ask</button>
+<ol>
+  #for (item of items by item.id) {
+    <li>{item.text}</li>
+  } #else {
+    <li class="empty">Nothing yet</li>
+  }
+</ol>

@@ -388,6 +388,46 @@ const user = $memo(getUser(id));
 - Each render starts with no results, so a new request loads fresh data.
 - Calls from the browser, such as from a handler, always run. A function that changes something, such as `save(todo)`, runs each time it is called.
 
+## Results that requests share
+
+`cached` from `brumate/server` keeps the results of a function for a time, by its arguments, so the next request gets them without running it. Use it for data that every user sees the same:
+
+```ts
+// issues.ts
+'use server';
+
+import { cached, revalidate } from 'brumate/server';
+
+export const listIssues = cached(async (status: string) => db.issues(status), {
+  maxAge: 30,
+  tags: (status) => ['issues', `issues:${status}`],
+});
+
+export async function closeIssue(id: string) {
+  await db.close(id);
+  await revalidate('issues');
+}
+```
+
+- A result is used for `maxAge` seconds, for the same arguments. Calls with the same arguments while one runs share that run.
+- The function runs without the request, so `getEvent()` throws in it. A result can never hold one user's data by mistake. Pass what it needs as arguments, which are part of the key.
+- Arguments and results are values that brumate can send, such as plain objects, arrays, dates and maps. Each caller gets its own copy.
+- `revalidate(...tags)` drops the results with those tags. The page shows the new data when the browser loads it again, such as with `refresh(listIssues)`.
+- An error is not kept, so the next call runs again.
+- A `'use server'` file can export a function that `cached` makes, so the browser can call it.
+
+Results live in the memory of the server by default, up to 1000 of them. With several processes, such as on a serverless host, give each function a `name` and a store that they share:
+
+```ts
+import { cached, setCacheStore, storageStore } from 'brumate/server';
+
+setCacheStore(storageStore(useStorage('cache')));
+
+export const listIssues = cached(load, { name: 'issues', maxAge: 30 });
+```
+
+`storageStore` takes an [unstorage](https://unstorage.unjs.io) storage, such as Nitro's `useStorage()`, whose drivers cover Redis, Cloudflare KV and others. A store is any object with `get(key)` and `set(key, value, maxAge)`.
+
 ## One call for many keys
 
 A list whose rows each load one thing, such as the profile of each player, makes one call per row. `batched` from `brumate/batch` turns the calls of one moment in the browser into one call with every key:

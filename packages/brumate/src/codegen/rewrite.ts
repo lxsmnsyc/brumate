@@ -1,6 +1,6 @@
 import type { Block, Range, SFCFile } from '../ast.ts';
 import { isWithin, lookup, upstreamMemos } from '../model.ts';
-import type { Declaration, Diagnostic, Reference, Scope, Site } from '../model.ts';
+import type { Declaration, Diagnostic, Reference, Scope, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import type { Plan } from '../plan.ts';
@@ -43,11 +43,24 @@ export class Rewriter {
 
   private readonly shared: SharedContext | undefined;
 
+  /** The sites of `$handler` calls, by call. */
+  private readonly handlers = new Map<oxc.Node, Site>();
+  /** The declarations of the names of `$bind` calls, by call. */
+  private readonly bindings = new Map<oxc.Node, SemanticModel['bindings'][number]>();
+
   constructor(file: SFCFile, plan: Plan, diagnostics: Diagnostic[], shared?: SharedContext) {
     this.file = file;
     this.plan = plan;
     this.diagnostics = diagnostics;
     this.shared = shared;
+    for (const site of plan.graph.model.sites) {
+      if (site.handler) {
+        this.handlers.set(site.handler, site);
+      }
+    }
+    for (const binding of plan.graph.model.bindings) {
+      this.bindings.set(binding.call, binding);
+    }
   }
 
   /**
@@ -337,6 +350,65 @@ export class Rewriter {
           break;
         }
         case 'CallExpression': {
+          // `$handler(fn, ...args)` in code that the browser runs, such as a function that renders
+          // the items of a list: a handler with its reference, which a spread passes on. The
+          // function is the code of its own site.
+          // `$bind(name)` passes a child the value of the name with its slot, which the child's
+          // writes go to. The runtime's prop update takes the value.
+          const bound = this.bindings.get(node);
+          const [name, setterFn] = node.arguments;
+          if (bound && name) {
+            const { declaration, setter } = bound;
+            const path = scopePath(this.plan, scopeVar, base, declaration.scope);
+            const slot = slotIndex(this.plan, declaration);
+            const symbol = setter && this.plan.symbols.get(setter);
+            patch.replace(node.start, name.start, '$$b.binding((');
+            if (setterFn && setter && symbol) {
+              // The setter loads with its own part, so the binding holds its reference.
+              const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+              const owner = scopePath(
+                this.plan,
+                scopeVar,
+                base,
+                instanceScope(this.plan, setter.scope),
+              );
+              patch.replace(
+                name.end,
+                node.end,
+                `), ${path}, ${slot}, $$b.handlerProp(() => {}, ${ref}, ${owner}))`,
+              );
+            } else {
+              patch.replace(name.end, node.end, `), ${path}, ${slot})`);
+            }
+            visit(name);
+            return;
+          }
+          const handler = this.handlers.get(node);
+          if (handler) {
+            const [fn, ...args] = node.arguments;
+            const symbol = this.plan.symbols.get(handler);
+            // The code of the handler loads with its part, so the call holds its reference, and
+            // the modifiers of its wrappers, which the compiler read, in place of its function.
+            const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+            const owner = scopePath(
+              this.plan,
+              scopeVar,
+              base,
+              instanceScope(this.plan, handler.scope),
+            );
+            const modifiers = JSON.stringify(handler.modifiers ?? []);
+            patch.replace(node.start, fn!.end, `$$b.handlerProp(() => {}, ${ref}, ${owner}`);
+            if (args.length === 0) {
+              patch.replace(fn!.end, node.end, `, [], ${modifiers})`);
+            } else {
+              patch.replace(fn!.end, args[0]!.start, ', [');
+              patch.replace(args.at(-1)!.end, node.end, `], ${modifiers})`);
+            }
+            for (const argument of args) {
+              visit(argument);
+            }
+            return;
+          }
           // A call of a local function passes the scope itself. `.bind` is only for a function
           // value that escapes, such as one passed as an argument.
           const fn = target(node.callee)?.declaration;
@@ -364,12 +436,14 @@ export class Rewriter {
               const slot = slotIndex(this.plan, item);
               return slot === -1 ? [] : [`$$b.pending(${path(item)}, ${slot})`];
             });
-            const value =
-              checks.length === 0
-                ? 'false'
-                : checks.length === 1
-                  ? checks[0]!
-                  : `(${checks.join(' || ')})`;
+            let value: string;
+            if (checks.length === 0) {
+              value = 'false';
+            } else if (checks.length === 1) {
+              value = checks[0]!;
+            } else {
+              value = `(${checks.join(' || ')})`;
+            }
             patch.replace(node.start, node.end, value);
             return;
           }

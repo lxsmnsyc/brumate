@@ -194,12 +194,12 @@ export function mayWait(plan: Plan, nodes: Markup[]): boolean {
       case 'listener':
         break;
       default: {
-        const bodies =
-          node.kind === 'loading' || node.kind === 'defer' || node.kind === 'client'
-            ? node.fallback
-              ? [node.fallback]
-              : []
-            : blockBodies(node);
+        let bodies: ReturnType<typeof blockBodies>;
+        if (node.kind === 'loading' || node.kind === 'defer' || node.kind === 'client') {
+          bodies = node.fallback ? [node.fallback] : [];
+        } else {
+          bodies = blockBodies(node);
+        }
         for (const body of bodies) {
           if (mayWait(plan, body.children)) {
             return true;

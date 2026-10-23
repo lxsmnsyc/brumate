@@ -1,7 +1,9 @@
 // An error while the dev server renders a page, shown in Vite's error overlay.
 
 import { resolve } from 'node:path';
+import { version as viteVersion } from 'vite';
 import type { ViteDevServer } from 'vite';
+import { BRUMATE_VERSION } from './version.ts';
 import type { Location } from './error.ts';
 
 /** The error that Vite's overlay shows. */
@@ -71,6 +73,7 @@ export function errorPage(error: unknown, server?: ViteDevServer): string {
   // `<` is escaped, so the error cannot end the script.
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');
   const base = server?.config.base ?? '/';
+  const meta = JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion });
   return `<!doctype html>
 <html>
 <head>
@@ -83,11 +86,17 @@ export function errorPage(error: unknown, server?: ViteDevServer): string {
 <script type="module">
 import { createHotContext } from '${base}@vite/client';
 const error = ${json};
-const Overlay = customElements.get('vite-error-overlay');
-if (Overlay) {
-  document.body.append(new Overlay(error));
-} else {
-  document.getElementById('brumate-error').textContent = [error.message, error.frame, error.stack].filter(Boolean).join('\\n\\n');
+// The Errors tab of the devtools shows the error with its code. Vite's overlay is the fallback.
+try {
+  const devtools = await import('${base}@id/brumate/devtools');
+  devtools.reportError(devtools.installDevtools(undefined, undefined, ${meta}), error, 'server');
+} catch {
+  const Overlay = customElements.get('vite-error-overlay');
+  if (Overlay) {
+    document.body.append(new Overlay(error));
+  } else {
+    document.getElementById('brumate-error').textContent = [error.message, error.frame, error.stack].filter(Boolean).join('\\n\\n');
+  }
 }
 // A component that updates in place, after a fix, loads the page again.
 const hot = createHotContext('/@brumate/error');

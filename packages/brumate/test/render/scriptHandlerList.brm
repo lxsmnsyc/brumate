@@ -1,0 +1,29 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Forward from './Forward.brm';
+
+  // Items that the browser adds get the handlers of their spreads, as those of the server do.
+  let items = $signal(['a']);
+  let log = $signal<string[]>([]);
+  function removeAt(index: number) {
+    items = items.filter((_, at) => at !== index);
+  }
+  const remove = (index: number) => ({
+    type: 'button',
+    class: 'remove',
+    onClick: $handler(prevent(removeAt), index),
+  });
+</script>
+
+<button class="add" onClick=(() => (items = [...items, `item${items.length}`]))>Add</button>
+<ul>
+  #for (item, index of items by item) {
+    <li>
+      <span class="item">{item}</span>
+      <button {...remove(index)}>x</button>
+      <Forward label=item onClick=(prevent(() => (log = [...log, item]))) />
+    </li>
+  }
+</ul>
+<p class="log">{log.join(', ')}</p>

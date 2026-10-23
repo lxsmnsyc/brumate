@@ -1,0 +1,26 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { wait } = $props<{ wait: Record<string, Promise<unknown>> }>();
+  const first = $memo(wait.first.then(() => 'first'));
+  const second = $memo(wait.second.then(() => 'second'));
+  const third = $memo(wait.third.then(() => 'third'));
+</script>
+
+#reveal ('together') {
+  #loading {
+    <p class="first">{first}</p>
+  } #else {
+    <p class="wait-first">Loading first</p>
+  }
+  #loading {
+    <p class="second">{second}</p>
+  } #else {
+    <p class="wait-second">Loading second</p>
+  }
+  #loading {
+    <p class="third">{third}</p>
+  } #else {
+    <p class="wait-third">Loading third</p>
+  }
+}

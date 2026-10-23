@@ -38,22 +38,28 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 | `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
 | `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
 
-| Export                                            | What it does                                                                                                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `getEvent(): RequestEvent`                        | The event of the request being handled.                                                                                         |
-| `redirect(location, status = 303): never`         | Stops and sends the browser to `location`.                                                                                      |
-| `isRedirect(error): boolean`                      | True for the error that `redirect` throws.                                                                                      |
-| `new ServerError(message, { status = 400 })`      | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.                |
-| `createSession<T>({ secret, name, maxAge })`      | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.                |
-| `withEvent(event, callback)`                      | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests.               |
-| `rateLimit({ max, window, key? })`                | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./security.md#rate-limiting). |
-| `rateLimit.middleware(options)`                   | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                               |
-| `rateLimit.strict`                                | 3 calls in 10 seconds, for functions that guess at secrets.                                                                     |
-| `configureRateLimit({ store, proxies, enabled })` | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.  |
-| `clientAddress(event)`                            | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                      |
-| `RateLimitError`                                  | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                          |
-| `defineMiddleware(middleware)`                    | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                             |
-| `Locals`                                          | The type of `event.locals`. An app adds fields to it with declaration merging.                                                  |
+| Export                                              | What it does                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getEvent(): RequestEvent`                          | The event of the request being handled.                                                                                                                |
+| `redirect(location, status = 303): never`           | Stops and sends the browser to `location`.                                                                                                             |
+| `isRedirect(error): boolean`                        | True for the error that `redirect` throws.                                                                                                             |
+| `new ServerError(message, { status = 400 })`        | An error whose message and status reach the browser. Other errors reach it as a generic message with status 500.                                       |
+| `createSession<T>({ secret, name, maxAge })`        | A session in a signed cookie, with `get(event)`, `set(event, data)`, `update(event, change)` and `clear(event)`.                                       |
+| `withEvent(event, callback)`                        | Runs a callback with an event, so `getEvent()` before its first `await` returns it. For custom servers and tests.                                      |
+| `rateLimit({ max, window, key? })`                  | Counts the calls of a key and rejects with a `RateLimitError` over the limit. See [Rate limiting](./security.md#rate-limiting).                        |
+| `rateLimit.middleware(options)`                     | The same as a middleware of a folder or of the entry: answers 429 over the limit.                                                                      |
+| `rateLimit.strict`                                  | 3 calls in 10 seconds, for functions that guess at secrets.                                                                                            |
+| `configureRateLimit({ store, proxies, enabled })`   | The defaults of every limit: the store of the counts, the trusted proxies, and whether limits count, which they do by default.                         |
+| `clientAddress(event)`                              | The address of the client, from the server, or from `X-Forwarded-For` when the server saw a trusted proxy.                                             |
+| `RateLimitError`                                    | The `ServerError` of a request over its limit: status 429 and `retryAfter` in seconds.                                                                 |
+| `defineMiddleware(middleware)`                      | Types the entry middleware, `(event, next) => Response`. See [Middleware](./routing.md#middleware).                                                    |
+| `Locals`                                            | The type of `event.locals`. An app adds fields to it with declaration merging.                                                                         |
+| `cached(fn, { maxAge, tags?, name? })`              | Keeps the results of `fn` by its arguments for `maxAge` seconds. See [Results that requests share](./server-functions.md#results-that-requests-share). |
+| `idempotent(fn, { maxAge? })`                       | Runs a server function once for each form that the server renders for it. See [Forms posted twice](./forms.md#forms-posted-twice).                     |
+| `revalidate(...tags)`                               | Drops the results of `cached` functions with these tags.                                                                                               |
+| `setCacheStore(store)`                              | Sets where `cached` keeps results: an object with `get(key)` and `set(key, value, maxAge)`.                                                            |
+| `memoryStore(size = 1000)`, `storageStore(storage)` | The default store in memory, and a store from an unstorage storage, such as Nitro's `useStorage()`.                                                    |
+| `PageCache`                                         | The type of the `cache` export of a route. See [Caching pages](./routing.md#caching-pages).                                                            |
 
 See [Server functions](./server-functions.md) and [Cookies and sessions](./server-functions.md#cookies-and-sessions).
 
@@ -61,14 +67,16 @@ See [Server functions](./server-functions.md) and [Cookies and sessions](./serve
 
 These check values with any [Standard Schema](https://standardschema.dev), such as a schema of Zod, Valibot or ArkType. See [Validating arguments](./server-functions.md#validating-arguments) and [Validating a form](./forms.md#validating-a-form).
 
-| Export                                               | What it does                                                                                                                 |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `parse(schema, value): Promise<T>`                   | The output of the schema. A value that does not match throws a `ValidationError` with status 400.                            |
-| `safeParse(schema, value)`                           | `{ value }` or `{ issues }`, without throwing.                                                                               |
-| `parseForm(schema, form)`                            | Turns the fields of a `FormData` into an object, and returns `{ value }` or `{ issues }`, without throwing.                  |
-| `fieldErrors(issues)`                                | The messages by field: `Record<string, string[]>`, keyed by the path joined with dots. Issues without a path are under `''`. |
-| `ValidationError`                                    | The `ServerError` that `parse` throws. Its `issues` stay on the server.                                                      |
-| `StandardSchemaV1`, `ValidationIssue`, `ParseResult` | The types of a schema, of an issue as plain data, and of the result of `safeParse` and `parseForm`.                          |
+| Export                                               | What it does                                                                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `parse(schema, value): Promise<T>`                   | The output of the schema. A value that does not match throws a `ValidationError` with status 400.                                   |
+| `safeParse(schema, value)`                           | `{ value }` or `{ issues }`, without throwing.                                                                                      |
+| `parseForm(schema, form)`                            | Turns the fields of a `FormData` into an object, and returns `{ value }` or `{ issues }`, without throwing.                         |
+| `fieldErrors(issues)`                                | The messages by field: `Record<string, string[]>`, keyed by the path joined with dots. Issues without a path are under `''`.        |
+| `parseSubmission(schema, form, options?)`            | Reads a form of `createForm`, applies the button that changes a list, and validates. See [Forms](./forms.md#forms-with-createform). |
+| `Submission`, `SubmissionResult`, `ReplyOptions`     | The types of a submission, of its reply, and of the options of `reply`.                                                             |
+| `ValidationError`                                    | The `ServerError` that `parse` throws. Its `issues` stay on the server.                                                             |
+| `StandardSchemaV1`, `ValidationIssue`, `ParseResult` | The types of a schema, of an issue as plain data, and of the result of `safeParse` and `parseForm`.                                 |
 
 These work anywhere:
 

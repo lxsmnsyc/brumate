@@ -107,9 +107,14 @@ export function routeModule(
   /** The modules that every page loads early, from the client build. */
   hints: string[] = [],
 ): string {
-  // Static imports, because the server registry of server functions imports every file anyway.
+  // Static imports in a build, because the server registry of server functions imports every
+  // file anyway. In development, a route loads when a request needs it, so a file that does not
+  // compile breaks only its own pages.
   const imports: string[] = [];
   const load = (file: string): string => {
+    if (dev) {
+      return `() => import(${JSON.stringify(resolve(file))})`;
+    }
     const name = `m${imports.length}`;
     imports.push(`import * as ${name} from ${JSON.stringify(resolve(file))};`);
     return `() => Promise.resolve(${name})`;

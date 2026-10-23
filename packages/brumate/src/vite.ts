@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { parseSync } from 'oxc-parser';
+import type { Site } from './model.ts';
+import type { oxc } from './oxc.ts';
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -8,9 +11,12 @@ import {
   isRunnableDevEnvironment,
   normalizePath,
   searchForWorkspaceRoot,
+  isFileLoadingAllowed,
   transformWithOxc,
+  version as viteVersion,
 } from 'vite';
 import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
+import { entryClasses } from './captures.ts';
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
@@ -38,13 +44,15 @@ import {
 } from './packages.ts';
 import type { BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
-import { formatReport, report, scopeLabel } from './inspect.ts';
+import { anchorLabel, formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
 import { isReactiveModule, resolveFromDisk } from './modules.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
+import { originalPosition } from './sourcemap.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
 import { errorPayload } from './dev-error.ts';
+import { BRUMATE_VERSION } from './version.ts';
 import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
@@ -73,6 +81,13 @@ export interface BrumateOptions {
    * `false` runs none.
    */
   middleware?: string | false;
+  /**
+   * The serial entry, relative to the root. It exports `plugins` for values
+   * of the app, such as a class, and the options of the serializer that it
+   * changes. The server and the browser load it. Defaults to `src/serial.ts`
+   * when the file exists. `false` uses none.
+   */
+  serial?: string | false;
   /**
    * The file of environment variables, relative to the root, which calls
    * `defineEnv` from `brumate/env`. The server checks them when it starts,
@@ -165,6 +180,10 @@ const TESTING = 'virtual:brumate/testing';
 const HINTS_FILE = '.brumate/hints.json';
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
+/** Maps a position of a module that the browser ran to its source, for the Errors tab. */
+const POSITION = '/__brumate/position';
+/** The dev server sends the source of a file for the Errors tab of the devtools at this path. */
+const SOURCE = '/__brumate/source';
 
 /** What tells two lists of packages of components apart. */
 function packagesKey(list: BrumatePackage[]): string {
@@ -300,6 +319,45 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return undefined;
     }
     return file;
+  };
+  /** The serial entry, when the app has one. */
+  const serialFile = (): string | undefined => {
+    if (options.serial === false) {
+      return undefined;
+    }
+    const file = normalizePath(path.resolve(root, options.serial ?? 'src/serial.ts'));
+    if (!existsSync(file)) {
+      if (options.serial !== undefined) {
+        throw new Error(`The serial entry ${options.serial} does not exist`);
+      }
+      return undefined;
+    }
+    return file;
+  };
+  /** The classes that the plugins of the serial entry send, read from its `instanceof` checks. */
+  let serialRead: { source: string; classes: string[] } | undefined;
+  const serialClasses = (): string[] => {
+    const file = serialFile();
+    if (!file) {
+      return [];
+    }
+    const source = readFileSync(file, 'utf8');
+    if (serialRead?.source !== source) {
+      const { program } = parseSync(file, source, { lang: 'ts' });
+      serialRead = { source, classes: entryClasses(program as oxc.Node) };
+    }
+    return serialRead.classes;
+  };
+  /** The lines that give the server the serial entry, before anything is written or read. */
+  const serialImports = (): string[] => {
+    const file = serialFile();
+    return file
+      ? [
+          `import * as $$serial from ${JSON.stringify(file)};`,
+          "import { useSerialEntry } from 'brumate/server';",
+          'useSerialEntry($$serial);',
+        ]
+      : [];
   };
   /** The file of environment variables, when the app has one. */
   const envFile = (): string | undefined => {
@@ -486,6 +544,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     a11y: options.a11y,
     // A build does not show the names of server functions in their IDs.
     hideNames: !isServe,
+    sendableClasses: serialClasses(),
     serverImport: (specifier, name) => serverImport(file, specifier, name),
     // A module of reactive logic can come from a package of components.
     resolveModule: (specifier, importer) => {
@@ -590,14 +649,30 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     registered = packages.length > 0 ? reachable() : new Set();
     const keep = (file: string): boolean => registered.has(file) || !packageOf(packages, file);
     const components = [...files.values()].filter(keep);
-    const imports = components.map(
-      (file, index) => `import * as m${index} from ${JSON.stringify(file + query)};`,
-    );
+    // In development, a file that does not compile leaves out its functions, and the pages that
+    // import it show its error, so the other pages still work.
+    const importAll = (prefix: string, list: string[]): string[] => {
+      if (!isServe) {
+        return list.map(
+          (file, index) => `import * as ${prefix}${index} from ${JSON.stringify(file + query)};`,
+        );
+      }
+      if (list.length === 0) {
+        return [];
+      }
+      const loads = list.map((file) => `import(${JSON.stringify(file + query)})`);
+      const names = list.map((_, index) => `${prefix}${index}`);
+      return [
+        `const [${names.join(', ')}] = (await Promise.allSettled([${loads.join(', ')}])).map((result) => (result.status === 'fulfilled' ? result.value : {}));`,
+      ];
+    };
+    const imports = importAll('m', components);
     const spreads = components.map((_, index) => `  ...m${index}.rpc,`);
     // Each exported function of a file of server functions, under the ID that its stub calls.
     const functionFiles = [...serverFiles.entries()].filter(([, file]) => keep(file));
-    const fileImports = functionFiles.map(
-      ([, file], index) => `import * as f${index} from ${JSON.stringify(file + query)};`,
+    const fileImports = importAll(
+      'f',
+      functionFiles.map(([, file]) => file),
     );
     // The middleware of a file runs before each of its functions.
     const guards: string[] = [];
@@ -621,6 +696,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [
       // The variables are checked when the server starts, before anything else loads.
       ...(env ? [`import ${JSON.stringify(env)};`] : []),
+      ...serialImports(),
       "import { handleRequest } from 'brumate/server';",
       ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
       ...imports,
@@ -683,7 +759,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       clientHints(),
     );
     // The variables are checked when the server starts, before any route loads.
-    return env ? `import ${JSON.stringify(env)};\n${code}` : code;
+    const serial = serialImports().join('\n');
+    return [env ? `import ${JSON.stringify(env)};` : '', serial, code].filter(Boolean).join('\n');
   };
 
   /** Writes the paths of the routes as types for `href`, when they changed. */
@@ -706,11 +783,29 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     const { source, result } = await compileFile(file);
     const { plan } = result;
-    const scopes: Record<number, { label: string; slots: string[] }> = {};
+    const scopes: Record<number, { label: string; slots: string[]; readers: string[][] }> = {};
+    // The code of the browser that reads each slot, such as a handler or an update, which is
+    // why its value is in the page state, for the Page state tab.
+    const siteLabel = (site: Site): string => {
+      const at = result.locate(site.range.start);
+      const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+      return where ? `${site.label} ${where.line}:${where.column}` : site.label;
+    };
+    // Updates of markup and memos run in the browser as nodes of the graph that can change.
+    const liveSites = new Set(
+      [...plan.graph.live].flatMap((node) => ('site' in node ? [node.site] : [])),
+    );
     for (const layout of plan.scopes.values()) {
       scopes[layout.scope.id] = {
         label: scopeLabel(result.file.source, layout.scope),
         slots: layout.slots.map((slot) => slot.name),
+        readers: layout.slots.map((slot) => [
+          ...new Set(
+            slot.reads
+              .filter((ref) => plan.graph.reached.has(ref.site) || liveSites.has(ref.site))
+              .map((ref) => siteLabel(ref.site)),
+          ),
+        ]),
       };
     }
     // The nodes that can change in the browser, with the slot of each value, so the panel
@@ -741,8 +836,64 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         .filter((edge) => indexes.has(edge.from) && indexes.has(edge.to))
         .map((edge) => [indexes.get(edge.from)!, indexes.get(edge.to)!]),
     };
+    // Each anchor of each scope: what it is, its place in the file and the values its updates
+    // read, for the Elements tab, which finds them by the `b-b` of an element.
+    const anchors: Record<
+      number,
+      Record<number, { label: string; at?: string; reads: string[] }>
+    > = {};
+    for (const [target, index] of plan.anchors) {
+      const scope = plan.anchorScopes.get(target);
+      if (!scope) {
+        continue;
+      }
+      const at = result.locate('range' in target ? target.range.start : target.start);
+      const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+      const reads = new Set<string>();
+      for (const edge of plan.graph.edges) {
+        const node = edge.to;
+        if (node.kind === 'source' || node.kind === 'memo') {
+          continue;
+        }
+        const site = node.site;
+        const range = !('range' in target) && target.kind === 'insert' ? target : undefined;
+        if (
+          site === target ||
+          site.owner === target ||
+          site.block === target ||
+          (range && site.range.start >= range.start && site.range.end <= range.end)
+        ) {
+          if (edge.from.kind === 'source' || edge.from.kind === 'memo') {
+            reads.add(edge.from.declaration.name);
+          }
+        }
+      }
+      // An insert that is the whole content of its element shares the element's anchor.
+      const known = anchors[scope.id]?.[index];
+      if (known) {
+        known.reads = [...new Set([...known.reads, ...reads])];
+        continue;
+      }
+      (anchors[scope.id] ??= {})[index] = {
+        label: anchorLabel(target),
+        ...(where ? { at: `${where.line}:${where.column}` } : {}),
+        reads: [...reads],
+      };
+    }
     const text = formatReport(report(source, result, liveProps.get(file)));
-    return { name: plan.name, file: nameOf(file), scopes, graph, text };
+    return {
+      name: plan.name,
+      file: nameOf(file),
+      // The absolute path, for the editor, and the URL that the browser loads the code from.
+      path: file,
+      url: file.startsWith(`${normalizePath(root)}/`)
+        ? file.slice(normalizePath(root).length)
+        : `/@fs${file}`,
+      scopes,
+      anchors,
+      graph,
+      text,
+    };
   };
 
   const handleDevRPC = async (
@@ -779,9 +930,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ),
         body: new Uint8Array(await readBody(request)),
       });
+      const began = performance.now();
       const answer: Response = await handle(webRequest, {
         address: request.socket.remoteAddress,
       });
+      // How long the server function took on the server, for the Timeline of the devtools.
+      answer.headers.append(
+        'server-timing',
+        `brumate;dur=${(performance.now() - began).toFixed(1)};desc="server function"`,
+      );
       response.statusCode = answer.status;
       // Each cookie stays apart, as `forEach` would set only the last one.
       for (const [name, value] of Object.entries(toNodeHeaders(answer.headers))) {
@@ -918,6 +1075,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     config(config, env) {
       packages = findPackages(path.resolve(config.root ?? process.cwd()));
       const shared = packageConfig(config);
+      // The devtools show the errors of Vite, so its overlay does not cover them.
+      const hmr = config.server?.hmr;
+      if (
+        env.command === 'serve' &&
+        options.devtools !== false &&
+        hmr !== false &&
+        (typeof hmr !== 'object' || hmr.overlay === undefined)
+      ) {
+        shared.server = { hmr: { overlay: false } };
+      }
       if (!env.isSsrBuild) {
         const preload = config.build?.modulePreload;
         // The files of earlier builds stay, and the build removes the ones that are too old itself.
@@ -952,14 +1119,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // `--ssr <file>` names the entry, and wins over the input of the config, which can be the client's.
       const ssr = config.build?.ssr;
       const input = typeof ssr === 'string' ? ssr : config.build?.rolldownOptions?.input;
-      const entries =
-        typeof input === 'string'
-          ? { [path.basename(input).replace(/\.[^.]+$/, '')]: input }
-          : Array.isArray(input)
-            ? Object.fromEntries(
-                input.map((item) => [path.basename(item).replace(/\.[^.]+$/, ''), item]),
-              )
-            : { ...(input as Record<string, string> | undefined) };
+      let entries: Record<string, string>;
+      if (typeof input === 'string') {
+        entries = { [path.basename(input).replace(/\.[^.]+$/, '')]: input };
+      } else if (Array.isArray(input)) {
+        entries = Object.fromEntries(
+          input.map((item) => [path.basename(item).replace(/\.[^.]+$/, ''), item]),
+        );
+      } else {
+        entries = { ...(input as Record<string, string> | undefined) };
+      }
       return {
         ...shared,
         build: { ssr: true, rolldownOptions: { input: { ...entries, [PRERENDER_ENTRY]: ROUTES } } },
@@ -1192,11 +1361,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
-                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}));`,
+                // They show the errors of Vite, such as a compile error after an edit, in place of its overlay.
+                `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}, import.meta.hot));`,
               ]
             : []),
         ].join('\n');
@@ -1319,8 +1489,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           // A DOM test imports the server code with the query, which Vite strips no types for.
           if (id.includes(SERVER_QUERY)) {
+            let lang: 'ts' | 'tsx' | 'jsx' = 'jsx';
+            if (/\.[cm]?ts$/.test(file)) {
+              lang = 'ts';
+            } else if (file.endsWith('.tsx')) {
+              lang = 'tsx';
+            }
             const result = await transformWithOxc(serverModule(code, file, fileId), file, {
-              lang: /\.[cm]?ts$/.test(file) ? 'ts' : file.endsWith('.tsx') ? 'tsx' : 'jsx',
+              lang,
               sourcemap: true,
             });
             return { code: result.code, map: result.map };
@@ -1443,6 +1619,51 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           isRunnableDevEnvironment(ssr)
         ) {
           void handleDevRPC(server, request, response);
+          return;
+        }
+        // The source of a file that an error names, for the code of the Errors tab. Only files
+        // that Vite would serve, by its `server.fs` options.
+        if (request.method === 'GET' && request.url?.startsWith(`${SOURCE}?`)) {
+          const asked = new URL(request.url, 'http://localhost').searchParams.get('file') ?? '';
+          const file = normalizePath(
+            path.isAbsolute(asked) && existsSync(asked)
+              ? asked
+              : path.join(server.config.root, asked),
+          );
+          if (!existsSync(file) || !isFileLoadingAllowed(server.config, file)) {
+            response.statusCode = 404;
+            response.end();
+            return;
+          }
+          response.setHeader('content-type', 'text/plain; charset=utf-8');
+          response.end(readFileSync(file, 'utf8'));
+          return;
+        }
+        if (request.method === 'GET' && request.url?.startsWith(`${POSITION}?`)) {
+          const params = new URL(request.url, 'http://localhost').searchParams;
+          void server.environments.client.moduleGraph
+            .getModuleByUrl(params.get('url') ?? '')
+            .then((module) => {
+              const map = module?.transformResult?.map as
+                | { sources: (string | null)[]; mappings: string }
+                | null
+                | undefined;
+              const place =
+                map && module?.file
+                  ? originalPosition(map, Number(params.get('line')), Number(params.get('column')))
+                  : undefined;
+              // A source that starts with `/` is a path from the root of the app, as Vite writes it.
+              const file =
+                place &&
+                normalizePath(
+                  place.source.startsWith('/') && !existsSync(place.source)
+                    ? path.join(server.config.root, place.source)
+                    : path.resolve(path.dirname(module!.file!), place.source),
+                );
+              response.setHeader('content-type', 'application/json');
+              response.end(JSON.stringify(place ? { ...place, file } : null));
+            })
+            .catch(next);
           return;
         }
         if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {

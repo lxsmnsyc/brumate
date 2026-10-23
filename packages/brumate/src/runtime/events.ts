@@ -110,6 +110,54 @@ export function once<H extends Handler>(handler: H): H {
   return tagged(handler, 'once');
 }
 
+/** Waits for the updates that writes started, such as those whose code is loading. A symbol of the registry. */
+const UPDATED = Symbol.for('brumate.updated');
+
+/**
+ * Runs the handler inside a view transition, so the browser animates the
+ * change of the page, such as an element that `#if` removes or a list that
+ * changes order. CSS styles the animation, with `view-transition-name` and
+ * `::view-transition-*`.
+ *
+ * - The transition holds the writes that the handler makes before its first
+ *   `await`. Writes after it, such as after a server call, change the page
+ *   without an animation.
+ * - `types` are the types of the transition, which `:active-view-transition-type()`
+ *   matches in CSS.
+ * - Without view transitions, or with `prefers-reduced-motion`, the handler
+ *   runs as it is.
+ */
+export function transition<H extends Handler>(handler: H, ...types: string[]): H {
+  const copy = ((...args: unknown[]): unknown => {
+    if (
+      typeof document === 'undefined' ||
+      typeof document.startViewTransition !== 'function' ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return handler(...args);
+    }
+    let result: unknown;
+    const update = (): unknown => {
+      result = handler(...args);
+      // The page shows the new state once the updates of the writes have run.
+      return (globalThis as { [UPDATED]?: () => Promise<void> })[UPDATED]?.();
+    };
+    // Browsers that have transitions without types take only a callback.
+    const started =
+      types.length > 0 &&
+      typeof ViewTransition !== 'undefined' &&
+      'types' in ViewTransition.prototype
+        ? document.startViewTransition({ update, types })
+        : document.startViewTransition(update);
+    return started.updateCallbackDone.then(() => result);
+  }) as H & { [MODIFIERS]?: string[] };
+  const modifiers = (handler as { [MODIFIERS]?: string[] })[MODIFIERS];
+  if (modifiers) {
+    copy[MODIFIERS] = modifiers;
+  }
+  return copy;
+}
+
 /** Runs the handler before the handlers of the elements inside, as a listener in the capture phase. */
 export function capture<H extends Handler>(handler: H): H {
   return tagged(handler, 'capture');

@@ -1,7 +1,7 @@
 import { toJSON } from 'seroval';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
-import { disabledFeatures, syncPlugins } from './serial.ts';
+import { serialOptions, syncPlugins } from './serial.ts';
 
 /**
  * What a request is for. A form post to a server function is a call, and a
@@ -53,6 +53,68 @@ export interface RequestEventOptions {
  * a page render, or a call of middleware or an endpoint. Its methods read
  * the request and change the response. Get it with `getEvent()`.
  */
+/** A step of the render of a page, for the Server tab of the devtools. */
+export interface TraceEntry {
+  kind: 'render' | 'stream' | 'memo' | 'call' | 'body';
+  label: string;
+  start: number;
+  /** Undefined while it runs. */
+  end?: number;
+  failed?: boolean;
+}
+
+function noTrace(): void {}
+
+/** Ends an entry of the trace when a value settles, if it is a promise, or at once. */
+export function traceValue<T>(value: T, end: (failed?: boolean) => void): T {
+  const thenable = value as unknown as PromiseLike<unknown> | null | undefined;
+  if (thenable && typeof thenable.then === 'function') {
+    thenable.then(
+      () => end(),
+      () => end(true),
+    );
+  } else {
+    end();
+  }
+  return value;
+}
+
+/** The headers that tell who the user is. */
+const PERSONAL = new Set(['cookie', 'authorization']);
+
+/**
+ * Calls `read` when code reads the headers that tell who the user is, by
+ * name or by going through all the headers.
+ */
+function watchPersonal(headers: Headers, read: () => void): void {
+  const get = headers.get.bind(headers);
+  const has = headers.has.bind(headers);
+  Object.assign(headers, {
+    get: (name: string) => {
+      if (PERSONAL.has(name.toLowerCase())) {
+        read();
+      }
+      return get(name);
+    },
+    has: (name: string) => {
+      if (PERSONAL.has(name.toLowerCase())) {
+        read();
+      }
+      return has(name);
+    },
+  });
+  for (const method of ['entries', 'forEach', 'values', Symbol.iterator] as const) {
+    const all = (headers[method] as (...args: unknown[]) => unknown).bind(headers);
+    Object.defineProperty(headers, method, {
+      value: (...args: unknown[]) => {
+        read();
+        return all(...args);
+      },
+      configurable: true,
+    });
+  }
+}
+
 export class RequestEvent {
   readonly request: Request;
   /** What the request is for. */
@@ -79,6 +141,41 @@ export class RequestEvent {
   refreshed?: Set<unknown>;
   /** Cookies that this request set, or deleted with undefined, so later reads see them. */
   cookies?: Map<string, string | undefined>;
+  /**
+   * True once the request read its cookies or its `authorization` header, or
+   * set a cookie, such as for a session. The answer then depends on the user,
+   * so a page with `cache` is not cached for everyone.
+   */
+  personal = false;
+  /**
+   * In development, what the render of the page did and when, in
+   * milliseconds from its start, for the Server tab of the devtools.
+   */
+  trace?: TraceEntry[];
+  /** When the trace started, by `performance.now()`. */
+  traceStart = 0;
+
+  /** Starts an entry of the trace, when there is one, and returns what ends it. */
+  traced(kind: TraceEntry['kind'], label: string): (failed?: boolean) => void {
+    const trace = this.trace;
+    if (!trace) {
+      return noTrace;
+    }
+    const entry: TraceEntry = { kind, label, start: performance.now() - this.traceStart };
+    trace.push(entry);
+    return (failed) => {
+      entry.end = performance.now() - this.traceStart;
+      if (failed) {
+        entry.failed = true;
+      }
+    };
+  }
+
+  /**
+   * The tags of the `cached` functions that the request called, with the
+   * version that each had then, so `revalidate` drops the page that it renders.
+   */
+  readonly cacheTags: Map<string, string | undefined> = new Map();
   private readonly controller = new AbortController();
   /**
    * Aborts when the request no longer needs an answer: the request's own
@@ -95,6 +192,9 @@ export class RequestEvent {
     this.keepGoing = options.waitUntil;
     this.address = options.address;
     this.prerender = options.prerender ?? false;
+    watchPersonal(request.headers, () => {
+      this.personal = true;
+    });
     const outer = request.signal;
     if (outer?.aborted) {
       this.controller.abort(outer.reason);
@@ -207,6 +307,11 @@ export function withEvent<T>(
   }
 }
 
+/** The event of the request being handled, or undefined, without throwing as `getEvent` does. */
+export function currentEvent(): RequestEvent | undefined {
+  return current;
+}
+
 /**
  * Returns the event of the request that the server handles: in a server
  * function, middleware or an endpoint, or while a component renders.
@@ -280,7 +385,21 @@ export function runEntry(
  * runs each time.
  */
 // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+/** Marks the functions that `idempotent` made. A symbol of the registry. */
+export const IDEMPOTENT: unique symbol = Symbol.for('brumate.idempotent') as never;
+
+/** The IDs of the server functions that `idempotent` made, which `dedupe` records. */
+export const idempotentIds: Set<string> = new Set();
+
+/** The ID of each function that `idempotent` made, once the server registered it. */
+export const idempotentId: WeakMap<object, string> = new WeakMap();
+
 export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
+  // A form of a function that `idempotent` made gets a key when it renders.
+  if (IDEMPOTENT in fn) {
+    idempotentIds.add(id);
+    idempotentId.set(fn, id);
+  }
   const wrapper = ((...args: unknown[]) => {
     const cache = currentCalls;
     if (!cache) {
@@ -288,13 +407,13 @@ export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string)
     }
     let key: string;
     try {
-      key = `${id} ${JSON.stringify(toJSON(args, { plugins: syncPlugins, disabledFeatures }))}`;
+      key = `${id} ${JSON.stringify(toJSON(args, { plugins: syncPlugins, ...serialOptions() }))}`;
     } catch {
       // Arguments that cannot be compared, such as a promise.
       return fn(...args);
     }
     if (!cache.has(key)) {
-      cache.set(key, fn(...args));
+      cache.set(key, traceValue(fn(...args), current?.traced('call', id) ?? noTrace));
     }
     return cache.get(key);
   }) as F;

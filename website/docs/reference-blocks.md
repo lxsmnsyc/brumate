@@ -4,29 +4,30 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 
 ## Blocks
 
-| Block                                                | Renders                                                                                                                   |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `#if (condition) { … }`                              | Its body when the condition is true.                                                                                      |
-| `#else if (condition) { … }`                         | Its body when the blocks before it did not render and the condition is true.                                              |
-| `#else { … }`                                        | Its body when no branch of the `#if` rendered.                                                                            |
-| `#for (item of list) { … }`                          | Its body once for each item.                                                                                              |
-| `#for (item, index of list by key) { … }`            | The same, with the index of each item, and a key that keeps the elements of an item.                                      |
-| `#for (…) { … } #else { … }`                         | The `#else` body when the list is empty.                                                                                  |
-| `#repeat (count) { … }`                              | Its body `count` times.                                                                                                   |
-| `#repeat (index of count) { … }`                     | The same, with the index of each copy, from 0.                                                                            |
-| `#switch { #case (condition) { … } #default { … } }` | The body of the first `#case` whose condition is true, or else `#default`.                                                |
-| `#key (value) { … }`                                 | Its body, and renders it again when `value` changes.                                                                      |
-| `#offscreen (visible) { … }`                         | Its body while `visible` is true. When it turns false, the body stays in the page, hidden, with its state.                |
-| `#try { … } #catch { … }`                            | Its body, or the `#catch` body when the body throws.                                                                      |
-| `#try { … } #catch (error, reset) { … }`             | The same. `error` is the error, and `reset()` renders the `#try` body again in the browser.                               |
-| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body. The body at once when they are ready.   |
-| `#portal { … }`                                      | Its body at the end of the page.                                                                                          |
-| `#portal (target) { … }`                             | Its body inside `target`, an element or a selector, in the browser.                                                       |
-| `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                 |
-| `#client { … }`, `#client ('idle') { … }`            | Nothing on the server. The browser renders its body when the trigger fires: `'visible'` by default, `'idle'` or `'load'`. |
-| `#client { … } #else { … }`                          | The `#else` body on the server, until the browser renders the body in its place.                                          |
-| `#defer { … } #else { … }`, `#defer ('idle') { … }`  | The `#else` body, until the trigger fires. The browser then asks the server for the body, which replaces it.              |
-| `#template name(parameters) { … }`                   | Nothing. It declares markup that `{name(arguments)}` inserts.                                                             |
+| Block                                                | Renders                                                                                                                                                                    |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#if (condition) { … }`                              | Its body when the condition is true.                                                                                                                                       |
+| `#else if (condition) { … }`                         | Its body when the blocks before it did not render and the condition is true.                                                                                               |
+| `#else { … }`                                        | Its body when no branch of the `#if` rendered.                                                                                                                             |
+| `#for (item of list) { … }`                          | Its body once for each item.                                                                                                                                               |
+| `#for (item, index of list by key) { … }`            | The same, with the index of each item, and a key that keeps the elements of an item.                                                                                       |
+| `#for (…) { … } #else { … }`                         | The `#else` body when the list is empty.                                                                                                                                   |
+| `#repeat (count) { … }`                              | Its body `count` times.                                                                                                                                                    |
+| `#repeat (index of count) { … }`                     | The same, with the index of each copy, from 0.                                                                                                                             |
+| `#switch { #case (condition) { … } #default { … } }` | The body of the first `#case` whose condition is true, or else `#default`.                                                                                                 |
+| `#key (value) { … }`                                 | Its body, and renders it again when `value` changes.                                                                                                                       |
+| `#offscreen (visible) { … }`                         | Its body while `visible` is true. When it turns false, the body stays in the page, hidden, with its state.                                                                 |
+| `#try { … } #catch { … }`                            | Its body, or the `#catch` body when the body throws.                                                                                                                       |
+| `#try { … } #catch (error, reset) { … }`             | The same. `error` is the error, and `reset()` renders the `#try` body again in the browser.                                                                                |
+| `#loading { … } #else { … }`                         | The `#else` body until the values that the body reads have loaded, then the body. The body at once when they are ready.                                                    |
+| `#reveal ('sequential', collapsed) { … }`            | Its children. The `#loading` bodies inside show in an order: `'sequential'`, `'backwards'`, `'together'` or `'natural'`. See [Reveal order](./async-data.md#reveal-order). |
+| `#portal { … }`                                      | Its body at the end of the page.                                                                                                                                           |
+| `#portal (target) { … }`                             | Its body inside `target`, an element or a selector, in the browser.                                                                                                        |
+| `#head { … }`                                        | Its body in the `<head>` of the document.                                                                                                                                  |
+| `#client { … }`, `#client ('idle') { … }`            | Nothing on the server. The browser renders its body when the trigger fires: `'visible'` by default, `'idle'` or `'load'`.                                                  |
+| `#client { … } #else { … }`                          | The `#else` body on the server, until the browser renders the body in its place.                                                                                           |
+| `#defer { … } #else { … }`, `#defer ('idle') { … }`  | The `#else` body, until the trigger fires. The browser then asks the server for the body, which replaces it.                                                               |
+| `#template name(parameters) { … }`                   | Nothing. It declares markup that `{name(arguments)}` inserts.                                                                                                              |
 
 - `#else`, `#else if` and `#catch` come right after the body of their block. Only whitespace and comments can be in between.
 - `#for (item, index of list by index)` keys items by position.

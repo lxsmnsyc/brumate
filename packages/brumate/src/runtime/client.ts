@@ -5,11 +5,16 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  bindEntry,
+  handlerEntry,
   spread as spreadText,
   textValue,
 } from './html.ts';
+import type { NavigationReport } from './navigate.ts';
+import type { SerialEntry } from './values.ts';
 import type { Raw } from './html.ts';
 import {
+  Binding,
   CHILDREN,
   ElementReference,
   FunctionReference,
@@ -19,7 +24,11 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  SlotReference,
   isAsyncIterable,
+  isBinding,
+  isSlotReference,
+  useSerialEntry,
   parseId,
   stateValues,
 } from './shared.ts';
@@ -34,14 +43,14 @@ export {
   classAttribute,
   escape,
   mergeAttributes,
+  onAttribute,
   raw,
-  spread,
   vars,
 } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference } from './shared.ts';
+export { ElementReference, FunctionReference, unbind } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -100,6 +109,12 @@ export interface Scope {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
+  /**
+   * What the bound props write, by the slot of the prop: a slot of a parent,
+   * or the setter of `$bind(name, fn)`, as a function or a reference.
+   */
+  b?: Record<number, unknown>;
   children: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
@@ -112,6 +127,8 @@ export interface Scope {
 }
 
 export interface CoreOptions {
+  /** The exports of the serial entry, for the values of the app in the page state. */
+  serial?: SerialEntry;
   /**
    * Imports the client module of a component. Undefined for a component that
    * has no client code, which a build leaves out.
@@ -167,13 +184,45 @@ export interface DevtoolsHooks {
   attach?(core: {
     scopes: Map<ScopeId, Scope>;
     set: (scope: Scope, slot: number, value: unknown) => void;
+    /** Runs the code of a reference for an element, as an event or a trigger does. */
+    handle?: (element: Element, ref: string, event?: Event) => Promise<unknown>;
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
   /** A part of a component's client code loaded. */
   part?(component: string, name: string): void;
+  /**
+   * A handler ran: when its event came, when its code was ready and the
+   * handlers before it had started, when the call returned, and what it
+   * returned, which is a promise for an async handler.
+   */
+  handled?(run: {
+    ref: string;
+    element: Element;
+    event?: string;
+    begun: number;
+    ready: number;
+    end: number;
+    result: unknown;
+  }): void;
+  /** The updates of a write ran: how many, and how long they took with their effects. */
+  updated?(count: number, start: number, end: number): void;
+  /**
+   * Code of a component starts to load: its entry, or a part, and why.
+   * `done` settles when it has loaded.
+   */
+  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
+  /** The loader asks the server for the body of a `#defer` block. */
+  defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
   write?(scope: Scope, slot: number, value: unknown): void;
+  /**
+   * An effect or a `$client` callback, by its name in the update code, ran
+   * and took `time` milliseconds, or its cleanup ran.
+   */
+  effect?(scope: Scope, name: string, kind: 'run' | 'cleanup', time: number): void;
+  /** A client navigation changed the page: the routes that stayed, and those it replaced. */
+  navigated?(report: NavigationReport): void;
 }
 
 /** The global key of the devtools hooks. */
@@ -266,7 +315,7 @@ function refresh(added: Scope[]): void {
     if (!id) {
       continue;
     }
-    void loadModule(id).then(async (module) => {
+    void loadModule(id, 'state').then(async (module) => {
       const names = new Set<string>();
       for (const slots of Object.values(module.g)) {
         for (const entries of Object.values(slots)) {
@@ -280,7 +329,7 @@ function refresh(added: Scope[]): void {
       if (names.size === 0) {
         return;
       }
-      const updates = await loadPart(module, 'update');
+      const updates = await loadPart(module, 'update', 'state');
       // Memos first, so the other updates read their new values.
       for (const name of [...names].toSorted(
         (a, b) => Number(b[0] === 'm') - Number(a[0] === 'm'),
@@ -361,6 +410,7 @@ function addScopes(state: PageState, root: string): Scope[] {
       c: record.c,
       v: record.v,
       x: record.x,
+      b: record.b,
       children: new Set(),
       r: root,
     };
@@ -581,6 +631,9 @@ export function leavePage(): void {
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   options = value;
+  if (value.serial) {
+    useSerialEntry(value.serial);
+  }
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();
@@ -595,16 +648,64 @@ export function init(value: CoreOptions): void {
   indexMarkers(document.documentElement);
   watchTitles(document);
   if (DEV) {
-    devtools()?.attach?.({ scopes, set });
+    devtools()?.attach?.({ scopes, set, handle });
   }
+}
+
+/**
+ * The handlers that the core makes from references, with their references,
+ * so a spread in markup that the browser renders passes them on in `b-on`,
+ * as a spread on the server does.
+ */
+const handlerReferences = new WeakMap<object, FunctionReference>();
+
+/** The modifiers that the wrappers of `brumate/events` put on a handler. */
+const MODIFIERS = Symbol.for('brumate.modifiers');
+
+/**
+ * Renders an object of attributes. With `on`, a handler in it that the core
+ * made from a reference goes into `on` as a `b-on` entry, with the scope and
+ * the arguments of its reference and the modifiers of its wrappers.
+ */
+export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+  if (on) {
+    for (const [name, value] of Object.entries(attributes)) {
+      const reference =
+        /^on[A-Z]/.test(name) && typeof value === 'function'
+          ? handlerReferences.get(value)
+          : undefined;
+      if (reference) {
+        on.push(
+          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+        );
+      }
+      // A binding that a rest prop passed on writes its slot, or calls its setter.
+      if ((name === 'value' || name === 'checked') && isBinding(value)) {
+        on.push(bindEntry(name, value.ref, setterReference(value.set)));
+      }
+    }
+  }
+  return spreadText(attributes);
+}
+
+/** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
+function setterReference(set: unknown): FunctionReference | undefined {
+  if (set instanceof FunctionReference) {
+    return set;
+  }
+  return typeof set === 'function' ? handlerReferences.get(set) : undefined;
 }
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof FunctionReference) {
-    return isTemplate(value.ref)
-      ? templateReference(value.ref, scopes.get(value.scope))
-      : (...args: unknown[]) => call(value.ref, scopes.get(value.scope), args);
+    if (isTemplate(value.ref)) {
+      return templateReference(value.ref, scopes.get(value.scope));
+    }
+    const handler = (...args: unknown[]): unknown =>
+      call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
+    handlerReferences.set(handler, value);
+    return handler;
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
@@ -619,7 +720,22 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-export function loadModule(id: string): Promise<ClientModule> {
+/**
+ * Why the core loads code, for the Loading tab of the devtools: an event,
+ * a call of a function prop, a template, the scopes of a state record, a
+ * write, an error, a reset of `#try`, or a prop of a child.
+ */
+export type LoadReason =
+  | 'event'
+  | 'call'
+  | 'template'
+  | 'state'
+  | 'write'
+  | 'error'
+  | 'reset'
+  | 'prop';
+
+export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -629,11 +745,18 @@ export function loadModule(id: string): Promise<ClientModule> {
       return module;
     });
     loading.set(id, promise);
+    if (DEV) {
+      devtools()?.load?.(id, 'entry', reason, promise);
+    }
   }
   return promise;
 }
 
-export function loadPart(module: ClientModule, name: string): Promise<Part> {
+export function loadPart(
+  module: ClientModule,
+  name: string,
+  reason: LoadReason = 'write',
+): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -647,6 +770,9 @@ export function loadPart(module: ClientModule, name: string): Promise<Part> {
       },
     );
     parts.set(key, promise);
+    if (DEV) {
+      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
+    }
   }
   return promise;
 }
@@ -656,11 +782,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string): Promise<Handler> {
+async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id);
-    const part = await loadPart(module, partOf(name));
+    const module = await loadModule(id, reason);
+    const part = await loadPart(module, partOf(name), reason);
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -700,7 +826,7 @@ async function serverBuild(): Promise<string | undefined> {
 }
 
 async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  return (await resolve(ref))(scope, ...args);
+  return (await resolve(ref, 'call'))(scope, ...args);
 }
 
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
@@ -718,7 +844,7 @@ const loadingTemplates = new Set<Promise<unknown>>();
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
   let render: Handler | undefined;
   // A template that fails to load stops holding up updates too, and its error is reported.
-  const code: Promise<unknown> = resolve(ref)
+  const code: Promise<unknown> = resolve(ref, 'template')
     .then((handler) => {
       render = handler;
     })
@@ -753,23 +879,64 @@ function withTarget(event: Event, element: Element): Event {
  */
 export function handle(element: Element, entry: string, event?: Event): Promise<unknown> {
   // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
-  const [ref, owner] = entry.split('@') as [string, string | undefined];
+  // A handler that `$handler` made has its arguments after another `@`.
+  const [ref, owner, encoded] = entry.split('@') as [string, string | undefined, string?];
+  const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
   }
-  const args = event ? [withTarget(event, element)] : [];
+  // `value=$bind(name)` on an element: the core writes the slot of the name, `hops` parents up
+  // from the element's scope, from the value of the element, or whether a box is checked.
+  // `value=$bind(name, fn)`: the setter takes the value of the element. A ref names its scope
+  // after `@`, so the prefix is `$set:`.
+  if (ref.startsWith('$set:')) {
+    const field = element as HTMLInputElement;
+    return call(ref.slice(5), scope, [
+      /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value,
+    ]);
+  }
+  if (ref.startsWith('$bind#')) {
+    const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
+    let target = scope;
+    for (let hop = 0; hop < hops; hop++) {
+      target = target?.p;
+    }
+    const field = element as HTMLInputElement;
+    if (target) {
+      set(target, slot, /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value);
+    }
+    return Promise.resolve();
+  }
+  const args = event ? [...bound, withTarget(event, element)] : bound;
+  const begun = DEV ? performance.now() : 0;
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref);
+  const loaded = resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
-    .then((handler) => ({ value: handler(scope, ...args) }));
+    .then((handler) => {
+      if (!DEV) {
+        return { value: handler(scope, ...args) };
+      }
+      const ready = performance.now();
+      const value = handler(scope, ...args);
+      devtools()?.handled?.({
+        ref,
+        element,
+        event: event?.type,
+        begun,
+        ready,
+        end: performance.now(),
+        result: value,
+      });
+      return { value };
+    });
   lastHandler = started.catch(() => {});
   // An error of the handler, or of the promise that an async one returns, goes to the nearest
   // `#try` around its scope.
@@ -796,7 +963,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id);
+      const module = await loadModule(id, 'error');
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -824,7 +991,7 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update');
+  const updates = await loadPart(module, 'update', 'error');
   const start = findComment(`b${owner.id}:${anchor}`);
   if (!start) {
     return;
@@ -862,7 +1029,31 @@ export function get(scope: Scope, slot: number): any {
 // The number of writes since the page loaded, so scopes that stream in later know to update.
 let writes = 0;
 
+/**
+ * Writes a slot from code of a component. A prop that a parent bound with
+ * `$bind` writes the parent's slot too, through any number of levels, and
+ * the parent's update of the prop then finds the value already there. A
+ * binding with a setter, `$bind(name, fn)`, calls it in place of the write,
+ * and the parent's update of the prop writes the value that it keeps.
+ */
 export function set<T>(scope: Scope, slot: number, value: T): T {
+  const bound = scope.b?.[slot];
+  if (bound === undefined || isSlotReference(bound)) {
+    writeSlot(scope, slot, value);
+    const target = bound && scopes.get(bound.scope);
+    if (target) {
+      set(target, bound.slot, value);
+    }
+  } else if (bound instanceof FunctionReference) {
+    void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
+  } else if (typeof bound === 'function') {
+    void bound(value);
+  }
+  return value;
+}
+
+/** Writes a slot, and updates what reads it. */
+function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
     scope.s[slot] = value;
@@ -871,7 +1062,38 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
     }
     trigger(scope, slot);
   }
-  return value;
+}
+
+/** What `$bind(name)` passes a child, in markup that the browser renders. */
+export function binding<T>(
+  value: T,
+  scope: Scope | ScopeId,
+  slot: number,
+  set?: unknown,
+): Binding<T> {
+  return new Binding(
+    value,
+    new SlotReference(typeof scope === 'object' ? scope.id : scope, slot),
+    set,
+  );
+}
+
+/**
+ * Records the props that a parent bound with `$bind`, among the props that a
+ * component the browser renders writes: `slots` has the slot of each, by its name.
+ */
+export function bindings(
+  scope: Scope | ScopeId,
+  props: Record<string, unknown>,
+  slots: Record<string, number>,
+): void {
+  const target = typeof scope === 'object' ? scope : scopes.get(scope);
+  for (const [name, slot] of Object.entries(slots)) {
+    const value = props[name];
+    if (target && isBinding(value)) {
+      (target.b ??= {})[slot] = value.target;
+    }
+  }
 }
 
 /**
@@ -1208,14 +1430,32 @@ function trigger(scope: Scope, slot: number): void {
   }
   // The first write to a component loads its update code. Later writes wait in order, and
   // for the templates that the updates can render.
-  void loadModule(id).then(async (loaded) => {
+  const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
       await Promise.allSettled(loadingTemplates);
       run(loaded, code, scope, slot);
     }
   });
+  loadingUpdates.add(loading);
+  void loading.finally(() => loadingUpdates.delete(loading));
 }
+
+/** The updates that wait for their code. */
+const loadingUpdates = new Set<Promise<unknown>>();
+
+/**
+ * Resolves when the updates of the writes so far have run, including those
+ * whose code is loading. `transition` of `brumate/events` waits for it.
+ */
+export async function updated(): Promise<void> {
+  while (loadingUpdates.size > 0) {
+    // oxlint-disable-next-line no-await-in-loop -- An update can start more loads.
+    await Promise.allSettled(loadingUpdates);
+  }
+}
+
+(globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.updated')] = updated;
 
 // Effects wait until every other update of a write has run, and run once each.
 const pendingEffects = new Map<string, () => void>();
@@ -1224,7 +1464,15 @@ let flushing = false;
 /** Counts changes to the scope tree, so `run` knows when the descendants it found are out of date. */
 let treeChanges = 0;
 
+/** The updates that ran since the outermost `run` started, and when it started, for the devtools. */
+let updateCount = 0;
+let updateStart = 0;
+
 function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+  if (DEV && running === 0) {
+    updateCount = 0;
+    updateStart = performance.now();
+  }
   running++;
   // The descendants of each kind, found once while the tree does not change.
   let found: Map<number, Scope[]> | undefined;
@@ -1255,11 +1503,17 @@ function run(module: ClientModule, updates: Part, scope: Scope, slot: number): v
   }
   if (running === 0) {
     flushEffects();
+    if (DEV) {
+      devtools()?.updated?.(updateCount, updateStart, performance.now());
+    }
   }
 }
 
 /** Runs an update on a scope. An effect waits until the other updates have run. */
 function runUpdate(fn: (scope: Scope) => void, name: string, target: Scope): void {
+  if (DEV) {
+    updateCount++;
+  }
   if (name[0] === 'e') {
     pendingEffects.set(`${target.id}:${name}`, () => {
       if (scopes.has(target.id)) {
@@ -1588,6 +1842,9 @@ function write(
 }
 
 function setAttribute(element: Element, name: string, value: unknown): void {
+  if (isBinding(value)) {
+    value = value.value;
+  }
   // A write of the same value changes nothing on screen, yet it still costs a style check and
   // notifies observers, so each write is skipped when the element already has the value.
   if (name === 'value' || name === 'checked') {
@@ -1719,7 +1976,7 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id), 'update');
+  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
   const start = findComment(`b${scope.id}:${anchor}`);
   if (!start) {
     return;
@@ -2218,7 +2475,40 @@ function watchTitles(root: ParentNode): void {
 }
 
 /** Writes a prop of a child component. */
+// The keys that the spreads of child components passed last, by the child's scope and anchor.
+const spreadKeys = new WeakMap<Scope, Map<number, Set<string>>>();
+
+/**
+ * Updates the props of a child component from a spread. A key that the
+ * spread passed before and no longer has becomes undefined. `after` names
+ * the props after the spread, which win over it.
+ */
+export function spreadProps(
+  scope: Scope,
+  anchor: number,
+  value: Record<string, unknown> | null | undefined,
+  after: string[],
+): void {
+  const byAnchor = spreadKeys.get(scope) ?? new Map<number, Set<string>>();
+  spreadKeys.set(scope, byAnchor);
+  const before = byAnchor.get(anchor) ?? new Set();
+  const keys = new Set(Object.keys(value ?? {}).filter((key) => !after.includes(key)));
+  byAnchor.set(anchor, keys);
+  for (const key of keys) {
+    prop(scope, anchor, key, value![key]);
+  }
+  for (const key of before) {
+    if (!keys.has(key)) {
+      prop(scope, anchor, key, undefined);
+    }
+  }
+}
+
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
+  // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
+  if (isBinding(value)) {
+    value = value.value;
+  }
   const id = scope.c?.[anchor];
   const child = id === undefined ? undefined : scopes.get(id);
   if (!child?.m) {
@@ -2231,7 +2521,8 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
       if (isThenable(value)) {
         asyncMemo(child, slot, Promise.resolve(value));
       } else {
-        set(child, slot, value);
+        // The parent's value. A bound prop does not write it back.
+        writeSlot(child, slot, value);
       }
       return;
     }
@@ -2244,7 +2535,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m).then(apply);
+    void loadModule(child.m, 'prop').then(apply);
   }
 }
 
@@ -2257,6 +2548,7 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
+  const start = DEV ? performance.now() : 0;
   try {
     cleanup = callback();
   } catch (error) {
@@ -2264,7 +2556,18 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
     fail(scope, error);
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
-  scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
+  let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
+  if (DEV) {
+    devtools()?.effect?.(scope, name, 'run', performance.now() - start);
+    // Each way that a cleanup runs calls this function: the next run, a removed scope, a hidden
+    // `#offscreen` body, or a page that navigation leaves.
+    const own = stored;
+    stored = () => {
+      devtools()?.effect?.(scope, name, 'cleanup', 0);
+      own();
+    };
+  }
+  scope.cleanups.set(name, stored);
 }
 
 function noop(): void {}
@@ -2337,7 +2640,10 @@ export function children(from: Scope | ScopeId | undefined, html: () => string):
 export type Component<P = any> = (props: P) => string;
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
-  return typeof scope === 'object' ? scope : scope === undefined ? undefined : scopes.get(scope);
+  if (typeof scope === 'object') {
+    return scope;
+  }
+  return scope === undefined ? undefined : scopes.get(scope);
 }
 
 /**
@@ -2547,13 +2853,31 @@ export function addStyle(id: string, css: string): string {
 }
 
 /** A function prop rendered on the client calls the parent's exported handler. */
-export function handlerProp(value: unknown, ref: string, scope: Scope | number): unknown {
+export function handlerProp(
+  value: unknown,
+  ref: string,
+  scope: Scope | number,
+  bound: unknown[] = [],
+  modifiers?: string[],
+): unknown {
   // A template renders at once, and the client has its code already.
   if (typeof value !== 'function' || isTemplate(ref)) {
     return value;
   }
   const instance = resolveScope(scope);
-  return (...args: unknown[]) => call(ref, instance, args);
+  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
+  // A scope that is not in the page yet has its ID in `scope`.
+  handlerReferences.set(
+    handler,
+    new FunctionReference(
+      ref,
+      instance?.id ?? (scope as ScopeId),
+      bound.length > 0 ? bound : undefined,
+      modifiers ?? (value as { [MODIFIERS]?: string[] })[MODIFIERS],
+    ),
+  );
+  return handler;
 }
 
 /**

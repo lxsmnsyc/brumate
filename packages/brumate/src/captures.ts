@@ -85,30 +85,58 @@ export function initializers(file: SFCFile): Map<number, oxc.Node> {
   return result;
 }
 
-/** The class of a value made with `new`, unless brumate can send it. */
-function unsendableClass(node: oxc.Node): string | undefined {
+/** The class of a value made with `new`, unless brumate or a plugin of the app can send it. */
+function unsendableClass(node: oxc.Node, sendable: readonly string[]): string | undefined {
   if (node.type !== 'NewExpression') {
     return undefined;
   }
   const callee = node.callee;
-  const name =
-    callee.type === 'Identifier'
-      ? callee.name
-      : callee.type === 'MemberExpression' && callee.property.type === 'Identifier'
-        ? callee.property.name
-        : 'class';
-  return SENDABLE.has(name) ? undefined : name;
+  let name = 'class';
+  if (callee.type === 'Identifier') {
+    name = callee.name;
+  } else if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier') {
+    name = callee.property.name;
+  }
+  return SENDABLE.has(name) || sendable.includes(name) ? undefined : name;
+}
+
+/**
+ * The classes that the plugins of a serial entry send: the names on the
+ * right of `instanceof` in the file, such as `Money` in
+ * `test: (value) => value instanceof Money`.
+ */
+export function entryClasses(program: oxc.Node): string[] {
+  const names = new Set<string>();
+  const visit = (node: oxc.Node): void => {
+    if (node.type === 'BinaryExpression' && node.operator === 'instanceof') {
+      const right = node.right;
+      if (right.type === 'Identifier') {
+        names.add(right.name);
+      } else if (right.type === 'MemberExpression' && right.property.type === 'Identifier') {
+        names.add(right.property.name);
+      }
+    }
+    for (const [, child] of children(node)) {
+      visit(child);
+    }
+  };
+  visit(program);
+  return [...names];
 }
 
 /** Errors for values that the browser reads but that cannot be sent to it. */
-export function checkCaptures(file: SFCFile, plan: Plan): Diagnostic[] {
+export function checkCaptures(
+  file: SFCFile,
+  plan: Plan,
+  sendable: readonly string[] = [],
+): Diagnostic[] {
   const values = initializers(file);
   const diagnostics: Diagnostic[] = [];
   const reported = new Set<Declaration>();
   for (const layout of plan.scopes.values()) {
     for (const declaration of layout.slots) {
       const init = values.get(declaration.range.start);
-      const kind = init && unsendableClass(init);
+      const kind = init && unsendableClass(init, sendable);
       if (!kind || reported.has(declaration)) {
         continue;
       }

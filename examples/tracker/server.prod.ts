@@ -45,17 +45,25 @@ const http = createServer(async (request, response) => {
         return;
       }
     }
-    // Built client modules, and pages that the build prerendered, such as /about. The request
-    // for a `#defer` body goes to the routes, because only they can render it.
-    if (request.method === 'GET' && !request.headers['x-brumate-defer']) {
-      const found = url.pathname.startsWith('/assets/')
-        ? await file(url.pathname)
-        : await file(path.join(url.pathname, 'index.html'));
+    // Built client modules.
+    if (request.method === 'GET' && url.pathname.startsWith('/assets/')) {
+      const found = await file(url.pathname);
       if (found) {
         response.setHeader('content-type', found.type);
         response.end(found.body);
         return;
       }
+    }
+    // A page that the build prerendered, such as /about, goes to the routes as the shell of the
+    // answer. They send it at once, and the bodies of its `#defer` blocks after it, such as the
+    // line about the user, in place of a request for each.
+    const prerendered =
+      request.method === 'GET' && !url.pathname.startsWith('/assets/')
+        ? await file(path.join(url.pathname, 'index.html'))
+        : undefined;
+    if (prerendered) {
+      send(await server.route(webRequest, { shell: prerendered.body.toString('utf8') }), response);
+      return;
     }
     // The route files under src/routes render every other page.
     const answer = await server.route(webRequest, {

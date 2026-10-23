@@ -126,7 +126,7 @@ createHTTPServer((request, response) => {
 ```
 
 - `scripts` is the markup that loads the client entry. It goes at the end of the page. `/@vite/client` updates components when you edit them.
-- `errorPage` answers with Vite's error overlay when a page fails to render, such as after a compile error. It names the file and line, and the page loads again when you fix it.
+- `errorPage` answers with the Errors tab of the devtools when a page fails to render, such as after a compile error. It shows the lines of the file around the error, and the page loads again when you fix it.
 - `handle` returns undefined when no route matches and the root has no `_error.brm`.
 - This server passes only the URL. Forms that post to a route need the method, the headers and the body too. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a complete server.
 

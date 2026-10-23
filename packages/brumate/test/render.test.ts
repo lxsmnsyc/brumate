@@ -63,6 +63,8 @@ beforeAll(() => {
         filename: name,
         liveProps: liveProps.get(name),
         path: fileURLToPath(new URL(name, input)),
+        // The class of the serial entry of the tests, `render/money.ts`.
+        sendableClasses: ['Money'],
       });
       writeFileSync(new URL(`${name}.ts`, output), server.replace(/\.brm'/g, ".brm.ts'"));
     } else {
