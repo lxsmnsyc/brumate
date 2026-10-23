@@ -166,10 +166,13 @@ const BodyRequestPlugin: typeof RequestPlugin = {
   serialize: (node, ctx) =>
     `new Request(${ctx.serialize(node.url)},Object.assign(${ctx.serialize(node.options)},{duplex:"half"}))`,
   deserialize: (node, ctx) =>
-    new Request(ctx.deserialize(node.url) as string, {
-      ...(ctx.deserialize(node.options) as RequestInit),
-      duplex: 'half',
-    } as RequestInit),
+    new Request(
+      ctx.deserialize(node.url) as string,
+      {
+        ...(ctx.deserialize(node.options) as RequestInit),
+        duplex: 'half',
+      } as RequestInit,
+    ),
 };
 
 /** The plugins after the plugin of uploads, which a call makes for its files. */

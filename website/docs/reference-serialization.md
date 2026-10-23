@@ -15,7 +15,7 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | `Date`, `Map`, `Set`                               |                                                                                                    |
 | `URL`, `URLSearchParams`, `Headers`                |                                                                                                    |
 | `FormData`                                         | A field that holds a file is sent only in the arguments of a call.                                 |
-| `Request`, `Response`                              | With their body. A call reads the body first. The page state and answers stream it.               |
+| `Request`, `Response`                              | With their body. A call reads the body first. The page state and answers stream it.                |
 | `ReadableStream`                                   | Each chunk streams as it is ready.                                                                 |
 | `AbortSignal`                                      | Whether it aborted, and its reason.                                                                |
 | `Event`, `CustomEvent`, `DOMException`             | The type and the options of an event, and the name and the message of an exception.                |
