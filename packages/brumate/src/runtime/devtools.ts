@@ -3,6 +3,7 @@
 // so the page behaves as in production until then.
 
 import type { DevtoolsHooks, Scope } from './client.ts';
+import type * as Panel from './devtools-panel.ts';
 import type { ScopeId } from './shared.ts';
 
 // The same key as the core's, without importing the core.
@@ -311,6 +312,9 @@ export function reportError(
   }
 }
 
+/** The code of the panel, which loads when it opens. */
+const panelModule = (): Promise<typeof Panel> => import('./devtools-panel.ts');
+
 /** True for an error of code that is not of the page, such as of a browser extension. */
 const foreign = (stack: string | undefined, file = ''): boolean =>
   /^[a-z-]+-extension:/.test(file) ||
@@ -482,63 +486,96 @@ export function installDevtools(
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
-.open { position: fixed; right: 24px; bottom: 0; z-index: 2147483647; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px 0 8px; border: 1px solid #2f2c31; border-bottom: 0; border-radius: 9px 9px 0 0; background: #19181a; color: #ece8e4; font: 600 12px/1 system-ui, -apple-system, sans-serif; letter-spacing: -0.01em; cursor: pointer; box-shadow: 0 -4px 18px #0005; transition: height 0.15s, background 0.15s; touch-action: none; }
-.open:hover { height: 32px; background: #222023; }
-.open:focus-visible { outline: 2px solid #ee7a3e; outline-offset: 2px; }
-.open .mark { display: inline-flex; width: 16px; height: 16px; }
-.open .version { font: 600 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #c9c1b9; }
-.open .chevron { width: 10px; height: 10px; opacity: 0.6; transition: transform 0.15s; }
-.open[aria-expanded="true"] .chevron { transform: rotate(180deg); }
-.count { min-width: 16px; height: 16px; padding: 0 5px; box-sizing: border-box; border-radius: 8px; background: #e5484d; color: #fff; font: 700 10px/16px system-ui, sans-serif; text-align: center; }
+.open { position: fixed; left: 50%; bottom: 0; z-index: 2147483647; transform: translateX(-50%); display: flex; justify-content: center; padding: 8px 16px 0; border: 0; background: none; color: #ece8e4; font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: pointer; touch-action: none; outline: none; }
+.open[hidden] { display: none; }
+.grip { width: 40px; height: 5px; border-radius: 4px 4px 0 0; background: rgb(25 24 26 / 0.88); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3); transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), width 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+.open[data-errors] .grip { width: 56px; background: #e5484d; }
+.content { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 100%); display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 10px; white-space: nowrap; background: #222023; border: 1px solid #2f2c31; border-bottom: 0; border-radius: 10px 10px 0 0; box-shadow: 0 -4px 16px rgb(0 0 0 / 0.3); opacity: 0; pointer-events: none; transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+.open:hover .content, .open:focus-visible .content, .open:active .content { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.open:hover .grip, .open:focus-visible .grip, .open:active .grip { opacity: 0; }
+.open:focus-visible .content { border-color: #ee7a3e; }
+.mark { display: inline-flex; width: 16px; height: 16px; }
+.version { padding: 1px 8px; border-radius: 999px; background: rgb(238 122 62 / 0.16); color: #ffb48a; font: 600 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.chevron { width: 12px; height: 12px; color: #a39a92; }
+.count { min-width: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #e5484d; color: #fff; font: 600 11px/18px system-ui, sans-serif; text-align: center; }
 .count:empty { display: none; }
-@media (prefers-reduced-motion: reduce) { .open, .open .chevron { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .grip, .content { transition: none; } }
 `;
+  // The closed panel: a grip on the bottom edge that grows into a pull tab on hover or focus, so
+  // it covers almost none of the page. A click, or a drag up, opens the panel.
   const button = document.createElement('button');
+  button.type = 'button';
   button.className = 'open';
-  button.title = 'Open the brumate devtools. Drag to resize.';
-  button.setAttribute('aria-expanded', 'false');
-  // A tab on the bottom edge, which pulls the panel up, and sits on its top edge while it is open.
-  button.innerHTML = `<span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6.5 5 3.5 8 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  button.title = 'brumate devtools (Alt+Shift+D)';
+  button.innerHTML = `<span class="grip"></span><span class="content"><span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   // The version of brumate, next to its mark.
   button.querySelector('.version')!.textContent = meta.version ? `v${meta.version}` : 'brumate';
-  button.setAttribute(
-    'aria-label',
-    `brumate devtools${meta.version ? `, version ${meta.version}` : ''}`,
-  );
-  // The number of errors, in red on the tab, so an error shows while the panel is closed.
+  const label = (): void => {
+    const errors = state.errors.length;
+    button.setAttribute(
+      'aria-label',
+      `Open the brumate devtools${meta.version ? `, version ${meta.version}` : ''}${errors > 0 ? `, ${errors} errors` : ''}`,
+    );
+  };
+  label();
+  // The number of errors, in red on the tab, and a red grip, so an error shows while it is closed.
   const count = button.querySelector<HTMLElement>('.count')!;
   state.errorCount = (): void => {
     count.textContent = state.errors.length > 0 ? String(state.errors.length) : '';
-    count.title = `${state.errors.length} errors`;
+    button.toggleAttribute('data-errors', state.errors.length > 0);
+    label();
   };
-  // Dragging the tab of an open panel changes its height. A click opens or closes it.
-  let drag: { y: number; moved: boolean } | undefined;
+  // Dragging the tab up past a few pixels opens the panel under the pointer. A press that does not
+  // move is left to the click.
   let dragged = false;
   button.addEventListener('pointerdown', (event) => {
-    if (state.resize) {
-      drag = { y: event.clientY, moved: false };
-      button.setPointerCapture(event.pointerId);
+    if (event.button !== 0) {
+      return;
     }
-  });
-  button.addEventListener('pointermove', (event) => {
-    if (drag && (drag.moved || Math.abs(event.clientY - drag.y) > 4)) {
-      drag.moved = true;
-      state.resize?.(event.clientY);
-    }
-  });
-  button.addEventListener('pointerup', () => {
-    dragged = drag?.moved ?? false;
-    drag = undefined;
-    if (dragged) {
-      state.resized?.();
-    }
+    const start = event.clientY;
+    let opened = false;
+    dragged = false;
+    const move = (next: PointerEvent): void => {
+      if (!opened) {
+        if (start - next.clientY < 4) {
+          return;
+        }
+        opened = true;
+        dragged = true;
+        void panelModule().then(({ openPanel }) => {
+          openPanel(root, state, 'overview');
+          state.resize?.(next.clientY);
+        });
+        return;
+      }
+      state.resize?.(next.clientY);
+    };
+    // The tab hides as the panel opens, so the pointer is followed on the window.
+    const end = (): void => {
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', end);
+      removeEventListener('pointercancel', end);
+      if (opened) {
+        state.resized?.();
+      }
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
   });
   button.addEventListener('click', () => {
     if (dragged) {
       dragged = false;
       return;
     }
-    void import('./devtools-panel.ts').then(({ togglePanel }) => togglePanel(root, state));
+    void panelModule().then(({ togglePanel }) => togglePanel(root, state));
+  });
+  // Alt+Shift+D opens and closes the panel. `code`, because Alt changes the key on macOS.
+  addEventListener('keydown', (event) => {
+    if (event.altKey && event.shiftKey && event.code === 'KeyD') {
+      event.preventDefault();
+      void panelModule().then(({ togglePanel }) => togglePanel(root, state));
+    }
   });
   state.open = (tab) => {
     void import('./devtools-panel.ts').then(({ openPanel }) => openPanel(root, state, tab));

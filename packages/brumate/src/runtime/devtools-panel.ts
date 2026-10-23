@@ -674,9 +674,9 @@ export function togglePanel(
     panel = undefined;
     state.changed = undefined;
     document.documentElement.style.removeProperty('padding-bottom');
-    opener?.style.removeProperty('bottom');
-    opener?.style.removeProperty('display');
-    opener?.setAttribute('aria-expanded', 'false');
+    if (opener) {
+      opener.hidden = false;
+    }
     state.resize = undefined;
     state.resized = undefined;
     showTab = undefined;
@@ -785,15 +785,13 @@ export function togglePanel(
     }
     // The page can scroll past the panel.
     document.documentElement.style.paddingBottom = `${height}px`;
-    // The tab sits on the top edge of the panel. A panel as tall as the page has no room for it.
-    if (opener) {
-      opener.style.bottom = `${height - 1}px`;
-      opener.style.display = height > window.innerHeight - 30 ? 'none' : '';
-    }
   };
   applyHeight();
   root.append(panel);
-  opener?.setAttribute('aria-expanded', 'true');
+  // The tab hides while the panel is open. Close, or Alt+Shift+D, closes it.
+  if (opener) {
+    opener.hidden = true;
+  }
   state.resize = (clientY) => {
     height = Math.min(Math.max(window.innerHeight - clientY, 160), window.innerHeight * 0.9);
     applyHeight();
