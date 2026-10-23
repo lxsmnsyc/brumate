@@ -81,36 +81,7 @@ Every selector in a `<style>` block matches only elements that the component its
 
 ## Classes
 
-A `class` attribute takes a string, an object or an array. An object turns each class on or off by its value:
-
-```brm live
-<script>
-  import { $signal } from 'brumate/signals';
-
-  let done = $signal(false);
-  let urgent = $signal(true);
-</script>
-
-<p class={ task: true, done, urgent }>Write the release notes</p>
-<label><input type="checkbox" checked=done onChange=((event) => (done = event.currentTarget.checked))> Done</label>
-<label><input type="checkbox" checked=urgent onChange=((event) => (urgent = event.currentTarget.checked))> Urgent</label>
-
-<style>
-  .task {
-    padding: 0.25rem 0.5rem;
-  }
-  .done {
-    text-decoration: line-through;
-    opacity: 0.6;
-  }
-  .urgent {
-    border-left: 3px solid crimson;
-  }
-</style>
-```
-
-- `class=(['task', done && 'done'])` does the same with an array. Empty and false items are skipped.
-- `style` takes a string or an object, such as `style={ color: 'red', fontSize: '2rem' }`. Property names in camel case become CSS names.
+A `class` attribute takes a string, an object or an array, and a `style` attribute takes a string or an object. See [`class` and `style`](./markup.md#class-and-style).
 
 Prefer classes and `${}` values in the `<style>` block. A `style` attribute is useful for one-off values that do not belong in the stylesheet.
 

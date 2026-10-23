@@ -18,8 +18,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                      |
 | `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                |
 | `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md) |
-| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md#waiting-for-a-pause)            |
-| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md#waiting-for-a-pause)            |
+| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)  |
+| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)  |
 | `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                      |
 | `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |
 | `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                            |

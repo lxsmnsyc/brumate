@@ -76,30 +76,6 @@ const { title, size = 'medium', ...rest } = $props<{
 - On an element with a spread, the attributes apply in their order, so a later one wins. A `class` adds to the others: `<a class="link" {...rest}>` with `class="primary"` in `rest` gets `class="link primary"`.
 - Read props by their names. Do not keep the object of `$props()` and read from it later.
 
-### Handlers in a spread
-
-A handler that the caller passes, such as `onClick`, goes through `{...rest}` to the element, with its wrappers of `brumate/events`. The element keeps its own handlers too, and both run, its own first:
-
-```brm
-<!-- Button.brm -->
-<script>
-  import { $props, $signal } from 'brumate/signals';
-
-  const { label, ...rest } = $props();
-  let pressed = $signal(0);
-</script>
-
-<button onClick=(() => pressed++) {...rest}>{label}</button>
-```
-
-```brm
-<Button label="Save" onClick=(prevent(save)) />
-```
-
-- The caller's handler runs in the caller's component, as if the caller had put it on the element.
-- A spread passes on handlers that the server renders. A function that the component makes itself, such as one that calls `rest.onClick`, cannot go through a spread: put it on the element as its own handler instead.
-- Markup that the browser renders, such as a new item of a `#for`, gets the attributes of a spread, and not its handlers yet.
-
 ### Props that change
 
 A prop changes in the browser only when the parent passes a value that can change there, such as a signal. The compiler finds these props across the project, so a prop that every parent passes as a constant ships no update code.
@@ -157,6 +133,30 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
+
+### Handlers in a spread
+
+A handler that the caller passes, such as `onClick`, goes through `{...rest}` to the element, with its wrappers of `brumate/events`. The element keeps its own handlers too, and both run, its own first:
+
+```brm
+<!-- Button.brm -->
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { label, ...rest } = $props();
+  let pressed = $signal(0);
+</script>
+
+<button onClick=(() => pressed++) {...rest}>{label}</button>
+```
+
+```brm
+<Button label="Save" onClick=(prevent(save)) />
+```
+
+- The caller's handler runs in the caller's component, as if the caller had put it on the element.
+- A spread passes on handlers that the server renders. A function that the component makes itself, such as one that calls `rest.onClick`, cannot go through a spread: put it on the element as its own handler instead.
+- Markup that the browser renders, such as a new item of a `#for`, gets the attributes of a spread, and not its handlers yet.
 
 ### `children`
 
@@ -237,7 +237,7 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 
 ### Promises as props
 
-A prop can be a promise, such as the result of a server function: `<User data=(fetchUser(id)) />`. The child reads its value with a memo, `const user = $memo(data)`. [Async data](./async-data.md) describes it.
+A prop can be a promise. See [Promises as props](./async-data.md#promises-as-props).
 
 ## Generic components
 

@@ -17,6 +17,8 @@ A request comes from another site when:
 1. Its `Origin` header is `null`, or names a host other than the host of the request. The host of the request is read from its URL, and from the `Host` and `X-Forwarded-Host` headers, so a server behind a proxy matches its public name.
 2. It has no `Origin`, and `Sec-Fetch-Site` is `cross-site` or `same-site`. Older browsers send only this header.
 
+`same-site` counts as another site, because a page on another subdomain can be run by someone else.
+
 A request with neither header does not come from a page in a browser, so it is allowed. The check runs before any middleware, so a refused call never reaches `src/middleware.ts`. Origins in the `origins` option of the plugin are always allowed:
 
 ```ts
@@ -39,9 +41,7 @@ export async function POST(request: Request): Promise<Response> {
 
 ## Rate limits
 
-Server functions and endpoints answer anyone. `rateLimit` counts the calls of each key and refuses the ones over the limit with 429. A sign-in counts by the account that it guesses at, and an action of a signed-in user by the user. Otherwise it counts by the address of the client, which comes from the server, or from `X-Forwarded-For` when the server saw one of the proxies that the app names, never from a header alone. Without a key or an address, a limit throws in production rather than count every caller together. See [Rate limiting](./server-functions.md#rate-limiting).
-
-`same-site` counts as another site, because a page on another subdomain can be run by someone else.
+Server functions and endpoints answer anyone. `rateLimit` counts the calls of each key and refuses the ones over the limit with 429. A sign-in counts by the account that it guesses at, and an action of a signed-in user by the user. Otherwise it counts by the address of the client, which comes from the server, or from `X-Forwarded-For` when the server saw one of the proxies that the app names, never from a header alone. Without a key or an address, a limit throws in production rather than count every caller together. See [Rate limiting](./security.md#rate-limiting).
 
 ## Secrets
 
