@@ -107,6 +107,8 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 
 If the body fails, the fallback stays.
 
+In a `#reveal (collapsed)` block, a fallback that waits for its turn is in `<template b-f="<id>">` between the markers. The script that shows the body before it also calls `$bF(<id>)`, which moves the fallback out of its template. The first such script defines `$bF`.
+
 A body whose values are ready when the block renders, and that renders no component, dynamic tag, template or prop, renders in place: no markers, no `<template>` and no swap script. Its scopes get the IDs of the boundary, such as `0.0`, as they would in a stream, and they are in the page state.
 
 The body renders with the values of the server. If a value changed in the browser before the body arrived, the core runs the updates of the body's scopes once, so the body shows the current values. Effects do not run.

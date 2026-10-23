@@ -343,6 +343,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         (declaration.kind === 'error' &&
           declaration.block?.kind === 'try' &&
           tryChanges(declaration.block)) ||
+        // A child or an element writes it through `$bind`.
+        declaration.bound === true ||
         (declaration.kind === 'template-param' && templateCallChanges(declaration.scope));
       if (isLive) {
         live.add(node);

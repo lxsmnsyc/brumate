@@ -12,6 +12,7 @@ import type {
   RepeatBlock,
   SFCFile,
   TemplateDecl,
+  ValueAttribute,
 } from '../ast.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
@@ -120,6 +121,7 @@ const CLIENT_HELPERS: Record<string, string> = {
   portal: 'addPortal',
   style: 'addStyle',
   fn: 'handlerProp',
+  bindings: 'bindings',
   after: 'afterInsert',
   title: 'title',
 };
@@ -233,6 +235,7 @@ export class Emitter {
       this.sitesByNode.set(site.node, site);
     }
     this.addHandlerEdits();
+    this.addBindEdits();
     for (const declaration of plan.graph.model.declarations) {
       for (const ref of declaration.refs) {
         this.refTargets.set(ref.attribute, declaration);
@@ -275,6 +278,37 @@ export class Emitter {
         this.patch.replace(fn.end, args[0]!.start, `, ${ref}, ${scope}, [`);
         this.patch.replace(args.at(-1)!.end, call.end, '])');
       }
+    }
+  }
+
+  /**
+   * `$bind(name)` passes the child the value of the name with its slot,
+   * `binding(name, scope, slot)`, so the child's writes reach it.
+   */
+  private addBindEdits(): void {
+    let edited = handlerEdits.get(this.patch);
+    if (!edited) {
+      handlerEdits.set(this.patch, (edited = new Set()));
+    }
+    for (const { call, declaration, setter } of this.plan.graph.model.bindings) {
+      const [target, fn] = call.arguments;
+      if (!target || edited.has(call)) {
+        continue;
+      }
+      edited.add(call);
+      const scope = this.scopeVar(instanceScope(this.plan, declaration.scope));
+      const slot = slotIndex(this.plan, declaration);
+      this.patch.replace(call.start, target.start, '$$b.binding((');
+      const symbol = setter && this.plan.symbols.get(setter);
+      if (!fn || !setter || !symbol) {
+        this.patch.replace(target.end, call.end, `), ${scope}, ${slot})`);
+        continue;
+      }
+      // The setter loads with its own part, as a handler of `$handler` does.
+      const ref = JSON.stringify(`${this.plan.id}#${symbol}`);
+      const owner = this.scopeVar(instanceScope(this.plan, setter.scope));
+      this.patch.replace(target.end, fn.start, `), ${scope}, ${slot}, ${this.helper('fn')}(`);
+      this.patch.replace(fn.end, call.end, `, ${ref}, ${owner}))`);
     }
   }
 
@@ -403,6 +437,19 @@ export class Emitter {
       this.line(
         `${this.helper('slots')}(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`,
       );
+    }
+    // The props that the component writes, which a parent can bind with `$bind`.
+    if (scope.kind === 'component') {
+      const bindable = slots.flatMap((slot, index) =>
+        slot.kind === 'prop' && slot.writable && slot.propKey !== undefined
+          ? [`${JSON.stringify(slot.propKey)}: ${index}`]
+          : [],
+      );
+      if (bindable.length > 0) {
+        this.line(
+          `${this.helper('bindings')}(${this.scopeVar(scope)}, $$props, { ${bindable.join(', ')} });`,
+        );
+      }
     }
   }
 
@@ -827,6 +874,16 @@ export class Emitter {
         this.emitDynamic(node, scope);
         return;
       case 'fragment':
+        // `#reveal` orders the `#loading` bodies that stream from the server. Markup that the
+        // browser renders has no stream, so its children render as they are.
+        if (node.reveal && this.options.mode === 'server') {
+          this.line(
+            `$$ctx.revealStart(${JSON.stringify(node.reveal.order)}, ${node.reveal.collapsed});`,
+          );
+          this.emitNodes(node.children, scope);
+          this.line('$$ctx.revealEnd();');
+          return;
+        }
         this.emitNodes(node.children, scope);
         return;
       case 'listener': {
@@ -849,6 +906,49 @@ export class Emitter {
           this.emitBlock(node, scope);
         }
     }
+  }
+
+  /**
+   * The `b-on` entry of `value=$bind(name)` or `checked=$bind(name)` on an
+   * element: `input=$bind#<hops>.<slot>`, where `hops` counts the parents
+   * from the scope of the element to the scope of the name. The core writes
+   * the slot from the element without loading any code of the component.
+   */
+  private bindEntry(
+    node: ElementNode,
+    attribute: ValueAttribute,
+    scope: Scope,
+  ): string | undefined {
+    let value: oxc.Node = attribute.value.ast;
+    while (value.type === 'ParenthesizedExpression') {
+      value = value.expression;
+    }
+    const binding = this.plan.graph.model.bindings.find((item) => item.call === value);
+    if (!binding) {
+      return undefined;
+    }
+    const setter = binding.setter && this.plan.symbols.get(binding.setter);
+    const path = scopePath(
+      this.plan,
+      '$$s',
+      instanceScope(this.plan, scope),
+      instanceScope(this.plan, binding.declaration.scope),
+    );
+    const hops = path.split('.p').length - 1;
+    const type = node.attributes.find((item) => item.kind === 'static' && item.name === 'type') as
+      | { value: string | true }
+      | undefined;
+    const box = type && typeof type.value === 'string' && /^(checkbox|radio)$/i.test(type.value);
+    // A box and a select change at once. A text field writes as the user types.
+    const event =
+      attribute.name === 'checked' || box || node.tag.toLowerCase() === 'select'
+        ? 'change'
+        : 'input';
+    // `$bind(name, fn)` calls the setter with the value of the element.
+    if (setter) {
+      return `${event}=$set:${this.plan.id}#${setter}`;
+    }
+    return `${event}=$bind#${hops}.${slotIndex(this.plan, binding.declaration)}`;
   }
 
   private eventEntry({ event, modifiers, handler }: EventAttribute): string {
@@ -926,10 +1026,13 @@ export class Emitter {
       return undefined;
     }
     const declaration = lookup(scope, value.ast.name);
-    if (declaration?.kind !== 'server-function') {
+    // A server function of the component, or one that it imports from a `'use server'` file.
+    if (declaration?.kind !== 'server-function' && declaration?.serverImport === undefined) {
       return undefined;
     }
-    const ref = JSON.stringify(serverFunctionId(this.plan, declaration.name));
+    const ref = JSON.stringify(
+      declaration.serverImport ?? serverFunctionId(this.plan, declaration.name),
+    );
     // The form posts, unless the element sets its own method.
     const hasMethod = node.attributes.some(
       (attribute) => 'name' in attribute && attribute.name === method,
@@ -1018,6 +1121,12 @@ export class Emitter {
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
           );
+          // `value=$bind(name)` writes the name back as the element changes, before the element's
+          // own handlers run.
+          const bound = this.bindEntry(node, attribute, scope);
+          if (bound) {
+            events.unshift(bound);
+          }
           break;
         }
         case 'spread':
@@ -1417,7 +1526,9 @@ export class Emitter {
     }
     this.line(`const ${boundary} = $$ctx.boundary();`);
     if (inPlace) {
-      this.line(`if ($$b.settled([${names.join(', ')}])) {`);
+      // A `#reveal` around the block, in this file or in a component that renders it, can hold a
+      // body that is ready, so it shows in its turn.
+      this.line(`if ($$b.settled([${names.join(', ')}]) && $$ctx.mayShow()) {`);
       this.line(`$$ctx.enter(${boundary});`);
       for (const declaration of memos) {
         this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
@@ -1431,9 +1542,12 @@ export class Emitter {
     this.code(boundary);
     this.html('-->');
     if (block.fallback) {
+      // `#reveal (collapsed)` holds the fallback in a template until the body before it shows.
+      this.code(`$$ctx.fallbackStart(${boundary})`);
       this.line('{');
       this.emitBody(block.fallback);
       this.close();
+      this.code(`$$ctx.fallbackEnd(${boundary})`);
     }
     this.html('<!--/l-->');
     this.end(block);

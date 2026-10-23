@@ -220,3 +220,94 @@ const add = (by: number) => ({ onClick: $handler(() => (count += by)) });`,
     ).toThrow('The handler reads "by", a value of the function around $handler');
   });
 });
+
+describe('bindings', () => {
+  const compileBind = (script: string, markup = '') =>
+    compile(
+      `<script>\nimport { $bind, $props, $signal } from 'brumate/signals';\nimport Child from './Child.brm';\n${script}\n</script>\n\n${markup}`,
+      { filename: 'Test.brm' },
+    );
+
+  it('lets a component write the props that it destructures with let', () => {
+    expect(() =>
+      compileBind(
+        `const { label } = $props();
+let { open = false } = $props();
+function toggle() {
+  open = !open;
+}`,
+        '<button onClick=toggle>{label}</button>',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      compileBind(`const { open } = $props();
+function toggle() {
+  open = !open;
+}`),
+    ).toThrow('Cannot assign to prop "open"');
+    expect(() => compileBind('var { open } = $props();')).toThrow(
+      'Assign $props() to a const or a let',
+    );
+  });
+
+  it('binds a signal or a prop that the component writes, as the value of a prop', () => {
+    expect(() =>
+      compileBind(
+        'let open = $signal(false);\nlet { value } = $props();',
+        '<Child open=$bind(open) value=$bind(value) />',
+      ),
+    ).not.toThrow();
+    expect(() => compileBind('const { open } = $props();', '<Child open=$bind(open) />')).toThrow(
+      '$bind takes a signal, or a prop that the component destructures with let, and "open" is not one',
+    );
+    expect(() =>
+      compileBind('let open = $signal(false);', '<Child open=($bind(open) && true) />'),
+    ).toThrow('Pass $bind(name) as the value of a prop of a component');
+  });
+});
+
+describe('setters of bindings', () => {
+  const compileBind = (script: string, markup: string) =>
+    compile(
+      `<script>\nimport { $bind, $signal } from 'brumate/signals';\nimport Child from './Child.brm';\n${script}\n</script>\n\n${markup}`,
+      { filename: 'Test.brm' },
+    );
+
+  it('takes a function as the setter', () => {
+    expect(() =>
+      compileBind(
+        'let open = $signal(false);',
+        '<Child open=$bind(open, (next) => (open = next)) />',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      compileBind('let open = $signal(false);', '<Child open=$bind(open, 1) />'),
+    ).toThrow('The second argument of $bind is a function that takes the new value');
+    expect(() =>
+      compileBind('let open = $signal(false);', '<Child open=$bind(open, () => {}, 1) />'),
+    ).toThrow('$bind takes the name of a signal, and a function that writes it');
+  });
+});
+
+describe('bindable props', () => {
+  const messages = (script: string) =>
+    compile(
+      `<script lang="ts">\nimport { $props } from 'brumate/signals';\nimport type { Bindable } from 'brumate/signals';\n${script}\n</script>\n`,
+      { filename: 'Test.brm' },
+    ).warnings.map((warning) => warning.message);
+
+  it('warns about a Bindable prop that the component reads only with const', () => {
+    const warning =
+      'The prop "open" is Bindable, but the component reads it with const and never writes it. Destructure it with let';
+    expect(messages('const { open } = $props<{ open?: Bindable<boolean> }>();')).toEqual([warning]);
+    expect(
+      messages(`interface Props { open?: Bindable<boolean>; title: string }
+const { open, title } = $props<Props>();`),
+    ).toEqual([warning]);
+    expect(
+      messages(`type Props = { open?: Bindable<boolean> };
+const { open } = $props<Props>();`),
+    ).toEqual([warning]);
+    expect(messages('let { open = false } = $props<{ open?: Bindable<boolean> }>();')).toEqual([]);
+  });
+});

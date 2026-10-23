@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent, transition } from 'brumate/events';
+
+  let open = $signal(false);
+</script>
+
+<a class="toggle" href="#" onClick=transition(prevent(() => (open = !open)), 'panel')>Toggle</a>
+#if (open) {
+  <div class="panel">Panel</div>
+}

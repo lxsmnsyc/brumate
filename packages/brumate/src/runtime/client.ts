@@ -5,12 +5,16 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  bindEntry,
   handlerEntry,
   spread as spreadText,
   textValue,
 } from './html.ts';
+import type { NavigationReport } from './navigate.ts';
+import type { SerialEntry } from './values.ts';
 import type { Raw } from './html.ts';
 import {
+  Binding,
   CHILDREN,
   ElementReference,
   FunctionReference,
@@ -20,7 +24,11 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  SlotReference,
   isAsyncIterable,
+  isBinding,
+  isSlotReference,
+  useSerialEntry,
   parseId,
   stateValues,
 } from './shared.ts';
@@ -42,7 +50,7 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference } from './shared.ts';
+export { ElementReference, FunctionReference, unbind } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -101,6 +109,12 @@ export interface Scope {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
+  /**
+   * What the bound props write, by the slot of the prop: a slot of a parent,
+   * or the setter of `$bind(name, fn)`, as a function or a reference.
+   */
+  b?: Record<number, unknown>;
   children: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
@@ -113,6 +127,8 @@ export interface Scope {
 }
 
 export interface CoreOptions {
+  /** The exports of the serial entry, for the values of the app in the page state. */
+  serial?: SerialEntry;
   /**
    * Imports the client module of a component. Undefined for a component that
    * has no client code, which a build leaves out.
@@ -200,6 +216,13 @@ export interface DevtoolsHooks {
   defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
   write?(scope: Scope, slot: number, value: unknown): void;
+  /**
+   * An effect or a `$client` callback, by its name in the update code, ran
+   * and took `time` milliseconds, or its cleanup ran.
+   */
+  effect?(scope: Scope, name: string, kind: 'run' | 'cleanup', time: number): void;
+  /** A client navigation changed the page: the routes that stayed, and those it replaced. */
+  navigated?(report: NavigationReport): void;
 }
 
 /** The global key of the devtools hooks. */
@@ -387,6 +410,7 @@ function addScopes(state: PageState, root: string): Scope[] {
       c: record.c,
       v: record.v,
       x: record.x,
+      b: record.b,
       children: new Set(),
       r: root,
     };
@@ -607,6 +631,9 @@ export function leavePage(): void {
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   options = value;
+  if (value.serial) {
+    useSerialEntry(value.serial);
+  }
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();
@@ -652,9 +679,21 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
           handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
         );
       }
+      // A binding that a rest prop passed on writes its slot, or calls its setter.
+      if ((name === 'value' || name === 'checked') && isBinding(value)) {
+        on.push(bindEntry(name, value.ref, setterReference(value.set)));
+      }
     }
   }
   return spreadText(attributes);
+}
+
+/** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
+function setterReference(set: unknown): FunctionReference | undefined {
+  if (set instanceof FunctionReference) {
+    return set;
+  }
+  return typeof set === 'function' ? handlerReferences.get(set) : undefined;
 }
 
 /** Replaces function references with functions that call them. */
@@ -849,6 +888,28 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
   }
+  // `value=$bind(name)` on an element: the core writes the slot of the name, `hops` parents up
+  // from the element's scope, from the value of the element, or whether a box is checked.
+  // `value=$bind(name, fn)`: the setter takes the value of the element. A ref names its scope
+  // after `@`, so the prefix is `$set:`.
+  if (ref.startsWith('$set:')) {
+    const field = element as HTMLInputElement;
+    return call(ref.slice(5), scope, [
+      /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value,
+    ]);
+  }
+  if (ref.startsWith('$bind#')) {
+    const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
+    let target = scope;
+    for (let hop = 0; hop < hops; hop++) {
+      target = target?.p;
+    }
+    const field = element as HTMLInputElement;
+    if (target) {
+      set(target, slot, /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value);
+    }
+    return Promise.resolve();
+  }
   const args = event ? [...bound, withTarget(event, element)] : bound;
   const begun = DEV ? performance.now() : 0;
   if (DEV) {
@@ -968,7 +1029,31 @@ export function get(scope: Scope, slot: number): any {
 // The number of writes since the page loaded, so scopes that stream in later know to update.
 let writes = 0;
 
+/**
+ * Writes a slot from code of a component. A prop that a parent bound with
+ * `$bind` writes the parent's slot too, through any number of levels, and
+ * the parent's update of the prop then finds the value already there. A
+ * binding with a setter, `$bind(name, fn)`, calls it in place of the write,
+ * and the parent's update of the prop writes the value that it keeps.
+ */
 export function set<T>(scope: Scope, slot: number, value: T): T {
+  const bound = scope.b?.[slot];
+  if (bound === undefined || isSlotReference(bound)) {
+    writeSlot(scope, slot, value);
+    const target = bound && scopes.get(bound.scope);
+    if (target) {
+      set(target, bound.slot, value);
+    }
+  } else if (bound instanceof FunctionReference) {
+    void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
+  } else if (typeof bound === 'function') {
+    void bound(value);
+  }
+  return value;
+}
+
+/** Writes a slot, and updates what reads it. */
+function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
     scope.s[slot] = value;
@@ -977,7 +1062,38 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
     }
     trigger(scope, slot);
   }
-  return value;
+}
+
+/** What `$bind(name)` passes a child, in markup that the browser renders. */
+export function binding<T>(
+  value: T,
+  scope: Scope | ScopeId,
+  slot: number,
+  set?: unknown,
+): Binding<T> {
+  return new Binding(
+    value,
+    new SlotReference(typeof scope === 'object' ? scope.id : scope, slot),
+    set,
+  );
+}
+
+/**
+ * Records the props that a parent bound with `$bind`, among the props that a
+ * component the browser renders writes: `slots` has the slot of each, by its name.
+ */
+export function bindings(
+  scope: Scope | ScopeId,
+  props: Record<string, unknown>,
+  slots: Record<string, number>,
+): void {
+  const target = typeof scope === 'object' ? scope : scopes.get(scope);
+  for (const [name, slot] of Object.entries(slots)) {
+    const value = props[name];
+    if (target && isBinding(value)) {
+      (target.b ??= {})[slot] = value.target;
+    }
+  }
 }
 
 /**
@@ -1314,14 +1430,32 @@ function trigger(scope: Scope, slot: number): void {
   }
   // The first write to a component loads its update code. Later writes wait in order, and
   // for the templates that the updates can render.
-  void loadModule(id).then(async (loaded) => {
+  const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
       await Promise.allSettled(loadingTemplates);
       run(loaded, code, scope, slot);
     }
   });
+  loadingUpdates.add(loading);
+  void loading.finally(() => loadingUpdates.delete(loading));
 }
+
+/** The updates that wait for their code. */
+const loadingUpdates = new Set<Promise<unknown>>();
+
+/**
+ * Resolves when the updates of the writes so far have run, including those
+ * whose code is loading. `transition` of `brumate/events` waits for it.
+ */
+export async function updated(): Promise<void> {
+  while (loadingUpdates.size > 0) {
+    // oxlint-disable-next-line no-await-in-loop -- An update can start more loads.
+    await Promise.allSettled(loadingUpdates);
+  }
+}
+
+(globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.updated')] = updated;
 
 // Effects wait until every other update of a write has run, and run once each.
 const pendingEffects = new Map<string, () => void>();
@@ -1703,6 +1837,9 @@ function write(
 }
 
 function setAttribute(element: Element, name: string, value: unknown): void {
+  if (isBinding(value)) {
+    value = value.value;
+  }
   if (name === 'value' || name === 'checked') {
     (element as unknown as Record<string, unknown>)[name] =
       name === 'checked' ? Boolean(value) : (value ?? '');
@@ -2323,7 +2460,40 @@ function watchTitles(root: ParentNode): void {
 }
 
 /** Writes a prop of a child component. */
+// The keys that the spreads of child components passed last, by the child's scope and anchor.
+const spreadKeys = new WeakMap<Scope, Map<number, Set<string>>>();
+
+/**
+ * Updates the props of a child component from a spread. A key that the
+ * spread passed before and no longer has becomes undefined. `after` names
+ * the props after the spread, which win over it.
+ */
+export function spreadProps(
+  scope: Scope,
+  anchor: number,
+  value: Record<string, unknown> | null | undefined,
+  after: string[],
+): void {
+  const byAnchor = spreadKeys.get(scope) ?? new Map<number, Set<string>>();
+  spreadKeys.set(scope, byAnchor);
+  const before = byAnchor.get(anchor) ?? new Set();
+  const keys = new Set(Object.keys(value ?? {}).filter((key) => !after.includes(key)));
+  byAnchor.set(anchor, keys);
+  for (const key of keys) {
+    prop(scope, anchor, key, value![key]);
+  }
+  for (const key of before) {
+    if (!keys.has(key)) {
+      prop(scope, anchor, key, undefined);
+    }
+  }
+}
+
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
+  // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
+  if (isBinding(value)) {
+    value = value.value;
+  }
   const id = scope.c?.[anchor];
   const child = id === undefined ? undefined : scopes.get(id);
   if (!child?.m) {
@@ -2336,7 +2506,8 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
       if (isThenable(value)) {
         asyncMemo(child, slot, Promise.resolve(value));
       } else {
-        set(child, slot, value);
+        // The parent's value. A bound prop does not write it back.
+        writeSlot(child, slot, value);
       }
       return;
     }
@@ -2362,6 +2533,7 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
+  const start = DEV ? performance.now() : 0;
   try {
     cleanup = callback();
   } catch (error) {
@@ -2369,7 +2541,18 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
     fail(scope, error);
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
-  scope.cleanups.set(name, typeof cleanup === 'function' ? (cleanup as () => void) : noop);
+  let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
+  if (DEV) {
+    devtools()?.effect?.(scope, name, 'run', performance.now() - start);
+    // Each way that a cleanup runs calls this function: the next run, a removed scope, a hidden
+    // `#offscreen` body, or a page that navigation leaves.
+    const own = stored;
+    stored = () => {
+      devtools()?.effect?.(scope, name, 'cleanup', 0);
+      own();
+    };
+  }
+  scope.cleanups.set(name, stored);
 }
 
 function noop(): void {}

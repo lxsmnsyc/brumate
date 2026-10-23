@@ -1,0 +1,21 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+
+  let draft = $signal('');
+  let done = $signal(false);
+  let choice = $signal('b');
+  let seen = $signal<string[]>([]);
+</script>
+
+<input class="text" value=$bind(draft) onInput=(() => (seen = [...seen, draft]))>
+<input class="box" type="checkbox" checked=$bind(done)>
+<select class="pick" value=$bind(choice)>
+  <option value="a">A</option>
+  <option value="b">B</option>
+</select>
+<ul>
+  #for (n of [1] by n) {
+    <li><input class="inner" value=$bind(draft)></li>
+  }
+</ul>
+<p class="out">{draft}|{String(done)}|{choice}|{seen.join(',')}</p>

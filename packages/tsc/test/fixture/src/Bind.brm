@@ -1,0 +1,11 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Toggle from './Toggle.brm';
+
+  let on = $signal(false);
+  let size = $signal(1);
+</script>
+
+<Toggle on=$bind(on) />
+<Toggle size=$bind(size) />
+<input value=$bind(size)>

@@ -100,6 +100,7 @@ export function setCookie(
   value: string,
   options: CookieOptions = {},
 ): void {
+  event.personal = true;
   const secure = options.secure ?? new URL(event.request.url).protocol === 'https:';
   event.headers.append('set-cookie', serializeCookie(name, value, { ...options, secure }));
   event.cookies ??= new Map();

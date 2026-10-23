@@ -1,10 +1,12 @@
 import { crossSerialize, crossSerializeStream, fromJSON } from 'seroval';
 import type { SerovalJSON } from 'seroval';
+import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
   escape,
   escapeAttribute,
+  bindEntry,
   handlerEntry,
   insertValue,
   isRaw,
@@ -15,9 +17,10 @@ import {
 } from './html.ts';
 import { MODIFIERS } from './events.ts';
 import type { Raw } from './html.ts';
-import { callPlugins, disabledFeatures, plugins, syncPlugins } from './serial.ts';
+import { callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
+  Binding,
   CHILDREN,
   ElementReference,
   FunctionReference,
@@ -27,7 +30,9 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  SlotReference,
   isAsyncIterable,
+  isBinding,
   parseId,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
@@ -37,12 +42,13 @@ import {
   Redirect,
   RequestEvent,
   ServerError,
+  idempotentIds,
   isRedirect,
   runEntry,
   unwrap,
   withEvent,
 } from './request.ts';
-import type { EntryMiddleware, RequestKind } from './request.ts';
+import type { EntryMiddleware, RequestKind, TraceEntry } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
 
 export {
@@ -114,8 +120,19 @@ export type {
 export type { ParseResult, ValidationIssue } from './validate.ts';
 export type { StandardSchemaV1 } from './standard-schema.ts';
 export { createSession, parseCookies, serializeCookie, toNodeHeaders } from './cookies.ts';
+export { cached, memoryStore, revalidate, setCacheStore, storageStore } from './cache.ts';
+export { useSerialEntry } from './shared.ts';
+export { idempotent } from './idempotent.ts';
+export type { IdempotentOptions } from './idempotent.ts';
+export type { CachedOptions, CacheStore } from './cache.ts';
 export type { CookieOptions, Session, SessionOptions } from './cookies.ts';
 export { ElementReference, FunctionReference };
+export { unbind } from './shared.ts';
+
+/** What `$bind(name)` passes a child: the value of the name, and the scope and slot it writes. */
+export function binding<T>(value: T, scope: ScopeId, slot: number, set?: unknown): Binding<T> {
+  return new Binding(value, new SlotReference(scope, slot), set);
+}
 export type { PageState, ScopeId, ScopeState };
 
 /** The scope and the slot that hold the list of a list item. */
@@ -130,6 +147,90 @@ interface Boundary {
   cancelled?: boolean;
   /** A body around the target of a request for a `#defer` body, which renders but is not sent. */
   around?: boolean;
+  /** The `#reveal` group that orders it, when it is in one. */
+  group?: RevealGroup;
+}
+
+/** The order of a `#reveal` block. */
+export type RevealOrder = 'sequential' | 'backwards' | 'together' | 'natural';
+
+/**
+ * The `#loading` bodies of a `#reveal` block, in the order of the markup.
+ * When a body is ready, the stream asks the group, which sends the bodies
+ * that its order lets show. The data of every body still loads at once.
+ */
+class RevealGroup {
+  readonly order: RevealOrder;
+  readonly collapsed: boolean;
+  /** The bodies that stream, each with how to send it once it is ready. */
+  private readonly members: { id: ScopeId; send?: (after: string) => void; sent?: boolean }[] = [];
+  /** The fallbacks that `collapsed` hides until the body before them shows. */
+  readonly hidden: Set<ScopeId> = new Set();
+  private closed = false;
+
+  constructor(order: RevealOrder, collapsed: boolean) {
+    this.order = order;
+    this.collapsed = collapsed;
+  }
+
+  /** True when a body that is ready can render in place, before the bodies that stream. */
+  mayShow(): boolean {
+    return this.order === 'natural' || (this.order === 'sequential' && this.members.length === 0);
+  }
+
+  /** True when the fallback of the next body that streams waits, for `collapsed`. */
+  hides(): boolean {
+    return this.collapsed && this.members.length > 0;
+  }
+
+  add(id: ScopeId): void {
+    this.members.push({ id });
+  }
+
+  /** The body is ready, or failed with nothing to send. `send` writes it, and runs `after` with it. */
+  ready(id: ScopeId, send: (after: string) => void): void {
+    const member = this.members.find((item) => item.id === id);
+    if (member) {
+      member.send = send;
+      this.flush();
+    } else {
+      send('');
+    }
+  }
+
+  /** The block ended, so the group knows its last body. */
+  close(): void {
+    this.closed = true;
+    this.flush();
+  }
+
+  private flush(): void {
+    const { members } = this;
+    const sendAt = (index: number): void => {
+      const member = members[index]!;
+      member.sent = true;
+      // `collapsed`: the body that shows brings the fallback of the next one in.
+      const next = members[index + 1];
+      member.send!(next && this.hidden.has(next.id) ? `$bF(${scriptJSON(next.id)})` : '');
+    };
+    if (this.order === 'natural') {
+      members.forEach((member, index) => member.send && !member.sent && sendAt(index));
+    } else if (this.order === 'sequential') {
+      for (let index = 0; index < members.length && members[index]!.send; index++) {
+        if (!members[index]!.sent) {
+          sendAt(index);
+        }
+      }
+    } else if (this.closed && this.order === 'backwards') {
+      for (let index = members.length - 1; index >= 0 && members[index]!.send; index--) {
+        if (!members[index]!.sent) {
+          sendAt(index);
+        }
+      }
+    } else if (this.closed && members.every((member) => member.send)) {
+      members.forEach((member, index) => !member.sent && sendAt(index));
+    }
+  }
 }
 
 /** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
@@ -300,6 +401,18 @@ export class Context {
       throw new Error('getEvent() works while a page renders with a request, such as in a route');
     }
     return event;
+  }
+
+  /** Starts an entry of the trace of the request, in development. */
+  traced(kind: TraceEntry['kind'], label: string): ((failed?: boolean) => void) | undefined {
+    return this.root.event?.traced(kind, label);
+  }
+
+  /** Marks the request of the page as one that depends on the user, so the page is not cached for everyone. */
+  personal(): void {
+    if (this.root.event) {
+      this.root.event.personal = true;
+    }
   }
 
   /** Runs code of the render with its event and its call results, such as a memo's compute. */
@@ -622,6 +735,20 @@ export class Context {
   }
 
   /**
+   * Records the props that a parent bound with `$bind`, among the props that
+   * the component writes: `slots` has the slot of each, by its name. Its
+   * writes in the browser go to the parent's slots.
+   */
+  bindings(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
+    for (const [name, slot] of Object.entries(slots)) {
+      const value = props[name];
+      if (isBinding(value)) {
+        (this.entry(scope).record.b ??= {})[slot] = value.target;
+      }
+    }
+  }
+
+  /**
    * Records the item of a list that can change on the client. `source` is
    * the scope and slot that hold the list, when the compiler found one, so
    * the client can take the item from there.
@@ -756,6 +883,47 @@ export class Context {
   /** True when the bodies of `#defer` blocks render in place, for a page that renders in order. */
   inOrder = false;
 
+  /** The `#reveal` blocks that are open in this context, the innermost last. */
+  private readonly reveals: RevealGroup[] = [];
+
+  /** Starts a `#reveal` block: the `#loading` bodies until `revealEnd` show in its order. */
+  revealStart(order: RevealOrder, collapsed: boolean): void {
+    const group = new RevealGroup(order, collapsed);
+    this.reveals.push(group);
+    // A `#try` body that fails ends the block, so the bodies that it held are sent.
+    this.undo.push(() => group.close());
+  }
+
+  /** Ends the `#reveal` block that `revealStart` started. */
+  revealEnd(): void {
+    this.reveals.pop()?.close();
+  }
+
+  /** The group of the `#reveal` block around the next body, when the stream orders it. */
+  private get reveal(): RevealGroup | undefined {
+    return this.root.target ? undefined : this.reveals.at(-1);
+  }
+
+  /** True when a `#loading` body that is ready can render in place, as its `#reveal` allows. */
+  mayShow(): boolean {
+    return this.reveal?.mayShow() ?? true;
+  }
+
+  /** Starts the fallback of a `#loading` body, which `collapsed` hides in a template. */
+  fallbackStart(id: ScopeId): string {
+    const group = this.reveal;
+    if (!group?.hides()) {
+      return '';
+    }
+    group.hidden.add(id);
+    return `<template b-f="${id}">`;
+  }
+
+  /** Ends the fallback that `fallbackStart` started. */
+  fallbackEnd(id: ScopeId): string {
+    return this.reveal?.hidden.has(id) ? '</template>' : '';
+  }
+
   /** Returns the ID of a new `#loading` boundary. */
   boundary(): ScopeId {
     return spaceId(this.space, this.space.boundary++);
@@ -765,6 +933,7 @@ export class Context {
   defer(id: ScopeId, renderBody: (ctx: Context) => Promise<string>): void {
     const target = this.root.target;
     if (!target || this.inTarget) {
+      // A block in the markup of a `#reveal`, or in a component that it renders, joins its group.
       this.register(id, renderBody, this.inTarget);
     } else if (holdsBoundary(id, target.boundary)) {
       // The request for a `#defer` body renders the bodies around it, without sending them.
@@ -810,10 +979,23 @@ export class Context {
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
+    const group = this.reveal;
+    group?.add(id);
+    const end = around ? undefined : this.traced('body', `#loading ${id}`);
     const boundary: Boundary = {
       id,
-      render: renderBody(child).then((html) => ({ html, ctx: child })),
+      render: renderBody(child).then(
+        (html) => {
+          end?.();
+          return { html, ctx: child };
+        },
+        (error: unknown) => {
+          end?.(true);
+          throw error;
+        },
+      ),
       around,
+      group,
     };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
@@ -866,11 +1048,13 @@ export interface Memo<T = unknown> {
   value?: unknown;
   error?: unknown;
   load?: Promise<unknown>;
+  /** The name of the memo, for the trace of the devtools. */
+  name?: string;
 }
 
 /** Declares a memo. Its value is computed when it is first read. */
-export function memo<T>(compute: () => T, ctx?: Context): Memo<T> {
-  return { compute, ctx, state: 'idle' };
+export function memo<T>(compute: () => T, ctx?: Context, name?: string): Memo<T> {
+  return { compute, ctx, state: 'idle', name };
 }
 
 /**
@@ -906,8 +1090,11 @@ export function read(node: Memo): any {
     (typeof (value as PromiseLike<unknown>).then === 'function' || isAsyncIterable(value))
   ) {
     node.state = 'pending';
+    // A memo that loads is a step of the render, in the trace of the devtools.
+    const end = node.ctx?.traced('memo', node.name ?? 'memo');
     node.load = Promise.resolve(value)
       .then(firstValue)
+      .finally(() => end?.())
       .then(
         (result) => {
           node.state = 'done';
@@ -1080,7 +1267,13 @@ export function action(
   method?: string,
   result?: string,
 ): string {
-  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId());
+  // The key goes to one visitor, so the page is not cached for everyone.
+  let key: string | undefined;
+  if (idempotentIds.has(id)) {
+    key = crypto.randomUUID();
+    ctx.personal();
+  }
+  return actionAttributes(ctx.rpc(), name, id, method, result, ctx.buildId(), key);
 }
 
 /**
@@ -1561,7 +1754,7 @@ function serializeState(
     try {
       code = crossSerialize(packed, {
         plugins: syncPlugins,
-        disabledFeatures,
+        ...serialOptions(),
         refs,
         assignSharedRefsOnly: true,
       });
@@ -1577,7 +1770,7 @@ function serializeState(
   }
   crossSerializeStream(packed, {
     plugins,
-    disabledFeatures,
+    ...serialOptions(),
     refs,
     onSerialize: send,
     onError,
@@ -1667,8 +1860,15 @@ export function stateScript(
 // A `<title>` of `#head` keeps its text: the head gets a title of its own for `document.title`.
 const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+'"]'),h=document.head;e&&(h.append(e.content),e.remove());t!=null&&(h.querySelector('title:not([b-t])')||h.prepend(document.createElement('title')),document.title=t)}`;
 
+// Shows a fallback that `#reveal (collapsed)` held in a <template>, when the body before it shows.
+const SHOW_FALLBACK = `function $bF(i){var t=document.querySelector('template[b-f="'+i+'"]');t&&t.replaceWith(t.content)}`;
+
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+
+// In development, the swap keeps the fallback that it removes and the body that it adds, by
+// boundary, so the devtools can show the fallback again.
+const SWAP_DEV = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode,f=[];for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;f.push(p.removeChild(n));n=x}(self.$bD||(self.$bD={}))[i]={f:f,b:[].slice.call(t.content.childNodes)};p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
 export interface RenderResult {
   /** The markup. A `#loading` body that is not ready shows its fallback. */
@@ -1765,6 +1965,8 @@ function createQueue<T>(): Queue<T> {
 export interface RenderOptions {
   /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
   rpc?: string;
+  /** In development: the swaps of `#loading` bodies keep their fallbacks, for the devtools. */
+  dev?: boolean;
   /**
    * The first scope and boundary ID. A page that the client loads in place
    * of another starts above the IDs of the page it keeps parts of.
@@ -1890,6 +2092,17 @@ export async function render<P>(
   };
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
+  // The function that swaps a body in, which the first swap of the page defines.
+  const swapScript = options.dev ? SWAP_DEV : SWAP;
+  // `$bF` is defined in the first script that shows a held fallback.
+  let fallbackDefined = false;
+  const showFallback = (): string => {
+    if (fallbackDefined) {
+      return '';
+    }
+    fallbackDefined = true;
+    return `${SHOW_FALLBACK};`;
+  };
   const serialize = (
     target: Context,
     onScopes: (script: string) => void,
@@ -1939,38 +2152,58 @@ export async function render<P>(
     }
     boundaries++;
     open++;
+    // A body whose `#reveal` holds it waits for its turn. One that is not sent still takes its
+    // turn, and can show the fallback after it.
+    const skip = (after: string): void => {
+      if (after) {
+        pending().push(`${scriptTag}${showFallback()}${after}</script>`);
+      }
+      finish();
+    };
+    const turn = (send: (after: string) => void): void => {
+      if (boundary.group) {
+        boundary.group.ready(boundary.id, send);
+      } else {
+        send('');
+      }
+    };
     boundary.render.then(
       (result) => {
         // A `#try` body around it failed, so the page has no markers for it. A body around the
         // target of a `#defer` request is in the page already.
         if (boundary.cancelled || boundary.around || stopped()) {
-          finish();
+          turn(skip);
           return;
         }
-        serialize(result.ctx, (script) => {
-          // An ID inside a boundary, such as `5.1`, is a string.
-          const id = scriptJSON(boundary.id);
-          let call = `${swap ? '' : SWAP}$bS(${id})`;
-          swap = true;
-          const late = result.ctx.lateHead();
-          let head = '';
-          if (late.html || late.title !== undefined) {
-            head = `<template b-h="${boundary.id}">${late.html}</template>`;
-            const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
-            call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
-            headSwap = true;
-          }
-          pending().push(
-            // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
-            `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
-          );
+        turn((after) => {
+          serialize(result.ctx, (script) => {
+            // An ID inside a boundary, such as `5.1`, is a string.
+            const id = scriptJSON(boundary.id);
+            let call = `${swap ? '' : swapScript}$bS(${id})`;
+            swap = true;
+            if (after) {
+              call += `;${showFallback()}${after}`;
+            }
+            const late = result.ctx.lateHead();
+            let head = '';
+            if (late.html || late.title !== undefined) {
+              head = `<template b-h="${boundary.id}">${late.html}</template>`;
+              const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
+              call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
+              headSwap = true;
+            }
+            pending().push(
+              // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
+              `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,
+            );
+          });
+          finish();
         });
-        finish();
       },
       (error: unknown) => {
         // The fallback stays in the page.
         console.error(error);
-        finish();
+        turn(skip);
       },
     );
   });
@@ -2428,13 +2661,13 @@ async function readArgs(request: Request): Promise<unknown[]> {
   if (!request.headers.has('x-brumate-args')) {
     return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
       plugins,
-      disabledFeatures,
+      ...serialOptions(),
     });
   }
   const form = await request.formData();
   return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
     plugins: callPlugins(undefined, form),
-    disabledFeatures,
+    ...serialOptions(),
   });
 }
 
@@ -2621,7 +2854,108 @@ interface ResolvedView {
   slots: Record<string, ResolvedView>;
   /** `_loading.brm`: the view streams in, and this shows until then. */
   loading?: Component;
+  /** The `cache` export of the module script of the file. */
+  cache?: PageCache;
 }
+
+/**
+ * How long a page can be cached for everyone, as a route exports it from
+ * its module script: `export const cache = { maxAge: 60 }`. A layout's
+ * applies to the pages below it, and the nearest one wins.
+ */
+export interface PageCache {
+  /** Seconds that a cache can serve the page without asking again. */
+  maxAge: number;
+  /** Seconds after `maxAge` that a cache can serve the old page while it gets a new one. */
+  staleWhileRevalidate?: number;
+}
+
+/** A page that the server keeps, as the store holds it. */
+interface KeptPage {
+  status: number;
+  headers: [string, string][];
+  body: string;
+  /** When the page expires, in milliseconds since 1970. */
+  expires: number;
+  /** The versions of the tags of the `cached` functions that the page called. */
+  tags: Record<string, string>;
+}
+
+/** The key of a page in the store: its URL, and the base of a client navigation, by build. */
+function pageKey(url: URL, request: Request, build: string | undefined): string {
+  const base = request.headers.get('x-brumate-base') ?? '';
+  return `brumate:page:${build ?? ''}:${base}:${url.pathname}${url.search}`;
+}
+
+/** The page that the store keeps for a key, when it is still fresh. */
+async function keptPage(key: string): Promise<Response | undefined> {
+  const text = await cacheStore().get(key);
+  if (!text) {
+    return undefined;
+  }
+  const page = JSON.parse(text) as KeptPage;
+  const tags = Object.keys(page.tags);
+  const versions = await tagVersions(tags);
+  if (page.expires <= Date.now() || tags.some((tag) => versions[tag] !== page.tags[tag])) {
+    return undefined;
+  }
+  const headers = new Headers(page.headers);
+  const maxAge = Number(/max-age=(\d+)/.exec(headers.get('cache-control') ?? '')?.[1] ?? 0);
+  headers.set('age', String(Math.max(0, Math.floor(maxAge - (page.expires - Date.now()) / 1000))));
+  headers.set('x-brumate-cache', 'hit');
+  return new Response(page.body, { status: page.status, headers });
+}
+
+/** Keeps a public page in the store until its `max-age` ends. */
+async function keepPage(key: string, response: Response, event: RequestEvent): Promise<void> {
+  const maxAge = Number(
+    /max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0,
+  );
+  if (maxAge <= 0) {
+    return;
+  }
+  const missing = [...event.cacheTags].filter(([, version]) => version === undefined);
+  const versions = await tagVersions(missing.map(([tag]) => tag));
+  const page: KeptPage = {
+    status: response.status,
+    headers: [...response.headers].filter(([name]) => name !== 'set-cookie'),
+    body: await response.clone().text(),
+    expires: Date.now() + maxAge * 1000,
+    tags: Object.fromEntries(
+      [...event.cacheTags].map(([tag, version]) => [tag, version ?? versions[tag]!]),
+    ),
+  };
+  await cacheStore().set(key, JSON.stringify(page), maxAge);
+}
+
+/** The `cache` of the page of a view: the nearest one along its `children`. */
+function pageCache(view: ResolvedView): PageCache | undefined {
+  const inner = view.slots.children;
+  return (inner && pageCache(inner)) ?? view.cache;
+}
+
+/**
+ * The `cache-control` of a page with `cache`. It is public only when the
+ * request did not read or set anything of the user, and the page is a
+ * success without cookies.
+ */
+function cacheControl(
+  cache: PageCache,
+  event: RequestEvent | undefined,
+  response: Response,
+): string {
+  if (event?.personal || response.status !== 200 || response.headers.getSetCookie().length > 0) {
+    return 'private, no-cache';
+  }
+  const parts = ['public', `max-age=${Math.max(0, Math.floor(cache.maxAge))}`];
+  if (cache.staleWhileRevalidate !== undefined) {
+    parts.push(`stale-while-revalidate=${Math.max(0, Math.floor(cache.staleWhileRevalidate))}`);
+  }
+  return parts.join(', ');
+}
+
+// Pages that `cache` made private in development, so each warns once.
+const warnedPrivate = new Set<string>();
 
 /** Imports every module of a matched route before it renders. */
 async function resolveView(view: RouteView): Promise<ResolvedView> {
@@ -2635,6 +2969,7 @@ async function resolveView(view: RouteView): Promise<ResolvedView> {
     key: view.key,
     component: module.default,
     loading: loading?.default,
+    cache: (module as { cache?: PageCache }).cache,
     slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
   };
 }
@@ -2679,6 +3014,21 @@ function viewComponent(view: ResolvedView, props: Record<string, unknown>): Comp
 }
 
 export interface RouteOptions extends DocumentOptions, RequestOptions {
+  /**
+   * The HTML that the build prerendered for the path, for a server that has
+   * the file. The server sends it at once, then renders the `#defer` blocks
+   * with the `load` or `idle` trigger in the same response, in place of a
+   * request for each. Requests for a `#defer` body and client navigation
+   * render the route as usual.
+   */
+  shell?: string;
+  /**
+   * Keeps the pages that `cache` makes public in the store of `cached`, and
+   * answers the next request for the same URL from it until `maxAge` ends or
+   * `revalidate` drops a tag that the page used. Defaults to true. A CDN in
+   * front of the server can keep them instead.
+   */
+  pageCache?: boolean;
   /**
    * Throws errors that are not a `ServerError` instead of rendering
    * `_error.brm`, so a dev server can show them, such as with `errorPage`
@@ -2770,6 +3120,14 @@ async function renderPage(
   if (defer) {
     return renderDeferred(view, props, request, options, defer, base);
   }
+  // In development, the render records what it does and when, for the Server tab of the devtools.
+  const event = options.event;
+  if (options.dev && event) {
+    event.trace = [];
+    event.traceStart = performance.now();
+  }
+  const path = new URL(request.url).pathname;
+  const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
   const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
   const links = hints.map((url) => `<${url}>; rel=modulepreload`);
@@ -2791,6 +3149,8 @@ async function renderPage(
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
     },
   );
+  endRender();
+  const endStream = event?.traced('stream', 'the rest of the page') ?? (() => {});
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
   // The same URL answers the request for a `#defer` body with that body only, and a navigation,
@@ -2800,10 +3160,47 @@ async function renderPage(
   for (const link of links) {
     headers.append('link', link);
   }
-  const body = streamParts(parts, { ...options, head: preload + (options.head ?? '') }).pipeThrough(
-    new TextEncoderStream(),
-  );
-  return respond(body, { status: extra.status ?? parts.status, headers });
+  let html = streamParts(parts, { ...options, head: preload + (options.head ?? '') });
+  if (event?.trace) {
+    // The trace goes last, once every body has streamed, as JSON that the devtools read.
+    const trace = event.trace;
+    html = html.pipeThrough(
+      new TransformStream<string, string>({
+        flush(controller) {
+          endStream();
+          const json = JSON.stringify({ route: path, entries: trace }).replace(/</g, '\\u003c');
+          controller.enqueue(`<script type="application/json" b-trace>${json}</script>`);
+        },
+      }),
+    );
+  }
+  const body = html.pipeThrough(new TextEncoderStream());
+  const cache = request.method === 'GET' || request.method === 'HEAD' ? pageCache(view) : undefined;
+  if (!cache) {
+    return respond(body, { status: extra.status ?? parts.status, headers });
+  }
+  // A page with `cache` renders in full before its headers go out, so a `#loading` body that
+  // reads the user makes it private too.
+  const response = respond(await new Response(body).arrayBuffer(), {
+    status: extra.status ?? parts.status,
+    headers,
+  });
+  const control = cacheControl(cache, options.event, response);
+  if (options.dev) {
+    // A browser would keep the page while the files change, so the dev server only says what
+    // the page would get.
+    response.headers.set('cache-control', 'no-cache');
+    response.headers.set('x-brumate-cache', control);
+    if (control.startsWith('private') && !warnedPrivate.has(view.key)) {
+      warnedPrivate.add(view.key);
+      console.warn(
+        `The page ${new URL(request.url).pathname} exports cache, but it read cookies or the authorization header, or set a cookie, so it is not cached for everyone. Move what reads the user into #defer.`,
+      );
+    }
+  } else {
+    response.headers.set('cache-control', control);
+  }
+  return response;
 }
 
 /**
@@ -2930,6 +3327,14 @@ export async function handleRoute(
   request: Request,
   options: RouteOptions = {},
 ): Promise<Response | undefined> {
+  if (
+    options.shell !== undefined &&
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    !deferTarget(request) &&
+    !request.headers.has('x-brumate-base')
+  ) {
+    return fillHoles(tree, request, options.shell, options);
+  }
   const url = new URL(request.url);
   const match = matchRoute(tree, url.pathname);
   // One event for the request: middleware, endpoints, a form's server function and the page
@@ -2968,6 +3373,75 @@ async function requestKind(request: Request, match: RouteMatch | undefined): Pro
   return 'page';
 }
 
+/**
+ * The `#defer` blocks of a prerendered page that the server renders in the
+ * response: those with the `load` or `idle` trigger. A `visible` block is
+ * far down the page, so it waits for the browser to ask for it.
+ */
+const HOLE = /<template b-b="([^"]+)" b-defer="(?:load|idle):([^:"]+):([^"]*)"/g;
+
+/**
+ * Answers with a prerendered page, then with the body of each of its
+ * `#defer` blocks as it is ready, as a `#loading` body streams. Each body
+ * renders in a request of its own, as when the browser asks for it, so
+ * middleware runs for it. The loader leaves the marked blocks alone, and a
+ * block whose body fails keeps its fallback.
+ */
+function fillHoles(
+  tree: RouteNode,
+  request: Request,
+  shell: string,
+  options: RouteOptions,
+): Response {
+  const holes = [...shell.matchAll(HOLE)];
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+  if (holes.length === 0) {
+    return new Response(request.method === 'HEAD' ? null : shell, { headers });
+  }
+  // The bodies are for the user who asks, so the response is not cached for everyone.
+  headers.set('cache-control', 'private, no-cache');
+  headers.append('vary', 'x-brumate-defer');
+  headers.append('vary', 'x-brumate-base');
+  const marked = shell.replace(HOLE, (template) => `${template} b-hole`);
+  const bodies = holes.map(async ([, at, boundary, base]) => {
+    const asked = new Headers(request.headers);
+    asked.set('x-brumate-defer', `${boundary} ${at}`);
+    asked.set('x-brumate-base', base!);
+    try {
+      const answer = await handleRoute(tree, new Request(request.url, { headers: asked }), {
+        ...options,
+        shell: undefined,
+        event: undefined,
+      });
+      return answer?.ok && answer.headers.get('x-brumate-defer') === boundary
+        ? await answer.text()
+        : '';
+    } catch (error) {
+      console.error(error);
+      return '';
+    }
+  });
+  const body = new ReadableStream<string>({
+    async start(controller) {
+      controller.enqueue(marked);
+      // Each body as it is ready, so a slow one does not hold back the others.
+      const pending = new Map(
+        bodies.map((body, index) => [index, body.then((html) => ({ html, index }))]),
+      );
+      while (pending.size > 0) {
+        // oxlint-disable-next-line no-await-in-loop -- The bodies stream in the order they are ready.
+        const { html, index } = await Promise.race(pending.values());
+        pending.delete(index);
+        if (html) {
+          controller.enqueue(html);
+        }
+      }
+      controller.close();
+    },
+  }).pipeThrough(new TextEncoderStream());
+  return new Response(request.method === 'HEAD' ? null : body, { headers });
+}
+
 /** A response with more headers, such as cookies that middleware set. */
 function withHeaders(answer: Response, headers: Headers): Response {
   // A rendered page has them already.
@@ -2980,6 +3454,10 @@ function withHeaders(answer: Response, headers: Headers): Response {
   const result = respond(answer.body, answer);
   for (const cookie of cookies) {
     result.headers.append('set-cookie', cookie);
+  }
+  // A cookie is for one user, so a page with it is not cached for everyone.
+  if (/^\s*public\b/.test(result.headers.get('cache-control') ?? '')) {
+    result.headers.set('cache-control', 'private, no-cache');
   }
   return result;
 }
@@ -3072,9 +3550,30 @@ async function renderRoute(
     }
     actions = outcome.actions;
   }
+  // A page that the server kept, for a request that has not read the user so far. Middleware
+  // ran before, so a check of access still runs.
+  const keep =
+    !event.call &&
+    !options.dev &&
+    options.pageCache !== false &&
+    event.kind === 'page' &&
+    (request.method === 'GET' || request.method === 'HEAD');
+  const key = keep ? pageKey(url, request, options.build) : undefined;
+  if (key && !event.personal) {
+    const kept = await keptPage(key);
+    if (kept) {
+      return kept;
+    }
+  }
   try {
     const view = await resolveView(match.view);
-    return await renderPage(view, { params: match.params }, request, options, { actions });
+    const response = await renderPage(view, { params: match.params }, request, options, {
+      actions,
+    });
+    if (key && /^\s*public\b/.test(response.headers.get('cache-control') ?? '')) {
+      await keepPage(key, response, event);
+    }
+    return response;
   } catch (error) {
     if (isRedirect(error)) {
       return new Response(null, {
@@ -3123,6 +3622,12 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
     if (reference) {
       const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
       on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
+    }
+    // A binding that a rest prop passed on writes its slot, or calls its setter.
+    if (on && (name === 'value' || name === 'checked') && isBinding(value)) {
+      const setter =
+        typeof value.set === 'function' ? functionReferences.get(value.set) : undefined;
+      on.push(bindEntry(name, value.ref, setter));
     }
   }
   return spreadAttributes(attributes);

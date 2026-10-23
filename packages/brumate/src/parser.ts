@@ -7,10 +7,13 @@ import type {
   DynamicTagNode,
   EventAttribute,
   Expression,
+  FragmentNode,
   KeyBlock,
   Markup,
   Modifier,
   PrefetchStrategy,
+  Reveal,
+  RevealOrder,
   SFCFile,
   Script,
   Style,
@@ -61,6 +64,7 @@ const BLOCK_KEYWORDS = new Set([
   'head',
   'client',
   'offscreen',
+  'reveal',
   // Reserved for a future block, so it is an error and not text.
   'defer',
   'template',
@@ -720,6 +724,45 @@ class Parser {
   // Blocks
 
   /** Parses `( … )` at the current position, after optional whitespace. */
+  /**
+   * `#reveal ('sequential', collapsed) { … }`: an order as a string, and
+   * `collapsed`, both optional. The body is the children of a fragment.
+   */
+  private parseReveal(start: number): FragmentNode {
+    const header = this.parseHeader('reveal', false);
+    const reveal: Reveal = { order: 'sequential', collapsed: false };
+    if (header) {
+      const code = this.source.slice(header.start, header.end);
+      let offset = header.start;
+      for (const part of code.split(',')) {
+        const word = part.trim();
+        const string = /^(['"])(sequential|backwards|together|natural)\1$/.exec(word);
+        if (string) {
+          reveal.order = string[2] as RevealOrder;
+        } else if (word === 'collapsed') {
+          reveal.collapsed = true;
+        } else {
+          this.fail(
+            "#reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)",
+            offset + part.length - part.trimStart().length,
+          );
+        }
+        offset += part.length + 1;
+      }
+    }
+    if (reveal.collapsed && reveal.order !== 'sequential') {
+      this.fail(
+        `collapsed shows the fallback of the next body to show, so it needs the order 'sequential', not '${reveal.order}'`,
+        header!.start,
+      );
+    }
+    const body = this.parseBody('reveal');
+    if (body.script) {
+      this.fail('#reveal has no script of its own', body.script.start);
+    }
+    return { kind: 'fragment', start, end: this.pos, children: body.children, reveal };
+  }
+
   private parseHeader(
     keyword: string,
     required: boolean,
@@ -773,7 +816,7 @@ class Parser {
     return false;
   }
 
-  private parseBlock(keyword: string): Block {
+  private parseBlock(keyword: string): Block | FragmentNode {
     const start = this.pos;
     this.pos += keyword.length + 1;
     switch (keyword) {
@@ -866,6 +909,8 @@ class Parser {
       }
       case 'head':
         return { kind: 'head', start, end: this.pos, body: this.parseBody('head') };
+      case 'reveal':
+        return this.parseReveal(start);
       case 'portal': {
         const header = this.parseHeader('portal', false);
         const target = header ? this.expression(header.start, header.end) : undefined;

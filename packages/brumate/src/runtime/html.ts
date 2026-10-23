@@ -120,11 +120,18 @@ function styleValue(value: unknown): string {
   return String(value);
 }
 
+/** The brand of a binding of `$bind`, under the key of the registry. See `Binding`. */
+const BOUND = Symbol.for('brumate.binding');
+
 /**
  * Returns the text of an attribute, or undefined if the attribute is not
  * rendered. `true` renders as an empty value.
  */
 export function attributeText(name: string, value: unknown): string | undefined {
+  // `value=$bind(name)` on an element renders the value of the name.
+  if (typeof value === 'object' && value !== null && BOUND in value) {
+    value = (value as unknown as { value: unknown }).value;
+  }
   if (value === null || value === undefined || value === false || typeof value === 'function') {
     return undefined;
   }
@@ -219,9 +226,32 @@ export function handlerEntry(
   return `${[name.slice(2).toLowerCase(), ...modifiers].join(':')}=${ref}@${scope}${bound}`;
 }
 
-/** The `b-on` attribute of an element with spreads: its own handlers, then those of its spreads. */
+/**
+ * The `b-on` entry of a binding that a spread puts on `value` or `checked`
+ * of an element. It names the scope of the slot, or of the setter of
+ * `$bind(name, fn)`, after `@`. A box writes on `change`.
+ */
+export function bindEntry(
+  name: string,
+  ref: { scope: number | string; slot: number },
+  setter?: { ref: string; scope: number | string },
+): string {
+  const event = name === 'checked' ? 'change' : 'input';
+  return setter
+    ? `${event}=$set:${setter.ref}@${setter.scope}`
+    : `${event}=$bind#0.${ref.slot}@${ref.scope}`;
+}
+
+/**
+ * The `b-on` attribute of an element with spreads: the bindings of its
+ * spreads, so its handlers read the new value, then its own handlers, then
+ * those of its spreads.
+ */
 export function onAttribute(on: string[], own: string): string {
-  const value = [own, ...on].filter(Boolean).join(' ');
+  const bindings = on.filter((entry) => /=\$(bind#|set:)/.test(entry));
+  const value = [...bindings, own, ...on.filter((entry) => !bindings.includes(entry))]
+    .filter(Boolean)
+    .join(' ');
   return value ? ` b-on="${escapeAttribute(value)}"` : '';
 }
 
@@ -266,9 +296,16 @@ export function actionAttributes(
   method?: string,
   result?: string,
   build?: string,
+  key?: string,
 ): string {
   const methodText = method ? ` ${method}="post"` : '';
-  const query = build === undefined ? '' : `__build=${encodeURIComponent(build)}`;
+  // The key of a form of a function that `idempotent` made, so a second post gets the first result.
+  const query = [
+    build === undefined ? '' : `__build=${encodeURIComponent(build)}`,
+    key === undefined ? '' : `__key=${key}`,
+  ]
+    .filter(Boolean)
+    .join('&');
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.

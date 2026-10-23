@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $props } from 'brumate/signals';
+  import BindChild from './BindChild.brm';
+
+  // A bound prop that this component binds to its own child, so a write goes up two levels.
+  let { open = false } = $props();
+</script>
+
+<BindChild label="deep" open=$bind(open) />

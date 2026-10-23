@@ -76,6 +76,28 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
 
+### Reveal order
+
+`#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. `#reveal` shows them in an order:
+
+```brm
+#reveal ('sequential', collapsed) {
+  #loading { <Profile /> } #else { <p>Loading the profile…</p> }
+  #loading { <Posts /> } #else { <p>Loading the posts…</p> }
+  #loading { <Friends /> } #else { <p>Loading the friends…</p> }
+}
+```
+
+- `'sequential'`, the default, shows the bodies in the order of the markup. A body that is ready waits until every body before it shows.
+- `'backwards'` shows them from the last to the first.
+- `'together'` shows every body at once, when the last one is ready.
+- `'natural'` shows each body when it is ready, as without `#reveal`.
+- `collapsed`, with `'sequential'`, shows only the fallback of the next body to show. The others appear one at a time, as the body before each shows.
+- The data of every body still loads at once. Only the showing waits, on the server, so it needs no code in the browser.
+- A body that fails keeps its fallback and takes its turn, so the bodies after it still show.
+- It orders the `#loading` blocks in its markup, and those of the components that it renders, such as a list of cards that each load their own data.
+- A `#reveal` inside a `#loading` body orders the bodies of that body. Markup that the browser renders has no stream, so there `#reveal` renders its children as they are. `#defer` blocks inside it are not ordered.
+
 ## `$isPending`
 
 `$isPending(memo)` is true while a new value of the memo loads on the client. It is also true while a memo that it reads loads.
@@ -236,6 +258,34 @@ A server function can be an async generator. A memo of it takes each value as it
 - A newer run of the memo stops reading the older stream.
 - The server renders the first value only, because the page renders once.
 - `$memo` gives the type of the values, so `status` above is a `string`.
+
+### Lists that grow
+
+`gather` from `brumate/stream` turns a stream into the list of its values so far, such as the tokens of a reply, search results or log lines. A memo of it renders with `#for`:
+
+```brm
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gather } from 'brumate/stream';
+  import { reply } from '../chat.ts';
+
+  let prompt = $signal('');
+  const tokens = $memo(gather(reply(prompt), { key: (token) => token.id }));
+</script>
+
+<ol>
+  #for (token of tokens by token.id) {
+    <li>{token.text}</li>
+  } #else {
+    <li>Ask something</li>
+  }
+</ol>
+```
+
+- The list starts empty, and grows by one item for each value of the stream.
+- `key` puts a value with a key that came before in place of its item, so a stream can update an item.
+- A new stream, such as for a new prompt, starts the list again, and the memo stops reading the older stream.
+- The empty list comes before the stream is read. The server renders the first value of a memo, so it renders the empty list and never starts the stream. The list fills in the browser, when the memo runs there, such as after the prompt changes.
 
 ## `await`
 

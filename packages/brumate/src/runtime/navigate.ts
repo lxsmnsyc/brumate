@@ -560,7 +560,85 @@ function takePrefetched(url: string, requested: number): Promise<Response> | und
 // The end of the first render, which can be split across chunks.
 const HTML_END = /<\/html\s*>/gi;
 
+/** What the devtools learn of a navigation. See `DevtoolsHooks.navigated`. */
+export interface NavigationReport {
+  url: string;
+  /** `push` for a link, `traverse` for the back and forward buttons, `form` for a form or a reload. */
+  kind: 'push' | 'traverse' | 'form';
+  /** The routes that stayed, by their keys, when only some routes were replaced. */
+  kept: string[];
+  /** The slots whose route was replaced, with the keys of the old and the new route. */
+  replaced: { slot: string; from: string; to: string }[];
+  /** True when the whole page was replaced. */
+  full: boolean;
+  /** How much the IDs of the new page moved, when they did not start where this page asked. */
+  shift?: number;
+  /** When the navigation started, and how long it took until the page changed. */
+  start: number;
+  time: number;
+}
+
+/** True on the dev server, which has the devtools. A build leaves the report out. */
+const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+
+/** Tells the devtools what a navigation kept and replaced. */
+function report(
+  visit: Visit,
+  start: number,
+  routes: Plan | undefined,
+  shift: Shift | undefined,
+): void {
+  const hooks = (globalThis as Record<symbol, { navigated?: (report: NavigationReport) => void }>)[
+    Symbol.for('brumate.devtools')
+  ];
+  if (!hooks?.navigated) {
+    return;
+  }
+  // The slots that were replaced, by their start comment, since each walk of the page makes new regions.
+  const replaced = new Set(routes?.replace.map(([before]) => before.start));
+  // The routes of the page before, without those that were replaced or are inside one. The root
+  // layout is outside every slot.
+  const kept: string[] = [];
+  const walk = (list: Region[]): void => {
+    for (const region of list) {
+      if (!replaced.has(region.start)) {
+        kept.push(region.key);
+        walk(region.children);
+      }
+    }
+  };
+  if (routes) {
+    const scripts = document.querySelectorAll(`${STATE}[b-route]`);
+    const root = scripts[scripts.length - 1]?.getAttribute('b-route');
+    if (root) {
+      kept.push(root);
+    }
+    walk(regions(document.body));
+  }
+  let kind: NavigationReport['kind'] = 'traverse';
+  if (visit.init || visit.reload) {
+    kind = 'form';
+  } else if (visit.push) {
+    kind = 'push';
+  }
+  hooks.navigated({
+    url: visit.url,
+    kind,
+    kept,
+    replaced: (routes?.replace ?? []).map(([before, after]) => ({
+      slot: after.name,
+      from: before.key,
+      to: after.key,
+    })),
+    full: !routes,
+    shift: shift?.by,
+    start,
+    time: performance.now() - start,
+  });
+}
+
 export async function navigate(visit: Visit): Promise<void> {
+  const started = performance.now();
   // Read before the page changes, while the scripts of the loaded page are in it.
   pageNonce();
   controller?.abort();
@@ -670,6 +748,9 @@ export async function navigate(visit: Visit): Promise<void> {
   // A link keeps the layouts that stay the same. A form, or a redirect from a server
   // function, replaces the whole page, because what it changed can show anywhere on it.
   const routes = visit.init || visit.reload ? undefined : planRoutes(next, state, requested);
+  if (DEV) {
+    report(visit, started, routes, shift);
+  }
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     stop();

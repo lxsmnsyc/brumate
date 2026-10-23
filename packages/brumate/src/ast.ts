@@ -73,6 +73,20 @@ export interface DynamicTagNode extends Range {
 export interface FragmentNode extends Range {
   kind: 'fragment';
   children: Markup[];
+  /**
+   * For `#reveal`: the order in which the server shows the `#loading` bodies
+   * inside, and whether only the next fallback shows. Elsewhere the children
+   * render as they are.
+   */
+  reveal?: Reveal;
+}
+
+/** The order of `#reveal`, as its header writes it. */
+export type RevealOrder = 'sequential' | 'backwards' | 'together' | 'natural';
+
+export interface Reveal {
+  order: RevealOrder;
+  collapsed: boolean;
 }
 
 export interface GlobalListenerNode extends Range {

@@ -18,6 +18,7 @@
 //   callbacks of the page, with their state. A trigger can fire now.
 // - Report: the inspect report of a component.
 
+import type { TraceEntry } from './request.ts';
 import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
@@ -36,7 +37,7 @@ interface ComponentInfo {
   name: string;
   file: string;
   /** Each scope of the component, by its number in the compiled component. */
-  scopes: Record<number, { label: string; slots: string[] }>;
+  scopes: Record<number, { label: string; slots: string[]; readers?: string[][] }>;
   graph?: {
     nodes: GraphNode[];
     /** Pairs of node indexes: the first is read by the second. */
@@ -176,11 +177,16 @@ h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); t
 .entry .time { color: var(--faint); white-space: nowrap; width: 1%; }
 .kind-handler { color: var(--blue); } .kind-part { color: var(--green); } .kind-write { color: var(--yellow); } .kind-call { color: #ff9ecf; }
 .bar-cell { width: 40%; min-width: 160px; }
+.navigation { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.navigation .routes { display: flex; flex-direction: column; gap: 3px; }
+tr.large td, tr.busy td { color: var(--yellow); }
+tr.ended td { color: var(--faint); }
 .bar-track { position: relative; height: 12px; }
 .bar { position: absolute; top: 2px; height: 8px; min-width: 3px; border-radius: 3px; background: var(--blue); }
 .bar.preload { background: var(--purple); } .bar.other { background: var(--faint); }
 .bar.unused { background: repeating-linear-gradient(45deg, var(--purple) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--purple); }
 .bar.failed { background: var(--red); }
+.bar.render { background: var(--accent); } .bar.memo { background: var(--green); } .bar.body { background: var(--purple); } .bar.stream { background: var(--faint); }
 tr.unused td:not(.bar-cell) { color: var(--yellow); }
 tr.failed td:not(.bar-cell) { color: var(--red); }
 .interaction { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
@@ -246,6 +252,10 @@ type Tab =
   | 'log'
   | 'timeline'
   | 'loading'
+  | 'state'
+  | 'effects'
+  | 'navigation'
+  | 'server'
   | 'blocks'
   | 'report';
 const TABS: [Tab, string][] = [
@@ -257,6 +267,10 @@ const TABS: [Tab, string][] = [
   ['log', 'Log'],
   ['timeline', 'Timeline'],
   ['loading', 'Loading'],
+  ['state', 'Page state'],
+  ['effects', 'Effects'],
+  ['navigation', 'Navigation'],
+  ['server', 'Server'],
   ['blocks', 'Blocks'],
   ['report', 'Report'],
 ];
@@ -328,6 +342,13 @@ const ICONS = {
     '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/>',
   log: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
   loading: '<path d="M4 6h7M8 12h9M13 18h7"/>',
+  state:
+    '<ellipse cx="12" cy="6" rx="7.5" ry="2.75"/><path d="M4.5 6v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6"/><path d="M4.5 12v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6"/>',
+  effects: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4h-4"/>',
+  navigation:
+    '<path d="M4 7h11M4 7l3.5-3.5M4 7l3.5 3.5"/><path d="M20 17H9M20 17l-3.5-3.5M20 17l-3.5 3.5"/>',
+  server:
+    '<rect x="4" y="4" width="16" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5"/><path d="M7.5 7.25h.01M7.5 16.75h.01" stroke-width="2.6"/>',
   timeline: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.6M10 3h4"/>',
   blocks:
     '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16"/>',
@@ -471,6 +492,56 @@ function codeBytes(state: DevtoolsState): number {
     bytes += bytesOf(known.get(load.component), load.part);
   }
   return bytes;
+}
+
+/** The keys and values of an object, a map or a set, or the items of an array, in a row. */
+function entriesOf(value: object): unknown[] {
+  if (value instanceof Map) {
+    return [...value].flat();
+  }
+  if (value instanceof Set || Array.isArray(value)) {
+    return [...value];
+  }
+  return Object.entries(value).flat();
+}
+
+/**
+ * About how many bytes a value takes in the page state. The state is code
+ * that seroval writes, which this follows closely enough to compare values.
+ */
+function sizeOf(value: unknown, seen = new Set<object>()): number {
+  if (value === null || value === undefined) {
+    return 6;
+  }
+  switch (typeof value) {
+    case 'string':
+      return value.length + 2;
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return String(value).length;
+    case 'function':
+      // A reference to client code: its ID and its scope.
+      return 24;
+    case 'object': {
+      if (seen.has(value)) {
+        // A reference to a value that is in the state already.
+        return 6;
+      }
+      seen.add(value);
+      if (value instanceof Date) {
+        return 30;
+      }
+      const entries = entriesOf(value);
+      let bytes = 2;
+      for (const entry of entries) {
+        bytes += sizeOf(entry, seen) + 1;
+      }
+      return bytes;
+    }
+    default:
+      return 8;
+  }
 }
 
 /** The bytes of the state records of the page. */
@@ -687,6 +758,8 @@ interface Frame {
   library: boolean;
   /** True for code that the browser ran, whose lines are of the compiled code. */
   compiled: boolean;
+  /** The URL of the module that the browser ran, for a frame that no source map maps. */
+  url?: string;
 }
 
 /** The places of a stack, with their files as the dev server can read them. */
@@ -729,10 +802,82 @@ function framesOf(stack: string | undefined): Frame[] {
   return frames;
 }
 
+/** The places in the sources of frames that the browser ran, by their compiled place. */
+const mapped = new Map<string, Promise<Frame>>();
+
+/**
+ * Maps the frames that the browser ran to their sources, by the source maps
+ * of the dev server, so a frame of a component or a module function names
+ * its own file and line. A frame that the dev server cannot map stays as it is.
+ */
+function mapFrames(frames: Frame[], urls: string[]): Promise<Frame[]> {
+  return Promise.all(
+    frames.map((frame, index) => {
+      const url = urls[index];
+      if (!frame.compiled || frame.library || !url) {
+        return frame;
+      }
+      // A frame that the source map does not map shows the code that the browser ran.
+      const unmapped = { ...frame, url };
+      const key = `${url}:${frame.line}:${frame.column}`;
+      let result = mapped.get(key);
+      if (!result) {
+        const query = new URLSearchParams({
+          url,
+          line: String(frame.line),
+          column: String(frame.column),
+        });
+        result = fetch(`/__brumate/position?${query}`)
+          .then((response) => (response.ok ? response.json() : null))
+          .then((place: { file: string; line: number; column: number } | null) =>
+            place ? { ...frame, ...place, compiled: false } : unmapped,
+          )
+          .catch(() => unmapped);
+        mapped.set(key, result);
+      }
+      return result;
+    }),
+  );
+}
+
+/** The URLs that the frames of a stack name, as the dev server knows the modules. */
+function frameUrls(stack: string | undefined): string[] {
+  const urls: string[] = [];
+  for (const line of (stack ?? '').split('\n')) {
+    const match = /^\s*at (?:(.*?) \()?(.+?):(\d+):(\d+)\)?\s*$/.exec(line);
+    const file = match?.[2];
+    if (!file || /^[a-z-]+-extension:/.test(file) || file.startsWith('<')) {
+      continue;
+    }
+    if (/^https?:/.test(file)) {
+      const url = new URL(file);
+      urls.push(url.origin === location.origin ? url.pathname + url.search : '');
+      if (url.origin !== location.origin) {
+        urls.pop();
+      }
+    } else {
+      urls.push('');
+    }
+  }
+  return urls;
+}
+
 /** The highlighter, which loads with the first code that the Errors tab shows. */
 let highlighter: Promise<typeof Highlight> | undefined;
 /** The sources of files, by path. */
 const sources = new Map<string, Promise<string | undefined>>();
+
+/** The code of a module as the dev server sent it to the browser. */
+function compiledOf(url: string): Promise<string | undefined> {
+  let text = sources.get(url);
+  if (!text) {
+    text = fetch(url)
+      .then((response) => (response.ok ? response.text() : undefined))
+      .catch(() => undefined);
+    sources.set(url, text);
+  }
+  return text;
+}
 
 function sourceOf(file: string): Promise<string | undefined> {
   let text = sources.get(file);
@@ -751,12 +896,12 @@ function sourceOf(file: string): Promise<string | undefined> {
  * the frame of the error is shown as it is.
  */
 async function codeView(
-  place: { file: string; line: number; column: number },
+  place: { file: string; line: number; column: number; url?: string },
   fallback?: string,
 ): Promise<HTMLElement> {
   const box = element('div', { class: 'code' });
   const [text, module] = await Promise.all([
-    sourceOf(place.file),
+    place.url ? compiledOf(place.url) : sourceOf(place.file),
     (highlighter ??= import('../highlight.ts')),
   ]);
   if (text === undefined) {
@@ -768,14 +913,16 @@ async function codeView(
   const lines = text.split('\n');
   const start = Math.max(1, place.line - 6);
   const end = Math.min(lines.length, place.line + 6);
-  const target = place.line - start + 1;
+  const target = place.line;
   const word = /^[\w$.]*/.exec(lines[place.line - 1]?.slice(place.column - 1) ?? '')?.[0] ?? '';
   // The colours of the theme, in the box, since the styles of the page do not reach the panel.
   box.append(element('style', {}, module.themeCSS('dark')));
+  // The whole file is highlighted, so lines inside a script or a comment have their context. Then
+  // only the lines around the place stay, each line one `.l` element.
   box.insertAdjacentHTML(
     'beforeend',
-    module.highlightFile(place.file, lines.slice(start - 1, end).join('\n'), {
-      line_numbers: { start },
+    module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
+      line_numbers: { start: 1 },
       line: (index) => (index === target ? { class: 'error-line' } : undefined),
       overlays:
         word.length > 0
@@ -789,6 +936,16 @@ async function codeView(
           : [],
     }),
   );
+  const shown = [...box.querySelectorAll('code > .l')];
+  shown.forEach((line, index) => {
+    if (index + 1 < start || index + 1 > end) {
+      // The line break after a line goes with it.
+      if (line.nextSibling?.nodeType === Node.TEXT_NODE) {
+        line.nextSibling.remove();
+      }
+      line.remove();
+    }
+  });
   return box;
 }
 
@@ -1256,7 +1413,7 @@ export function togglePanel(
 
     // The place to show: a frame that was clicked, the place of a compile error, or the first
     // frame of the app's code.
-    const frames = framesOf(error.stack);
+    const frames = await mapFrames(framesOf(error.stack), frameUrls(error.stack));
     if (selectedFrame === -1) {
       selectedFrame = error.loc
         ? -2
@@ -1272,7 +1429,7 @@ export function togglePanel(
         { class: 'toolbar' },
         pill(error.source, error.source === 'browser' ? 'yellow' : 'red'),
         error.plugin ? pill(`plugin ${error.plugin}`) : '',
-        place ? open(place) : '',
+        place && !('url' in place && place.url) ? open(place) : '',
       ),
     );
     if (place) {
@@ -2200,6 +2357,311 @@ export function togglePanel(
     );
   };
 
+  /**
+   * The values that the page state sends, by the slot that holds them, with
+   * about how many bytes each takes and the client code that reads it, which
+   * is why it is sent.
+   */
+  const drawState = async (): Promise<void> => {
+    const scopes = [...(state.scopes?.values() ?? [])].filter(
+      // The scopes that the browser made are not in the state that the server sent.
+      (scope) => typeof scope.id !== 'number' || scope.id >= 0,
+    );
+    const ids = [...new Set(scopes.map((scope) => rootOf(scope).m ?? ''))].filter(Boolean);
+    await Promise.all(ids.map((id) => componentInfo(state, id)));
+    // The slots of every instance of a scope add up, such as the items of a list.
+    const slots = new Map<
+      string,
+      { component: string; k: number; slot: number; bytes: number; count: number }
+    >();
+    for (const scope of scopes) {
+      const component = rootOf(scope).m ?? '';
+      scope.s.forEach((value, slot) => {
+        const key = `${component}:${scope.k}:${slot}`;
+        const entry = slots.get(key) ?? { component, k: scope.k, slot, bytes: 0, count: 0 };
+        entry.bytes += sizeOf(value);
+        entry.count++;
+        slots.set(key, entry);
+      });
+    }
+    const sorted = [...slots.values()].toSorted((a, b) => b.bytes - a.bytes);
+    const first = document.querySelector('script[b-state][b-scopes]')?.textContent?.length ?? 0;
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['component', 'scope', 'value', 'instances', 'about', 'read in the browser by'], 'th'),
+    );
+    for (const entry of sorted.slice(0, 200)) {
+      const info = known.get(entry.component);
+      const layout = info?.scopes[entry.k];
+      const readers = layout?.readers?.[entry.slot] ?? [];
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, info?.name ?? entry.component),
+        element('td', { class: 'mono' }, layout?.label ?? String(entry.k)),
+        element('td', { class: 'mono' }, layout?.slots[entry.slot] ?? `slot ${entry.slot}`),
+        element('td', { class: 'mono' }, String(entry.count)),
+        element('td', { class: 'mono', style: 'white-space: nowrap' }, kilobytes(entry.bytes)),
+        element('td', { class: 'mono' }, readers.join(', ') || '—'),
+      );
+      // A large value is worth a look: does the browser need all of it?
+      if (entry.bytes > 1024) {
+        tr.className = 'large';
+        tr.title = 'More than 1 kB. Send only the fields that the browser reads.';
+      }
+      table.append(tr);
+    }
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card('Page state', kilobytes(stateBytes()), 'every state record of the page'),
+        card('First record', kilobytes(first), 'the state that the page started with'),
+        card('Values', String(slots.size), `in ${scopes.length} scopes`),
+      ),
+      element(
+        'div',
+        { class: 'legend', style: 'margin: 10px 0 6px' },
+        element(
+          'span',
+          { class: 'sub' },
+          'A value is sent because code in the browser reads it. Sizes are about what the state takes, and a value of many instances adds them up.',
+        ),
+      ),
+      slots.size > 0 ? table : element('div', { class: 'empty' }, 'The page sent no state.'),
+    );
+  };
+
+  /** The effects and `$client` callbacks, with how often each ran and when its cleanup ran. */
+  const drawEffects = async (): Promise<void> => {
+    const effects = [...state.effects.values()];
+    await Promise.all(
+      [...new Set(effects.map((effect) => effect.component))].map((id) => componentInfo(state, id)),
+    );
+    const now = performance.now();
+    // Runs in the last second, which is how an effect that runs too often shows.
+    const lastSecond = (recent: number[]): number => recent.filter((at) => now - at < 1000).length;
+    const sorted = effects.toSorted(
+      (a, b) => lastSecond(b.recent) - lastSecond(a.recent) || b.runs - a.runs,
+    );
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(
+        ['component', 'scope', 'name', 'runs', 'last second', 'time', 'cleanups', 'last run'],
+        'th',
+      ),
+    );
+    for (const effect of sorted) {
+      const info = known.get(effect.component);
+      const recent = lastSecond(effect.recent);
+      const last = effect.recent.at(-1);
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, info?.name ?? effect.component),
+        element('td', { class: 'mono' }, info?.scopes[effect.k]?.label ?? String(effect.scope)),
+        element(
+          'td',
+          {},
+          pill(
+            effect.name.startsWith('c') ? '$client' : '$effect',
+            effect.name.startsWith('c') ? 'purple' : 'blue',
+          ),
+          ' ',
+          element('span', { class: 'mono' }, effect.name),
+        ),
+        element('td', { class: 'mono' }, String(effect.runs)),
+        element('td', { class: 'mono' }, String(recent)),
+        element('td', { class: 'mono' }, ms(effect.time)),
+        element('td', { class: 'mono' }, String(effect.cleanups)),
+        element('td', { class: 'mono' }, last === undefined ? '' : `${seconds(now - last)} ago`),
+      );
+      if (recent >= 10) {
+        tr.className = 'busy';
+        tr.title = 'It ran 10 times or more in the last second. Check what it reads.';
+      } else if (!effect.active) {
+        tr.className = 'ended';
+        tr.title = 'Its cleanup ran, and it has not run again, such as in a scope that went.';
+      }
+      table.append(tr);
+    }
+    const active = effects.filter((effect) => effect.active).length;
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card('Active', String(active), `of ${effects.length} that ran`),
+        card(
+          'Runs',
+          String(effects.reduce((sum, effect) => sum + effect.runs, 0)),
+          'since the page loaded',
+        ),
+        card(
+          'Busy',
+          String(effects.filter((effect) => lastSecond(effect.recent) >= 10).length),
+          'ran 10 times or more in the last second',
+        ),
+      ),
+      effects.length > 0
+        ? table
+        : element('div', { class: 'empty' }, 'No effect or $client callback has run yet.'),
+    );
+  };
+
+  /**
+   * The client navigations of the page, newest first: the routes that
+   * stayed, those that were replaced, or the whole page, and how far the
+   * IDs of the new page moved.
+   */
+  const drawNavigation = async (): Promise<void> => {
+    const list = state.navigations.toReversed();
+    const items = list.map((navigation) => {
+      const path = new URL(navigation.url).pathname + new URL(navigation.url).search;
+      const routes = element('div', { class: 'routes' });
+      if (navigation.full) {
+        routes.append(
+          element(
+            'div',
+            { class: 'sub' },
+            navigation.kind === 'form'
+              ? 'The whole page: a form changes what can show anywhere on it.'
+              : 'The whole page: its root route or its layouts did not match the page before.',
+          ),
+        );
+      } else {
+        for (const key of navigation.kept) {
+          routes.append(element('div', { class: 'mono' }, pill('kept', 'green'), ' ', key));
+        }
+        for (const change of navigation.replaced) {
+          routes.append(
+            element(
+              'div',
+              { class: 'mono' },
+              pill('replaced', 'yellow'),
+              ` ${change.slot}: ${change.from} → ${change.to}`,
+            ),
+          );
+        }
+      }
+      return element(
+        'div',
+        { class: 'navigation' },
+        element(
+          'div',
+          { class: 'toolbar' },
+          element('span', { class: 'mono' }, path),
+          pill(navigation.kind, navigation.kind === 'form' ? 'purple' : 'blue'),
+          element('span', { class: 'sub' }, `${ms(navigation.time)} until the page changed`),
+          navigation.shift === undefined
+            ? ''
+            : element('span', { class: 'sub' }, `IDs moved by ${navigation.shift}`),
+        ),
+        routes,
+      );
+    });
+    body.replaceChildren(
+      ...(items.length > 0
+        ? items
+        : [
+            element(
+              'div',
+              { class: 'empty' },
+              'No client navigation yet. Follow a link of the page to see what it keeps.',
+            ),
+          ]),
+    );
+  };
+
+  /**
+   * What the server did for the last page that loaded: the render until the
+   * page could stream, each memo that loaded and each server function call,
+   * each `#loading` body, and the rest of the stream, on one scale. The
+   * server writes it at the end of the page, in development.
+   */
+  const drawServer = async (): Promise<void> => {
+    const script = [...document.querySelectorAll('script[b-trace]')].at(-1);
+    let trace: { route: string; entries: TraceEntry[] } | undefined;
+    try {
+      trace = script ? JSON.parse(script.textContent ?? '') : undefined;
+    } catch {
+      trace = undefined;
+    }
+    if (!trace) {
+      body.replaceChildren(
+        element(
+          'div',
+          { class: 'empty' },
+          'No trace yet. The dev server writes one at the end of each page that it renders.',
+        ),
+      );
+      return;
+    }
+    const entries = trace.entries.toSorted((a, b) => a.start - b.start);
+    const total = Math.max(1, ...entries.map((entry) => entry.end ?? entry.start));
+    const table = element(
+      'table',
+      { class: 'rows' },
+      row(['step', 'what', 'took', `when, 0 to ${ms(total)}`], 'th'),
+    );
+    for (const entry of entries) {
+      const end = entry.end ?? total;
+      const tr = element(
+        'tr',
+        {},
+        element('td', {}, pill(entry.kind, entry.failed ? 'red' : '')),
+        element('td', { class: 'mono' }, entry.label),
+        element('td', { class: 'mono' }, entry.end === undefined ? '…' : ms(end - entry.start)),
+        element(
+          'td',
+          { class: 'bar-cell' },
+          element(
+            'div',
+            { class: 'bar-track' },
+            element('span', {
+              class: `bar ${entry.failed ? 'failed' : entry.kind}`,
+              style: `left:${(entry.start / total) * 100}%;width:${((end - entry.start) / total) * 100}%`,
+              title: `${ms(entry.start)} to ${ms(end)}`,
+            }),
+          ),
+        ),
+      );
+      if (entry.failed) {
+        tr.className = 'failed';
+      }
+      table.append(tr);
+    }
+    const render = entries.find((entry) => entry.kind === 'render');
+    const count = (kind: TraceEntry['kind']): number =>
+      entries.filter((entry) => entry.kind === kind).length;
+    body.replaceChildren(
+      element(
+        'div',
+        { class: 'cards' },
+        card(
+          'Until it streamed',
+          render?.end === undefined ? '…' : ms(render.end),
+          `the render of ${trace.route}`,
+        ),
+        card('Whole page', ms(total), 'until the last body streamed'),
+        card('Memos that loaded', String(count('memo')), `${count('call')} server function calls`),
+        card('Bodies', String(count('body')), '#loading bodies that streamed'),
+      ),
+      element(
+        'div',
+        { class: 'legend', style: 'margin: 10px 0 6px' },
+        key('var(--accent)', 'render'),
+        key('var(--green)', 'memo'),
+        key('var(--blue)', 'server function call'),
+        key('var(--purple)', '#loading body'),
+        key('var(--faint)', 'the rest of the stream'),
+        element('span', { class: 'sub' }, 'Of the last page that the dev server rendered.'),
+      ),
+      table,
+    );
+  };
+
   const drawTimeline = async (): Promise<void> => {
     const runs = state.timeline.toReversed().slice(0, 40);
     await Promise.all(
@@ -2464,6 +2926,29 @@ export function togglePanel(
         });
         action.append(fire);
       }
+      // A body that the page swapped in, whose fallback it kept, can show its fallback again.
+      const kept = (globalThis as { $bD?: Record<string, unknown> }).$bD?.[block.id];
+      if (
+        block.state === 'rendered' &&
+        kept &&
+        (block.kind === 'loading' || block.kind === 'defer')
+      ) {
+        const toggle = iconButton(
+          block.fallback ? 'play' : 'pause',
+          block.fallback ? 'Body' : 'Fallback',
+          {
+            title: block.fallback
+              ? 'Show the body again'
+              : 'Show the fallback in place of the body',
+            'aria-pressed': String(block.fallback === true),
+          },
+        );
+        toggle.addEventListener('click', () => {
+          state.showFallback?.(block, !block.fallback);
+          draw();
+        });
+        action.append(toggle);
+      }
       let took = '';
       if (block.rendered !== undefined) {
         took =
@@ -2488,7 +2973,7 @@ export function togglePanel(
       element(
         'p',
         { class: 'sub', style: 'margin-top: 0' },
-        'Streaming bodies come with the page. Waiting ones wait for their trigger, and Fire runs it now.',
+        'Streaming bodies come with the page. Waiting ones wait for their trigger, and Fire runs it now. Fallback shows the fallback of a body again, to check both sides.',
       ),
       blocks.length > 0
         ? table
@@ -2516,6 +3001,10 @@ export function togglePanel(
     scopes: drawScopes,
     elements: drawElements,
     loading: drawLoading,
+    state: drawState,
+    effects: drawEffects,
+    navigation: drawNavigation,
+    server: drawServer,
     timeline: drawTimeline,
     graph: drawGraph,
     report: drawReport,
@@ -2532,10 +3021,17 @@ export function togglePanel(
       drawBlocks();
       return;
     }
+    const drawing = tab;
     const drawn = drawTab[tab]();
-    // Marks of writes show once, on the next draw of the scopes.
     void drawn.then(() => {
+      // A tab that waited for the dev server, and that the user left meanwhile, drew over the
+      // tab that is open now, so that one draws again.
+      if (tab !== drawing) {
+        draw();
+        return;
+      }
       drawChrome();
+      // Marks of writes show once, on the next draw of the scopes.
       if (tab === 'scopes') {
         state.written.clear();
       }

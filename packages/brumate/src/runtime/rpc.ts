@@ -1,7 +1,7 @@
 import { toJSONAsync } from 'seroval';
 import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
-import { callPlugins, disabledFeatures } from './serial.ts';
+import { callPlugins, serialOptions } from './serial.ts';
 import { fromChunkStream } from './stream.ts';
 
 /**
@@ -20,7 +20,7 @@ export async function call(
   // The plugin of uploads takes each file and blob in the arguments, wherever it is.
   const files: Blob[] = [];
   const json = JSON.stringify(
-    await toJSONAsync(args, { plugins: callPlugins(files), disabledFeatures }),
+    await toJSONAsync(args, { plugins: callPlugins(files), ...serialOptions() }),
   );
   let init: RequestInit;
   if (files.length > 0) {
@@ -51,20 +51,36 @@ export async function call(
  * Sends a form to a server function, and returns its result. The form data
  * goes as it is, files included, as when the browser posts the form.
  */
-export async function submit(prefix: string, id: string, form: FormData): Promise<unknown> {
-  return post(prefix, id, { headers: { 'x-brumate-result': '1' }, body: form });
+export async function submit(
+  prefix: string,
+  id: string,
+  form: FormData,
+  key?: string | null,
+): Promise<unknown> {
+  return post(prefix, id, { headers: { 'x-brumate-result': '1' }, body: form }, key);
 }
 
 /** Posts to a server function, and reads its answer. */
-async function post(prefix: string, id: string, init: RequestInit): Promise<unknown> {
+async function post(
+  prefix: string,
+  id: string,
+  init: RequestInit,
+  key?: string | null,
+): Promise<unknown> {
   const headers = new Headers(init.headers);
   // The build of the page, so the server can tell a call from before a deploy.
   if (build !== undefined) {
     headers.set('x-brumate-build', build);
   }
+  // The key of a form of a function that `idempotent` made.
+  const query = key ? `?__key=${encodeURIComponent(key)}` : '';
   return answer(
     id,
-    await fetch(`${prefix}/${encodeURIComponent(id)}`, { ...init, headers, method: 'POST' }),
+    await fetch(`${prefix}/${encodeURIComponent(id)}${query}`, {
+      ...init,
+      headers,
+      method: 'POST',
+    }),
   );
 }
 
@@ -146,6 +162,12 @@ export function refreshMemos(ids: string[]): Promise<void> {
   });
 }
 
+/** Gives a form a new key in its URL, for its next post. */
+function renewKey(form: HTMLFormElement, url: URL): void {
+  url.searchParams.set('__key', crypto.randomUUID());
+  form.setAttribute('action', `${url.pathname}${url.search}`);
+}
+
 /**
  * Sends a form to the server function of its `$action`, and writes the
  * result into the `$action` when it arrives. It is pending until then. See
@@ -158,7 +180,18 @@ export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null)
   return import('./client.ts').then(({ asyncMemo, rpcPrefix, scopes, track }) => {
     const scope = scopes.get(scopeId);
     if (scope) {
-      const result = submit(rpcPrefix, action, data).catch((error: unknown) => {
+      // A form of a function that `idempotent` made sends its key, and gets a new one once the
+      // server answered, so a post that the user means again runs again.
+      const url = new URL(form.getAttribute('action') ?? '', location.href);
+      const key = url.searchParams.get('__key');
+      const result = submit(rpcPrefix, action, data, key);
+      if (key) {
+        void result.then(
+          () => renewKey(form, url),
+          () => {},
+        );
+      }
+      const answered = result.catch((error: unknown) => {
         // The site changed since the page loaded. The form posts again without scripts, and the
         // page that answers is of the new build.
         if ((error as { status?: number }).status === 409 && build !== undefined) {
@@ -167,7 +200,7 @@ export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null)
         }
         throw error;
       });
-      asyncMemo(scope, slot, track(result));
+      asyncMemo(scope, slot, track(answered));
     }
   });
 }

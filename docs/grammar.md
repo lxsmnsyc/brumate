@@ -128,6 +128,8 @@ DeferBlock      = "#defer" [ "(" Trigger ")" ] Body [ "#else" Body ] ;
 Trigger         = '"visible"' | '"idle"' | '"load"'
                 | "'visible'" | "'idle'" | "'load'" ;
 OffscreenBlock  = "#offscreen" "(" TS<Expression> ")" Body ;
+RevealBlock     = "#reveal" [ "(" RevealOption { "," RevealOption } ")" ] Body ;
+RevealOption    = "'sequential'" | "'backwards'" | "'together'" | "'natural'" | "collapsed" ;
 
 TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 ```
@@ -144,7 +146,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 `#` starts a block only when all of these are true:
 
 - It does not come right after a letter, a digit, `_` or `$`.
-- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `head`, `client`, `offscreen`, `defer` or `template`.
+- A block keyword follows: `if`, `for`, `repeat`, `switch`, `key`, `try`, `loading`, `portal`, `head`, `client`, `offscreen`, `reveal`, `defer` or `template`.
 - The keyword is followed by `(` or `{`. `#template` is followed by a name.
 
 Inside a block, `else`, `catch`, `case` and `default` are also keywords where the grammar expects them. Any other `#` is text.

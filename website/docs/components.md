@@ -103,6 +103,41 @@ A prop changes in the browser only when the parent passes a value that can chang
 <span>{value} of {max}</span>
 ```
 
+### Props that the component writes
+
+Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes its own value, so the child's writes change it.
+
+```brm live
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Toggle from './Toggle.brm';
+
+  let open = $signal(false);
+</script>
+
+<p>The parent sees: {open ? 'on' : 'off'}</p>
+<Toggle label="Bound" on=$bind(open) />
+<Toggle label="Own copy" on=open />
+```
+
+```brm live Toggle.brm
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  const { label } = $props<{ label: string }>();
+  let { on = false } = $props<{ on?: Bindable<boolean> }>();
+</script>
+
+<button onClick=(() => (on = !on))>{label}: {on ? 'on' : 'off'}</button>
+```
+
+- Without a binding, the component writes its own copy. A new value from the parent replaces the copy.
+- `Bindable<T>` in the type marks a prop that a parent can bind.
+- A component can bind a `let` prop to its own child, so a write goes up more than one level.
+- A `const` prop stays read-only. Writing it is a compile error.
+- `$bind` also works on `value` and `checked` of form fields: `<input value=$bind(draft)>`.
+
 ### Functions as props
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:

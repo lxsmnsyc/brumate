@@ -85,8 +85,13 @@ export interface Declaration {
   timing?: { kind: 'debounced' | 'throttled'; ms: number };
   /** For `let name = $signal(value)`, the value. */
   init?: oxc.Node;
-  /** True for a memo declared with `$optimistic`, before its source is known. */
+  /**
+   * True for a memo declared with `$optimistic`, before its source is known,
+   * and for a prop that the component destructures with `let`.
+   */
   writable?: boolean;
+  /** True for a signal or a writable prop that `$bind` passes to a child, which needs a slot. */
+  bound?: boolean;
   /** True for `const name = await $memo(value)`: the render waits for the memo where it is declared. */
   awaited?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
@@ -170,6 +175,8 @@ export interface Site {
    * turns into a reference that a spread can pass on, with its arguments.
    */
   handler?: oxc.CallExpression;
+  /** For the function of `$bind(name, fn)`, the call, which passes it as the setter of the binding. */
+  setter?: oxc.CallExpression;
 }
 
 export type Severity = 'error' | 'warning';
@@ -186,6 +193,9 @@ export interface SemanticModel {
   scopes: Scope[];
   declarations: Declaration[];
   sites: Site[];
+  /** The `$bind(name)` calls, with the declaration of their name. */
+  /** The `$bind` calls, with the declaration of their name and the site of their setter. */
+  bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
 }
 

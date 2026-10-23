@@ -2,6 +2,7 @@
 // the core and shows a button. The panel loads when the button is pressed,
 // so the page behaves as in production until then.
 
+import type { NavigationReport } from './navigate.ts';
 import type { DevtoolsHooks, Scope } from './client.ts';
 import type * as Panel from './devtools-panel.ts';
 import type { ScopeId } from './shared.ts';
@@ -125,10 +126,31 @@ export interface BlockEntry {
   seen: number;
   fired?: number;
   rendered?: number;
+  /** True while the devtools show its fallback in place of its body. */
+  fallback?: boolean;
 }
 
 /** The loads that are preloads, which the Loading tab marks when nothing used them. */
 export const PRELOADS: ReadonlySet<string> = new Set(['hover', 'visible', 'idle', 'eager']);
+
+/** An effect or a `$client` callback of a scope, with how it ran. */
+export interface EffectEntry {
+  scope: ScopeId;
+  /** The ID of the component of the scope, and the scope's number in it. */
+  component: string;
+  k: number;
+  /** Its name in the update code: `e<n>` for an effect, `c<n>` for a `$client` callback. */
+  name: string;
+  runs: number;
+  /** When its last runs were, the newest last, at most 50. */
+  recent: number[];
+  /** The time of all its runs, in milliseconds. */
+  time: number;
+  cleanups: number;
+  lastCleanup?: number;
+  /** False once its cleanup ran and it has not run again, such as in a removed scope. */
+  active: boolean;
+}
 
 export interface DevtoolsState {
   scopes?: Map<ScopeId, Scope>;
@@ -143,6 +165,11 @@ export interface DevtoolsState {
   blocks: Map<string, BlockEntry>;
   /** Asks the server for the body of a `#defer` block now. */
   fire?: (block: BlockEntry) => void;
+  /**
+   * Shows the fallback of a `#loading` or `#defer` block in place of its
+   * body, or its body again. False when the page did not keep its fallback.
+   */
+  showFallback?: (block: BlockEntry, on: boolean) => boolean;
   /** The scopes written since the panel last drew, by scope ID. */
   written: Set<ScopeId>;
   /** The URL prefix of the inspect endpoint of the dev server. */
@@ -153,6 +180,10 @@ export interface DevtoolsState {
   errors: ErrorEntry[];
   /** The handlers that ran, oldest first, with their calls and updates. */
   timeline: Interaction[];
+  /** The effects and `$client` callbacks that ran, by scope and name. */
+  effects: Map<string, EffectEntry>;
+  /** The client navigations of the page, newest last, at most 20. */
+  navigations: NavigationReport[];
   /** Opens the panel on a tab, such as `errors`. */
   open?: (tab: string) => void;
   /** Shows the number of errors on the tab. */
@@ -500,6 +531,8 @@ export function installDevtools(
     meta,
     errors: [],
     timeline: [],
+    effects: new Map(),
+    navigations: [],
     flash: false,
   };
   /** The handler that a server call or an update that starts now belongs to. */
@@ -617,6 +650,46 @@ export function installDevtools(
     part(component, name) {
       add({ kind: 'part', text: `loaded ${component} ${name}` });
     },
+    effect(scope, name, kind, time) {
+      const key = `${scope.id}:${name}`;
+      let entry = state.effects.get(key);
+      if (!entry) {
+        entry = {
+          scope: scope.id,
+          component: rootOf(scope).m ?? '',
+          k: scope.k,
+          name,
+          runs: 0,
+          recent: [],
+          time: 0,
+          cleanups: 0,
+          active: false,
+        };
+        state.effects.set(key, entry);
+      }
+      const now = performance.now();
+      if (kind === 'run') {
+        entry.runs++;
+        entry.time += time;
+        entry.recent.push(now);
+        if (entry.recent.length > 50) {
+          entry.recent.shift();
+        }
+        entry.active = true;
+      } else {
+        entry.cleanups++;
+        entry.lastCleanup = now;
+        entry.active = false;
+      }
+      state.changed?.();
+    },
+    navigated(report) {
+      state.navigations.push(report);
+      if (state.navigations.length > 20) {
+        state.navigations.shift();
+      }
+      state.changed?.();
+    },
     write(scope, slot, value) {
       state.written.add(scope.id);
       const root = rootOf(scope);
@@ -629,6 +702,29 @@ export function installDevtools(
     },
   };
   (globalThis as Record<symbol, DevtoolsHooks | undefined>)[DEVTOOLS] = hooks;
+
+  // The swap of a body keeps its fallback in development, by boundary, so the fallback can show
+  // again. While it shows, the body is out of the page, and updates of its nodes wait there.
+  state.showFallback = (block, on) => {
+    const kept = (globalThis as { $bD?: Record<string, { f: Node[]; b: Node[] }> }).$bD?.[block.id];
+    if (!kept || (block.fallback ?? false) === on) {
+      return false;
+    }
+    const [shown, hidden] = on ? [kept.b, kept.f] : [kept.f, kept.b];
+    const anchor = shown.find((node) => node.parentNode);
+    if (!anchor) {
+      return false;
+    }
+    for (const node of hidden) {
+      anchor.parentNode!.insertBefore(node, anchor);
+    }
+    for (const node of shown) {
+      node.parentNode?.removeChild(node);
+    }
+    block.fallback = on;
+    state.changed?.();
+    return true;
+  };
 
   // Server function calls, with how long each took and how it answered.
   const original = globalThis.fetch.bind(globalThis);
@@ -819,9 +915,11 @@ export function installDevtools(
     if (foreign(stack, event.filename)) {
       return;
     }
+    const error = event.error as Error | undefined;
+    // The message of the error, without the `Uncaught` that the browser puts before it.
     reportError(
       state,
-      { message: event.message, stack: (event.error as Error | undefined)?.stack },
+      { message: error?.message ?? event.message, stack: error?.stack },
       'browser',
     );
   });
@@ -833,6 +931,16 @@ export function installDevtools(
     reportError(
       state,
       { message: reason?.message ?? String(event.reason), stack: reason?.stack },
+      'browser',
+    );
+  });
+  // Errors of handlers and updates that no `#try` caught. The core catches them, so they do not
+  // reach the listeners above.
+  addEventListener('brumate:error', (event) => {
+    const error = (event as CustomEvent<{ error: unknown }>).detail.error as Error | undefined;
+    reportError(
+      state,
+      { message: error?.message ?? String(error), stack: error?.stack },
       'browser',
     );
   });

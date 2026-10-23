@@ -5,6 +5,7 @@
 
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks } from './client.ts';
+import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
 const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
@@ -22,6 +23,8 @@ export interface LoaderOptions {
   load: (id: string) => Promise<ClientModule> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
+  /** Imports the serial entry, which the core takes before it reads the page state. */
+  serial?: () => Promise<SerialEntry>;
   /**
    * Loads pages without a full page load: links to the same origin, the back
    * and forward buttons, forms that post to a server function, and redirects
@@ -155,9 +158,10 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
+  // The serial entry loads with the core, so the core can make the values of the app.
   const loadCore = (): Promise<Core> =>
-    (core ??= load().then((client) => {
-      client.init({ ...options, listen: scan });
+    (core ??= Promise.all([load(), options.serial?.()]).then(([client, serial]) => {
+      client.init({ ...options, listen: scan, serial });
       return client;
     }));
 
@@ -169,6 +173,10 @@ export function boot(
   // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
   // on idle or after `load`.
   const warm = (ref: string, reason: string): void => {
+    // A built-in of the core, such as `$bind`, has no code of a component to load.
+    if (ref.startsWith('$')) {
+      return;
+    }
     // A handler that a spread passed on names its scope after `@`.
     const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
     const part = /^[hct]\d/.test(name) ? name : 'update';
@@ -350,7 +358,8 @@ export function boot(
         );
       }
     }
-    for (const template of select(root, 'template[b-client],template[b-defer]')) {
+    // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
+    for (const template of select(root, 'template[b-client],template[b-defer]:not([b-hole])')) {
       const client = template.getAttribute('b-client');
       const [trigger, ref] = (client ?? template.getAttribute('b-defer')!).split(
         client ? '=' : ':',

@@ -4,21 +4,22 @@ Features that would be good to add, with the reason for each, a sketch, and a ro
 
 ## Summary
 
-Middleware entry, request locals and timing helpers shipped in 0.2.0, and handlers from scripts (`$handler`) and progressive forms (`brumate/forms`) after it, so they are no longer here.
+Middleware entry, request locals and timing helpers shipped in 0.2.0. These shipped after it, so they are no longer here:
+
+- Handlers from scripts (`$handler`) and progressive forms (`brumate/forms`).
+- Two-way binding (`$bind`) and view transitions of handlers (`transition`).
+- Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
+- The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
 | Proposal                                                              | Area    | Value  | Cost   |
 | --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Two-way binding](#two-way-binding)                                   | Syntax  | High   | Medium |
-| [Serialization entry](#serialization-entry)                           | Data    | High   | Medium |
-| [Prerendering with holes](#prerendering-with-holes)                   | Server  | High   | Medium |
-| [Caching pages and data](#caching-pages-and-data)                     | Server  | High   | Medium |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Medium | Small  |
+| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
 | [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
 | [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Transitions](#transitions)                                           | Syntax  | High   | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Medium | Medium |
-| [Reveal order](#reveal-order)                                         | Syntax  | Medium | Small  |
+| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
 | [Devtools](#devtools)                                                 | Tooling | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
 | [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
@@ -30,119 +31,43 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0, and handle
 
 ## Syntax
 
-### Two-way binding
+### Named view transitions
 
-Some state is sometimes the parent's and sometimes the child's own, such as whether a dialog is open, or the value of a field. Today a parent that wants to own it passes a value and a handler that writes it back, and an element needs the same pair:
-
-```html
-<input value=draft onInput=((event) => (draft = event.currentTarget.value))>
-```
-
-#### The design
-
-Three parts, each with one job:
-
-- `let` in the child: a prop that the component writes.
-- `Bindable<T>` in the type: a prop that a parent can bind.
-- `$bind(signal)` in the parent: the parent owns the value.
+`transition` of `brumate/events` runs a handler inside a view transition. An element animates on its own only when it has a `view-transition-name`, which the author writes by hand and keeps unique, such as ``style=(`view-transition-name: todo-${todo.id}`)`` in a `#for`. Every named element then takes part in every view transition of the page, including navigations.
 
 ```html
-<!-- Dialog.brm -->
-<script lang="ts">
-  import type { Bindable } from 'brumate/signals';
-
-  interface DialogProps {
-    title: string;
-    open?: Bindable<boolean>;
-    onOpen?: () => void;
-  }
-
-  const { title, onOpen } = $props<DialogProps>();
-  let { open = false } = $props<DialogProps>();
-
-  function show() {
-    open = true;
-    onOpen?.();
-  }
-</script>
-```
-
-```html
-<!-- The parent owns the value, and the child keeps its own. -->
-<Dialog title="Settings" open=$bind(settingsOpen) onOpen=track />
-<Dialog title="Help" />
-
-<input value=$bind(draft)>
-<input type="checkbox" checked=$bind(done)>
-```
-
-#### In the child
-
-- `let { name = initial } = $props<T>()` declares a prop that the component writes. `const` props stay read-only, and a write to them is a compile error, as now. Today `let` on `$props()` is a compile error, so no code changes meaning. A component can destructure `$props()` more than once, with `const` and with `let`.
-- Without a binding, the child writes its own copy, such as a prop that seeds a state that the child then edits. A new value from the parent replaces the copy, as `$optimistic` gives up its guess when its source changes. `initial` is the value when the parent passes nothing.
-- With a binding, a write goes to the parent's signal.
-- The child writes first and calls its handlers after, so a handler such as `onOpen` reads the new value. A write never calls a handler by itself.
-
-#### In the type
-
-`let` says that the child writes a prop. `Bindable<T>` says that a parent can bind it. They are apart, because a child can write its own copy of a prop that it does not share:
-
-|                                             | The child writes it                                  | A parent can `$bind` it                        |
-| ------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
-| `const { foo }`                             | No, it is a compile error                            | No                                             |
-| `let { foo }`, and `foo` is not `Bindable`  | Yes, its own copy                                    | No, it is a type error in the parent           |
-| `let { foo }`, and `foo` is `Bindable<T>`   | Yes, its own copy, or the parent's signal when bound | Yes                                            |
-| `const { foo }`, and `foo` is `Bindable<T>` | No                                                   | Yes, with a warning: the child never writes it |
-
-- `Bindable<T>` in a props interface marks a prop that a parent can bind. Inside the child, `$props<T>()` unwraps it, so `open` is a `boolean`.
-- With a typed `$props<T>()`, the type decides which props a parent can bind.
-- With an untyped `$props()`, the type checker reads `let` in the destructuring, and types those props as bindable, so a quick component needs no annotation.
-- The type checker warns about a `Bindable` prop that the child reads only with `const`.
-
-#### In the parent
-
-- `$bind(signal)` passes a reference to a signal, or to a `let` prop of the parent, which binds through more than one level. The compiler checks that the argument is one of those.
-- The type of `$bind(x)` is `Binding<T>`. A prop that is not `Bindable`, or of another type, does not accept it.
-- `$bind(signal, (next) => …)` calls the function for each write in place of writing the signal, so the parent can refuse a value or change it, such as keep a dialog open while a form has changes. The function is a client root, so it loads on the first write.
-- Handlers stay ordinary props. The binding keeps the state in step, and a handler such as `onOpen` is for side effects.
-
-#### On elements
-
-- `$bind` on `value` and `checked` of an input, and on `value` of a `<select>` or a `<textarea>`, compiles to the attribute and an input handler. The handler is small and loads on the first input. A handler of the element, such as `onInput=search`, runs after it, so it reads the new value.
-
-#### Through rest props and spreads
-
-- A binding is a value, as a function reference is: it serializes as the scope and the slot of its signal.
-- `...rest` keeps a binding as it is. Spread on an element, a binding on `value` or `checked` writes the value and adds the input handler, as a spread passes on handlers. Spread on a component, it binds that component's prop.
-- Reading `rest.value` gives the binding, not the value. To read or write a bound prop, destructure it by name with `let`.
-
-#### In the browser
-
-- On the server, nothing writes, so a bindable prop is its value.
-- A bound write in the browser writes the parent's slot through the reference, without the parent's code. The parent's updates load only when something in its markup reads the signal, as for any write. A handler loads only when the child calls it.
-
-Cost: about 1 week. The compiler work is `let` props, `$bind` on components and elements, and a binding through spreads. The runtime keeps a reference to a slot, as it keeps references to functions.
-
-### Transitions
-
-View transitions animate a change of page. Inside a page, an `#if` or `#for` body shows and goes at once, because the node is gone before CSS can animate it.
-
-```html
-#if (open) {
-  <div class="panel" transition=fade(200)>…</div>
-}
 #for (todo of todos by todo.id) {
-  <li animate=flip(150)>{todo.title}</li>
+  <li viewTransition="todo">{todo.title}</li>
+}
+#if (open) {
+  <div class="panel" viewTransition="panel">…</div>
 }
 ```
 
-- `transition=fn` on an element of a body runs `fn(element, 'in' | 'out')` when the body shows or goes, and the client removes the element when the returned promise settles. A transition that CSS does alone can be a class: `transition="fade"` adds `fade-in` and `fade-out`, as the `Transition` of Terracotta does.
-- `animate=fn` on the element of a list item moves it from its old place to its new one when the list changes order.
-- The server renders the elements as they are. A transition runs only for a change in the browser, so the first render shows no animation, and the code loads with the update that changes the block.
-- `brumate/transition` brings `fade`, `slide`, `scale` and `flip`, with the Web Animations API. `prefers-reduced-motion` turns them off.
-- The `Transition` of the UI components, in phase 2, builds on it.
+```css
+::view-transition-group(.todo) { animation-duration: 200ms; }
+::view-transition-new(.todo):only-child { animation: fade-in 150ms; }
+::view-transition-old(.todo):only-child { animation: fade-out 150ms; }
+```
 
-Cost: about 1 to 2 weeks. The client already removes a body in one place, which waits for the transition.
+- `viewTransition="todo"` marks an element. It renders as an attribute, and the element gets `view-transition-class: todo`.
+- The core names a marked element only while a transition of brumate runs: before the browser captures the old page, and again after the updates for the elements that they added. It removes the names when the transition finishes.
+- The name comes from the element itself, such as `todo-7`, not from the key of `by`. A key can be any value, such as an object, and two keys such as `1` and `'1'` would give one name. Keyed lists keep the element of an item, so an element that moves keeps its name and slides. A new element fades in, and a removed one fades out.
+- `viewTransitionName=(expression)` gives a name of the author, which pairs two different elements, such as a picture on a list page and on its detail page. A navigation needs it, because the new page has new elements. Elements of layouts that stay keep their names.
+- Only marked elements near the viewport get a name, because each named element is a capture of its own. An element that comes from far off screen fades in instead of sliding.
+- In development, two rendered elements with the same name of the author are an error in the Errors tab, since the browser skips such a transition without one.
+- A name that the CSS of the author gives an element stays.
+
+Limits:
+
+- A named element inside another one animates in a flat group, so the order of painting can be wrong while it runs, until browsers support `view-transition-group: contain`.
+- The writes of a handler after its first `await` change the page without an animation, as with `transition` now.
+
+Test first that the names reach elements that an update inserted after its code loaded, and how fast a list of 200 items reorders in Chrome and Safari.
+
+Build it when an app animates lists or shared elements. The manual names work until then, and the UI components animate overlays with CSS and `Transition`.
+
+Cost: about 2 to 3 days. The compiler only renders the attribute.
 
 ### Long lists
 
@@ -163,94 +88,21 @@ Cost: about 2 weeks, most of it for scrolling, focus and the items of different 
 
 ### Streaming lists
 
-A memo of a stream takes each value as it arrives, so a list that grows, such as the reply of a language model, search results or log lines, has to gather its items by hand.
+`gather` from `brumate/stream` gives the list of the values of a stream so far, which a memo renders with `#for` as it grows in the browser. The server renders the empty list, because it reads only the first value of a memo.
 
-```html
-<script>
-  import { $props } from 'brumate/signals';
-  import { reply } from './chat.server';
+- `#for await (item of stream) { … } #else { … }` would be the same without the memo, and the server would stream the items of a stream that starts with the page, as `#loading` bodies stream, with the browser reading on from there.
 
-  const { prompt } = $props<{ prompt: string }>();
-</script>
+Cost: about 1 to 2 weeks for the server part, when a page needs a stream that starts with it. Handing the stream from the server to the browser without reading it twice is most of it.
 
-<ol>
-  #for await (token of reply(prompt)) {
-    <li>{token}</li>
-  } #else {
-    <li>Thinking…</li>
-  }
-</ol>
-```
+### Reveal order of `#defer` blocks
 
-- `#for await (item of stream)` renders an item for each value of an async iterable, such as a server function that yields, as it arrives. `#else` shows until the first one.
-- On the server, the items stream into the page in the order they come, as `#loading` bodies do, and the page does not wait for the stream to end.
-- In the browser, the core appends the items that arrive after the page, from the render module, and the list keeps them as signals of its own. When the expression gives a new stream, such as for a new prompt, the list starts again.
-- `by key` keeps items when a stream sends a value with a key that it sent before, so a stream can update an item in place.
-- The memo of the stream keeps its last value, as now, for code that only needs the latest.
+`#reveal` orders the `#loading` bodies that stream from the server. `#defer` blocks inside it show when each body arrives.
 
-Cost: about 1 to 2 weeks. Memos already read streams, and lists already add items in the browser.
+- The module that loads `#defer` bodies would wait to put a body in until the ones before it are in, in the order of the `#reveal` around them.
 
-### Reveal order
-
-`#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. React's `SuspenseList` and Solid 2.0's `<Reveal>` let siblings show in an order, or together. In brumate, a body only goes from its fallback to its content once, while the page streams: a memo that loads again in the browser keeps its last value. So the order is about the stream, which the server controls.
-
-```html
-#reveal ('sequential', collapsed) {
-  #loading { <Profile /> } #else { <p>Loading the profile…</p> }
-  #loading { <Posts /> } #else { <p>Loading the posts…</p> }
-  #loading { <Friends /> } #else { <p>Loading the friends…</p> }
-}
-```
-
-- `'sequential'`, the default, shows the bodies in the order of the markup. When a body is ready, the server holds what it sends for it, the `<template b-l>`, the swap and its state record, until every body before it is sent. The data still loads at the same time. Only the showing waits.
-- `'backwards'` does the same from the last body to the first, as React's `revealOrder="backwards"`.
-- `'together'` holds every body of the group until the last one is ready, and sends them at once.
-- `'natural'` shows each body when it is ready, as now.
-- `collapsed`, with an order, shows only the fallback of the next body to show. The server renders the other fallbacks in `<template b-f="id">`, and the chunk that shows a body also moves the next fallback in, with a small `$bF(id)` script like `$bS`. It needs no core and no client code.
-- The names follow Solid 2.0, with `'backwards'` from React.
-
-How it fits:
-
-- Each body renders in its own ID space, such as `5.0`, so holding one back changes no other ID.
-- A `#reveal` inside a `#loading` body orders the bodies of that body, as nested lists do in React.
-- Rendering in order, for readers without scripts, puts bodies in the order of the page, which keeps `'sequential'` and `'together'` by itself.
-- Pages that client navigation loads stream through the same path, so they keep the order.
-- `#defer` blocks in a `#reveal` can follow the same order in the browser: the module that loads them waits to put a body in until the ones before it are in.
-- Without `#reveal`, nothing changes.
-
-Prior art: React's `SuspenseList`, with `revealOrder` and `tail`, and Solid 2.0's `<Reveal>`, with `order` and `collapsed`. Solid 2.0 is in beta, so its details can still change.
-
-Cost: about 1 week, most of it in the server's handling of boundaries and the `$bF` script. The compiler only adds the block, and gives each boundary its group, its place and the order.
+Cost: a day or two, when a page needs it.
 
 ## Data
-
-### Serialization entry
-
-The page state and server function calls hold the values that seroval and brumate's plugins can write. A class of the app, such as `Money`, a `Decimal` or a Temporal value, has to be sent as a plain object and made again by hand, and the serializer options are fixed.
-
-```ts
-// src/serial.ts
-import { definePlugin } from 'brumate/serial';
-import { Money } from './money';
-
-export const plugins = [
-  definePlugin({
-    tag: 'app/money',
-    test: (value) => value instanceof Money,
-    toData: (money: Money) => [money.amount, money.currency],
-    fromData: ([amount, currency]) => new Money(amount, currency),
-  }),
-];
-```
-
-- An entry file, `src/serial.ts` by default and set with the `serial` option of the plugin, as SolidStart reads its own entries, exports `plugins` and the options that it changes.
-- `definePlugin` makes a seroval plugin from `toData` and `fromData`. In the page state, a value is written as `$b.u('app/money', data)`, so the record does not need the class in scope.
-- The browser makes the value with `fromData` when the core reads the record. The entry loads with the core, not with the loader, so a page that is never used does not load the class.
-- `disabledFeatures` and `depthLimit` can change. Turning on a feature that brumate turns off, such as `RegExp`, warns, because brumate turns it off on purpose.
-- The type checker accepts a value of a class with a plugin in the state.
-- The same plugins write server function calls and their answers, and the stubs of two-way realtime.
-
-Cost: about 1 week, most of it for loading the entry with the core and for the types.
 
 ### Worker functions
 
@@ -296,57 +148,13 @@ Cost: about 1 week.
 
 ## Server
 
-### Caching pages and data
-
-A response can set its own headers, through `event.headers`, but there is nothing between one request and the next. Each request renders the page and loads its data again. `#defer` makes caching more useful: the page can be cached for everyone, and its parts for one user render later.
-
-- A route sets how long its page can be cached, with an export of its file:
-
-```html
-<script module>
-  export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
-</script>
-```
-
-The server sends `cache-control` from it, and a page cache in the server, or a CDN, keeps the HTML. A page that reads the session, or sets a cookie, is never cached for everyone: the server sends `private` for it.
-
-- A server function can cache its result across requests, by its arguments, with a time and tags:
-
-```ts
-export const listIssues = cached(async (status: string) => db.issues(status), {
-  maxAge: 30,
-  tags: (status) => ['issues', `issues:${status}`],
-});
-```
-
-- `revalidate(tag)` drops the results and the pages that used that tag, such as after a server function changes the data. It works with `refresh(fn)`, which loads the memos of the page again in the browser.
-- The cache is an interface, with an in-memory store as the default. With Nitro, it uses Nitro's storage layer, unstorage, whose drivers cover Redis, Cloudflare KV and the stores of other hosts.
-- Prerendered pages are the case with no expiry. `maxAge` and `revalidate` extend them to pages that change.
-
-Cost: about 2 weeks. Most of it is the rules for what is safe to share between users, and the tests for them.
-
-### Prerendering with holes
-
-A prerendered page is the same for everyone, so a `#defer` body asks for its part in a request of its own, one round trip per block. React 19.2 prerenders a shell, keeps what it postponed, and renders only the holes for each request, in the same response.
-
-- A prerendered page keeps its `#defer` blocks as holes. The build writes the HTML of the shell, and the boundary of each hole.
-- For a request, the server sends the shell from the file or a cache at once, then renders every hole in defer mode and streams each body as a ready `#loading` body, in the same response.
-- The render of the holes is the one that `#defer` requests make: the route again, with the bodies around each target, and no other body. One render can give all the holes of a page.
-- Without a server, on a static host, the shell is the whole answer, and each hole asks for its body when its trigger fires, as now.
-- It combines with caching: the shell is cached for everyone, and the holes are rendered for one user.
-
-Cost: about 1 week, after `#defer`. Most of it is rendering several targets in one request.
-
 ### Idempotent calls
 
-A call that runs twice, such as one that the offline queue sends again, one that reconnects, or a form posted twice, makes two orders or two messages.
+`idempotent(fn)` makes forms that run once for each render: a second post of the same form gets the first result. Calls from the browser, such as from a handler, have no key yet, because nothing sends a call again.
 
-- `idempotent(fn)` wraps a server function. The browser sends a key with each call, and sends the same key when it sends that call again.
-- The server keeps the result of a key for a time, in the store of [caching pages and data](#caching-pages-and-data), and answers a call with a key that it has seen with the result that it kept, without running the function.
-- A call with a key that is still running waits for that run.
-- Form posts without scripts get a key in a hidden field, so a second post of the same form is the same call.
+- When the offline queue or a reconnect sends calls again, the browser sends a key with each call, and the same key when it sends that call again. The server already keeps the result of a key.
 
-Cost: a few days, after the store of caching.
+Cost: a day, with the first feature that sends calls again.
 
 ### Two-way realtime
 
@@ -456,7 +264,7 @@ How it ships:
 - The panel stays in the page in development, so it needs no extension, and loads only when opened.
 - A browser extension can show the same panel in the browser's devtools later, so it does not cover the page, and so a production build can open it with an option.
 
-Elements, loading and blocks are done: see [Devtools](../website/docs/inspect.md#devtools). Showing a block's fallback again is not, since the page drops the fallback when the body arrives. The rest costs about 2 to 3 weeks.
+Elements, loading, blocks with their fallbacks, errors, page state, effects, navigation and server are done, with a timeline and outlines of the elements that change: see [Devtools](../website/docs/inspect.md#devtools). History and a browser extension are left, about 2 weeks.
 
 ### Component workbench
 
@@ -649,10 +457,9 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
-1. **Binding and transitions**: `bind:value`, `bind:checked` and bindable props, then transitions. They are small, and useful without the UI components: forms get shorter fields, and any block can animate. The UI components need both later.
-2. **Caching**: caching pages and data, the serialization entry, idempotent calls, and prerendering with holes. Idempotent calls and rate limiting keep their results in the store of caching, and the serialization entry lets cached data hold classes.
-3. **Streaming and tools**: reveal order, streaming lists, the rest of the devtools (elements, loading, blocks, errors and a timeline are done), and the component workbench, which is an exploration first.
-4. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
-5. **When an app or the website needs them**: Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
+2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them. Next is the component workbench, which is an exploration first.
+3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
+4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

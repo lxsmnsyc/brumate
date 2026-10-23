@@ -99,6 +99,34 @@ describe('#offscreen', () => {
   });
 });
 
+describe('#reveal', () => {
+  const reveal = (source: string) => parse(source, { filename: 'Test.brm' }).children[0];
+
+  it('parses the order and collapsed, with sequential by default', () => {
+    expect(reveal("#reveal ('together') {\n  <p>One</p>\n}")).toMatchObject({
+      kind: 'fragment',
+      reveal: { order: 'together', collapsed: false },
+      children: [{ kind: 'element' }],
+    });
+    expect(reveal('#reveal (collapsed) {}')).toMatchObject({
+      reveal: { order: 'sequential', collapsed: true },
+    });
+    expect(reveal('#reveal {}')).toMatchObject({
+      reveal: { order: 'sequential', collapsed: false },
+    });
+  });
+
+  it('refuses another order, and collapsed with an order other than sequential', () => {
+    expect(() => reveal("#reveal ('random') {}")).toThrow('#reveal takes an order');
+    expect(() => reveal("#reveal ('together', collapsed) {}")).toThrow(
+      "it needs the order 'sequential', not 'together'",
+    );
+    expect(() => reveal('#reveal {\n  <script>let a = 1;</script>\n}')).toThrow(
+      '#reveal has no script of its own',
+    );
+  });
+});
+
 describe('text', () => {
   it('keeps # that does not start a block', () => {
     const file = parse('<p>C# and #hashtag and #if without parentheses</p>');

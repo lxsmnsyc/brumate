@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
 import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
-import { serverStubs } from '../src/server-files.ts';
+import { serverModule, serverStubs } from '../src/server-files.ts';
 
 const root = fileURLToPath(new URL('./render/', import.meta.url));
 const runtime = (name: string): string =>
@@ -20,7 +20,10 @@ const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [brumate({ merge: 0 })],
+  // `serialMoney.brm` holds a Money, which the plugin of `money.ts` sends.
+  plugins: [
+    brumate({ merge: 0, serial: fileURLToPath(new URL('./render/money.ts', import.meta.url)) }),
+  ],
   resolve: {
     alias: {
       'brumate/server': runtime('server'),
@@ -29,6 +32,8 @@ const config: InlineConfig = {
       'brumate/static-loader': runtime('static-loader'),
       'brumate/context': runtime('context'),
       'brumate/events': runtime('events'),
+      'brumate/serial': runtime('values'),
+      'brumate/stream': runtime('gather'),
     },
   },
 };
@@ -84,8 +89,11 @@ describe('vite plugin', () => {
     };
     expect(info.name).toBe('Counter');
     expect(Object.values(info.scopes)).toEqual([
-      { label: 'component', slots: ['count', 'double'] },
+      // The code of the browser that reads each value, for the Page state tab.
+      { label: 'component', slots: ['count', 'double'], readers: expect.any(Array) },
     ]);
+    const [{ readers }] = Object.values(info.scopes) as unknown as [{ readers: string[][] }];
+    expect(readers[0]!.some((reader) => reader.startsWith('memo double'))).toBe(true);
     expect(info.text).toContain('Client code');
     // Each anchor, with its place in the file and what it reads, for the Elements tab.
     expect(Object.values(info.anchors)).toEqual([
@@ -248,12 +256,127 @@ describe('server modules', () => {
         return (await render(module.default, {})).html;
       };
       expect(await html()).toContain('Before');
+      // A reload of the writes before the server started is not the one that the test waits for.
+      send.mockClear();
       writeFileSync(`${directory}data.ts`, "export const title = 'After';\n");
       // The file watcher can take a while to notice the change while other tests run.
       await vi.waitFor(() => expect(send).toHaveBeenCalledWith({ type: 'full-reload' }), {
         timeout: 15_000,
       });
-      expect(await html()).toContain('After');
+      // The reload and the new module come from the same change, which can reach them apart.
+      await vi.waitFor(async () => expect(await html()).toContain('After'), { timeout: 15_000 });
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
+describe('the serial entry', () => {
+  it('gives its plugins to the server and the browser, and lets a signal hold its classes', async () => {
+    const directory = fileURLToPath(new URL('./.output/serial-entry/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/money.ts`,
+      'export class Money {\n  constructor(readonly cents: number) {}\n  format(): string {\n    return `${this.cents / 100} EUR`;\n  }\n}\n',
+    );
+    writeFileSync(
+      `${directory}src/serial.ts`,
+      "import { definePlugin } from 'brumate/serial';\nimport { Money } from './money.ts';\n\nexport const plugins = [\n  definePlugin({\n    tag: 'app/money',\n    test: (value) => value instanceof Money,\n    toData: (money: Money) => money.cents,\n    fromData: (cents: number) => new Money(cents),\n  }),\n];\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  import { Money } from '../money.ts';\n  let price = $signal(new Money(500));\n</script>\n\n<p>{price.format()}</p>\n<button onClick=(() => (price = new Money(price.cents + 100)))>More</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const html = await (await handle(new Request('http://localhost/'))).text();
+      expect(html).toMatch(/<p b-b="[\d:]+">5 EUR<\/p>/);
+      expect(html).toContain('$b.u("app/money",500)');
+      const start = await dev.transformRequest('virtual:brumate/start');
+      expect(start?.code).toMatch(/serial: \(\) => import\(".*src\/serial\.ts"\)/);
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
+describe('idempotent forms', () => {
+  it('runs a form posted twice once, and keeps its page private', async () => {
+    const directory = fileURLToPath(new URL('./.output/idempotent-app/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(
+      `${directory}src/orders.ts`,
+      "'use server';\n\nimport { idempotent } from 'brumate/server';\n\nlet orders = 0;\n\nexport const placeOrder = idempotent(async (form: FormData) => {\n  orders += Number(form.get('count'));\n});\n\nexport async function countOrders(): Promise<number> {\n  return orders;\n}\n",
+    );
+    writeFileSync(
+      `${directory}src/routes/index.brm`,
+      '<script module>\n  export const cache = { maxAge: 60 };\n</script>\n\n<script>\n  import { $memo } from \'brumate/signals\';\n  import { countOrders, placeOrder } from \'../orders.ts\';\n  const orders = $memo(countOrders());\n</script>\n\n<p class="orders">{orders} orders</p>\n<form action=placeOrder>\n  <input name="count" value="1">\n  <button>Order</button>\n</form>\n',
+    );
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const page = await handle(new Request('http://localhost/'), { dev: false });
+      const html = await page.text();
+      // The key goes to one visitor, so the page is private although it exports cache.
+      expect(page.headers.get('cache-control')).toBe('private, no-cache');
+      const action = /<form action="([^"]+)"/.exec(html)![1]!.replaceAll('&amp;', '&');
+      expect(action).toMatch(/__key=[\w-]{36}/);
+      const http = createHTTPServer(dev.middlewares);
+      await new Promise<void>((resolve) => http.listen(0, resolve));
+      const { port } = http.address() as AddressInfo;
+      const send = (): Promise<Response> =>
+        fetch(`http://localhost:${port}${action}`, {
+          method: 'POST',
+          body: new URLSearchParams({ count: '1' }),
+          headers: { origin: `http://localhost:${port}`, referer: `http://localhost:${port}/` },
+          redirect: 'manual',
+        });
+      expect((await send()).status).toBe(303);
+      expect((await send()).status).toBe(303);
+      http.close();
+      const after = await (await handle(new Request('http://localhost/'))).text();
+      expect(after.replaceAll(/<!--.*?-->/g, '')).toContain('>1 orders<');
+    } finally {
+      await dev.close();
+    }
+  });
+});
+
+describe('a route that does not compile in development', () => {
+  it('breaks only its own pages', async () => {
+    const directory = fileURLToPath(new URL('./.output/broken-route/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src/routes`, { recursive: true });
+    writeFileSync(`${directory}src/routes/index.brm`, '<h1>Home</h1>\n');
+    writeFileSync(`${directory}src/routes/broken.brm`, '<h1>{oops.</h1>\n');
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    try {
+      const { handle } = await dev.ssrLoadModule('virtual:brumate/routes');
+      const home = await handle(new Request('http://localhost/'));
+      expect(home.status).toBe(200);
+      expect(await home.text()).toContain('<h1>Home</h1>');
+      await expect(handle(new Request('http://localhost/broken'))).rejects.toThrow(/broken\.brm/);
     } finally {
       await dev.close();
     }
@@ -406,6 +529,16 @@ describe('files of server functions', () => {
     expect(() =>
       serverStubs("'use server';\nexport const limit = 5;\n", 'limits.ts', 'limits_1'),
     ).toThrow("A 'use server' file exports only functions");
+  });
+
+  it('takes a function that cached of brumate/server makes', () => {
+    const source =
+      "'use server';\nimport { cached } from 'brumate/server';\nexport const listIssues = cached(async (status: string) => [status], { maxAge: 30 });\n";
+    expect(serverStubs(source, 'issues.ts', 'issues_1')).toContain('listIssues');
+    // The server registers it, as it does a function that the file writes.
+    expect(serverModule(source, 'issues.ts', 'issues_1')).toContain(
+      'listIssues = __brumateDedupe(listIssues, "issues_1#listIssues")',
+    );
   });
 });
 

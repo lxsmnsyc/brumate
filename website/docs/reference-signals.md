@@ -38,12 +38,15 @@ import { $memo, $signal } from 'brumate/signals';
 ## `$props`
 
 ```ts
-function $props<T = Record<string, any>>(): T;
+function $props<T = Record<string, any>>(): Unbound<T>;
+type Bindable<T> = T | BindableMark<T>;
 ```
 
 Returns the props of the component.
 
-- Assign it to a `const`, as a name or an object pattern. It takes no arguments.
+- Assign it to a `const` or a `let`, as a name or an object pattern. It takes no arguments.
+- Props from a `let`, such as `let { open = false } = $props()`, are props that the component writes. Without a binding, a write changes the component's own copy, and a new value from the parent replaces it. With `$bind` in the parent, a write goes to the parent's value.
+- `Bindable<T>` in the type marks a prop that a parent can bind. `$props<T>()` gives it as `T`.
 - It can be called only in the component script, not in a block script.
 - Destructuring the call keeps each prop reactive: `const { value } = $props()`.
 - Server: the props that the parent passed.
@@ -206,6 +209,23 @@ Marks a function that a script makes as an event handler, so a spread can pass i
 - It can be called in any expression of a script, such as in a function that makes the attributes of a button, and in a module function.
 - `fn` reads the values of the scope where `$handler` is called. A value of a function around the call, such as its parameter, is a compile error: pass it as an argument.
 - The handler of a spread goes into `b-on`, on the server and in markup that the browser renders. The loader applies its wrappers, such as `prevent`, before its code loads.
+
+## `$bind`
+
+```ts
+function $bind<T>(value: T, set?: (next: T) => unknown): BindableMark<T>;
+```
+
+Passes a value that the receiver writes back.
+
+- Pass it as the whole value of a prop of a component, or of `value` or `checked` of an `<input>`, a `<select>` or a `<textarea>`.
+- Its argument is the name of a signal, or of a prop that the component destructures with `let`. Anything else is a compile error.
+- On a component, the child's writes of the prop write the value. A binding of a `let` prop passes on to the parent of the component, through any number of levels.
+- On an element, the browser writes the value on `input`, or on `change` for a box and a `<select>`. It loads no code of the component to do it. A handler of the element, such as `onInput=search`, runs after it and reads the new value.
+- With `set`, a write calls `set(next)` in place of writing the value, so the parent can refuse a value or change it: `open=$bind(open, (next) => { if (!dirty) open = next; })`. The child then shows the value that the parent keeps. `set` is a function expression or a function of the script, and it loads with its own part, as a handler does.
+- A rest prop keeps the bindings that it holds. Spread on an element, it binds `value` and `checked`. Spread on a component, it binds the props of that component.
+- Only a prop of type `Bindable<T>` takes a binding. `brumate-tsc` reports a binding of another prop, or of another type.
+- The compiler warns about a prop that the type marks `Bindable` but that the component reads only with `const`.
 
 ## `$optimistic`
 

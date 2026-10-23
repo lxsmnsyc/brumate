@@ -165,6 +165,50 @@ function range(node: Range): Range {
   return { start: node.start, end: node.end };
 }
 
+/**
+ * The names of the props that a type marks `Bindable`, such as `open` in
+ * `{ open?: Bindable<boolean> }`. A name of a type is looked up among the
+ * interfaces and the type aliases of the scripts.
+ */
+function bindableNames(type: oxc.Node, file: SFCFile): string[] {
+  let members: oxc.Node[] | undefined;
+  if (type.type === 'TSTypeLiteral') {
+    members = type.members;
+  } else if (type.type === 'TSTypeReference' && type.typeName.type === 'Identifier') {
+    const name = type.typeName.name;
+    const statements = [
+      ...(file.moduleScript?.program.body ?? []),
+      ...(file.instanceScript?.program.body ?? []),
+    ].map((statement) =>
+      statement.type === 'ExportNamedDeclaration' && statement.declaration
+        ? statement.declaration
+        : statement,
+    );
+    for (const statement of statements) {
+      if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
+        members = statement.body.body;
+      } else if (statement.type === 'TSTypeAliasDeclaration' && statement.id.name === name) {
+        return bindableNames(statement.typeAnnotation, file);
+      }
+    }
+  }
+  return (members ?? []).flatMap((member) => {
+    const annotation =
+      member.type === 'TSPropertySignature' ? member.typeAnnotation?.typeAnnotation : undefined;
+    const isBindable =
+      annotation?.type === 'TSTypeReference' &&
+      annotation.typeName.type === 'Identifier' &&
+      annotation.typeName.name === 'Bindable';
+    if (!isBindable || member.type !== 'TSPropertySignature' || member.computed) {
+      return [];
+    }
+    if (member.key.type === 'Identifier') {
+      return [member.key.name];
+    }
+    return member.key.type === 'Literal' ? [String(member.key.value)] : [];
+  });
+}
+
 export function analyze(file: SFCFile): SemanticModel {
   return new Analyzer(file).run();
 }
@@ -174,8 +218,11 @@ class Analyzer {
   private readonly scopes: Scope[] = [];
   private readonly declarations: Declaration[] = [];
   private readonly sites: Site[] = [];
+  readonly bindings: SemanticModel['bindings'] = [];
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
+  /** The type arguments of the `$props<T>()` calls. */
+  private readonly propsTypes: oxc.Node[] = [];
   private readonly module: Scope;
   private readonly component: Scope;
 
@@ -204,6 +251,7 @@ class Analyzer {
     }
     this.visitNodes(this.file.children, this.component);
     this.addProvidedFunctions();
+    this.checkBindableProps();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -218,6 +266,7 @@ class Analyzer {
       scopes: this.scopes,
       declarations: this.declarations,
       sites: this.sites,
+      bindings: this.bindings,
       diagnostics: this.diagnostics,
     };
   }
@@ -240,6 +289,43 @@ class Analyzer {
         };
         declaration.reads.push(read);
         reference.site.reads.push(read);
+      }
+    }
+  }
+
+  /**
+   * Warns about a prop that the type of `$props<T>()` marks `Bindable`, but
+   * that the component reads only with `const`, so a binding of it never
+   * changes the parent's value. It reads the type in the file: a type
+   * literal, or an interface or a type alias of the scripts.
+   */
+  private checkBindableProps(): void {
+    const bindable = new Set<string>();
+    for (const type of this.propsTypes) {
+      for (const name of bindableNames(type, this.file)) {
+        bindable.add(name);
+      }
+    }
+    if (bindable.size === 0) {
+      return;
+    }
+    const props = this.declarations.filter(
+      (declaration) =>
+        declaration.kind === 'prop' &&
+        declaration.scope === this.component &&
+        declaration.propKey !== undefined &&
+        bindable.has(declaration.propKey),
+    );
+    const written = new Set(
+      props.filter((declaration) => declaration.writable).map((declaration) => declaration.propKey),
+    );
+    for (const declaration of props) {
+      if (!written.has(declaration.propKey)) {
+        this.report(
+          'warning',
+          `The prop "${declaration.propKey}" is Bindable, but the component reads it with const and never writes it. Destructure it with let`,
+          declaration.range,
+        );
       }
     }
   }
@@ -357,6 +443,11 @@ class Analyzer {
       }
       const imported = lookup(scope, node.callee.name)?.imported;
       const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
+      // `transition` acts when the handler runs, so the wrappers inside it still count.
+      if (name === 'transition' && node.arguments[0]) {
+        node = node.arguments[0];
+        continue;
+      }
       if (name === undefined || !WRAPPERS.has(name)) {
         break;
       }
@@ -612,11 +703,17 @@ class Analyzer {
       if (!isComponent) {
         this.report('error', '$props() can only be called in the component script', declarator);
       }
-      if (kind !== 'const') {
-        this.report('error', 'Assign $props() to a const', declarator);
+      // `let` makes the props that it destructures writable: the component writes its own copy,
+      // or, when a parent binds the prop with `$bind`, the parent's signal.
+      if (kind !== 'const' && kind !== 'let') {
+        this.report('error', 'Assign $props() to a const or a let', declarator);
       }
       if (call.arguments.length > 0) {
         this.report('error', '$props() takes no arguments', call);
+      }
+      const type = (call as { typeArguments?: { params: oxc.Node[] } }).typeArguments?.params[0];
+      if (type) {
+        this.propsTypes.push(type);
       }
       if (id.type === 'ObjectPattern') {
         for (const property of id.properties) {
@@ -635,6 +732,9 @@ class Analyzer {
             for (const binding of getPatternNames(property.value)) {
               const declaration = this.addDeclaration(scope, binding.name, 'prop', binding);
               declaration.propKey = key;
+              if (kind === 'let') {
+                declaration.writable = true;
+              }
             }
           }
         }
@@ -908,6 +1008,38 @@ class Analyzer {
   }
 
   /**
+   * The function of `$bind(name, fn)`, which a write of the binding calls
+   * with the new value in place of writing the name. It compiles as a
+   * handler does, with its own part.
+   */
+  declareSetter(
+    call: oxc.CallExpression,
+    scope: Scope,
+    isLocal: (name: string) => boolean,
+  ): Site | undefined {
+    const fn = call.arguments[1]!;
+    if (fn.type === 'SpreadElement' || !this.isHandlerFunction(fn, scope)) {
+      this.report(
+        'error',
+        'The second argument of $bind is a function that takes the new value: a function expression, or a function of the script',
+        fn,
+      );
+      return undefined;
+    }
+    for (const name of freeNames(fn)) {
+      if (isLocal(name)) {
+        this.report(
+          'error',
+          `The setter reads "${name}", a value of the function around $bind, which the browser does not have`,
+          fn,
+        );
+        return undefined;
+      }
+    }
+    return this.createSite('prop', scope, fn, 'setter', { setter: call });
+  }
+
+  /**
    * The modifiers of the wrappers around the function of `$handler`, such as
    * `prevent`, as `b-on` holds them. Markup that the browser renders writes
    * them without loading the code of the handler.
@@ -918,6 +1050,10 @@ class Analyzer {
       const imported = lookup(scope, node.callee.name)?.imported;
       const name = imported?.source === EVENTS_MODULE ? imported.name : undefined;
       const [handler, ...keys] = node.arguments;
+      if (name === 'transition' && handler) {
+        node = handler;
+        continue;
+      }
       if (name === undefined || !WRAPPERS.has(name) || !handler) {
         break;
       }
@@ -1469,6 +1605,68 @@ class Resolver {
     return reference;
   }
 
+  /**
+   * `$bind(name)` passes a child a reference to a signal, or to a prop that
+   * the component writes, so the child's writes reach it. It is the whole
+   * value of a prop of a component. The name gets a slot, which the
+   * reference points to.
+   */
+  private declareBinding(call: oxc.CallExpression): void {
+    let node: oxc.Node = this.site.node;
+    while (node.type === 'ParenthesizedExpression') {
+      node = node.expression;
+    }
+    const owner = this.site.owner;
+    // On an element, it is the value of an input, a select or a text area, or whether a box is checked.
+    const element =
+      this.site.kind === 'attribute' && owner?.kind === 'element'
+        ? owner.attributes.find(
+            (attribute) => attribute.kind === 'value' && attribute.value.ast === this.site.node,
+          )
+        : undefined;
+    const onElement =
+      element?.kind === 'value' &&
+      (element.name === 'value' || element.name === 'checked') &&
+      ['input', 'select', 'textarea'].includes((owner as { tag: string }).tag.toLowerCase());
+    if (!(this.site.kind === 'prop' || onElement) || node !== call) {
+      this.analyzer.report(
+        'error',
+        'Pass $bind(name) as the value of a prop of a component, or of value or checked of an input, a select or a textarea',
+        call,
+      );
+      return;
+    }
+    const [target, fn, ...rest] = call.arguments;
+    if (!target || target.type !== 'Identifier' || rest.length > 0) {
+      this.analyzer.report(
+        'error',
+        '$bind takes the name of a signal, and a function that writes it, such as $bind(open) or $bind(open, (next) => (open = next))',
+        call,
+      );
+      return;
+    }
+    const declaration = this.isLocal(target.name)
+      ? undefined
+      : lookup(this.site.scope, target.name);
+    if (
+      !declaration ||
+      !(declaration.kind === 'signal' || (declaration.kind === 'prop' && declaration.writable))
+    ) {
+      this.analyzer.report(
+        'error',
+        `$bind takes a signal, or a prop that the component destructures with let, and "${target.name}" is not one`,
+        target,
+      );
+      return;
+    }
+    declaration.bound = true;
+    const setter =
+      fn === undefined
+        ? undefined
+        : this.analyzer.declareSetter(call, this.site.scope, (local) => this.isLocal(local));
+    this.analyzer.bindings.push({ call, declaration, setter });
+  }
+
   private visitChildren(node: oxc.Node): void {
     for (const [key, child] of children(node)) {
       if (!TYPE_KEYS.has(key)) {
@@ -1689,6 +1887,13 @@ class Resolver {
               );
             }
             for (const argument of recipe ? [recipe, ...rest] : rest) {
+              this.visit(argument);
+            }
+            return;
+          }
+          if (name === '$bind') {
+            this.declareBinding(node);
+            for (const argument of node.arguments) {
               this.visit(argument);
             }
             return;

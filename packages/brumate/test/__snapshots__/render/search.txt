@@ -15,7 +15,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Search_s4k9u0");
   let query = ('');
-  const $$p_results = $$b.memo(() => (search(query)), $$ctx);
+  const $$p_results = $$b.memo(() => (search(query)), $$ctx, "results");
   const results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t);
   $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
   $$ctx.enter();

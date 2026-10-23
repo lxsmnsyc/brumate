@@ -1,3 +1,4 @@
+import type { oxc } from './oxc.ts';
 import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
@@ -14,6 +15,15 @@ export interface ScopePlan {
   needsId: boolean;
   /** The number of anchors in the scope. */
   anchors: number;
+}
+
+/** A node without the parentheses around it. */
+function unparen(node: oxc.Node): oxc.Node {
+  let current = node;
+  while (current.type === 'ParenthesizedExpression') {
+    current = current.expression;
+  }
+  return current;
 }
 
 /** A markup node or a site that the client must find in the page. */
@@ -210,7 +220,13 @@ export function clientState(graph: Graph): {
       [...scope.declarations.values()].filter(
         (declaration) =>
           !NO_SLOT.has(declaration.kind) &&
-          declaration.reads.some((read) => clientSites.has(read.site)),
+          (declaration.reads.some((read) => clientSites.has(read.site)) ||
+            // A binding writes the slot of its name, and a bound prop writes the parent's
+            // through its own, so they need slots without a read in the browser.
+            declaration.bound === true ||
+            (declaration.kind === 'prop' &&
+              declaration.writable === true &&
+              declaration.writes.some((write) => clientSites.has(write.site)))),
       ),
     );
   }
@@ -233,6 +249,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     scopes.set(scope, { scope, slots, needsId: scope.kind === 'component', anchors: 0 });
   }
 
+  // The `$bind` calls of the file, which make an element bind a value.
+  const boundCalls = new Set<oxc.Node>(model.bindings.map((binding) => binding.call));
   const anchors = new Map<AnchorTarget, number>();
   const anchorScopes = new Map<AnchorTarget, Scope>();
   const anchor = (scope: Scope, target: AnchorTarget): void => {
@@ -335,11 +353,19 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
           });
         const content = node.kind === 'element' ? liveContent(node) : undefined;
         const events = sites.some((site) => site.kind === 'event');
+        // `value=$bind(name)`: the core finds the scope of the name from the anchor of the element.
+        const bound =
+          node.kind === 'element' &&
+          node.attributes.some(
+            (attribute) =>
+              attribute.kind === 'value' && boundCalls.has(unparen(attribute.value.ast)),
+          );
         // An element whose only anchor would be for its handlers finds their scope from
         // the anchor of an element around it, with `closest`.
         const implied = node.kind === 'element' && outer === scope;
         if (
           hasRef ||
+          bound ||
           content ||
           itemRoots.has(node) ||
           sites.some((site) => isLiveSite(site)) ||

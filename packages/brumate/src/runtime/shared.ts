@@ -4,6 +4,57 @@
 
 import { raw } from './html.ts';
 import type { Raw } from './html.ts';
+import type { SerialEntry, ValuePlugin } from './values.ts';
+
+/** The plugins of values of the app, by tag, which the entry `src/serial.ts` exports. */
+const valuePlugins = new Map<string, ValuePlugin>();
+const pluginListeners: ((plugin: ValuePlugin) => void)[] = [];
+/** The options of the entry, which the serializer reads when it loads. */
+let entryOptions: Omit<SerialEntry, 'plugins'> = {};
+const optionListeners: ((options: Omit<SerialEntry, 'plugins'>) => void)[] = [];
+
+/**
+ * Takes the exports of the serial entry: its plugins and the options that it
+ * changes. The server and the loader call it before the first value is
+ * written or read.
+ */
+export function useSerialEntry(entry: SerialEntry): void {
+  const { plugins = [], ...options } = entry;
+  if (options.disabledFeatures !== undefined || options.depthLimit !== undefined) {
+    entryOptions = options;
+    for (const listener of optionListeners) {
+      listener(options);
+    }
+  }
+  registerValues(plugins);
+}
+
+/** Calls `listener` with the options of the entry, now and when they change. */
+export function onSerialOptions(listener: (options: Omit<SerialEntry, 'plugins'>) => void): void {
+  optionListeners.push(listener);
+  listener(entryOptions);
+}
+
+/** Adds plugins of values of the app. */
+function registerValues(plugins: readonly ValuePlugin[]): void {
+  for (const plugin of plugins) {
+    if (valuePlugins.get(plugin.tag) === plugin) {
+      continue;
+    }
+    valuePlugins.set(plugin.tag, plugin);
+    for (const listener of pluginListeners) {
+      listener(plugin);
+    }
+  }
+}
+
+/** Calls `listener` for each plugin of the app, those added so far and those added later. */
+export function onValuePlugin(listener: (plugin: ValuePlugin) => void): void {
+  pluginListeners.push(listener);
+  for (const plugin of valuePlugins.values()) {
+    listener(plugin);
+  }
+}
 
 /**
  * The ID of a scope or of a `#loading` boundary. The rest of the page numbers
@@ -56,6 +107,79 @@ export class FunctionReference {
   }
 }
 
+// Brands of bindings and slot references, under keys of the registry, so two copies of the
+// runtime, such as a component's and the render context's, know each other's.
+const BINDING = Symbol.for('brumate.binding');
+const SLOT = Symbol.for('brumate.slot');
+
+/** A slot of a scope, which a write of a bound prop goes to. */
+export class SlotReference {
+  readonly scope: ScopeId;
+  readonly slot: number;
+
+  constructor(scope: ScopeId, slot: number) {
+    this.scope = scope;
+    this.slot = slot;
+  }
+}
+
+(SlotReference.prototype as unknown as Record<symbol, boolean>)[SLOT] = true;
+
+/** True for a slot reference of any copy of the runtime. */
+export function isSlotReference(value: unknown): value is SlotReference {
+  return typeof value === 'object' && value !== null && SLOT in value;
+}
+
+/** True for a binding of any copy of the runtime. */
+export function isBinding(value: unknown): value is Binding {
+  return typeof value === 'object' && value !== null && BINDING in value;
+}
+
+/**
+ * What `$bind(name)` passes a child: the value of the name, and its slot,
+ * which the child's writes of the prop go to.
+ */
+export class Binding<T = unknown> {
+  readonly value: T;
+  readonly ref: SlotReference;
+  /** The function of `$bind(name, fn)`, which a write calls in place of writing the slot. */
+  readonly set: unknown;
+
+  constructor(value: T, ref: SlotReference, set?: unknown) {
+    this.value = value;
+    this.ref = ref;
+    this.set = set;
+  }
+
+  /** What a write of the bound prop goes to: the setter, or else the slot. */
+  get target(): unknown {
+    return this.set ?? this.ref;
+  }
+}
+
+(Binding.prototype as unknown as Record<symbol, boolean>)[BINDING] = true;
+
+/**
+ * The props that a component destructures, with the values of their
+ * bindings. `names` are the props that it destructures by name: the others,
+ * which a rest prop holds, keep their bindings, so a spread passes them on.
+ * Without `names`, every binding gives its value.
+ */
+export function unbind(
+  props: Record<string, unknown>,
+  names?: readonly string[],
+): Record<string, unknown> {
+  let result: Record<string, unknown> | undefined;
+  for (const key of names ?? Object.keys(props)) {
+    const value = props[key];
+    if (isBinding(value)) {
+      result ??= { ...props };
+      result[key] = value.value;
+    }
+  }
+  return result ?? props;
+}
+
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
@@ -82,11 +206,28 @@ export const stateValues: {
    * changes the value uses the component's render module instead.
    */
   c: (id: string) => ComponentValue;
+  /** A slot of a scope, which a bound prop writes. */
+  l: (scope: ScopeId, slot: number) => SlotReference;
+  /** A binding that a rest prop holds, with its value and its slot. */
+  b: (value: unknown, scope: ScopeId, slot: number, set?: unknown) => Binding;
+  /** A value of the app, which a plugin of the entry makes from its data. */
+  u: (tag: string, data: unknown) => unknown;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
   c: (id) => Object.assign(() => '', { brumateId: id }),
+  l: (scope, slot) => new SlotReference(scope, slot),
+  b: (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set),
+  u: (tag, data) => {
+    const plugin = valuePlugins.get(tag);
+    if (!plugin) {
+      throw new Error(
+        `No plugin reads the value "${tag}". Export it in the plugins of the serial entry, src/serial.ts`,
+      );
+    }
+    return plugin.fromData(data);
+  },
 };
 
 /** True for a value that `for await` reads, such as the result of an async generator. */
@@ -123,6 +264,11 @@ export interface ScopeState {
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */
   c?: Record<number, ScopeId>;
+  /**
+   * What the bound props of a component write, by the slot of the prop: a
+   * slot of a parent, or the function of `$bind(name, fn)`.
+   */
+  b?: Record<number, unknown>;
 }
 
 /** The state of a page, by scope ID. */

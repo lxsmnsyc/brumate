@@ -1,0 +1,18 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import BindChild from './BindChild.brm';
+  import BindMiddle from './BindMiddle.brm';
+
+  let open = $signal(false);
+  let more = $signal(false);
+</script>
+
+<p class="parent">{open ? 'open' : 'closed'}</p>
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<BindChild label="bound" open=$bind(open) />
+<BindChild label="own" open=open />
+<BindMiddle open=$bind(open) />
+<button class="more" onClick=(() => (more = true))>More</button>
+#if (more) {
+  <BindChild label="later" open=$bind(open) />
+}

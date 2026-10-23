@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { Money } from './money';
+
+  // A class with methods, which the app added to SendableValues, so no error.
+  let price = $signal(new Money(500));
+</script>
+
+<button onClick=(() => (price = price.add(100)))>{price.cents}</button>
