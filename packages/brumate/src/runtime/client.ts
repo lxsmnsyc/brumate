@@ -753,7 +753,8 @@ function setterReference(set: unknown): FunctionReference | undefined {
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof ChildrenReference) {
-    return new RenderedChildren(scopes.get(value.scope), value.ref);
+    // The scope can come later in the state, such as of a page that navigation loads.
+    return new RenderedChildren(value.scope, value.ref);
   }
   if (value instanceof FunctionReference) {
     if (isTemplate(value.ref)) {
@@ -3043,12 +3044,21 @@ const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  * is the scope of the markup that wrote them.
  */
 class Children {
-  private readonly from: Scope | undefined;
+  private given: Scope | ScopeId | undefined;
   private readonly html: () => string;
 
   constructor(from: Scope | ScopeId | undefined, html: () => string) {
-    this.from = resolveScope(from);
+    this.given = from;
     this.html = html;
+  }
+
+  /** The scope that the children were written in, found when they render. */
+  protected get from(): Scope | undefined {
+    const scope = resolveScope(this.given);
+    if (scope) {
+      this.given = scope;
+    }
+    return scope;
   }
 
   render(at: Scope | undefined): string {
@@ -3075,9 +3085,9 @@ class RenderedChildren extends Children {
   private code: Handler | undefined;
   private loading: Promise<void> | undefined;
 
-  constructor(scope: Scope | undefined, ref: string) {
+  constructor(scope: ScopeId, ref: string) {
     // The export returns HTML, as the render of a block does.
-    super(scope, () => String(this.code!(scope)));
+    super(scope, () => String(this.code!(this.from)));
     this.ref = ref;
   }
 
