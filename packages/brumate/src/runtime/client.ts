@@ -2731,9 +2731,11 @@ export function setVar(scope: Scope, name: string, value: unknown): void {
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
-  // Children that a component inserted find their contexts where they are, through `t`.
+  // A scope reads the contexts of the scopes above it, not its own, so a component can read a
+  // context and provide it again to the scopes inside it. Children that a component inserted
+  // find their contexts where they are, through `t`.
   for (
-    let current: Scope | undefined = scope;
+    let current: Scope | undefined = scope.t ?? scope.p ?? scope.o;
     current;
     current = current.t ?? current.p ?? current.o
   ) {
@@ -2744,7 +2746,10 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
   return undefined;
 }
 
-/** Writes a provided value, and the slot of every scope that reads it from this provider. */
+/**
+ * Writes a provided value, and the slot of every scope that reads it from this provider. The
+ * provider can read the same context from above, which this does not write.
+ */
 export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
