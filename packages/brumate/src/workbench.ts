@@ -67,6 +67,29 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
       }
     }
   }
+  // The code of the file: its scripts, and the expressions of its markup and templates.
+  const code = [
+    file.moduleScript?.program,
+    file.instanceScript?.program,
+    file.children,
+    file.templates,
+  ];
+  // The bindings that the code reads a member of, such as `api` in `api.feed()`. A namespace
+  // that only types use, such as `T.Label`, is a `TSQualifiedName` and not counted.
+  const read = new Set<string>();
+  walk(code, (node) => {
+    if (node.type === 'MemberExpression' && node.object.type === 'Identifier') {
+      read.add(node.object.name);
+    }
+    // `$route` and `$navigation` read the route of the page, which the workbench does not have.
+    if (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      (node.callee.name === '$route' || node.callee.name === '$navigation')
+    ) {
+      needs.push({ kind: 'route', name: node.callee.name });
+    }
+  });
   for (const script of [file.moduleScript, file.instanceScript]) {
     for (const statement of script?.program.body ?? []) {
       // The analysis has a declaration for each named import only, so a namespace is found here.
@@ -75,7 +98,7 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
       }
       const source = statement.source.value;
       for (const specifier of statement.specifiers) {
-        if (specifier.type !== 'ImportNamespaceSpecifier') {
+        if (specifier.type !== 'ImportNamespaceSpecifier' || !read.has(specifier.local.name)) {
           continue;
         }
         const name = `* as ${specifier.local.name}`;
@@ -86,16 +109,6 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
         }
       }
     }
-    // `$route` and `$navigation` read the route of the page, which the workbench does not have.
-    walk(script?.program, (node) => {
-      if (
-        node.type === 'CallExpression' &&
-        node.callee.type === 'Identifier' &&
-        (node.callee.name === '$route' || node.callee.name === '$navigation')
-      ) {
-        needs.push({ kind: 'route', name: node.callee.name });
-      }
-    });
   }
   const visit = (node: Markup): void => {
     if (node.kind === 'defer') {
@@ -226,6 +239,18 @@ function localType(name: string, file: SFCFile): oxc.Node | undefined {
   return undefined;
 }
 
+type Member = { optional?: boolean };
+
+/** The name of a property of a type, or undefined for a computed one or a method. */
+function memberName(member: oxc.Node): string | undefined {
+  if (member.type !== 'TSPropertySignature' || member.computed) {
+    return undefined;
+  }
+  return member.key.type === 'Identifier'
+    ? member.key.name
+    : String((member.key as { value?: unknown }).value);
+}
+
 /**
  * The members of the type of `$props<T>()`: a literal, an interface or alias of the scripts and
  * what it extends, an intersection of those, or `Partial` of one. Undefined for a type that the
@@ -240,33 +265,48 @@ function propsMembers(
     return type.members;
   }
   if (type.type === 'TSIntersectionType') {
-    const members: oxc.Node[] = [];
+    // A prop of an intersection is required when any of its types requires it.
+    const byName = new Map<string, oxc.Node>();
     for (const item of type.types) {
       const found = propsMembers(item, file, seen);
       if (!found) {
         return undefined;
       }
-      members.push(...found);
+      for (const member of found) {
+        const name = memberName(member);
+        const before = name === undefined ? undefined : byName.get(name);
+        byName.set(
+          name ?? String(byName.size),
+          before && !((before as Member).optional && (member as Member).optional)
+            ? ({ ...member, optional: false } as oxc.Node)
+            : member,
+        );
+      }
     }
-    return members;
+    return [...byName.values()];
   }
   if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
     return undefined;
   }
   const name = type.typeName.name;
   const argument = type.typeArguments?.params[0];
+  if (name !== 'Partial' && type.typeArguments) {
+    // The workbench does not put the arguments of a generic type in its members.
+    return undefined;
+  }
   if (name === 'Partial' && argument) {
     return propsMembers(argument, file, seen)?.map(
       (member) => ({ ...member, optional: true }) as oxc.Node,
     );
   }
   const declaration = seen.has(name) ? undefined : localType(name, file);
-  if (!declaration) {
+  if (!declaration || (declaration as { typeParameters?: unknown }).typeParameters) {
     return undefined;
   }
-  seen.add(name);
+  // Only the types on the way here, so a type that two branches reach is read in both.
+  const path = new Set(seen).add(name);
   if (declaration.type === 'TSTypeAliasDeclaration') {
-    return propsMembers(declaration.typeAnnotation, file, seen);
+    return propsMembers(declaration.typeAnnotation, file, path);
   }
   if (declaration.type !== 'TSInterfaceDeclaration') {
     return undefined;
@@ -283,7 +323,7 @@ function propsMembers(
         typeArguments: heritage.typeArguments,
       } as oxc.Node,
       file,
-      seen,
+      path,
     );
     if (!found) {
       return undefined;
@@ -422,19 +462,17 @@ export function propControls(file: SFCFile): Control[] | undefined {
       if (!members) {
         return undefined;
       }
-      // A later member with the same name, as of an interface over what it extends, wins.
+      // A later member with the same name, as of an interface over what it extends, wins, in
+      // the place of the first.
       const byName = new Map<string, Control>();
       for (const member of members) {
-        if (member.type !== 'TSPropertySignature' || member.computed) {
+        const name = memberName(member);
+        if (name === undefined || member.type !== 'TSPropertySignature') {
           continue;
         }
-        const name =
-          member.key.type === 'Identifier'
-            ? member.key.name
-            : String((member.key as { value?: unknown }).value);
         const control = controlOf(member.typeAnnotation?.typeAnnotation, file);
-        byName.delete(name);
         if (!control) {
+          byName.delete(name);
           continue;
         }
         const value = defaults.get(name);
