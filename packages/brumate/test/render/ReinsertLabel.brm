@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Renders the template that it gets, as a part with a render prop does.
+  const { render } = $props<{ render: (text: string) => unknown }>();
+</script>
+
+<span class="reinsert-label">{render('Named')}</span>
