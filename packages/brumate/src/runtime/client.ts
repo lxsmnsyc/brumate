@@ -2818,6 +2818,17 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
     if (all !== undefined) {
       set(child, all, { ...(get(child, all) as object), [name]: value });
     }
+    // A rest prop, `...rest`, holds the props that the component does not name.
+    const rest = module.props['...'];
+    if (rest !== undefined) {
+      const next: Record<string, unknown> = { ...(get(child, rest) as object) };
+      if (value === undefined) {
+        delete next[name];
+      } else {
+        next[name] = value;
+      }
+      set(child, rest, next);
+    }
   };
   const module = modules.get(child.m);
   if (module) {

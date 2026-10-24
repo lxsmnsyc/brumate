@@ -2687,6 +2687,18 @@ describe('spreads on components', () => {
   });
 });
 
+describe('rest props', () => {
+  it('updates a spread of a rest prop when the parent passes a new value', async () => {
+    await resume('restOuter', {});
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('no');
+    click(document.querySelector('.flip')!);
+    await waitFor(() =>
+      expect(document.querySelector('.plain')!.getAttribute('title')).toBe('yes'),
+    );
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('yes');
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});

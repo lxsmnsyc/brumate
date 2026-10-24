@@ -607,7 +607,17 @@ class ClientGenerator {
           }
         } else if (declarator.id.type === 'ObjectPattern') {
           for (const property of declarator.id.properties) {
-            if (property.type === 'RestElement' || property.computed) {
+            if (property.type === 'RestElement') {
+              // The rest gets the props that have no name of their own, under `...`.
+              const [name] = getPatternNames(property.argument);
+              const declaration = name && component.declarations.get(name.name);
+              const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+              if (slot !== -1) {
+                entries.push(`"...": ${slot}`);
+              }
+              continue;
+            }
+            if (property.computed) {
               continue;
             }
             const key =
