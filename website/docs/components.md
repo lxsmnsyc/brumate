@@ -140,40 +140,38 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 
 ### Controlled and uncontrolled
 
-A part such as a dialog can keep its own state, or show the state of its caller. `$isPassed` and `$isBound` from `brumate/signals` tell which one the caller wants:
+A part such as a dialog keeps its own state, or writes the state of its caller. A `let` prop does both, so the caller picks:
 
 ```brm
 <script>
-  import { $isBound, $isPassed, $memo, $props, $signal } from 'brumate/signals';
+  import { $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
 
-  const { defaultOpen = false, onChange } = $props<{
-    defaultOpen?: boolean;
-    onChange?: (open: boolean) => void;
-  }>();
-  let { open } = $props<{ open?: Bindable<boolean> }>();
-
-  const controlled = $isPassed(open);
-  let own = $signal(defaultOpen);
-  const current = $memo(controlled ? open : own);
+  const { onChange } = $props<{ onChange?: (open: boolean) => void }>();
+  let { open = false } = $props<{ open?: Bindable<boolean> }>();
 
   function toggle() {
-    if (!controlled) {
-      own = !current;
-    } else if ($isBound(open)) {
-      open = !current;
-    }
-    onChange?.(!current);
+    open = !open;
+    onChange?.(open);
   }
 </script>
 
-<button aria-expanded=current onClick=toggle>Details</button>
+<button aria-expanded=open onClick=toggle>Details</button>
 ```
 
-- Without `open`, the part keeps its own state, which starts at `defaultOpen`.
-- With `open=settingsOpen`, the part only calls `onChange`. It shows what the caller passes, so it does not move until the caller writes `settingsOpen`.
+- Without `open`, or with `open=(true)`, the part keeps its own copy. A new value from the caller replaces it.
 - With `open=$bind(settingsOpen)`, the part writes the caller's signal.
-- `$isPassed(open)` is true for `open=(undefined)` too, so a value of `null` or `undefined` can be controlled, as the value of a select with nothing selected is.
+- With `open=$bind(settingsOpen, (next) => …)`, the setter decides. The part shows what the caller keeps.
+
+A part that needs to know how the caller passed a prop asks with `$isPassed` and `$isBound` from `brumate/signals`:
+
+```ts
+let { value } = $props<{ value?: Bindable<string | null> }>();
+// True for value=(null) too, so null can be a value that the caller passed.
+const passed = $isPassed(value);
+// True for value=$bind(selected).
+const bound = () => $isBound(value);
+```
 
 ### Functions as props
 
