@@ -227,6 +227,9 @@ importers:
 
   e2e:
     devDependencies:
+      axe-core:
+        specifier: ^4.14.0
+        version: 4.14.0
       playwright-core:
         specifier: 1.64.1
         version: 1.64.1
@@ -358,6 +361,28 @@ importers:
       vitest:
         specifier: ^5.0.4
         version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+
+  examples/ui:
+    dependencies:
+      '@brumate/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      brumate:
+        specifier: workspace:*
+        version: link:../../packages/brumate
+    devDependencies:
+      '@brumate/tsc':
+        specifier: workspace:*
+        version: link:../../packages/tsc
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
 
   examples/ui-kit:
     devDependencies:
@@ -543,6 +568,27 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  packages/ui:
+    devDependencies:
+      '@brumate/tsc':
+        specifier: workspace:*
+        version: link:../tsc
+      brumate:
+        specifier: workspace:*
+        version: link:../brumate
+      happy-dom:
+        specifier: ^20.14.6
+        version: 20.14.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
+      vitest:
+        specifier: ^5.0.4
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/vscode:
     devDependencies:
@@ -2727,6 +2773,10 @@ packages:
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
+
+  axe-core@4.14.0:
+    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
 
   azure-devops-node-api@12.5.0:
     resolution: {integrity: sha512-R5eFskGvOm3U/GzeAuxRkUsAl0hrAwGgWn6zAd2KrZmrEhWZVqLew4OOupbQlXUuojUzpGtq62SmdhJ06N88og==}
@@ -6060,6 +6110,8 @@ snapshots:
   astral-regex@2.0.0: {}
 
   asynckit@0.4.0: {}
+
+  axe-core@4.14.0: {}
 
   azure-devops-node-api@12.5.0:
     dependencies:

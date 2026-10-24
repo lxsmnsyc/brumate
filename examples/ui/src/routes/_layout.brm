@@ -1,0 +1,38 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+
+  const { children } = $props();
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <VisuallyHidden as="a" href="#main" focusable class="skip">Skip to the content</VisuallyHidden>
+    <main id="main">{children}</main>
+  </body>
+</html>
+
+<style>
+  /* The parts are unstyled. These styles are the page's, so each part is easy to see. */
+  :global(body) {
+    margin: 0;
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+
+  main {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  :global(.skip:focus-within) {
+    display: inline-block;
+    margin: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff3c4;
+  }
+</style>

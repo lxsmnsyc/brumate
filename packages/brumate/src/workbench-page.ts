@@ -167,6 +167,10 @@ export function workbenchPage(base: string): string {
   .choices button { padding: 3px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--dim); cursor: pointer; font: 12px var(--mono); }
   .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: #ffb48a; }
   .empty-props { padding: 16px; color: var(--faint); }
+  .stories { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .stories-head { margin-bottom: 8px; color: var(--faint); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .stories .choices button { font-family: inherit; }
+  .stories-error { color: var(--red); font-size: 12px; }
   .footer { padding: 10px 16px; border-top: 1px solid var(--line); color: var(--faint); font-size: 11px; }
 </style>
 </head>
@@ -206,6 +210,7 @@ export function workbenchPage(base: string): string {
 </main>
 <aside id="props">
   <div class="panel-head"><h2>Props</h2><button class="tool" id="resetAll" type="button" title="Reset every prop">Reset</button></div>
+  <div id="stories" class="stories" hidden></div>
   <div id="controls"></div>
   <div class="footer">From the type of <span class="mono">$props&lt;T&gt;()</span>. Function props have no control.</div>
 </aside>
@@ -248,6 +253,8 @@ const components = await (await fetch(base + '/components')).json();
 const ready = components.filter((component) => component.selfContained);
 const others = components.filter((component) => !component.selfContained);
 let current;
+// The story of the component that is picked, whose props start the controls.
+let story;
 let values = {};
 let start = {};
 let timer;
@@ -360,6 +367,38 @@ function typeOf(spec) {
   return TYPES[spec.kind];
 }
 
+function stories() {
+  const box = $('stories');
+  box.replaceChildren();
+  box.hidden = !current.stories?.length && !current.storiesError;
+  if (current.storiesError) {
+    box.append(make('div', { class: 'stories-error' }, 'The stories do not load: ' + current.storiesError));
+    return;
+  }
+  if (!current.stories?.length) return;
+  box.append(make('div', { class: 'stories-head' }, 'Stories'));
+  const list = make('div', { class: 'choices' });
+  for (const item of [{ name: 'Default', props: {} }, ...current.stories]) {
+    list.append(make('button', {
+      type: 'button',
+      'aria-pressed': String((story?.name ?? 'Default') === item.name),
+      onclick: () => pickStory(item.name === 'Default' ? undefined : item),
+    }, item.name));
+  }
+  box.append(list);
+}
+
+/** Starts the controls from the props of a story, or from the defaults without one. */
+function pickStory(next) {
+  story = next;
+  start = { ...initial(current), ...(next?.props ?? {}) };
+  values = structuredClone(start);
+  history.replaceState(null, '', '#' + current.file + (next ? '@' + next.name : ''));
+  stories();
+  controls();
+  render();
+}
+
 function controls() {
   const box = $('controls');
   box.replaceChildren();
@@ -406,7 +445,7 @@ function initial(component) {
 function title(component) {
   $('name').textContent = component ? component.name : 'Workbench';
   $('file').hidden = !component;
-  if (component) $('file').textContent = component.file;
+  if (component) $('file').textContent = component.label ?? component.file;
 }
 
 function select(component) {
@@ -422,11 +461,8 @@ function select(component) {
   }
   document.body.classList.remove('no-props');
   $('tools').hidden = false;
-  start = initial(component);
-  values = structuredClone(start);
   $('canvas').replaceChildren();
-  controls();
-  render();
+  pickStory(undefined);
 }
 
 function explain(component) {
@@ -470,7 +506,9 @@ function item(component) {
   svg(component.selfContained ? COMPONENT : LOCKED),
   make('span', { class: 'label' }, component.name),
   component.selfContained
-    ? make('span', { class: 'meta' }, component.controls.length ? component.controls.length + (component.controls.length === 1 ? ' prop' : ' props') : '')
+    ? make('span', { class: 'meta' }, component.stories?.length
+        ? component.stories.length + (component.stories.length === 1 ? ' story' : ' stories')
+        : component.controls.length ? component.controls.length + (component.controls.length === 1 ? ' prop' : ' props') : '')
     : make('span', { class: 'kinds' }, ...kinds.map((kind) => make('span', { class: 'dot k-' + kind, title: KINDS[kind]?.[0] ?? kind }))));
 }
 
@@ -481,7 +519,7 @@ function tree() {
   box.replaceChildren();
   const folders = new Map();
   for (const component of ready.filter(match)) {
-    const folder = component.file.split('/').slice(0, -1).join('/') || '.';
+    const folder = component.group || '.';
     if (!folders.has(folder)) folders.set(folder, []);
     folders.get(folder).push(component);
   }
@@ -533,18 +571,21 @@ for (const button of document.querySelectorAll('[data-canvas]')) {
 }
 // The hash names the component, so a link or the back button can pick one.
 function fromHash() {
-  const chosen = decodeURIComponent(location.hash.slice(1));
+  // The hash is the file, and the name of a story after \`@\`.
+  const [chosen, storyName] = decodeURIComponent(location.hash.slice(1)).split('@');
   const found = components.find((component) => component.file === chosen);
   if (!found) {
     welcome();
     return;
   }
-  if (found === current) return;
+  const named = found.stories?.find((item) => item.name === storyName);
+  if (found === current && named === story) return;
   if (!found.selfContained && !envOpen) {
     envOpen = true;
     tree();
   }
-  select(found);
+  if (found !== current) select(found);
+  if (found.selfContained && named !== story) pickStory(named);
 }
 tree();
 fromHash();

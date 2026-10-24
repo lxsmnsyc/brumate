@@ -79,6 +79,14 @@ const files = new Map(
   const { as } = $props<{ as: string }>();
 </script>
 <{as}>Text</>`,
+    '/app/Pressable.brm': `<script>
+  const { as = 'button' } = $props<{ as?: string }>();
+</script>
+<{as}>Press</>`,
+    '/app/Link.brm': `<script>
+  const { as } = $props<{ as?: string }>();
+</script>
+<{as ?? 'a'}>Go</>`,
     '/app/Fancy.brm': `<script>
   import Chart from 'charts/Chart.brm';
 </script>
@@ -105,8 +113,11 @@ describe('classifyComponents', () => {
     expect(classes.get('/app/Toolbar.brm')!.selfContained).toBe(true);
     // A component that renders itself is self-contained when it is otherwise.
     expect(classes.get('/app/Comment.brm')!.selfContained).toBe(true);
-    // A context without a provider has its default.
+    // Every context has a default, so a part works without a provider.
     expect(classes.get('/app/Themed.brm')!.selfContained).toBe(true);
+    // A dynamic tag with an element to fall back to.
+    expect(classes.get('/app/Pressable.brm')!.selfContained).toBe(true);
+    expect(classes.get('/app/Link.brm')!.selfContained).toBe(true);
     // A call in a comment or a string is not a call.
     expect(classes.get('/app/Quoted.brm')!.selfContained).toBe(true);
     // A namespace that only types use, or that nothing uses, is not a need.

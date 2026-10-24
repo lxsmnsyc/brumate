@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro,kit` runs only these suites.
+- `--only website,todos,tracker,nitro,kit,ui` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -71,6 +71,11 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - A prop that the app changes updates the package component.
 - A server function of the package answers.
 - The app calls a module of reactive logic of the package.
+
+`ui` serves the production build of `examples/ui`, a page of every part of `@brumate/ui`, under the same policy.
+
+- `VisuallyHidden`: the link that skips to the content takes no space until Tab reaches it, then shows, and a button with a hidden name has that name for screen readers.
+- axe-core finds no violations on the page.
 
 ## Failures
 
