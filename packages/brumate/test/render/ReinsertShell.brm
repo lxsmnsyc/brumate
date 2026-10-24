@@ -1,0 +1,10 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Shows its children while open.
+  const { open, children } = $props<{ open: boolean; children?: unknown }>();
+</script>
+
+#if (open) {
+  <div class="reinsert-inline">{children}</div>
+}

@@ -1,0 +1,11 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Counts its clicks, and says whether its ref is the element on the page at each.
+  const { name } = $props<{ name: string }>();
+  let root = $signal<HTMLElement>();
+  let clicks = $signal(0);
+  let seen = $signal('');
+</script>
+
+<button ref=root class=name onClick=(() => (seen = `${++clicks}:${root?.isConnected}`))>{seen}</button>
