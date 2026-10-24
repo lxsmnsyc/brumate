@@ -238,7 +238,7 @@
   <DisclosureGroup class="faq">
     <Disclosure id="shipping" class="faq-item">
       <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Shipping</Button></Heading>
-      <DisclosurePanel class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
+      <DisclosurePanel transition class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
     </Disclosure>
     <Disclosure id="returns" class="faq-item">
       <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Returns</Button></Heading>
@@ -401,6 +401,12 @@
 
   :global(.note) {
     transition: opacity 0.3s;
+  }
+
+  :global(.faq-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    transition: height 0.3s;
   }
 
   :global(.note[data-closed]) {

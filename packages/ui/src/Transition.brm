@@ -11,13 +11,11 @@
   } from 'brumate/signals';
   import {
     TransitionContext,
-    addClasses,
     classesOf,
-    commitStyle,
+    enterSteps,
+    leaveSteps,
     nextFrame,
-    removeClasses,
-    setFlags,
-    waitForAnimations,
+    stepClasses,
   } from './transition.ts';
   import type { TransitionParent } from './transition.ts';
 
@@ -122,6 +120,11 @@
     return opening || !rested || undefined;
   }
 
+  // The classes of the class props, read when each run starts.
+  function classes() {
+    return stepClasses({ enter, enterFrom, enterTo, entered, leave, leaveFrom, leaveTo });
+  }
+
   async function toShown(token: number) {
     mounted = true;
     // The element is in the page once the markup that `mounted` renders is.
@@ -131,29 +134,11 @@
       return;
     }
     beforeEnter?.();
-    removeClasses(target, [...classesOf(leave), ...classesOf(leaveFrom), ...classesOf(leaveTo)]);
-    setFlags(target, { leave: false, closed: true, enter: true, transition: true });
-    // The start goes on and is computed on its own, before the class with the transition.
-    addClasses(target, classesOf(enterFrom));
-    commitStyle(target);
-    addClasses(target, classesOf(enter));
-    await waitForAnimations(target);
-    if (token !== run) {
-      return;
+    if (await enterSteps(target, classes(), { current: () => token === run })) {
+      opening = false;
+      rested = true;
+      afterEnter?.();
     }
-    removeClasses(target, classesOf(enterFrom));
-    setFlags(target, { closed: false });
-    addClasses(target, classesOf(enterTo));
-    await waitForAnimations(target);
-    if (token !== run) {
-      return;
-    }
-    removeClasses(target, [...classesOf(enter), ...classesOf(enterTo)]);
-    setFlags(target, { enter: false, transition: false });
-    addClasses(target, classesOf(entered));
-    opening = false;
-    rested = true;
-    afterEnter?.();
   }
 
   async function toHidden(token: number) {
@@ -163,35 +148,15 @@
       mounted = false;
       return;
     }
-    // The children leave first, once their code has seen the change.
-    await nextFrame();
-    await waitForAnimations(target, true);
-    if (token !== run) {
-      return;
+    const done = await leaveSteps(target, classes(), { current: () => token === run }, () => {
+      beforeLeave?.();
+      leaving = true;
+    });
+    if (done) {
+      leaving = false;
+      mounted = false;
+      afterLeave?.();
     }
-    beforeLeave?.();
-    leaving = true;
-    removeClasses(target, [...classesOf(entered), ...classesOf(enter), ...classesOf(enterFrom), ...classesOf(enterTo)]);
-    setFlags(target, { enter: false, leave: true, transition: true });
-    addClasses(target, classesOf(leaveFrom));
-    commitStyle(target);
-    addClasses(target, classesOf(leave));
-    await waitForAnimations(target);
-    if (token !== run) {
-      return;
-    }
-    removeClasses(target, classesOf(leaveFrom));
-    setFlags(target, { closed: true });
-    addClasses(target, classesOf(leaveTo));
-    await waitForAnimations(target);
-    if (token !== run) {
-      return;
-    }
-    removeClasses(target, [...classesOf(leave), ...classesOf(leaveTo)]);
-    setFlags(target, { leave: false, transition: false });
-    leaving = false;
-    mounted = false;
-    afterLeave?.();
   }
 
   function change(next: boolean) {

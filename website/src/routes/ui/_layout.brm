@@ -418,9 +418,27 @@
     rotate: 180deg;
   }
 
+  /* The panel slides from the height that it holds while it moves, and fades. */
   :global(.ui-disclosure-panel) {
-    padding: 0 0.9rem 0.8rem;
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
     color: var(--muted);
+    transition: height 0.25s, opacity 0.25s;
+  }
+
+  :global(.ui-disclosure-panel[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.ui-disclosure-panel p) {
+    margin: 0;
+    padding: 0 0.9rem 0.8rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.ui-disclosure-panel) {
+      transition: none;
+    }
   }
 
   /* A transition from the data attributes of Transition, with no classes. */

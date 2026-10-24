@@ -314,6 +314,30 @@ export async function run({ browser, url, runner }) {
       await page.waitForFunction(
         () => !document.querySelectorAll('.faq-panel')[1]?.hasAttribute('hidden'),
       );
+      // The shipping panel has transition: it slides shut through its height, then hides.
+      const shippingPanel = page.locator('.faq-panel', { hasText: 'two days' });
+      // The link opened the other panel of the group, which closed this one, so it opens again.
+      await shipping.click();
+      await page.waitForFunction(() => {
+        const panel = document.querySelector('.faq-panel');
+        return panel && !panel.hasAttribute('hidden') && !panel.hasAttribute('data-transition');
+      });
+      await shipping.click();
+      await page.waitForFunction(() =>
+        document.querySelector('.faq-panel')?.hasAttribute('data-leave'),
+      );
+      const heights = await shippingPanel.evaluate(async (panel) => {
+        const seen = new Set();
+        for (let frame = 0; frame < 30 && !panel.hasAttribute('hidden'); frame++) {
+          seen.add(Math.round(panel.getBoundingClientRect().height));
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return [...seen];
+      });
+      assert(heights.length > 2, `the panel did not slide, with heights ${heights.join(', ')}`);
+      await page.waitForFunction(
+        () => document.querySelector('.faq-panel')?.getAttribute('hidden') === 'until-found',
+      );
       await page.locator('.note-toggle').click();
       await page.waitForFunction(() => document.querySelector('.note')?.hasAttribute('data-leave'));
       // It stays for its transition, then leaves the page.

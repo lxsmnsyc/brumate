@@ -1,10 +1,12 @@
 // The tests of Disclosure follow the tests of Disclosure and DisclosureGroup in React Aria.
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Disclosures from './fixtures/disclosures.brm?brumate-server';
+import { takeEvents } from './fixtures/log.ts';
 import { press, pressWith } from './interact.ts';
 
 let unmount: (() => void) | undefined;
+beforeEach(() => takeEvents());
 afterEach(() => unmount?.());
 
 async function disclosures() {
@@ -63,4 +65,63 @@ it('opens one disclosure of a group at a time', async () => {
   await page.waitFor(() => expect(page.get('.returns-panel').hasAttribute('hidden')).toBe(false));
   pressWith(page.get('.returns-trigger'));
   await page.waitFor(() => expect(page.text('.keys')).toBe(''));
+});
+
+it('has no transition flags without transition', async () => {
+  const page = await disclosures();
+  const panel = page.get('.own-panel');
+  expect(panel.hasAttribute('data-closed')).toBe(false);
+  pressWith(page.get('.own-trigger'));
+  await page.waitFor(() => expect(panel.hasAttribute('hidden')).toBe(false));
+  expect(panel.hasAttribute('data-transition')).toBe(false);
+});
+
+it('moves a panel with transition through its flags and its height, and a child after it', async () => {
+  const page = await disclosures();
+  const panel = page.get('.moving-panel') as HTMLElement;
+  expect(panel.hasAttribute('data-closed')).toBe(true);
+  expect(panel.getAttribute('hidden')).toBe('until-found');
+  const steps: string[] = [];
+  new MutationObserver(() => {
+    steps.push(
+      [
+        ['data-closed', 'data-enter', 'data-leave', 'inert', 'hidden']
+          .filter((name) => panel.hasAttribute(name))
+          .join(' '),
+        panel.style.getPropertyValue('--disclosure-panel-height'),
+      ].join('|'),
+    );
+  }).observe(panel, { attributes: true });
+  pressWith(page.get('.moving-trigger'));
+  await page.waitFor(() =>
+    expect(globalThis.partEvents).toEqual([{ type: 'row-enter', value: true }]),
+  );
+  expect(panel.hasAttribute('hidden')).toBe(false);
+  expect(panel.hasAttribute('data-closed')).toBe(false);
+  // While it entered, the height went from nothing to the height of its content.
+  expect(steps.some((step) => step.includes('data-enter') && step.endsWith('|0px'))).toBe(true);
+  expect(panel.style.getPropertyValue('--disclosure-panel-height')).toBe('');
+  pressWith(page.get('.moving-trigger'));
+  await page.waitFor(() => expect(panel.getAttribute('hidden')).toBe('until-found'));
+  // It was inert while it left.
+  expect(steps.some((step) => step.startsWith('data-leave inert'))).toBe(true);
+  expect(panel.hasAttribute('inert')).toBe(false);
+  expect(panel.hasAttribute('data-closed')).toBe(true);
+});
+
+it('removes the content with unmount=(true), and hides it offscreen with its state', async () => {
+  const page = await disclosures();
+  expect(page.container.querySelector('.removed-panel')).toBeNull();
+  // A panel that starts collapsed offscreen is not rendered until it opens.
+  expect(page.container.querySelector('.kept-panel')).toBeNull();
+  pressWith(page.get('.removed-trigger'));
+  await page.waitFor(() => expect(page.container.querySelector('.removed-panel')).not.toBeNull());
+  pressWith(page.get('.removed-trigger'));
+  await page.waitFor(() => expect(page.container.querySelector('.removed-panel')).toBeNull());
+  pressWith(page.get('.kept-trigger'));
+  await page.waitFor(() => expect(page.container.querySelector('.kept-panel')).not.toBeNull());
+  const kept = page.get('.kept-panel') as HTMLElement;
+  pressWith(page.get('.kept-trigger'));
+  await page.waitFor(() => expect(kept.style.display).toBe('none'));
+  expect(kept.isConnected).toBe(true);
 });

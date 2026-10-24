@@ -72,3 +72,139 @@ export async function waitForAnimations(element: Element, subtree = false): Prom
 export function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
+
+/** The classes of each step of a transition, each a list. Every list can be empty. */
+export interface StepClasses {
+  enter: string[];
+  enterFrom: string[];
+  enterTo: string[];
+  entered: string[];
+  leave: string[];
+  leaveFrom: string[];
+  leaveTo: string[];
+}
+
+/** The classes of the class props of a transition. A part with `transition` has none. */
+export function stepClasses(props: Partial<Record<keyof StepClasses, string>> = {}): StepClasses {
+  return {
+    enter: classesOf(props.enter),
+    enterFrom: classesOf(props.enterFrom),
+    enterTo: classesOf(props.enterTo),
+    entered: classesOf(props.entered),
+    leave: classesOf(props.leave),
+    leaveFrom: classesOf(props.leaveFrom),
+    leaveTo: classesOf(props.leaveTo),
+  };
+}
+
+/** The options of a run of steps. */
+export interface StepOptions {
+  /** False once a later run has started, so this one stops at its next step. */
+  current: () => boolean;
+  /**
+   * A CSS variable that holds the height of the content while it moves, such as
+   * `--disclosure-panel-height`, so CSS can animate the height from and to nothing.
+   */
+  height?: string;
+}
+
+/** The height of the content of the element, as a CSS length. */
+function contentHeight(element: HTMLElement): string {
+  return `${element.scrollHeight}px`;
+}
+
+/**
+ * Enters the element: closed with the from classes, then the to classes, then at rest. Resolves
+ * true when it has finished, or false when a later run stopped it.
+ */
+export async function enterSteps(
+  element: HTMLElement,
+  classes: StepClasses,
+  options: StepOptions,
+): Promise<boolean> {
+  const { current, height } = options;
+  removeClasses(element, [...classes.leave, ...classes.leaveFrom, ...classes.leaveTo]);
+  setFlags(element, { leave: false, closed: true, enter: true, transition: true });
+  if (height) {
+    element.style.setProperty(height, '0px');
+  }
+  // The start goes on and is computed on its own, before the class with the transition.
+  addClasses(element, classes.enterFrom);
+  commitStyle(element);
+  addClasses(element, classes.enter);
+  await waitForAnimations(element);
+  if (!current()) {
+    return false;
+  }
+  removeClasses(element, classes.enterFrom);
+  setFlags(element, { closed: false });
+  addClasses(element, classes.enterTo);
+  if (height) {
+    element.style.setProperty(height, contentHeight(element));
+  }
+  await waitForAnimations(element);
+  if (!current()) {
+    return false;
+  }
+  removeClasses(element, [...classes.enter, ...classes.enterTo]);
+  setFlags(element, { enter: false, transition: false });
+  addClasses(element, classes.entered);
+  // At rest, the content takes its own height again, which can change.
+  if (height) {
+    element.style.removeProperty(height);
+  }
+  return true;
+}
+
+/**
+ * Leaves the element, once the transitions inside it have left: the from classes, then the to
+ * classes and closed. Resolves true when it has finished, or false when a later run stopped it.
+ */
+export async function leaveSteps(
+  element: HTMLElement,
+  classes: StepClasses,
+  options: StepOptions,
+  start?: () => void,
+): Promise<boolean> {
+  const { current, height } = options;
+  // The children leave first, once their code has seen the change.
+  await nextFrame();
+  await waitForAnimations(element, true);
+  if (!current()) {
+    return false;
+  }
+  start?.();
+  removeClasses(element, [
+    ...classes.entered,
+    ...classes.enter,
+    ...classes.enterFrom,
+    ...classes.enterTo,
+  ]);
+  setFlags(element, { enter: false, leave: true, transition: true });
+  if (height) {
+    element.style.setProperty(height, contentHeight(element));
+  }
+  addClasses(element, classes.leaveFrom);
+  commitStyle(element);
+  addClasses(element, classes.leave);
+  await waitForAnimations(element);
+  if (!current()) {
+    return false;
+  }
+  removeClasses(element, classes.leaveFrom);
+  setFlags(element, { closed: true });
+  addClasses(element, classes.leaveTo);
+  if (height) {
+    element.style.setProperty(height, '0px');
+  }
+  await waitForAnimations(element);
+  if (!current()) {
+    return false;
+  }
+  removeClasses(element, [...classes.leave, ...classes.leaveTo]);
+  setFlags(element, { leave: false, transition: false });
+  if (height) {
+    element.style.removeProperty(height);
+  }
+  return true;
+}

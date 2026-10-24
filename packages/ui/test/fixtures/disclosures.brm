@@ -5,6 +5,8 @@
   import DisclosureGroup from '../../src/DisclosureGroup.brm';
   import DisclosurePanel from '../../src/DisclosurePanel.brm';
   import Heading from '../../src/Heading.brm';
+  import TransitionChild from '../../src/TransitionChild.brm';
+  import { logChange } from './log.ts';
 
   let open = $signal(false);
   let keys = $signal(['shipping']);
@@ -29,3 +31,18 @@
   </Disclosure>
 </DisclosureGroup>
 <p class="keys">{keys.join(',')}</p>
+
+<Disclosure class="moving">
+  <Button slot="trigger" class="moving-trigger">Moving</Button>
+  <DisclosurePanel transition class="moving-panel">
+    <TransitionChild class="row" beforeEnter=(() => logChange('row-enter', true))>Row</TransitionChild>
+  </DisclosurePanel>
+</Disclosure>
+<Disclosure class="removed">
+  <Button slot="trigger" class="removed-trigger">Removed</Button>
+  <DisclosurePanel unmount=(true) class="removed-panel">Gone when closed</DisclosurePanel>
+</Disclosure>
+<Disclosure class="kept">
+  <Button slot="trigger" class="kept-trigger">Kept</Button>
+  <DisclosurePanel unmount="offscreen" class="kept-panel">Kept when closed</DisclosurePanel>
+</Disclosure>

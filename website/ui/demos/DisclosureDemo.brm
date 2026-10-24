@@ -23,7 +23,9 @@
           <Icon name="chevron" />
         </Button>
       </Heading>
-      <DisclosurePanel class="ui-disclosure-panel">{item.text}</DisclosurePanel>
+      <DisclosurePanel transition class="ui-disclosure-panel">
+        <p>{item.text}</p>
+      </DisclosurePanel>
     </Disclosure>
   }
 </DisclosureGroup>

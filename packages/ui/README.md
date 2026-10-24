@@ -14,7 +14,7 @@ The package is private while its first phase is built.
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
 - `Checkbox`: a label around a native checkbox, with `data-selected`, `data-indeterminate`, `data-pressed` and the focus and hover of its label.
 - `CheckboxGroup`: checkboxes with one value, a list. With `isRequired`, the browser asks for a box on a submit.
-- `Disclosure`, `DisclosurePanel` and `DisclosureGroup`: content that expands and collapses. A collapsed panel is `hidden="until-found"`.
+- `Disclosure`, `DisclosurePanel` and `DisclosureGroup`: content that expands and collapses. A collapsed panel is `hidden="until-found"`. `transition` on the panel lets CSS animate it, with `--disclosure-panel-height`, and `unmount` decides what happens to its content while it is collapsed.
 - `FieldError`: the errors of a field, while it is invalid.
 - `FileTrigger`: opens the file picker from a Button inside, and calls `onSelect` with the files.
 - `Form`: a form that tells its fields how to validate, and gives them the errors of the server by name.
