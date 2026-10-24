@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+
+  let picked = $signal('No files yet.');
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<FileTrigger
+  allowsMultiple
+  acceptedFileTypes=(['image/*'])
+  onSelect=((files) => (picked = `${files?.length ?? 0} images picked.`))
+>
+  <Button class="ui-button"><Icon name="upload" /> Pick images</Button>
+</FileTrigger>
+<p>{picked}</p>

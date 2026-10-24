@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+
+  let amount = $signal(1);
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<Group class="ui-group" aria-label="Amount">
+  <Button class="ui-button ui-icon-button" aria-label="One less" onPress=(() => amount--)><Icon name="minus" /></Button>
+  <output class="ui-input">{amount}</output>
+  <Button class="ui-button ui-icon-button" aria-label="One more" onPress=(() => amount++)><Icon name="plus" /></Button>
+</Group>

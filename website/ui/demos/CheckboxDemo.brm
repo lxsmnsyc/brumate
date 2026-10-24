@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+
+  let subscribed = $signal(true);
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<div class="ui-stack">
+  <Checkbox class="ui-box" isSelected=$bind(subscribed)>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    Send me the newsletter
+  </Checkbox>
+  <Checkbox class="ui-box" isIndeterminate>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    Some of the files
+  </Checkbox>
+  <Checkbox class="ui-box" isSelected isReadOnly>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    Terms, already accepted
+  </Checkbox>
+</div>

@@ -222,3 +222,13 @@ pre {
     animation: none;
   }
 }
+
+/* Native boxes, such as those of the demos and the live samples, take the accent of the site. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
+  vertical-align: -0.15em;
+}

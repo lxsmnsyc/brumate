@@ -634,6 +634,9 @@ importers:
 
   website:
     dependencies:
+      '@brumate/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
       '@oxc-parser/binding-wasm32-wasi':
         specifier: 0.154.0
         version: 0.154.0

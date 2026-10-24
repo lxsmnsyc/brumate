@@ -1,0 +1,16 @@
+<script>
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<TextField
+  class="ui-field"
+  validationBehavior="aria"
+  validate=((value) => (/^[a-z0-9-]{3,}$/.test(value) ? null : 'Use 3 or more lowercase letters, digits or dashes'))
+>
+  <Label>Handle</Label>
+  <Input class="ui-input" />
+  <FieldError class="ui-error" />
+</TextField>

@@ -1,0 +1,20 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import Keyboard from '@brumate/ui/Keyboard.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<Button class="ui-button ui-icon-button">
+  <Icon name="close" />
+  <VisuallyHidden>Close</VisuallyHidden>
+</Button>
+<p>Copy with <Keyboard class="ui-kbd">Ctrl</Keyboard> <Keyboard class="ui-kbd">C</Keyboard>.</p>
+<I18nProvider locale="ar-EG">
+  <div dir="rtl" lang="ar-EG">
+    <Meter class="ui-bar" value=(72)><Label>المساحة المستخدمة</Label></Meter>
+  </div>
+</I18nProvider>

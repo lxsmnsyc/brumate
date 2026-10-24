@@ -1,0 +1,7 @@
+<script>
+  import Link from '@brumate/ui/Link.brm';
+</script>
+
+<Link class="ui-link" href="#links">A link</Link>
+<Link class="ui-link" href="#links" isCurrent>The current page</Link>
+<Link class="ui-link" href="#links" isDisabled>A disabled link</Link>

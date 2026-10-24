@@ -10,7 +10,8 @@ import { language as json } from '@twinkleplop/json';
 import twinkleplop from '@twinkleplop/markdown-it';
 import { language as tsx } from '@twinkleplop/tsx';
 import { language as typescript } from '@twinkleplop/typescript';
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import MarkdownIt from 'markdown-it';
 import type { Plugin } from 'vite';
@@ -24,6 +25,16 @@ export const SITE_PAGES: Set<string> = new Set(
     .filter((file) => file.endsWith('.md'))
     .map((file) => (file === 'index.md' ? '' : file.slice(0, -3))),
 );
+
+/** The pages of the section of @brumate/ui, from the files in `website/ui`. */
+export const UI_PAGES: Set<string> = new Set(
+  readdirSync(new URL('../ui/', import.meta.url))
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => (file === 'index.md' ? '' : file.slice(0, -3))),
+);
+
+/** The folder of the pages of @brumate/ui. */
+const UI_DIRECTORY = fileURLToPath(new URL('../ui/', import.meta.url));
 
 const RAW_MODULE = fileURLToPath(import.meta.resolve('brumate/html'));
 
@@ -39,8 +50,15 @@ export interface LiveFile {
   source: string;
 }
 
-/** A piece of a page: HTML, or a live sample that runs in the page. */
-export type PagePart = { html: unknown } | { files: LiveFile[] };
+/**
+ * A piece of a page: HTML, a live sample that runs in the page, or a demo of @brumate/ui, which
+ * is a component of the site with its highlighted source.
+ */
+export type PagePart =
+  | { html: unknown }
+  | { files: LiveFile[] }
+  | { demo: string; source: unknown }
+  | { gallery: true };
 
 export interface Page {
   title: string;
@@ -86,6 +104,21 @@ const LANGUAGES = {
   json: json(),
 };
 
+/** The name of a demo of @brumate/ui: a code block such as ```` ```brm demo PressDemo ````. */
+function demoName(token: { type: string; info: string }): string | undefined {
+  return token.type === 'fence'
+    ? /^(?:brm|html)\s+demo\s+(\w+)/.exec(token.info.trim())?.[1]
+    : undefined;
+}
+
+/**
+ * Code blocks take focus, so a keyboard can scroll one that is wider than the page, as WCAG
+ * asks of a region that scrolls.
+ */
+function focusableCode(html: string): string {
+  return html.replaceAll('<pre class="twinkleplop', '<pre tabindex="0" class="twinkleplop');
+}
+
 /** A heading id as GitHub makes it, so links between pages keep working. */
 export function slug(text: string): string {
   return text
@@ -99,15 +132,22 @@ export function slug(text: string): string {
  * Points links between documents at the pages of the site, and links to the
  * rest of the repository at GitHub.
  */
-function rewriteLink(href: string, base: string): string {
+function rewriteLink(href: string, base: string, section: 'docs' | 'ui'): string {
+  // A page of the other section: `../docs/state.md` from the pages of @brumate/ui.
+  const other = /^\.\.\/(docs|ui)\/([\w-]+)\.md(#.*)?$/.exec(href);
+  if (other && other[1] !== section) {
+    const name = other[2] === 'index' ? '' : other[2]!;
+    return `${base}${other[1]}${name ? `/${name}` : ''}${other[3] ?? ''}`;
+  }
   const page = /^\.\/([\w-]+)\.md(#.*)?$/.exec(href);
   if (page) {
     const name = page[1] === 'index' ? '' : page[1]!;
+    const known = section === 'ui' ? UI_PAGES : SITE_PAGES;
     // A design note of the repository is not on the site, so the link goes to GitHub.
-    if (!SITE_PAGES.has(name)) {
+    if (!known.has(name)) {
       return `${REPOSITORY}/blob/main/docs/${page[1]}.md${page[2] ?? ''}`;
     }
-    return `${base}docs${name ? `/${name}` : ''}${page[2] ?? ''}`;
+    return `${base}${section}${name ? `/${name}` : ''}${page[2] ?? ''}`;
   }
   if (href.startsWith('../')) {
     return `${REPOSITORY}/tree/main/${href.replace(/^(\.\.\/)+/, '')}`;
@@ -172,7 +212,7 @@ function alerts(parser: MarkdownIt): void {
   });
 }
 
-function createRenderer(base: string): MarkdownIt {
+function createRenderer(base: string, section: 'docs' | 'ui'): MarkdownIt {
   const parser = new MarkdownIt({ html: false, linkify: false });
   parser.use(twinkleplop, { languages: LANGUAGES, on_unknown_language: 'plain' });
   parser.use(alerts);
@@ -180,7 +220,7 @@ function createRenderer(base: string): MarkdownIt {
     const token = tokens[index]!;
     const href = token.attrGet('href');
     if (href) {
-      const rewritten = rewriteLink(href, base);
+      const rewritten = rewriteLink(href, base, section);
       token.attrSet('href', rewritten);
       if (rewritten.startsWith('http')) {
         token.attrSet('target', '_blank');
@@ -237,7 +277,8 @@ export default function markdown(): Plugin {
         return null;
       }
       const env = { headings: [] as Heading[] };
-      const parser = createRenderer(base);
+      const section = id.startsWith(UI_DIRECTORY) ? 'ui' : 'docs';
+      const parser = createRenderer(base, section);
       const tokens = parser.parse(code, env);
       // The page is HTML between live samples. Each sample is its files.
       const parts: string[] = [];
@@ -245,11 +286,35 @@ export default function markdown(): Plugin {
       let index = 0;
       const flush = (end: number): void => {
         if (end > start) {
-          const html = parser.renderer.render(tokens.slice(start, end), parser.options, env);
+          const html = focusableCode(
+            parser.renderer.render(tokens.slice(start, end), parser.options, env),
+          );
           parts.push(`{ html: raw(${JSON.stringify(html)}) }`);
         }
       };
       while (index < tokens.length) {
+        // ```` ```brm gallery ```` is the grid of the demos of every part.
+        const token = tokens[index]!;
+        if (token.type === 'fence' && /^(?:brm|html)\s+gallery\b/.test(token.info.trim())) {
+          flush(index);
+          parts.push('{ gallery: true }');
+          index++;
+          start = index;
+          continue;
+        }
+        const demo = demoName(token);
+        if (demo) {
+          // The demo is a component next to the page, and the page shows its source.
+          flush(index);
+          const file = path.join(path.dirname(id), 'demos', `${demo}.brm`);
+          this.addWatchFile(file);
+          const source = readFileSync(file, 'utf8').trim();
+          const html = focusableCode(parser.render(`\`\`\`html\n${source}\n\`\`\``));
+          parts.push(`{ demo: ${JSON.stringify(demo)}, source: raw(${JSON.stringify(html)}) }`);
+          index++;
+          start = index;
+          continue;
+        }
         if (!liveFile(tokens[index]!, true)) {
           index++;
           continue;

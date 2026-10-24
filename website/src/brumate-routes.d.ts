@@ -8,5 +8,7 @@ declare module 'brumate/routes' {
     '/docs': {};
     '/docs/[page]': { page: string };
     '/repl': {};
+    '/ui': {};
+    '/ui/[page]': { page: string };
   }
 }

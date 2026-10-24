@@ -1,29 +1,33 @@
 <script>
   import { $props } from 'brumate/signals';
-  import { pages, sections } from '../docs.ts';
+  import * as docs from '../docs.ts';
+  import * as ui from '../ui.ts';
   import LiveSample from './LiveSample.brm';
   import Meta from './Meta.brm';
 
-  const { slug } = $props<{ slug: string }>();
+  // A page of the docs of brumate, or of the section of @brumate/ui.
+  const { slug, section = 'docs' } = $props<{ slug: string; section?: 'docs' | 'ui' }>();
   const base = import.meta.env.BASE_URL;
+  const { pages, sections } = section === 'ui' ? ui : docs;
+  const brand = section === 'ui' ? 'brumate/ui' : 'brumate';
   const page = pages[slug];
-  const order = sections.flatMap((section) => section.pages);
+  const order = sections.flatMap((group) => group.pages);
   const index = order.findIndex((item) => item.slug === slug);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index !== -1 ? order[index + 1] : undefined;
-  const link = (target: string): string => `${base}docs${target ? `/${target}` : ''}`;
+  const link = (target: string): string => `${base}${section}${target ? `/${target}` : ''}`;
   const contents = (page?.headings ?? []).filter((heading) => heading.level === 2 || heading.level === 3);
 </script>
 
 #head {
-  <title>{page ? `${page.title} | brumate` : 'Not found | brumate'}</title>
+  <title>{page ? (page.title === brand ? brand : `${page.title} | ${brand}`) : `Not found | ${brand}`}</title>
 }
 
 #if (page) {
   <Meta
-    title=(`${page.title} | brumate`)
+    title=(page.title === brand ? brand : `${page.title} | ${brand}`)
     description=page.description
-    path=(slug ? `docs/${slug}` : 'docs')
+    path=(slug ? `${section}/${slug}` : section)
     type="article"
   />
 }
@@ -32,6 +36,26 @@
     #for (part, index of page.parts by index) {
       #if ('files' in part) {
         <LiveSample files=part.files />
+      } #else if ('gallery' in part) {
+        <!--
+          The home of @brumate/ui: a card with a preview of each part. The preview is inert, so it
+          is a picture, and the link of the title covers the whole card.
+        -->
+        <ul class="ui-gallery">
+          #for (card of ui.gallery by card.title) {
+            <li class="ui-card">
+              <div class="ui-demo-stage" inert><{ui.demos[card.demo]} /></div>
+              <a class="ui-card-title" href=(link(card.href))>{card.title}</a>
+              <p>{card.summary}</p>
+            </li>
+          }
+        </ul>
+      } #else if ('demo' in part) {
+        <!-- A demo of @brumate/ui: the parts in the style of the site, then the source. -->
+        <figure class="ui-demo">
+          <div class="ui-demo-stage"><{ui.demos[part.demo]} /></div>
+          {part.source}
+        </figure>
       } #else {
         {part.html}
       }
@@ -46,7 +70,7 @@
     </nav>
   } #else {
     <h1>Not found</h1>
-    <p>No page at this address. <a href=(link(''))>Back to the documentation</a>.</p>
+    <p>No page at this address. <a href=(link(''))>Back to the {section === 'ui' ? 'parts' : 'documentation'}</a>.</p>
   }
 </article>
 <nav class="toc" aria-label="On this page">

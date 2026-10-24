@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import brumate from 'brumate/vite';
 import { defineConfig } from 'vite';
-import markdown, { SITE_PAGES } from './plugins/markdown.ts';
+import markdown, { SITE_PAGES, UI_PAGES } from './plugins/markdown.ts';
 import search from './plugins/search.ts';
 import showcase from './plugins/showcase.ts';
 
@@ -72,10 +72,16 @@ export default defineConfig({
       [fileURLToPath(new URL('docs', import.meta.url))],
       new Set([...SITE_PAGES].map((page) => page || 'index')),
     ),
+    // The pages of @brumate/ui have a search of their own.
+    search(
+      [fileURLToPath(new URL('ui', import.meta.url))],
+      new Set([...UI_PAGES].map((page) => page || 'index')),
+      'virtual:ui-search-index',
+    ),
     // Every page is written as a static file, with readable names for the scripts.
     brumate({
       navigate: { transition: true },
-      prerender: { paths: ['/', '/repl'], head: scriptNames },
+      prerender: { paths: ['/', '/repl', '/ui'], head: scriptNames },
     }),
   ],
   resolve: {
