@@ -138,6 +138,43 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 - A `const` prop stays read-only. Writing it is a compile error.
 - `$bind` also works on `value` and `checked` of form fields: `<input value=$bind(draft)>`.
 
+### Controlled and uncontrolled
+
+A part such as a dialog can keep its own state, or show the state of its caller. `$isPassed` and `$isBound` from `brumate/signals` tell which one the caller wants:
+
+```brm
+<script>
+  import { $isBound, $isPassed, $memo, $props, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  const { defaultOpen = false, onChange } = $props<{
+    defaultOpen?: boolean;
+    onChange?: (open: boolean) => void;
+  }>();
+  let { open } = $props<{ open?: Bindable<boolean> }>();
+
+  const controlled = $isPassed(open);
+  let own = $signal(defaultOpen);
+  const current = $memo(controlled ? open : own);
+
+  function toggle() {
+    if (!controlled) {
+      own = !current;
+    } else if ($isBound(open)) {
+      open = !current;
+    }
+    onChange?.(!current);
+  }
+</script>
+
+<button aria-expanded=current onClick=toggle>Details</button>
+```
+
+- Without `open`, the part keeps its own state, which starts at `defaultOpen`.
+- With `open=settingsOpen`, the part only calls `onChange`. It shows what the caller passes, so it does not move until the caller writes `settingsOpen`.
+- With `open=$bind(settingsOpen)`, the part writes the caller's signal.
+- `$isPassed(open)` is true for `open=(undefined)` too, so a value of `null` or `undefined` can be controlled, as the value of a select with nothing selected is.
+
 ### Functions as props
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:

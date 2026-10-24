@@ -21,6 +21,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
+| `$isPassed(prop)`             | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
+| `$isBound(prop)`              | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
 | `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
 | `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
 | `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                        |
@@ -93,6 +95,30 @@ True while a new value of the memo loads in the browser, or a value that it read
 - Its only argument is the name of a memo.
 - Server: always `false`.
 - Client: `true` from the start of a load until its value is written.
+
+## `$isPassed`
+
+```ts
+function $isPassed(prop: unknown): boolean;
+```
+
+True when the caller passed the prop, also as `undefined` or `null`.
+
+- Assign it to a `const` in the component script. Its argument is a prop that the component destructures.
+- The caller's attributes decide it, so it never changes.
+- A default value does not count: `const { value = 0 } = $props()` with no `value` gives false.
+- A prop in a spread that the caller passes counts when the key is in the object.
+
+## `$isBound`
+
+```ts
+function $isBound(prop: unknown): boolean;
+```
+
+True when the caller passed the prop with `$bind`, so a write of it changes the caller's value.
+
+- Its argument is a prop that the component destructures with `let`.
+- Server: always false, because nothing writes there.
 
 ## `$effect`
 

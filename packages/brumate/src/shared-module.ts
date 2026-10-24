@@ -41,6 +41,8 @@ export interface SharedSite {
 /** Compile-time functions that need the component to compile them, so their code is not shared. */
 const UNSHARED = new Set([
   '$isPending',
+  '$isBound',
+  '$isPassed',
   '$id',
   '$getContext',
   '$setContext',

@@ -141,6 +141,34 @@ const compileMarkup = (markup: string, imports = 'capture, once, prevent, stop')
 const bOn = (markup: string): string[] =>
   [...compileMarkup(markup).server.matchAll(/b-on=\\"([^"\\\\]*)/g)].map((match) => match[1]!);
 
+describe('props that the caller passes or binds', () => {
+  const compileScript = (script: string) =>
+    compile(
+      `<script>\nimport { $isBound, $isPassed, $props, $signal } from 'brumate/signals';\nconst { label } = $props();\nlet { open } = $props();\nlet count = $signal(0);\n${script}\n</script>\n<p>{label}</p>`,
+      { filename: 'Test.brm' },
+    );
+
+  it('needs a prop for $isPassed, as a const of the component script', () => {
+    expect(() => compileScript('const passed = $isPassed(open);')).not.toThrow();
+    expect(() => compileScript('let passed = $isPassed(open);')).toThrow(
+      'Check a prop with "const name = $isPassed(prop)"',
+    );
+    expect(() => compileScript('const passed = $isPassed(count);')).toThrow(
+      '$isPassed takes a prop that the component destructures',
+    );
+    expect(() => compileScript('const f = () => $isPassed(open);')).toThrow(
+      'Check a prop with "const name = $isPassed(prop)"',
+    );
+  });
+
+  it('needs a prop that the component writes for $isBound', () => {
+    expect(() => compileScript('const f = () => $isBound(open);')).not.toThrow();
+    expect(() => compileScript('const f = () => $isBound(label);')).toThrow(
+      '$isBound takes a prop that the component destructures with let',
+    );
+  });
+});
+
 describe('wrappers of event handlers', () => {
   it('writes the wrappers into b-on, so the loader applies them before the code loads', () => {
     expect(bOn('<button onClick=(once(stop(save)))>Save</button>')[0]).toMatch(
