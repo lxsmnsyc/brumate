@@ -674,6 +674,7 @@ export function leavePage(): void {
   guesses?.map.clear();
   nextId = -1;
   refs.clear();
+  reinsertable.clear();
   writes = 0;
   // Calls of the old page that are still out no longer count for its guesses.
   calling = 0;
@@ -1091,11 +1092,26 @@ export function get(scope: Scope, slot: number): any {
     const element = findElement(value.scope, value.anchor);
     if (element) {
       scope.s[slot] = element;
+      elementOrigins.set(element, value);
     }
     return element ?? undefined;
   }
+  // The element left the page, and HTML of the page state put the same element back, such as
+  // children that a block inserts again. The reference finds the new one.
+  if (value instanceof Element && !value.isConnected) {
+    const origin = elementOrigins.get(value);
+    const element = origin && findElement(origin.scope, origin.anchor);
+    if (element) {
+      scope.s[slot] = element;
+      elementOrigins.set(element, origin);
+      return element;
+    }
+  }
   return value;
 }
+
+/** The reference that each element of a slot was found by, so it can be found again. */
+const elementOrigins = new WeakMap<Element, ElementReference>();
 
 // The number of writes since the page loaded, so scopes that stream in later know to update.
 let writes = 0;
@@ -1697,6 +1713,21 @@ export function removeScope(scope: Scope): void {
  * block rendered, whose owner can be `scope` itself, and the children that a component inserted
  * there. A scope that holds `scope` keeps its markers in the block, so it stays.
  */
+/**
+ * The IDs of the scopes in HTML of the page state, such as the children of a component that the
+ * server rendered. The browser inserts that HTML again, such as each time a block that holds the
+ * children opens, so removing it keeps those scopes.
+ */
+const reinsertable = new Set<string>();
+const RAW_SCOPE = /\sb-b="([^":]+):|<!--[btilP]([^:]+):/g;
+const decodeRaw = stateValues.r;
+stateValues.r = (html) => {
+  for (const match of html.matchAll(RAW_SCOPE)) {
+    reinsertable.add((match[1] ?? match[2])!);
+  }
+  return decodeRaw(html);
+};
+
 function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): void {
   disposeKinds(scope, kinds);
   if (scopes.size > 0 && start.nextSibling !== end) {
@@ -1706,7 +1737,7 @@ function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): voi
     }
     const inside = new Set<Scope>();
     const add = (id: string): void => {
-      const found = scopes.get(parseId(id));
+      const found = reinsertable.has(id) ? undefined : scopes.get(parseId(id));
       if (found && !above.has(found)) {
         inside.add(found);
       }

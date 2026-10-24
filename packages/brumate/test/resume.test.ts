@@ -2100,6 +2100,34 @@ describe('removed portals', () => {
   });
 });
 
+describe('children that a block inserts again', () => {
+  const probe = (name: string) => document.querySelector<HTMLElement>(`.${name}`);
+
+  it('keeps the scopes of children that the server rendered in a block that closes', async () => {
+    await resume('reinsertedChildren', {});
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).toBeNull());
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).not.toBeNull());
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('2:true'));
+  });
+
+  it('points a ref at the element that HTML of the page state puts back', async () => {
+    await resume('reinsertedChildren', {});
+    click(probe('replaced-probe')!);
+    await waitFor(() => expect(probe('replaced-probe')!.textContent).toBe('1:true'));
+    // The same HTML inserted again makes a new element with the same anchor.
+    const old = probe('replaced-probe')!;
+    const copy = old.cloneNode(true) as HTMLElement;
+    old.replaceWith(copy);
+    click(copy);
+    await waitFor(() => expect(copy.textContent).toBe('2:true'));
+  });
+});
+
 describe('portal targets', () => {
   it('moves the body of a #portal when its target changes', async () => {
     await resume('movingPortal', {});
