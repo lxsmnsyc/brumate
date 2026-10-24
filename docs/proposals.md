@@ -11,23 +11,24 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
 - The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
-| Proposal                                                              | Area    | Value  | Cost   |
-| --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
-| [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
-| [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
-| [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
-| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
-| [Devtools](#devtools)                                                 | Tooling | High   | Medium |
-| [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
-| [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
-| [Observability](#observability)                                       | Runtime | Medium | Medium |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
-| [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
+| Proposal                                                              | Area     | Value  | Cost   |
+| --------------------------------------------------------------------- | -------- | ------ | ------ |
+| [Idempotent calls](#idempotent-calls)                                 | Server   | Low    | Small  |
+| [Two-way realtime](#two-way-realtime)                                 | Server   | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                 | Build    | Medium | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
+| [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
+| [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
+| [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
+| [Worker functions](#worker-functions)                                 | Runtime  | Medium | Medium |
+| [Offline pages](#offline-pages)                                       | Runtime  | Medium | Medium |
+| [Observability](#observability)                                       | Runtime  | Medium | Medium |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
+| [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
+| [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
+| [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
 
 ## Syntax
 
@@ -324,6 +325,37 @@ A brumate component cannot go into a page that brumate did not render, such as a
 
 Cost: about 2 weeks. The request for markup reuses `#defer`, and most of the work is the build target and the cross-origin rules.
 
+## Compiler
+
+### A smaller and faster client
+
+Marko 6 ships a page of the todos benchmark in 9.3 kB (4.4 kB gzip), runtime and app together. Brumate loads 4.7 kB before the first event, and the core of 21.8 kB (8.9 kB gzip) with it. Rolldown already leaves out the features that a page does not use, such as `#offscreen`, spreads and bindings, so splitting the core gains little, about 1.3 kB gzip. The rest is how the core works, and the compiler can take over most of it, as Marko's does.
+
+What Marko's compiler does that brumate's core does at runtime:
+
+| Work                            | Marko 6                                                                         | Brumate now                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Markup that the browser renders | A template that it clones, and a walk string that picks the nodes to update     | An HTML string, inserted and then scanned for its markers                                       |
+| The nodes that an update writes | Kept on the scope when the markup is cloned or resumed                          | Found by a marker or a `b-b` anchor, through an index that a MutationObserver keeps, or a query |
+| What a change runs              | A function for each value, which calls the functions of the values that read it | Tables of updates by slot (`g`), which `run` reads, with the order of the graph at runtime      |
+
+Both resume server markup the same way: markers in the HTML, and a scan of them when the page starts. Brumate keeps its lazy loading: the code of each part loads on the first event that needs it, which is what keeps a large page light, such as the dashboard benchmark at 7.7 kB against 66.7 kB.
+
+#### Steps
+
+Each step is a PR of its own, measured with `pnpm bench` before and after: the size of the core, the rows scenario, and the first click.
+
+1. **Nodes on the scope.** The resume scan and each client render store the nodes that updates write on their scope, by anchor, once. Updates read them from there, so the index, its MutationObserver, and the queries that find a node again go. The core is about 2.3 kB smaller.
+2. **Cloned templates.** A body that the browser renders, of `#if`, `#for`, children and templates, compiles to a `<template>` and a walk string. A render clones it, writes its values, and keeps its nodes, as in step 1, with no HTML string to build, parse and scan. The rows scenario should come close to Marko's, such as 1,000 rows in 18 ms, not 25 ms.
+3. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values and the memos that read it, in the order of the graph. The update tables and the code that reads them go. The functions of a component's updates stay in its update part, so they still load on the first write.
+
+#### Risks
+
+- Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.
+- `#offscreen` and `#defer` rely on the markers of a body as they are now. Each step keeps their tests passing.
+- The devtools read the update tables and the index. They need the same facts from the new places.
+- Lazy loading. A function of step 3 can call a function of another part, such as of a memo in a part that has not loaded, so a call across parts waits for it, as an update waits for its part now.
+
 ## Library
 
 ### Headless UI components
@@ -512,6 +544,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
 4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
-5. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
+6. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
