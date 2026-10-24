@@ -268,14 +268,39 @@ Elements, loading, blocks with their fallbacks, errors, page state, effects, nav
 
 ### Component workbench
 
-An exploration, not a plan yet. A page in the dev server that lists the components of the app, renders each one on the server with props from controls, and resumes it, as Storybook and Ladle do for other frameworks.
+A page in the dev server that lists the components of the app, renders each one on the server with props from controls, and resumes it, as Storybook and Ladle do for other frameworks.
 
-- `brumate preview` finds the `.brm` files of the app and lists them by folder. The type checker knows the props type of each, from `$props<T>()`, so it can make the controls: text, numbers, booleans, choices for unions, and JSON for the rest.
-- A story file is optional: `Button.stories.ts` exports named sets of props, and named states with a server function answer or a request, using the helpers of `brumate/testing`.
-- Each story renders through `mount`, so what it shows is what the page gets, with the panel of the devtools beside it, and the report of what the component ships.
-- The website's live samples already compile, render and resume components in a page, so most of the pieces exist.
+A workbench helps with small components that depend only on their props, such as a `Button`, a `Badge` or a `Select`. A large component that reads the request, calls the server or needs a route fits an end-to-end test better, and a workbench shows it badly. So the workbench lists only the components that it can show, and the compiler decides which ones those are.
 
-Questions to answer first: whether props from controls are enough without story files, how to show components that need a context or a route, and whether it belongs in the dev server or in its own command.
+#### Which components it shows
+
+The project analysis classifies each component by what it depends on, itself and through the components that it renders:
+
+| Kind                  | What it depends on                                                                                                                  | In the workbench                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Self-contained        | Its props, its own state, and contexts with a default                                                                               | Listed, with controls for its props                             |
+| Needs the environment | A server function, the request (`getEvent`, cookies, `locals`), the route, a context without a default, a `#defer` or a form action | Listed only with a story file that gives what it needs          |
+| Route or layout       | A file of `src/routes`                                                                                                              | Never. `visit` from `brumate/testing` and e2e tests cover these |
+
+- The analyzer already sees each of these in a file, and the project analysis already knows which components each file renders. The classification combines the two.
+- The line is what a component depends on, not where it is. An app has small components, such as in `src/components`, and a package can have components that call its own server functions.
+- When the analysis cannot tell, such as for a dynamic component (`<{as}>`) whose tag comes from a prop, the component counts as one that needs the environment.
+
+#### How it works
+
+- `/__brumate/workbench` in the dev server lists the self-contained components of the app and of its `.brm` packages, by folder.
+- The type checker knows the props of each component from `$props<T>()`, so the page makes the controls: text, numbers, booleans, choices for unions, and JSON for the rest.
+- Each component renders on the server with the props of the controls and resumes in the browser, as a page does, so what it shows is what a page gets. The devtools panel and the report of what the component ships are beside it.
+- A story file is optional: `Button.stories.ts` exports named sets of props. Later, a story can also give a component that needs the environment its server answers, its request, its route and its context providers, with the helpers of `brumate/testing`.
+
+#### Order
+
+1. The classification in the project analysis, with tests. Done.
+2. The page in the dev server, for self-contained components, with controls from the props. Done: see [Workbench](../website/docs/inspect.md#workbench).
+3. Story files with named props.
+4. Stories with server answers, a request, a route and providers, if apps ask for them.
+
+The first user is `@brumate/ui`, whose parts are almost all self-contained, so the workbench grows with the `Select` spike.
 
 ### Embedding in other sites
 
@@ -458,8 +483,8 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
-2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them. Next is the component workbench, which is an exploration first.
-3. **The UI components**, starting with the `Select` spike. They are the biggest project here, so they come after the steps that every app uses.
+2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
+3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
 4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
