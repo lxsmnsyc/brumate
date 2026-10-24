@@ -102,6 +102,16 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 
 Cost: a day or two, when a page needs it.
 
+### Server-only markup
+
+Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+
+- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
+- Markup that reads values the page state should not carry, so they are not serialized.
+- Whether a block that never updates can drop its markers and scope IDs.
+
+To study before any design.
+
 ## Data
 
 ### Worker functions
@@ -478,13 +488,30 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Order
+## Website
+
+### The home link
+
+The home link in the header, on the docs and on `/ui`, shows a circle with a gradient where the site needs an icon. Draw a mark for brumate, and use it in the header, as the favicon, and on the home page.
+
+### A landing page for @brumate/ui
+
+`/ui` opens on the introduction and the grid of cards. It needs a landing page of its own, as the home page of brumate has:
+
+- What the parts are, and what makes them different: they resume, ship no code until used, and work without scripts where the platform allows.
+- A few parts that people can use on the page.
+- The links to start, to the parts, and to the design influences.
+
+The introduction and the grid move to pages of their own.
+
+## Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
+5. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
