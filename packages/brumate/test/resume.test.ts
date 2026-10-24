@@ -2076,6 +2076,17 @@ describe('conditions that never change', () => {
   });
 });
 
+describe('writes from effects', () => {
+  it('writes a bound prop from a listener that an effect adds', async () => {
+    await resume('effectWriterPage', {});
+    click(document.querySelector('.effect-on')!);
+    await waitFor(() => expect(text('.effect-state')).toBe('true'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    document.dispatchEvent(new Event('effect-off'));
+    await waitFor(() => expect(text('.effect-state')).toBe('false'));
+  });
+});
+
 describe('removed portals', () => {
   it('removes the portal of a component, and runs its cleanups, when a block removes the component', async () => {
     await resume('removedPortal', {});
