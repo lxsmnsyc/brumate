@@ -156,6 +156,11 @@ export function addValueEdits(
         );
         return;
       }
+      if (name === '$isBound') {
+        // Nothing writes on the server.
+        patch.replace(node.start, node.end, 'false');
+        return;
+      }
       if (name === '$isPending') {
         // Nothing loads again on the server.
         patch.replace(node.start, node.end, 'false');

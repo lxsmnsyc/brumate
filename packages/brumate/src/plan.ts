@@ -150,6 +150,40 @@ export function getComponentName(filename: string): string {
 }
 
 /**
+ * The name of the function that a component compiles to: its name, or the name with `$` when a
+ * script of the file has a top-level name of its own, such as an import of `ButtonContext` in
+ * `button-context.brm`.
+ */
+export function componentFunctionName(file: SFCFile, name: string): string {
+  const taken = new Set<string>();
+  for (const script of [file.moduleScript, file.instanceScript]) {
+    for (const statement of script?.program.body ?? []) {
+      if (statement.type === 'ImportDeclaration') {
+        for (const specifier of statement.specifiers ?? []) {
+          taken.add(specifier.local.name);
+        }
+      } else if (statement.type === 'VariableDeclaration') {
+        for (const declarator of statement.declarations) {
+          if (declarator.id.type === 'Identifier') {
+            taken.add(declarator.id.name);
+          }
+        }
+      } else if (
+        (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') &&
+        statement.id
+      ) {
+        taken.add(statement.id.name);
+      }
+    }
+  }
+  let result = name;
+  while (taken.has(result)) {
+    result += '$';
+  }
+  return result;
+}
+
+/**
  * The ID of a server function: the component or file ID, and the name of the
  * function, or a hash of it, so a production build does not show the names.
  */

@@ -129,6 +129,6 @@ export const Counter = createContext('counter', {
 });
 ```
 
-- A provided function can be the value itself, or the value of a key: a function of the component, an arrow, or a method.
+- A provided function can be the value itself, or the value of a key, also of an object inside the value, such as `{ slots: { increment: { onPress } } }`. It is a function of the component, an arrow, or a method.
 - The function runs in the component that provides it, with its values. The browser loads it the first time a component calls it.
 - A function prop does the same for one child: `<ThemeSwitch onChange=((next) => (theme = next)) />`.

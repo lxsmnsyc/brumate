@@ -1,5 +1,11 @@
 <script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Keyboard from '@brumate/ui/Keyboard.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+
+  let presses = $signal(0);
+  let last = $signal('nothing yet');
 </script>
 
 #head {
@@ -17,3 +23,53 @@
     <VisuallyHidden>Close</VisuallyHidden>
   </button>
 </section>
+
+<section aria-labelledby="button">
+  <h2 id="button">Button</h2>
+  <p>It presses with a mouse, a touch, Enter, Space or a screen reader, and shows its state as data attributes.</p>
+  <Button
+    class="press"
+    onPress=((event) => {
+      presses++;
+      last = event.pointerType;
+    })
+  >Press me</Button>
+  <Button class="press" isDisabled=(true)>Disabled</Button>
+  <Button class="press" isPending=(true)>Saving</Button>
+  <p class="pressed" aria-live="polite">Pressed {presses} times, last with {last}.</p>
+</section>
+
+<section aria-labelledby="keyboard">
+  <h2 id="keyboard">Keyboard</h2>
+  <p>Paste with <Keyboard>⌘V</Keyboard>.</p>
+</section>
+
+<style>
+  /* The page's own look for the parts, from their data attributes. */
+  :global(.press) {
+    padding: 0.5rem 1rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #111;
+    font: inherit;
+  }
+
+  :global(.press[data-hovered]) {
+    background: #f1f1f1;
+  }
+
+  :global(.press[data-pressed]) {
+    background: #ddd;
+  }
+
+  :global(.press[data-focus-visible]) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.press[data-disabled]),
+  :global(.press[data-pending]) {
+    color: #595959;
+  }
+</style>

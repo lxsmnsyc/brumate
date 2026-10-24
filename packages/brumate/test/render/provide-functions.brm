@@ -16,6 +16,8 @@
     reset() {
       count = 0;
     },
+    // A function in an object inside the value, as the slots of a part give them.
+    steps: { double: { run: () => (count *= 2) } },
   });
 </script>
 

@@ -834,21 +834,38 @@ describe('skew protection', () => {
 
 describe('vitest cache key', () => {
   it('adds a hash of the build of brumate to the cache key of Vitest', () => {
-    const keys: string[] = [];
-    type Define = (generate: () => string) => void;
+    const keys: (string | false)[] = [];
+    type Define = (generate: (context: { id: string }) => string | false) => void;
     const plugin = brumate() as ReturnType<typeof brumate> & {
       configureVitest(context: {
         defineCacheKeyGenerator?: Define;
         experimental_defineCacheKeyGenerator?: Define;
       }): void;
     };
-    plugin.configureVitest({ defineCacheKeyGenerator: (generate) => keys.push(generate()) });
+    const id = '/app/src/counter.brm.ts?brumate-shared';
+    plugin.configureVitest({ defineCacheKeyGenerator: (generate) => keys.push(generate({ id })) });
     // Older versions of Vitest name it as experimental.
     plugin.configureVitest({
-      experimental_defineCacheKeyGenerator: (generate) => keys.push(generate()),
+      experimental_defineCacheKeyGenerator: (generate) => keys.push(generate({ id })),
     });
     expect(keys).toHaveLength(2);
     expect(keys[0]).toMatch(/^[0-9a-f]{16}$/);
     expect(keys[1]).toBe(keys[0]);
+  });
+
+  it('keeps components out of the cache, because their code depends on other files', () => {
+    const keys: (string | false)[] = [];
+    const plugin = brumate() as ReturnType<typeof brumate> & {
+      configureVitest(context: {
+        defineCacheKeyGenerator: (generate: (context: { id: string }) => string | false) => void;
+      }): void;
+    };
+    plugin.configureVitest({
+      defineCacheKeyGenerator: (generate) => {
+        keys.push(generate({ id: '/app/src/Toggle.brm?brumate-client&part=h1' }));
+        keys.push(generate({ id: '/app/src/Toggle.brm' }));
+      },
+    });
+    expect(keys).toEqual([false, false]);
   });
 });

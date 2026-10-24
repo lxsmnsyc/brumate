@@ -8,3 +8,4 @@
 <button class="one" onClick=(() => counter!.increment())>One</button>
 <button class="ten" onClick=(() => counter!.add(10))>Ten</button>
 <button class="reset" onClick=(() => counter!.reset())>Reset</button>
+<button class="double" onClick=(() => counter!.steps.double.run())>Double</button>

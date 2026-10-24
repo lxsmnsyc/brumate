@@ -1,0 +1,11 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  /**
+   * A keyboard shortcut, such as ⌘V, as Keyboard of React Aria renders it. A shortcut reads left
+   * to right in every language, so it has `dir="ltr"`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+</script>
+
+<kbd dir="ltr" {...rest}>{children}</kbd>
