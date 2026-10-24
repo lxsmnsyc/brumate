@@ -496,7 +496,7 @@ class Parser {
       this.fail('An attribute name can have one ":" namespace', start);
     }
 
-    if (owner === 'element' && fullName === 'ref') {
+    if ((owner === 'element' || owner === 'dynamic') && fullName === 'ref') {
       this.expect('=', 'Expected the name of a signal after "ref="');
       const targetStart = this.pos;
       const target = readIdentifier(this.source, this.pos);

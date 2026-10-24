@@ -2697,6 +2697,18 @@ describe('spreads on components', () => {
   });
 });
 
+describe('refs of dynamic tags', () => {
+  it('writes the element that a dynamic tag renders, from the server and from the browser', async () => {
+    await resume('refDynamic', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('SECTION:none'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.second')).not.toBeNull());
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('SECTION:ARTICLE'));
+  });
+});
+
 describe('rest props', () => {
   it('keeps the attributes of a rest that does not change when a spread next to it does', async () => {
     await resume('mixedSpreadParent', {});
