@@ -2,6 +2,7 @@
   import {
     $client,
     $effect,
+    $getContext,
     $isPassed,
     $memo,
     $props,
@@ -17,7 +18,6 @@
     nextFrame,
     stepClasses,
   } from './transition.ts';
-  import type { TransitionParent } from './transition.ts';
 
   /**
    * Animates content in and out, as Transition of Terracotta does. It keeps the content in the
@@ -73,14 +73,11 @@
     children?: unknown;
     [attribute: string]: unknown;
   }>();
-  const { show, parent } = $props<{
-    show?: boolean;
-    /** The Transition around a TransitionChild, which the TransitionChild reads for it. */
-    parent?: TransitionParent | null;
-  }>();
+  const { show } = $props<{ show?: boolean }>();
 
   // A Transition with `show`, or a TransitionChild of the one around it.
   const own = $isPassed(show);
+  const parent = $getContext(TransitionContext);
   const wanted = $memo(
     own
       ? Boolean(show)
