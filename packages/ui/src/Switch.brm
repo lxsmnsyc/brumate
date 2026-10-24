@@ -1,6 +1,7 @@
 <script>
   import { $memo, $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
 
@@ -42,6 +43,9 @@
     onFocusOut,
   } = box(disabled);
 
+  // The click of a read-only box, which the wrapper prevents.
+  function keep() {}
+
   function change(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     // A read-only switch keeps its state. The browser toggled it already.
@@ -73,16 +77,33 @@
   onFocusOut=onFocusOut
   {...rest}
 >
-  <VisuallyHidden
-    as="input"
-    type="checkbox"
-    role="switch"
-    name=name
-    value=value
-    checked=isSelected
-    disabled=(isDisabled || undefined)
-    aria-readonly=(isReadOnly ? 'true' : undefined)
-    onChange=change
-  />
+  <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
+       announces no change. -->
+  #if (isReadOnly) {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      role="switch"
+      name=name
+      value=value
+      checked=isSelected
+      disabled=(isDisabled || undefined)
+      aria-readonly=(isReadOnly ? 'true' : undefined)
+      onChange=change
+      onClick=(prevent(keep))
+    />
+  } #else {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      role="switch"
+      name=name
+      value=value
+      checked=isSelected
+      disabled=(isDisabled || undefined)
+      aria-readonly=(isReadOnly ? 'true' : undefined)
+      onChange=change
+    />
+  }
   {children}
 </label>

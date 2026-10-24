@@ -7,6 +7,7 @@
     LabelContext,
     TextContext,
   } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { describedBy } from './fields.ts';
 
   /**
@@ -41,6 +42,7 @@
 
   const labelId = $id();
   const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
   const errorId = $id();
   // The message of the browser, after a submit with no box checked.
   let message = $signal('');
@@ -76,7 +78,7 @@
 <div
   role="group"
   aria-labelledby=labelId
-  aria-describedby=(describedBy(descriptionId, invalid && errorId))
+  aria-describedby=(describedBy(hasDescription && descriptionId, invalid && errorId))
   data-disabled=(isDisabled || undefined)
   data-readonly=(isReadOnly || undefined)
   data-invalid=(invalid || undefined)

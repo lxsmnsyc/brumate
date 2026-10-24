@@ -9,6 +9,7 @@
     TextAreaContext,
     TextContext,
   } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
 
   /**
@@ -86,6 +87,7 @@
   const inputId = $id();
   const labelId = $id();
   const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
   const ownErrorId = $id();
   const id = $memo(field?.id ?? inputId);
   // The error of a field of createForm has the ID that the field names, and role="alert".
@@ -164,7 +166,7 @@
     required: (isRequired && behavior === 'native') || undefined,
     'aria-required': (isRequired && behavior === 'aria') || undefined,
     'aria-invalid': invalid ? 'true' : undefined,
-    'aria-describedby': describedBy(descriptionId, invalid && errorId),
+    'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
     autocomplete: autoComplete,
     minlength: minLength,
     maxlength: maxLength,

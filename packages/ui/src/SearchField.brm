@@ -2,6 +2,7 @@
   import { $id, $memo, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { describedBy } from './fields.ts';
 
   /**
@@ -39,6 +40,7 @@
   const inputId = $id();
   const labelId = $id();
   const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
   const empty = $memo(value === '');
 
   function change(next: string) {
@@ -69,7 +71,7 @@
     disabled: isDisabled || undefined,
     readonly: isReadOnly || undefined,
     placeholder,
-    'aria-describedby': describedBy(descriptionId),
+    'aria-describedby': describedBy(hasDescription && descriptionId),
     onChange: change,
     onKeyDown: keyDown,
   });
