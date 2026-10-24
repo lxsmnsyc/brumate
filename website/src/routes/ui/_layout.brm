@@ -723,6 +723,41 @@
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
+  /* A number field: an input between its two buttons, in one box. */
+  :global(.ui-number) {
+    display: inline-flex;
+    width: 12rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  :global(.ui-number:focus-within) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-number .ui-input) {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    text-align: center;
+  }
+
+  :global(.ui-step) {
+    width: 2rem;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.ui-step[disabled]) {
+    color: var(--muted);
+    cursor: default;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

@@ -48,6 +48,7 @@
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
   import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
@@ -90,6 +91,7 @@
   let menuAction = $signal<Key>('none');
   let pet = $signal<Key | null>(null);
   let city = $signal<Key | null>(null);
+  let quantity = $signal(1);
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
@@ -486,6 +488,19 @@
     }
   </GridList>
   <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+</section>
+
+<section aria-labelledby="numberfield">
+  <h2 id="numberfield">NumberField</h2>
+  <NumberField class="quantity" name="quantity" minValue=(1) maxValue=(5) value=$bind(quantity)>
+    <Label>Quantity</Label>
+    <Group class="quantity-group">
+      <Button slot="decrement" class="press quantity-minus">-</Button>
+      <Input class="quantity-input" />
+      <Button slot="increment" class="press quantity-plus">+</Button>
+    </Group>
+  </NumberField>
+  <p class="quantity-state">{quantity}</p>
 </section>
 
 <section aria-labelledby="tooltip">

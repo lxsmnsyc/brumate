@@ -1,0 +1,327 @@
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { NumberFormatter, NumberParser } from '@internationalized/number';
+  import {
+    ButtonContext,
+    FieldErrorContext,
+    FormContext,
+    GroupContext,
+    InputContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import type { PressEvent } from './events.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+  import { LocaleContext } from './locale.ts';
+  import {
+    clamp,
+    listenToWheel,
+    nextStep,
+    snapToStep,
+    startRepeat,
+    stopRepeat,
+    stopWheel,
+  } from './numbers.ts';
+
+  /**
+   * A field for a number, as NumberField of React Aria Components. It holds a Label, a Group
+   * with an Input and two Buttons with `slot="decrement"` and `slot="increment"`, a Text with
+   * `slot="description"` and a FieldError.
+   *
+   * - The number shows in the format of the locale and `formatOptions`, such as a currency or a
+   *   percent. Typing keeps only text that can become a number.
+   * - Focus that leaves the input, and Enter, read the number, keep it between `minValue` and
+   *   `maxValue`, move it to the nearest `step` when there is one, and format it again.
+   * - ArrowUp and ArrowDown, PageUp and PageDown, and the Buttons step the number. A held Button
+   *   steps again and again. Home and End go to the minimum and the maximum. The wheel steps it
+   *   while the input has focus, unless `isWheelDisabled`.
+   * - `value` is the number, or `NaN` when the field is empty. `value=(n)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `name` sends the number with its form.
+   */
+  const {
+    as = 'div',
+    name,
+    minValue,
+    maxValue,
+    step,
+    formatOptions,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid,
+    isWheelDisabled = false,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    minValue?: number;
+    maxValue?: number;
+    step?: number;
+    formatOptions?: Intl.NumberFormatOptions;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    isWheelDisabled?: boolean;
+    onChange?: (value: number) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = Number.NaN } = $props<{ value?: Bindable<number> }>();
+
+  const locale = $getContext(LocaleContext);
+  const form = $getContext(FormContext);
+  const inputId = $id();
+  const labelId = $id();
+  const incrementId = $id();
+  const decrementId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  // A percent counts in hundredths, as in React Aria.
+  const stepSize = $memo(step ?? (formatOptions?.style === 'percent' ? 0.01 : 1));
+  // The text in the input, which is the formatted number until the user types.
+  let text = $signal(format(value));
+  let edited = $signal(false);
+  const errors = $memo(
+    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  );
+  const invalid = $memo(
+    Boolean(isInvalid) ||
+      errors.length > 0 ||
+      (!Number.isNaN(value) &&
+        ((minValue !== undefined && value < minValue) || (maxValue !== undefined && value > maxValue))),
+  );
+  const locked = $memo(isDisabled || isReadOnly);
+  const canIncrement = $memo(
+    !locked && (Number.isNaN(value) || maxValue === undefined || value < maxValue),
+  );
+  const canDecrement = $memo(
+    !locked && (Number.isNaN(value) || minValue === undefined || value > minValue),
+  );
+  // A percent or a fraction needs the decimal keys of a touch keyboard.
+  const inputMode = $memo(
+    formatOptions?.style === 'percent' || (formatOptions?.maximumFractionDigits ?? 0) > 0
+      ? 'decimal'
+      : 'numeric',
+  );
+
+  function format(number: number): string {
+    return Number.isNaN(number) ? '' : new NumberFormatter(locale.locale, formatOptions).format(number);
+  }
+
+  function parser() {
+    return new NumberParser(locale.locale, formatOptions);
+  }
+
+  function input() {
+    return document.getElementById(inputId) as HTMLInputElement | null;
+  }
+
+  function setValue(next: number) {
+    if (!Object.is(next, value)) {
+      value = next;
+      edited = true;
+      onChange?.(next);
+    }
+    text = format(next);
+  }
+
+  // A value that the caller sets shows in the input.
+  $effect(() => {
+    const next = value;
+    if (!Object.is($untrack(parser().parse(text)), next)) {
+      $untrack((text = format(next)));
+    }
+  });
+
+  function typed(next: string) {
+    // Only text that can become a number stays, such as `-` or `1.`, as React Aria keeps it.
+    if (next === '' || parser().isValidPartialNumber(next, minValue, maxValue)) {
+      text = next;
+      return;
+    }
+    const element = input();
+    if (element) {
+      element.value = text;
+    }
+  }
+
+  /** Reads the number in the input, keeps it in the range and on a step, and formats it. */
+  function commit() {
+    if (text.trim() === '') {
+      setValue(Number.NaN);
+      return;
+    }
+    const parsed = parser().parse(text);
+    if (Number.isNaN(parsed)) {
+      text = format(value);
+      return;
+    }
+    // A number moves to a step only when the field has one, as in React Aria. Otherwise it only
+    // stays in the range.
+    const snapped =
+      step === undefined ? clamp(parsed, minValue, maxValue) : snapToStep(parsed, minValue, maxValue, step);
+    // The format can round, such as to two digits, so the number is what the format shows.
+    setValue(parser().parse(format(snapped)));
+  }
+
+  function stepBy(sign: 1 | -1): boolean {
+    if (locked) {
+      return false;
+    }
+    const current = parser().parse(text);
+    const next = nextStep(current, sign, minValue, maxValue, stepSize);
+    if (Object.is(next, value) && text === format(next)) {
+      return false;
+    }
+    setValue(next);
+    return true;
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if ((event.target as Element).id !== inputId || locked) {
+      return;
+    }
+    switch (event.key) {
+      case 'ArrowUp':
+      case 'PageUp':
+        stepBy(1);
+        return;
+      case 'ArrowDown':
+      case 'PageDown':
+        stepBy(-1);
+        return;
+      case 'Home':
+        if (minValue !== undefined) {
+          event.preventDefault();
+          setValue(minValue);
+        }
+        return;
+      case 'End':
+        if (maxValue !== undefined) {
+          event.preventDefault();
+          setValue(snapToStep(maxValue, minValue, maxValue, stepSize));
+        }
+        return;
+      case 'Enter':
+        commit();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function wheel(event: WheelEvent) {
+    // A scroll that is mostly sideways, as on a trackpad, is not a step.
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      return;
+    }
+    event.preventDefault();
+    stepBy(event.deltaY > 0 ? 1 : -1);
+  }
+
+  // The wheel steps the number only while the input has focus, so it listens from then on.
+  function focused() {
+    const element = input();
+    if (element && !isWheelDisabled) {
+      listenToWheel(element, (event) => wheel(event));
+    }
+  }
+
+  function blurred() {
+    const element = input();
+    if (element) {
+      stopWheel(element);
+    }
+    commit();
+  }
+
+  /** A press of a Button steps at once, and again while it is held. Focus stays in the input. */
+  function held(sign: 1 | -1, event: PressEvent) {
+    input()?.focus({ preventScroll: true });
+    startRepeat(inputId, () => stepBy(sign), event.pointerType === 'touch' ? 600 : 400);
+  }
+
+  function released() {
+    stopRepeat(inputId);
+    // The browser focuses the Button on mousedown, after the press began, so focus goes back.
+    input()?.focus({ preventScroll: true });
+  }
+
+  $setContext(LabelContext, { id: labelId, for: inputId });
+  $setContext(GroupContext, {
+    isDisabled,
+    isInvalid: invalid,
+    'aria-disabled': isDisabled ? 'true' : undefined,
+  });
+  $setContext(InputContext, {
+    id: inputId,
+    type: 'text',
+    value: text,
+    inputmode: inputMode,
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
+    'aria-roledescription': 'Number field',
+    disabled: isDisabled || undefined,
+    readonly: isReadOnly || undefined,
+    'aria-required': isRequired || undefined,
+    'aria-invalid': invalid ? 'true' : undefined,
+    'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+    onChange: typed,
+    onFocus: focused,
+    onBlur: blurred,
+  });
+  $setContext(ButtonContext, {
+    slots: {
+      increment: {
+        id: incrementId,
+        'aria-label': 'Increase',
+        'aria-labelledby': `${incrementId} ${labelId}`,
+        'aria-controls': inputId,
+        tabindex: '-1',
+        isDisabled: !canIncrement,
+        onPressStart: (event: PressEvent) => held(1, event),
+        onPressEnd: released,
+      },
+      decrement: {
+        id: decrementId,
+        'aria-label': 'Decrease',
+        'aria-labelledby': `${decrementId} ${labelId}`,
+        'aria-controls': inputId,
+        tabindex: '-1',
+        isDisabled: !canDecrement,
+        onPressStart: (event: PressEvent) => held(-1, event),
+        onPressEnd: released,
+      },
+    },
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+</script>
+
+<{as}
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  <div
+    style="display: contents"
+    onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
+  >{children}</div>
+  <!-- The number for the form, which posts without scripts. -->
+  <input
+    type="hidden"
+    name=name
+    value=(Number.isNaN(value) ? '' : String(value))
+    disabled=(isDisabled || undefined)
+  >
+</>
