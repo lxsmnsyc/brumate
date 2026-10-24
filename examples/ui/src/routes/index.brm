@@ -28,6 +28,10 @@
   import Keyboard from '@brumate/ui/Keyboard.brm';
   import Label from '@brumate/ui/Label.brm';
   import Link from '@brumate/ui/Link.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Header from '@brumate/ui/Header.brm';
   import Meter from '@brumate/ui/Meter.brm';
   import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
   import Modal from '@brumate/ui/Modal.brm';
@@ -50,6 +54,7 @@
   import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
   import Toolbar from '@brumate/ui/Toolbar.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
 
   let presses = $signal(0);
   let last = $signal('nothing yet');
@@ -62,6 +67,7 @@
   let align = $signal(['left']);
   let files = $signal('No files picked.');
   let noteShown = $signal(true);
+  let animals = $signal<Key[]>([]);
 
   async function order(form: FormData) {
     'use server';
@@ -314,6 +320,25 @@
   </DialogTrigger>
 </section>
 
+<section aria-labelledby="listbox">
+  <h2 id="listbox">ListBox</h2>
+  <ListBox class="listbox animals" aria-label="Animals" selectionMode="multiple" selectedKeys=$bind(animals)>
+    <ListBoxSection>
+      <Header class="listbox-header">Mammals</Header>
+      #for (animal of ['Aardvark', 'Cat', 'Dog', 'Kangaroo'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+    <ListBoxSection>
+      <Header class="listbox-header">Birds</Header>
+      #for (animal of ['Kiwi', 'Penguin', 'Robin'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+  </ListBox>
+  <p class="animals-state">{animals.join(', ') || 'None'}</p>
+</section>
+
 <section aria-labelledby="tooltip">
   <h2 id="tooltip">Tooltip and Toast</h2>
   <TooltipTrigger>
@@ -517,6 +542,47 @@
 
   :global(.settings h3) {
     margin: 0;
+  }
+
+  :global(.listbox) {
+    display: grid;
+    max-width: 16rem;
+    max-height: 12rem;
+    overflow: auto;
+    padding: 0.25rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+  }
+
+  :global(.listbox:focus-visible) {
+    outline: 3px solid #2457d6;
+  }
+
+  :global(.listbox-header) {
+    padding: 0.5rem 0.5rem 0.25rem;
+    color: #595959;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  :global(.option) {
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+    outline: none;
+  }
+
+  :global(.option[data-hovered]) {
+    background: #f1f1f1;
+  }
+
+  :global(.option[data-focus-visible]) {
+    outline: 2px solid #2457d6;
+    outline-offset: -2px;
+  }
+
+  :global(.option[data-selected]) {
+    background: #2457d6;
+    color: #fff;
   }
 
   :global(.tip) {

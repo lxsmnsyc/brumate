@@ -102,6 +102,16 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 
 Cost: a day or two, when a page needs it.
 
+### Server-only markup
+
+Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+
+- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
+- Markup that reads values the page state should not carry, so they are not serialized.
+- Whether a block that never updates can drop its markers and scope IDs.
+
+To study before any design.
+
 ## Data
 
 ### Worker functions
@@ -453,7 +463,7 @@ Notes for each phase:
 - Phase 2 animates in two ways:
   - Overlays animate as they open and close with CSS alone. `<dialog>` and popovers are hidden, not removed, so `@starting-style` and `transition-behavior: allow-discrete` on `display` and `overlay` cover both directions.
   - `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
-- Phase 3 is the largest. Collections take `items` and an item `#template`, because brumate cannot read the structure of markup the way React Aria reads its children. Keyboard movement and typeahead go in a `.brm.ts` module that every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
+- Phase 3 is the largest. Brumate cannot read the structure of markup the way React Aria reads its children, so a collection reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. Items can then come from any markup, such as a `#for` or sections, with no `items` prop. Keyboard movement, ranges and typeahead go in `collection.ts`, which every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
 - Phase 4 parses and formats numbers by locale on the server and in the browser with the same code.
 - Phase 5 keeps dates in signals as ISO strings, because the page state cannot hold `CalendarDate` class instances.
 - Phase 6 renders rows on the server. `Virtualizer` and drag and drop run only in the browser, from `$client` and handlers, so they load when used.
@@ -478,13 +488,30 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Order
+## Website
+
+### The home link
+
+The home link in the header, on the docs and on `/ui`, shows a circle with a gradient where the site needs an icon. Draw a mark for brumate, and use it in the header, as the favicon, and on the home page.
+
+### A landing page for @brumate/ui
+
+`/ui` opens on the introduction and the grid of cards. It needs a landing page of its own, as the home page of brumate has:
+
+- What the parts are, and what makes them different: they resume, ship no code until used, and work without scripts where the platform allows.
+- A few parts that people can use on the page.
+- The links to start, to the parts, and to the design influences.
+
+The introduction and the grid move to pages of their own.
+
+## Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
+5. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
