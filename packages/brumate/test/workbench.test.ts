@@ -62,6 +62,12 @@ const files = new Map(
 </script>
 #if (depth > 0) { <Thread depth=(depth - 1) /> } #else { <Feed /> }`,
     '/app/Where.brm': `<p>{$route().path}</p>`,
+    '/app/Handler.brm': `<script>
+  function go() {
+    return $route().path;
+  }
+</script>
+<button onClick=(() => $navigation())>{go.name}</button>`,
     '/app/Typed.brm': `<script>
   import * as T from './api.ts';
   import * as server from 'brumate/server';
@@ -74,6 +80,15 @@ const files = new Map(
   const stories = await $memo(feed());
 </script>
 <p>{stories.length}</p>`,
+    '/app/Shadowed.brm': `<script>
+  import * as api from './api.ts';
+  const { label } = $props<{ api: string; label: string }>();
+  function shout(api: string) {
+    return api.toUpperCase();
+  }
+  export { shout as api2 };
+</script>
+<p>{shout(label)}</p>`,
     '/app/Later.brm': `#defer ('visible') { <p>Later</p> } #else { <p>Wait</p> }`,
     '/app/Any.brm': `<script>
   const { as } = $props<{ as: string }>();
@@ -111,6 +126,10 @@ describe('classifyComponents', () => {
     expect(classes.get('/app/Quoted.brm')!.selfContained).toBe(true);
     // A namespace that only types use, or that nothing uses, is not a need.
     expect(classes.get('/app/Typed.brm')!.selfContained).toBe(true);
+    // A parameter, a property or a key with the name of a namespace is not the namespace.
+    expect(classes.get('/app/Shadowed.brm')!.selfContained).toBe(true);
+    // A call of `$route` in a function runs later, if at all.
+    expect(classes.get('/app/Handler.brm')!.selfContained).toBe(true);
   });
 
   it('finds what a component needs, also through the components that it renders', () => {
@@ -304,5 +323,26 @@ describe('propControls', () => {
       { filename: '/app/Deep.brm' },
     );
     expect(propControls(file)).toHaveLength(30);
+  });
+
+  it('reads a renamed $props and a method over a prop', () => {
+    const file = parse(
+      `<script>
+  import { $props as props } from 'brumate/signals';
+  import type { Item } from './types.ts';
+  interface Base {
+    run: string;
+    item: Item;
+  }
+  interface Props extends Base {
+    run(): void;
+  }
+  const { item } = props<Props>();
+</script>
+<p>{item}</p>`,
+      { filename: '/app/Renamed.brm' },
+    );
+    // A type that the file imports can be anything, so the prop has no value to start with.
+    expect(propControls(file)).toEqual([{ name: 'item', optional: false, kind: 'json' }]);
   });
 });

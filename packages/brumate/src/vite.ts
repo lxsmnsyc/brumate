@@ -505,9 +505,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
     }
-    await analyze();
-    // A list of the workbench made while the scan ran has the files from before it.
-    workbenchList = undefined;
+    try {
+      await analyze();
+    } finally {
+      // A list of the workbench made while the scan ran has the files from before it.
+      workbenchList = undefined;
+    }
   };
 
   /**
@@ -937,7 +940,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         try {
           controls = propControls(parseComponent(sources.get(file)!, { filename: file }));
         } catch {
-          // The compile of the file reports the error.
+          // The compile of the file reports the error. The page says that it has no controls.
+          controls = undefined;
         }
         return {
           file: relative(file),

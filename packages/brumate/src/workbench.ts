@@ -6,7 +6,7 @@
 
 import { analyze } from './analyze.ts';
 import type { Markup, SFCFile } from './ast.ts';
-import { walk } from './macros.ts';
+import { resolveMacros, walk } from './macros.ts';
 import type { oxc } from './oxc.ts';
 import { parse } from './parser.ts';
 import { forEachNode, importSource, resolveRelative } from './project.ts';
@@ -67,60 +67,61 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
       }
     }
   }
-  // The code of the file: its scripts, and the expressions of its markup and templates.
-  const code = [
-    file.moduleScript?.program,
-    file.instanceScript?.program,
-    file.children,
-    file.templates,
-  ];
-  // The names that the code reads as values, such as `api` in `api.feed()`, `f(api)` or
-  // `const { feed } = api`. A name in a type, such as `T` in `T.Label` or `typeof T`, does not
-  // count, nor does the name of a property. The walk visits a node before its children, so a
-  // node is skipped before it is reached.
-  const read = new Set<string>();
-  const skip = new Set<oxc.Node>();
-  walk(code, (node) => {
-    if (node.type === 'TSQualifiedName') {
-      skip.add(node.left);
-    } else if (node.type === 'TSTypeQuery') {
-      skip.add(node.exprName);
-    } else if (node.type === 'ImportNamespaceSpecifier') {
-      skip.add(node.local);
-    } else if (node.type === 'MemberExpression' && !node.computed) {
-      skip.add(node.property);
-    } else if (node.type === 'Property' && !node.computed && !node.shorthand) {
-      skip.add(node.key);
-    } else if (node.type === 'Identifier' && !skip.has(node)) {
-      read.add(node.name);
-    }
-    // `$route` and `$navigation` read the route of the page, which the workbench does not have.
-    if (
-      node.type === 'CallExpression' &&
-      node.callee.type === 'Identifier' &&
-      (node.callee.name === '$route' || node.callee.name === '$navigation')
-    ) {
-      needs.push({ kind: 'route', name: node.callee.name });
-    }
-  });
+  // The namespace imports, by the start of their name, since the analysis declares one without
+  // its module. It resolves each name by its scope, so a read of `api` counts only when it is
+  // the import, and a name in a type, a property or a shadowing parameter does not count.
+  const namespaces = new Map<number, string>();
   for (const script of [file.moduleScript, file.instanceScript]) {
     for (const statement of script?.program.body ?? []) {
-      // The analysis has a declaration for each named import only, so a namespace is found here.
       if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type') {
         continue;
       }
-      const source = statement.source.value;
       for (const specifier of statement.specifiers) {
-        if (specifier.type !== 'ImportNamespaceSpecifier' || !read.has(specifier.local.name)) {
-          continue;
-        }
-        const name = `* as ${specifier.local.name}`;
-        if (source === 'brumate/server') {
-          needs.push({ kind: 'request', name });
-        } else if (options.serverImport?.(file.filename, source, '*')) {
-          needs.push({ kind: 'server', name });
+        if (specifier.type === 'ImportNamespaceSpecifier') {
+          namespaces.set(specifier.local.start, statement.source.value);
         }
       }
+    }
+  }
+  for (const declaration of model.declarations) {
+    const source = namespaces.get(declaration.range.start);
+    if (declaration.kind !== 'import' || source === undefined || declaration.reads.length === 0) {
+      continue;
+    }
+    const name = `* as ${declaration.name}`;
+    if (source === 'brumate/server') {
+      needs.push({ kind: 'request', name });
+    } else if (options.serverImport?.(file.filename, source, '*')) {
+      needs.push({ kind: 'server', name });
+    }
+  }
+  // `$route` and `$navigation` read the route of the page, which the workbench does not have.
+  // A call inside a function, such as a handler, runs later, if at all, so only the others
+  // count. The scripts and the expressions of the markup have positions in the file, so one
+  // range check finds the functions around a call.
+  const functions: oxc.Node[] = [];
+  const calls: oxc.CallExpression[] = [];
+  walk(
+    [file.moduleScript?.program, file.instanceScript?.program, file.children, file.templates],
+    (node) => {
+      if (
+        node.type === 'ArrowFunctionExpression' ||
+        node.type === 'FunctionExpression' ||
+        node.type === 'FunctionDeclaration'
+      ) {
+        functions.push(node);
+      } else if (
+        node.type === 'CallExpression' &&
+        node.callee.type === 'Identifier' &&
+        (node.callee.name === '$route' || node.callee.name === '$navigation')
+      ) {
+        calls.push(node);
+      }
+    },
+  );
+  for (const call of calls) {
+    if (!functions.some((fn) => fn.start <= call.start && call.end <= fn.end)) {
+      needs.push({ kind: 'route', name: (call.callee as oxc.IdentifierReference).name });
     }
   }
   const visit = (node: Markup): void => {
@@ -254,9 +255,15 @@ function localType(name: string, file: SFCFile): oxc.Node | undefined {
 
 type Member = { optional?: boolean };
 
-/** The name of a property of a type, or undefined for a computed one or a method. */
+/**
+ * The name of a property or a method of a type, or undefined for a computed one or a signature
+ * without a name. A method replaces a prop of the same name that its interface extends.
+ */
 function memberName(member: oxc.Node): string | undefined {
-  if (member.type !== 'TSPropertySignature' || member.computed) {
+  if (
+    (member.type !== 'TSPropertySignature' && member.type !== 'TSMethodSignature') ||
+    member.computed
+  ) {
     return undefined;
   }
   return member.key.type === 'Identifier'
@@ -466,6 +473,8 @@ function controlOf(
  * when the workbench cannot read the type, such as one that the file imports.
  */
 export function propControls(file: SFCFile): Control[] | undefined {
+  // A renamed import, such as `$props as props`, is read as `$props`.
+  resolveMacros(file);
   for (const statement of file.instanceScript?.program.body ?? []) {
     if (statement.type !== 'VariableDeclaration') {
       continue;
