@@ -151,6 +151,10 @@ export function boot(
   navigate?: (navigation: Navigation) => () => Promise<Core>,
 ): () => void {
   let core: Promise<Core> | undefined;
+  // Once stopped, the loader starts nothing, also from markup that the core inserts later with the
+  // hooks that this loader gave it. A new loader can reuse the IDs of client scopes, so a stale
+  // start would run in a scope of the new page.
+  let stopped = false;
   /** The event types that the document listens to, and whether each listener is passive. */
   const types = new Map<string, boolean>();
   const removers: (() => void)[] = [];
@@ -268,6 +272,9 @@ export function boot(
   };
 
   const run = (element: Element, ref: string, event?: Event): void => {
+    if (stopped) {
+      return;
+    }
     // The module loads while the core does, not after it.
     warm(ref, event ? 'event' : 'block');
     void loadCore().then((client) => client.handle(element, ref, event));
@@ -490,6 +497,9 @@ export function boot(
   // One query of the markup for everything that the loader starts. The blocks start after the
   // rest, as they did when each kind had its own query.
   const scan = (root: ParentNode): void => {
+    if (stopped) {
+      return;
+    }
     const blocks: Element[] = [];
     for (const element of select(root, SCANNED)) {
       if (element.tagName === 'TEMPLATE') {
@@ -604,6 +614,7 @@ export function boot(
     );
   }
   return () => {
+    stopped = true;
     observer.disconnect();
     for (const remove of removers.splice(0)) {
       remove();

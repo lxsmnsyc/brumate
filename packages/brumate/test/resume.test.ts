@@ -2150,6 +2150,27 @@ describe('children that a block inserts again', () => {
   });
 });
 
+describe('a stopped loader', () => {
+  it('starts nothing from markup that the core inserts after the stop', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    const anchor = document.querySelector('template[b-client$="#k3"]')!.getAttribute('b-b')!;
+    stop?.();
+    stop = undefined;
+    const client = await import('../src/runtime/client.ts');
+    // The core inserts markup with the hooks of the loader that started it. Started again, the
+    // template would add the portal a second time.
+    client.portalTo(
+      client.scopeOf(0)!,
+      'body',
+      () => `<template b-b="${anchor}" b-client="load=PortalOwner_1w2qt1f#k3"></template>`,
+    );
+    await new Promise((done) => setTimeout(done, 50));
+    expect(document.querySelectorAll('.owned-portal')).toHaveLength(1);
+  });
+});
+
 describe('portal targets', () => {
   it('moves the body of a #portal when its target changes', async () => {
     await resume('movingPortal', {});
