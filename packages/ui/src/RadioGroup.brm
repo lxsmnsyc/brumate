@@ -2,6 +2,7 @@
   import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { describedBy } from './fields.ts';
 
   /**
@@ -40,6 +41,7 @@
   const ownName = $id();
   const labelId = $id();
   const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
   const errorId = $id();
   let message = $signal('');
   const errors = $memo(message && value === null ? [message] : []);
@@ -73,7 +75,7 @@
 <div
   role="radiogroup"
   aria-labelledby=labelId
-  aria-describedby=(describedBy(descriptionId, invalid && errorId))
+  aria-describedby=(describedBy(hasDescription && descriptionId, invalid && errorId))
   aria-orientation=orientation
   aria-readonly=(isReadOnly ? 'true' : undefined)
   aria-invalid=(invalid ? 'true' : undefined)

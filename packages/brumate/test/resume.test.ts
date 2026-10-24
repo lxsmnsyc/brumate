@@ -2469,7 +2469,8 @@ describe('controlled props', () => {
     // A missing prop leaves the part its own state.
     click(document.querySelector('.part.free')!);
     await waitFor(() => expect(part('free')).toBe('free: open'));
-    expect(text('.seen')).toBe('free true');
+    // The parent's onChange loads its own code, so it can run after the part has updated.
+    await waitFor(() => expect(text('.seen')).toBe('free true'));
     // A passed prop that is not bound: the part only reports, and shows what the caller keeps.
     click(document.querySelector('.part.held')!);
     await waitFor(() => expect(text('.seen')).toBe('held true'));
