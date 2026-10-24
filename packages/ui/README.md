@@ -32,7 +32,7 @@ The package is private while its first phase is built.
 - `Switch`: a native checkbox with `role="switch"`.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
 - `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
-- `Transition`: animates content in and out, with `data-closed`, `data-enter` and `data-leave`, and keeps it until its leave ends.
+- `Transition` and `TransitionChild`: animate content in and out, with `data-closed`, `data-enter` and `data-leave`, and keep it until its leave ends. Each step waits for the animations of the element, and a child moves with its parent.
 - `Toolbar`: the arrow keys move focus between its items, and Tab stops at one of them.
 - `ToggleButtonGroup`: ToggleButtons with one selection, as radios, or several, as a toolbar.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.

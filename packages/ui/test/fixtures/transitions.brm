@@ -1,10 +1,12 @@
 <script>
   import { $signal } from 'brumate/signals';
   import Transition from '../../src/Transition.brm';
+  import TransitionChild from '../../src/TransitionChild.brm';
   import { logChange } from './log.ts';
 
   let open = $signal(false);
   let shown = $signal(true);
+  let group = $signal(false);
 </script>
 
 <button class="toggle" onClick=(() => (open = !open))>Toggle</button>
@@ -14,11 +16,26 @@
   enter="entering"
   enterFrom="from"
   enterTo="to"
+  entered="rest"
   leave="leaving"
   leaveFrom="to"
   leaveTo="from"
-  onAfterEnter=(() => logChange('entered', true))
-  onAfterLeave=(() => logChange('left', true))
+  afterEnter=(() => logChange('entered', true))
+  afterLeave=(() => logChange('left', true))
 >Panel</Transition>
 <button class="hide" onClick=(() => (shown = !shown))>Hide</button>
 <Transition show=shown unmount=(false) class="kept">Kept</Transition>
+<button class="group" onClick=(() => (group = !group))>Group</button>
+<Transition
+  show=group
+  class="parent"
+  beforeEnter=(() => logChange('parent-enter', true))
+  afterEnter=(() => logChange('parent-entered', true))
+  beforeLeave=(() => logChange('parent-leave', true))
+>
+  <TransitionChild
+    class="child"
+    beforeEnter=(() => logChange('child-enter', true))
+    afterLeave=(() => logChange('child-left', true))
+  >Child</TransitionChild>
+</Transition>

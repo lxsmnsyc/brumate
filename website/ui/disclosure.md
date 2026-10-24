@@ -26,7 +26,7 @@ Disclosures that open one at a time, such as an accordion.
 
 ## Transition
 
-Animates content in and out. It keeps the content in the page until its leave transition ends, which CSS cannot do for content that is removed.
+Animates content in and out. It keeps the content in the page until its leave ends, which CSS cannot do for content that is removed.
 
 ```brm demo TransitionDemo
 
@@ -45,8 +45,31 @@ Animates content in and out. It keeps the content in the page until its leave tr
 }
 ```
 
-- `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` add classes for each step, for a CSS of utility classes.
-- It waits for the end of the transition or the animation of its element, and no longer than its duration.
-- `unmount=(false)` keeps the content in the page while it is closed, with `hidden`.
-- With `prefers-reduced-motion`, nothing waits.
-- `onBeforeEnter`, `onAfterEnter`, `onBeforeLeave` and `onAfterLeave` follow each step.
+- `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` add classes for each step, for a CSS of utility classes. `entered` stays on once the enter has finished.
+- Each step waits until the element has no animation left running, read with `getAnimations()`. An element with no transition moves on at once.
+- The content is `inert` from the start of its leave, so it takes no click or focus while it goes.
+- `unmount` decides what happens once it has left. `true` removes the content, `false` keeps it with `hidden`, and `'offscreen'` keeps it in an [`#offscreen`](../docs/control-flow.md#offscreen) block, with its state.
+- `appear` runs the enter when the browser renders the content, such as in markup that opens later.
+- `beforeEnter`, `afterEnter`, `beforeLeave` and `afterLeave` follow each step. A transition that another one interrupts never reaches its `afterEnter` or `afterLeave`.
+- Reduced motion is for the CSS: a transition that a `prefers-reduced-motion` query removes has nothing to wait for.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .note {
+    transition: none;
+  }
+}
+```
+
+### TransitionChild
+
+An element inside a `Transition` that moves with it. It takes the props of `Transition`, except `show`.
+
+- It enters once its parent has entered. With `appear`, it enters with its parent.
+- Its parent leaves once it has left, so a group animates in from the outside and out from the inside.
+
+```html
+<Transition show=open class="backdrop">
+  <TransitionChild class="panel">The panel slides in after the backdrop fades in.</TransitionChild>
+</Transition>
+```

@@ -1,58 +1,74 @@
-// The timing of Transition: frames, and the end of a CSS transition or animation.
+// The steps of Transition, after the transition state of Terracotta 2.x: the classes of each
+// step go on the element directly, and each step waits for the animations of the element.
 
-/** Calls `callback` after two frames, so the browser draws the first frame of a transition. */
-export function afterFrames(callback: () => void): void {
-  requestAnimationFrame(() => requestAnimationFrame(callback));
+import { createContext } from 'brumate/context';
+import type { Context } from 'brumate/context';
+
+/** The flags of a transition on its element, for CSS without classes. */
+export type Flag = 'closed' | 'enter' | 'leave' | 'transition';
+
+/** What a Transition gives the TransitionChild elements inside it. */
+export interface TransitionParent {
+  /** The parent wants to be shown. */
+  show: boolean;
+  /** The parent has finished its enter, so a child without `appear` may enter. */
+  entered: boolean;
 }
 
-/** The longest duration and delay of a list of times such as `0.2s, 150ms`, in milliseconds. */
-function longest(durations: string, delays: string): number {
-  const read = (list: string): number[] =>
-    list.split(',').map((item) => {
-      const value = Number.parseFloat(item);
-      // A time that the browser does not give is no time.
-      if (Number.isNaN(value)) {
-        return 0;
-      }
-      return item.trim().endsWith('ms') ? value : value * 1000;
-    });
-  const times = read(durations);
-  const waits = read(delays);
-  return Math.max(0, ...times.map((time, index) => time + (waits[index % waits.length] ?? 0)));
+export const TransitionContext: Context<TransitionParent | null> =
+  createContext<TransitionParent | null>('brumate-ui:transition', null);
+
+/** The classes of a class prop: a space-separated list, without the empty ones. */
+export function classesOf(value: string | undefined): string[] {
+  return (value ?? '').split(/\s+/).filter(Boolean);
+}
+
+export function addClasses(element: Element, classes: string[]): void {
+  if (classes.length > 0) {
+    element.classList.add(...classes);
+  }
+}
+
+export function removeClasses(element: Element, classes: string[]): void {
+  if (classes.length > 0) {
+    element.classList.remove(...classes);
+  }
+}
+
+export function setFlags(element: Element, flags: Partial<Record<Flag, boolean>>): void {
+  for (const [flag, on] of Object.entries(flags)) {
+    element.toggleAttribute(`data-${flag}`, on);
+  }
 }
 
 /**
- * Calls `done` when the transition or the animation of the element ends: on its last
- * transitionend or animationend, or after its duration, in case no event comes. An element
- * with no transition, or a reader that asks for reduced motion, calls it at once.
+ * Makes the browser compute the style of the element as it is. A transition runs only between
+ * two computed styles, so the starting state must be computed on its own, before the class with
+ * the `transition` goes on.
  */
-export function waitForTransition(element: HTMLElement | undefined, done: () => void): void {
-  if (!element || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    done();
-    return;
+export function commitStyle(element: Element): void {
+  void getComputedStyle(element).transitionProperty;
+}
+
+/**
+ * Resolves once the element has no animation left running: a CSS transition, a CSS animation
+ * or a Web Animation. With `subtree`, the animations of the elements inside it count too, such
+ * as the leave of a TransitionChild. An element with nothing to animate resolves at once.
+ */
+export async function waitForAnimations(element: Element, subtree = false): Promise<void> {
+  // Reading the animations computes the style, so the classes of every element of a group go
+  // on before any of them is read.
+  await Promise.resolve();
+  try {
+    const animations = element.getAnimations({ subtree });
+    // An animation that is cancelled, such as by the opposite transition, ends the wait too.
+    await Promise.all(animations.map(async (animation) => animation.finished.catch(() => {})));
+  } catch {
+    // A browser without getAnimations goes on at once.
   }
-  const style = getComputedStyle(element);
-  const duration = Math.max(
-    longest(style.transitionDuration, style.transitionDelay),
-    longest(style.animationDuration, style.animationDelay),
-  );
-  if (duration === 0) {
-    done();
-    return;
-  }
-  let finished = false;
-  const finish = (event?: Event): void => {
-    // A transition of an element inside it ends on its own.
-    if (finished || (event && event.target !== element)) {
-      return;
-    }
-    finished = true;
-    clearTimeout(timer);
-    element.removeEventListener('transitionend', finish);
-    element.removeEventListener('animationend', finish);
-    done();
-  };
-  element.addEventListener('transitionend', finish);
-  element.addEventListener('animationend', finish);
-  const timer = setTimeout(finish, duration + 50);
+}
+
+/** Resolves on the next frame, once the browser has drawn the changes before it. */
+export function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }

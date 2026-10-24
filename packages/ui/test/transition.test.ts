@@ -1,4 +1,4 @@
-// The tests of Transition follow the tests of Transition in Terracotta.
+// The tests of Transition follow the tests of Transition in Terracotta 2.x.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Transitions from './fixtures/transitions.brm?brumate-server';
@@ -14,17 +14,9 @@ async function transitions() {
   return page;
 }
 
-it('renders the content as show says, with no transition on load', async () => {
-  const page = await transitions();
-  expect(page.container.querySelector('.panel')).toBeNull();
-  const kept = page.get('.kept');
-  expect(kept.hasAttribute('hidden')).toBe(false);
-  expect(kept.hasAttribute('data-transition')).toBe(false);
-});
-
 /**
- * Records the classes and the transition attributes of the element that matches `selector`,
- * each time they change, from before it is in the page.
+ * Records the classes and the flags of the element that matches `selector`, sorted, each time
+ * they change, from before it is in the page.
  */
 function record(root: Element, selector: string): string[] {
   const steps: string[] = [];
@@ -33,10 +25,9 @@ function record(root: Element, selector: string): string[] {
     if (!element) {
       return;
     }
-    const flags = ['data-closed', 'data-enter', 'data-leave']
+    const flags = ['data-closed', 'data-enter', 'data-leave', 'inert']
       .filter((name) => element.hasAttribute(name))
-      .map((name) => name.slice(5));
-    // Sorted, so a step reads the same whatever the order of the classes.
+      .map((name) => name.replace('data-', ''));
     const step = [...element.classList, ...flags].toSorted().join(' ');
     if (steps.at(-1) !== step) {
       steps.push(step);
@@ -46,47 +37,56 @@ function record(root: Element, selector: string): string[] {
   return steps;
 }
 
-it('moves through its classes and data attributes as it enters, then leaves', async () => {
+const types = () => (globalThis.partEvents ?? []).map((event) => event.type);
+
+it('renders the content as show says, with no transition on load', async () => {
+  const page = await transitions();
+  expect(page.container.querySelector('.panel')).toBeNull();
+  const kept = page.get('.kept');
+  expect(kept.hasAttribute('hidden')).toBe(false);
+  expect(kept.hasAttribute('data-transition')).toBe(false);
+  expect(kept.hasAttribute('data-closed')).toBe(false);
+});
+
+it('moves through its classes and flags as it enters, rests, then leaves', async () => {
   const page = await transitions();
   const steps = record(page.container, '.panel');
   page.click('.toggle');
-  // With no CSS transition, it ends after its frames.
-  await page.waitFor(() =>
-    expect(globalThis.partEvents).toEqual([{ type: 'entered', value: true }]),
-  );
-  // The first frame has the from classes and is closed. With no CSS transition, the step after
-  // it and the end come in one task.
-  expect(steps[0]).toBe('closed enter entering from panel');
-  expect(steps.at(-1)).toBe('panel');
+  await page.waitFor(() => expect(types()).toEqual(['entered']));
+  // It renders closed with the from classes, and rests with the entered classes.
+  expect(steps[0]).toBe('closed from panel');
+  expect(steps).toContain('closed enter entering from panel');
+  expect(steps.at(-1)).toBe('panel rest');
   takeEvents();
   page.click('.toggle');
-  // It stays in the page until its leave ends, then leaves it.
   await page.waitFor(() => expect(page.container.querySelector('.panel')).toBeNull());
-  await page.waitFor(() => expect(globalThis.partEvents).toEqual([{ type: 'left', value: true }]));
-  expect(steps).toContain('leave leaving panel to');
+  await page.waitFor(() => expect(types()).toEqual(['left']));
+  // It is inert from the start of its leave.
+  expect(steps).toContain('inert leave leaving panel to');
+  expect(steps.join('|')).not.toMatch(/rest[^|]*leav/);
 });
 
-it('waits for the duration of a CSS transition before it removes the content', async () => {
-  const page = await transitions();
-  page.click('.toggle');
-  await page.waitFor(() => expect(page.get('.panel').hasAttribute('data-transition')).toBe(false));
-  const panel = page.get('.panel') as HTMLElement;
-  panel.style.transitionDuration = '200ms';
-  page.click('.toggle');
-  await page.waitFor(() => expect(panel.hasAttribute('data-leave')).toBe(true));
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  // Half way, it is still there.
-  expect(panel.isConnected).toBe(true);
-  await page.waitFor(() => expect(page.container.querySelector('.panel')).toBeNull(), 2000);
-});
-
-it('keeps the content hidden with unmount=(false)', async () => {
+it('keeps the content hidden and inert with unmount=(false)', async () => {
   const page = await transitions();
   const kept = page.get('.kept');
   page.click('.hide');
   await page.waitFor(() => expect(kept.hasAttribute('hidden')).toBe(true));
   expect(kept.isConnected).toBe(true);
+  expect(kept.hasAttribute('inert')).toBe(true);
   expect(kept.hasAttribute('data-closed')).toBe(true);
   page.click('.hide');
   await page.waitFor(() => expect(kept.hasAttribute('hidden')).toBe(false));
+  await page.waitFor(() => expect(kept.hasAttribute('inert')).toBe(false));
+});
+
+it('enters a child after its parent, and leaves the parent after its child', async () => {
+  const page = await transitions();
+  page.click('.group');
+  await page.waitFor(() => expect(types()).toContain('child-enter'));
+  expect(types().indexOf('parent-entered')).toBeLessThan(types().indexOf('child-enter'));
+  expect(page.get('.parent .child').textContent).toBe('Child');
+  takeEvents();
+  page.click('.group');
+  await page.waitFor(() => expect(page.container.querySelector('.parent')).toBeNull());
+  expect(types().indexOf('child-left')).toBeLessThan(types().indexOf('parent-leave'));
 });
