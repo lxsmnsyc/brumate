@@ -33,6 +33,12 @@
   // The width of the source pane, in percent, which the divider changes.
   let split = $signal(50);
   let dragging = $signal(false);
+  let nameInput = $signal<HTMLInputElement>();
+
+  // The field for a new name replaces the button that opens it, so focus moves to the field.
+  $effect(() => {
+    nameInput?.focus();
+  });
 
   const language = (name: string): 'brm' | 'ts' => (name.endsWith('.brm') ? 'brm' : 'ts');
   // A line break at the end keeps the last line of the editor and the highlight the same height.
@@ -220,7 +226,7 @@
   <header class="repl-bar">
     <div class="repl-title">
       <h1>REPL</h1>
-      <span class={ status: true, running, failed: !running && Boolean(error) }>
+      <span role="status" class={ status: true, running, failed: !running && Boolean(error) }>
         <i aria-hidden="true"></i>{running ? 'Running' : error ? 'Error' : 'Ready'}
       </span>
     </div>
@@ -240,10 +246,10 @@
   </header>
   <div class={ 'repl-panes': true, dragging } ref=panes>
     <section class="pane repl-source" aria-label="Files">
-      <div class="pane-bar repl-files" role="tablist">
+      <div class="pane-bar repl-files" role="group" aria-label="Files">
         #for (file, index of files by file.name) {
           <span class={ 'repl-file': true, active: index === active }>
-            <button role="tab" aria-selected=(index === active) onClick=(() => (active = index))>
+            <button aria-current=(index === active ? 'true' : undefined) onClick=(() => (active = index))>
               <i class={ 'file-kind': true, ts: !file.name.endsWith('.brm') } aria-hidden="true"></i>{file.name}
             </button>
             #if (index > 0) {
@@ -254,6 +260,7 @@
         #if (adding) {
           <form class="repl-add" onSubmit=(prevent(addFile))>
             <input
+              ref=nameInput
               aria-label="File name"
               placeholder="Name.brm"
               value=draftName
@@ -321,6 +328,8 @@
         }
       })
       onPointerUp=(() => (dragging = false))
+      onPointerCancel=(() => (dragging = false))
+      onLostPointerCapture=(() => (dragging = false))
       onKeyDown=((event) => {
         if (event.key === 'ArrowLeft') {
           split = Math.max(22, split - 4);
@@ -503,7 +512,7 @@
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 50%;
-    background: #2da44e;
+    background: var(--success);
   }
 
   .status.running i {
@@ -512,11 +521,11 @@
   }
 
   .status.failed {
-    color: #d64545;
+    color: var(--danger);
   }
 
   .status.failed i {
-    background: #d64545;
+    background: var(--danger);
   }
 
   @keyframes pulse {
@@ -605,6 +614,7 @@
   .splitter {
     background: var(--border);
     cursor: col-resize;
+    touch-action: none;
     transition: background 0.15s;
   }
 
@@ -666,7 +676,7 @@
   }
 
   .repl-file .repl-remove:hover {
-    color: #d64545;
+    color: var(--danger);
     opacity: 1;
   }
 
@@ -698,7 +708,7 @@
     margin: 0;
     padding: 0.4rem 0.75rem;
     border-bottom: 1px solid var(--border);
-    color: #d64545;
+    color: var(--danger);
     font-size: 0.8rem;
   }
 
@@ -765,6 +775,12 @@
     outline: none;
   }
 
+  /* The textarea has no outline, so the editor shows the focus instead. */
+  .editor:has(textarea:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
   .editor textarea::selection {
     background: color-mix(in srgb, var(--accent) 30%, transparent);
     color: transparent;
@@ -808,8 +824,8 @@
   }
 
   .repl-count.bad {
-    background: #d64545;
-    color: #fff;
+    background: var(--danger);
+    color: var(--bg);
   }
 
   .tools {
@@ -858,12 +874,6 @@
 
   .repl .tool:hover {
     color: var(--text);
-  }
-
-  .repl .tool[aria-pressed='true'] {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent-strong);
   }
 
   .preview {
@@ -927,13 +937,13 @@
   .error-card {
     width: min(36rem, 100%);
     padding: 1rem 1.15rem;
-    border: 1px solid color-mix(in srgb, #d64545 40%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
     border-radius: var(--radius);
     background: var(--bg);
   }
 
   .eyebrow {
-    color: #d64545;
+    color: var(--danger);
     font-size: 0.75rem;
     font-weight: 700;
   }
@@ -1064,13 +1074,13 @@
   }
 
   .repl-log.warn {
-    background: color-mix(in srgb, #b7791f 10%, transparent);
-    color: #b7791f;
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+    color: var(--warn);
   }
 
   .repl-log.error {
-    background: color-mix(in srgb, #d64545 10%, transparent);
-    color: #d64545;
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    color: var(--danger);
   }
 
   .repl-log.empty {
@@ -1085,8 +1095,8 @@
     margin: 0;
     padding: 0.6rem 1rem 0.6rem 2rem;
     border-top: 1px solid var(--border);
-    background: color-mix(in srgb, #b7791f 8%, transparent);
-    color: #b7791f;
+    background: color-mix(in srgb, var(--warn) 8%, transparent);
+    color: var(--warn);
     font-size: 0.8rem;
   }
 
