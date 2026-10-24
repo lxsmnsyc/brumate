@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import SpreadStyledBox from './SpreadStyledBox.brm';
+
+  let size = $signal(12);
+  let margin = $signal(2);
+</script>
+
+<SpreadStyledBox size=size style=(`margin: ${margin}px`) />
+<button class="grow" onClick=(() => size++)>Grow</button>
+<button class="wider" onClick=(() => margin++)>Wider</button>

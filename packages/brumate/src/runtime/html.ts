@@ -237,7 +237,10 @@ export function styleElement(id: string, css: string): string {
  * Merges the attributes of an element that has spreads, in their order: a
  * later value wins, except `class`, whose values all apply.
  */
-export function mergeAttributes(parts: Record<string, unknown>[]): Record<string, unknown> {
+export function mergeAttributes(
+  parts: Record<string, unknown>[],
+  variables?: Record<string, unknown>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const part of parts) {
     for (const [name, value] of Object.entries(part ?? {})) {
@@ -246,6 +249,10 @@ export function mergeAttributes(parts: Record<string, unknown>[]): Record<string
           ? [result.class, value]
           : value;
     }
+  }
+  // The style variables of the component come before the style that won, whoever gave it.
+  if (variables) {
+    result.style = vars(variables, result.style);
   }
   return result;
 }
