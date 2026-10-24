@@ -2035,6 +2035,19 @@ describe('head in #loading', () => {
   });
 });
 
+describe('removed portals', () => {
+  it('removes the portal of a component, and runs its cleanups, when a block removes the component', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    click(document.querySelector('.portal-remove')!);
+    await waitFor(() => expect(document.querySelector('.portal-open')).toBeNull());
+    expect(document.querySelector('.owned-portal')).toBeNull();
+    expect(document.body.dataset.cleanups).toBe('1');
+    delete document.body.dataset.cleanups;
+  });
+});
+
 describe('portal targets', () => {
   it('moves the body of a #portal when its target changes', async () => {
     await resume('movingPortal', {});

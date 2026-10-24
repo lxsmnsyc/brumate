@@ -1,0 +1,21 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  // Opens a portal from the browser, and counts the cleanups of its effect on the page.
+  let on = $signal(false);
+  $effect(() => {
+    if (!on) {
+      return undefined;
+    }
+    return () => {
+      document.body.dataset.cleanups = String(Number(document.body.dataset.cleanups ?? 0) + 1);
+    };
+  });
+</script>
+
+<button class="portal-open" onClick=(() => (on = true))>Open</button>
+#if (on) {
+  #portal ('body') {
+    <div class="owned-portal">Owned</div>
+  }
+}
