@@ -462,6 +462,86 @@
     }
   }
 
+  /* Overlays are above the header of the site, which has a z-index of its own. */
+  :global([data-modal-overlay]),
+  :global(.ui-popover) {
+    z-index: 20;
+  }
+
+  /* A modal fades in over a dim backdrop, and a sheet slides in from its edge. */
+  :global(.ui-backdrop),
+  :global([data-modal-overlay]:has(> .ui-sheet)) {
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(0 0 0 / 45%);
+    transition: opacity 0.2s;
+  }
+
+  :global(.ui-backdrop[data-closed]),
+  :global([data-modal-overlay][data-closed]:has(> .ui-sheet)) {
+    opacity: 0;
+  }
+
+  :global(.ui-modal) {
+    width: min(24rem, 100%);
+    max-height: calc(var(--visual-viewport-height) * 0.9);
+    overflow: auto;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: 0 24px 48px rgb(0 0 0 / 25%);
+    outline: none;
+    transition: scale 0.2s;
+  }
+
+  :global([data-closed] > .ui-modal) {
+    scale: 0.96;
+  }
+
+  :global(.ui-actions) {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  :global(.ui-sheet) {
+    position: fixed;
+    inset-block: 0;
+    width: min(18rem, 85vw);
+    padding: 1.25rem;
+    border-inline: 1px solid var(--border);
+    background: var(--bg);
+    outline: none;
+    transition: translate 0.25s;
+  }
+
+  :global(.ui-sheet[data-side='left']) {
+    left: 0;
+  }
+
+  :global(.ui-sheet[data-side='right']) {
+    right: 0;
+  }
+
+  :global([data-closed] > .ui-sheet[data-side='left']) {
+    translate: -100% 0;
+  }
+
+  :global([data-closed] > .ui-sheet[data-side='right']) {
+    translate: 100% 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.ui-backdrop),
+    :global(.ui-modal),
+    :global(.ui-sheet),
+    :global([data-modal-overlay]:has(> .ui-sheet)) {
+      transition: none;
+    }
+  }
+
   /* A popover fades and rises from the side of its trigger. */
   :global(.ui-popover) {
     max-width: 20rem;

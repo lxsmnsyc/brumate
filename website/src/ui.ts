@@ -113,6 +113,36 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     demo: 'GroupDemo',
   },
   {
+    title: 'Disclosure',
+    summary: 'A section that expands and collapses.',
+    href: 'disclosure',
+    demo: 'DisclosureDemo',
+  },
+  {
+    title: 'Transition',
+    summary: 'Animates content as it comes and goes.',
+    href: 'disclosure#transition',
+    demo: 'TransitionDemo',
+  },
+  {
+    title: 'Popover',
+    summary: 'An overlay beside its trigger, with layers inside.',
+    href: 'overlays#popover',
+    demo: 'PopoverDemo',
+  },
+  {
+    title: 'Modal',
+    summary: 'A dialog over the page, which it locks.',
+    href: 'overlays#modal',
+    demo: 'ModalDemo',
+  },
+  {
+    title: 'Sheet',
+    summary: 'A modal along an edge of the window.',
+    href: 'overlays#sheet',
+    demo: 'SheetDemo',
+  },
+  {
     title: 'Breadcrumbs',
     summary: 'A trail to the current page.',
     href: 'structure#breadcrumbs',

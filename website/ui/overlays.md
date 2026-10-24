@@ -1,6 +1,6 @@
 # Overlays
 
-Content above the page: `DialogTrigger`, `Popover`, `Dialog` and `OverlayArrow`.
+Content above the page: `DialogTrigger`, `Popover`, `ModalOverlay`, `Modal`, `Sheet`, `Dialog` and `OverlayArrow`.
 
 ## Popover
 
@@ -24,9 +24,47 @@ An overlay beside its trigger, such as a menu of settings.
 - It is modal: the rest of the page is `inert`, and focus stays inside. Tab and Shift+Tab wrap at its ends, and focus that lands outside or on nothing, such as when the focused element is removed, goes back to the last element that had it. `isNonModal` leaves the page and focus as they are.
 - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`, as a [Transition](./disclosure.md#transition) does.
 
+## Modal
+
+A dialog over the page, which the user deals with before they go on, such as a confirmation.
+
+```brm demo ModalDemo
+
+```
+
+- A `ModalOverlay` covers the window, and holds a `Modal`, the box of the dialog. A `Modal` on its own renders its overlay too, and takes the props of the overlay.
+- It opens from a `DialogTrigger`, or from its own `isOpen`. See [State](./state.md).
+- The overlay is `position: fixed` over the whole window. It has `data-modal-overlay`, and sets `--visual-viewport-height`, the height of the window without a keyboard on the screen. The Modal has `data-modal`.
+- While it is open, the rest of the page is `inert` and does not scroll. The root gets `overflow: hidden`, and a padding as wide as the scrollbar, so the page does not move sideways.
+- Focus moves into it and stays inside, as in a modal popover, and goes back when it closes.
+- Escape closes it, unless `isKeyboardDismissDisabled`. A press on the overlay, outside the Modal, closes it only with `isDismissable`.
+- `transition` on the overlay lets CSS animate the overlay and the Modal, with `data-closed`, `data-enter` and `data-leave` on the overlay. It waits for the animations of both:
+
+```css
+.backdrop[data-closed] {
+  opacity: 0;
+}
+
+.backdrop[data-closed] > .modal {
+  scale: 0.96;
+}
+```
+
+## Sheet
+
+A Modal along an edge of the window, such as a menu or a panel of filters.
+
+```brm demo SheetDemo
+
+```
+
+- It is a `Modal` with `data-sheet` and `data-side`. CSS places it, since only the page knows how wide it is.
+- `side` is `start`, the default, `end`, `top` or `bottom`. `start` and `end` follow the direction of the locale, so `data-side` is `left`, `right`, `top` or `bottom`.
+- A press outside closes it, unless `isDismissable=(false)`.
+
 ## Layers
 
-A popover renders a layer: an element of its own, which holds its panel. A popover that opens inside it renders at the end of that layer, not at the end of the page.
+A popover or a modal renders a layer: an element of its own, which holds its panel. An overlay that opens inside it renders at the end of that layer, not at the end of the page.
 
 - The inner popover is above the outer one, since it comes after it, with no `z-index`.
 - A press in the inner popover is a press inside the outer one, so the outer one stays open. Escape closes the inner one first.

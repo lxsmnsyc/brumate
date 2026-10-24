@@ -243,6 +243,20 @@ export function clientState(graph: Graph): {
       addClientSite(site);
     }
   }
+  // The update of a block reads all of its header, such as each condition of `#if` and
+  // `#else if`, when one of them changes. So a condition that never changes, such as one of
+  // `$isPassed`, is read in the browser too.
+  const liveBlocks = new Set<Block>();
+  for (const site of clientSites) {
+    if (site.block) {
+      liveBlocks.add(site.block);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.block && liveBlocks.has(site.block)) {
+      addClientSite(site);
+    }
+  }
 
   const slots = new Map<Scope, Declaration[]>();
   for (const scope of model.scopes) {

@@ -1,0 +1,59 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Heading from '../../src/Heading.brm';
+  import Modal from '../../src/Modal.brm';
+  import ModalOverlay from '../../src/ModalOverlay.brm';
+  import Popover from '../../src/Popover.brm';
+  import Sheet from '../../src/Sheet.brm';
+
+  let open = $signal(false);
+  let sheet = $signal(false);
+</script>
+
+<main class="page">
+  <button class="outside" type="button">Outside</button>
+  <DialogTrigger isOpen=$bind(open)>
+    <Button class="trigger">Delete</Button>
+    <ModalOverlay class="overlay">
+      <Modal class="modal">
+        <Dialog class="dialog">
+          <Heading slot="title">Delete the file</Heading>
+          <input class="name" aria-label="Name">
+          <DialogTrigger>
+            <Button class="inner-trigger">Why</Button>
+            <Popover class="inner-popover">
+              <Dialog class="inner-dialog" aria-label="Why">
+                <Button class="inner-button">Because</Button>
+              </Dialog>
+            </Popover>
+          </DialogTrigger>
+          <Button slot="close" class="close">Cancel</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="alert-trigger">Alert</Button>
+    <Modal class="alert" isKeyboardDismissDisabled transition>
+      <Dialog role="alertdialog" class="alert-dialog" aria-label="Alert">
+        <Button slot="close" class="alert-close">OK</Button>
+      </Dialog>
+    </Modal>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="light-trigger">Light</Button>
+    <Modal class="light" isDismissable>
+      <Dialog class="light-dialog" aria-label="Light">Light</Dialog>
+    </Modal>
+  </DialogTrigger>
+  <button class="sheet-trigger" type="button" onClick=(() => (sheet = true))>Menu</button>
+  <Sheet class="sheet" isOpen=$bind(sheet)>
+    <Dialog class="sheet-dialog" aria-label="Menu">
+      <Button slot="close" class="sheet-close">Close</Button>
+    </Dialog>
+  </Sheet>
+  <p class="state">{String(open)} {String(sheet)}</p>
+</main>

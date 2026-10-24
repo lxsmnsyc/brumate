@@ -90,6 +90,8 @@
   $setContext(LayerContext, { id: layerId });
   $setContext(DialogContext, { close });
   $setContext(TransitionContext, { show: wanted, entered: rested });
+  // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
+  $setContext(OverlayTriggerContext, null);
 
   function close() {
     if (own) {

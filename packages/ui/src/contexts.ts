@@ -205,3 +205,11 @@ export const DialogContext: Context<DialogState | null> = createContext<DialogSt
   'brumate-ui:dialog',
   null,
 );
+
+/** Set inside a ModalOverlay, so the Modal inside renders only its box. */
+export interface ModalOverlayState {
+  close: () => void;
+}
+
+export const ModalOverlayContext: Context<ModalOverlayState | null> =
+  createContext<ModalOverlayState | null>('brumate-ui:modal-overlay', null);
