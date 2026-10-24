@@ -330,6 +330,7 @@ Settled on 2026-10-24:
 - **React Aria and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they do, and their tests and docs are the specification.
 - **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. React Aria and Terracotta mount every overlay at the end of `<body>`, so this is where the parts differ from them.
 - **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
+- **Docs of their own.** The docs of `@brumate/ui` are on the website, at `/ui`, apart from the docs of brumate. The section has its own navigation, sidebar and search, and shows only the parts. It links to the docs of brumate for the features that the parts use, and the docs of brumate link to it once.
 - **Bindable state.** The state props of the parts, such as `open`, `value` and `checked`, are bindable, so a caller writes `open=$bind(settingsOpen)`.
 
 #### Layers
@@ -449,7 +450,7 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
 3. **Phases 1, 2 and 3**, the controls and fields, the overlays, and the collections with `Select`, in that order, as the roadmap below says.
 4. **Phases 4 to 7**, as users ask for them.
 
-Each phase ships with tests that follow the behaviour of React Aria, an accessibility check, docs in `website/docs/ui` with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
+Each phase ships with tests that follow the behaviour of React Aria, an accessibility check, docs in the `/ui` section of the website with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
 
 `packages/ui` stays in this repository while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's.
 
