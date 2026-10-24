@@ -1310,7 +1310,10 @@ class ClientGenerator {
         if (site.scope !== scope || !within(site.node as { start: number; end: number })) {
           continue;
         }
-        for (const callee of site.calls) {
+        // The templates that the children call, and those that they pass on, such as a prop
+        // `render=label`.
+        const used = [...site.calls, ...site.reads.map((read) => read.declaration)];
+        for (const callee of used) {
           const template =
             callee.kind === 'template'
               ? this.model.scopes.find(
