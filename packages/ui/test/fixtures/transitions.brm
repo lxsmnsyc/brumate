@@ -1,0 +1,24 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Transition from '../../src/Transition.brm';
+  import { logChange } from './log.ts';
+
+  let open = $signal(false);
+  let shown = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<Transition
+  show=open
+  class="panel"
+  enter="entering"
+  enterFrom="from"
+  enterTo="to"
+  leave="leaving"
+  leaveFrom="to"
+  leaveTo="from"
+  onAfterEnter=(() => logChange('entered', true))
+  onAfterLeave=(() => logChange('left', true))
+>Panel</Transition>
+<button class="hide" onClick=(() => (shown = !shown))>Hide</button>
+<Transition show=shown unmount=(false) class="kept">Kept</Transition>

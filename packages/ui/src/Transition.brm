@@ -1,0 +1,132 @@
+<script>
+  import { $effect, $memo, $props, $signal, $untrack } from 'brumate/signals';
+  import { afterFrames, waitForTransition } from './transition.ts';
+
+  /**
+   * Animates content in and out, as Transition of Terracotta does. It keeps the content in the
+   * page until its leave transition ends, which CSS cannot do for content that is removed.
+   *
+   * - `enter`, `enterFrom` and `enterTo` are the classes of the enter transition: `enter` for its
+   *   whole length, `enterFrom` for its first frame, and `enterTo` after it. `leave`,
+   *   `leaveFrom` and `leaveTo` are the same for the leave transition.
+   * - It shows `data-closed` while the content is closed or about to open, and `data-enter`,
+   *   `data-leave` and `data-transition` while it moves, so CSS can animate it without classes.
+   * - The page renders the content as `show` says, with no transition on load.
+   * - `unmount=(false)` keeps the content in the page while it is closed, with `hidden`.
+   * - With `prefers-reduced-motion`, nothing waits.
+   */
+  const {
+    as = 'div',
+    show,
+    unmount = true,
+    enter = '',
+    enterFrom = '',
+    enterTo = '',
+    leave = '',
+    leaveFrom = '',
+    leaveTo = '',
+    onBeforeEnter,
+    onAfterEnter,
+    onBeforeLeave,
+    onAfterLeave,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    show: boolean;
+    unmount?: boolean;
+    enter?: string;
+    enterFrom?: string;
+    enterTo?: string;
+    leave?: string;
+    leaveFrom?: string;
+    leaveTo?: string;
+    onBeforeEnter?: () => void;
+    onAfterEnter?: () => void;
+    onBeforeLeave?: () => void;
+    onAfterLeave?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  // The content is in the page: open, or closing.
+  let mounted = $signal(show);
+  // The transition that runs, and its step: its first frame, or after it.
+  let phase = $signal<'idle' | 'enter' | 'leave'>('idle');
+  let step = $signal<'from' | 'to'>('from');
+  // Each change of `show` starts a run, and a later run stops an earlier one.
+  let run = $signal(0);
+  let element = $signal<HTMLElement>();
+
+  const classes = $memo(
+    [
+      phase === 'enter' ? enter : '',
+      phase === 'enter' && step === 'from' ? enterFrom : '',
+      phase === 'enter' && step === 'to' ? enterTo : '',
+      phase === 'leave' ? leave : '',
+      phase === 'leave' && step === 'from' ? leaveFrom : '',
+      phase === 'leave' && step === 'to' ? leaveTo : '',
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined,
+  );
+  // Closed while it waits to open, once it starts to close, and while it is closed.
+  const closed = $memo(
+    (phase === 'enter' && step === 'from') ||
+      (phase === 'leave' && step === 'to') ||
+      (phase === 'idle' && !show),
+  );
+
+  function finish(token: number, opening: boolean) {
+    if (token !== run) {
+      return;
+    }
+    phase = 'idle';
+    if (opening) {
+      onAfterEnter?.();
+    } else {
+      mounted = false;
+      onAfterLeave?.();
+    }
+  }
+
+  $effect(() => {
+    const opening = show;
+    $untrack(start(opening));
+  });
+
+  function start(opening: boolean) {
+    run += 1;
+    const token = run;
+    if (opening) {
+      mounted = true;
+      onBeforeEnter?.();
+    } else {
+      onBeforeLeave?.();
+    }
+    phase = opening ? 'enter' : 'leave';
+    step = 'from';
+    // The first frame shows the from classes. The next one moves to the to classes, which the
+    // browser animates.
+    afterFrames(() => {
+      if (token !== run) {
+        return;
+      }
+      step = 'to';
+      waitForTransition(element, () => finish(token, opening));
+    });
+  }
+</script>
+
+#if (mounted || !unmount) {
+  <{as}
+    ref=element
+    class=classes
+    hidden=(!mounted || undefined)
+    data-closed=(closed || undefined)
+    data-enter=(phase === 'enter' || undefined)
+    data-leave=(phase === 'leave' || undefined)
+    data-transition=(phase !== 'idle' || undefined)
+    {...rest}
+  >{children}</>
+}
