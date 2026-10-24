@@ -1,0 +1,18 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import { ButtonContext } from '../../src/contexts.ts';
+
+  let count = $signal(0);
+  let own = $signal(0);
+  $setContext(ButtonContext, {
+    slots: {
+      increment: { 'aria-label': 'Increment', onPress: () => count++ },
+      decrement: { 'aria-label': 'Decrement', onPress: () => count--, isDisabled: count <= 0 },
+    },
+  });
+</script>
+
+<Button class="up" slot="increment" onPress=(() => own++)>+</Button>
+<Button class="down" slot="decrement">-</Button>
+<p class="count">{count} {own}</p>
