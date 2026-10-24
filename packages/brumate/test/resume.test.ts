@@ -2232,6 +2232,28 @@ describe('style variables on dynamic tags', () => {
   });
 });
 
+describe('style variables with a spread', () => {
+  it('keeps the style that a spread passes on, next to the style variables', async () => {
+    await resume('spreadStyled', {});
+    const box = document.querySelector<HTMLElement>('div.box')!;
+    const tag = document.querySelector<HTMLElement>('section.tag')!;
+    // The style of the spread replaces the element's own, as a later attribute does.
+    expect(box.getAttribute('style')).toMatch(/^--s-\w+-0:12px;margin: 2px$/);
+    expect(tag.getAttribute('style')).toMatch(/^--s-\w+-0:12px;margin: 2px$/);
+    click(document.querySelector('.grow')!);
+    const name = box.getAttribute('style')!.split(':')[0]!;
+    await waitFor(() => expect(box.style.getPropertyValue(name)).toBe('13px'));
+    expect(tag.style.getPropertyValue(name)).toBe('13px');
+    expect(box.style.margin).toBe('2px');
+    // A new style from the spread keeps the style variables.
+    click(document.querySelector('.wider')!);
+    await waitFor(() => expect(box.style.margin).toBe('3px'));
+    await waitFor(() => expect(tag.style.margin).toBe('3px'));
+    expect(box.style.getPropertyValue(name)).toBe('13px');
+    expect(tag.style.getPropertyValue(name)).toBe('13px');
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];

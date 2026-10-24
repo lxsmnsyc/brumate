@@ -1001,17 +1001,20 @@ export class Emitter {
 
   /**
    * The style attribute of a top-level element, with the style variables of
-   * the component, so the elements inside inherit them.
+   * the component, so the elements inside inherit them. An element with
+   * spreads gets them after its attributes merge, so it returns them as code,
+   * and the style of a spread does not take the place of the variables.
    */
-  private emitVariables(node: ElementNode): boolean {
+  private emitVariables(node: ElementNode): string | undefined {
     const { variables } = this.plan.styles;
     if (variables.length === 0 || this.nesting > 0) {
-      return false;
+      return undefined;
     }
-    const values = variables.map(
-      (variable) =>
-        `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
-    );
+    const values = this.variableValues();
+    if (node.attributes.some((attribute) => attribute.kind === 'spread')) {
+      this.emitLiveStyles();
+      return values;
+    }
     const own = node.attributes.find(
       (attribute) =>
         (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style',
@@ -1022,14 +1025,27 @@ export class Emitter {
     } else if (own?.kind === 'value') {
       existing = this.expression(own.value);
     }
-    this.code(`$$b.attribute("style", $$b.vars({ ${values.join(', ')} }, ${existing}))`);
+    this.code(`$$b.attribute("style", $$b.vars(${values}, ${existing}))`);
+    this.emitLiveStyles();
+    return values;
+  }
+
+  /** The style variables of the component and their values, as an object in code. */
+  private variableValues(): string {
+    const values = this.plan.styles.variables.map(
+      (variable) =>
+        `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
+    );
+    return `{ ${values.join(', ')} }`;
+  }
+
+  private emitLiveStyles(): void {
     if (this.plan.liveStyles) {
       // Marks the element, so changes to the variables reach it.
       this.html(' b-v="');
       this.code(this.scopeVar(this.plan.graph.model.component));
       this.html('"');
     }
-    return true;
   }
 
   /**
@@ -1098,7 +1114,7 @@ export class Emitter {
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
     }
-    const ownStyle = this.emitVariables(node);
+    const variables = this.emitVariables(node);
     const events: string[] = [];
     let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
@@ -1109,7 +1125,8 @@ export class Emitter {
       : undefined;
     for (const attribute of node.attributes) {
       if (
-        ownStyle &&
+        variables &&
+        !merged &&
         (attribute.kind === 'static' || attribute.kind === 'value') &&
         attribute.name === 'style'
       ) {
@@ -1176,7 +1193,7 @@ export class Emitter {
     }
     if (merged) {
       this.code(
-        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}])${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
       );
     }
     if (anchor) {
@@ -1508,7 +1525,21 @@ export class Emitter {
     }
     let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     const { variables } = this.plan.styles;
+    // With a spread, the style variables go on after the attributes merge, so the style of the
+    // spread does not take their place.
+    let spreadVariables: string | undefined;
     if (variables.length > 0 && this.nesting === 0) {
+      if (this.plan.liveStyles) {
+        extra.push(`"b-v": ${this.scopeVar(this.plan.graph.model.component)}`);
+      }
+    }
+    if (
+      variables.length > 0 &&
+      this.nesting === 0 &&
+      attributes.some((attribute) => attribute.kind === 'spread')
+    ) {
+      spreadVariables = this.variableValues();
+    } else if (variables.length > 0 && this.nesting === 0) {
       // A top-level dynamic tag sets the style variables, as a top-level element does.
       const own = attributes.find(
         (attribute) =>
@@ -1521,18 +1552,11 @@ export class Emitter {
         existing = this.expression(own.value);
       }
       attributes = attributes.filter((attribute) => attribute !== own);
-      const values = variables.map(
-        (variable) =>
-          `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
-      );
-      extra.push(`"style": $$b.vars({ ${values.join(', ')} }, ${existing})`);
-      if (this.plan.liveStyles) {
-        extra.push(`"b-v": ${this.scopeVar(this.plan.graph.model.component)}`);
-      }
+      extra.push(`"style": $$b.vars(${this.variableValues()}, ${existing})`);
     }
     this.code(
       this.ready(
-        `$$b.dynamic(${this.expression(node.tag)}, ${this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+        `$$b.dynamic(${this.expression(node.tag)}, ${spreadVariables ? `$$b.mergeAttributes([${this.dynamicProps(attributes, scope, extra)}], ${spreadVariables})` : this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
       ),
     );
     // `ref` gets the element that the tag renders. A tag that names a component has none.
