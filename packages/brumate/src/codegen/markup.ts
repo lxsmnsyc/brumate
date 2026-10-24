@@ -850,10 +850,15 @@ export class Emitter {
         const anchor = this.anchor(scope, node);
         // On the server, the insert knows where it is, for markup that renders there, such as children.
         // In the browser, only a prop can hold children, which render where they are inserted.
-        const ast = node.expression.ast;
-        const kind = ast.type === 'Identifier' ? lookup(scope, ast.name)?.kind : undefined;
+        // A value that reads a prop can be children, or a template that a prop holds, such as
+        // `{item(label)}`, which render where they are inserted too.
+        const readsProp = this.sitesByNode
+          .get(node.expression.ast)
+          ?.reads.some(
+            (read) => read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
+          );
         const at =
-          this.options.mode === 'server' || kind === 'prop' || kind === 'props-rest'
+          this.options.mode === 'server' || readsProp
             ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.

@@ -1,0 +1,10 @@
+<script>
+  import TplContextList from './TplContextList.brm';
+  import TplReader from './TplReader.brm';
+</script>
+
+<TplContextList item=row />
+
+#template row(label: string) {
+  <TplReader label=label />
+}

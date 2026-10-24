@@ -1,0 +1,12 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Renders a template of its caller for each item, with items that the browser adds.
+  const { item } = $props<{ item: (label: string) => unknown }>();
+  let labels = $signal<string[]>([]);
+</script>
+
+<button class="tpl-add" onClick=(() => (labels = [...labels, `item ${labels.length + 1}`]))>Add</button>
+#for (label of labels) {
+  {item(label)}
+}

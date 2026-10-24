@@ -371,11 +371,11 @@ class ClientGenerator {
   }
 
   /** The import statements for the names that some code reads. */
-  private importsFor(names: Set<string>, components: boolean): string[] {
-    if (components) {
-      for (const scope of this.renderedScopes()) {
-        componentNames(scope.body?.children ?? [], names);
-      }
+  private importsFor(names: Set<string>, components: boolean | Scope[]): string[] {
+    // `true` for the scopes that render functions render, or the scopes of a template part.
+    const rendered = components === true ? this.renderedScopes() : components || [];
+    for (const scope of rendered) {
+      componentNames(scope.body?.children ?? [], names);
     }
     const result: string[] = [];
     for (const program of this.programs()) {
@@ -424,7 +424,7 @@ class ClientGenerator {
       .map((item) => (item.kind === 'function' ? `${item.name}$` : item.name));
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(names, name === 'update'),
+      ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
     ];
     if (shared.length > 0) {
       lines.push(
@@ -447,7 +447,10 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(imports, true),
+      ...this.importsFor(imports, [
+        ...this.renderedScopes(),
+        ...names.flatMap((name) => this.templateScopes(name)),
+      ]),
       '',
       ...this.serverStubs(names),
     ];
@@ -545,6 +548,31 @@ class ClientGenerator {
 
   private usesModuleScript(): boolean {
     return [...this.clientReads()].some((declaration) => declaration.kind === 'module');
+  }
+
+  /**
+   * The scopes of the templates that a template part renders, such as a template that is passed
+   * to a component as a prop, which can render components of its own.
+   */
+  private templateScopes(part: string): Scope[] {
+    const result: Scope[] = [];
+    for (const [site, symbol] of this.plan.symbols) {
+      if (symbol !== part || !symbol.startsWith('t')) {
+        continue;
+      }
+      for (const callee of site.calls) {
+        const template =
+          callee.kind === 'template'
+            ? this.model.scopes.find(
+                (item) => item.template?.name === callee.name && item.parent === callee.scope,
+              )
+            : undefined;
+        if (template) {
+          result.push(...this.inside(template));
+        }
+      }
+    }
+    return result;
   }
 
   /** Every scope that a render function of this module renders, including templates. */
