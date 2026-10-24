@@ -194,6 +194,17 @@ export function addValueEdits(
         if (declaration && mode === 'server') {
           // The server computes a memo when it is read. Memos that it reads are read as memos,
           // so a value that is still loading stops it until the load settles.
+          // A memo in a shorthand property, such as `{ id }`, keeps its key.
+          const shorthands = new Set<number>();
+          const findShorthands = (current: oxc.Node): void => {
+            if (current.type === 'Property' && current.shorthand) {
+              shorthands.add(current.value.start);
+            }
+            for (const [, child] of children(current)) {
+              findShorthands(child);
+            }
+          };
+          findShorthands(argument);
           for (const read of site!.reads) {
             if (
               read.range.start !== read.range.end &&
@@ -203,10 +214,11 @@ export function addValueEdits(
             ) {
               // A read with `await` is the read: the value throws when it is still loading.
               const range = read.await ?? read.range;
+              const key = shorthands.has(range.start) ? `${read.declaration.name}: ` : '';
               patch.replace(
                 range.start,
                 range.end,
-                `$$b.read(${promiseName(read.declaration.name)})`,
+                `${key}$$b.read(${promiseName(read.declaration.name)})`,
               );
               replaced.add(read);
             }
