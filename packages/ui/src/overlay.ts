@@ -98,29 +98,89 @@ export function pressOutside(
 /** What an open overlay holds on the page, which closing gives back, by its element. */
 interface Held {
   stops: (() => void)[];
+  /** The element that had focus before the overlay opened. */
   returnTo: Element | null;
+  /** Where the selection was, for when no element had focus, as Terracotta keeps it. */
+  startPoint: HTMLElement | null;
+  /** The ID of the trigger, which a trigger that rendered again keeps. */
+  triggerId: string | undefined;
 }
 
 const held = new WeakMap<Element, Held>();
 
-/** Keeps what an open overlay holds: the functions that stop what it started, and the focus. */
-export function hold(overlay: Element, stops: (() => void)[], returnTo: Element | null): void {
-  held.set(overlay, { stops, returnTo });
+/** The element of the selection, which Tab moves on from when no element has focus. */
+function selectionPoint(): HTMLElement | null {
+  const node = window.getSelection()?.focusNode;
+  // The focus of a selection is a text node, or an element when the selection ends between nodes.
+  return node instanceof HTMLElement ? node : (node?.parentElement ?? null);
 }
 
 /**
- * Gives back what an open overlay held. Focus goes back to where it was, when it is still in
- * the overlay's layer or nowhere.
+ * Makes `element` the point that the next Tab moves on from, without leaving focus on it: it
+ * takes focus for a moment, as Terracotta does.
+ */
+function setStartPoint(element: HTMLElement): void {
+  const tabindex = element.getAttribute('tabindex');
+  element.setAttribute('tabindex', '-1');
+  element.focus({ preventScroll: true });
+  element.blur();
+  if (tabindex === null) {
+    element.removeAttribute('tabindex');
+  } else {
+    element.setAttribute('tabindex', tabindex);
+  }
+}
+
+/** True for an element that can take focus back: in the page, and not inert or disabled. */
+function canFocus(element: Element | null | undefined): element is HTMLElement {
+  return (
+    element instanceof HTMLElement &&
+    element !== document.body &&
+    element.isConnected &&
+    !element.closest('[inert]') &&
+    !(element as HTMLButtonElement).disabled
+  );
+}
+
+/**
+ * Keeps what an open overlay holds: the functions that stop what it started, and where focus
+ * was before it opened.
+ */
+export function hold(
+  overlay: Element,
+  stops: (() => void)[],
+  returnTo: Element | null,
+  triggerId?: string,
+): void {
+  held.set(overlay, { stops, returnTo, startPoint: selectionPoint(), triggerId });
+}
+
+/**
+ * Gives back what an open overlay held. Focus goes back when it is still in the overlay's layer
+ * or nowhere, so a closing overlay never takes it from where the user just put it. It goes to
+ * the element that had it before the overlay opened, or else to the trigger, found again by its
+ * ID, or else Tab moves on from where the selection was.
  */
 export function release(overlay: Element, layer: Element | undefined): void {
   const entry = held.get(overlay);
+  if (!entry) {
+    return;
+  }
   held.delete(overlay);
-  for (const stop of entry?.stops ?? []) {
+  for (const stop of entry.stops) {
     stop();
   }
   const active = document.activeElement;
-  if (!active || active === document.body || layer?.contains(active)) {
-    (entry?.returnTo as HTMLElement | null)?.focus?.({ preventScroll: true });
+  if (active && active !== document.body && !layer?.contains(active) && active.isConnected) {
+    return;
+  }
+  const trigger = entry.triggerId ? document.getElementById(entry.triggerId) : null;
+  if (canFocus(entry.returnTo)) {
+    entry.returnTo.focus({ preventScroll: true });
+  } else if (canFocus(trigger)) {
+    trigger.focus({ preventScroll: true });
+  } else if (entry.startPoint?.isConnected) {
+    setStartPoint(entry.startPoint);
   }
 }
 

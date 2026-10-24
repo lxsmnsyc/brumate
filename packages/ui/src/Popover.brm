@@ -111,7 +111,7 @@
     }
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
     const stops: (() => void)[] = [];
-    hold(element, stops, returnTo);
+    hold(element, stops, returnTo, trigger?.triggerId);
     if (anchor) {
       stops.push(
         followTrigger(
@@ -163,6 +163,14 @@
   $effect(() => {
     const next = wanted;
     $untrack(change(next));
+    // When the popover leaves the page while it is open, such as with an #if around it, its
+    // panel goes with it, and what it held on the page is given back.
+    return () => {
+      const element = panel;
+      if (element && !element.isConnected) {
+        release(element, layer);
+      }
+    };
   });
 
   function change(next: boolean) {

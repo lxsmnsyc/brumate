@@ -8,6 +8,8 @@
   import Popover from '../../src/Popover.brm';
 
   let open = $signal(false);
+  let present = $signal(true);
+  let shortcut = $signal(false);
 </script>
 
 <main class="page">
@@ -37,5 +39,19 @@
       <Dialog class="fade-dialog" aria-label="Faded">Faded</Dialog>
     </Popover>
   </DialogTrigger>
+  <button class="remove" type="button" onClick=(() => (present = false))>Remove</button>
+  #if (present) {
+    <DialogTrigger>
+      <Button class="removable-trigger">Removable</Button>
+      <Popover class="removable">
+        <Dialog class="removable-dialog" aria-label="Removable">Removable</Dialog>
+      </Popover>
+    </DialogTrigger>
+  }
+  <p class="text">Some text to select.</p>
+  <button class="shortcut" type="button" onClick=(() => (shortcut = true))>Open from a shortcut</button>
+  <Popover class="shortcut-popover" isOpen=$bind(shortcut)>
+    <Dialog class="shortcut-dialog" aria-label="From a shortcut">From a shortcut</Dialog>
+  </Popover>
   <p class="state">{String(open)}</p>
 </main>

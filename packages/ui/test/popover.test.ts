@@ -55,7 +55,8 @@ it('opens at the end of the page, names its dialog, and moves focus into it', as
   expect(dialog.getAttribute('aria-labelledby')).toBe(dialog.querySelector('h3')!.id);
   expect(popover.style.position).toBe('fixed');
   expect(popover.querySelector('.arrow')!.getAttribute('aria-hidden')).toBe('true');
-  expect(page.text('.state')).toBe('true');
+  // The page writes the bound state once its own code has loaded.
+  await page.waitFor(() => expect(page.text('.state')).toBe('true'));
 });
 
 it('makes the rest of the page inert while it is open, and gives it back', async () => {
@@ -166,4 +167,45 @@ it('brings focus back when it lands on nothing or outside, while it is modal', a
   // Code that focuses an element outside: an inert one cannot take it, and focus comes back.
   find('.outside')!.focus();
   expect(document.activeElement).toBe(name);
+});
+
+it('gives back what it held when it leaves the page while it is open', async () => {
+  const page = await popovers();
+  pressWith(page.get('.removable-trigger'));
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.removable-dialog')));
+  expect(page.get('.page').closest('[inert]')).not.toBeNull();
+  // Something else removes the whole trigger, with the open popover in it.
+  find('.remove')!.click();
+  await page.waitFor(() => expect(find('.removable')).toBeNull());
+  await page.waitFor(() => expect(page.get('.page').closest('[inert]')).toBeNull());
+});
+
+it('gives focus to the trigger found by its ID, when the element that had it is gone', async () => {
+  const page = await popovers();
+  await open(page);
+  // The trigger renders again: a new element with the same ID.
+  const trigger = page.get('.trigger');
+  const copy = trigger.cloneNode(true) as HTMLElement;
+  trigger.replaceWith(copy);
+  press('Escape', find('.dialog')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
+  expect(document.activeElement).toBe(copy);
+});
+
+it('moves the start of Tab to where the selection was, when nothing had focus', async () => {
+  const page = await popovers();
+  (document.activeElement as HTMLElement | null)?.blur();
+  const text = page.get('.text');
+  window.getSelection()!.selectAllChildren(text);
+  const focused: Element[] = [];
+  text.addEventListener('focus', () => focused.push(text));
+  // A shortcut opens it, with nothing focused.
+  find('.shortcut')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await page.waitFor(() => expect(find('.shortcut-dialog')).not.toBeNull());
+  press('Escape', find('.shortcut-dialog')!);
+  await page.waitFor(() => expect(find('.shortcut-popover')).toBeNull());
+  // It took focus for a moment, so Tab moves on from it, and gave it up.
+  expect(focused).toEqual([text]);
+  expect(text.hasAttribute('tabindex')).toBe(false);
+  expect(document.activeElement).not.toBe(text);
 });
