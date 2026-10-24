@@ -2035,6 +2035,15 @@ describe('head in #loading', () => {
   });
 });
 
+describe('conditions that never change', () => {
+  it('reads a condition of #else if that never changes, after one that does', async () => {
+    await resume('elseIfPage', {});
+    expect(text('.else-if')).toBe('first');
+    click(document.querySelector('.else-if-toggle')!);
+    await waitFor(() => expect(text('.else-if')).toBe('passed'));
+  });
+});
+
 describe('removed portals', () => {
   it('removes the portal of a component, and runs its cleanups, when a block removes the component', async () => {
     await resume('removedPortal', {});
