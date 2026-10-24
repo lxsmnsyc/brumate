@@ -74,12 +74,25 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
     file.children,
     file.templates,
   ];
-  // The bindings that the code reads a member of, such as `api` in `api.feed()`. A namespace
-  // that only types use, such as `T.Label`, is a `TSQualifiedName` and not counted.
+  // The names that the code reads as values, such as `api` in `api.feed()`, `f(api)` or
+  // `const { feed } = api`. A name in a type, such as `T` in `T.Label` or `typeof T`, does not
+  // count, nor does the name of a property. The walk visits a node before its children, so a
+  // node is skipped before it is reached.
   const read = new Set<string>();
+  const skip = new Set<oxc.Node>();
   walk(code, (node) => {
-    if (node.type === 'MemberExpression' && node.object.type === 'Identifier') {
-      read.add(node.object.name);
+    if (node.type === 'TSQualifiedName') {
+      skip.add(node.left);
+    } else if (node.type === 'TSTypeQuery') {
+      skip.add(node.exprName);
+    } else if (node.type === 'ImportNamespaceSpecifier') {
+      skip.add(node.local);
+    } else if (node.type === 'MemberExpression' && !node.computed) {
+      skip.add(node.property);
+    } else if (node.type === 'Property' && !node.computed && !node.shorthand) {
+      skip.add(node.key);
+    } else if (node.type === 'Identifier' && !skip.has(node)) {
+      read.add(node.name);
     }
     // `$route` and `$navigation` read the route of the page, which the workbench does not have.
     if (
@@ -256,34 +269,49 @@ function memberName(member: oxc.Node): string | undefined {
  * what it extends, an intersection of those, or `Partial` of one. Undefined for a type that the
  * workbench cannot read, such as one that the file imports.
  */
+/**
+ * Merges lists of members by name. A later member takes the place of an earlier one with the
+ * same name. With `required`, as for an intersection, the prop is required when any list
+ * requires it.
+ */
+function mergeMembers(lists: oxc.Node[][], required: boolean): oxc.Node[] {
+  // A member without a name, such as a method, gets a key that no name can equal.
+  const byName = new Map<string | symbol, oxc.Node>();
+  for (const list of lists) {
+    for (const member of list) {
+      const id = memberName(member) ?? Symbol('member');
+      const before = byName.get(id);
+      byName.set(
+        id,
+        required && before && !((before as Member).optional && (member as Member).optional)
+          ? ({ ...member, optional: false } as oxc.Node)
+          : member,
+      );
+    }
+  }
+  return [...byName.values()];
+}
+
 function propsMembers(
   type: oxc.Node,
   file: SFCFile,
   seen = new Set<string>(),
+  // The members of each named type, so a type that many branches reach is read once.
+  known = new Map<string, oxc.Node[] | undefined>(),
 ): oxc.Node[] | undefined {
   if (type.type === 'TSTypeLiteral') {
     return type.members;
   }
   if (type.type === 'TSIntersectionType') {
-    // A prop of an intersection is required when any of its types requires it.
-    const byName = new Map<string, oxc.Node>();
+    const lists: oxc.Node[][] = [];
     for (const item of type.types) {
-      const found = propsMembers(item, file, seen);
+      const found = propsMembers(item, file, seen, known);
       if (!found) {
         return undefined;
       }
-      for (const member of found) {
-        const name = memberName(member);
-        const before = name === undefined ? undefined : byName.get(name);
-        byName.set(
-          name ?? String(byName.size),
-          before && !((before as Member).optional && (member as Member).optional)
-            ? ({ ...member, optional: false } as oxc.Node)
-            : member,
-        );
-      }
+      lists.push(found);
     }
-    return [...byName.values()];
+    return mergeMembers(lists, true);
   }
   if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
     return undefined;
@@ -295,43 +323,49 @@ function propsMembers(
     return undefined;
   }
   if (name === 'Partial' && argument) {
-    return propsMembers(argument, file, seen)?.map(
+    return propsMembers(argument, file, seen, known)?.map(
       (member) => ({ ...member, optional: true }) as oxc.Node,
     );
+  }
+  if (known.has(name)) {
+    return known.get(name);
   }
   const declaration = seen.has(name) ? undefined : localType(name, file);
   if (!declaration || (declaration as { typeParameters?: unknown }).typeParameters) {
     return undefined;
   }
-  // Only the types on the way here, so a type that two branches reach is read in both.
+  // The types on the way here, which a type that refers to itself would reach again.
   const path = new Set(seen).add(name);
+  let members: oxc.Node[] | undefined;
   if (declaration.type === 'TSTypeAliasDeclaration') {
-    return propsMembers(declaration.typeAnnotation, file, path);
-  }
-  if (declaration.type !== 'TSInterfaceDeclaration') {
-    return undefined;
-  }
-  const members: oxc.Node[] = [];
-  for (const heritage of declaration.extends ?? []) {
-    if (heritage.expression.type !== 'Identifier') {
-      return undefined;
+    members = propsMembers(declaration.typeAnnotation, file, path, known);
+  } else if (declaration.type === 'TSInterfaceDeclaration') {
+    const lists: oxc.Node[][] = [];
+    let readable = true;
+    for (const heritage of declaration.extends ?? []) {
+      const found =
+        heritage.expression.type === 'Identifier'
+          ? propsMembers(
+              {
+                type: 'TSTypeReference',
+                typeName: heritage.expression,
+                typeArguments: heritage.typeArguments,
+              } as oxc.Node,
+              file,
+              path,
+              known,
+            )
+          : undefined;
+      if (!found) {
+        readable = false;
+        break;
+      }
+      lists.push(found);
     }
-    const found = propsMembers(
-      {
-        type: 'TSTypeReference',
-        typeName: heritage.expression,
-        typeArguments: heritage.typeArguments,
-      } as oxc.Node,
-      file,
-      path,
-    );
-    if (!found) {
-      return undefined;
-    }
-    members.push(...found);
+    // A member of the interface replaces one that it extends with the same name.
+    members = readable ? mergeMembers([...lists, declaration.body.body], false) : undefined;
   }
-  // A member of the interface replaces one that it extends with the same name.
-  members.push(...declaration.body.body);
+  known.set(name, members);
   return members;
 }
 
