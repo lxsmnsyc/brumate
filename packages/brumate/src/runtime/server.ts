@@ -22,6 +22,8 @@ import { serverSecrets } from './secrets.ts';
 import {
   Binding,
   CHILDREN,
+  CHILDREN_REF,
+  ChildrenReference,
   ElementReference,
   FunctionReference,
   ITEM,
@@ -1233,8 +1235,12 @@ export interface Lazy {
  * them, so they read the contexts that the component provides. `from` is the
  * scope of the markup that wrote them.
  */
-export function children(from: ScopeId, renderBody: (ctx: Context) => Promise<string>): Lazy {
-  return new Children(from, renderBody);
+export function children(
+  from: ScopeId,
+  renderBody: (ctx: Context) => Promise<string>,
+  ref?: string,
+): Lazy {
+  return new Children(from, renderBody, ref);
 }
 
 /** The symbol of raw HTML. See `html.ts`. */
@@ -1250,13 +1256,23 @@ class Children implements Lazy {
   readonly [LAZY]: (ctx: Context, at: ScopeId | undefined) => Promise<string>;
   /** The HTML of the first render, under the symbol of raw HTML. */
   [RAW]?: string;
+  /**
+   * The export that renders the children in the browser, which the page state sends in place of
+   * their HTML. Each insert in the browser then renders them with new scopes.
+   */
+  [CHILDREN_REF]?: ChildrenReference;
 
-  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>) {
+  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>, ref?: string) {
+    if (ref !== undefined) {
+      this[CHILDREN_REF] = new ChildrenReference(ref, from);
+    }
     this[LAZY] = async (ctx, at) => {
       const html = await (at === undefined
         ? renderBody(ctx)
         : ctx.children(from, at, () => renderBody(ctx)));
-      this[RAW] ??= html;
+      if (ref === undefined) {
+        this[RAW] ??= html;
+      }
       return html;
     };
   }
@@ -1349,7 +1365,8 @@ export function component<P>(
     ctx.own(scope);
   }
   const given = (props as { children?: unknown } | undefined)?.children;
-  if (!(given instanceof Children)) {
+  // Children that the browser renders itself need no HTML from the server.
+  if (!(given instanceof Children) || given[CHILDREN_REF]) {
     return Child(props, ctx);
   }
   // Children that the component did not insert render after it, inside its root scope, so the

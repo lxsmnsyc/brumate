@@ -1,9 +1,19 @@
 import type { oxc } from './oxc.ts';
-import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
+import type {
+  Block,
+  Body,
+  ComponentNode,
+  DynamicTagNode,
+  ElementNode,
+  InsertNode,
+  Markup,
+  SFCFile,
+} from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
+import { forEachNode } from './project.ts';
 import type { StyleOutput } from './css.ts';
 import type { Declaration, DeclarationKind, Diagnostic, Scope, Site } from './model.ts';
 
@@ -59,6 +69,11 @@ export interface Plan {
   elementItems: Set<Block>;
   /** The export name of each client root, such as `h3`. */
   symbols: Map<Site, string>;
+  /**
+   * The children of each component and dynamic tag, which the browser renders each time the
+   * component inserts them: the export of their render, such as `n0`, and their scope.
+   */
+  childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
   /** Sites whose code runs on the client, including update code for live nodes. */
   clientSites: Set<Site>;
   /** The compiled `<style>` blocks. */
@@ -211,7 +226,28 @@ export function hash(value: string): string {
  * reads, by scope. Those declarations are the slots: the server writes
  * their values into the page state.
  */
-export function clientState(graph: Graph): {
+/**
+ * The components and dynamic tags of a file that have children. The server sends their children
+ * as a reference to a render of the browser, so each insert makes new scopes, as a block does.
+ */
+export function childrenHolders(file: SFCFile): (ComponentNode | DynamicTagNode)[] {
+  const found: (ComponentNode | DynamicTagNode)[] = [];
+  const visit = (node: Markup): void => {
+    if ((node.kind === 'component' || node.kind === 'dynamic') && node.children.length > 0) {
+      found.push(node);
+    }
+  };
+  forEachNode(file.children, visit);
+  for (const template of file.templates) {
+    forEachNode(template.body.children, visit);
+  }
+  return found;
+}
+
+export function clientState(
+  graph: Graph,
+  file?: SFCFile,
+): {
   isLiveSite: (site: Site) => boolean;
   clientSites: Set<Site>;
   slots: Map<Scope, Declaration[]>;
@@ -241,6 +277,23 @@ export function clientState(graph: Graph): {
   for (const site of model.sites) {
     if (graph.reached.has(site) || isLiveSite(site)) {
       addClientSite(site);
+    }
+  }
+  // Children render in the browser each time a component inserts them, so their code is there.
+  const ranges = (file ? childrenHolders(file) : []).map((node) => ({
+    start: node.children[0]!.start,
+    end: node.children.at(-1)!.end,
+  }));
+  if (ranges.length > 0) {
+    for (const site of model.sites) {
+      const node = site.node as { start?: number; end?: number };
+      if (
+        node.start !== undefined &&
+        node.end !== undefined &&
+        ranges.some((range) => range.start <= node.start! && node.end! <= range.end)
+      ) {
+        addClientSite(site);
+      }
     }
   }
   // The update of a block reads all of its header, such as each condition of `#if` and
@@ -305,7 +358,11 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     }
   }
 
-  const { isLiveSite, clientSites, slots: slotLists } = clientState(graph);
+  const { isLiveSite, clientSites, slots: slotLists } = clientState(graph, file);
+  const childrenRenders = new Map<
+    ComponentNode | DynamicTagNode,
+    { symbol: string; scope: Scope }
+  >();
   const scopes = new Map<Scope, ScopePlan>();
   for (const [scope, slots] of slotLists) {
     scopes.set(scope, { scope, slots, needsId: scope.kind === 'component', anchors: 0 });
@@ -447,6 +504,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         let inner = outer;
         if (node.kind === 'dynamic') {
           inner = undefined;
+          if (node.children.length > 0) {
+            childrenRenders.set(node, { symbol: `n${childrenRenders.size}`, scope });
+          }
         } else if (anchors.has(node)) {
           inner = isStable(node) ? scope : undefined;
         }
@@ -460,6 +520,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         const sites = sitesByNode.get(node) ?? [];
         if (sites.some((site) => isLiveSite(site))) {
           anchor(scope, node);
+        }
+        if (node.children.length > 0) {
+          childrenRenders.set(node, { symbol: `n${childrenRenders.size}`, scope });
         }
         // Children render inside the component's elements.
         visitNodes(node.children, scope);
@@ -632,6 +695,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     textContents,
     elementItems,
     symbols,
+    childrenRenders,
     clientSites,
     diagnostics,
   };
