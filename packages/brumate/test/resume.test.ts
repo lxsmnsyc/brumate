@@ -2719,6 +2719,7 @@ describe('rest props', () => {
       expect(document.querySelector('.mixed')!.getAttribute('data-count')).toBe('1'),
     );
     expect(document.querySelector('.mixed')!.getAttribute('title')).toBe('Kept');
+    expect(document.querySelector('[data-own]')!.className).toBe('count-1 mixed');
   });
 
   it('leaves out of a rest the props that another $props() call names', async () => {

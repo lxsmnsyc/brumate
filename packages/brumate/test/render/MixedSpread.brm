@@ -13,3 +13,5 @@
 #if (shown) {
   <p {...live} {...rest}>Mixed</p>
 }
+<!-- An own class that changes keeps the class of the spread. -->
+<p class=(`count-${count}`) {...rest} data-own>Own</p>
