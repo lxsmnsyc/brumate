@@ -2739,6 +2739,12 @@ describe('markup that streams in after a write', () => {
     for await (const chunk of pending) {
       appendChunk(chunk);
       late ??= document.querySelector('.late');
+      // The user checks the box before the update of its scope runs.
+      const box = document.querySelector<HTMLInputElement>('.late-box');
+      if (box && !box.dataset.clicked) {
+        box.dataset.clicked = 'yes';
+        box.click();
+      }
     }
     late = late!;
     expect(late.localName).toBe('section');
@@ -2747,6 +2753,8 @@ describe('markup that streams in after a write', () => {
     expect(late.isConnected).toBe(true);
     await waitFor(() => expect(document.querySelector('.plain')!.getAttribute('title')).toBe('1'));
     expect(document.querySelector('.plain')!.className).toBe('plain');
+    // The update writes what the server rendered, so the box that the user checked stays checked.
+    expect(document.querySelector<HTMLInputElement>('.late-box')!.checked).toBe(true);
   });
 });
 

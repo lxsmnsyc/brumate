@@ -149,6 +149,18 @@ describe('reactive logic in modules', () => {
     expect(parts).not.toContain('count++');
   });
 
+  it('reports a local that the function returns under two keys', () => {
+    expect(() =>
+      build(
+        '  const { up, cancel } = counter();',
+        {
+          'counter.brm.ts': `import { $signal } from 'brumate/signals';\nexport function counter() {\n  let down = $signal(false);\n  function up() {\n    down = false;\n  }\n  return { up, cancel: up };\n}\n`,
+        },
+        '<button onPointerUp=up onPointerCancel=cancel>Press</button>',
+      ),
+    ).toThrow('counter returns up as up and as cancel');
+  });
+
   it('copies code that needs the component to compile it, such as $isPending', () => {
     const result = build(
       '  const { count, busy } = counter(1);',
