@@ -26,6 +26,7 @@ The package is private while its first phase is built.
 - `Keyboard`: a keyboard shortcut, left to right in every language.
 - `Label`: the label of a field, with the `id` and `for` that the field gives.
 - `Link`: a link that presses as a button does, with `data-current`. A disabled link has no address.
+- `ListBox`, `ListBoxItem`, `ListBoxSection` and `Header`: a list of options with single or multiple selection, the arrow keys, typeahead and ranges. It reads its items from the page, so they can come from any markup.
 - `Meter` and `ProgressBar`: a value in a range, with its text in the locale and `--percentage` for CSS.
 - `ModalOverlay` and `Modal`: a dialog over the page. The page is inert and does not scroll while it is open. Escape closes it, and a press outside does with `isDismissable`.
 - `OverlayArrow`: an arrow from a Popover to its trigger.
