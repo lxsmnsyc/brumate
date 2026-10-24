@@ -65,6 +65,14 @@ export interface LinkContextProps extends AttributeProps {
   isDisabled?: boolean;
   isCurrent?: boolean;
   onPress?: (event: PressEvent) => void;
+  onPressStart?: (event: PressEvent) => void;
+  onPressEnd?: (event: PressEvent) => void;
+  onPressUp?: (event: PressEvent) => void;
+  onPressChange?: (pressed: boolean) => void;
+  onHoverStart?: (event: HoverEvent) => void;
+  onHoverEnd?: (event: HoverEvent) => void;
+  onHoverChange?: (hovered: boolean) => void;
+  onFocusChange?: (focused: boolean) => void;
 }
 
 export const LinkContext: Context<ContextValue<LinkContextProps> | null> =
@@ -191,6 +199,11 @@ export interface OverlayTriggerState {
   overlayId: string;
   open: () => void;
   close: () => void;
+  /**
+   * A preview, such as of a PreviewTrigger: the overlay is not modal, and focus stays where it
+   * is when it opens.
+   */
+  isPreview?: boolean;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =

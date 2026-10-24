@@ -40,7 +40,10 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'form',
     ],
   },
-  { title: 'Overlays', pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'toast'] },
+  {
+    title: 'Overlays',
+    pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
+  },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -156,6 +159,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A short description of a button, on hover and focus.',
     href: 'tooltip',
     demo: 'TooltipDemo',
+  },
+  {
+    title: 'PreviewTrigger',
+    summary: 'A preview of a link, on hover, focus and a long press.',
+    href: 'preview-trigger',
+    demo: 'PreviewTriggerDemo',
   },
   {
     title: 'Toast',

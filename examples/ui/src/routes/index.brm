@@ -33,6 +33,7 @@
   import Modal from '@brumate/ui/Modal.brm';
   import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
   import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
   import Sheet from '@brumate/ui/Sheet.brm';
   import Toast from '@brumate/ui/Toast.brm';
   import ToastContent from '@brumate/ui/ToastContent.brm';
@@ -323,6 +324,17 @@
     <Button class="press tip-other">Paste</Button>
     <Tooltip class="tip" offset=(6)>Paste the link</Tooltip>
   </TooltipTrigger>
+  <p>
+    Written by
+    <PreviewTrigger>
+      <Link class="link author" href="#author">Ada</Link>
+      <Popover class="popover author-card" placement="bottom start">
+        <p>Ada writes about engines.</p>
+        <Button class="press follow">Follow</Button>
+      </Popover>
+    </PreviewTrigger>
+    and reviewed by <a href="#reviewer" class="link reviewer">Grace</a>.
+  </p>
   <Button class="press toast-trigger" onPress=(() => toastQueue<{ title: string }>().add({ title: 'Link copied' }, { timeout: 5000 }))>Notify</Button>
 </section>
 

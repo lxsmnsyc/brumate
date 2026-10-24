@@ -106,6 +106,11 @@ interface Held {
   startPoint: HTMLElement | null;
   /** The ID of the trigger, which a trigger that rendered again keeps. */
   triggerId: string | undefined;
+  /**
+   * Gives focus back only from inside the overlay, for an overlay that never took focus, such as
+   * a preview.
+   */
+  fromInside: boolean;
 }
 
 const held = new WeakMap<Element, Held>();
@@ -153,8 +158,9 @@ export function hold(
   stops: (() => void)[],
   returnTo: Element | null,
   triggerId?: string,
+  fromInside = false,
 ): void {
-  held.set(overlay, { stops, returnTo, startPoint: selectionPoint(), triggerId });
+  held.set(overlay, { stops, returnTo, startPoint: selectionPoint(), triggerId, fromInside });
 }
 
 /**
@@ -174,6 +180,9 @@ export function release(overlay: Element, layer: Element | undefined): void {
   }
   const active = document.activeElement;
   if (active && active !== document.body && !layer?.contains(active) && active.isConnected) {
+    return;
+  }
+  if (entry.fromInside && !(active && layer?.contains(active))) {
     return;
   }
   const trigger = entry.triggerId ? document.getElementById(entry.triggerId) : null;

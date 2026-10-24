@@ -6,7 +6,7 @@
   import type { HoverEvent, PressEvent } from './events.ts';
   import { isFocusVisible } from './interactions.ts';
   import type { ContextValue } from './slots.ts';
-  import { TooltipTriggerContext, hideTooltip, keepTooltip, showTooltip } from './tooltip.ts';
+  import { TooltipTriggerContext, tooltips } from './tooltip.ts';
 
   /**
    * Shows a Tooltip for the Button inside it, as TooltipTrigger of React Aria Components.
@@ -56,16 +56,16 @@
 
   function open(immediate: boolean) {
     if (!isDisabled) {
-      showTooltip(tooltipId, delay, immediate, () => setOpen(true), () => setOpen(false));
+      tooltips.show(tooltipId, delay, immediate, () => setOpen(true), () => setOpen(false));
     }
   }
 
   function close(immediate: boolean) {
-    hideTooltip(tooltipId, closeDelay, immediate, () => setOpen(false));
+    tooltips.hide(tooltipId, closeDelay, immediate, () => setOpen(false));
   }
 
   function keep() {
-    keepTooltip(tooltipId);
+    tooltips.keep(tooltipId);
   }
 
   function hoverStarted(event: HoverEvent) {
