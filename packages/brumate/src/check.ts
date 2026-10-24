@@ -154,7 +154,7 @@ function propsType(program: oxc.Program | undefined): Range | undefined {
  */
 function sentDeclarations(file: SFCFile): Declaration[] {
   try {
-    const { slots } = clientState(buildGraph(analyze(file)));
+    const { slots } = clientState(buildGraph(analyze(file)), file);
     return [...slots.values()]
       .flat()
       .filter(

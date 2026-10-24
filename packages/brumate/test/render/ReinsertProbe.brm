@@ -1,11 +1,21 @@
 <script>
-  import { $props, $signal } from 'brumate/signals';
+  import { $effect, $props, $signal } from 'brumate/signals';
 
-  // Counts its clicks, and says whether its ref is the element on the page at each.
+  // Counts its clicks, says whether its ref is the element on the page at each, and counts the
+  // cleanups of its effect on the page.
   const { name } = $props<{ name: string }>();
   let root = $signal<HTMLElement>();
   let clicks = $signal(0);
   let seen = $signal('');
+  // The effect starts with the first click, and cleans up when the scope goes or clicks change.
+  $effect(() => {
+    if (clicks === 0) {
+      return undefined;
+    }
+    return () => {
+      document.body.dataset.cleanups = String(Number(document.body.dataset.cleanups ?? 0) + 1);
+    };
+  });
 </script>
 
 <button ref=root class=name onClick=(() => (seen = `${++clicks}:${root?.isConnected}`))>{seen}</button>

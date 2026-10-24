@@ -416,7 +416,13 @@ export class Emitter {
 
   private anchor(scope: Scope, target: object): { scope: string; index: number } | undefined {
     const index = this.plan.anchors.get(target as Markup);
-    return index === undefined ? undefined : { scope: this.scopeVar(scope), index };
+    if (index === undefined) {
+      return undefined;
+    }
+    // A scope that a client render does not create is an instance, such as the scope that
+    // children were written in, and an anchor names its ID.
+    const name = this.scopeVar(scope);
+    return { scope: this.isInside(scope) ? name : `${name}.id`, index };
   }
 
   /** Creates the instance of a body scope. */
@@ -1301,6 +1307,11 @@ export class Emitter {
     return !this.plan.hideNames || needsScope(targets, tag, classes);
   }
 
+  /** Renders the children of a component or a dynamic tag, for their export in the browser. */
+  emitChildrenBody(node: ComponentNode | DynamicTagNode, scope: Scope): void {
+    this.atTopLevel(() => this.emitNodes(node.children, scope));
+  }
+
   /** Runs a callback for markup that renders outside this component's elements, such as children. */
   private atTopLevel(callback: () => void): void {
     const nesting = this.nesting;
@@ -1310,13 +1321,17 @@ export class Emitter {
   }
 
   /** Renders children into a variable, for a component or a dynamic tag. */
-  private emitChildren(nodes: Markup[], scope: Scope): string | undefined {
+  private emitChildren(node: ComponentNode | DynamicTagNode, scope: Scope): string | undefined {
+    const nodes = node.children;
     if (nodes.length === 0) {
       return undefined;
     }
     const name = this.unique('children');
     if (this.options.mode === 'server') {
-      // The children render where the component inserts them, so they read its contexts.
+      // The children render where the component inserts them, so they read its contexts. The
+      // browser renders them with their own export each time the component inserts them again.
+      const render = this.plan.childrenRenders.get(node);
+      const ref = render ? `, ${JSON.stringify(`${this.plan.id}#${render.symbol}`)}` : '';
       this.line(
         `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, async ($$ctx) => {`,
       );
@@ -1324,7 +1339,7 @@ export class Emitter {
       this.atTopLevel(() => this.emitNodes(nodes, scope));
       this.flush();
       this.line('return $$html;');
-      this.close('});');
+      this.close(`}${ref});`);
       return name;
     }
     this.line(
@@ -1460,7 +1475,7 @@ export class Emitter {
   }
 
   private emitComponent(node: ComponentNode, scope: Scope): void {
-    const childrenName = this.emitChildren(node.children, scope);
+    const childrenName = this.emitChildren(node, scope);
     const props = this.props(
       node.attributes,
       scope,
@@ -1476,7 +1491,7 @@ export class Emitter {
   }
 
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
-    const childrenName = this.emitChildren(node.children, scope);
+    const childrenName = this.emitChildren(node, scope);
     const extra: string[] = [];
     if (this.hasScope(undefined, staticClasses(node.attributes))) {
       extra.push(`${JSON.stringify(this.plan.styles.attribute)}: true`);

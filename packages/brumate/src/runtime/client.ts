@@ -16,6 +16,7 @@ import type { Raw } from './html.ts';
 import {
   Binding,
   CHILDREN,
+  ChildrenReference,
   ElementReference,
   FunctionReference,
   ITEM,
@@ -674,7 +675,6 @@ export function leavePage(): void {
   guesses?.map.clear();
   nextId = -1;
   refs.clear();
-  reinsertable.clear();
   writes = 0;
   // Calls of the old page that are still out no longer count for its guesses.
   calling = 0;
@@ -752,6 +752,9 @@ function setterReference(set: unknown): FunctionReference | undefined {
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
+  if (value instanceof ChildrenReference) {
+    return new RenderedChildren(scopes.get(value.scope), value.ref);
+  }
   if (value instanceof FunctionReference) {
     if (isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
@@ -990,7 +993,11 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref, 'event');
+  // The code of the children that the handler can insert loads with it.
+  const children = childrenReady(scope);
+  const loaded = children
+    ? Promise.all([resolve(ref, 'event'), children]).then(([handler]) => handler)
+    : resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1092,26 +1099,11 @@ export function get(scope: Scope, slot: number): any {
     const element = findElement(value.scope, value.anchor);
     if (element) {
       scope.s[slot] = element;
-      elementOrigins.set(element, value);
     }
     return element ?? undefined;
   }
-  // The element left the page, and HTML of the page state put the same element back, such as
-  // children that a block inserts again. The reference finds the new one.
-  if (value instanceof Element && !value.isConnected) {
-    const origin = elementOrigins.get(value);
-    const element = origin && findElement(origin.scope, origin.anchor);
-    if (element) {
-      scope.s[slot] = element;
-      elementOrigins.set(element, origin);
-      return element;
-    }
-  }
   return value;
 }
-
-/** The reference that each element of a slot was found by, so it can be found again. */
-const elementOrigins = new WeakMap<Element, ElementReference>();
 
 // The number of writes since the page loaded, so scopes that stream in later know to update.
 let writes = 0;
@@ -1516,7 +1508,8 @@ function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
-  if (module && updates && loadingTemplates.size === 0) {
+  const children = childrenReady(scope);
+  if (module && updates && loadingTemplates.size === 0 && !children) {
     run(module, updates, scope, slot);
     return;
   }
@@ -1525,7 +1518,7 @@ function trigger(scope: Scope, slot: number): void {
   const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.allSettled(loadingTemplates);
+      await Promise.allSettled([...loadingTemplates, children]);
       run(loaded, code, scope, slot);
     }
   });
@@ -1667,6 +1660,8 @@ function destroy(scope: Scope): void {
   const start = portals > 0 ? comments.get(`P${scope.id}`) : undefined;
   if (start?.isConnected) {
     const end = rangeEnd(start);
+    // The components in it go too, such as children that a component inserted there.
+    destroyRange(scope, start, end);
     clear(start, end);
     start.remove();
     end.remove();
@@ -1713,23 +1708,17 @@ export function removeScope(scope: Scope): void {
  * block rendered, whose owner can be `scope` itself, and the children that a component inserted
  * there. A scope that holds `scope` keeps its markers in the block, so it stays.
  */
-/**
- * The IDs of the scopes in HTML of the page state, such as the children of a component that the
- * server rendered. The browser inserts that HTML again, such as each time a block that holds the
- * children opens, so removing it keeps those scopes.
- */
-const reinsertable = new Set<string>();
-const RAW_SCOPE = /\sb-b="([^":]+):|<!--[btilP]([^:]+):/g;
-const decodeRaw = stateValues.r;
-stateValues.r = (html) => {
-  for (const match of html.matchAll(RAW_SCOPE)) {
-    reinsertable.add((match[1] ?? match[2])!);
-  }
-  return decodeRaw(html);
-};
-
 function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): void {
   disposeKinds(scope, kinds);
+  destroyRange(scope, start, end);
+  clear(start, end);
+}
+
+/**
+ * Destroys the scopes whose markup is between two nodes, such as the components of a block that
+ * closes, but not the scope of the block or those around it.
+ */
+function destroyRange(scope: Scope, start: Node, end: Node): void {
   if (scopes.size > 0 && start.nextSibling !== end) {
     const above = new Set<Scope>();
     for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
@@ -1737,7 +1726,7 @@ function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): voi
     }
     const inside = new Set<Scope>();
     const add = (id: string): void => {
-      const found = reinsertable.has(id) ? undefined : scopes.get(parseId(id));
+      const found = scopes.get(parseId(id));
       if (found && !above.has(found)) {
         inside.add(found);
       }
@@ -1762,7 +1751,6 @@ function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): voi
       destroy(found);
     }
   }
-  clear(start, end);
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
@@ -3075,6 +3063,62 @@ class Children {
       insertedChildren.splice(insertedChildren.indexOf(entry), 1);
     }
   }
+}
+
+/**
+ * Children that the server rendered, which the browser renders with their own export each time
+ * a component inserts them, so each insert makes new scopes, as the body of a block does. The
+ * code of the export loads before the code that can insert them runs. See `childrenReady`.
+ */
+class RenderedChildren extends Children {
+  readonly ref: string;
+  private code: Handler | undefined;
+  private loading: Promise<void> | undefined;
+
+  constructor(scope: Scope | undefined, ref: string) {
+    super(scope, () => {
+      // The export returns HTML, as the render of a block does.
+      if (this.code) {
+        return String(this.code(scope));
+      }
+      // An insert that did not wait for the code, which the next update renders again.
+      if (DEV) {
+        console.warn(`brumate: the children ${ref} rendered before their code loaded.`);
+      }
+      void this.load();
+      return '';
+    });
+    this.ref = ref;
+  }
+
+  get loaded(): boolean {
+    return this.code !== undefined;
+  }
+
+  load(): Promise<void> {
+    this.loading ??= resolve(this.ref, 'template').then((handler) => {
+      this.code = handler;
+    });
+    return this.loading;
+  }
+}
+
+/**
+ * Loads the code of the children that the scope, or a component around it, holds, so code that
+ * runs in the scope can insert them at once. Undefined when there is nothing to load.
+ */
+function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
+  const waiting: Promise<void>[] = [];
+  const seen = new Set<Scope>();
+  for (let current = scope; current && !seen.has(current); current = current.p ?? current.o) {
+    seen.add(current);
+    for (const value of current.s) {
+      if (value instanceof RenderedChildren && !value.loaded) {
+        waiting.push(value.load());
+      }
+    }
+  }
+  return waiting.length > 0 ? Promise.allSettled(waiting) : undefined;
 }
 
 /** The children of a component that the client renders. See `Children`. */
