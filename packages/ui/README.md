@@ -11,14 +11,19 @@ The package is private while its first phase is built.
 ## Parts
 
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
+- `FieldError`: the errors of a field, while it is invalid.
+- `Form`: a form that tells its fields how to validate, and gives them the errors of the server by name.
 - `Group`: parts that belong together, with `data-focus-within`, `data-hovered`, `data-disabled` and `data-invalid`.
 - `Heading`: a heading of a level, which a context can set.
 - `I18nProvider`: gives the parts inside it a locale and its direction. The default is `en-US`.
+- `Input` and `TextArea`: the input of a field, with `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-invalid`.
 - `Keyboard`: a keyboard shortcut, left to right in every language.
 - `Label`: the label of a field, with the `id` and `for` that the field gives.
 - `Link`: a link that presses as a button does, with `data-current`. A disabled link has no address.
+- `SearchField`: a search input with a button that clears it. Escape clears it, and Enter calls `onSubmit`.
 - `Separator`: an `<hr>`, or a vertical separator.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
+- `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.
 - `VisuallyHidden`: hides its content from sight and keeps it for screen readers.
 

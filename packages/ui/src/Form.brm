@@ -1,0 +1,21 @@
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { FormContext } from './contexts.ts';
+
+  /**
+   * A form, as Form of React Aria Components. It tells its fields how to validate, and gives them
+   * the errors of the server by their names, such as the errors of a reply. A field shows them
+   * until the user edits it.
+   */
+  const { validationBehavior = 'native', validationErrors = {}, children, ...rest } = $props<{
+    validationBehavior?: 'native' | 'aria';
+    validationErrors?: Record<string, string | string[]>;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const state = $memo({ validationBehavior, validationErrors });
+  $setContext(FormContext, state);
+</script>
+
+<form {...rest}>{children}</form>
