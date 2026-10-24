@@ -81,8 +81,8 @@
       last = event.pointerType;
     })
   >Press me</Button>
-  <Button class="press" isDisabled=(true)>Disabled</Button>
-  <Button class="press" isPending=(true)>Saving</Button>
+  <Button class="press" isDisabled>Disabled</Button>
+  <Button class="press" isPending>Saving</Button>
   <p class="pressed" aria-live="polite">Pressed {presses} times, last with {last}.</p>
 </section>
 
@@ -102,8 +102,8 @@
   <h2 id="link">Link</h2>
   <p>
     <Link class="link" href="#link">This section</Link>,
-    <Link class="link" href="#main" isCurrent=(true)>the current page</Link> and
-    <Link class="link" href="#main" isDisabled=(true)>a disabled link</Link>.
+    <Link class="link" href="#main" isCurrent>the current page</Link> and
+    <Link class="link" href="#main" isDisabled>a disabled link</Link>.
   </p>
 </section>
 
@@ -123,7 +123,7 @@
 <section aria-labelledby="text-field">
   <h2 id="text-field">TextField, TextArea and FieldError</h2>
   <Form class="signup">
-    <TextField class="name-field" name="name" isRequired=(true)>
+    <TextField class="name-field" name="name" isRequired>
       <Label>Name</Label>
       <Input class="field" />
       <Text slot="description" class="help">As it is on your card.</Text>
@@ -165,7 +165,7 @@
 <section aria-labelledby="boxes">
   <h2 id="boxes">Checkbox, CheckboxGroup, RadioGroup and Switch</h2>
   <Form class="pizza">
-    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired=(true)>
+    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired>
       <Label>Toppings</Label>
       <Checkbox class="box" value="cheese"><span class="mark" aria-hidden="true"></span>Cheese</Checkbox>
       <Checkbox class="box" value="olives"><span class="mark" aria-hidden="true"></span>Olives</Checkbox>
@@ -179,12 +179,12 @@
     <Button class="press" type="submit">Order the pizza</Button>
   </Form>
   <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
-  <RadioGroup class="crust" name="crust" value="thin" isReadOnly=(true) orientation="horizontal">
+  <RadioGroup class="crust" name="crust" value="thin" isReadOnly orientation="horizontal">
     <Label>Crust, set by the shop</Label>
     <Radio class="box" value="thin"><span class="mark round" aria-hidden="true"></span>Thin</Radio>
     <Radio class="box" value="thick"><span class="mark round" aria-hidden="true"></span>Thick</Radio>
   </RadioGroup>
-  <Checkbox class="box sauce" isSelected=(true) isReadOnly=(true)><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
+  <Checkbox class="box sauce" isSelected isReadOnly><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
   <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
   <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
 </section>
@@ -195,7 +195,7 @@
     <Button class="press">Cut</Button>
     <Button class="press">Copy</Button>
     <Separator orientation="vertical" class="divider" />
-    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection=(true)>
+    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
       <ToggleButton id="left" class="press">Left</ToggleButton>
       <ToggleButton id="center" class="press">Center</ToggleButton>
     </ToggleButtonGroup>
@@ -209,7 +209,7 @@
     <Breadcrumbs class="trail">
       <Breadcrumb><Link class="link" href="#main">Home</Link></Breadcrumb>
       <Breadcrumb><Link class="link" href="#breadcrumbs">Parts</Link></Breadcrumb>
-      <Breadcrumb isCurrent=(true)><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+      <Breadcrumb isCurrent><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
     </Breadcrumbs>
   </nav>
 </section>
@@ -222,7 +222,7 @@
 
 <section aria-labelledby="file-trigger">
   <h2 id="file-trigger">FileTrigger</h2>
-  <FileTrigger allowsMultiple=(true) onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
+  <FileTrigger allowsMultiple onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
     <Button class="press">Pick files</Button>
   </FileTrigger>
   <p class="files">{files}</p>

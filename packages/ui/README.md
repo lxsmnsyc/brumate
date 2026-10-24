@@ -51,7 +51,7 @@ A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `tes
 
 Give each state one `let` prop, typed `Bindable`, such as `let { pressed = false } = $props<{ pressed?: Bindable<boolean> }>()`. Write it, and call `onChange`:
 
-- `pressed=(true)` starts the part's own copy.
+- `pressed` alone starts the part's own copy as on.
 - `pressed=$bind(signal)` writes the caller's signal.
 - `pressed=$bind(signal, setter)` lets the caller refuse the value.
 

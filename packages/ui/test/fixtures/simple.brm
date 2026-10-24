@@ -24,10 +24,10 @@
 <input id="name">
 <Text class="description" slot="description">Your full name</Text>
 <Group class="group" aria-label="Amount"><input class="amount"><button type="button" class="more">+</button></Group>
-<Group class="disabled-group" isDisabled=(true) isInvalid=(true)>Off</Group>
+<Group class="disabled-group" isDisabled isInvalid>Off</Group>
 <Link class="to" href="#top" onPress=((event) => log(event))>Top</Link>
-<Link class="current" href="#here" isCurrent=(true)>Here</Link>
-<Link class="off" href="#off" isDisabled=(true)>Off</Link>
+<Link class="current" href="#here" isCurrent>Here</Link>
+<Link class="off" href="#off" isDisabled>Off</Link>
 <Link class="span">No address</Link>
 <ToggleButton class="own-toggle" onChange=((value) => logChange('own', value))>Pin</ToggleButton>
 <ToggleButton class="bold" isSelected=$bind(bold)>Bold</ToggleButton>

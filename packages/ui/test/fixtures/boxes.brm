@@ -18,24 +18,24 @@
 <form class="form">
   <Checkbox class="own" name="news">News</Checkbox>
   <Checkbox class="terms" isSelected=$bind(terms)>Terms</Checkbox>
-  <Checkbox class="mixed" isIndeterminate=(true)>Some</Checkbox>
-  <Checkbox class="locked" isReadOnly=(true) isSelected=(true)>Locked</Checkbox>
-  <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired=(true)>
+  <Checkbox class="mixed" isIndeterminate>Some</Checkbox>
+  <Checkbox class="locked" isReadOnly isSelected>Locked</Checkbox>
+  <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired>
     <Label>Toppings</Label>
     <Checkbox class="cheese" value="cheese">Cheese</Checkbox>
     <Checkbox class="olives" value="olives">Olives</Checkbox>
     <Text slot="description">Pick one or more.</Text>
     <FieldError class="toppings-error" />
   </CheckboxGroup>
-  <RadioGroup class="sizes" value=$bind(size) isRequired=(true)>
+  <RadioGroup class="sizes" value=$bind(size) isRequired>
     <Label>Size</Label>
     <Radio class="small" value="small">Small</Radio>
     <Radio class="large" value="large">Large</Radio>
     <FieldError class="sizes-error" />
   </RadioGroup>
   <Switch class="dark" isSelected=$bind(dark)>Dark mode</Switch>
-  <Switch class="fixed" isReadOnly=(true)>Fixed</Switch>
-  <RadioGroup class="locked-sizes" value="small" isReadOnly=(true)>
+  <Switch class="fixed" isReadOnly>Fixed</Switch>
+  <RadioGroup class="locked-sizes" value="small" isReadOnly>
     <Label>Locked size</Label>
     <Radio class="locked-small" value="small">Small</Radio>
     <Radio class="locked-large" value="large">Large</Radio>

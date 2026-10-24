@@ -16,7 +16,7 @@
 </script>
 
 <Form class="form" validationErrors=({ handle: 'That handle is taken' })>
-  <TextField class="email" name="email" type="email" isRequired=(true) value=$bind(email)>
+  <TextField class="email" name="email" type="email" isRequired value=$bind(email)>
     <Label>Email</Label>
     <Input class="email-input" />
     <Text slot="description">We never share it.</Text>
