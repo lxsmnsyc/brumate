@@ -81,6 +81,8 @@ The dev server has a workbench at `/__brumate/workbench`. It lists the component
 
 - Each component renders on the server with the props of the controls, and resumes in the browser, as a page does. So what it shows, and the code that it loads, is what a page gets. The devtools are in the frame too.
 - The controls come from the type of `$props<T>()`: a text field for `string`, a number field for `number`, a box for `boolean`, a list for a union of literals, such as `'info' | 'warning'`, and JSON for the rest. A prop starts at the default of its destructuring. A function prop, such as a handler, has no control.
+- The type can be a literal, or an interface or type alias of the file, with what it extends, an intersection, or `Partial`. A type that the file imports has no controls.
+- A context counts as self-contained. Without a provider, a component reads the default of the context.
 - The toolbar sets the width of the frame, to fill the canvas or as a phone, a tablet or a desktop, and the background around it. It renders the component again, or opens it alone in a new tab. Click the file to open it in your editor.
 - **Reset** puts each prop back to its start, and the arrow next to a prop resets that one.
 - The files of `src/routes` are not listed. Pages are what `visit` from [`brumate/testing`](./testing.md) and end-to-end tests are for.
@@ -89,7 +91,8 @@ A component that needs more than its props, itself or through a component that i
 
 - It calls a server function, of a `'use server'` file or one that it declares.
 - It reads the request, through an import of `brumate/server`.
-- It reads the route with `$route` or `$navigation`, or a context with `$getContext`.
+- A namespace import, such as `import * as api from './api.ts'`, counts as well.
+- It reads the route with `$route` or `$navigation`.
 - It has a form action of `$action`, a `#defer` block or a dynamic tag.
 - It renders a component that the workbench cannot find.
 

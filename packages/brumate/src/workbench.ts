@@ -1,10 +1,12 @@
 // Classifies the components of a project by what they depend on, so the workbench lists only
 // the ones that it can show: those that depend on their props, their own state and nothing
-// else. A component that calls the server, reads the request or the route, or needs a provider
-// fits an end-to-end test better. A component needs what the components it renders need.
+// else. A context counts as neither, since a component without a provider reads its default.
+// A component that calls the server, or reads the request or the route, fits an end-to-end
+// test better. A component needs what the components it renders need.
 
 import { analyze } from './analyze.ts';
 import type { Markup, SFCFile } from './ast.ts';
+import { walk } from './macros.ts';
 import type { oxc } from './oxc.ts';
 import { parse } from './parser.ts';
 import { forEachNode, importSource, resolveRelative } from './project.ts';
@@ -17,8 +19,6 @@ export type NeedKind =
   | 'request'
   /** The route, through `$route` or `$navigation`. */
   | 'route'
-  /** A context, through `$getContext`, which needs a provider. */
-  | 'context'
   /** A form action of `$action`. */
   | 'action'
   /** A `#defer` block, whose body the server renders later. */
@@ -49,8 +49,6 @@ export interface ClassifyOptions {
   serverImport?: (file: string, specifier: string, name: string) => boolean;
 }
 
-const CONTEXT_CALL = /\$(route|navigation|getContext)\s*\(/g;
-
 /** The needs of one file, without those of the components that it renders. */
 function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
   const needs: Need[] = [];
@@ -69,18 +67,35 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
       }
     }
   }
-  // `$route`, `$navigation` and `$getContext` declare contexts, and only the call tells them apart.
   for (const script of [file.moduleScript, file.instanceScript]) {
-    if (!script) {
-      continue;
+    for (const statement of script?.program.body ?? []) {
+      // The analysis has a declaration for each named import only, so a namespace is found here.
+      if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type') {
+        continue;
+      }
+      const source = statement.source.value;
+      for (const specifier of statement.specifiers) {
+        if (specifier.type !== 'ImportNamespaceSpecifier') {
+          continue;
+        }
+        const name = `* as ${specifier.local.name}`;
+        if (source === 'brumate/server') {
+          needs.push({ kind: 'request', name });
+        } else if (options.serverImport?.(file.filename, source, '*')) {
+          needs.push({ kind: 'server', name });
+        }
+      }
     }
-    for (const [, call] of file.source.slice(script.start, script.end).matchAll(CONTEXT_CALL)) {
-      needs.push(
-        call === 'getContext'
-          ? { kind: 'context', name: '$getContext' }
-          : { kind: 'route', name: `$${call}` },
-      );
-    }
+    // `$route` and `$navigation` read the route of the page, which the workbench does not have.
+    walk(script?.program, (node) => {
+      if (
+        node.type === 'CallExpression' &&
+        node.callee.type === 'Identifier' &&
+        (node.callee.name === '$route' || node.callee.name === '$navigation')
+      ) {
+        needs.push({ kind: 'route', name: node.callee.name });
+      }
+    });
   }
   const visit = (node: Markup): void => {
     if (node.kind === 'defer') {
@@ -192,29 +207,92 @@ export type ControlInput =
 /** A control of the workbench for one prop of a component. */
 export type Control = { name: string; optional: boolean } & ControlInput;
 
-/** The members of the type of `$props<T>()`: a literal, or an interface or alias of the scripts. */
-function propsMembers(type: oxc.Node, file: SFCFile): oxc.Node[] {
-  if (type.type === 'TSTypeLiteral') {
-    return type.members;
-  }
-  if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
-    return [];
-  }
-  const name = type.typeName.name;
+/** The interface or type alias of the scripts that has this name. */
+function localType(name: string, file: SFCFile): oxc.Node | undefined {
   for (const script of [file.moduleScript, file.instanceScript]) {
     for (let statement of script?.program.body ?? []) {
       if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
         statement = statement.declaration;
       }
-      if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
-        return statement.body.body;
-      }
-      if (statement.type === 'TSTypeAliasDeclaration' && statement.id.name === name) {
-        return propsMembers(statement.typeAnnotation, file);
+      if (
+        (statement.type === 'TSInterfaceDeclaration' ||
+          statement.type === 'TSTypeAliasDeclaration') &&
+        statement.id.name === name
+      ) {
+        return statement;
       }
     }
   }
-  return [];
+  return undefined;
+}
+
+/**
+ * The members of the type of `$props<T>()`: a literal, an interface or alias of the scripts and
+ * what it extends, an intersection of those, or `Partial` of one. Undefined for a type that the
+ * workbench cannot read, such as one that the file imports.
+ */
+function propsMembers(
+  type: oxc.Node,
+  file: SFCFile,
+  seen = new Set<string>(),
+): oxc.Node[] | undefined {
+  if (type.type === 'TSTypeLiteral') {
+    return type.members;
+  }
+  if (type.type === 'TSIntersectionType') {
+    const members: oxc.Node[] = [];
+    for (const item of type.types) {
+      const found = propsMembers(item, file, seen);
+      if (!found) {
+        return undefined;
+      }
+      members.push(...found);
+    }
+    return members;
+  }
+  if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
+    return undefined;
+  }
+  const name = type.typeName.name;
+  const argument = type.typeArguments?.params[0];
+  if (name === 'Partial' && argument) {
+    return propsMembers(argument, file, seen)?.map(
+      (member) => ({ ...member, optional: true }) as oxc.Node,
+    );
+  }
+  const declaration = seen.has(name) ? undefined : localType(name, file);
+  if (!declaration) {
+    return undefined;
+  }
+  seen.add(name);
+  if (declaration.type === 'TSTypeAliasDeclaration') {
+    return propsMembers(declaration.typeAnnotation, file, seen);
+  }
+  if (declaration.type !== 'TSInterfaceDeclaration') {
+    return undefined;
+  }
+  const members: oxc.Node[] = [];
+  for (const heritage of declaration.extends ?? []) {
+    if (heritage.expression.type !== 'Identifier') {
+      return undefined;
+    }
+    const found = propsMembers(
+      {
+        type: 'TSTypeReference',
+        typeName: heritage.expression,
+        typeArguments: heritage.typeArguments,
+      } as oxc.Node,
+      file,
+      seen,
+    );
+    if (!found) {
+      return undefined;
+    }
+    members.push(...found);
+  }
+  // A member of the interface replaces one that it extends with the same name.
+  members.push(...declaration.body.body);
+  return members;
 }
 
 /** The value of a literal default, such as `'info'` in `{ tone = 'info' }`. */
@@ -236,7 +314,11 @@ function literalValue(node: oxc.Node): unknown {
 }
 
 /** The control for a type, or undefined for a function, which the workbench cannot make. */
-function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
+function controlOf(
+  type: oxc.Node | undefined,
+  file: SFCFile,
+  seen = new Set<string>(),
+): ControlInput | undefined {
   if (!type) {
     return { kind: 'json' };
   }
@@ -247,7 +329,7 @@ function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
     type.typeName.name === 'Bindable' &&
     type.typeArguments?.params[0]
   ) {
-    return controlOf(type.typeArguments.params[0]);
+    return controlOf(type.typeArguments.params[0], file, seen);
   }
   switch (type.type) {
     case 'TSStringKeyword':
@@ -257,7 +339,10 @@ function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
     case 'TSBooleanKeyword':
       return { kind: 'boolean' };
     case 'TSFunctionType':
+    case 'TSConstructorType':
       return undefined;
+    case 'TSParenthesizedType':
+      return controlOf(type.typeAnnotation, file, seen);
     case 'TSArrayType':
     case 'TSTupleType':
       return { kind: 'json', empty: [] };
@@ -271,6 +356,15 @@ function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
         if (type.typeName.name === 'Record') {
           return { kind: 'json', empty: {} };
         }
+        // An interface is an object, and an alias has the control of its type.
+        const name = type.typeName.name;
+        const declaration = seen.has(name) ? undefined : localType(name, file);
+        if (declaration?.type === 'TSInterfaceDeclaration') {
+          return { kind: 'json', empty: {} };
+        }
+        if (declaration?.type === 'TSTypeAliasDeclaration') {
+          return controlOf(declaration.typeAnnotation, file, new Set(seen).add(name));
+        }
       }
       return { kind: 'json' };
     case 'TSUnionType': {
@@ -281,7 +375,7 @@ function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
       for (const item of types) {
         const value = item.type === 'TSLiteralType' ? literalValue(item.literal) : undefined;
         if (typeof value !== 'string' && typeof value !== 'number') {
-          return types.length === 1 ? controlOf(types[0]) : { kind: 'json' };
+          return types.length === 1 ? controlOf(types[0], file, seen) : { kind: 'json' };
         }
         options.push(value);
       }
@@ -294,9 +388,10 @@ function controlOf(type: oxc.Node | undefined): ControlInput | undefined {
 
 /**
  * The controls for the props of a component, from the type of `$props<T>()` and the defaults
- * of its destructuring. A prop whose type is a function, such as a handler, has none.
+ * of its destructuring. A prop whose type is a function, such as a handler, has none. Undefined
+ * when the workbench cannot read the type, such as one that the file imports.
  */
-export function propControls(file: SFCFile): Control[] {
+export function propControls(file: SFCFile): Control[] | undefined {
   for (const statement of file.instanceScript?.program.body ?? []) {
     if (statement.type !== 'VariableDeclaration') {
       continue;
@@ -323,8 +418,13 @@ export function propControls(file: SFCFile): Control[] {
         }
       }
       const type = (call as { typeArguments?: { params: oxc.Node[] } }).typeArguments?.params[0];
-      const controls: Control[] = [];
-      for (const member of type ? propsMembers(type, file) : []) {
+      const members = type ? propsMembers(type, file) : [];
+      if (!members) {
+        return undefined;
+      }
+      // A later member with the same name, as of an interface over what it extends, wins.
+      const byName = new Map<string, Control>();
+      for (const member of members) {
         if (member.type !== 'TSPropertySignature' || member.computed) {
           continue;
         }
@@ -332,19 +432,20 @@ export function propControls(file: SFCFile): Control[] {
           member.key.type === 'Identifier'
             ? member.key.name
             : String((member.key as { value?: unknown }).value);
-        const control = controlOf(member.typeAnnotation?.typeAnnotation);
+        const control = controlOf(member.typeAnnotation?.typeAnnotation, file);
+        byName.delete(name);
         if (!control) {
           continue;
         }
         const value = defaults.get(name);
-        controls.push({
+        byName.set(name, {
           name,
           optional: member.optional,
           ...control,
           ...(value === undefined ? {} : { default: value }),
         } as Control);
       }
-      return controls;
+      return [...byName.values()];
     }
   }
   return [];

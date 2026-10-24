@@ -915,7 +915,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   };
 
   /** The components of the app for the workbench, with what each one needs and its controls. */
-  const workbenchComponents = async (): Promise<unknown[]> => {
+  const workbenchComponents = async (): Promise<
+    { file: string; selfContained: boolean; [key: string]: unknown }[]
+  > => {
     const routes = `${routesDirectory()}/`;
     const list = [...new Set(files.values())];
     const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
@@ -929,7 +931,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       .filter((file) => !file.startsWith(routes) && classes.has(file))
       .map((file) => {
         const found = classes.get(file)!;
-        let controls: unknown[] = [];
+        let controls: unknown[] | undefined = [];
         try {
           controls = propControls(parseComponent(sources.get(file)!, { filename: file }));
         } catch {
@@ -940,7 +942,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           name: path.basename(file, '.brm'),
           selfContained: found.selfContained,
           needs: found.needs.map((need) => ({ ...need, via: need.via && relative(need.via) })),
-          controls,
+          controls: controls ?? [],
+          unreadProps: controls === undefined,
         };
       })
       .sort((a, b) => a.file.localeCompare(b.file));
@@ -971,14 +974,20 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       response.end();
       return;
     }
-    // Only a component of the app, by its path from the root.
+    // Only a component that the workbench lists as self-contained, by its path from the root.
+    // Any other renders without the request, the route or the server that it needs, and fails.
     const asked = url.searchParams.get('file') ?? '';
-    const file = [...files.values()].find(
-      (candidate) => normalizePath(path.relative(root, candidate)) === asked,
+    const listed = (await workbenchComponents()).some(
+      (component) => component.file === asked && component.selfContained,
     );
+    const file = listed
+      ? [...files.values()].find(
+          (candidate) => normalizePath(path.relative(root, candidate)) === asked,
+        )
+      : undefined;
     if (!file) {
       response.statusCode = 404;
-      response.end(`Unknown component "${asked}"`);
+      response.end(`No self-contained component "${asked}"`);
       return;
     }
     response.setHeader('content-type', 'text/html; charset=utf-8');
@@ -1003,6 +1012,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       response.end();
     } catch (error) {
+      // Once the page has started, its status is sent, and a second document would land inside
+      // the first. The error goes to the terminal, and the page ends where it stopped.
+      if (response.headersSent) {
+        server.config.logger.error(
+          error instanceof Error ? (error.stack ?? error.message) : String(error),
+        );
+        response.end();
+        return;
+      }
       response.statusCode = 500;
       response.end(errorPage(error, server));
     }

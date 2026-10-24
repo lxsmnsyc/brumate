@@ -39,6 +39,28 @@ const files = new Map(
   const theme = $getContext(Theme);
 </script>
 <p>{theme}</p>`,
+    '/app/Quoted.brm': `<script>
+  // $route() in a comment
+  const note = 'use $navigation() here';
+</script>
+<p>{note}</p>`,
+    '/app/Agent.brm': `<script>
+  import * as server from 'brumate/server';
+  const agent = server.getEvent().request.headers.get('user-agent');
+</script>
+<p>{agent}</p>`,
+    '/app/Stories.brm': `<script>
+  import { $memo } from 'brumate/signals';
+  import * as api from './api.ts';
+  const stories = await $memo(api.feed());
+</script>
+#for (story of stories by story.id) { <p>{story.title}</p> }`,
+    '/app/Thread.brm': `<script>
+  import Thread from './Thread.brm';
+  import Feed from './Feed.brm';
+  const { depth } = $props<{ depth: number }>();
+</script>
+#if (depth > 0) { <Thread depth=(depth - 1) /> } #else { <Feed /> }`,
     '/app/Later.brm': `#defer ('visible') { <p>Later</p> } #else { <p>Wait</p> }`,
     '/app/Any.brm': `<script>
   const { as } = $props<{ as: string }>();
@@ -70,6 +92,10 @@ describe('classifyComponents', () => {
     expect(classes.get('/app/Toolbar.brm')!.selfContained).toBe(true);
     // A component that renders itself is self-contained when it is otherwise.
     expect(classes.get('/app/Comment.brm')!.selfContained).toBe(true);
+    // A context without a provider has its default.
+    expect(classes.get('/app/Themed.brm')!.selfContained).toBe(true);
+    // A call in a comment or a string is not a call.
+    expect(classes.get('/app/Quoted.brm')!.selfContained).toBe(true);
   });
 
   it('finds what a component needs, also through the components that it renders', () => {
@@ -77,7 +103,10 @@ describe('classifyComponents', () => {
     expect(needs('/app/Page.brm')).toEqual(['server feed via /app/Feed.brm']);
     expect(needs('/app/Status.brm')).toEqual(['request getEvent']);
     expect(needs('/app/Crumbs.brm')).toEqual(['route $route']);
-    expect(needs('/app/Themed.brm')).toEqual(['context $getContext']);
+    expect(needs('/app/Agent.brm')).toEqual(['request * as server']);
+    expect(needs('/app/Stories.brm')).toEqual(['server * as api']);
+    // A component that renders itself gets the needs of what else it renders.
+    expect(needs('/app/Thread.brm')).toEqual(['server feed via /app/Feed.brm']);
     expect(needs('/app/Later.brm')).toEqual(['defer #defer']);
     expect(needs('/app/Any.brm')).toEqual(['dynamic <{…}>']);
     expect(needs('/app/Fancy.brm')).toEqual(['component charts/Chart.brm']);
@@ -118,5 +147,50 @@ describe('propControls', () => {
       { name: 'open', optional: true, kind: 'boolean' },
       { name: 'items', optional: false, kind: 'json', empty: [] },
     ]);
+  });
+
+  it('reads the types that the file declares', () => {
+    const file = parse(
+      `<script>
+  interface User {
+    name: string;
+  }
+  type Handler = () => void;
+  type Tone = 'info' | 'danger';
+  interface Base {
+    id: string;
+    label: number;
+  }
+  interface Props extends Base {
+    label: string;
+    user: User;
+    onSave: Handler;
+    tone?: Tone;
+  }
+  const { label } = $props<Props & Partial<{ open: boolean }>>();
+</script>
+<p>{label}</p>`,
+      { filename: '/app/Card.brm' },
+    );
+    expect(propControls(file)).toEqual([
+      { name: 'id', optional: false, kind: 'text' },
+      { name: 'label', optional: false, kind: 'text' },
+      // A required object starts as `{}`, so reading a field of it does not throw.
+      { name: 'user', optional: false, kind: 'json', empty: {} },
+      { name: 'tone', optional: true, kind: 'choice', options: ['info', 'danger'] },
+      { name: 'open', optional: true, kind: 'boolean' },
+    ]);
+  });
+
+  it('has no controls for a type that it cannot read', () => {
+    const file = parse(
+      `<script>
+  import type { Props } from './types.ts';
+  const { label } = $props<Props>();
+</script>
+<p>{label}</p>`,
+      { filename: '/app/Imported.brm' },
+    );
+    expect(propControls(file)).toBeUndefined();
   });
 });

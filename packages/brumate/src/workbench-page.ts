@@ -78,7 +78,7 @@ export function workbenchPage(base: string): string {
 
   /* Kinds of needs */
   .k-server { --k: var(--blue); } .k-request { --k: var(--purple); } .k-route { --k: var(--green); }
-  .k-context { --k: var(--yellow); } .k-action { --k: var(--red); } .k-defer { --k: var(--accent); }
+  .k-action { --k: var(--red); } .k-defer { --k: var(--accent); }
   .k-dynamic { --k: var(--dim); } .k-component { --k: var(--faint); }
   .dot { background: var(--k); }
   .tag {
@@ -237,7 +237,6 @@ const KINDS = {
   server: ['Server', 'calls the server function'],
   request: ['Request', 'reads the request with'],
   route: ['Route', 'reads the route with'],
-  context: ['Context', 'reads a context with'],
   action: ['Action', 'has the form action'],
   defer: ['Defer', 'has a block that the server renders later:'],
   dynamic: ['Dynamic tag', 'renders a dynamic tag'],
@@ -364,6 +363,10 @@ function typeOf(spec) {
 function controls() {
   const box = $('controls');
   box.replaceChildren();
+  if (current.unreadProps) {
+    box.append(make('div', { class: 'empty-props' }, 'The workbench cannot read the type of the props, such as a type that the file imports. Declare it in the file to get controls.'));
+    return;
+  }
   if (!current.controls.length) {
     box.append(make('div', { class: 'empty-props' }, 'This component takes no props that the workbench can set.'));
     return;
