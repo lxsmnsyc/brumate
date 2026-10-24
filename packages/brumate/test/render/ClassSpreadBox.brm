@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { flag, ...rest } = $props<{ flag: boolean; [name: string]: unknown }>();
+</script>
+
+<div class={ box: true, flag } {...rest}>Box</div>
