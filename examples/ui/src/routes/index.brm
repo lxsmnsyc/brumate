@@ -713,7 +713,7 @@
   }
 
   :global(.confirm),
-  :global(.action-menu) {
+  :global(.menu) {
     display: grid;
     gap: 0.75rem;
   }
