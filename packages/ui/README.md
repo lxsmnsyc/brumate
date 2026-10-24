@@ -11,8 +11,15 @@ The package is private while its first phase is built.
 ## Parts
 
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
+- `Group`: parts that belong together, with `data-focus-within`, `data-hovered`, `data-disabled` and `data-invalid`.
+- `Heading`: a heading of a level, which a context can set.
 - `I18nProvider`: gives the parts inside it a locale and its direction. The default is `en-US`.
 - `Keyboard`: a keyboard shortcut, left to right in every language.
+- `Label`: the label of a field, with the `id` and `for` that the field gives.
+- `Link`: a link that presses as a button does, with `data-current`. A disabled link has no address.
+- `Separator`: an `<hr>`, or a vertical separator.
+- `Text`: the text of a field, such as its description, with the `id` that the field gives.
+- `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.
 - `VisuallyHidden`: hides its content from sight and keeps it for screen readers.
 
 ## Writing a part

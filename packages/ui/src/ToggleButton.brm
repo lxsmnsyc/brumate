@@ -1,0 +1,48 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import Button from './Button.brm';
+  import { ToggleButtonContext } from './contexts.ts';
+  import type { PressEvent } from './events.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A button that stays pressed, as ToggleButton of React Aria Components. It is a Button with
+   * aria-pressed and `data-selected`.
+   *
+   * `isSelected=(true)` starts its own state, and `isSelected=$bind(signal)` writes the caller's.
+   */
+  const { slot, isDisabled, onChange, onPress, children, ...rest } = $props<{
+    slot?: string | null;
+    isDisabled?: boolean;
+    onChange?: (selected: boolean) => void;
+    onPress?: (event: PressEvent) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+
+  const context = $getContext(ToggleButtonContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const disabled = $memo(isDisabled ?? slotProps(context, slot).isDisabled);
+
+  function toggle(event: PressEvent) {
+    const given = slotProps(context, slot);
+    isSelected = !isSelected;
+    given.onChange?.(isSelected);
+    onChange?.(isSelected);
+    given.onPress?.(event);
+    onPress?.(event);
+  }
+</script>
+
+<!-- The Button reads no ButtonContext, since this button has a context of its own. -->
+<Button
+  slot=(null)
+  isDisabled=disabled
+  aria-pressed=(isSelected ? 'true' : 'false')
+  data-selected=(isSelected || undefined)
+  onPress=toggle
+  {...attributes}
+  {...rest}
+>{children}</Button>

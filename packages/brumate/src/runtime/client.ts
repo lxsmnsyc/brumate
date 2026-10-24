@@ -2156,6 +2156,33 @@ export function rekey(
 }
 
 /**
+ * `rekey` for the block around a dynamic tag. The first update keeps the element that the server
+ * rendered, when it has the tag already, such as an update of a scope that streams in after an
+ * event.
+ */
+export function retag(
+  scope: Scope,
+  anchor: number,
+  value: unknown,
+  render: Render,
+  kinds: number[],
+): void {
+  scope.keys ??= new Map();
+  if (!scope.keys.has(anchor) && typeof value === 'string') {
+    const start = findComment(`b${scope.id}:${anchor}`);
+    let node = start?.nextSibling;
+    while (node && node.nodeType !== 1 && node.nodeType !== 8) {
+      node = node.nextSibling;
+    }
+    if (node?.nodeType === 1 && (node as Element).localName === value.toLowerCase()) {
+      scope.keys.set(anchor, value);
+      return;
+    }
+  }
+  rekey(scope, anchor, value, render, kinds);
+}
+
+/**
  * Renders the body of a `#try` block again, for its `reset` function. If the
  * body throws, the fallback renders again with the error.
  */
@@ -2817,6 +2844,17 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
     const all = module.props['*'];
     if (all !== undefined) {
       set(child, all, { ...(get(child, all) as object), [name]: value });
+    }
+    // A rest prop, `...rest`, holds the props that the component does not name.
+    const rest = module.props['...'];
+    if (rest !== undefined) {
+      const next: Record<string, unknown> = { ...(get(child, rest) as object) };
+      if (value === undefined) {
+        delete next[name];
+      } else {
+        next[name] = value;
+      }
+      set(child, rest, next);
     }
   };
   const module = modules.get(child.m);
