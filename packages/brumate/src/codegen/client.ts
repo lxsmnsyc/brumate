@@ -153,6 +153,7 @@ class ClientGenerator {
     this.part = 'update';
     this.emitUpdates();
     this.emitRenders();
+    this.emitChildrenRenders();
 
     const parts: Record<string, string> = {};
     for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
@@ -371,11 +372,21 @@ class ClientGenerator {
   }
 
   /** The import statements for the names that some code reads. */
-  private importsFor(names: Set<string>, components: boolean | Scope[]): string[] {
+  private importsFor(
+    names: Set<string>,
+    components: boolean | Scope[],
+    withChildren = components === true,
+  ): string[] {
     // `true` for the scopes that render functions render, or the scopes of a template part.
     const rendered = components === true ? this.renderedScopes() : components || [];
     for (const scope of rendered) {
       componentNames(scope.body?.children ?? [], names);
+    }
+    // The renders of children are in the update part, with the components that they render.
+    if (withChildren) {
+      for (const node of this.plan.childrenRenders.keys()) {
+        componentNames(node.children, names);
+      }
     }
     const result: string[] = [];
     for (const program of this.programs()) {
@@ -447,10 +458,11 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(imports, [
-        ...this.renderedScopes(),
-        ...names.flatMap((name) => this.templateScopes(name)),
-      ]),
+      ...this.importsFor(
+        imports,
+        [...this.renderedScopes(), ...names.flatMap((name) => this.templateScopes(name))],
+        names.includes('update'),
+      ),
       '',
       ...this.serverStubs(names),
     ];
@@ -1278,6 +1290,80 @@ class ClientGenerator {
           `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );
       }
+    }
+  }
+
+  /**
+   * The renders of children, such as `n0`, which the browser calls each time a component inserts
+   * them again, so they get new scopes, as the body of a block does.
+   */
+  private emitChildrenRenders(): void {
+    for (const [node, { symbol, scope }] of this.plan.childrenRenders) {
+      const range = { start: node.children[0]!.start, end: node.children.at(-1)!.end };
+      const within = (item: { start: number; end: number } | undefined): boolean =>
+        item !== undefined && range.start <= item.start && item.end <= range.end;
+      // The scopes of the blocks in the children, and of the templates that the children call.
+      const nested = this.model.scopes.filter(
+        (item) => item.parent === scope && item.kind === 'body' && within(item.block),
+      );
+      for (const site of this.model.sites) {
+        if (site.scope !== scope || !within(site.node as { start: number; end: number })) {
+          continue;
+        }
+        for (const callee of site.calls) {
+          const template =
+            callee.kind === 'template'
+              ? this.model.scopes.find(
+                  (item) => item.template?.name === callee.name && item.parent === callee.scope,
+                )
+              : undefined;
+          if (template && !nested.includes(template)) {
+            nested.push(template);
+          }
+        }
+      }
+      const inside = [...new Set(nested.flatMap((item) => this.inside(item)))];
+      const base = instanceScope(this.plan, scope);
+      const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+        mode: 'client',
+        outer: { inside, base, baseVar: '$$p' },
+      });
+      emitter.line(`export function ${symbol}($$p) {`);
+      emitter.line(`let $$html = '';`);
+      for (const line of this.prologue(inside, base)) {
+        emitter.line(line);
+      }
+      // The values that the children read in the scope that they were written in.
+      const declarations = new Set<Declaration>();
+      for (const site of this.model.sites) {
+        if (site.scope === scope && within(site.node as { start: number; end: number })) {
+          for (const read of site.reads) {
+            if (!inside.some((item) => isWithin(read.declaration.scope, item))) {
+              declarations.add(read.declaration);
+            }
+          }
+        }
+      }
+      for (const declaration of declarations) {
+        if (['import', 'module', 'template'].includes(declaration.kind)) {
+          continue;
+        }
+        const value = this.rewriter.value(declaration, '$$p', base);
+        if (
+          value &&
+          !emitter.lines.some((line) => line.trim().startsWith(`let ${declaration.name} =`))
+        ) {
+          emitter.line(`let ${declaration.name} = ${value};`);
+        }
+      }
+      for (const template of inside.filter((item) => item.kind === 'template')) {
+        emitter.emitTemplate(template.template!);
+      }
+      emitter.emitChildrenBody(node, scope);
+      emitter.flush();
+      emitter.line('return $$html;');
+      emitter.close();
+      this.emit(emitter.lines.join('\n'));
     }
   }
 
