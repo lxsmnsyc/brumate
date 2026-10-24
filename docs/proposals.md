@@ -345,7 +345,7 @@ Both resume server markup the same way: markers in the HTML, and a scan of them 
 
 Each step is a PR of its own, measured with `pnpm bench` before and after: the size of the core, the rows scenario, and the first click.
 
-1. **Nodes on the scope.** The resume scan and each client render store the nodes that updates write on their scope, by anchor, once. Updates read them from there, so the index, its MutationObserver, and the queries that find a node again go. The core is about 2.3 kB smaller.
+1. **Nodes on the scope.** The resume scan and each client render store the nodes that updates write on their scope, by anchor, once. Updates read them from there, so the index, its MutationObserver, and the queries that find a node again go. Alone it saves little, about 1 kB, since a scan of inserted HTML stays until step 2, so it lands with step 2.
 2. **Cloned templates.** A body that the browser renders, of `#if`, `#for`, children and templates, compiles to a `<template>` and a walk string. A render clones it, writes its values, and keeps its nodes, as in step 1, with no HTML string to build, parse and scan. The rows scenario should come close to Marko's, such as 1,000 rows in 18 ms, not 25 ms.
 3. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values and the memos that read it, in the order of the graph. The update tables and the code that reads them go. The functions of a component's updates stay in its update part, so they still load on the first write.
 
