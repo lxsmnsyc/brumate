@@ -802,7 +802,9 @@ class ClientGenerator {
           const slot = slotIndex(this.plan, node.declaration);
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
-            const value = site.awaits ? `(async () => (${expression()}))()` : expression();
+            const code = site.awaits ? `(async () => (${expression()}))()` : expression();
+            // An object literal needs parentheses, or the arrow reads it as a block.
+            const value = site.node.type === 'ObjectExpression' ? `(${code})` : code;
             const timing = node.declaration.timing;
             // A debounced or throttled memo computes after its wait, with the values of then.
             const call = timing
@@ -934,10 +936,38 @@ class ClientGenerator {
       if (this.plan.styles.css) {
         own.push(this.plan.styles.attribute, 'style');
       }
-      // The element's static attributes merge with the spread in their order, as on the server.
+      // The other spreads of the element, which an update writes too. Each update tracks the
+      // attributes that it wrote, so an update of one spread alone would remove the others'.
+      // Only a spread that can change has code in the browser.
+      const spreads = new Map<oxc.Node, string>();
+      for (const item of owner.attributes) {
+        if (item.kind !== 'spread' || item === attribute) {
+          continue;
+        }
+        const other = this.plan.graph.nodes.find(
+          (candidate) =>
+            candidate.kind !== 'source' &&
+            candidate.site.node === item.value.ast &&
+            this.plan.graph.live.has(candidate),
+        );
+        if (other && other.kind !== 'source') {
+          spreads.set(
+            item.value.ast,
+            this.withTemplates(
+              other.site,
+              this.rewriter.rewrite(other.site, '$$s', instanceScope(this.plan, other.site.scope)),
+            ),
+          );
+        }
+      }
+      // The element's static attributes merge with the spreads in their order, as on the server.
       const parts = owner.attributes.flatMap((item) => {
         if (item === attribute) {
           return [expression()];
+        }
+        if (item.kind === 'spread') {
+          const code = spreads.get(item.value.ast);
+          return code ? [code] : [];
         }
         return item.kind === 'static'
           ? [
@@ -1055,11 +1085,15 @@ class ClientGenerator {
           `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id});\n}`,
         );
         return;
-      case 'key':
+      case 'key': {
+        // The block around a dynamic tag keeps the element that the server rendered with the tag.
+        const [inner] = block.body.children;
+        const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.rekey($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
         );
         return;
+      }
       default:
         return;
     }

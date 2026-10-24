@@ -2156,6 +2156,33 @@ export function rekey(
 }
 
 /**
+ * `rekey` for the block around a dynamic tag. The first update keeps the element that the server
+ * rendered, when it has the tag already, such as an update of a scope that streams in after an
+ * event.
+ */
+export function retag(
+  scope: Scope,
+  anchor: number,
+  value: unknown,
+  render: Render,
+  kinds: number[],
+): void {
+  scope.keys ??= new Map();
+  if (!scope.keys.has(anchor) && typeof value === 'string') {
+    const start = findComment(`b${scope.id}:${anchor}`);
+    let node = start?.nextSibling;
+    while (node && node.nodeType !== 1 && node.nodeType !== 8) {
+      node = node.nextSibling;
+    }
+    if (node?.nodeType === 1 && (node as Element).localName === value.toLowerCase()) {
+      scope.keys.set(anchor, value);
+      return;
+    }
+  }
+  rekey(scope, anchor, value, render, kinds);
+}
+
+/**
  * Renders the body of a `#try` block again, for its `reset` function. If the
  * body throws, the fallback renders again with the error.
  */
