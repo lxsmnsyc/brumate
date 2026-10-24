@@ -38,6 +38,19 @@ describe('client functions', () => {
   });
 });
 
+describe('memos of objects', () => {
+  it('keeps the key of a shorthand property that reads another memo', () => {
+    const { server, parts } = compile(
+      `<script>\n  import { $memo, $props, $signal } from 'brumate/signals';\n  const { field } = $props();\n  let count = $signal(1);\n  const id = $memo(field ?? \`n\${count}\`);\n  const props = $memo({ id, count });\n</script>\n<button onClick=(() => count++) {...props}>+</button>`,
+      { filename: 'Props.brm' },
+    );
+    expect(server).toContain('id: $$b.read($$p_id)');
+    // The browser reads the object as a value, not as a block.
+    expect(Object.values(parts).join('\n')).toMatch(/memo\(\$\$s, \d+, \(\) => \(\{/);
+    expect(parseSync('Props.brm.ts', server).errors).toEqual([]);
+  });
+});
+
 describe('the name of the component function', () => {
   it('does not hide a name that the script imports', () => {
     const { server, render } = compile(
