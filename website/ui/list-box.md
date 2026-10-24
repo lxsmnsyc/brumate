@@ -11,6 +11,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 - `disabledKeys`, or `isDisabled` on an item, keeps items from focus and selection.
 - `disallowEmptySelection` keeps one item selected.
 - A key is a string or a number, and stays one: `id=(2)` selects `2`, not `'2'`.
+- Inside a [Select](./select.md), the Select keeps the selection, and a press picks one item.
 
 ## Selection
 

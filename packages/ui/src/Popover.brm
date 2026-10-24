@@ -156,7 +156,9 @@
     // leaves focus where it is, and Tab moves into it, and so does a submenu opened by hover.
     if (!trigger?.isPreview && trigger?.autoFocus !== false) {
       focusInto(
-        element.querySelector<HTMLElement>('[role=dialog], [role=alertdialog], [role=menu]') ??
+        element.querySelector<HTMLElement>(
+          '[role=dialog], [role=alertdialog], [role=menu], [role=listbox]',
+        ) ??
           element,
       );
     }

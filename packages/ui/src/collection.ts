@@ -318,7 +318,38 @@ export const ListBoxContext: Context<ListBoxState | null> = createContext<ListBo
   null,
 );
 
+/**
+ * What a part around a ListBox gives it, such as a Select: the selection that the part keeps, and
+ * what a press or a key does with an item. The ListBox then keeps no selection of its own.
+ */
+export interface ListBoxGiven {
+  selectedKeys: Key[];
+  /** The ID of the element that names the list, such as the Label of a Select. */
+  labelledBy?: string;
+  /** A press, Enter or Space on an item. */
+  select: (key: Key) => void;
+  /** Tab on an item, which leaves the list. */
+  tab?: () => void;
+}
+
+export const ListBoxGivenContext: Context<ListBoxGiven | null> = createContext<ListBoxGiven | null>(
+  'brumate-ui:list-box-given',
+  null,
+);
+
 /** What a section gives its Header: its ID, which names the section. */
 export const SectionContext: Context<{ headerId: string } | null> = createContext<{
   headerId: string;
 } | null>('brumate-ui:section', null);
+
+/** What a Select gives its SelectValue: what to show in its Button. */
+export interface SelectValueState {
+  id: string;
+  selectedKey: Key | null;
+  /** The text of the selected item, once the Select has seen it. */
+  selectedText: string | undefined;
+  placeholder: string;
+}
+
+export const SelectValueContext: Context<SelectValueState | null> =
+  createContext<SelectValueState | null>('brumate-ui:select-value', null);

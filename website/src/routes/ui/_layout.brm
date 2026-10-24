@@ -531,6 +531,35 @@
     gap: 0.5rem;
   }
 
+  /* A select: a field whose button shows the value, and a list as wide as the button. */
+  :global(.ui-select) {
+    display: grid;
+    gap: 0.35rem;
+    width: min(16rem, 100%);
+  }
+
+  :global(.ui-select-button) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 400;
+    text-align: start;
+  }
+
+  :global(.ui-select-button)::after {
+    color: var(--muted);
+    content: '▾';
+  }
+
+  :global(.ui-select-value[data-placeholder]) {
+    color: var(--muted);
+  }
+
+  :global(.ui-select-popover .ui-listbox) {
+    width: var(--trigger-width);
+    box-shadow: var(--shadow);
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;
@@ -763,6 +792,15 @@
     background: var(--bg);
     box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
     transition: opacity 0.18s, translate 0.18s;
+  }
+
+  /* The list of a select is the box itself. */
+  :global(.ui-popover.ui-select-popover) {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
   }
 
   :global(.ui-popover[data-closed]) {

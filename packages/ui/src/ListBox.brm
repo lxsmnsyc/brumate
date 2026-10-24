@@ -1,9 +1,10 @@
 <script>
-  import { $getContext, $id, $isPassed, $props, $setContext, $signal } from 'brumate/signals';
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
+    ListBoxGivenContext,
     enabledItems,
     focusItem,
     focusedItem,
@@ -66,25 +67,33 @@
   let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
 
   const locale = $getContext(LocaleContext);
+  // A Select around the list keeps the selection, with one item at most.
+  const given = $getContext(ListBoxGivenContext);
+  const mode = $memo(given ? 'single' : selectionMode);
+  const chosen = $memo(given ? given.selectedKeys : selectedKeys);
   const hasAction = $isPassed(onAction);
   const listId = $id();
   let root = $signal<HTMLElement>();
 
   function setSelection(next: Key[]) {
-    if (!sameKeys(next, selectedKeys)) {
+    if (!sameKeys(next, chosen)) {
       selectedKeys = next;
       onSelectionChange?.(next);
     }
   }
 
   function select(key: Key, request: SelectionRequest) {
+    if (given) {
+      given.select(key);
+      return;
+    }
     const element = root;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     const items = element ? enabledItems(element, 'option') : [];
     setSelection(
-      nextSelection(selectedKeys, key, {
-        mode: selectionMode,
+      nextSelection(chosen, key, {
+        mode,
         behavior: selectionBehavior,
         disallowEmpty: disallowEmptySelection,
         request: { ...request, shift },
@@ -104,9 +113,9 @@
   }
 
   $setContext(ListBoxContext, {
-    selectionMode,
+    selectionMode: mode,
     selectionBehavior,
-    selectedKeys,
+    selectedKeys: chosen,
     disabledKeys,
     select,
     action,
@@ -164,10 +173,10 @@
       const target = moveFrom(element, items, current, movement, shouldFocusWrap);
       const targetKey = target ? keyOf(target) : undefined;
       focusItem(target);
-      if (targetKey === undefined || selectionMode === 'none') {
+      if (targetKey === undefined || mode === 'none' || given) {
         return;
       }
-      if (event.shiftKey && selectionMode === 'multiple') {
+      if (event.shiftKey && mode === 'multiple') {
         select(targetKey, { shift: true, toggle: false });
       } else if (replace && !toggle) {
         // In the replace behavior, the selection follows focus.
@@ -189,7 +198,11 @@
       }
       return;
     }
-    if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
+    if (event.key === 'Tab' && given?.tab) {
+      given.tab();
+      return;
+    }
+    if ((event.key === 'a' || event.key === 'A') && toggle && mode === 'multiple') {
       setSelection(
         itemsOf(element, 'option')
           .map((item) => keyOf(item)!)
@@ -199,11 +212,12 @@
       window.getSelection()?.removeAllRanges();
       return;
     }
-    if (event.key === 'Escape') {
+    // Escape closes the popover of a Select, and keeps its selection.
+    if (event.key === 'Escape' && !given) {
       if (
         escapeKeyBehavior === 'clearSelection' &&
         !disallowEmptySelection &&
-        selectedKeys.length > 0
+        chosen.length > 0
       ) {
         setSelection([]);
       }
@@ -212,7 +226,7 @@
     const found = typeahead(element, items, current, event);
     if (found) {
       focusItem(found);
-      if (replace && selectionMode === 'single') {
+      if (replace && mode === 'single' && !given) {
         select(keyOf(found)!, { shift: false, toggle: false });
       }
     }
@@ -225,7 +239,8 @@
   role="listbox"
   tabindex="0"
   data-collection
-  aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
+  aria-multiselectable=(mode === 'multiple' ? 'true' : undefined)
+  aria-labelledby=(given?.labelledBy)
   aria-orientation=(orientation === 'horizontal' ? 'horizontal' : undefined)
   data-orientation=orientation
   onFocus=focused

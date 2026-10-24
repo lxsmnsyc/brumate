@@ -730,6 +730,29 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'Select: a required one stops its form, the arrow keys open it, and Enter picks an item',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('.pet-send').click();
+      // The browser checks the hidden input, and focus moves to the Button with the message.
+      await page.waitForSelector('.pet-error');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('pet-trigger'));
+      assert((await page.locator('.pet-state').textContent()) === 'Not sent', 'the form was sent');
+      const y = await page.evaluate(() => window.scrollY);
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Cat');
+      assert((await page.evaluate(() => window.scrollY)) === y, 'ArrowDown scrolled the page');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('pet-trigger'));
+      assert((await page.locator('.pet-trigger').textContent())?.trim() === 'Dog', 'no value');
+      await page.waitForFunction(() => !document.querySelector('.pet-error'));
+      await page.locator('.pet-send').click();
+      await page.waitForFunction(() => document.querySelector('.pet-state')?.textContent === 'dog');
+    },
+  );
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();
@@ -744,6 +767,29 @@ export async function run({ browser, url, runner }) {
       // rules of the whole page while a dialog is open, but a menu is not a dialog, so the rules
       // that look for the main landmark, the first heading and content outside landmarks are
       // off here alone.
+      const result = await window.axe.run(document, {
+        rules: {
+          'landmark-one-main': { enabled: false },
+          'page-has-heading-one': { enabled: false },
+          region: { enabled: false },
+        },
+      });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
+  await step('axe-core: an open select has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.pet-trigger').focus();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Cat');
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // As for a menu: the list of a select is modal and not a dialog, so axe's rules of the
+      // whole page see the inert page. They are off here alone.
       const result = await window.axe.run(document, {
         rules: {
           'landmark-one-main': { enabled: false },

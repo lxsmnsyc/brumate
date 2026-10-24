@@ -1,4 +1,5 @@
 <script>
+  import { prevent } from 'brumate/events';
   import { createForm } from 'brumate/forms';
   import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
@@ -35,6 +36,8 @@
   import Menu from '@brumate/ui/Menu.brm';
   import MenuItem from '@brumate/ui/MenuItem.brm';
   import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
   import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
   import Meter from '@brumate/ui/Meter.brm';
   import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
@@ -73,6 +76,8 @@
   let noteShown = $signal(true);
   let animals = $signal<Key[]>([]);
   let menuAction = $signal<Key>('none');
+  let pet = $signal<Key | null>(null);
+  let petSent = $signal('');
 
   async function order(form: FormData) {
     'use server';
@@ -366,6 +371,31 @@
     </Popover>
   </MenuTrigger>
   <p class="menu-state">{menuAction}</p>
+</section>
+
+<section aria-labelledby="select">
+  <h2 id="select">Select</h2>
+  <form
+    class="pet-form"
+    onSubmit=(prevent((event) => {
+      petSent = String(new FormData(event.currentTarget as HTMLFormElement).get('pet'));
+    }))
+  >
+    <Select class="pet-select" name="pet" isRequired selectedKey=$bind(pet)>
+      <Label>Pet</Label>
+      <Button class="press pet-trigger"><SelectValue /></Button>
+      <FieldError class="pet-error" />
+      <Popover class="popover pet-popover">
+        <ListBox class="listbox pet-list">
+          #for (name of ['Cat', 'Dog', 'Fish'] by name) {
+            <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+          }
+        </ListBox>
+      </Popover>
+    </Select>
+    <button class="press pet-send" type="submit">Send</button>
+  </form>
+  <p class="pet-state">{petSent || 'Not sent'}</p>
 </section>
 
 <section aria-labelledby="tooltip">
