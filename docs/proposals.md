@@ -331,7 +331,7 @@ Settled on 2026-10-24:
 - **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. React Aria and Terracotta mount every overlay at the end of `<body>`, so this is where the parts differ from them.
 - **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
 - **Docs of their own.** The docs of `@brumate/ui` are on the website, at `/ui`, apart from the docs of brumate. The section has its own navigation, sidebar and search, and shows only the parts. It links to the docs of brumate for the features that the parts use, and the docs of brumate link to it once.
-- **Bindable state.** The state props of the parts, such as `open`, `value` and `checked`, are bindable, so a caller writes `open=$bind(settingsOpen)`.
+- **Bindable state.** A part has one prop for each state, such as `open`, `value` and `checked`, and no `defaultOpen`. A value starts the part's own copy, and `open=$bind(settingsOpen)` controls it. See [Controlled and uncontrolled](#controlled-and-uncontrolled).
 
 #### Layers
 
@@ -367,38 +367,41 @@ What the 95% rule allows, measured on 2026-10-24:
 
 #### Controlled and uncontrolled
 
-Each part that has state comes in two shapes, as in Terracotta, and the prop that the caller passes picks one:
+A part with state has one prop for it, such as `open`, and the way the caller passes it picks the shape. There is no `defaultOpen`. This is where the parts differ from React Aria and Terracotta, which have both props.
 
-| Uncontrolled     | Controlled | Parts                                                                                           |
-| ---------------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| `defaultOpen`    | `open`     | `Disclosure`, `Dialog`, `Modal`, `Sheet`, `Popover`, `Tooltip`, `Menu`, `Select`, `ComboBox`    |
-| `defaultValue`   | `value`    | `Select`, `ComboBox`, `ListBox`, `RadioGroup`, `Tabs`, `Slider`, `NumberField`, the date fields |
-| `defaultChecked` | `checked`  | `Checkbox`, `Switch`                                                                            |
-| `defaultPressed` | `pressed`  | `ToggleButton`                                                                                  |
+| Prop      | Parts                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------- |
+| `open`    | `Disclosure`, `Dialog`, `Modal`, `Sheet`, `Popover`, `Tooltip`, `Menu`, `Select`, `ComboBox`    |
+| `value`   | `Select`, `ComboBox`, `ListBox`, `RadioGroup`, `Tabs`, `Slider`, `NumberField`, the date fields |
+| `checked` | `Checkbox`, `Switch`                                                                            |
+| `pressed` | `ToggleButton`                                                                                  |
 
 ```html
-<!-- Uncontrolled: the dialog keeps its own state, and onChange only reports it. -->
-<Dialog defaultOpen=(false) onChange=((open) => log(open))>…</Dialog>
+<!-- Uncontrolled: the dialog keeps its own state, which starts closed. -->
+<Dialog onChange=((open) => log(open))>…</Dialog>
 
-<!-- Controlled: the dialog never writes. Nothing moves until the parent passes a new value. -->
-<Dialog open=settingsOpen onChange=((open) => (settingsOpen = open))>…</Dialog>
+<!-- Uncontrolled, from a value: the dialog starts open and keeps its own copy. -->
+<Dialog open=(true)>…</Dialog>
 
-<!-- The same, with a bindable prop. -->
+<!-- Controlled: the dialog writes the caller's signal. -->
 <Dialog open=$bind(settingsOpen)>…</Dialog>
+
+<!-- Controlled, with a setter: the caller decides, and the dialog shows what it keeps. -->
+<Dialog open=$bind(settingsOpen, (next) => { if (!dirty) settingsOpen = next; })>…</Dialog>
 ```
 
-- **Uncontrolled**: the part owns a signal that starts at the default, and writes it. `onChange` tells the caller what happened.
-- **Controlled**: the part never writes its state. It calls `onChange` with the value it wants, and shows the value that the caller passes. A caller that does not write it back gets a part that does not move, and the docs say so, as Terracotta's do.
-- `open=$bind(signal)` is the controlled shape with an `onChange` that writes the signal. The parts declare `open` as `Bindable`, so both spellings work.
-- The props type is a union of the two shapes, so passing `open` and `defaultOpen` together is a type error, as Terracotta's types do.
-- The shape is chosen once, by which prop is there: `'open' in props`, as Terracotta's `isDisclosureUncontrolled` checks `'defaultOpen' in props`. A part does not switch shape after it renders.
-- One helper in the shared `.brm.ts` module gives every part the same rule: `controllable(props, 'open', 'defaultOpen')` returns a value to read and a `set` that writes the part's own signal when it is uncontrolled, and calls `onChange` either way.
+- **A value**, such as `open=(true)` or `open=settingsOpen`, starts the part's own copy, and the part writes the copy. A new value from the caller replaces it, so the caller can still close the dialog.
+- **A binding**, `open=$bind(settingsOpen)`, makes the part write the caller's signal.
+- **A binding with a setter** calls the setter in place of the write. It can refuse or change the value, and the part shows what the caller keeps, as a controlled part of React Aria does.
+- `onChange` reports each new value in every shape.
+- This is how a `let` prop of brumate works, so a part needs no helper for it: `let { open = false } = $props<{ open?: Bindable<boolean> }>()`, and a write of `open` goes where the caller said.
+- A value of `null` or `undefined` is a value like any other, such as the `value` of a `Select` with nothing selected.
+- `$isPassed(open)` and `$isBound(open)` tell a part how the caller passed the prop, for a part that needs to know.
 
 What brumate adds to the split:
 
-- The caller's attributes are in its markup, so the compiler usually knows the shape of each use. A part that is only ever used uncontrolled does not need the code that waits for the caller, and the reverse, so the shape can decide what ships.
-- The state of an uncontrolled part is a slot of the part's own scope, which the page state sends. A controlled part's state is a slot of the caller, so the part sends nothing of its own.
-- On the server, nothing writes, so both shapes render the value that they start with: the default, or the caller's value.
+- The state of an uncontrolled part is a slot of the part's own scope, which the page state sends. A bound part's state is a slot of the caller, so the part sends nothing of its own.
+- On the server, nothing writes, so every shape renders the value that it starts with.
 
 #### How it maps to brumate
 
@@ -410,7 +413,7 @@ What brumate adds to the split:
 | `triggerRef` for positioning        | A function of a shared `.brm.ts` module that places the overlay next to its trigger, when it opens and as the page scrolls or resizes |
 | Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                                  |
 | Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                                        |
-| `defaultOpen` and `isOpen`          | `defaultOpen`, and `open` or `open=$bind(…)`, through one `controllable` helper                                                       |
+| `defaultOpen` and `isOpen`          | `open`, as a value or `open=$bind(…)`                                                                                                 |
 | Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                                          |
 | Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.               |
 | `@internationalized/date`, `number` | Used as they are                                                                                                                      |
@@ -446,7 +449,7 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
    - The workbench counts a context with a default and a dynamic tag with a default element as self-contained, since every part reads the context of its parent and renders `as`.
    - Story files for the workbench, with named sets of props, so each part shows its states.
    - Helpers for keyboard and focus in tests, and `examples/ui`, a page of every part that `pnpm e2e` covers with axe-core.
-2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: `controllable`, the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with the press tests of React Aria, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
+2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with the press tests of React Aria, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
 3. **Phases 1, 2 and 3**, the controls and fields, the overlays, and the collections with `Select`, in that order, as the roadmap below says.
 4. **Phases 4 to 7**, as users ask for them.
 
