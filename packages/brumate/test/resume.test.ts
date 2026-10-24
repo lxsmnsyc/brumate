@@ -2117,6 +2117,8 @@ describe('children that a block inserts again', () => {
     click(document.querySelector('.toggle-inline')!);
     await waitFor(() => expect(probe('inline-probe')).not.toBeNull());
     expect(probe('inline-probe')!.textContent).toBe('');
+    // A template that the children pass on renders with them.
+    expect(text('.reinsert-label')).toBe('Named');
     click(probe('inline-probe')!);
     await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
     delete document.body.dataset.cleanups;
