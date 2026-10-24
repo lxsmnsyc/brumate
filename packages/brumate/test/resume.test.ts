@@ -2709,6 +2709,18 @@ describe('refs of dynamic tags', () => {
   });
 });
 
+describe('fields in spreads', () => {
+  it('keeps what the user typed when the spread updates for another attribute', async () => {
+    await resume('spreadField', {});
+    const field = document.querySelector<HTMLInputElement>('.field')!;
+    // The user types before the code of the field loads, so no handler writes the value.
+    field.value = 'typed';
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(field.getAttribute('data-count')).toBe('1'));
+    expect(field.value).toBe('typed');
+  });
+});
+
 describe('rest props', () => {
   it('keeps the attributes of a rest that does not change when a spread next to it does', async () => {
     await resume('mixedSpreadParent', {});
