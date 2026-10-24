@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Transition from '@brumate/ui/Transition.brm';
+
+  let shown = $signal(true);
+</script>
+
+<Button class="ui-button" onPress=(() => (shown = !shown))>{shown ? 'Hide' : 'Show'} the note</Button>
+<Transition show=shown class="ui-note">The note fades and slides as it comes and goes.</Transition>

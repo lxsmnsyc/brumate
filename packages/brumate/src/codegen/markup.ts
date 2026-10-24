@@ -1515,6 +1515,12 @@ export class Emitter {
         `$$b.dynamic(${this.expression(node.tag)}, ${this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
       ),
     );
+    // `ref` gets the element that the tag renders. A tag that names a component has none.
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'ref' && anchor) {
+        this.emitRef(attribute.target, attribute, anchor);
+      }
+    }
   }
 
   // Blocks

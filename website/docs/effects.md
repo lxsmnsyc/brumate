@@ -158,6 +158,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 ```
 
 - The signal must be a `$signal` declared in the same file.
+- A dynamic tag takes `ref` too, such as `<{as} ref=panel>`. The signal gets the element that the tag renders, or nothing when the tag names a component.
 - On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
 - An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
 

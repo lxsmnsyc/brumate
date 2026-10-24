@@ -2044,7 +2044,7 @@ function write(
 /** The `value` and `checked` that updates last wrote to each field. */
 const fieldValues = new WeakMap<Element, Map<string, unknown>>();
 
-function setAttribute(element: Element, name: string, value: unknown): void {
+function setAttribute(element: Element, name: string, value: unknown, spread = false): void {
   if (isBinding(value)) {
     value = value.value;
   }
@@ -2056,12 +2056,13 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     // The field takes the value when it differs from the value that updates wrote last, not each
     // time an update runs, so what the user typed or checked stays while the value stays, such
     // as the posted values of a form that validation reads again. Before the first write, the
-    // field is compared as it is now. An update of a scope that resumed late compares it with
-    // what the server rendered, so a box that the user checked before the code loaded stays.
+    // field is compared as it is now. Two first writes compare it with what the server rendered,
+    // so what the user typed or checked before the code loaded stays: an update of a scope that
+    // resumed late, and an update of a spread, which another of its attributes can start.
     const written = fieldValues.get(element) ?? new Map<string, unknown>();
     fieldValues.set(element, written);
     let rendered: unknown;
-    if (refreshing) {
+    if (refreshing || spread) {
       rendered = name === 'checked' ? field.defaultChecked : field.defaultValue;
     }
     const before = written.has(name) ? written.get(name) : (rendered ?? field[name]);
@@ -2118,7 +2119,7 @@ export function attrs(
     for (const [name, value] of Object.entries(values)) {
       if (name !== 'children' && !/^on[A-Z]/.test(name)) {
         names.add(name);
-        setAttribute(element, name, value);
+        setAttribute(element, name, value, true);
       }
     }
     for (const name of spreadNames.get(element) ?? []) {

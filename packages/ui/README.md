@@ -14,6 +14,7 @@ The package is private while its first phase is built.
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
 - `Checkbox`: a label around a native checkbox, with `data-selected`, `data-indeterminate`, `data-pressed` and the focus and hover of its label.
 - `CheckboxGroup`: checkboxes with one value, a list. With `isRequired`, the browser asks for a box on a submit.
+- `Disclosure`, `DisclosurePanel` and `DisclosureGroup`: content that expands and collapses. A collapsed panel is `hidden="until-found"`. `transition` on the panel lets CSS animate it, with `--disclosure-panel-height`, and `unmount` decides what happens to its content while it is collapsed.
 - `FieldError`: the errors of a field, while it is invalid.
 - `FileTrigger`: opens the file picker from a Button inside, and calls `onSelect` with the files.
 - `Form`: a form that tells its fields how to validate, and gives them the errors of the server by name.
@@ -31,6 +32,7 @@ The package is private while its first phase is built.
 - `Switch`: a native checkbox with `role="switch"`.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
 - `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
+- `Transition` and `TransitionChild`: animate content in and out, with `data-closed`, `data-enter` and `data-leave`, and keep it until its leave ends. Each step waits for the animations of the element, and a child moves with its parent.
 - `Toolbar`: the arrow keys move focus between its items, and Tab stops at one of them.
 - `ToggleButtonGroup`: ToggleButtons with one selection, as radios, or several, as a toolbar.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.

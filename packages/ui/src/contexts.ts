@@ -162,3 +162,24 @@ export interface ToggleGroupState {
 
 export const ToggleGroupContext: Context<ToggleGroupState | null> =
   createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);
+
+/** What a Disclosure gives its DisclosurePanel. */
+export interface DisclosurePanelState {
+  id: string;
+  triggerId: string;
+  isExpanded: boolean;
+  expand: () => void;
+}
+
+export const DisclosurePanelContext: Context<DisclosurePanelState | null> =
+  createContext<DisclosurePanelState | null>('brumate-ui:disclosure-panel', null);
+
+/** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
+export interface DisclosureGroupState {
+  expandedKeys: string[];
+  isDisabled: boolean;
+  toggle: (id: string) => void;
+}
+
+export const DisclosureGroupContext: Context<DisclosureGroupState | null> =
+  createContext<DisclosureGroupState | null>('brumate-ui:disclosure-group', null);

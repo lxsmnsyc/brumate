@@ -1,0 +1,205 @@
+<script>
+  import {
+    $client,
+    $effect,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
+  import {
+    TransitionContext,
+    classesOf,
+    enterSteps,
+    leaveSteps,
+    nextFrame,
+    stepClasses,
+  } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
+
+  /**
+   * Animates content in and out, as Transition of Terracotta does. It keeps the content in the
+   * page until its leave ends, which CSS cannot do for content that is removed.
+   *
+   * - `enter`, `enterFrom` and `enterTo` are the classes of the enter: `enter` for its whole
+   *   length, `enterFrom` for its start, and `enterTo` for its end. `entered` stays once it has
+   *   entered. `leave`, `leaveFrom` and `leaveTo` are the same for the leave.
+   * - It shows `data-closed` while the content is closed or about to open, and `data-enter`,
+   *   `data-leave` and `data-transition` while it moves, so CSS can animate it without classes.
+   * - Each step waits until the element has no animation left running, so an element with no
+   *   transition moves on at once. `prefers-reduced-motion` is for the CSS to apply.
+   * - The content is `inert` from the start of a leave, so it takes no click or focus as it goes.
+   * - The page renders the content as `show` says, with no transition on load. `appear` runs the
+   *   enter when the browser renders it, such as in markup that opens later.
+   * - `unmount`: `true` removes the content once it has left, `false` keeps it with `hidden`, and
+   *   `'offscreen'` keeps it in an `#offscreen` block, with its state.
+   * - Without `show`, it is a TransitionChild of the Transition around it: it enters once its
+   *   parent has entered, or with it under `appear`, and its parent leaves once it has left.
+   */
+  const {
+    as = 'div',
+    appear = false,
+    unmount = true,
+    enter,
+    enterFrom,
+    enterTo,
+    entered,
+    leave,
+    leaveFrom,
+    leaveTo,
+    beforeEnter,
+    afterEnter,
+    beforeLeave,
+    afterLeave,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    appear?: boolean;
+    unmount?: boolean | 'offscreen';
+    enter?: string;
+    enterFrom?: string;
+    enterTo?: string;
+    entered?: string;
+    leave?: string;
+    leaveFrom?: string;
+    leaveTo?: string;
+    beforeEnter?: () => void;
+    afterEnter?: () => void;
+    beforeLeave?: () => void;
+    afterLeave?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  const { show, parent } = $props<{
+    show?: boolean;
+    /** The Transition around a TransitionChild, which the TransitionChild reads for it. */
+    parent?: TransitionParent | null;
+  }>();
+
+  // A Transition with `show`, or a TransitionChild of the one around it.
+  const own = $isPassed(show);
+  const wanted = $memo(
+    own
+      ? Boolean(show)
+      : Boolean(parent?.show && (appear || parent.entered)),
+  );
+
+  // The browser renders this, rather than the server.
+  const inBrowser = typeof document !== 'undefined';
+  // The enter runs once the element is in the page.
+  const appearing = $untrack(appear && inBrowser && wanted);
+
+  // The content is in the page: shown, or leaving.
+  let mounted = $signal(wanted);
+  // It has finished its enter, which a child waits for.
+  let rested = $signal(wanted && !appearing);
+  // A leave is running, so the content is inert.
+  let leaving = $signal(false);
+  // Each change starts a run, and a later run stops an earlier one.
+  let run = $signal(0);
+  let element = $signal<HTMLElement>();
+
+  // The TransitionChild elements inside read this one as their parent.
+  $setContext(TransitionContext, { show: wanted, entered: rested });
+
+  // The content renders closed before an enter, at rest when shown, and closed when hidden. The
+  // steps after that set its classes and flags on the element itself.
+  let opening = $signal(appearing);
+
+  function startClass() {
+    if (opening) {
+      return classesOf(enterFrom).join(' ') || undefined;
+    }
+    return (rested && classesOf(entered).join(' ')) || undefined;
+  }
+
+  function startClosed() {
+    return opening || !rested || undefined;
+  }
+
+  // The classes of the class props, read when each run starts.
+  function classes() {
+    return stepClasses({ enter, enterFrom, enterTo, entered, leave, leaveFrom, leaveTo });
+  }
+
+  async function toShown(token: number) {
+    mounted = true;
+    // The element is in the page once the markup that `mounted` renders is.
+    await nextFrame();
+    const target = element;
+    if (token !== run || !target) {
+      return;
+    }
+    beforeEnter?.();
+    if (await enterSteps(target, classes(), { current: () => token === run })) {
+      opening = false;
+      rested = true;
+      afterEnter?.();
+    }
+  }
+
+  async function toHidden(token: number) {
+    rested = false;
+    const target = element;
+    if (!target) {
+      mounted = false;
+      return;
+    }
+    const done = await leaveSteps(target, classes(), { current: () => token === run }, () => {
+      beforeLeave?.();
+      leaving = true;
+    });
+    if (done) {
+      leaving = false;
+      mounted = false;
+      afterLeave?.();
+    }
+  }
+
+  function change(next: boolean) {
+    run += 1;
+    if (next) {
+      leaving = false;
+      opening = true;
+      void toShown(run);
+    } else {
+      void toHidden(run);
+    }
+  }
+
+  $effect(() => {
+    const next = wanted;
+    $untrack(change(next));
+  });
+
+  // Content that the browser renders with `appear` enters once it is in the page.
+  $client(() => {
+    if (appearing) {
+      change(true);
+    }
+  });
+</script>
+
+#template content() {
+  <{as}
+    ref=element
+    class=($untrack(startClass()))
+    data-closed=($untrack(startClosed()))
+    hidden=(!mounted && unmount === false || undefined)
+    inert=(leaving || !mounted || undefined)
+    {...rest}
+  >{children}</>
+}
+
+#if (unmount === 'offscreen') {
+  #offscreen (mounted) {
+    {content()}
+  }
+} #else {
+  #if (mounted || unmount === false) {
+    {content()}
+  }
+}

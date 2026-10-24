@@ -380,6 +380,88 @@
     font: 600 0.8rem var(--mono, ui-monospace, monospace);
   }
 
+  :global(.ui-accordion) {
+    width: 100%;
+    max-width: 26rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  :global(.ui-disclosure + .ui-disclosure) {
+    border-top: 1px solid var(--border);
+  }
+
+  :global(.ui-disclosure h4) {
+    margin: 0;
+  }
+
+  :global(.ui-disclosure-trigger) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  :global(.ui-disclosure-trigger .icon) {
+    transition: rotate 0.2s;
+  }
+
+  :global(.ui-disclosure[data-expanded] .ui-disclosure-trigger .icon) {
+    rotate: 180deg;
+  }
+
+  /* The panel slides from the height that it holds while it moves, and fades. */
+  :global(.ui-disclosure-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    color: var(--muted);
+    transition: height 0.25s, opacity 0.25s;
+  }
+
+  :global(.ui-disclosure-panel[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.ui-disclosure-panel p) {
+    margin: 0;
+    padding: 0 0.9rem 0.8rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.ui-disclosure-panel) {
+      transition: none;
+    }
+  }
+
+  /* A transition from the data attributes of Transition, with no classes. */
+  :global(.ui-note) {
+    flex-basis: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    transition: opacity 0.25s, translate 0.25s;
+  }
+
+  :global(.ui-note[data-closed]) {
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.ui-note) {
+      transition: none;
+    }
+  }
+
   :global(.ui-separator) {
     align-self: stretch;
     width: 1px;

@@ -379,12 +379,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       case 'element':
       case 'dynamic': {
         const sites = sitesByNode.get(node) ?? [];
-        const hasRef =
-          node.kind === 'element' &&
-          node.attributes.some((attribute) => {
-            const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
-            return target !== undefined && slotted.has(target);
-          });
+        const hasRef = node.attributes.some((attribute) => {
+          const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
+          return target !== undefined && slotted.has(target);
+        });
         const content = node.kind === 'element' ? liveContent(node) : undefined;
         const events = sites.some((site) => site.kind === 'event');
         // `value=$bind(name)`: the core finds the scope of the name from the anchor of the element.

@@ -222,7 +222,11 @@ class Analyzer {
   private readonly sites: Site[] = [];
   readonly bindings: SemanticModel['bindings'] = [];
   private readonly diagnostics: Diagnostic[] = [];
-  private readonly refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[] = [];
+  private readonly refs: {
+    attribute: RefAttribute;
+    element: ElementNode | DynamicTagNode;
+    scope: Scope;
+  }[] = [];
   /** The type arguments of the `$props<T>()` calls. */
   private readonly propsTypes: oxc.Node[] = [];
   private readonly module: Scope;
@@ -1295,7 +1299,8 @@ class Analyzer {
           break;
         }
         case 'ref':
-          if (node.kind === 'element') {
+          // A dynamic tag gets its element too, when its tag names an element.
+          if (node.kind === 'element' || node.kind === 'dynamic') {
             this.refs.push({ attribute, element: node, scope });
           }
           break;

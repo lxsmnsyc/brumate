@@ -21,7 +21,7 @@ Where a part behaves differently, it is because of how brumate runs a page. See 
 - An `as` prop on every part, so it can render another element.
 - Render props, here as a `#template` prop, so your markup reads the state of a part.
 - The split between state that a part keeps and state that you keep. Here it is one prop, which a value starts and `$bind` controls. See [State](./state.md).
-- `Transition`, which the overlays will use to animate content that leaves the page.
+- `Transition` and `TransitionChild` of Terracotta 2.x: the class props of each step, waits that read the running animations of the element, `inert` while content leaves, and children that enter after their parent and leave before it.
 
 ## WAI-ARIA Authoring Practices
 
