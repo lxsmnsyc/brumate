@@ -20,7 +20,7 @@ A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `
 - A value of `null` is a value like any other, such as the `value` of a `RadioGroup` with nothing chosen.
 - On the server, nothing writes, so every shape renders the value that it starts with.
 
-React Aria and Terracotta have two props for each state, such as `defaultSelected` and `isSelected`. These parts have one, because a `let` prop of brumate already does both. See [Props that the component writes](../docs/components.md#props-that-the-component-writes).
+There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already does both. See [Props that the component writes](../docs/components.md#props-that-the-component-writes).
 
 | State          | Parts                                                     |
 | -------------- | --------------------------------------------------------- |

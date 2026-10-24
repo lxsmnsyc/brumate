@@ -1,6 +1,6 @@
 # brumate/ui
 
-Accessible, unstyled components for brumate. They follow the behavior of [React Aria Components](https://react-spectrum.adobe.com/react-aria/components.html), and resume like the rest of a brumate page: a part ships no code until someone uses it.
+Accessible, unstyled components for brumate. They resume like the rest of a brumate page: a part ships no code until someone uses it.
 
 ```brm gallery
 
@@ -9,7 +9,7 @@ Accessible, unstyled components for brumate. They follow the behavior of [React 
 ## What the parts give you
 
 - Markup with the right roles and ARIA attributes, and native elements where the browser has them, such as `<button>`, `<input type="checkbox">` and `<a>`.
-- Keyboard, pointer and screen reader behavior, from the tests of React Aria.
+- Keyboard, pointer and screen reader behavior, the same for a mouse, a touch, a key and a screen reader.
 - State as `data-*` attributes, such as `data-pressed` and `data-selected`, for your CSS.
 - No styles. The demos on these pages use the style of this site. See [Styling](./styling.md).
 
@@ -37,7 +37,7 @@ Import a part from `@brumate/ui`, and use it as any component:
 
 ## How the parts work together
 
-A part that holds other parts gives them their IDs and state through a context, as React Aria does. A `TextField` names its `Label`, `Input` and `FieldError` for each other:
+A part that holds other parts gives them their IDs and state through a context. A `TextField` names its `Label`, `Input` and `FieldError` for each other:
 
 ```html
 <TextField name="email" type="email" isRequired>

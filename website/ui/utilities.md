@@ -22,5 +22,5 @@ A keyboard shortcut, as a `<kbd>`. It reads left to right in every language.
 Gives the parts inside it a locale and its direction.
 
 - `locale` is a language tag, such as `ar-EG`. The default is `en-US`, so the server and the browser format numbers the same way.
-- The direction comes from the script of the locale, as React Aria finds it. A `Toolbar` turns its arrow keys around right to left.
+- The direction comes from the script of the locale. A `Toolbar` turns its arrow keys around right to left.
 - It renders only its children. Put `lang` and `dir` on an element yourself, such as `<html>`.

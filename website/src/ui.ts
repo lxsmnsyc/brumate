@@ -23,7 +23,7 @@ for (const [file, demo] of Object.entries(
 
 /** The sections of the sidebar, in reading order. */
 export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
-  { title: 'Start', pages: ['', 'styling', 'state', 'differences'] },
+  { title: 'Start', pages: ['', 'styling', 'state', 'resuming', 'influences'] },
   { title: 'Parts', pages: ['buttons', 'fields', 'boxes', 'structure', 'status', 'utilities'] },
 ].map((section) => ({
   title: section.title,

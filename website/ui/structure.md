@@ -36,7 +36,7 @@ A trail of links to the current page.
 ```
 
 - `Breadcrumbs` is an `<ol>` of `Breadcrumb` items. Put it in a `<nav>` with a label.
-- `isCurrent` on the last `Breadcrumb` gives its link `aria-current="page"`. React Aria finds the last item itself. Here, you mark it.
+- `isCurrent` on the last `Breadcrumb` gives its link `aria-current="page"`. Mark it yourself, since a part cannot read the structure of its children.
 - `isDisabled` on `Breadcrumbs` disables every link.
 
 ## Separator and Heading
