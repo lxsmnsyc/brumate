@@ -327,6 +327,10 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       const isLive =
         ((declaration.kind === 'prop' || declaration.kind === 'props-rest') &&
           isLiveProp(declaration, options.liveProps)) ||
+        // A prop of `let` that client code writes, also when every parent passes a constant.
+        (declaration.kind === 'prop' &&
+          declaration.writable === true &&
+          declaration.writes.some((write) => reached.has(write.site))) ||
         // A provider above can change the value.
         declaration.kind === 'context' ||
         // A form writes the result of its server function.
