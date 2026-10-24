@@ -2688,6 +2688,17 @@ describe('spreads on components', () => {
 });
 
 describe('rest props', () => {
+  it('keeps the attributes of a rest that does not change when a spread next to it does', async () => {
+    await resume('mixedSpreadParent', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.mixed')).not.toBeNull());
+    click(document.querySelector('.add')!);
+    await waitFor(() =>
+      expect(document.querySelector('.mixed')!.getAttribute('data-count')).toBe('1'),
+    );
+    expect(document.querySelector('.mixed')!.getAttribute('title')).toBe('Kept');
+  });
+
   it('leaves out of a rest the props that another $props() call names', async () => {
     await resume('twoPropsParent', {});
     const button = document.querySelector('.two-props')!;
