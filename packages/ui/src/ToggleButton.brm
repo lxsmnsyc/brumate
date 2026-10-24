@@ -2,7 +2,7 @@
   import { $getContext, $memo, $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import Button from './Button.brm';
-  import { ToggleButtonContext } from './contexts.ts';
+  import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import type { PressEvent } from './events.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -12,7 +12,9 @@
    *
    * `isSelected=(true)` starts its own state, and `isSelected=$bind(signal)` writes the caller's.
    */
-  const { slot, isDisabled, onChange, onPress, children, ...rest } = $props<{
+  const { id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<{
+    /** The key of the button in a ToggleButtonGroup. */
+    id?: string;
     slot?: string | null;
     isDisabled?: boolean;
     onChange?: (selected: boolean) => void;
@@ -23,14 +25,27 @@
   let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
 
   const context = $getContext(ToggleButtonContext);
+  const group = $getContext(ToggleGroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  const disabled = $memo(isDisabled ?? slotProps(context, slot).isDisabled);
+  const disabled = $memo(
+    isDisabled ?? (group?.isDisabled || slotProps(context, slot).isDisabled),
+  );
+  // In a group, the group keeps the selection.
+  const selected = $memo(group && id !== undefined ? group.selectedKeys.includes(id) : isSelected);
+  // The buttons of a group with one selection are radios.
+  const radio = $memo(group?.selectionMode === 'single');
 
   function toggle(event: PressEvent) {
     const given = slotProps(context, slot);
-    isSelected = !isSelected;
-    given.onChange?.(isSelected);
-    onChange?.(isSelected);
+    // The new state, before the write changes `selected`.
+    const next = !selected;
+    if (group && id !== undefined) {
+      group.toggle(id);
+    } else {
+      isSelected = next;
+    }
+    given.onChange?.(next);
+    onChange?.(next);
     given.onPress?.(event);
     onPress?.(event);
   }
@@ -40,8 +55,10 @@
 <Button
   slot=(null)
   isDisabled=disabled
-  aria-pressed=(isSelected ? 'true' : 'false')
-  data-selected=(isSelected || undefined)
+  role=(radio ? 'radio' : undefined)
+  aria-checked=(radio ? String(selected) : undefined)
+  aria-pressed=(radio ? undefined : String(selected))
+  data-selected=(selected || undefined)
   onPress=toggle
   {...attributes}
   {...rest}

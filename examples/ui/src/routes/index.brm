@@ -5,6 +5,7 @@
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
   import Form from '@brumate/ui/Form.brm';
   import Input from '@brumate/ui/Input.brm';
   import Radio from '@brumate/ui/Radio.brm';
@@ -14,15 +15,21 @@
   import TextArea from '@brumate/ui/TextArea.brm';
   import TextField from '@brumate/ui/TextField.brm';
   import { Order } from '../order.ts';
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
   import Button from '@brumate/ui/Button.brm';
   import Group from '@brumate/ui/Group.brm';
   import Heading from '@brumate/ui/Heading.brm';
   import Keyboard from '@brumate/ui/Keyboard.brm';
   import Label from '@brumate/ui/Label.brm';
   import Link from '@brumate/ui/Link.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
   import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
 
   let presses = $signal(0);
@@ -33,6 +40,8 @@
   let size = $signal<string | null>(null);
   let toppings = $signal<string[]>([]);
   let dark = $signal(false);
+  let align = $signal(['left']);
+  let files = $signal('No files picked.');
 
   async function order(form: FormData) {
     'use server';
@@ -174,6 +183,45 @@
   <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
 </section>
 
+<section aria-labelledby="toolbar">
+  <h2 id="toolbar">Toolbar and ToggleButtonGroup</h2>
+  <Toolbar class="tools" aria-label="Edit">
+    <Button class="press">Cut</Button>
+    <Button class="press">Copy</Button>
+    <Separator orientation="vertical" class="divider" />
+    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection=(true)>
+      <ToggleButton id="left" class="press">Left</ToggleButton>
+      <ToggleButton id="center" class="press">Center</ToggleButton>
+    </ToggleButtonGroup>
+  </Toolbar>
+  <p class="aligned">Aligned {align[0]}.</p>
+</section>
+
+<section aria-labelledby="breadcrumbs">
+  <h2 id="breadcrumbs">Breadcrumbs</h2>
+  <nav aria-label="Trail">
+    <Breadcrumbs class="trail">
+      <Breadcrumb><Link class="link" href="#main">Home</Link></Breadcrumb>
+      <Breadcrumb><Link class="link" href="#breadcrumbs">Parts</Link></Breadcrumb>
+      <Breadcrumb isCurrent=(true)><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+    </Breadcrumbs>
+  </nav>
+</section>
+
+<section aria-labelledby="meter">
+  <h2 id="meter">Meter and ProgressBar</h2>
+  <Meter class="bar" value=(40)><Label>Disk space</Label></Meter>
+  <ProgressBar class="bar" value=(3) maxValue=(4)><Label>Upload</Label></ProgressBar>
+</section>
+
+<section aria-labelledby="file-trigger">
+  <h2 id="file-trigger">FileTrigger</h2>
+  <FileTrigger allowsMultiple=(true) onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
+    <Button class="press">Pick files</Button>
+  </FileTrigger>
+  <p class="files">{files}</p>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -289,6 +337,39 @@
 
   :global(.theme[data-selected] .track) {
     background: #2457d6;
+  }
+
+  :global(.tools),
+  :global(.align) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  :global(.trail) {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.trail li + li)::before {
+    content: '/';
+    margin-inline-end: 0.5rem;
+  }
+
+  :global(.bar) {
+    display: grid;
+    gap: 0.25rem;
+    max-width: 20rem;
+    margin-block: 0.5rem;
+  }
+
+  :global(.bar)::after {
+    content: '';
+    height: 0.5rem;
+    border: 1px solid #555;
+    background: linear-gradient(to right, #2457d6 var(--percentage), transparent 0);
   }
 
   :global(.help) {
