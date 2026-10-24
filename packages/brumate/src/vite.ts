@@ -279,8 +279,20 @@ function shapeOf(result: CompileResult): Shape {
 
 /** What Vitest passes to `configureVitest`, the part that this plugin uses. */
 interface VitestContext {
-  defineCacheKeyGenerator?: (generate: () => string) => void;
-  experimental_defineCacheKeyGenerator?: (generate: () => string) => void;
+  defineCacheKeyGenerator?: (generate: CacheKeyGenerator) => void;
+  experimental_defineCacheKeyGenerator?: (generate: CacheKeyGenerator) => void;
+}
+
+/** Makes a part of Vitest's cache key of a module, or returns false to keep it out of the cache. */
+type CacheKeyGenerator = (context: { id: string }) => string | false;
+
+/**
+ * The cache key of a module for Vitest: the hash of this build of brumate. A component is never
+ * cached, because its code depends on other files, such as the `.brm.ts` modules that it calls
+ * and the props that other components pass it. A key of its own source would go stale.
+ */
+function cacheKey({ id }: { id: string }): string | false {
+  return id.split('?')[0]!.endsWith('.brm') ? false : buildFingerprint();
 }
 
 let fingerprint: string | undefined;
@@ -1290,7 +1302,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     configureVitest(context: VitestContext) {
       const define =
         context.defineCacheKeyGenerator ?? context.experimental_defineCacheKeyGenerator;
-      define?.(buildFingerprint);
+      define?.(cacheKey);
     },
 
     configResolved(config) {
