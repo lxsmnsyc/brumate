@@ -1403,25 +1403,32 @@ export class Emitter {
         ? `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
         : undefined;
     };
-    if (value.type !== 'ObjectExpression') {
-      return mark(value) ?? this.source(value);
-    }
-    let code = '';
-    let position = value.start;
-    for (const property of value.properties) {
-      if (property.type !== 'Property' || property.computed) {
-        continue;
+    // The functions can be the values of keys of objects inside the value too.
+    const visit = (node: oxc.Node): string => {
+      if (node.type !== 'ObjectExpression') {
+        return mark(node) ?? this.source(node);
       }
-      const marked = mark(property.value, property.method);
-      if (!marked) {
-        continue;
+      let code = '';
+      let position = node.start;
+      for (const property of node.properties) {
+        if (property.type !== 'Property' || property.computed) {
+          continue;
+        }
+        const marked =
+          property.value.type === 'ObjectExpression'
+            ? visit(property.value)
+            : mark(property.value, property.method);
+        if (!marked) {
+          continue;
+        }
+        code += this.patch.slice(position, property.start);
+        const key = this.patch.slice(property.key.start, property.key.end);
+        code += `${key}: ${marked}`;
+        position = property.end;
       }
-      code += this.patch.slice(position, property.start);
-      const key = this.patch.slice(property.key.start, property.key.end);
-      code += `${key}: ${marked}`;
-      position = property.end;
-    }
-    return code + this.patch.slice(position, value.end);
+      return code + this.patch.slice(position, node.end);
+    };
+    return visit(value);
   }
 
   /** A prop value. A client function is marked so it serializes as a reference. */

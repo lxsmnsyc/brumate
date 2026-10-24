@@ -2,7 +2,7 @@ import { isMacroImport } from '../macros.ts';
 import type { SFCFile } from '../ast.ts';
 import type { Declaration } from '../model.ts';
 import type { oxc } from '../oxc.ts';
-import { serverFunctionId } from '../plan.ts';
+import { componentFunctionName, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
@@ -128,8 +128,10 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   moduleBody.push('let $$t: any;');
   const emitter = new Emitter(file, plan, patch, { mode: 'server' });
   const generics = file.generics ? `<${file.generics}>` : '';
+  // The script can import a name that is the name of the component.
+  const fn = componentFunctionName(file, plan.name);
   emitter.line(
-    `export default async function ${plan.name}${generics}($$props: ${propsType(file)}, $$ctx: $$b.Context): Promise<string> {`,
+    `export default async function ${fn}${generics}($$props: ${propsType(file)}, $$ctx: $$b.Context): Promise<string> {`,
   );
   emitter.line(`let $$html = '';`);
   emitter.line(
@@ -139,7 +141,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   emitter.line('return $$html;');
   emitter.close();
   // The ID lets the page state hold the component, such as the value of a dynamic tag.
-  emitter.line(`${plan.name}.brumateId = ${JSON.stringify(plan.id)};`);
+  emitter.line(`${fn}.brumateId = ${JSON.stringify(plan.id)};`);
 
   return [...header, ...hoisted, ...moduleBody, '', ...emitter.lines, ''].join('\n');
 }
