@@ -2462,6 +2462,37 @@ describe('bindings', () => {
   });
 });
 
+describe('controlled props', () => {
+  it('tells a prop that the caller passed from a missing one, and a bound one from a copy', async () => {
+    await resume('controlledParent', {});
+    const part = (label: string): string => text(`.part.${label}`);
+    // A missing prop leaves the part its own state.
+    click(document.querySelector('.part.free')!);
+    await waitFor(() => expect(part('free')).toBe('free: open'));
+    expect(text('.seen')).toBe('free true');
+    // A passed prop that is not bound: the part only reports, and shows what the caller keeps.
+    click(document.querySelector('.part.held')!);
+    await waitFor(() => expect(text('.seen')).toBe('held true'));
+    expect(part('held')).toBe('held: closed');
+    click(document.querySelector('.hold')!);
+    await waitFor(() => expect(part('held')).toBe('held: open'));
+    // A bound prop writes the caller's signal.
+    click(document.querySelector('.part.bound')!);
+    await waitFor(() => expect(text('.values')).toBe('true true'));
+    expect(part('bound')).toBe('bound: open');
+    // A prop passed as undefined is still passed.
+    click(document.querySelector('.part.none')!);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(part('none')).toBe('none: closed');
+    // Parts that the browser renders know it too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(part('later')).toBe('later: open'));
+    expect(part('later-free')).toBe('later-free: open');
+    click(document.querySelector('.part.later-free')!);
+    await waitFor(() => expect(part('later-free')).toBe('later-free: closed'));
+  });
+});
+
 describe('view transitions', () => {
   it('runs a handler of transition inside a view transition, which waits for its updates', async () => {
     const seen: { types?: string[]; html: string }[] = [];

@@ -65,13 +65,17 @@ type Part = { static: string } | { code: string };
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-): '$getContext' | '$id' | '$route' | '$navigation' | undefined {
+): '$getContext' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
-  return name === '$getContext' || name === '$id' || name === '$route' || name === '$navigation'
+  return name === '$getContext' ||
+    name === '$id' ||
+    name === '$isPassed' ||
+    name === '$route' ||
+    name === '$navigation'
     ? name
     : undefined;
 }
@@ -615,6 +619,13 @@ export class Emitter {
       if (call === '$id' && declaration?.idIndex !== undefined) {
         this.line(
           `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
+        );
+        continue;
+      }
+      if (call === '$isPassed' && declaration?.passedKey !== undefined) {
+        // The props as the caller passed them, before defaults apply.
+        this.line(
+          `const ${declaration.name} = ${JSON.stringify(declaration.passedKey)} in $$props;`,
         );
         continue;
       }

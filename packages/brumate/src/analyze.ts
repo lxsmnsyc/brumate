@@ -70,6 +70,8 @@ const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
   $title: 'Call $title at the top level of a script',
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
+  $isPassed:
+    'Check a prop with "const name = $isPassed(prop)" at the top level of the component script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
   $route: 'Read the route with "const name = $route()" at the top level of a script',
@@ -759,6 +761,27 @@ class Analyzer {
       declaration.idIndex = [...scope.declarations.values()].filter(
         (item) => item.idIndex !== undefined,
       ).length;
+      return;
+    }
+
+    if (name === '$isPassed') {
+      if (kind !== 'const' || id.type !== 'Identifier' || !isComponent) {
+        this.report('error', MISPLACED[name]!, declarator);
+        return;
+      }
+      const [target] = call.arguments;
+      const prop = target?.type === 'Identifier' ? scope.declarations.get(target.name) : undefined;
+      if (call.arguments.length !== 1 || prop?.kind !== 'prop' || prop.propKey === undefined) {
+        this.report(
+          'error',
+          '$isPassed takes a prop that the component destructures, such as $isPassed(value)',
+          call,
+        );
+        return;
+      }
+      // The caller's attributes decide it, so it never changes and depends on nothing.
+      const declaration = this.addDeclaration(scope, id.name, 'const', id);
+      declaration.passedKey = prop.propKey;
       return;
     }
 
@@ -1854,6 +1877,26 @@ class Resolver {
               this.visit(argument);
             }
             this.untracked--;
+            return;
+          }
+          if (name === '$isBound') {
+            const [target] = node.arguments;
+            const declaration =
+              target?.type === 'Identifier' && !this.isLocal(target.name)
+                ? lookup(this.site.scope, target.name)
+                : undefined;
+            if (
+              node.arguments.length !== 1 ||
+              declaration?.kind !== 'prop' ||
+              !declaration.writable
+            ) {
+              this.analyzer.report(
+                'error',
+                '$isBound takes a prop that the component destructures with let, such as $isBound(open)',
+                node,
+              );
+            }
+            this.visitChildren(node);
             return;
           }
           if (name === '$isPending') {
