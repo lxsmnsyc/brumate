@@ -518,6 +518,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
     }
     await analyze();
+    // A list of the workbench made while the scan ran has the files from before it.
+    workbenchList = undefined;
   };
 
   /**
@@ -1003,6 +1005,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   // list, and a change of a file clears it.
   let workbenchList: ReturnType<typeof workbenchComponents> | undefined;
 
+  /** Makes the list of the workbench and keeps it, unless it fails, so a later read tries again. */
+  const listWorkbench = (server: ViteDevServer): ReturnType<typeof workbenchComponents> => {
+    const list = workbenchComponents(server);
+    workbenchList = list;
+    list.catch(() => {
+      if (workbenchList === list) {
+        workbenchList = undefined;
+      }
+    });
+    return list;
+  };
+
   /**
    * Answers the workbench: its page, the list of components, and the frame that renders one
    * component on the server with props, and resumes it in the browser as a page does.
@@ -1020,8 +1034,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     if (url.pathname === `${WORKBENCH}/components`) {
       response.setHeader('content-type', 'application/json');
-      workbenchList = workbenchComponents(server);
-      response.end(JSON.stringify(await workbenchList));
+      response.end(JSON.stringify(await listWorkbench(server)));
       return;
     }
     if (url.pathname !== `${WORKBENCH}/frame`) {
@@ -1032,16 +1045,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     // Only a component that the workbench lists as self-contained, by its path from the root.
     // Any other renders without the request, the route or the server that it needs, and fails.
     const asked = url.searchParams.get('file') ?? '';
-    workbenchList ??= workbenchComponents(server);
-    let listed = false;
-    try {
-      listed = (await workbenchList).some(
-        (component) => component.file === asked && component.selfContained,
-      );
-    } catch {
-      // A list that failed is not kept, so the next frame reads the files again.
-      workbenchList = undefined;
-    }
+    const listed = (await (workbenchList ?? listWorkbench(server))).some(
+      (component) => component.file === asked && component.selfContained,
+    );
     const file = listed
       ? [...files.values()].find(
           (candidate) => normalizePath(path.relative(root, candidate)) === asked,
