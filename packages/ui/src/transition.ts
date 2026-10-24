@@ -106,6 +106,11 @@ export interface StepOptions {
    * `--disclosure-panel-height`, so CSS can animate the height from and to nothing.
    */
   height?: string;
+  /**
+   * Waits for the animations of the elements inside too, such as the box of a modal that moves
+   * while its overlay fades.
+   */
+  subtree?: boolean;
 }
 
 /** The height of the content of the element, as a CSS length. */
@@ -122,7 +127,7 @@ export async function enterSteps(
   classes: StepClasses,
   options: StepOptions,
 ): Promise<boolean> {
-  const { current, height } = options;
+  const { current, height, subtree = false } = options;
   removeClasses(element, [...classes.leave, ...classes.leaveFrom, ...classes.leaveTo]);
   setFlags(element, { leave: false, closed: true, enter: true, transition: true });
   if (height) {
@@ -132,7 +137,7 @@ export async function enterSteps(
   addClasses(element, classes.enterFrom);
   commitStyle(element);
   addClasses(element, classes.enter);
-  await waitForAnimations(element);
+  await waitForAnimations(element, subtree);
   if (!current()) {
     return false;
   }
@@ -142,7 +147,7 @@ export async function enterSteps(
   if (height) {
     element.style.setProperty(height, contentHeight(element));
   }
-  await waitForAnimations(element);
+  await waitForAnimations(element, subtree);
   if (!current()) {
     return false;
   }
@@ -166,7 +171,7 @@ export async function leaveSteps(
   options: StepOptions,
   start?: () => void,
 ): Promise<boolean> {
-  const { current, height } = options;
+  const { current, height, subtree = false } = options;
   // The children leave first, once their code has seen the change.
   await nextFrame();
   await waitForAnimations(element, true);
@@ -187,7 +192,7 @@ export async function leaveSteps(
   addClasses(element, classes.leaveFrom);
   commitStyle(element);
   addClasses(element, classes.leave);
-  await waitForAnimations(element);
+  await waitForAnimations(element, subtree);
   if (!current()) {
     return false;
   }
@@ -197,7 +202,7 @@ export async function leaveSteps(
   if (height) {
     element.style.setProperty(height, '0px');
   }
-  await waitForAnimations(element);
+  await waitForAnimations(element, subtree);
   if (!current()) {
     return false;
   }

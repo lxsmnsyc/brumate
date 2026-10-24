@@ -224,3 +224,63 @@ export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
     layer.removeEventListener('focusout', focusOut as EventListener);
   };
 }
+
+/** How many open overlays lock the scroll of the page. */
+let scrollLocks = 0;
+let unlockScroll: (() => void) | undefined;
+
+/**
+ * Stops the page from scrolling while a modal overlay is open, as usePreventScroll of React Aria
+ * does. The root gets `overflow: hidden`, and a padding as wide as the scrollbar that it hid, so
+ * the page does not move sideways. Nested overlays share one lock. Returns the function that
+ * gives it back.
+ */
+export function lockScroll(): () => void {
+  if (scrollLocks++ === 0) {
+    const root = document.documentElement;
+    const { overflow, paddingRight } = root.style;
+    const scrollbar = window.innerWidth - root.clientWidth;
+    // A root with `scrollbar-gutter: stable` keeps the space of the scrollbar itself.
+    const gutter = getComputedStyle(root).scrollbarGutter?.startsWith('stable');
+    if (scrollbar > 0 && !gutter) {
+      const padding = Number.parseFloat(getComputedStyle(root).paddingRight) || 0;
+      root.style.paddingRight = `${padding + scrollbar}px`;
+    }
+    root.style.overflow = 'hidden';
+    unlockScroll = () => {
+      root.style.overflow = overflow;
+      root.style.paddingRight = paddingRight;
+    };
+  }
+  let locked = true;
+  return () => {
+    if (locked) {
+      locked = false;
+      if (--scrollLocks === 0) {
+        unlockScroll?.();
+        unlockScroll = undefined;
+      }
+    }
+  };
+}
+
+/**
+ * Keeps `--visual-viewport-height` on the element, the height of the part of the page in view,
+ * which a keyboard on the screen makes smaller. Returns the function that stops it.
+ */
+export function followViewport(element: HTMLElement): () => void {
+  const viewport = window.visualViewport;
+  const update = (): void => {
+    element.style.setProperty(
+      '--visual-viewport-height',
+      `${viewport?.height ?? document.documentElement.clientHeight}px`,
+    );
+  };
+  update();
+  viewport?.addEventListener('resize', update);
+  window.addEventListener('resize', update);
+  return () => {
+    viewport?.removeEventListener('resize', update);
+    window.removeEventListener('resize', update);
+  };
+}

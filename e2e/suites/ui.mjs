@@ -423,6 +423,99 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'Modal: the page is inert and does not scroll, focus stays inside, then comes back',
+    async () => {
+      await page.goto(`${url}/`);
+      const trigger = page.locator('.delete-trigger');
+      await trigger.scrollIntoViewIfNeeded();
+      const before = await page.evaluate(() => ({
+        y: window.scrollY,
+        width: document.body.getBoundingClientRect().width,
+      }));
+      await trigger.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('confirm'));
+      const open = await page.evaluate(() => ({
+        overflow: document.documentElement.style.overflow,
+        width: document.body.getBoundingClientRect().width,
+        inert: Boolean(document.querySelector('main')?.closest('[inert]')),
+        atEnd:
+          document.querySelector('.backdrop')?.closest('[data-layer]')?.parentElement ===
+          document.body,
+        covers: (() => {
+          const box = document.querySelector('.backdrop').getBoundingClientRect();
+          return box.top === 0 && box.left === 0 && box.width === window.innerWidth;
+        })(),
+      }));
+      assert(open.overflow === 'hidden', 'the root does not scroll');
+      assert(
+        open.width === before.width,
+        `the page moved sideways: ${before.width} to ${open.width}`,
+      );
+      assert(open.inert && open.atEnd && open.covers, JSON.stringify(open));
+      // The wheel does not scroll the page behind it.
+      await page.mouse.move(10, 10);
+      await page.mouse.wheel(0, 600);
+      await page.waitForTimeout(100);
+      assert((await page.evaluate(() => window.scrollY)) === before.y, 'the page scrolled');
+      // Tab stays in the dialog.
+      for (let index = 0; index < 4; index++) {
+        await page.keyboard.press('Tab');
+        assert(
+          await page.evaluate(() => Boolean(document.activeElement?.closest('.confirm'))),
+          'Tab left the dialog',
+        );
+      }
+      // A press on the overlay does not close it, and Escape does.
+      await page.mouse.click(5, 5);
+      await page.waitForTimeout(100);
+      assert(await page.locator('.confirm').isVisible(), 'a press outside closed it');
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('.backdrop'));
+      assert(
+        await page.evaluate(() => document.activeElement?.classList.contains('delete-trigger')),
+        'focus did not go back to the trigger',
+      );
+      assert(
+        (await page.evaluate(() => document.documentElement.style.overflow)) === '',
+        'the root still does not scroll',
+      );
+    },
+  );
+
+  await step('Sheet: along the start edge, closed by a press outside', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.menu-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('menu'));
+    const sheet = page.locator('.sheet');
+    assert((await sheet.getAttribute('data-side')) === 'left', 'not on the left');
+    await page.waitForFunction(() => !document.querySelector('.sheet')?.closest('[data-enter]'));
+    const box = await sheet.boundingBox();
+    assert(box && Math.round(box.x) === 0, `not at the edge: ${box?.x}`);
+    const size = page.viewportSize();
+    await page.mouse.click(size.width - 10, size.height / 2);
+    await page.waitForFunction(() => !document.querySelector('.sheet'));
+    assert(
+      await page.evaluate(() => document.activeElement?.classList.contains('menu-trigger')),
+      'focus did not go back to the trigger',
+    );
+  });
+
+  await step('axe-core: an open modal has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.delete-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('confirm'));
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      const result = await window.axe.run(document);
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
   await step('axe-core: an open popover has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.settings-trigger').click();

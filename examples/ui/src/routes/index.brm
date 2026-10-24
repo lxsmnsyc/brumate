@@ -30,7 +30,10 @@
   import Link from '@brumate/ui/Link.brm';
   import Meter from '@brumate/ui/Meter.brm';
   import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
   import Popover from '@brumate/ui/Popover.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
   import ProgressBar from '@brumate/ui/ProgressBar.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
@@ -276,6 +279,33 @@
   </DialogTrigger>
 </section>
 
+<section aria-labelledby="modal">
+  <h2 id="modal">Modal and Sheet</h2>
+  <DialogTrigger>
+    <Button class="press delete-trigger">Delete the draft</Button>
+    <ModalOverlay class="backdrop" transition>
+      <Modal class="modal">
+        <Dialog role="alertdialog" class="confirm">
+          <Heading slot="title" level=(3)>Delete the draft?</Heading>
+          <p>It cannot come back.</p>
+          <Button slot="close" class="press cancel">Cancel</Button>
+          <Button slot="close" class="press confirm-delete">Delete</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="press menu-trigger">Menu</Button>
+    <Sheet class="sheet" transition>
+      <Dialog class="menu" aria-label="Menu">
+        <Button class="press menu-item">Home</Button>
+        <Button class="press menu-item">Settings</Button>
+        <Button slot="close" class="press menu-close">Close</Button>
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -446,6 +476,61 @@
 
   :global(.settings h3) {
     margin: 0;
+  }
+
+  :global([data-modal-overlay]) {
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 40%);
+    transition: opacity 0.15s;
+  }
+
+  :global([data-modal-overlay][data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.modal) {
+    max-width: 24rem;
+    max-height: calc(var(--visual-viewport-height) * 0.9);
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    background: #fff;
+    transition: scale 0.15s;
+  }
+
+  :global([data-closed] > .modal) {
+    scale: 0.96;
+  }
+
+  :global(.confirm),
+  :global(.menu) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.sheet) {
+    position: fixed;
+    inset-block: 0;
+    width: min(18rem, 80vw);
+    padding: 1.25rem;
+    background: #fff;
+    transition: translate 0.2s;
+  }
+
+  :global(.sheet[data-side='left']) {
+    left: 0;
+  }
+
+  :global(.sheet[data-side='right']) {
+    right: 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='left']) {
+    translate: -100% 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='right']) {
+    translate: 100% 0;
   }
 
   :global(.arrow) {
