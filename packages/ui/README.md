@@ -38,7 +38,9 @@ The package is private while its first phase is built.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
 - `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
 - `Transition` and `TransitionChild`: animate content in and out, with `data-closed`, `data-enter` and `data-leave`, and keep it until its leave ends. Each step waits for the animations of the element, and a child moves with its parent.
+- `TooltipTrigger` and `Tooltip`: a description of a Button, on hover after a delay and on focus from the keyboard.
 - `Toolbar`: the arrow keys move focus between its items, and Tab stops at one of them.
+- `Toast`, `ToastContent` and `ToastRegion`: notices from a queue, `toastQueue()` of `@brumate/ui/toast.ts`, in a landmark that F6 reaches. A timeout stops while the pointer or focus is in it.
 - `ToggleButtonGroup`: ToggleButtons with one selection, as radios, or several, as a toolbar.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.
 - `VisuallyHidden`: hides its content from sight and keeps it for screen readers.

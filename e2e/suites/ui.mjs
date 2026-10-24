@@ -502,6 +502,108 @@ export async function run({ browser, url, runner }) {
     );
   });
 
+  await step(
+    'Tooltip: after a delay on hover, at once on keyboard focus, then the next at once',
+    async () => {
+      await page.goto(`${url}/`);
+      const copy = page.locator('.tip-trigger');
+      await copy.scrollIntoViewIfNeeded();
+      await copy.hover();
+      await page.waitForTimeout(600);
+      assert((await page.locator('[role=tooltip]').count()) === 0, 'it showed before its delay');
+      await page.waitForSelector('[role=tooltip]', { timeout: 3000 });
+      const tip = page.locator('[role=tooltip]');
+      assert(
+        (await copy.getAttribute('aria-describedby')) === (await tip.getAttribute('id')),
+        'not described',
+      );
+      const [tipBox, triggerBox] = [await tip.boundingBox(), await copy.boundingBox()];
+      assert(tipBox.y + tipBox.height <= triggerBox.y, 'not above its trigger');
+      // Once one has shown, the next shows at once.
+      await page.locator('.tip-other').hover();
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent === 'Paste the link',
+        null,
+        { timeout: 400 },
+      );
+      // Escape hides it.
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('[role=tooltip]'));
+      // Focus from the keyboard shows it at once.
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(700);
+      await copy.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent === 'Copy the link',
+        null,
+        { timeout: 400 },
+      );
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent !== 'Copy the link',
+      );
+    },
+  );
+
+  await step(
+    'Toast: comes in a landmark, F6 moves focus to it, and its close button gives focus back',
+    async () => {
+      await page.goto(`${url}/`);
+      const notify = page.locator('.toast-trigger');
+      await notify.scrollIntoViewIfNeeded();
+      await notify.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('[role=region][aria-label=Notifications] .toast');
+      await page.waitForFunction(
+        () => !document.querySelector('.toast')?.hasAttribute('data-enter'),
+      );
+      assert(
+        (await page.locator('.toast [role=alert]').textContent()) === 'Link copied',
+        'the content is not an alert',
+      );
+      await page.keyboard.press('F6');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('toast'));
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => !document.querySelector('.toast'));
+      await page.waitForFunction(() => document.activeElement?.classList.contains('toast-trigger'));
+    },
+  );
+
+  await step(
+    'Toast: closes after its timeout, which stops while the pointer is over it',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('.toast-trigger').click();
+      await page.waitForSelector('.toast');
+      await page.locator('.toast').hover();
+      await page.waitForTimeout(5500);
+      assert(await page.locator('.toast').isVisible(), 'it closed while the pointer was over it');
+      await page.mouse.move(0, 0);
+      await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 7000 });
+    },
+  );
+
+  await step('axe-core: a tooltip and a toast have no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.toast-trigger').click();
+    await page.waitForSelector('.toast');
+    await page.locator('.tip-trigger').hover();
+    await page.waitForSelector('[role=tooltip]', { timeout: 3000 });
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // A tooltip renders at the end of <body>, outside the landmarks, as in React Aria. The
+      // best-practice rule "region" asks for all text in landmarks, so it is off here alone.
+      const result = await window.axe.run(document, { rules: { region: { enabled: false } } });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
   await step('axe-core: an open modal has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.delete-trigger').click();

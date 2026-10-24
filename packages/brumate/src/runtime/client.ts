@@ -919,7 +919,10 @@ function templateReference(ref: string, scope: Scope | undefined): (...args: unk
     })
     .finally(() => loadingTemplates.delete(code));
   loadingTemplates.add(code);
-  return (...args) => (render ? render(scope, ...args) : '');
+  // The markup renders where the component inserts it, so it reads the contexts there, as
+  // children do.
+  return (...args) =>
+    new Children(scope, () => (render ? insertValue(render(scope, ...args)) : ''));
 }
 
 // The handler of the previous event, once it has started.
@@ -2034,7 +2037,7 @@ export function portalTo(
 export function text(scope: Scope, anchor: number, value: unknown): void {
   const start = findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope);
   }
 }
 
@@ -2042,7 +2045,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value);
+    write(element, element.firstChild, null, value, scope);
   }
 }
 
@@ -2074,6 +2077,7 @@ function write(
   first: ChildNode | null,
   end: Node | null,
   value: unknown,
+  at?: Scope,
 ): void {
   if (
     (typeof value === 'string' || typeof value === 'number') &&
@@ -2096,7 +2100,8 @@ function write(
     first.remove();
     first = next;
   }
-  insertHTML(end ?? { parent }, insertValue(value));
+  // Children and templates render here, at the scope of the insert, for its contexts.
+  insertHTML(end ?? { parent }, value instanceof Children ? value.render(at) : insertValue(value));
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */

@@ -1,0 +1,10 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // A spread that changes, and a rest prop that never does, on one element.
+  const { ...rest } = $props<{ [name: string]: unknown }>();
+  let count = $signal(0);
+</script>
+
+<button class="spread-bump" onClick=(() => count++)>Bump</button>
+<p {...{ 'data-count': count }} {...rest}>Spread</p>

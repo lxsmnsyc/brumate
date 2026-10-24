@@ -257,6 +257,20 @@ export function clientState(graph: Graph): {
       addClientSite(site);
     }
   }
+  // The spreads of an element update together, so a spread that never changes, such as a rest
+  // prop, is read in the browser when another spread of the same element changes. Without it,
+  // the update would remove the attributes that it gives, such as a class.
+  const liveSpreads = new Set<Site['owner']>();
+  for (const site of clientSites) {
+    if (site.kind === 'spread' && site.owner) {
+      liveSpreads.add(site.owner);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.kind === 'spread' && site.owner && liveSpreads.has(site.owner)) {
+      addClientSite(site);
+    }
+  }
 
   const slots = new Map<Scope, Declaration[]>();
   for (const scope of model.scopes) {

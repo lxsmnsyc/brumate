@@ -790,6 +790,18 @@ export class Context {
     if (typeof value !== 'function') {
       return value;
     }
+    if (args === undefined && /#t\d/.test(ref)) {
+      // A `#template` renders where the component that gets it inserts it, so it reads the
+      // contexts there, as children do.
+      const render = value as unknown as (...rest: unknown[]) => Promise<unknown>;
+      const template = (...rest: unknown[]): Lazy =>
+        new Children(scope, async () => {
+          const html = await render(...rest);
+          return isRaw(html) ? rawHTML(html) : insertValue(html);
+        });
+      functionReferences.set(template, new FunctionReference(ref, scope));
+      return template as T;
+    }
     if (args === undefined) {
       functionReferences.set(value, new FunctionReference(ref, scope));
       return value;

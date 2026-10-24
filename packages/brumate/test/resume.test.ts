@@ -2035,6 +2035,38 @@ describe('head in #loading', () => {
   });
 });
 
+describe('contexts of templates that a component renders', () => {
+  it('reads the contexts of the component that renders the template', async () => {
+    await resume('tplContextListPage', {});
+    // The server renders the first item in place too.
+    expect(text('.reader.zero')).toBe('7');
+    click(document.querySelector('.ctx-add')!);
+    await waitFor(() => expect(text('.reader.one')).toBe('7'));
+  });
+});
+
+describe('spreads that update together', () => {
+  it('keeps the attributes of a rest prop when another spread of the element changes', async () => {
+    await resume('spreadRestPage', {});
+    click(document.querySelector('.spread-bump')!);
+    await waitFor(() =>
+      expect(document.querySelector('[data-count]')!.getAttribute('data-count')).toBe('1'),
+    );
+    const element = document.querySelector('[data-count]')!;
+    expect(element.className).toBe('spread-rest');
+    expect(element.getAttribute('title')).toBe('Kept');
+  });
+});
+
+describe('templates with components', () => {
+  it('renders a component of a template that another component calls in the browser', async () => {
+    await resume('tplComponentPage', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(text('.tpl-item')).toBe('item 1'));
+    expect(document.querySelector('[data-label]')!.className).toBe('tpl-dynamic');
+  });
+});
+
 describe('conditions that never change', () => {
   it('reads a condition of #else if that never changes, after one that does', async () => {
     await resume('elseIfPage', {});

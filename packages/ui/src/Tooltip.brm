@@ -1,0 +1,148 @@
+<script>
+  import { $effect, $getContext, $id, $props, $signal, $untrack } from 'brumate/signals';
+  import { LayerContext } from './layer.ts';
+  import { LocaleContext } from './locale.ts';
+  import { followTrigger } from './position.ts';
+  import type { Placement } from './position.ts';
+  import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
+  import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+
+  /**
+   * The text of a TooltipTrigger, as Tooltip of React Aria Components. It is a `role="tooltip"`
+   * that names nothing and takes no focus, and the trigger's Button points to it with
+   * `aria-describedby`.
+   *
+   * - It renders at the end of the layer of the floating part around it, or of <body>, and is
+   *   placed beside its trigger as a Popover is: `placement` (`top` by default), `offset`,
+   *   `crossOffset`, `shouldFlip` and `containerPadding`. It shows `data-placement`, and places
+   *   an OverlayArrow inside it.
+   * - The pointer can move onto it, and it stays while the pointer is over it.
+   * - Escape hides it.
+   * - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`.
+   */
+  const {
+    placement = 'top',
+    offset = 0,
+    crossOffset = 0,
+    shouldFlip = true,
+    containerPadding = 12,
+    transition = false,
+    children,
+    ...rest
+  } = $props<{
+    placement?: Placement;
+    offset?: number;
+    crossOffset?: number;
+    shouldFlip?: boolean;
+    containerPadding?: number;
+    transition?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const trigger = $getContext(TooltipTriggerContext);
+  const parentLayer = $getContext(LayerContext);
+  const locale = $getContext(LocaleContext);
+  const layerId = $id();
+  const target = $untrack(parentLayer ? `#${parentLayer.id}` : 'body');
+
+  let mounted = $signal(false);
+  let run = $signal(0);
+  let panel = $signal<HTMLElement>();
+
+  async function show(token: number) {
+    mounted = true;
+    await nextFrame();
+    const element = panel;
+    const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
+    if (token !== run || !element) {
+      return;
+    }
+    const escape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        trigger?.close(true);
+      }
+    };
+    document.addEventListener('keydown', escape, true);
+    const stops = [() => document.removeEventListener('keydown', escape, true)];
+    if (anchor) {
+      stops.push(
+        followTrigger(
+          anchor,
+          element,
+          { placement, offset, crossOffset, shouldFlip, containerPadding, direction: locale.direction },
+          (position) => {
+            element.dataset.placement = position.side;
+            for (const arrow of element.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
+              arrow.dataset.placement = position.side;
+              const vertical = position.side === 'top' || position.side === 'bottom';
+              arrow.style.left = vertical ? `${position.arrow}px` : '';
+              arrow.style.top = vertical ? '' : `${position.arrow}px`;
+            }
+          },
+        ),
+      );
+    }
+    keepStops(element, stops);
+    if (transition) {
+      await enterSteps(element, stepClasses(), { current: () => token === run });
+    }
+  }
+
+  async function hide(token: number) {
+    const element = panel;
+    if (transition && element) {
+      if (!(await leaveSteps(element, stepClasses(), { current: () => token === run }))) {
+        return;
+      }
+    }
+    if (element) {
+      runStops(element);
+    }
+    mounted = false;
+  }
+
+  $effect(() => {
+    const next = Boolean(trigger?.isOpen);
+    $untrack(change(next));
+    return () => {
+      if (panel && !panel.isConnected) {
+        runStops(panel);
+      }
+    };
+  });
+
+  function change(next: boolean) {
+    run += 1;
+    if (next) {
+      void show(run);
+    } else if (mounted) {
+      void hide(run);
+    }
+  }
+
+  function entered() {
+    trigger?.keep();
+  }
+
+  function left() {
+    trigger?.close(false);
+  }
+</script>
+
+#if (mounted) {
+  #portal (target) {
+    <div id=layerId data-layer style="display: contents">
+      <div
+        ref=panel
+        id=(trigger?.tooltipId)
+        role="tooltip"
+        style="position: fixed; top: 0; left: 0"
+        data-closed=($untrack(transition || undefined))
+        onPointerEnter=entered
+        onPointerLeave=left
+        {...rest}
+      >{children}</div>
+    </div>
+  }
+}

@@ -1,0 +1,5 @@
+<script>
+  import SpreadRest from './SpreadRest.brm';
+</script>
+
+<SpreadRest class="spread-rest" title="Kept" />

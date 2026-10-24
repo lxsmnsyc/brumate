@@ -10,7 +10,8 @@
   "type": "module",
   "exports": {
     "./*.brm": "./src/*.brm",
-    "./*.brm.ts": "./src/*.brm.ts"
+    "./*.brm.ts": "./src/*.brm.ts",
+    "./toast.ts": "./src/toast.ts"
   },
   "scripts": {
     "typecheck": "brumate-tsc --noEmit",
