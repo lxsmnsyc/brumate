@@ -1,0 +1,390 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import DocsShell from '../../components/DocsShell.brm';
+  import { sections } from '../../ui.ts';
+
+  const { children } = $props();
+</script>
+
+<DocsShell section="ui" sections=sections label="Parts">{children}</DocsShell>
+
+<style>
+  /*
+    The parts of @brumate/ui have no styles. These give the demos the look of the site, from the
+    data attributes of the parts.
+  */
+  :global(.ui-demo) {
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  :global(.ui-demo pre) {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  :global(.ui-demo-stage) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 1.5rem;
+    background: var(--surface, transparent);
+  }
+
+  :global(.ui-gallery) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 2.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.ui-card) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  :global(.ui-card:hover),
+  :global(.ui-card:focus-within) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-card .ui-demo-stage) {
+    flex: 1;
+    justify-content: center;
+    align-content: center;
+    min-height: 10rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* A line of text in a preview takes a row of its own, under the parts. */
+  :global(.ui-card .ui-demo-stage > p) {
+    flex-basis: 100%;
+    margin: 0;
+    text-align: center;
+  }
+
+  /* A field in a card is as wide as its parts, so the card centers it. */
+  :global(.ui-card .ui-field) {
+    min-width: 0;
+  }
+
+  /* Boxes stack in a column that starts at one edge, and the column is centered. */
+  :global(.ui-stack) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  :global(.ui-card .ui-demo-stage p) {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  :global(.ui-card-title) {
+    padding: 0.75rem 1rem 0;
+    color: var(--text);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  /* The link covers the card, so a click anywhere on it opens the page. */
+  :global(.ui-card-title)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  /* The focus ring of the link is the outline of the card. */
+  :global(.ui-card-title:focus-visible) {
+    outline: none;
+  }
+
+  :global(.ui-card-title:focus-visible)::after {
+    border-radius: var(--radius);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-card > p) {
+    margin: 0.15rem 0 0;
+    padding: 0 1rem 0.85rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.ui-button) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  :global(.ui-button[data-hovered]) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-button[data-pressed]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-button[data-selected]) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  :global(.ui-button[data-disabled]),
+  :global(.ui-button[data-pending]) {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  :global([data-focus-visible]) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-link) {
+    color: var(--accent-strong);
+    cursor: pointer;
+  }
+
+  :global(.ui-link[data-current]) {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  :global(.ui-link[data-disabled]) {
+    color: var(--muted);
+    cursor: default;
+  }
+
+  :global(.ui-field) {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 16rem;
+  }
+
+  :global(.ui-field label) {
+    font-weight: 600;
+  }
+
+  :global(.ui-input) {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+  }
+
+  :global(.ui-input[data-focused]) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-input[data-invalid]) {
+    border-color: #d1453b;
+  }
+
+  :global(.ui-help) {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.ui-error) {
+    color: #d1453b;
+    font-size: 0.875rem;
+  }
+
+  :global(.ui-box) {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  :global(.ui-mark) {
+    display: inline-grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 2px solid var(--muted);
+    border-radius: 5px;
+    color: #fff;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  /* A box shows the icon of its state: a check, or a dash while it is indeterminate. */
+  :global(.ui-mark .icon) {
+    display: none;
+  }
+
+  :global(.ui-box[data-selected]:not([data-indeterminate]) .ui-mark .icon-check),
+  :global(.ui-box[data-indeterminate] .ui-mark .icon-minus) {
+    display: block;
+  }
+
+  :global(.ui-box[data-hovered] .ui-mark) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-box[data-pressed] .ui-mark) {
+    scale: 0.92;
+  }
+
+  :global(.ui-box[data-selected] .ui-mark:not(.round)),
+  :global(.ui-box[data-indeterminate] .ui-mark) {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* A radio is a ring, with a dot while it is chosen. */
+  :global(.ui-mark.round) {
+    border-radius: 50%;
+  }
+
+  :global(.ui-mark.round)::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    scale: 0;
+    transition: scale 0.15s;
+  }
+
+  :global(.ui-box[data-selected] .ui-mark.round) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-box[data-selected] .ui-mark.round)::after {
+    scale: 1;
+  }
+
+  :global(.ui-box[data-focus-visible] .ui-mark),
+  :global(.ui-box[data-focus-visible] .ui-track) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-box[data-disabled]) {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  :global(.ui-track) {
+    position: relative;
+    width: 2.2rem;
+    height: 1.25rem;
+    border-radius: 1rem;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+
+  :global(.ui-track)::after {
+    content: '';
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 50%;
+    background: #fff;
+    transition: translate 0.15s;
+  }
+
+  :global(.ui-box[data-selected] .ui-track) {
+    background: var(--accent);
+  }
+
+  :global(.ui-box[data-selected] .ui-track)::after {
+    translate: 0.95rem 0;
+  }
+
+  :global(.ui-group) {
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.ui-bar) {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 16rem;
+  }
+
+  :global(.ui-bar)::after {
+    content: '';
+    height: 0.5rem;
+    border-radius: 1rem;
+    background: linear-gradient(to right, var(--accent) var(--percentage, 0%), var(--border) 0);
+  }
+
+  :global(.ui-icon-button) {
+    display: inline-grid;
+    place-items: center;
+    padding: 0.5rem;
+  }
+
+  /* An icon inside the start of an input, such as the glass of a search field. */
+  :global(.ui-input-icon) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  :global(.ui-input-icon .icon) {
+    position: absolute;
+    left: 0.65rem;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  :global(.ui-input-icon .ui-input) {
+    padding-left: 2rem;
+  }
+
+  :global(.ui-crumb) {
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+    color: var(--muted);
+  }
+
+  :global(.ui-kbd) {
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    font: 600 0.8rem var(--mono, ui-monospace, monospace);
+  }
+
+  :global(.ui-separator) {
+    align-self: stretch;
+    width: 1px;
+    margin: 0;
+    border: 0;
+    background: var(--border);
+  }
+</style>

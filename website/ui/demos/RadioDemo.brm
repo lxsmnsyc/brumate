@@ -1,0 +1,19 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+
+  let size = $signal<string | null>('medium');
+</script>
+
+<RadioGroup class="ui-field" name="size" value=$bind(size)>
+  <Label>Size</Label>
+  #for (choice of ['small', 'medium', 'large'] by choice) {
+    <Radio class="ui-box" value=choice>
+      <span class="ui-mark round" aria-hidden="true"></span>
+      {choice}
+    </Radio>
+  }
+</RadioGroup>
+<p>Size: {size ?? 'none'}.</p>

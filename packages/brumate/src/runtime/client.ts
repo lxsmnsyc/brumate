@@ -50,7 +50,7 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference, unbind } from './shared.ts';
+export { ElementReference, FunctionReference, SlotReference, unbind } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -877,8 +877,20 @@ async function serverBuild(): Promise<string | undefined> {
   }
 }
 
-async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  return (await resolve(ref, 'call'))(scope, ...args);
+// The previous call of a function prop or a provided function, once it has started.
+let lastCall: Promise<unknown> = Promise.resolve();
+
+/**
+ * Calls a function of another component, such as a function prop or a provided function. The
+ * code of each loads in parallel, but the calls start in the order that they were made, so an
+ * `onChange` that an input event calls runs before an `onKeyDown` of a later key. The result is
+ * wrapped, so a call that its code makes does not wait for the call around it.
+ */
+function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
+  const loaded = resolve(ref, 'call');
+  const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
+  lastCall = started.catch(() => {});
+  return started.then((result) => result.value);
 }
 
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */

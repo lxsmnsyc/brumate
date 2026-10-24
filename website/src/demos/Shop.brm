@@ -13,6 +13,7 @@
   let cart = $signal(0);
   let saved = $signal(false);
   const total = $memo((quantity * 24).toFixed(2));
+  import Icon from '../components/Icon.brm';
 </script>
 
 <div class="shop">
@@ -44,9 +45,9 @@
       </div>
       <div class="shop-buy" data-xray="handler">
         <div class="shop-qty">
-          <button aria-label="One less" onClick=(() => (quantity = Math.max(1, quantity - 1)))>−</button>
+          <button aria-label="One less" onClick=(() => (quantity = Math.max(1, quantity - 1)))><Icon name="minus" size=(14) /></button>
           <span>{quantity}</span>
-          <button aria-label="One more" onClick=(() => quantity++)>+</button>
+          <button aria-label="One more" onClick=(() => quantity++)><Icon name="plus" size=(14) /></button>
         </div>
         <button class="shop-add" onClick=(() => (cart += quantity))>Add · ${total}</button>
         <button class={ 'shop-save': true, saved } aria-pressed=saved aria-label="Save for later" onClick=(() => (saved = !saved))>{saved ? '♥' : '♡'}</button>

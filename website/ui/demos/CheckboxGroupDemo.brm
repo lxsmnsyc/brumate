@@ -1,0 +1,21 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let toppings = $signal(['cheese']);
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<CheckboxGroup class="ui-field" name="toppings" value=$bind(toppings)>
+  <Label>Toppings</Label>
+  #for (topping of ['cheese', 'olives', 'basil'] by topping) {
+    <Checkbox class="ui-box" value=topping>
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+      {topping}
+    </Checkbox>
+  }
+  <Text slot="description" class="ui-help">You picked {toppings.length}.</Text>
+</CheckboxGroup>

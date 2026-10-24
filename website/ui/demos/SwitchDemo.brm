@@ -1,0 +1,11 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Switch from '@brumate/ui/Switch.brm';
+
+  let wifi = $signal(true);
+</script>
+
+<Switch class="ui-box" isSelected=$bind(wifi)>
+  <span class="ui-track" aria-hidden="true"></span>
+  Wi-Fi is {wifi ? 'on' : 'off'}
+</Switch>

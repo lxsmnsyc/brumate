@@ -1,0 +1,23 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let email = $signal('');
+</script>
+
+<Form class="ui-field" onSubmit=(prevent(() => {}))>
+  <TextField class="ui-field" name="email" type="email" isRequired value=$bind(email)>
+    <Label>Email</Label>
+    <Input class="ui-input" />
+    <Text slot="description" class="ui-help">We send the receipt here.</Text>
+    <FieldError class="ui-error" />
+  </TextField>
+  <Button class="ui-button" type="submit">Send</Button>
+</Form>

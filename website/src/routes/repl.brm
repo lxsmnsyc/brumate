@@ -1,4 +1,5 @@
 <script>
+  import Icon from '../components/Icon.brm';
   import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import type { LiveOutput } from '../live/run.ts';
@@ -221,7 +222,7 @@
           <span class={ 'repl-file': true, active: index === active }>
             <button role="tab" aria-selected=(index === active) onClick=(() => (active = index))>{file.name}</button>
             #if (index > 0) {
-              <button class="repl-remove" aria-label=(`Remove ${file.name}`) onClick=(() => removeFile(index))>×</button>
+              <button class="repl-remove" aria-label=(`Remove ${file.name}`) onClick=(() => removeFile(index))><Icon name="close" size=(12) /></button>
             }
           </span>
         }

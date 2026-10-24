@@ -380,7 +380,8 @@ describe('navigate', () => {
         const { response, next } = respond([
           `<!doctype html><html><head><title>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
           // The scopes of a `#loading` body, and a body inside it, have the boundary's ID first.
-          '<template b-l="1"><p b-b="1.0:0">later</p><!--l1.0--><!--/l--></template><script>$bS(1)</script>' +
+          // A handler that a spread passed on names its owner's scope after `@`.
+          '<template b-l="1"><p b-b="1.0:0" b-on="change=Box#h1@1.0 click=Box#h2@0@%5B1%5D click=Own#h3">later</p><!--l1.0--><!--/l--></template><script>$bS(1)</script>' +
             '<template b-l="1.0"><i b-b="1.0.0:0">inner</i></template><script>$bS("1.0")</script>',
         ]);
         next();
@@ -416,6 +417,9 @@ describe('navigate', () => {
     const [outer, inner] = document.querySelectorAll('template');
     expect(outer!.getAttribute('b-l')).toBe('3');
     expect(outer!.content.querySelector('p')?.getAttribute('b-b')).toBe('3.0:0');
+    expect(outer!.content.querySelector('p')?.getAttribute('b-on')).toBe(
+      'change=Box#h1@3.0 click=Box#h2@2@%5B1%5D click=Own#h3',
+    );
     expect(outer!.content.childNodes[1]!.textContent).toBe('l3.0');
     expect(inner!.getAttribute('b-l')).toBe('3.0');
     expect(inner!.content.querySelector('i')?.getAttribute('b-b')).toBe('3.0.0:0');
