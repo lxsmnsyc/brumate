@@ -41,6 +41,9 @@
   import TabList from '@brumate/ui/TabList.brm';
   import TabPanel from '@brumate/ui/TabPanel.brm';
   import Tabs from '@brumate/ui/Tabs.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
@@ -85,6 +88,7 @@
   let pet = $signal<Key | null>(null);
   let city = $signal<Key | null>(null);
   let command = $signal<Key>('none');
+  let topics = $signal(['css', 'html', 'js', 'svg']);
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -451,6 +455,19 @@
     <TabPanel id="venus" class="planet-panel">The hottest.</TabPanel>
     <TabPanel id="earth" class="planet-panel">Home.</TabPanel>
   </Tabs>
+</section>
+
+<section aria-labelledby="taggroup">
+  <h2 id="taggroup">TagGroup</h2>
+  <TagGroup onRemove=((keys) => (topics = topics.filter((topic) => !keys.includes(topic))))>
+    <Label>Topics</Label>
+    <TagList class="topic-list">
+      #for (topic of topics by topic) {
+        <Tag id=topic class="topic">{topic}<Button slot="remove" class="press topic-remove">×</Button></Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <p class="topic-state">{topics.join(',')}</p>
 </section>
 
 <section aria-labelledby="tooltip">

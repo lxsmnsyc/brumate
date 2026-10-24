@@ -620,6 +620,48 @@
     outline: none;
   }
 
+  /* Tags: rounded chips in a row, whose selected ones take the accent. */
+  :global(.ui-taglist) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    outline: none;
+  }
+
+  :global(.ui-tag) {
+    display: inline-flex;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-tag[data-hovered]) {
+    border-color: var(--muted);
+  }
+
+  :global(.ui-tag[data-selected]) {
+    border-color: var(--accent-strong);
+    background: var(--accent-strong);
+    color: var(--bg);
+  }
+
+  :global(.ui-tag[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-tag-remove) {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Label from '../../src/Label.brm';
+  import Tag from '../../src/Tag.brm';
+  import TagGroup from '../../src/TagGroup.brm';
+  import TagList from '../../src/TagList.brm';
+  import Text from '../../src/Text.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let tags = $signal(['news', 'travel', 'gaming', 'shopping']);
+  let picked = $signal<Key[]>([]);
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <TagGroup
+    class="group"
+    selectionMode="multiple"
+    selectedKeys=$bind(picked)
+    disabledKeys=(['gaming'])
+    onRemove=((keys) => (tags = tags.filter((tag) => !keys.includes(tag))))
+  >
+    <Label class="label">Categories</Label>
+    <TagList class="list">
+      #for (tag of tags by tag) {
+        <Tag id=tag class=(`tag tag-${tag}`)>{tag}<Button slot="remove" class=(`remove remove-${tag}`)>×</Button></Tag>
+      }
+    </TagList>
+    <Text slot="description" class="description">Pick some.</Text>
+  </TagGroup>
+  <button class="after" type="button">After</button>
+  <p class="state">{JSON.stringify([tags, picked])}</p>
+</main>

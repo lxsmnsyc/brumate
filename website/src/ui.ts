@@ -46,7 +46,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Collections',
-    pages: ['list-box', 'menu', 'select', 'combo-box', 'autocomplete', 'tabs'],
+    pages: ['list-box', 'menu', 'select', 'combo-box', 'autocomplete', 'tabs', 'tag-group'],
   },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
@@ -211,6 +211,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Tabs that show one panel at a time.',
     href: 'tabs',
     demo: 'TabsDemo',
+  },
+  {
+    title: 'TagGroup',
+    summary: 'Tags that the user can select and remove.',
+    href: 'tag-group',
+    demo: 'TagGroupDemo',
   },
   {
     title: 'Disclosure',
