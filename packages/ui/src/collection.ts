@@ -27,9 +27,17 @@ export function keyOf(element: Element): Key | undefined {
   }
 }
 
-/** The elements of the items of a collection, in order, without those of a collection inside. */
+/**
+ * The elements of the items of a collection, in order, without those of a collection inside.
+ * `role` is the role of the items, or several separated by `|`, such as the roles of the items of
+ * a menu.
+ */
 export function itemsOf(root: Element, role: string): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>(`[role=${role}][data-key]`)].filter(
+  const selector = role
+    .split('|')
+    .map((name) => `[role=${name}][data-key]`)
+    .join(', ');
+  return [...root.querySelectorAll<HTMLElement>(selector)].filter(
     (item) => item.closest(`[data-collection]`) === root && !item.closest('[hidden]'),
   );
 }

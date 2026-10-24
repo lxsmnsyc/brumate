@@ -1,6 +1,7 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
+import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
@@ -204,6 +205,10 @@ export interface OverlayTriggerState {
    * is when it opens.
    */
   isPreview?: boolean;
+  /** The overlay is not modal, such as a submenu, whose parent menu stays usable. */
+  isNonModal?: boolean;
+  /** The placement that the trigger asks for, such as `end top` for a submenu. */
+  placement?: Placement;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =

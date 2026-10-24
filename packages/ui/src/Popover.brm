@@ -74,6 +74,7 @@
   const parentLayer = $getContext(LayerContext);
   const locale = $getContext(LocaleContext);
   const own = $isPassed(isOpen);
+  const placementPassed = $isPassed(placement);
   const layerId = $id();
   const ownId = $id();
   const wanted = $memo(own ? Boolean(isOpen) : Boolean(trigger?.isOpen));
@@ -122,7 +123,14 @@
         followTrigger(
           anchor,
           element,
-          { placement, offset, crossOffset, shouldFlip, containerPadding, direction: locale.direction },
+          {
+            placement: placementOf(),
+            offset,
+            crossOffset,
+            shouldFlip,
+            containerPadding,
+            direction: locale.direction,
+          },
           (position) => {
             element.dataset.placement = position.side;
             for (const arrow of element.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
@@ -135,8 +143,8 @@
         ),
       );
     }
-    // A preview is never modal.
-    if (!isNonModal && !trigger?.isPreview) {
+    // A preview and a submenu are never modal.
+    if (!isNonModal && !trigger?.isPreview && !trigger?.isNonModal) {
       stops.push(inertOutside(holder), keepFocus(holder, element));
     }
     stops.push(pressOutside(holder, anchor, close));
@@ -147,7 +155,10 @@
     // Focus moves in once it has entered, so it lands on a popover that has settled. A preview
     // leaves focus where it is, and Tab moves into it.
     if (!trigger?.isPreview) {
-      focusInto(element.querySelector<HTMLElement>('[role=dialog], [role=alertdialog]') ?? element);
+      focusInto(
+        element.querySelector<HTMLElement>('[role=dialog], [role=alertdialog], [role=menu]') ??
+          element,
+      );
     }
   }
 
@@ -192,6 +203,11 @@
     }
   }
 
+  /** The placement: the popover's own, or else the one that its trigger asks for. */
+  function placementOf(): Placement {
+    return placementPassed ? placement : (trigger?.placement ?? placement);
+  }
+
   function keyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       close();
@@ -225,7 +241,7 @@
       It has no box of its own, so it clips, moves and contains nothing.
     -->
     <div ref=layer id=layerId data-layer style="display: contents">
-      #if (isNonModal || trigger?.isPreview) {
+      #if (isNonModal || trigger?.isPreview || trigger?.isNonModal) {
         {content()}
       } #else {
         <!-- Tab stays in a modal popover. The wrapper prevents it, and the handler moves focus. -->
