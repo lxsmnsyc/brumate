@@ -26,7 +26,16 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   { title: 'Start', pages: ['', 'styling', 'state', 'resuming', 'influences'] },
   {
     title: 'Parts',
-    pages: ['buttons', 'fields', 'boxes', 'disclosure', 'structure', 'status', 'utilities'],
+    pages: [
+      'buttons',
+      'fields',
+      'boxes',
+      'disclosure',
+      'overlays',
+      'structure',
+      'status',
+      'utilities',
+    ],
   },
 ].map((section) => ({
   title: section.title,

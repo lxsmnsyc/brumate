@@ -1,0 +1,41 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Heading from '../../src/Heading.brm';
+  import OverlayArrow from '../../src/OverlayArrow.brm';
+  import Popover from '../../src/Popover.brm';
+
+  let open = $signal(false);
+</script>
+
+<main class="page">
+  <button class="outside" type="button">Outside</button>
+  <DialogTrigger isOpen=$bind(open)>
+    <Button class="trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start">
+      <OverlayArrow class="arrow" />
+      <Dialog class="dialog">
+        <Heading slot="title">Settings</Heading>
+        <input class="name" aria-label="Name">
+        <DialogTrigger>
+          <Button class="inner-trigger">More</Button>
+          <Popover class="inner-popover">
+            <Dialog class="inner-dialog" aria-label="More settings">
+              <Button class="inner-button">Deep</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="close">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="fade-trigger">Fade</Button>
+    <Popover transition class="fade" isNonModal>
+      <Dialog class="fade-dialog" aria-label="Faded">Faded</Dialog>
+    </Popover>
+  </DialogTrigger>
+  <p class="state">{String(open)}</p>
+</main>

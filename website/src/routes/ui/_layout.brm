@@ -462,6 +462,63 @@
     }
   }
 
+  /* A popover fades and rises from the side of its trigger. */
+  :global(.ui-popover) {
+    max-width: 20rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+    transition: opacity 0.18s, translate 0.18s;
+  }
+
+  :global(.ui-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 4px;
+  }
+
+  :global(.ui-popover[data-closed][data-placement='top']) {
+    translate: 0 -4px;
+  }
+
+  :global(.ui-dialog) {
+    display: grid;
+    gap: 0.75rem;
+    outline: none;
+  }
+
+  :global(.ui-dialog h4),
+  :global(.ui-dialog p) {
+    margin: 0;
+  }
+
+  :global(.ui-arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    border: 1px solid var(--border);
+    border-right: 0;
+    border-bottom: 0;
+    background: var(--bg);
+  }
+
+  :global(.ui-arrow[data-placement='bottom']) {
+    top: -7px;
+    rotate: 45deg;
+  }
+
+  :global(.ui-arrow[data-placement='top']) {
+    bottom: -7px;
+    rotate: 225deg;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.ui-popover) {
+      transition: none;
+    }
+  }
+
   :global(.ui-separator) {
     align-self: stretch;
     width: 1px;

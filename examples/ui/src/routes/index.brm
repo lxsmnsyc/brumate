@@ -4,6 +4,8 @@
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
   import Disclosure from '@brumate/ui/Disclosure.brm';
   import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
   import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
@@ -27,6 +29,8 @@
   import Label from '@brumate/ui/Label.brm';
   import Link from '@brumate/ui/Link.brm';
   import Meter from '@brumate/ui/Meter.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
   import ProgressBar from '@brumate/ui/ProgressBar.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
@@ -249,6 +253,29 @@
   <Transition show=noteShown class="note">A note that fades out.</Transition>
 </section>
 
+<section aria-labelledby="popover">
+  <h2 id="popover">Popover and Dialog</h2>
+  <DialogTrigger>
+    <Button class="press settings-trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start" transition>
+      <OverlayArrow class="arrow" />
+      <Dialog class="settings">
+        <Heading slot="title" level=(3)>Settings</Heading>
+        <TextField class="name-setting"><Label>Display name</Label><Input class="field" /></TextField>
+        <DialogTrigger>
+          <Button class="press more-trigger">More</Button>
+          <Popover class="popover more" placement="end">
+            <Dialog class="more-dialog" aria-label="More settings">
+              <Button class="press deep">A setting inside</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="press done">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -397,6 +424,42 @@
     height: 0.5rem;
     border: 1px solid #555;
     background: linear-gradient(to right, #2457d6 var(--percentage), transparent 0);
+  }
+
+  :global(.popover) {
+    padding: 1rem;
+    border: 1px solid #555;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 15%);
+    transition: opacity 0.2s;
+  }
+
+  :global(.popover[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.settings) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.settings h3) {
+    margin: 0;
+  }
+
+  :global(.arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: #fff;
+    border-top: 1px solid #555;
+    border-left: 1px solid #555;
+    rotate: 45deg;
+  }
+
+  :global(.arrow[data-placement='bottom']) {
+    top: -7px;
   }
 
   :global(.note) {
