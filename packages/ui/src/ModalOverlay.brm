@@ -12,7 +12,7 @@
   } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { DialogContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
+  import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import {
     containTab,
@@ -79,6 +79,9 @@
   $setContext(TransitionContext, { show: wanted, entered: rested });
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this overlay.
   $setContext(OverlayTriggerContext, null);
+  // The buttons and links inside are not the trigger, which gets these contexts.
+  $setContext(ButtonContext, null);
+  $setContext(LinkContext, null);
 
   function close() {
     if (own) {

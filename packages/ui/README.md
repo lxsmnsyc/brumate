@@ -30,6 +30,7 @@ The package is private while its first phase is built.
 - `ModalOverlay` and `Modal`: a dialog over the page. The page is inert and does not scroll while it is open. Escape closes it, and a press outside does with `isDismissable`.
 - `OverlayArrow`: an arrow from a Popover to its trigger.
 - `Popover`: an overlay beside its trigger, in a layer of its own. It is modal unless `isNonModal`, closes on Escape and a press outside, and takes `transition`.
+- `PreviewTrigger`: a Popover of a Link or a Button, on hover, on keyboard focus and on a long press. It is not modal, and Tab moves into it.
 - `RadioGroup` and `Radio`: native radios with one name, so the arrow keys move the choice.
 - `SearchField`: a search input with a button that clears it. Escape clears it, and Enter calls `onSubmit`.
 - `Separator`: an `<hr>`, or a vertical separator.

@@ -1,5 +1,6 @@
 <script>
-  import { $effect, $getContext, $id, $props, $signal, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import { followTrigger } from './position.ts';
@@ -45,6 +46,10 @@
   const locale = $getContext(LocaleContext);
   const layerId = $id();
   const target = $untrack(parentLayer ? `#${parentLayer.id}` : 'body');
+
+  // Nothing inside is the trigger, which gets these contexts.
+  $setContext(ButtonContext, null);
+  $setContext(LinkContext, null);
 
   let mounted = $signal(false);
   let run = $signal(0);

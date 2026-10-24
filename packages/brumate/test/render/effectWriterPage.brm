@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import EffectWriter from './EffectWriter.brm';
+
+  let on = $signal(false);
+</script>
+
+<EffectWriter on=$bind(on) />
+<p class="effect-state">{String(on)}</p>

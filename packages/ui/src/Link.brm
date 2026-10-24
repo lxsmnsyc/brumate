@@ -65,9 +65,42 @@
   function given() {
     return slotProps(context, slot);
   }
+  // The handlers of the context run first, then the link's own, as Button's do.
   function pressed(event: PressEvent) {
     given().onPress?.(event);
     onPress?.(event);
+  }
+  function pressStarted(event: PressEvent) {
+    given().onPressStart?.(event);
+    onPressStart?.(event);
+  }
+  function pressEnded(event: PressEvent) {
+    given().onPressEnd?.(event);
+    onPressEnd?.(event);
+  }
+  function pressUp(event: PressEvent) {
+    given().onPressUp?.(event);
+    onPressUp?.(event);
+  }
+  function pressChanged(value: boolean) {
+    given().onPressChange?.(value);
+    onPressChange?.(value);
+  }
+  function hoverStarted(event: HoverEvent) {
+    given().onHoverStart?.(event);
+    onHoverStart?.(event);
+  }
+  function hoverEnded(event: HoverEvent) {
+    given().onHoverEnd?.(event);
+    onHoverEnd?.(event);
+  }
+  function hoverChanged(value: boolean) {
+    given().onHoverChange?.(value);
+    onHoverChange?.(value);
+  }
+  function focusChanged(value: boolean) {
+    given().onFocusChange?.(value);
+    onFocusChange?.(value);
   }
 
   const {
@@ -90,14 +123,14 @@
     disabled,
     disabled,
     pressed,
-    (event: PressEvent) => onPressStart?.(event),
-    (event: PressEvent) => onPressEnd?.(event),
-    (event: PressEvent) => onPressUp?.(event),
-    (value: boolean) => onPressChange?.(value),
-    (event: HoverEvent) => onHoverStart?.(event),
-    (event: HoverEvent) => onHoverEnd?.(event),
-    (value: boolean) => onHoverChange?.(value),
-    (value: boolean) => onFocusChange?.(value),
+    pressStarted,
+    pressEnded,
+    pressUp,
+    pressChanged,
+    hoverStarted,
+    hoverEnded,
+    hoverChanged,
+    focusChanged,
   );
 </script>
 

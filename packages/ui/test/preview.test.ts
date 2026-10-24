@@ -1,0 +1,119 @@
+// The tests of PreviewTrigger follow the tests of PreviewTrigger in React Aria.
+import { afterEach, expect, it } from 'vitest';
+import { mount } from 'virtual:brumate/testing';
+import Previews from './fixtures/previews.brm?brumate-server';
+import { pointer, press } from './interact.ts';
+
+let unmount: (() => void) | undefined;
+afterEach(async () => {
+  unmount?.();
+  // A portal renders outside the mounted container, which unmount removes.
+  for (const layer of document.querySelectorAll('[data-layer]')) {
+    layer.remove();
+  }
+  // The others show at once for half a second after a preview hides.
+  await wait(600);
+});
+
+async function previews() {
+  const page = await mount(Previews, {});
+  unmount = page.unmount;
+  return page;
+}
+
+const find = (selector: string) => document.querySelector<HTMLElement>(selector);
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function hoverOpen(page: Awaited<ReturnType<typeof previews>>) {
+  pointer('pointerenter', page.get('.author'));
+  await page.waitFor(() => expect(find('.card')).not.toBeNull());
+}
+
+it('shows after its delay on hover, without moving focus or the page', async () => {
+  const page = await previews();
+  const author = page.get('.author');
+  author.focus();
+  pointer('pointerenter', author);
+  await wait(20);
+  expect(find('.card')).toBeNull();
+  await page.waitFor(() => expect(find('.card')).not.toBeNull());
+  await page.waitFor(() => expect(author.getAttribute('aria-expanded')).toBe('true'));
+  expect(author.getAttribute('aria-controls')).toBe(find('.card')!.id);
+  // A button inside the preview is not its trigger.
+  expect(find('.follow')!.hasAttribute('aria-expanded')).toBe(false);
+  expect(find('.follow')!.id).not.toBe(author.id);
+  await wait(50);
+  expect(document.activeElement).toBe(author);
+  expect(page.get('.page').closest('[inert]')).toBeNull();
+  await page.waitFor(() => expect(page.text('.state')).toBe('true'));
+});
+
+it('stays while the pointer is over it, and hides when the pointer goes elsewhere', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  pointer('pointerleave', page.get('.author'));
+  find('.follow')!.dispatchEvent(
+    new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }),
+  );
+  await wait(150);
+  expect(find('.card')).not.toBeNull();
+  page
+    .get('.after')
+    .dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+});
+
+it('moves Tab into the preview and on past it, and Escape gives focus back', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  const author = page.get('.author');
+  author.focus();
+  const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+  author.dispatchEvent(tab);
+  expect(tab.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(find('.follow'));
+  find('.profile')!.focus();
+  const past = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+  find('.profile')!.dispatchEvent(past);
+  expect(past.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(page.get('.after'));
+  // Focus left both, so it hides.
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  pointer('pointerleave', author);
+  await hoverOpen(page);
+  find('.follow')!.focus();
+  press('Escape', find('.follow')!);
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  expect(document.activeElement).toBe(author);
+});
+
+it('shows the next one at once, one at a time', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  pointer('pointerleave', page.get('.author'));
+  pointer('pointerenter', page.get('.other'));
+  await page.waitFor(() => expect(find('.other-card')).not.toBeNull());
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+});
+
+it('shows on a long press of a touch, and the release follows no link', async () => {
+  // happy-dom matches :focus-visible on any focus. A touch that focuses shows no focus ring.
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = function (this: Element, selector: string) {
+    return selector === ':focus-visible' ? false : matches.call(this, selector);
+  } as typeof matches;
+  try {
+    const page = await previews();
+    const author = page.get('.author');
+    pointer('pointerdown', author, { pointerType: 'touch' });
+    await wait(300);
+    expect(find('.card')).toBeNull();
+    await page.waitFor(() => expect(find('.card')).not.toBeNull(), 2000);
+    pointer('pointerup', author, { pointerType: 'touch' });
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    author.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+  } finally {
+    Element.prototype.matches = matches;
+  }
+});
