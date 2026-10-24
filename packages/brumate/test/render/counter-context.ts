@@ -7,6 +7,7 @@ export interface CounterValue {
   increment: () => void;
   add: (step: number) => void;
   reset(): void;
+  steps: { double: { run: () => void } };
 }
 
 export const Counter: Context<CounterValue | undefined> = createContext<CounterValue | undefined>(

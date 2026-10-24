@@ -949,18 +949,19 @@ class Analyzer {
    * Functions in a provided value run in the browser, where a component that
    * reads the context calls them. Each one is a client root, as a function
    * prop is: the value itself, or the value of a key of an object, such as
-   * `toggle` in `$setContext(Theme, { theme, toggle })`.
+   * `toggle` in `$setContext(Theme, { theme, toggle })`, at any depth.
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites.filter((item) => item.kind === 'provide')) {
-      const value = site.node;
-      const parts =
+      // The value, or the values of the keys of an object, also of objects inside it, such as
+      // `{ slots: { increment: { onPress } } }`.
+      const valuesOf = (value: oxc.Node): oxc.Node[] =>
         value.type === 'ObjectExpression'
           ? value.properties.flatMap((property) =>
-              property.type === 'Property' && !property.computed ? [property.value] : [],
+              property.type === 'Property' && !property.computed ? valuesOf(property.value) : [],
             )
           : [value];
-      for (const part of parts) {
+      for (const part of valuesOf(site.node)) {
         const isFunctionPart =
           isFunction(part) ||
           (part.type === 'Identifier' &&

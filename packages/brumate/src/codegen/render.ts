@@ -1,6 +1,6 @@
 import type { Markup, SFCFile } from '../ast.ts';
 import type { oxc } from '../oxc.ts';
-import { serverFunctionId } from '../plan.ts';
+import { componentFunctionName, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
@@ -212,9 +212,9 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   }
   const emitter = new Emitter(file, plan, patch, { mode: 'client', functions: true });
   const generics = file.generics ? `<${file.generics}>` : '';
-  emitter.line(
-    `export default function ${plan.name}${generics}($$props: ${propsType(file)}): string {`,
-  );
+  // The script can import a name that is the name of the component.
+  const fn = componentFunctionName(file, plan.name);
+  emitter.line(`export default function ${fn}${generics}($$props: ${propsType(file)}): string {`);
   // A render function cannot wait, so a component whose render awaits a promise renders only
   // on the server. Its memos can await: they load in the browser.
   if (awaitsPromise(plan)) {

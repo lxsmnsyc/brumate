@@ -1140,6 +1140,8 @@ describe('resume', () => {
     await waitFor(() => expect(text('.count')).toBe('1'));
     click(document.querySelector('.ten')!);
     await waitFor(() => expect(text('.count')).toBe('11'));
+    click(document.querySelector('.double')!);
+    await waitFor(() => expect(text('.count')).toBe('22'));
     click(document.querySelector('.reset')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
   });
