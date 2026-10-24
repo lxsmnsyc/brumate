@@ -1,0 +1,31 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import LateList from './LateList.brm';
+
+  // A list that streams in after an event, with a template of this component for its items.
+  let clicks = $signal(0);
+  const fruits = $memo(await ready);
+</script>
+
+<button class="count" onClick=(() => clicks++)>{clicks}</button>
+#loading {
+  <LateList items=(fruits.split(',')) item=fruit />
+} #else {
+  <p class="fallback">Loading</p>
+}
+
+#template fruit(name: string) {
+  <strong>{name}</strong>
+}

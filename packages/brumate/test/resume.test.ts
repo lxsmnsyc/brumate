@@ -2995,6 +2995,30 @@ describe('markup that streams in after a write', () => {
   });
 });
 
+describe('templates that stream in after a write', () => {
+  it('renders the template of a list that streams in, once its code loads', async () => {
+    const server = await import(file('lateTemplate.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    // The code of the page loads late, so the markup streams in before it.
+    await startLoader({ all: 30 });
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    server.release('apple,pear');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    const names = () =>
+      [...document.querySelectorAll('.late-list strong')].map((item) => item.textContent);
+    expect(names()).toEqual(['apple', 'pear']);
+    // The updates of the scopes that streamed in run with the code of the template.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(names()).toEqual(['apple', 'pear']);
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(names()).toEqual(['pear', 'apple']));
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});
