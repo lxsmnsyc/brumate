@@ -3087,12 +3087,17 @@ class RenderedChildren extends Children {
       if (this.code) {
         return String(this.code(scope));
       }
-      // An insert that did not wait for the code, which the next update renders again.
-      if (DEV) {
-        console.warn(`brumate: the children ${ref} rendered before their code loaded.`);
-      }
-      void this.load();
-      return '';
+      // An insert that ran before the code, such as an update that a parent ran at once. A marker
+      // holds the place, and the children render there once their code has loaded.
+      const marker = `C${(nextChildren += 1)}`;
+      void this.load().then(() => {
+        const node = findMarker(marker);
+        if (node) {
+          insertHTML(node, String(this.code!(scope)));
+          node.remove();
+        }
+      });
+      return `<!--${marker}-->`;
     });
     this.ref = ref;
   }
@@ -3107,6 +3112,20 @@ class RenderedChildren extends Children {
     });
     return this.loading;
   }
+}
+
+/** The count of the markers of children that wait for their code. */
+let nextChildren = 0;
+
+/** The comment of a marker, such as of children that wait for their code. */
+function findMarker(data: string): Comment | undefined {
+  const walker = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if ((node as Comment).data === data) {
+      return node as Comment;
+    }
+  }
+  return undefined;
 }
 
 /**
