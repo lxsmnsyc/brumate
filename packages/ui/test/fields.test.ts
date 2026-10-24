@@ -124,3 +124,14 @@ it('takes a field of createForm: its name, ID, value and errors', async () => {
   expect(error.textContent).toBe('Write a whole email address');
   expect(input.getAttribute('aria-describedby')).toContain('order-email-error');
 });
+
+it('leaves the ID of a missing description out of aria-describedby once the browser is idle', async () => {
+  const page = await fields();
+  const note = page.get('.note-input');
+  // The server names it, since it writes the input before it reaches a description.
+  expect(note.hasAttribute('aria-describedby')).toBe(true);
+  await page.waitFor(() => expect(note.hasAttribute('aria-describedby')).toBe(false), 3000);
+  // A field with a description keeps it.
+  const email = page.get('.email-input');
+  expect(email.getAttribute('aria-describedby')).toBe(page.get('.email span').id);
+});

@@ -91,7 +91,8 @@ it('marks the current Link, and leaves out the address of a disabled one', async
   expect(off.hasAttribute('href')).toBe(false);
   expect(off.getAttribute('role')).toBe('link');
   expect(off.getAttribute('aria-disabled')).toBe('true');
-  expect(off.hasAttribute('tabindex')).toBe(false);
+  // It stays in the order of Tab, so a keyboard user hears that it is disabled.
+  expect(off.getAttribute('tabindex')).toBe('0');
   // A link without an address is an element with the role and the focus of a link.
   const span = page.get('.span');
   expect(span.getAttribute('role')).toBe('link');

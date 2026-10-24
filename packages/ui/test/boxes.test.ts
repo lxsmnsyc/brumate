@@ -55,13 +55,22 @@ it('sets the indeterminate state of the box, which needs code', async () => {
   await page.waitFor(() => expect(input(page, '.mixed').indeterminate).toBe(true), 3000);
 });
 
-it('keeps the state of a read-only box', async () => {
+it('prevents the click of a read-only box, so the browser never toggles it', async () => {
   const page = await boxes();
-  const box = input(page, '.locked');
-  expect(box.getAttribute('aria-readonly')).toBe('true');
-  box.click();
-  await page.waitFor(() => expect(box.checked).toBe(true));
+  expect(input(page, '.locked-small').checked).toBe(true);
+  for (const selector of ['.locked', '.fixed', '.locked-large']) {
+    const box = input(page, selector);
+    const before = box.checked;
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    box.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(box.checked).toBe(before);
+  }
+  expect(input(page, '.locked').getAttribute('aria-readonly')).toBe('true');
   expect(page.get('.locked').hasAttribute('data-selected')).toBe(true);
+  expect(page.get('.locked-sizes').getAttribute('aria-readonly')).toBe('true');
+  // happy-dom does not check the radio of before again after a prevented click, as a browser
+  // does, so the Chrome steps check the radios.
 });
 
 it('keeps the values of a CheckboxGroup, and names it with its label', async () => {
