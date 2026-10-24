@@ -47,7 +47,11 @@ export function isMacroImport(statement: oxc.Node): boolean {
 }
 
 /** Calls every AST node inside a value of the file, such as a script or an expression. */
-function walk(value: unknown, visit: (node: oxc.Node) => void, seen = new Set<object>()): void {
+export function walk(
+  value: unknown,
+  visit: (node: oxc.Node) => void,
+  seen: Set<object> = new Set(),
+): void {
   if (typeof value !== 'object' || value === null || seen.has(value)) {
     return;
   }
