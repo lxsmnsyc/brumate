@@ -1,0 +1,326 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { ListBoxGivenContext, enabledItems, keyOf, moveFrom, textOfItem } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import {
+    ButtonContext,
+    FieldErrorContext,
+    FormContext,
+    InputContext,
+    LabelContext,
+    OverlayTriggerContext,
+    TextContext,
+  } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+
+  /**
+   * A text field with a list of suggestions, as ComboBox of React Aria Components. It holds a
+   * Label, an Input, a Button, a Text with `slot="description"`, a FieldError, and a Popover with
+   * a ListBox.
+   *
+   * - Typing opens the list and shows the items whose text contains what was typed. ArrowDown
+   *   and ArrowUp open it too, and move through its items, while focus stays in the input. Enter
+   *   and a press pick an item, and its text goes in the input.
+   * - The Button opens the list with all of its items.
+   * - Escape closes the list, and clears the input when it is closed. Focus that leaves the field
+   *   closes it, and puts the text of the selected item back, unless `allowsCustomValue`.
+   * - `selectedKey` and `inputValue` start their own state, or bind with `$bind`.
+   * - `name` sends the key with its form, also before its code loads.
+   * - The element shows `data-open`, `data-disabled`, `data-invalid` and `data-required`.
+   */
+  const {
+    as = 'div',
+    name,
+    isDisabled = false,
+    isRequired = false,
+    isInvalid,
+    allowsCustomValue = false,
+    menuTrigger = 'input',
+    defaultFilter,
+    onSelectionChange,
+    onInputChange,
+    onOpenChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    isDisabled?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    allowsCustomValue?: boolean;
+    /** What opens the list: typing (the default), focus, or only the keys and the Button. */
+    menuTrigger?: 'input' | 'focus' | 'manual';
+    /** Whether an item's text matches what was typed. By default, it contains it. */
+    defaultFilter?: (text: string, input: string) => boolean;
+    onSelectionChange?: (key: Key | null) => void;
+    onInputChange?: (value: string) => void;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKey = null } = $props<{ selectedKey?: Bindable<Key | null> }>();
+  let { inputValue = '' } = $props<{ inputValue?: Bindable<string> }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const form = $getContext(FormContext);
+  const rootId = $id();
+  const inputId = $id();
+  const buttonId = $id();
+  const labelId = $id();
+  const listId = $id();
+  const overlayId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  // The item that the keys move to, while focus stays in the input.
+  let activeKey = $signal<Key | null>(null);
+  let activeId = $signal<string>();
+  // The text of the selected item, which the input gets back when focus leaves it.
+  let selectedText = $signal<string>();
+  // The text that the list shows the items of: what was typed, or '' for all of them.
+  let filterText = $signal('');
+  // The item that becomes active once the list shows its items.
+  let strategy = $signal<'first' | 'last' | 'keep'>('keep');
+  let edited = $signal(false);
+  const errors = $memo(
+    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  );
+  const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
+
+  function list() {
+    return document.getElementById(listId);
+  }
+
+  function input() {
+    return document.getElementById(inputId) as HTMLInputElement | null;
+  }
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen && !(next && isDisabled)) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+    if (!next) {
+      activate(null);
+    }
+  }
+
+  function activate(key: Key | null) {
+    activeKey = key;
+    const element = key === null ? undefined : findItem(key);
+    activeId = element?.id;
+    element?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  function findItem(key: Key) {
+    const element = list();
+    return element
+      ? [...element.querySelectorAll<HTMLElement>('[role=option][data-key]')].find(
+          (item) => keyOf(item) === key,
+        )
+      : undefined;
+  }
+
+  /** The list showed the items that match. It closes when none do. */
+  function filtered(shown: HTMLElement[]) {
+    if (shown.length === 0) {
+      setOpen(false);
+      return;
+    }
+    const element = list();
+    const items = element ? enabledItems(element, 'option') : [];
+    if (strategy === 'first') {
+      activate(items[0] ? (keyOf(items[0]) ?? null) : null);
+    } else if (strategy === 'last') {
+      activate(items.at(-1) ? (keyOf(items.at(-1)!) ?? null) : null);
+    } else if (activeKey !== null && !items.some((item) => keyOf(item) === activeKey)) {
+      activate(null);
+    }
+    strategy = 'keep';
+  }
+
+  function open(next: 'first' | 'last' | 'keep', all: boolean) {
+    strategy = next;
+    filterText = all ? '' : inputValue;
+    setOpen(true);
+  }
+
+  function select(key: Key) {
+    const item = findItem(key);
+    selectedText = item ? textOfItem(item) : undefined;
+    inputValue = selectedText ?? inputValue;
+    onInputChange?.(inputValue);
+    if (key !== selectedKey) {
+      selectedKey = key;
+      edited = true;
+      onSelectionChange?.(key);
+    }
+    setOpen(false);
+    input()?.focus();
+  }
+
+  function typed(text: string) {
+    inputValue = text;
+    onInputChange?.(text);
+    if (text === '' && selectedKey !== null) {
+      selectedKey = null;
+      onSelectionChange?.(null);
+    }
+    filterText = text;
+    if (menuTrigger !== 'manual' && text !== '') {
+      setOpen(true);
+    }
+  }
+
+  function focused() {
+    if (menuTrigger === 'focus' && !isOpen) {
+      open('keep', true);
+    }
+  }
+
+  function blurred() {
+    // Focus lands after the blur, so the check waits for it.
+    setTimeout(left, 0);
+  }
+
+  function left() {
+    // A press in the list moves focus there for a moment, and the press puts it back.
+    const active = document.activeElement;
+    if (
+      active &&
+      (active.id === inputId || document.getElementById(overlayId)?.contains(active))
+    ) {
+      return;
+    }
+    setOpen(false);
+    if (!allowsCustomValue) {
+      const back = selectedKey === null ? '' : (selectedText ?? inputValue);
+      if (back !== inputValue) {
+        inputValue = back;
+        onInputChange?.(back);
+      }
+    }
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if ((event.target as Element).id !== inputId) {
+      return;
+    }
+    const element = list();
+    const items = element ? enabledItems(element, 'option') : [];
+    const current = items.find((item) => keyOf(item) === activeKey);
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'ArrowUp': {
+        const down = event.key === 'ArrowDown';
+        if (!isOpen || !element) {
+          open(down ? 'first' : 'last', !edited || selectedKey !== null);
+          return;
+        }
+        const next = moveFrom(element, items, current, down ? 'next' : 'previous', true);
+        activate(next ? (keyOf(next) ?? null) : null);
+        return;
+      }
+      case 'Enter':
+        // Enter picks the active item, and sends the form only when the list is closed.
+        if (isOpen && activeKey !== null) {
+          event.preventDefault();
+          select(activeKey);
+        }
+        return;
+      case 'Escape':
+        if (isOpen) {
+          setOpen(false);
+        } else if (inputValue !== '') {
+          typed('');
+        }
+        return;
+      case 'Tab':
+        setOpen(false);
+        return;
+      default:
+        return;
+    }
+  }
+
+  $setContext(LabelContext, { id: labelId, for: inputId });
+  $setContext(InputContext, {
+    id: inputId,
+    role: 'combobox',
+    autocomplete: 'off',
+    value: inputValue,
+    disabled: isDisabled || undefined,
+    'aria-autocomplete': 'list',
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? listId : undefined,
+    'aria-activedescendant': isOpen ? activeId : undefined,
+    'aria-invalid': invalid ? 'true' : undefined,
+    'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+    onChange: typed,
+    onBlur: blurred,
+    onFocus: focused,
+  });
+  $setContext(ButtonContext, {
+    id: buttonId,
+    isDisabled,
+    // The Button is out of the order of Tab, since the keys of the input open the list.
+    tabindex: '-1',
+    'aria-label': 'Show suggestions',
+    'aria-labelledby': `${buttonId} ${labelId}`,
+    'aria-haspopup': 'listbox',
+    'aria-expanded': isOpen ? 'true' : 'false',
+    onPress: () => {
+      if (isOpen) {
+        setOpen(false);
+      } else {
+        open('keep', true);
+      }
+      input()?.focus();
+    },
+  });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId: rootId,
+    overlayId,
+    open: () => open('keep', true),
+    close: () => setOpen(false),
+    placement: 'bottom start',
+    isNonModal: true,
+    autoFocus: false,
+  });
+  $setContext(ListBoxGivenContext, {
+    selectedKeys: selectedKey === null ? [] : [selectedKey],
+    labelledBy: labelId,
+    select,
+    id: listId,
+    virtual: true,
+    activeKey,
+    setActive: (key: Key) => activate(key),
+    filterText: isOpen ? filterText : undefined,
+    filtered,
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+</script>
+
+<{as}
+  id=rootId
+  data-open=(isOpen || undefined)
+  data-disabled=(isDisabled || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>
+  <!-- The key of the selection for the form, which posts without scripts. -->
+  <input
+    type="hidden"
+    name=name
+    value=(selectedKey === null ? '' : String(selectedKey))
+    disabled=(isDisabled || undefined)
+  >
+</>

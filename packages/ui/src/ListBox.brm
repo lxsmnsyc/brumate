@@ -1,11 +1,23 @@
 <script>
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
     ListBoxGivenContext,
     enabledItems,
+    filterItems,
     focusItem,
     focusedItem,
     isTyping,
@@ -120,6 +132,23 @@
     select,
     action,
     hasAction,
+    activeKey: given?.activeKey,
+    setActive: given?.setActive,
+  });
+
+  // A part around the list, such as a ComboBox, shows only the items that match its text: when
+  // the list is on the page, and each time the text changes.
+  function applyFilter() {
+    const text = given?.filterText;
+    const element = root;
+    if (text !== undefined && element) {
+      given!.filtered?.(filterItems(element, text, given!.filter));
+    }
+  }
+  $client(() => applyFilter(), 'load');
+  $effect(() => {
+    void given?.filterText;
+    $untrack(applyFilter());
   });
 
   /** The item that focus goes to when the list gets it. */
@@ -135,6 +164,9 @@
 
   function focused(event: FocusEvent) {
     const element = root;
+    if (given?.virtual) {
+      return;
+    }
     // The list passes its focus on to an item.
     if (element && event.target === element && document.activeElement === element) {
       focusItem(entry(element));
@@ -235,9 +267,9 @@
 
 <div
   ref=root
-  id=listId
+  id=(given?.id ?? listId)
   role="listbox"
-  tabindex="0"
+  tabindex=(given?.virtual ? '-1' : '0')
   data-collection
   aria-multiselectable=(mode === 'multiple' ? 'true' : undefined)
   aria-labelledby=(given?.labelledBy)

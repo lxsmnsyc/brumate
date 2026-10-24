@@ -45,6 +45,8 @@
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
+  // With virtual focus, focus stays outside the list, and the active item shows as focused.
+  const active = $memo(list?.activeKey !== undefined && list.activeKey === id);
 
   $setContext(TextContext, {
     slots: {
@@ -93,7 +95,7 @@
     () => {},
     () => {},
     () => {},
-    () => {},
+    () => list?.setActive?.(id),
     () => {},
     () => {},
     () => {},
@@ -114,7 +116,7 @@
   data-disabled=(disabled || undefined)
   data-pressed=(isPressed || undefined)
   data-hovered=(hovered || undefined)
-  data-focused=(focused || undefined)
+  data-focused=(focused || active || undefined)
   data-focus-visible=(focusVisible || undefined)
   onPointerDown=onPointerDown
   onPointerMove=onPointerMove

@@ -311,6 +311,10 @@ export interface ListBoxState {
   action: (key: Key) => void;
   /** True when the ListBox has `onAction`. */
   hasAction: boolean;
+  /** With virtual focus, the item that the keys of the part around the list move to. */
+  activeKey?: Key | null;
+  /** With virtual focus, makes an item the active one. */
+  setActive?: (key: Key) => void;
 }
 
 export const ListBoxContext: Context<ListBoxState | null> = createContext<ListBoxState | null>(
@@ -330,6 +334,23 @@ export interface ListBoxGiven {
   select: (key: Key) => void;
   /** Tab on an item, which leaves the list. */
   tab?: () => void;
+  /** The ID of the list, which the part around it names, such as in `aria-controls`. */
+  id?: string;
+  /**
+   * Focus stays in the part around the list, such as the input of a ComboBox, and `activeKey` is
+   * the item that the keys move to, which `aria-activedescendant` names.
+   */
+  virtual?: boolean;
+  activeKey?: Key | null;
+  /** The pointer moved to an item, which becomes the active one. */
+  setActive?: (key: Key) => void;
+  /**
+   * The text that the items must match, such as what was typed in a ComboBox. The list hides the
+   * others once it is on the page, and gives `filtered` the items that show.
+   */
+  filterText?: string;
+  filter?: (text: string, input: string) => boolean;
+  filtered?: (shown: HTMLElement[]) => void;
 }
 
 export const ListBoxGivenContext: Context<ListBoxGiven | null> = createContext<ListBoxGiven | null>(
@@ -353,3 +374,37 @@ export interface SelectValueState {
 
 export const SelectValueContext: Context<SelectValueState | null> =
   createContext<SelectValueState | null>('brumate-ui:select-value', null);
+
+/** The text of an item: its `data-text-value`, or its text. */
+export function textOfItem(item: HTMLElement): string {
+  return (item.dataset.textValue ?? item.textContent ?? '').trim();
+}
+
+/** True when the text of an item contains what was typed, in any case. */
+export function contains(text: string, input: string): boolean {
+  return text.toLocaleLowerCase().includes(input.trim().toLocaleLowerCase());
+}
+
+/**
+ * Hides the items of a list whose text does not match, and the sections that have no item left.
+ * The items are on the page, so they are hidden there, and the keys skip hidden items. Returns
+ * the items that show.
+ */
+export function filterItems(
+  list: Element,
+  input: string,
+  matches: (text: string, input: string) => boolean = contains,
+): HTMLElement[] {
+  const shown: HTMLElement[] = [];
+  for (const item of list.querySelectorAll<HTMLElement>('[role=option][data-key]')) {
+    const visible = input === '' || matches(textOfItem(item), input);
+    item.hidden = !visible;
+    if (visible) {
+      shown.push(item);
+    }
+  }
+  for (const section of list.querySelectorAll<HTMLElement>('[role=group]')) {
+    section.hidden = !section.querySelector('[role=option]:not([hidden])');
+  }
+  return shown;
+}

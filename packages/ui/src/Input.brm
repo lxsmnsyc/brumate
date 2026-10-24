@@ -42,6 +42,11 @@
     given().onKeyDown?.(event.key);
   }
 
+  function focus(event: FocusEvent) {
+    onFocus(event);
+    given().onFocus?.();
+  }
+
   function blur(event: FocusEvent) {
     ringBlur(event);
     given().onBlur?.();
@@ -57,7 +62,7 @@
   onPointerEnter=onPointerEnter
   onPointerLeave=onPointerLeave
   onPointerDown=onPointerDown
-  onFocus=onFocus
+  onFocus=focus
   onBlur=blur
   onKeyDown=keyDown
   onInput=input

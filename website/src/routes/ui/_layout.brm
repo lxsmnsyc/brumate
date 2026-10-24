@@ -560,6 +560,30 @@
     box-shadow: var(--shadow);
   }
 
+  /* A combobox: an input and its button in one box. */
+  :global(.ui-combobox-box) {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  :global(.ui-combobox-box:focus-within) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-combobox-box .ui-input) {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+  }
+
+  :global(.ui-combobox-box .ui-select-button) {
+    border: 0;
+    background: none;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

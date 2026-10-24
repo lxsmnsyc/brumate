@@ -95,6 +95,7 @@ export interface InputContextProps extends AttributeProps {
   onChange?: (value: string) => void;
   onInvalid?: (message: string, first: boolean) => void;
   onKeyDown?: (key: string) => void;
+  onFocus?: () => void;
   onBlur?: () => void;
 }
 

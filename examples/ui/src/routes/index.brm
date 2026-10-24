@@ -36,6 +36,7 @@
   import Menu from '@brumate/ui/Menu.brm';
   import MenuItem from '@brumate/ui/MenuItem.brm';
   import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
   import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
@@ -77,6 +78,7 @@
   let animals = $signal<Key[]>([]);
   let menuAction = $signal<Key>('none');
   let pet = $signal<Key | null>(null);
+  let city = $signal<Key | null>(null);
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -396,6 +398,23 @@
     <button class="press pet-send" type="submit">Send</button>
   </form>
   <p class="pet-state">{petSent || 'Not sent'}</p>
+</section>
+
+<section aria-labelledby="combobox">
+  <h2 id="combobox">ComboBox</h2>
+  <ComboBox class="city-box" name="city" selectedKey=$bind(city)>
+    <Label>City</Label>
+    <Input class="city-input" />
+    <Button class="press city-toggle">Show</Button>
+    <Popover class="popover city-popover">
+      <ListBox class="listbox city-list">
+        #for (name of ['Berlin', 'Bern', 'Lisbon', 'London', 'Madrid'] by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <p class="city-state">{city ?? 'None'}</p>
 </section>
 
 <section aria-labelledby="tooltip">
