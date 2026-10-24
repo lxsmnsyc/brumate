@@ -11,7 +11,7 @@ The command prints a markdown table for each scenario and writes `results/<times
 
 ## Results
 
-A run of `pnpm bench` on `main` at `38cecc9`, on 2026-10-22. The machine was an Apple M2 with 8 GB and Node 26.4.0. It was busy at the start (load average 4.15 on 8 cores), so the timings may be noisy. Sizes are raw / gzip -9. The renders per second are the median of 5 rounds.
+A run of `pnpm bench` on `main` at `38cecc9`, on 2026-10-22. The machine was an Apple M2 with 8 GB and Node 26.4.0. It was busy at the start (load average 4.15 on 8 cores), so the timings may be noisy. Sizes are raw / gzip -9. The renders per second are the median of 5 rounds. The run predates the rows scenario, so it has no rows table.
 
 ### Todos
 
