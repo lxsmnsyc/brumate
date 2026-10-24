@@ -146,9 +146,9 @@
   }
 
   :global(.ui-button[data-selected]) {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+    color: var(--bg);
   }
 
   :global(.ui-button[data-disabled]),
@@ -201,7 +201,7 @@
   }
 
   :global(.ui-input[data-invalid]) {
-    border-color: #d1453b;
+    border-color: var(--danger);
   }
 
   :global(.ui-help) {
@@ -210,7 +210,7 @@
   }
 
   :global(.ui-error) {
-    color: #d1453b;
+    color: var(--danger);
     font-size: 0.875rem;
   }
 
@@ -372,6 +372,12 @@
     color: var(--muted);
   }
 
+  :global(.ui-form) {
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+  }
+
   :global(.ui-kbd) {
     padding: 0.1rem 0.4rem;
     border: 1px solid var(--border);
@@ -391,8 +397,13 @@
     border-top: 1px solid var(--border);
   }
 
-  :global(.ui-disclosure h4) {
+  /* A demo heading is a level below the title of the page, with none of the look of the page's. */
+  :global(.ui-disclosure h2) {
     margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: inherit;
+    letter-spacing: normal;
   }
 
   :global(.ui-disclosure-trigger) {

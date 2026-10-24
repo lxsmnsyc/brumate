@@ -1,0 +1,10 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<Button class="ui-button ui-icon-button">
+  <Icon name="close" />
+  <VisuallyHidden>Close</VisuallyHidden>
+</Button>

@@ -1,0 +1,7 @@
+<script>
+  import Separator from '@brumate/ui/Separator.brm';
+</script>
+
+<p>Above the line.</p>
+<Separator class="ui-separator" />
+<p>Below the line.</p>

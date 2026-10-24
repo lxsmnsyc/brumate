@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+
+  let pinned = $signal(false);
+</script>
+
+<ToggleButton class="ui-button" isSelected=$bind(pinned)>Pin</ToggleButton>
+<p>{pinned ? 'Pinned' : 'Not pinned'}.</p>

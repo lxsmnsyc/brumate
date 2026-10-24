@@ -104,7 +104,7 @@ const LANGUAGES = {
   json: json(),
 };
 
-/** The name of a demo of @brumate/ui: a code block such as ```` ```brm demo PressDemo ````. */
+/** The name of a demo of @brumate/ui: a code block such as ```` ```brm demo ButtonDemo ````. */
 function demoName(token: { type: string; info: string }): string | undefined {
   return token.type === 'fence'
     ? /^(?:brm|html)\s+demo\s+(\w+)/.exec(token.info.trim())?.[1]
