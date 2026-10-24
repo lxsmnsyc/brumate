@@ -12,22 +12,19 @@
    * - The arrow keys step it, PageUp and PageDown move a tenth of the range, and Home and End go to
    *   the ends of its range, which the thumbs next to it set.
    * - A drag moves it.
-   * - It is placed with `left`, or `bottom` when vertical, at its value, and shows
-   *   `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
+   * - It is placed with `left` at its value, `right` right to left, or `bottom` when vertical.
+   * - It shows `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
    */
   const {
     index = 0,
     name,
     'aria-label': label,
-    style: ownStyle,
     children,
     ...rest
   } = $props<{
     index?: number;
     name?: string;
     'aria-label'?: string;
-    /** More style, after the place of the thumb. */
-    style?: string;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -42,15 +39,7 @@
   const inputId = $memo(slider ? thumbId(slider, index) : undefined);
   const percent = $memo(slider ? percentOf(slider, value) * 100 : 0);
   const vertical = $memo(slider?.orientation === 'vertical');
-  // The thumb sits at its value: from the start of the track, which is the right right to left.
-  const place = $memo(
-    vertical
-      ? `position: absolute; bottom: ${percent}%; transform: translateY(50%)`
-      : locale.direction === 'rtl'
-        ? `position: absolute; right: ${percent}%; transform: translateX(50%)`
-        : `position: absolute; left: ${percent}%; transform: translateX(-50%)`,
-  );
-  const style = $memo(ownStyle ? `${place}; ${ownStyle}` : place);
+  const rtl = $memo(locale.direction === 'rtl');
 
   function input(event: Event) {
     slider?.setThumb(index, Number((event.currentTarget as HTMLInputElement).value));
@@ -79,7 +68,6 @@
       return;
     }
     dragging = true;
-    const rtl = locale.direction === 'rtl';
     startDrag(
       event.pointerId,
       (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
@@ -101,9 +89,10 @@
   }
 </script>
 
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
 <div
+  class={ thumb: true, vertical, rtl: rtl && !vertical }
   data-slider-thumb
-  style=style
   data-dragging=(dragging || undefined)
   data-focused=(focused || undefined)
   data-focus-visible=(focusVisible || undefined)
@@ -127,9 +116,46 @@
     aria-labelledby=(slider ? (label ? `${inputId} ${slider.labelId}` : slider.labelId) : undefined)
     aria-orientation=(vertical ? 'vertical' : undefined)
     aria-valuetext=(slider?.labels[index])
-    style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0"
+    class="input"
     onInput=input
     onChange=changed
     onKeyDown=(prevent(keyDown, 'PageUp', 'PageDown'))
   >
 </div>
+
+<style>
+  /* The thumb sits at its value: from the start of the track, which is the right right to left,
+     or from the bottom when vertical. */
+  .thumb {
+    --at: ${percent}%;
+    position: absolute;
+    left: var(--at);
+    transform: translateX(-50%);
+  }
+
+  .thumb.rtl {
+    left: auto;
+    right: var(--at);
+    transform: translateX(50%);
+  }
+
+  .thumb.vertical {
+    left: auto;
+    bottom: var(--at);
+    transform: translateY(50%);
+  }
+
+  /* The range input is out of sight, and a screen reader and the keys still reach it. */
+  .input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+  }
+</style>

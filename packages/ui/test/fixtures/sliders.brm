@@ -16,7 +16,7 @@
     <Label class="volume-label">Volume</Label>
     <SliderOutput class="volume-output" />
     <SliderTrack class="volume-track" style="width: 100px; height: 10px">
-      <SliderThumb class="volume-thumb" name="volume" />
+      <SliderThumb class="volume-thumb" name="volume" style="top: 2px" />
     </SliderTrack>
   </Slider>
   <Slider class="price" value=$bind(range) formatOptions=({ style: 'currency', currency: 'USD', maximumFractionDigits: 0 })>

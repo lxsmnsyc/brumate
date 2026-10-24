@@ -9,11 +9,7 @@
    * press on it moves the nearest thumb there, and a drag moves it on. It shows
    * `data-orientation` and `data-disabled`.
    */
-  const {
-    style,
-    children,
-    ...rest
-  } = $props<{ style?: string; children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
 
   const slider = $getContext(SliderContext);
   const locale = $getContext(LocaleContext);
@@ -37,11 +33,20 @@
   }
 </script>
 
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
 <div
+  class="track"
   data-slider-track
-  style=(`position: relative; touch-action: none${style ? `; ${style}` : ''}`)
   data-orientation=(slider?.orientation)
   data-disabled=(slider?.isDisabled || undefined)
   onPointerDown=(prevent(pressed))
   {...rest}
 >{children}</div>
+
+<style>
+  /* The thumbs sit on the track, and a drag on it does not scroll the page. */
+  .track {
+    position: relative;
+    touch-action: none;
+  }
+</style>

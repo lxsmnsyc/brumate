@@ -51,7 +51,10 @@ it('is a group that its label names, with a range input for each thumb', async (
   expect(input.name).toBe('volume');
   expect(page.get('.volume-output').getAttribute('for')).toBe(input.id);
   expect(page.text('.volume-output')).toBe('40');
-  expect((page.get('.volume-thumb') as HTMLElement).style.left).toBe('40%');
+  // The thumb sits at its value through a scoped style, and keeps the style of the caller.
+  const thumb = page.get('.volume-thumb') as HTMLElement;
+  expect(thumb.classList.contains('thumb')).toBe(true);
+  expect(thumb.getAttribute('style')).toMatch(/^--s-\w+-0:40%;top: 2px$/);
 });
 
 it('names each thumb of a range, keeps them in order, and formats the values', async () => {
