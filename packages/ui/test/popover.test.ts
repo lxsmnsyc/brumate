@@ -153,3 +153,17 @@ it('runs the steps of a transition with transition, and leaves the page alone wh
   await page.waitFor(() => expect(find('.fade')).toBeNull());
   expect(flags.some((step) => step.includes('data-leave') && step.includes('inert'))).toBe(true);
 });
+
+it('brings focus back when it lands on nothing or outside, while it is modal', async () => {
+  const page = await popovers();
+  await open(page);
+  const name = find('.name')!;
+  name.focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(name));
+  // The focused element leaves, so focus lands on <body>.
+  name.blur();
+  await page.waitFor(() => expect(document.activeElement).toBe(name));
+  // Code that focuses an element outside: an inert one cannot take it, and focus comes back.
+  find('.outside')!.focus();
+  expect(document.activeElement).toBe(name);
+});

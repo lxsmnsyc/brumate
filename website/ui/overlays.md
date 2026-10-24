@@ -16,7 +16,7 @@ An overlay beside its trigger, such as a menu of settings.
 - `offset`, `crossOffset` and `containerPadding` set the space to the trigger, along it, and to the edges of the window.
 - It follows its trigger as the page scrolls and resizes. It shows `data-placement`, the side that it took, and sets `--trigger-width` and `--available-height`.
 - Escape and a press outside close it. Focus moves into it, and goes back to the trigger when it closes.
-- It is modal: the rest of the page is `inert`, and Tab stays inside. `isNonModal` leaves the page as it is.
+- It is modal: the rest of the page is `inert`, and focus stays inside. Tab and Shift+Tab wrap at its ends, and focus that lands outside or on nothing, such as when the focused element is removed, goes back to the last element that had it. `isNonModal` leaves the page and focus as they are.
 - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`, as a [Transition](./disclosure.md#transition) does.
 
 ## Layers

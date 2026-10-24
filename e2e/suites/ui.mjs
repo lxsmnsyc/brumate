@@ -386,6 +386,10 @@ export async function run({ browser, url, runner }) {
         await page.evaluate(() => Boolean(document.activeElement?.closest('.settings'))),
         'Tab left the dialog',
       );
+      // Focus that lands on <body> comes back to the last element that had it in the dialog.
+      const last = await page.evaluate(() => document.activeElement?.className);
+      await page.evaluate(() => document.activeElement?.blur());
+      await page.waitForFunction((name) => document.activeElement?.className === name, last);
       // A popover inside opens in its layer, and Escape closes only it.
       await page.locator('.more-trigger').click();
       await page.waitForFunction(() => document.activeElement?.classList.contains('more-dialog'));

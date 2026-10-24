@@ -15,7 +15,15 @@
   import { DialogContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
-  import { containTab, focusInto, hold, inertOutside, pressOutside, release } from './overlay.ts';
+  import {
+    containTab,
+    focusInto,
+    hold,
+    inertOutside,
+    keepFocus,
+    pressOutside,
+    release,
+  } from './overlay.ts';
   import { followTrigger } from './position.ts';
   import type { Placement } from './position.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
@@ -123,7 +131,7 @@
       );
     }
     if (!isNonModal) {
-      stops.push(inertOutside(holder));
+      stops.push(inertOutside(holder), keepFocus(holder, element));
     }
     stops.push(pressOutside(holder, anchor, close));
     if (transition && !(await enterSteps(element, stepClasses(), { current: () => token === run }))) {

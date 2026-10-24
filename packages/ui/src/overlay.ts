@@ -123,3 +123,44 @@ export function release(overlay: Element, layer: Element | undefined): void {
     (entry?.returnTo as HTMLElement | null)?.focus?.({ preventScroll: true });
   }
 }
+
+/**
+ * Keeps focus in a modal overlay, as the `contain` of FocusScope in React Aria does. Focus that
+ * lands outside its layer, or on nothing, such as when the focused element is removed, goes
+ * back to the last element that had focus in the layer, or to the overlay. Returns the
+ * function that stops it.
+ */
+export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
+  let last: HTMLElement = overlay;
+  const back = (): void => {
+    (last.isConnected && !last.closest('[inert]') ? last : overlay).focus({ preventScroll: true });
+  };
+  const focusIn = (event: FocusEvent): void => {
+    const target = event.target as HTMLElement;
+    if (layer.contains(target)) {
+      last = target;
+    } else {
+      back();
+    }
+  };
+  // Focus that leaves for nothing fires no focusin, so the next frame checks where it went.
+  let frame = 0;
+  const focusOut = (event: FocusEvent): void => {
+    if (event.relatedTarget === null) {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (!active || active === document.body) {
+          back();
+        }
+      });
+    }
+  };
+  document.addEventListener('focusin', focusIn);
+  layer.addEventListener('focusout', focusOut as EventListener);
+  return () => {
+    cancelAnimationFrame(frame);
+    document.removeEventListener('focusin', focusIn);
+    layer.removeEventListener('focusout', focusOut as EventListener);
+  };
+}
