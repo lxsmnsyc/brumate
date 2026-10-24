@@ -1,0 +1,65 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Header from '../../src/Header.brm';
+  import Menu from '../../src/Menu.brm';
+  import MenuItem from '../../src/MenuItem.brm';
+  import MenuSection from '../../src/MenuSection.brm';
+  import MenuTrigger from '../../src/MenuTrigger.brm';
+  import Popover from '../../src/Popover.brm';
+  import SubmenuTrigger from '../../src/SubmenuTrigger.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let acted = $signal<Key[]>([]);
+  let open = $signal(false);
+  let align = $signal<Key[]>(['left']);
+  let styles = $signal<Key[]>([]);
+  const files = [
+    { id: 'new', name: 'New' },
+    { id: 'open', name: 'Open' },
+  ];
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <MenuTrigger isOpen=$bind(open)>
+    <Button class="trigger">Actions</Button>
+    <Popover class="popover">
+      <Menu class="menu" disabledKeys=(['delete']) onAction=((key) => (acted = [...acted, key]))>
+        #for (file of files by file.id) {
+          <MenuItem id=(file.id) class=(`item-${file.id}`)>{file.name}</MenuItem>
+        }
+        <MenuItem id="copy" class="copy">Copy</MenuItem>
+        <MenuItem id="cut" class="cut">Cut</MenuItem>
+        <MenuItem id="delete" class="delete">Delete</MenuItem>
+        <SubmenuTrigger>
+          <MenuItem id="share" class="share">Share</MenuItem>
+          <Popover class="submenu-popover">
+            <Menu class="submenu" onAction=((key) => (acted = [...acted, key]))>
+              <MenuItem id="email" class="email">Email</MenuItem>
+              <MenuItem id="sms" class="sms">SMS</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <MenuTrigger>
+    <Button class="format-trigger">Format</Button>
+    <Popover class="format-popover">
+      <Menu class="align" aria-label="Align" selectionMode="single" selectedKeys=$bind(align)>
+        <MenuItem id="left" class="left">Left</MenuItem>
+        <MenuItem id="center" class="center">Center</MenuItem>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <Menu class="styles" aria-label="Styles" selectionMode="multiple" selectedKeys=$bind(styles)>
+    <MenuSection class="text-section">
+      <Header class="text-header">Text</Header>
+      <MenuItem id="bold" class="bold">Bold</MenuItem>
+      <MenuItem id="italic" class="italic">Italic</MenuItem>
+    </MenuSection>
+  </Menu>
+  <button class="after" type="button">After</button>
+  <p class="state">{JSON.stringify([acted, open, align, styles])}</p>
+</main>

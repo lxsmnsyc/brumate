@@ -524,6 +524,72 @@
     color: var(--muted);
   }
 
+  /* Parts side by side, such as the triggers of two menus. */
+  :global(.ui-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
+  :global(.ui-menu) {
+    display: grid;
+    min-width: 11rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    outline: none;
+  }
+
+  :global(.ui-menu-item) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-menu-item[data-focused]),
+  :global(.ui-menu-item[data-open]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-menu-item[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-menu-item[data-disabled]) {
+    color: var(--muted);
+  }
+
+  /* A checked item shows a mark, and an item with a submenu an arrow. */
+  :global(.ui-menu-item[role='menuitemradio']::before),
+  :global(.ui-menu-item[role='menuitemcheckbox']::before) {
+    width: 1rem;
+    content: '';
+  }
+
+  :global(.ui-menu-item[aria-checked='true']::before) {
+    content: '✓';
+  }
+
+  :global(.ui-menu-item[aria-haspopup]::after) {
+    margin-inline-start: auto;
+    color: var(--muted);
+    content: '›';
+  }
+
+  :global(.ui-menu hr) {
+    width: 100%;
+    margin: 0.25rem 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
   /* A tooltip fades in above its trigger, with an arrow. */
   :global(.ui-tooltip) {
     z-index: 30;

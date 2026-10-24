@@ -1,0 +1,183 @@
+<script>
+  import { $getContext, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    enabledItems,
+    focusItem,
+    focusedItem,
+    isTyping,
+    movementOf,
+    moveFrom,
+    nextSelection,
+    sameKeys,
+    typeahead,
+  } from './collection.ts';
+  import type { Key, SelectionMode } from './collection.ts';
+  import { DialogContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+  import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
+
+  /**
+   * A list of actions or options, as Menu of React Aria Components. It opens in a Popover from a
+   * MenuTrigger, or stands on the page. Its items are MenuItem elements, written out, from a
+   * `#for`, or in MenuSection elements.
+   *
+   * - The arrow keys move focus and go round from the last item to the first, unless
+   *   `shouldFocusWrap` is false. Home and End move to the ends, and letters move to the item
+   *   whose text starts with them. The pointer moves focus too.
+   * - Enter and Space act on the item that has focus, and a press does.
+   * - `selectionMode` is `none` (the default), `single` or `multiple`. Items are then radios or
+   *   checkboxes, with `aria-checked`. `selectedKeys` is the list of the `id` of the checked items.
+   * - An action closes the menu, and every menu that it opened from, unless the selection is
+   *   multiple or `shouldCloseOnSelect` is false. Tab closes them too.
+   * - In a submenu, ArrowLeft closes it, and focus goes back to the item that opened it.
+   */
+  const {
+    selectionMode = 'none',
+    disabledKeys = [],
+    disallowEmptySelection = false,
+    shouldFocusWrap = true,
+    shouldCloseOnSelect,
+    onAction,
+    onSelectionChange,
+    onClose,
+    'aria-label': label,
+    children,
+    ...rest
+  } = $props<{
+    selectionMode?: SelectionMode;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    shouldFocusWrap?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onClose?: () => void;
+    'aria-label'?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+
+  const trigger = $getContext(MenuTriggerContext);
+  const dialog = $getContext(DialogContext);
+  const locale = $getContext(LocaleContext);
+  const menuId = $id();
+  let root = $signal<HTMLElement>();
+  let focusedId = $signal<string>();
+
+  function action(key: Key) {
+    if (disabledKeys.includes(key)) {
+      return;
+    }
+    if (selectionMode !== 'none') {
+      const next = nextSelection(selectedKeys, key, {
+        mode: selectionMode,
+        behavior: 'toggle',
+        disallowEmpty: disallowEmptySelection,
+        request: { shift: false, toggle: true },
+        disabled: disabledKeys,
+      });
+      if (!sameKeys(next, selectedKeys)) {
+        selectedKeys = next;
+        onSelectionChange?.(next);
+      }
+    }
+    onAction?.(key);
+    if (shouldCloseOnSelect ?? selectionMode !== 'multiple') {
+      closeAll();
+    }
+  }
+
+  function closeAll() {
+    onClose?.();
+    trigger?.closeAll();
+  }
+
+  $setContext(MenuContext, { selectionMode, selectedKeys, disabledKeys, focusedId, action });
+  // The items of this menu do not open the submenu of a trigger around it.
+  $setContext(SubmenuContext, null);
+
+  function focused(event: FocusEvent) {
+    const element = root;
+    // The menu passes its focus on to an item, as its trigger asks. After a press with a pointer,
+    // it keeps focus, and the arrow keys move to an item. A menu on the page starts at its first.
+    if (!element || event.target !== element || document.activeElement !== element) {
+      return;
+    }
+    const strategy = trigger?.focusStrategy ?? 'first';
+    const items = enabledItems(element, MENU_ITEMS);
+    if (strategy !== 'none') {
+      focusItem(strategy === 'last' ? items.at(-1) : items[0]);
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    const item = (event.target as Element).closest?.('[data-key]');
+    const element = root;
+    if (item && element?.contains(item) && item.closest('[data-collection]') === element) {
+      focusedId = item.id;
+      // While an item of a menu on the page has focus, Tab leaves the menu.
+      if (!trigger) {
+        element.tabIndex = -1;
+      }
+    }
+  }
+
+  function focusOut(event: FocusEvent) {
+    const element = root;
+    if (!trigger && element && !element.contains(event.relatedTarget as Node | null)) {
+      element.tabIndex = 0;
+    }
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const element = root;
+    if (!element) {
+      return;
+    }
+    const items = enabledItems(element, MENU_ITEMS);
+    const current = focusedItem(element, MENU_ITEMS);
+    const movement = movementOf(event.key, 'vertical', locale.direction);
+    const forward = locale.direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const back = locale.direction === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    if (movement && movement !== 'pageDown' && movement !== 'pageUp') {
+      focusItem(moveFrom(element, items, current, movement, shouldFocusWrap));
+      return;
+    }
+    // A press of the item acts on it, or opens its submenu.
+    if ((event.key === 'Enter' || (event.key === ' ' && !isTyping(element))) && current) {
+      current.click();
+      return;
+    }
+    if (event.key === forward && current?.getAttribute('aria-haspopup') === 'menu') {
+      current.click();
+      return;
+    }
+    if (event.key === back && trigger?.isSubmenu) {
+      dialog?.close();
+      return;
+    }
+    if (event.key === 'Tab' && trigger) {
+      closeAll();
+      return;
+    }
+    focusItem(typeahead(element, items, current, event));
+  }
+</script>
+
+<div
+  ref=root
+  id=menuId
+  role="menu"
+  tabindex=(trigger ? '-1' : '0')
+  data-collection
+  aria-label=label
+  aria-labelledby=(label === undefined ? trigger?.triggerId : undefined)
+  onFocus=focused
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Space', 'Enter'))
+  {...rest}
+>{children}</div>

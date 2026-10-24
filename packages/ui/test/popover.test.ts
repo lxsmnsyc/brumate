@@ -209,3 +209,13 @@ it('moves the start of Tab to where the selection was, when nothing had focus', 
   expect(text.hasAttribute('tabindex')).toBe(false);
   expect(document.activeElement).not.toBe(text);
 });
+
+it('closes with a Button of the close slot each time it opens', async () => {
+  const page = await popovers();
+  await open(page);
+  pressWith(find('.close')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
+  await open(page);
+  pressWith(find('.close')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
+});

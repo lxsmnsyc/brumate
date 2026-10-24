@@ -153,8 +153,8 @@
     }
     rested = true;
     // Focus moves in once it has entered, so it lands on a popover that has settled. A preview
-    // leaves focus where it is, and Tab moves into it.
-    if (!trigger?.isPreview) {
+    // leaves focus where it is, and Tab moves into it, and so does a submenu opened by hover.
+    if (!trigger?.isPreview && trigger?.autoFocus !== false) {
       focusInto(
         element.querySelector<HTMLElement>('[role=dialog], [role=alertdialog], [role=menu]') ??
           element,

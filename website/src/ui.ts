@@ -44,7 +44,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     title: 'Overlays',
     pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
   },
-  { title: 'Collections', pages: ['list-box'] },
+  { title: 'Collections', pages: ['list-box', 'menu'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -178,6 +178,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A list of options to select, by keyboard and pointer.',
     href: 'list-box',
     demo: 'ListBoxDemo',
+  },
+  {
+    title: 'Menu',
+    summary: 'Actions and options that open from a button, with submenus.',
+    href: 'menu',
+    demo: 'MenuDemo',
   },
   {
     title: 'Disclosure',

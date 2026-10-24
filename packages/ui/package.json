@@ -12,7 +12,8 @@
     "./*.brm": "./src/*.brm",
     "./*.brm.ts": "./src/*.brm.ts",
     "./toast.ts": "./src/toast.ts",
-    "./collection.ts": "./src/collection.ts"
+    "./collection.ts": "./src/collection.ts",
+    "./menu.ts": "./src/menu.ts"
   },
   "scripts": {
     "typecheck": "brumate-tsc --noEmit",

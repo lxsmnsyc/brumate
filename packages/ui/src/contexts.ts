@@ -209,6 +209,8 @@ export interface OverlayTriggerState {
   isNonModal?: boolean;
   /** The placement that the trigger asks for, such as `end top` for a submenu. */
   placement?: Placement;
+  /** False when focus stays where it is as the overlay opens, such as a submenu opened by hover. */
+  autoFocus?: boolean;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
