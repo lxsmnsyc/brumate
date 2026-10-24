@@ -30,6 +30,7 @@ import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
 import {
+  CHILDREN_REF,
   ElementReference,
   isBinding,
   isSlotReference,
@@ -37,6 +38,7 @@ import {
   onValuePlugin,
   stateValues,
 } from './shared.ts';
+import type { ChildrenReference, ScopeId } from './shared.ts';
 import type { ValuePlugin } from './values.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
@@ -155,6 +157,20 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
     ),
 });
 
+/** Children of a component, as the export that renders them in the browser. */
+const ChildrenPlugin = createPlugin<object, { a: SerovalNode; b: SerovalNode }>({
+  tag: 'brumate/children',
+  skipPlainObjects: true,
+  test: (value) => typeof value === 'object' && value !== null && CHILDREN_REF in value,
+  parse: parsers((value) => {
+    const reference = (value as { [CHILDREN_REF]: ChildrenReference })[CHILDREN_REF];
+    return { a: reference.ref, b: reference.scope };
+  }),
+  serialize: (node, ctx) => `$b.n(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  deserialize: (node, ctx) =>
+    stateValues.n(ctx.deserialize<string>(node.a), ctx.deserialize<ScopeId>(node.b)),
+});
+
 /** HTML, such as the `children` of a component, so the client can insert it again. */
 const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   tag: 'brumate/raw',
@@ -248,6 +264,7 @@ const valuePlugins: Plugin<any, any>[] = [
   SlotPlugin,
   BindingPlugin,
   FunctionPlugin,
+  ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,
   // The web values of seroval-plugins. Requests and responses need the async or stream modes,

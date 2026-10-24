@@ -2124,29 +2124,43 @@ describe('removed portals', () => {
 
 describe('children that a block inserts again', () => {
   const probe = (name: string) => document.querySelector<HTMLElement>(`.${name}`);
+  const cleanups = () => Number(document.body.dataset.cleanups ?? 0);
 
-  it('keeps the scopes of children that the server rendered in a block that closes', async () => {
+  it('renders children of the server with new scopes each time a block shows them', async () => {
+    delete document.body.dataset.cleanups;
     await resume('reinsertedChildren', {});
     click(probe('inline-probe')!);
     await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    // Closing destroys them, and runs their cleanups.
     click(document.querySelector('.toggle-inline')!);
     await waitFor(() => expect(probe('inline-probe')).toBeNull());
+    expect(cleanups()).toBe(1);
+    // Opening renders them again, with state of their own and a ref to the new element.
     click(document.querySelector('.toggle-inline')!);
     await waitFor(() => expect(probe('inline-probe')).not.toBeNull());
+    expect(probe('inline-probe')!.textContent).toBe('');
     click(probe('inline-probe')!);
-    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('2:true'));
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    delete document.body.dataset.cleanups;
   });
 
-  it('points a ref at the element that HTML of the page state puts back', async () => {
+  it('renders children in a portal again each time it opens', async () => {
+    delete document.body.dataset.cleanups;
     await resume('reinsertedChildren', {});
-    click(probe('replaced-probe')!);
-    await waitFor(() => expect(probe('replaced-probe')!.textContent).toBe('1:true'));
-    // The same HTML inserted again makes a new element with the same anchor.
-    const old = probe('replaced-probe')!;
-    const copy = old.cloneNode(true) as HTMLElement;
-    old.replaceWith(copy);
-    click(copy);
-    await waitFor(() => expect(copy.textContent).toBe('2:true'));
+    for (let round = 1; round <= 2; round++) {
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- Each round opens the portal again.
+      await waitFor(() => expect(probe('portal-probe')).not.toBeNull());
+      expect(probe('portal-probe')!.textContent).toBe('');
+      click(probe('portal-probe')!);
+      // oxlint-disable-next-line no-await-in-loop -- The click reads the ref of this round.
+      await waitFor(() => expect(probe('portal-probe')!.textContent).toBe('1:true'));
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- The portal closes before the next round.
+      await waitFor(() => expect(probe('portal-probe')).toBeNull());
+      expect(cleanups()).toBe(round);
+    }
+    delete document.body.dataset.cleanups;
   });
 });
 

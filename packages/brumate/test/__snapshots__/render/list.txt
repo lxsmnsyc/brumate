@@ -49,7 +49,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
       let $$html = '';
       $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s4)) === 'string' ? $$t : await $$t) + "</em>";
       return $$html;
-    });
+    }, "List_12rwm68#n0");
     $$html += await $$b.component(Child, { "value": (counts.length), "onChange": $$ctx.fn(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children4 }, $$ctx, $$s4, 0) + "</section><!--/b-->";
   } else {
     $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
@@ -169,6 +169,12 @@ export function r4($$p) {
     return $$html;
   });
   $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0) + "</section>";
+  return $$html;
+}
+export function n0($$p) {
+  let $$html = '';
+  let label = $$b.get($$p.p, 2);
+  $$html += "<em>" + $$b.insert((label)) + "</em>";
   return $$html;
 }
 
