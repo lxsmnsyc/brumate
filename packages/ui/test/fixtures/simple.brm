@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $setContext, $signal } from 'brumate/signals';
+  import Group from '../../src/Group.brm';
+  import Heading from '../../src/Heading.brm';
+  import Label from '../../src/Label.brm';
+  import Link from '../../src/Link.brm';
+  import Separator from '../../src/Separator.brm';
+  import Text from '../../src/Text.brm';
+  import ToggleButton from '../../src/ToggleButton.brm';
+  import { HeadingContext, LabelContext, TextContext } from '../../src/contexts.ts';
+  import { log, logChange } from './log.ts';
+
+  let bold = $signal(false);
+  $setContext(HeadingContext, { level: 2 });
+  $setContext(LabelContext, { id: 'name-label', for: 'name' });
+  $setContext(TextContext, { slots: { description: { id: 'name-description' } } });
+</script>
+
+<Separator class="horizontal" />
+<Separator class="vertical" orientation="vertical" />
+<Heading class="from-context">Title</Heading>
+<Heading class="own" level=(4)>Part</Heading>
+<Label class="label">Name</Label>
+<input id="name">
+<Text class="description" slot="description">Your full name</Text>
+<Group class="group" aria-label="Amount"><input class="amount"><button type="button" class="more">+</button></Group>
+<Group class="disabled-group" isDisabled=(true) isInvalid=(true)>Off</Group>
+<Link class="to" href="#top" onPress=((event) => log(event))>Top</Link>
+<Link class="current" href="#here" isCurrent=(true)>Here</Link>
+<Link class="off" href="#off" isDisabled=(true)>Off</Link>
+<Link class="span">No address</Link>
+<ToggleButton class="own-toggle" onChange=((value) => logChange('own', value))>Pin</ToggleButton>
+<ToggleButton class="bold" isSelected=$bind(bold)>Bold</ToggleButton>
+<p class="bold-value">{String(bold)}</p>

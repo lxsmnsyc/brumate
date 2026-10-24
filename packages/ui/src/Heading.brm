@@ -1,0 +1,20 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { HeadingContext } from './contexts.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /** A heading of a level, 3 by default, as Heading of React Aria Components. */
+  const { as, level, slot, children, ...rest } = $props<{
+    as?: string;
+    level?: 1 | 2 | 3 | 4 | 5 | 6;
+    slot?: string | null;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(HeadingContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const element = $memo(as ?? `h${level ?? slotProps(context, slot).level ?? 3}`);
+</script>
+
+<{element} {...attributes} {...rest}>{children}</>

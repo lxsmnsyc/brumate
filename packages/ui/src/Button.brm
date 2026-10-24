@@ -3,9 +3,7 @@
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
-  import { focusRing } from './focus.brm.ts';
-  import { hover } from './hover.brm.ts';
-  import { press } from './press.brm.ts';
+  import { interact } from './interact.brm.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
@@ -105,27 +103,33 @@
 
   const {
     pressed: isPressed,
-    onPointerDown: pressPointerDown,
-    onPointerMove: pressPointerMove,
-    onPointerUp: pressPointerUp,
-    onPointerCancel: pressPointerCancel,
-    onKeyDown: pressKeyDown,
-    onKeyUp: pressKeyUp,
-    onClick: pressClick,
-  } = press(inert, pressed, pressStarted, pressEnded, pressUp, pressChanged);
-  const {
     hovered,
-    onPointerEnter: hoverEnter,
-    onPointerLeave: hoverLeave,
-  } = hover(disabled, hoverStarted, hoverEnded, hoverChanged);
-  const {
     focused,
     focusVisible,
-    onFocus: ringFocus,
-    onBlur: ringBlur,
-    onKeyDown: ringKeyDown,
-    onPointerDown: ringPointerDown,
-  } = focusRing(undefined, undefined, focusChanged);
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onKeyDown,
+    onKeyUp,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    inert,
+    pressed,
+    pressStarted,
+    pressEnded,
+    pressUp,
+    pressChanged,
+    hoverStarted,
+    hoverEnded,
+    hoverChanged,
+    focusChanged,
+  );
 </script>
 
 <!--
@@ -144,23 +148,17 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(disabled || undefined)
   data-pending=(pending || undefined)
-  onPointerDown=((event: PointerEvent) => {
-    ringPointerDown();
-    pressPointerDown(event);
-  })
-  onPointerMove=pressPointerMove
-  onPointerUp=pressPointerUp
-  onPointerCancel=pressPointerCancel
-  onPointerEnter=hoverEnter
-  onPointerLeave=hoverLeave
-  onKeyDown=(prevent((event: KeyboardEvent) => {
-    ringKeyDown(event);
-    pressKeyDown(event);
-  }, 'Space'))
-  onKeyUp=(prevent(pressKeyUp, 'Space'))
-  onClick=pressClick
-  onFocus=ringFocus
-  onBlur=ringBlur
+  onPointerDown=onPointerDown
+  onPointerMove=onPointerMove
+  onPointerUp=onPointerUp
+  onPointerCancel=onPointerCancel
+  onPointerEnter=onPointerEnter
+  onPointerLeave=onPointerLeave
+  onKeyDown=(prevent(onKeyDown, 'Space'))
+  onKeyUp=(prevent(onKeyUp, 'Space'))
+  onClick=onClick
+  onFocus=onFocus
+  onBlur=onBlur
   {...attributes}
   {...rest}
 >{children}</>

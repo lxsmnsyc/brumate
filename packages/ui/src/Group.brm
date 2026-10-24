@@ -1,0 +1,74 @@
+<script>
+  import { $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import { GroupContext } from './contexts.ts';
+  import { hover } from './hover.brm.ts';
+  import { isFocusVisible } from './interactions.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * Parts that belong together, such as an input and its buttons, as Group of React Aria
+   * Components. It shows `data-hovered`, `data-focus-within`, `data-focus-visible`,
+   * `data-disabled` and `data-invalid`.
+   */
+  const { as = 'div', role = 'group', slot, isDisabled, isInvalid, children, ...rest } = $props<{
+    as?: string;
+    role?: 'group' | 'region' | 'presentation';
+    slot?: string | null;
+    isDisabled?: boolean;
+    isInvalid?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(GroupContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
+  const invalid = $memo(Boolean(isInvalid ?? slotProps(context, slot).isInvalid));
+
+  const {
+    hovered,
+    onPointerEnter: hoverEnter,
+    onPointerLeave: hoverLeave,
+  } = hover(disabled, undefined, undefined, undefined);
+
+  // Focus inside the group, from focusin and focusout, which bubble.
+  let focusWithin = $signal(false);
+  let focusVisible = $signal(false);
+
+  function focusIn(event: FocusEvent) {
+    const group = event.currentTarget as Element;
+    const target = document.activeElement;
+    // Handlers run after the event, so focus can have moved on.
+    if (!target || !group.contains(target)) {
+      return;
+    }
+    focusWithin = true;
+    focusVisible = isFocusVisible(target);
+  }
+
+  function focusOut(event: FocusEvent) {
+    const group = event.currentTarget as Element;
+    if (document.activeElement && group.contains(document.activeElement)) {
+      return;
+    }
+    focusWithin = false;
+    focusVisible = false;
+  }
+</script>
+
+<{as}
+  role=role
+  aria-disabled=(disabled ? 'true' : undefined)
+  aria-invalid=(invalid ? 'true' : undefined)
+  data-hovered=(hovered || undefined)
+  data-focus-within=(focusWithin || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  data-invalid=(invalid || undefined)
+  onPointerEnter=hoverEnter
+  onPointerLeave=hoverLeave
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...attributes}
+  {...rest}
+>{children}</>
