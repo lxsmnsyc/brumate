@@ -424,11 +424,7 @@ export async function run({ browser, url, runner }) {
       const box = await stage.boundingBox();
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       // Client navigation fires no load event, so the step waits for the address.
-      await page.waitForFunction(
-        () => location.pathname + location.hash === '/ui/boxes#switch',
-        null,
-        { timeout: 5000 },
-      );
+      await page.waitForFunction(() => location.pathname === '/ui/switch', null, { timeout: 5000 });
       await page.waitForFunction(() => document.getAnimations().length === 0, null, {
         timeout: 5000,
       });
@@ -448,18 +444,48 @@ export async function run({ browser, url, runner }) {
         `the results link to ${links.join(', ')}`,
       );
     });
-    await flow('/ui/boxes: a demo with its source, and no accessibility violations', async () => {
-      await page.goto(`${url}/ui/boxes`, { waitUntil: 'load' });
-      assert((await page.locator('.ui-demo pre').count()) >= 4, 'the demos show no source');
-      await page.addScriptTag({ path: axe });
-      const violations = await page.evaluate(async () => {
-        const result = await window.axe.run(document.querySelector('article'));
-        return result.violations.map(
-          (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
-        );
-      });
-      assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
-    });
+    await flow(
+      '/ui/text-field: its demos with their source, and no accessibility violations',
+      async () => {
+        await page.goto(`${url}/ui/text-field`, { waitUntil: 'load' });
+        assert((await page.locator('.ui-demo pre').count()) >= 2, 'the demos show no source');
+        await page.addScriptTag({ path: axe });
+        const violations = await page.evaluate(async () => {
+          const result = await window.axe.run(document.querySelector('article'));
+          return result.violations.map(
+            (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+          );
+        });
+        assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+      },
+    );
+    await flow(
+      '/ui: each page of the sidebar loads, with no accessibility violations',
+      async () => {
+        await page.goto(`${url}/ui`, { waitUntil: 'load' });
+        const slugs = await page
+          .locator('nav.sidebar a[href^="/ui"]')
+          .evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute('href')))]);
+        assert(slugs.length > 30, `the sidebar links to ${slugs.length} pages`);
+        const found = [];
+        for (const slug of slugs) {
+          const response = await page.goto(`${url}${slug}`, { waitUntil: 'load' });
+          if (response?.status() !== 200) {
+            found.push(`${slug}: ${response?.status()}`);
+            continue;
+          }
+          await page.addScriptTag({ path: axe });
+          const violations = await page.evaluate(async () => {
+            const result = await window.axe.run(document.querySelector('article'));
+            return result.violations.map((violation) => violation.id);
+          });
+          if (violations.length > 0) {
+            found.push(`${slug}: ${violations.join(', ')}`);
+          }
+        }
+        assert(found.length === 0, `found:\n${found.join('\n')}`);
+      },
+    );
     await page.close();
   }
 }

@@ -1,0 +1,5 @@
+<script>
+  import Keyboard from '@brumate/ui/Keyboard.brm';
+</script>
+
+<p>Copy with <Keyboard class="ui-kbd">Ctrl</Keyboard> <Keyboard class="ui-kbd">C</Keyboard>.</p>

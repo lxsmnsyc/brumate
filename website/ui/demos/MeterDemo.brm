@@ -1,14 +1,6 @@
 <script>
-  import { $signal } from 'brumate/signals';
-  import Button from '@brumate/ui/Button.brm';
   import Label from '@brumate/ui/Label.brm';
   import Meter from '@brumate/ui/Meter.brm';
-  import ProgressBar from '@brumate/ui/ProgressBar.brm';
-
-  let uploaded = $signal(2);
 </script>
 
 <Meter class="ui-bar" value=(72)><Label>Disk space used</Label></Meter>
-<ProgressBar class="ui-bar" value=uploaded maxValue=(5)><Label>Uploaded {uploaded} of 5</Label></ProgressBar>
-<Button class="ui-button" onPress=(() => (uploaded = (uploaded + 1) % 6))>Upload one more</Button>
-<ProgressBar class="ui-bar" isIndeterminate><Label>Waiting for the server</Label></ProgressBar>
