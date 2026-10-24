@@ -77,3 +77,43 @@ export interface ToggleButtonContextProps extends ButtonContextProps {
 
 export const ToggleButtonContext: Context<ContextValue<ToggleButtonContextProps> | null> =
   createContext<ContextValue<ToggleButtonContextProps> | null>('brumate-ui:toggle-button', null);
+
+/**
+ * The props of an Input or a TextArea that a field gives: its attributes, such as `id`, `name`
+ * and `aria-describedby`, and handlers that the field runs.
+ */
+export interface InputContextProps extends AttributeProps {
+  onChange?: (value: string) => void;
+  onInvalid?: (message: string, first: boolean) => void;
+  onKeyDown?: (key: string) => void;
+  onBlur?: () => void;
+}
+
+export const InputContext: Context<ContextValue<InputContextProps> | null> =
+  createContext<ContextValue<InputContextProps> | null>('brumate-ui:input', null);
+
+export const TextAreaContext: Context<ContextValue<InputContextProps> | null> =
+  createContext<ContextValue<InputContextProps> | null>('brumate-ui:textarea', null);
+
+/** The state of the validation of a field, which its FieldError shows. */
+export interface FieldErrorState {
+  id: string;
+  isInvalid: boolean;
+  errors: string[];
+  /** More attributes of the error, such as the role="alert" of a field of createForm. */
+  attributes?: Record<string, unknown>;
+}
+
+export const FieldErrorContext: Context<FieldErrorState | null> =
+  createContext<FieldErrorState | null>('brumate-ui:field-error', null);
+
+/** How the fields of a form validate, and the errors of the server by the name of a field. */
+export interface FormState {
+  validationBehavior: 'native' | 'aria';
+  validationErrors: Record<string, string | string[]>;
+}
+
+export const FormContext: Context<FormState | null> = createContext<FormState | null>(
+  'brumate-ui:form',
+  null,
+);

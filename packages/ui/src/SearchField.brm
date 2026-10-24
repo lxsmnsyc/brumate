@@ -1,0 +1,90 @@
+<script>
+  import { $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
+  import { describedBy } from './fields.ts';
+
+  /**
+   * A search field, as SearchField of React Aria Components. It holds a Label, an Input and a
+   * Button that clears it. Escape clears it too, and Enter calls `onSubmit`. It shows
+   * `data-empty` and `data-disabled`.
+   *
+   * `value=(text)` starts its own value, and `value=$bind(signal)` writes the caller's.
+   */
+  const {
+    as = 'div',
+    name,
+    isDisabled = false,
+    isReadOnly = false,
+    placeholder,
+    onChange,
+    onSubmit,
+    onClear,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    placeholder?: string;
+    onChange?: (value: string) => void;
+    onSubmit?: (value: string) => void;
+    onClear?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = '' } = $props<{ value?: Bindable<string> }>();
+
+  const inputId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const empty = $memo(value === '');
+
+  function change(next: string) {
+    value = next;
+    onChange?.(next);
+  }
+
+  function clear() {
+    change('');
+    onClear?.();
+    document.getElementById(inputId)?.focus();
+  }
+
+  function keyDown(key: string) {
+    if (key === 'Enter') {
+      onSubmit?.(value);
+    } else if (key === 'Escape') {
+      clear();
+    }
+  }
+
+  $setContext(LabelContext, { id: labelId, for: inputId });
+  $setContext(InputContext, {
+    id: inputId,
+    name,
+    type: 'search',
+    value,
+    disabled: isDisabled || undefined,
+    readonly: isReadOnly || undefined,
+    placeholder,
+    'aria-describedby': describedBy(descriptionId),
+    onChange: change,
+    onKeyDown: keyDown,
+  });
+  // The button that clears the field stays out of the order of Tab, as in React Aria.
+  $setContext(ButtonContext, {
+    'aria-label': 'Clear search',
+    tabindex: -1,
+    isDisabled: isDisabled || isReadOnly,
+    onPress: clear,
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+</script>
+
+<{as}
+  data-empty=(empty || undefined)
+  data-disabled=(isDisabled || undefined)
+  {...rest}
+>{children}</>

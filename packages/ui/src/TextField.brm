@@ -1,0 +1,205 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import {
+    FieldErrorContext,
+    FormContext,
+    InputContext,
+    LabelContext,
+    TextAreaContext,
+    TextContext,
+  } from './contexts.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+
+  /**
+   * A text field, as TextField of React Aria Components. It holds a Label, an Input or a
+   * TextArea, a Text with `slot="description"` and a FieldError, and gives each one its IDs and
+   * state. The element shows `data-disabled`, `data-invalid`, `data-readonly` and
+   * `data-required`.
+   *
+   * `value=(text)` starts its own value, and `value=$bind(signal)` writes the caller's.
+   *
+   * With `validationBehavior="native"`, the default, the browser checks the field when its form
+   * is sent, and the FieldError shows its message. After that, the message follows what the user
+   * types. With "aria", the field is never blocked, and `validate` shows its errors at once.
+   *
+   * `field` takes a field of `createForm` from brumate/forms: its name, ID, value, errors and
+   * handlers.
+   */
+  const {
+    as = 'div',
+    name,
+    type = 'text',
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid,
+    validate,
+    validationBehavior,
+    autoComplete,
+    minLength,
+    maxLength,
+    pattern,
+    inputMode,
+    placeholder,
+    field,
+    onChange,
+    onBlur,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    type?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    validate?: (value: string) => string | string[] | true | null | undefined;
+    validationBehavior?: 'native' | 'aria';
+    autoComplete?: string;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    inputMode?: string;
+    placeholder?: string;
+    /** A field of createForm, such as `fields.email`. */
+    field?: {
+      id: string;
+      name: string;
+      attrs: object;
+      errors?: string[];
+      errorAttrs?: object;
+    };
+    onChange?: (value: string) => void;
+    onBlur?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  // A field of createForm gives the value that was posted, or its default value.
+  let { value = ((field?.attrs as { value?: string } | undefined)?.value) ?? '' } = $props<{
+    value?: Bindable<string>;
+  }>();
+
+  const form = $getContext(FormContext);
+  const behavior = $memo(validationBehavior ?? form?.validationBehavior ?? 'native');
+  const inputId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const ownErrorId = $id();
+  const id = $memo(field?.id ?? inputId);
+  // The error of a field of createForm has the ID that the field names, and role="alert".
+  const errorId = $memo(((field?.errorAttrs as { id?: string } | undefined)?.id) ?? ownErrorId);
+  const errorAttributes = $memo({ ...(field?.errorAttrs ?? {}), id: errorId });
+  const fieldName = $memo(name ?? field?.name);
+
+  // The messages of the browser, once the field was checked on a submit.
+  let committed = $signal(false);
+  let nativeErrors = $signal<string[]>([]);
+  // The errors of the server, until the user edits the field.
+  let edited = $signal(false);
+  const serverErrors = $memo(
+    edited
+      ? []
+      : messagesOf(
+          (fieldName ? form?.validationErrors[fieldName] : undefined) as string | string[] | undefined,
+        ),
+  );
+  const ariaErrors = $memo(behavior === 'aria' && validate ? messagesOf(validate(value)) : []);
+  const errors = $memo([
+    ...(field?.errors ?? []),
+    ...serverErrors,
+    ...(behavior === 'native' && committed ? nativeErrors : []),
+    ...ariaErrors,
+  ]);
+  const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
+
+  function change(next: string) {
+    value = next;
+    edited = true;
+    onChange?.(next);
+  }
+
+  function invalidated(message: string, first: boolean) {
+    committed = true;
+    nativeErrors = message ? [message] : [];
+    if (first) {
+      document.getElementById(id)?.focus();
+    }
+  }
+
+  // After a submit, the message follows what the user types.
+  function recheck() {
+    const element = document.getElementById(id) as HTMLInputElement | null;
+    if (!element) {
+      return;
+    }
+    if (validate && behavior === 'native') {
+      element.setCustomValidity(messagesOf(validate(element.value))[0] ?? '');
+    }
+    if (committed) {
+      nativeErrors = element.validity.valid ? [] : [element.validationMessage];
+    }
+  }
+
+  function changed(next: string) {
+    change(next);
+    recheck();
+  }
+
+  function blurred() {
+    recheck();
+    onBlur?.();
+  }
+
+  const inputProps = $memo({
+    ...(field?.attrs ?? {}),
+    id,
+    name: fieldName,
+    type,
+    value,
+    disabled: isDisabled || undefined,
+    readonly: isReadOnly || undefined,
+    // The browser checks a required field only in the native behavior.
+    required: (isRequired && behavior === 'native') || undefined,
+    'aria-required': (isRequired && behavior === 'aria') || undefined,
+    'aria-invalid': invalid ? 'true' : undefined,
+    'aria-describedby': describedBy(descriptionId, invalid && errorId),
+    autocomplete: autoComplete,
+    minlength: minLength,
+    maxlength: maxLength,
+    pattern,
+    inputmode: inputMode,
+    placeholder,
+  });
+
+  $setContext(LabelContext, { id: labelId, for: id });
+  $setContext(InputContext, {
+    ...inputProps,
+    onChange: changed,
+    onInvalid: invalidated,
+    onBlur: blurred,
+  });
+  $setContext(TextAreaContext, {
+    ...inputProps,
+    type: undefined,
+    onChange: changed,
+    onInvalid: invalidated,
+    onBlur: blurred,
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, {
+    id: errorId,
+    isInvalid: invalid,
+    errors,
+    attributes: errorAttributes,
+  });
+</script>
+
+<{as}
+  data-disabled=(isDisabled || undefined)
+  data-invalid=(invalid || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>{children}</>

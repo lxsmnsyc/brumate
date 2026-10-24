@@ -127,6 +127,61 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'TextField: the message of the browser after a submit, with focus on the field',
+    async () => {
+      await page.goto(`${url}/`);
+      const name = page.locator('.name-field input');
+      await page.locator('.signup button[type=submit]').click();
+      await page.waitForFunction(() => document.querySelector('.name-field .error')?.textContent);
+      assert(
+        await name.evaluate((element) => element === document.activeElement),
+        'the invalid field did not get focus',
+      );
+      assert((await name.getAttribute('aria-invalid')) === 'true', 'the field is not invalid');
+      const described = await name.getAttribute('aria-describedby');
+      const errorId = await page.locator('.name-field .error').getAttribute('id');
+      assert(described?.includes(errorId), `aria-describedby is ${described}`);
+      await name.fill('Ada');
+      await page.waitForFunction(() => !document.querySelector('.name-field .error'));
+    },
+  );
+
+  await step(
+    'TextField with createForm: the errors of the reply, then a post that passes',
+    async () => {
+      await page.goto(`${url}/`);
+      const email = page.locator('.order input');
+      await email.fill('ada@');
+      await page.locator('.order button[type=submit]').click();
+      await page.waitForFunction(() =>
+        document
+          .querySelector('.order .error')
+          ?.textContent?.includes('Write a whole email address'),
+      );
+      assert((await email.getAttribute('aria-invalid')) === 'true', 'the email is not invalid');
+      await email.fill('ada@example.com');
+      await page.locator('.order button[type=submit]').click();
+      await page.waitForFunction(() => document.querySelector('.ordered'));
+    },
+  );
+
+  await step('SearchField: Enter submits, Escape and the button clear', async () => {
+    await page.goto(`${url}/`);
+    const search = page.locator('.search input');
+    await search.fill('button');
+    await search.press('Enter');
+    await page.waitForFunction(() =>
+      document.querySelector('.searched')?.textContent?.includes('button'),
+    );
+    await search.press('Escape');
+    await page.waitForFunction(() => document.querySelector('.search')?.hasAttribute('data-empty'));
+    assert((await search.inputValue()) === '', 'Escape did not clear the field');
+    await search.fill('link');
+    await page.locator('.search .clear').click();
+    await page.waitForFunction(() => document.querySelector('.search')?.hasAttribute('data-empty'));
+  });
+
   await step('axe-core: the page has no violations', async () => {
     await page.goto(`${url}/`);
     // axe runs as a script of the page, which Playwright adds.
