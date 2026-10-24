@@ -37,6 +37,10 @@
   import MenuItem from '@brumate/ui/MenuItem.brm';
   import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
   import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
@@ -433,6 +437,20 @@
     </Menu>
   </Autocomplete>
   <p class="command-state">{command}</p>
+</section>
+
+<section aria-labelledby="tabs">
+  <h2 id="tabs">Tabs</h2>
+  <Tabs>
+    <TabList class="planet-tabs" aria-label="Planets">
+      <Tab id="mercury" class="planet-tab">Mercury</Tab>
+      <Tab id="venus" class="planet-tab">Venus</Tab>
+      <Tab id="earth" class="planet-tab">Earth</Tab>
+    </TabList>
+    <TabPanel id="mercury" class="planet-panel">The closest to the Sun.</TabPanel>
+    <TabPanel id="venus" class="planet-panel">The hottest.</TabPanel>
+    <TabPanel id="earth" class="planet-panel">Home.</TabPanel>
+  </Tabs>
 </section>
 
 <section aria-labelledby="tooltip">

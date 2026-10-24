@@ -584,6 +584,42 @@
     background: none;
   }
 
+  /* Tabs: a row of tabs whose selected one takes the accent, over its panel. */
+  :global(.ui-tablist) {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  :global(.ui-tab) {
+    padding: 0.45rem 0.8rem;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-tab[data-hovered]) {
+    color: var(--text);
+  }
+
+  :global(.ui-tab[data-selected]) {
+    border-color: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  :global(.ui-tab[data-focus-visible]),
+  :global(.ui-tabpanel:focus-visible) {
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-tabpanel) {
+    padding: 0.75rem 0.25rem;
+    outline: none;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

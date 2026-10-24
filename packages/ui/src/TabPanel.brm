@@ -1,0 +1,38 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+  import { TabsContext, selectedOf, tabId } from './tabs.ts';
+
+  /**
+   * The panel of a tab, as TabPanel of React Aria Components. `id` is the key of its Tab.
+   *
+   * - Only the panel of the selected tab renders its content. Showing it again renders it anew,
+   *   with new state. `shouldForceMount` keeps it on the page, hidden.
+   * - It takes Tab, so a panel with no focusable content can be reached, as in React Aria.
+   */
+  const {
+    id,
+    shouldForceMount = false,
+    children,
+    ...rest
+  } = $props<{
+    id: Key;
+    shouldForceMount?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const tabs = $getContext(TabsContext);
+  const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
+</script>
+
+#if (selected || shouldForceMount) {
+  <div
+    id=(tabs ? tabId(tabs, id, 'panel') : undefined)
+    role="tabpanel"
+    tabindex="0"
+    aria-labelledby=(tabs ? tabId(tabs, id, 'tab') : undefined)
+    hidden=(!selected || undefined)
+    {...rest}
+  >{children}</div>
+}

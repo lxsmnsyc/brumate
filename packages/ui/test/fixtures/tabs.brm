@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Tab from '../../src/Tab.brm';
+  import TabList from '../../src/TabList.brm';
+  import TabPanel from '../../src/TabPanel.brm';
+  import Tabs from '../../src/Tabs.brm';
+  import type { Key } from '../../src/collection.ts';
+  import Toggle from './Toggle.brm';
+
+  let section = $signal<Key | null>(null);
+  let manual = $signal<Key | null>('two');
+</script>
+
+<main class="page">
+  <Tabs class="tabs" selectedKey=$bind(section) disabledKeys=(['locked'])>
+    <TabList class="tablist" aria-label="Sections">
+      <Tab id="intro" class="tab-intro">Intro</Tab>
+      <Tab id="usage" class="tab-usage">Usage</Tab>
+      <Tab id="locked" class="tab-locked">Locked</Tab>
+      <Tab id="api" class="tab-api">API</Tab>
+    </TabList>
+    <TabPanel id="intro" class="panel-intro"><Toggle label="draft" /></TabPanel>
+    <TabPanel id="usage" class="panel-usage">How to use it.</TabPanel>
+    <TabPanel id="locked" class="panel-locked">Locked.</TabPanel>
+    <TabPanel id="api" class="panel-api" shouldForceMount>The API.</TabPanel>
+  </Tabs>
+  <Tabs class="manual" selectedKey=$bind(manual) keyboardActivation="manual" orientation="vertical">
+    <TabList class="manual-list" aria-label="Manual">
+      <Tab id="one" class="tab-one">One</Tab>
+      <Tab id="two" class="tab-two">Two</Tab>
+    </TabList>
+    <TabPanel id="one" class="panel-one">First.</TabPanel>
+    <TabPanel id="two" class="panel-two">Second.</TabPanel>
+  </Tabs>
+  <p class="state">{JSON.stringify([section, manual])}</p>
+</main>

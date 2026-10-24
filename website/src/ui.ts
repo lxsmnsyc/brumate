@@ -44,7 +44,10 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     title: 'Overlays',
     pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
   },
-  { title: 'Collections', pages: ['list-box', 'menu', 'select', 'combo-box', 'autocomplete'] },
+  {
+    title: 'Collections',
+    pages: ['list-box', 'menu', 'select', 'combo-box', 'autocomplete', 'tabs'],
+  },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -202,6 +205,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A search field that filters a menu or a list next to it.',
     href: 'autocomplete',
     demo: 'AutocompleteDemo',
+  },
+  {
+    title: 'Tabs',
+    summary: 'Tabs that show one panel at a time.',
+    href: 'tabs',
+    demo: 'TabsDemo',
   },
   {
     title: 'Disclosure',

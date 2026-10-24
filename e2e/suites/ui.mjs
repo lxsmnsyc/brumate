@@ -843,6 +843,30 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step('Tabs: Tab stops at the selected tab, and the arrow keys select', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.planet-tab >> text=Mercury').focus();
+    const y = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Venus');
+    await page.waitForFunction(
+      () => document.querySelector('.planet-panel')?.textContent === 'The hottest.',
+    );
+    assert((await page.evaluate(() => window.scrollY)) === y, 'the arrow keys scrolled the page');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Earth');
+    // Tab moves on into the panel, and Shift+Tab comes back to the selected tab.
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('planet-panel'));
+    await page.keyboard.press('Shift+Tab');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Earth');
+    await page.locator('.planet-tab >> text=Mercury').click();
+    await page.waitForFunction(
+      () => document.querySelector('.planet-panel')?.textContent === 'The closest to the Sun.',
+    );
+  });
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();

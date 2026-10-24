@@ -1,0 +1,17 @@
+<script>
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+</script>
+
+<Tabs>
+  <TabList class="ui-tablist" aria-label="Planets">
+    <Tab id="mercury" class="ui-tab">Mercury</Tab>
+    <Tab id="venus" class="ui-tab">Venus</Tab>
+    <Tab id="earth" class="ui-tab">Earth</Tab>
+  </TabList>
+  <TabPanel id="mercury" class="ui-tabpanel">The closest planet to the Sun.</TabPanel>
+  <TabPanel id="venus" class="ui-tabpanel">The hottest planet, under thick clouds.</TabPanel>
+  <TabPanel id="earth" class="ui-tabpanel">The only planet known to hold life.</TabPanel>
+</Tabs>
