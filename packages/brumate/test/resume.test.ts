@@ -2462,6 +2462,15 @@ describe('bindings', () => {
   });
 });
 
+describe('calls of functions of other components', () => {
+  it('runs them in the order that they were made, also when the code of the first is slower', async () => {
+    // h1 is the first function of the parent, which loads after the second.
+    await resume('orderedCalls', {}, { h1: 80 });
+    click(document.querySelector('.both')!);
+    await waitFor(() => expect(text('.log')).toBe('ab'));
+  });
+});
+
 describe('controlled props', () => {
   it('tells a prop that the caller passed from a missing one, and a bound one from a copy', async () => {
     await resume('controlledParent', {});
@@ -3257,6 +3266,28 @@ describe('compact markup', () => {
     }
     await startLoader();
     await exercise();
+  }, 20_000);
+
+  it('keeps bindings and the handlers of spreads working after navigation moves the IDs', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindParent.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // A bound child writes the signal of its parent, whose scope moved by 5.
+    click(document.querySelector('.child.bound')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
   }, 20_000);
 
   it('keeps working after a hot update renders the page again', async () => {

@@ -16,7 +16,7 @@ import type { PageState, ScopeId, ScopeState } from './shared.ts';
 /** The parts of the core that this module uses. */
 type Core = Pick<
   typeof Client,
-  'ElementReference' | 'FunctionReference' | 'hooks' | 'removeScope' | 'scopes'
+  'ElementReference' | 'FunctionReference' | 'SlotReference' | 'hooks' | 'removeScope' | 'scopes'
 >;
 
 /** Reads an ID, as `parseId` in `shared.ts` does. This module imports no code of its own. */
@@ -35,7 +35,7 @@ function shiftId(id: ScopeId, by: number): ScopeId {
 
 /** Adds a number to the scope IDs of a state record. */
 function shiftState(core: Core, state: PageState, by: number): PageState {
-  const { ElementReference, FunctionReference } = core;
+  const { ElementReference, FunctionReference, SlotReference } = core;
   const seen = new Set<object>();
   // References to elements and client functions name the scope of their markup.
   const shiftValue = (value: unknown): unknown => {
@@ -43,7 +43,16 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
       return new ElementReference(shiftId(value.scope, by), value.anchor);
     }
     if (value instanceof FunctionReference) {
-      return new FunctionReference(value.ref, shiftId(value.scope, by));
+      return new FunctionReference(
+        value.ref,
+        shiftId(value.scope, by),
+        value.args,
+        value.modifiers,
+      );
+    }
+    // The slot of a parent that a bound prop writes.
+    if (value instanceof SlotReference) {
+      return new SlotReference(shiftId(value.scope, by), value.slot);
     }
     // A later record settles it, with a value whose IDs move too.
     if (value instanceof Promise) {
@@ -69,12 +78,24 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
       ...record,
       p: record.p === undefined ? undefined : shiftId(record.p, by),
       o: record.o === undefined ? undefined : shiftId(record.o, by),
+      t: record.t === undefined ? undefined : shiftId(record.t, by),
       c:
         record.c &&
         Object.fromEntries(
           Object.entries(record.c).map(([anchor, id]) => [anchor, shiftId(id, by)]),
         ),
       s: record.s?.map(shiftValue),
+      i: shiftValue(record.i),
+      v:
+        record.v &&
+        Object.fromEntries(
+          Object.entries(record.v).map(([key, value]) => [key, shiftValue(value)]),
+        ),
+      b:
+        record.b &&
+        Object.fromEntries(
+          Object.entries(record.b).map(([slot, value]) => [slot, shiftValue(value)]),
+        ),
     };
   }
   return result;
@@ -153,8 +174,17 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
  * when layouts stay.
  */
 export const ready: Promise<(partial: boolean) => void> = import('./client.ts').then(
-  ({ ElementReference, FunctionReference, hooks, leavePage, leaveRoutes, removeScope, scopes }) => {
-    const core = { ElementReference, FunctionReference, hooks, removeScope, scopes };
+  ({
+    ElementReference,
+    FunctionReference,
+    SlotReference,
+    hooks,
+    leavePage,
+    leaveRoutes,
+    removeScope,
+    scopes,
+  }) => {
+    const core = { ElementReference, FunctionReference, SlotReference, hooks, removeScope, scopes };
     hooks.record = (script, state) => routeRecord(core, script, state);
     return (partial) => (partial ? leaveRoutes() : leavePage());
   },

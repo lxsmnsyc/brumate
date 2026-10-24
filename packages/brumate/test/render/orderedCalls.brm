@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import OrderedChild from './OrderedChild.brm';
+
+  let log = $signal('');
+</script>
+
+<OrderedChild first=(() => (log += 'a')) second=(() => (log += 'b')) />
+<p class="log">{log}</p>
