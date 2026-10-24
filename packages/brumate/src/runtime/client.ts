@@ -3092,20 +3092,29 @@ class RenderedChildren extends Children {
   }
 
   override render(at: Scope | undefined): string {
-    if (this.code) {
+    if (this.code && this.from) {
       return super.render(at);
     }
-    // An insert that ran before the code, such as an update that a parent ran at once. A marker
-    // holds the place, and the children render there once their code has loaded, where they
-    // were inserted, so they read the contexts there.
+    // An insert that ran before the code, such as an update that a parent ran at once, or before
+    // the state of its scope, such as markup of a page that navigation is still reading. A marker
+    // holds the place, and the children render there once both are ready, where they were
+    // inserted, so they read the contexts there.
     const marker = `C${(nextChildren += 1)}`;
-    void this.load().then(() => {
+    const fill = (tries: number): void => {
       const node = findMarker(marker);
-      if (node) {
-        insertHTML(node, super.render(at));
-        node.remove();
+      if (!node) {
+        return;
       }
-    });
+      if (!this.from) {
+        if (tries > 0) {
+          setTimeout(() => fill(tries - 1), 0);
+        }
+        return;
+      }
+      insertHTML(node, super.render(at));
+      node.remove();
+    };
+    void this.load().then(() => fill(100));
     return `<!--${marker}-->`;
   }
 
