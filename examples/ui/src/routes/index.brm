@@ -41,6 +41,7 @@
   import TabList from '@brumate/ui/TabList.brm';
   import TabPanel from '@brumate/ui/TabPanel.brm';
   import Tabs from '@brumate/ui/Tabs.brm';
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
   import Tag from '@brumate/ui/Tag.brm';
   import TagGroup from '@brumate/ui/TagGroup.brm';
   import TagList from '@brumate/ui/TagList.brm';
@@ -451,9 +452,9 @@
   <h2 id="tabs">Tabs</h2>
   <Tabs>
     <TabList class="planet-tabs" aria-label="Planets">
-      <Tab id="mercury" class="planet-tab">Mercury</Tab>
-      <Tab id="venus" class="planet-tab">Venus</Tab>
-      <Tab id="earth" class="planet-tab">Earth</Tab>
+      <Tab id="mercury" class="planet-tab">Mercury<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="venus" class="planet-tab">Venus<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="earth" class="planet-tab">Earth<SelectionIndicator class="planet-bar" /></Tab>
     </TabList>
     <TabPanel id="mercury" class="planet-panel">The closest to the Sun.</TabPanel>
     <TabPanel id="venus" class="planet-panel">The hottest.</TabPanel>
@@ -717,6 +718,20 @@
     padding: 0.35rem 0.5rem;
     border-radius: 0.25rem;
     outline: none;
+  }
+
+  :global(.planet-tab) {
+    position: relative;
+  }
+
+  :global(.planet-bar) {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #333;
+    transition-duration: 0.2s;
   }
 
   :global(.action-menu),

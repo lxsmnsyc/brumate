@@ -1,0 +1,41 @@
+<script>
+  import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
+  import { SelectionIndicatorContext, moveIndicator } from './selection-indicator.ts';
+
+  /**
+   * A mark of the selected item, such as a bar under the selected Tab, as SelectionIndicator of
+   * React Aria Components. Put it in a Tab, a ToggleButton of a group, a Radio, a ListBoxItem, a
+   * GridListItem or a Tag.
+   *
+   * - It renders only in the selected item, with `data-selected`.
+   * - When the selection moves, the new one moves from where the last one was, with the
+   *   `transition-duration` and `transition-timing-function` of its CSS. With no duration, it
+   *   does not move. It does not move when the user asks for less motion.
+   */
+  const { as = 'span', children, ...rest } = $props<{
+    as?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const item = $getContext(SelectionIndicatorContext);
+  const selected = $memo(Boolean(item?.isSelected));
+  let root = $signal<HTMLElement>();
+
+  // The indicator on the page starts where it is, and each one that the selection shows moves
+  // from the last one.
+  $client(() => {
+    if (root) {
+      moveIndicator(root);
+    }
+  }, 'load');
+  $effect(() => {
+    if (selected) {
+      $untrack(root && moveIndicator(root));
+    }
+  });
+</script>
+
+#if (selected) {
+  <{as} ref=root data-selection-indicator data-selected aria-hidden="true" {...rest}>{children}</>
+}

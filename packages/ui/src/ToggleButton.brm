@@ -1,5 +1,6 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import Button from './Button.brm';
   import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
@@ -49,6 +50,8 @@
     given.onPress?.(event);
     onPress?.(event);
   }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
 <!-- The Button reads no ButtonContext, since this button has a context of its own. -->

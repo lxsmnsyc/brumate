@@ -703,6 +703,26 @@
     padding: 0.2rem 0.6rem;
   }
 
+  /* A bar under the selected tab, which slides to the next one. */
+  :global(.ui-tab:has(.ui-indicator)) {
+    position: relative;
+  }
+
+  :global(.ui-tablist-sliding .ui-tab[data-selected]) {
+    border-color: transparent;
+  }
+
+  :global(.ui-indicator) {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    transition-duration: 0.25s;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

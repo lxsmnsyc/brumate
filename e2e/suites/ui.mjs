@@ -865,6 +865,16 @@ export async function run({ browser, url, runner }) {
     await page.waitForFunction(
       () => document.querySelector('.planet-panel')?.textContent === 'The closest to the Sun.',
     );
+    // The indicator is only in the selected tab, and it slides there from the last one.
+    await page.locator('.planet-tab >> text=Venus').click();
+    await page.waitForFunction(() => {
+      const bars = document.querySelectorAll('.planet-bar');
+      return bars.length === 1 && bars[0].closest('.planet-tab')?.textContent === 'Venus';
+    });
+    assert(
+      await page.evaluate(() => document.querySelector('.planet-bar').getAnimations().length === 1),
+      'the indicator did not move',
+    );
   });
 
   await step('TagGroup: the arrow keys move between tags, and Delete removes one', async () => {

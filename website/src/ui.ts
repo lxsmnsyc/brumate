@@ -55,6 +55,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'autocomplete',
       'tabs',
       'tag-group',
+      'selection-indicator',
     ],
   },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
@@ -232,6 +233,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Rows with buttons and checkboxes, to select and act on.',
     href: 'grid-list',
     demo: 'GridListDemo',
+  },
+  {
+    title: 'SelectionIndicator',
+    summary: 'A mark of the selected item, which moves with the selection.',
+    href: 'selection-indicator',
+    demo: 'SelectionIndicatorDemo',
   },
   {
     title: 'Disclosure',

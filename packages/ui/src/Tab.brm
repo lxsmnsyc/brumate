@@ -1,5 +1,6 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import type { Key } from './collection.ts';
   import { interact } from './interact.brm.ts';
@@ -64,6 +65,8 @@
     () => {},
     () => {},
   );
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
 <div

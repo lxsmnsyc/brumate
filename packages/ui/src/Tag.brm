@@ -1,4 +1,5 @@
 <script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, keyAttribute } from './collection.ts';
@@ -119,6 +120,8 @@
     pressKeyDown(event);
     keyDown(event);
   }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
 <div

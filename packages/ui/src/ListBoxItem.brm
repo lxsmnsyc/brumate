@@ -1,4 +1,5 @@
 <script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import type { PressEvent } from './events.ts';
@@ -100,6 +101,8 @@
     () => {},
     () => {},
   );
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
 <div
