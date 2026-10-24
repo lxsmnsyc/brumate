@@ -63,10 +63,11 @@ it('opens with ArrowDown at the first item, and selects with Enter', async () =>
   await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
   press('Enter');
   await page.waitFor(() => expect(find('.list')).toBeNull());
-  expect(document.activeElement).toBe(trigger);
+  // Focus goes back once the list has left.
+  await page.waitFor(() => expect(document.activeElement).toBe(trigger));
   await page.waitFor(() => expect(page.text('.value')).toBe('Dog'));
   expect(page.get('.value').hasAttribute('data-placeholder')).toBe(false);
-  expect(state(page).slice(0, 2)).toEqual(['dog', ['dog']]);
+  await page.waitFor(() => expect(state(page).slice(0, 2)).toEqual(['dog', ['dog']]));
   expect((page.get('.animal input') as HTMLInputElement).value).toBe('dog');
 });
 
@@ -95,7 +96,7 @@ it('skips disabled items, and closes on Escape and Tab with no change', async ()
   await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
   press('Escape');
   await page.waitFor(() => expect(find('.list')).toBeNull());
-  expect(document.activeElement).toBe(trigger);
+  await page.waitFor(() => expect(document.activeElement).toBe(trigger));
   press('ArrowUp', trigger);
   await page.waitFor(() => expect(document.activeElement).toBe(find('.cat')));
   press('Tab');
