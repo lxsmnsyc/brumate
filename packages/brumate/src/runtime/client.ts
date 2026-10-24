@@ -2048,11 +2048,10 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     // what the server rendered, so a box that the user checked before the code loaded stays.
     const written = fieldValues.get(element) ?? new Map<string, unknown>();
     fieldValues.set(element, written);
-    const rendered = refreshing
-      ? name === 'checked'
-        ? field.defaultChecked
-        : field.defaultValue
-      : undefined;
+    let rendered: unknown;
+    if (refreshing) {
+      rendered = name === 'checked' ? field.defaultChecked : field.defaultValue;
+    }
     const before = written.has(name) ? written.get(name) : (rendered ?? field[name]);
     written.set(name, next);
     if (!Object.is(before, next) && field[name] !== next) {
