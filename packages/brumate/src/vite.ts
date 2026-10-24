@@ -999,6 +999,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       .sort((a, b) => a.file.localeCompare(b.file));
   };
 
+  // The last list of the workbench. A frame renders on each change of a prop, so it reads this
+  // list, and a change of a file clears it.
+  let workbenchList: ReturnType<typeof workbenchComponents> | undefined;
+
   /**
    * Answers the workbench: its page, the list of components, and the frame that renders one
    * component on the server with props, and resumes it in the browser as a page does.
@@ -1016,7 +1020,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     if (url.pathname === `${WORKBENCH}/components`) {
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(await workbenchComponents(server)));
+      workbenchList = workbenchComponents(server);
+      response.end(JSON.stringify(await workbenchList));
       return;
     }
     if (url.pathname !== `${WORKBENCH}/frame`) {
@@ -1027,9 +1032,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     // Only a component that the workbench lists as self-contained, by its path from the root.
     // Any other renders without the request, the route or the server that it needs, and fails.
     const asked = url.searchParams.get('file') ?? '';
-    const listed = (await workbenchComponents(server)).some(
-      (component) => component.file === asked && component.selfContained,
-    );
+    workbenchList ??= workbenchComponents(server);
+    let listed = false;
+    try {
+      listed = (await workbenchList).some(
+        (component) => component.file === asked && component.selfContained,
+      );
+    } catch {
+      // A list that failed is not kept, so the next frame reads the files again.
+      workbenchList = undefined;
+    }
     const file = listed
       ? [...files.values()].find(
           (candidate) => normalizePath(path.relative(root, candidate)) === asked,
@@ -1718,6 +1730,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       });
       server.watcher.on('all', (event, file) => {
+        workbenchList = undefined;
         // The names of the server variables are part of what each component compiles with.
         if (normalizePath(file) === envFile()) {
           compiled.clear();
