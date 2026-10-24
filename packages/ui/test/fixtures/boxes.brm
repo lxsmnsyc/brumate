@@ -1,0 +1,38 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Label from '../../src/Label.brm';
+  import Radio from '../../src/Radio.brm';
+  import RadioGroup from '../../src/RadioGroup.brm';
+  import Switch from '../../src/Switch.brm';
+  import Text from '../../src/Text.brm';
+
+  let terms = $signal(false);
+  let toppings = $signal(['cheese']);
+  let size = $signal<string | null>(null);
+  let dark = $signal(false);
+</script>
+
+<form class="form">
+  <Checkbox class="own" name="news">News</Checkbox>
+  <Checkbox class="terms" isSelected=$bind(terms)>Terms</Checkbox>
+  <Checkbox class="mixed" isIndeterminate=(true)>Some</Checkbox>
+  <Checkbox class="locked" isReadOnly=(true) isSelected=(true)>Locked</Checkbox>
+  <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired=(true)>
+    <Label>Toppings</Label>
+    <Checkbox class="cheese" value="cheese">Cheese</Checkbox>
+    <Checkbox class="olives" value="olives">Olives</Checkbox>
+    <Text slot="description">Pick one or more.</Text>
+    <FieldError class="toppings-error" />
+  </CheckboxGroup>
+  <RadioGroup class="sizes" value=$bind(size) isRequired=(true)>
+    <Label>Size</Label>
+    <Radio class="small" value="small">Small</Radio>
+    <Radio class="large" value="large">Large</Radio>
+    <FieldError class="sizes-error" />
+  </RadioGroup>
+  <Switch class="dark" isSelected=$bind(dark)>Dark mode</Switch>
+</form>
+<p class="values">{String(terms)}|{toppings.join(',')}|{size ?? 'none'}|{String(dark)}</p>

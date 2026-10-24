@@ -117,3 +117,37 @@ export const FormContext: Context<FormState | null> = createContext<FormState | 
   'brumate-ui:form',
   null,
 );
+
+/** What a CheckboxGroup gives its Checkboxes: its values, and a function that toggles one. */
+export interface CheckboxGroupState {
+  name?: string;
+  value: string[];
+  isDisabled: boolean;
+  isReadOnly: boolean;
+  isInvalid: boolean;
+  /** True while the group needs a box checked and has none, so the browser checks it. */
+  isRequired: boolean;
+  /** The ID of the error of the group, which each box names in aria-describedby. */
+  describedBy?: string;
+  toggle: (value: string, checked: boolean) => void;
+  onInvalid: (message: string) => void;
+}
+
+export const CheckboxGroupContext: Context<CheckboxGroupState | null> =
+  createContext<CheckboxGroupState | null>('brumate-ui:checkbox-group', null);
+
+/** What a RadioGroup gives its Radios. */
+export interface RadioGroupState {
+  name: string;
+  value: string | null;
+  isDisabled: boolean;
+  isReadOnly: boolean;
+  isRequired: boolean;
+  isInvalid: boolean;
+  describedBy?: string;
+  select: (value: string) => void;
+  onInvalid: (message: string) => void;
+}
+
+export const RadioGroupContext: Context<RadioGroupState | null> =
+  createContext<RadioGroupState | null>('brumate-ui:radio-group', null);
