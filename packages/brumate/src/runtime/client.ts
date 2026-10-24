@@ -957,6 +957,12 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
+  // A callback that the browser runs later, such as a `$client` callback for when the page is
+  // idle, does not run once its element and its scope are gone, such as after the block or the
+  // page that held it was removed.
+  if (anchor && !scope && !element.isConnected) {
+    return Promise.resolve();
+  }
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();

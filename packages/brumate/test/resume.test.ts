@@ -277,6 +277,28 @@ describe('resume', () => {
     client.dispose();
   });
 
+  it('runs no callback of an element that left the page with its scope', async () => {
+    document.body.innerHTML = '';
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    const ran: unknown[] = [];
+    client.init({
+      load: async () => ({
+        id: 'Test',
+        props: {},
+        g: {},
+        load: async () => ({ c1: (scope: unknown) => ran.push(scope) }),
+      }),
+      listen: () => {},
+    });
+    // A `$client` callback for when the page is idle, whose page went before the browser was.
+    const template = document.createElement('template');
+    template.setAttribute('b-b', '9:0');
+    await client.handle(template, 'Test#c1');
+    expect(ran).toEqual([]);
+    client.dispose();
+  });
+
   it('settles promises from state records that arrive later', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
     let settle!: (value: number) => void;
