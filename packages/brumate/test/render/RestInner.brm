@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { as, children, ...rest } = $props();
+</script>
+
+<{as ?? 'button'} class="dyn" {...rest}>{children}</>
+<button class="plain" {...rest}>{children}</button>

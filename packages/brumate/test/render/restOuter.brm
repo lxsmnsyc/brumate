@@ -1,0 +1,8 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Inner from './RestInner.brm';
+  let on = $signal(false);
+</script>
+
+<Inner title=(on ? 'yes' : 'no')>x</Inner>
+<button class="flip" onClick=(() => (on = !on))>flip</button>
