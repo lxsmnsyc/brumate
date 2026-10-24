@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { LocaleContext, localeOf } from './locale.ts';
+
+  /**
+   * Gives the parts inside it a locale, and its direction, as I18nProvider of React Aria does.
+   * It renders only its children. Put `lang` and `dir` on an element yourself, such as <html>.
+   */
+  const { locale = 'en-US', children } = $props<{ locale?: string; children?: unknown }>();
+  const value = $memo(localeOf(locale));
+  $setContext(LocaleContext, value);
+</script>
+
+{children}

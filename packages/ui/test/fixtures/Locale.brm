@@ -1,0 +1,8 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { LocaleContext } from '../../src/locale.ts';
+
+  const value = $getContext(LocaleContext);
+</script>
+
+<span>{value.locale} {value.direction}</span>

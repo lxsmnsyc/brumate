@@ -10,4 +10,50 @@ The package is private while its first phase is built.
 
 ## Parts
 
+- `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
+- `I18nProvider`: gives the parts inside it a locale and its direction. The default is `en-US`.
+- `Keyboard`: a keyboard shortcut, left to right in every language.
 - `VisuallyHidden`: hides its content from sight and keeps it for screen readers.
+
+## Writing a part
+
+A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `test`, and a section in `examples/ui`. It follows the part of React Aria Components of the same name, and React Aria's tests are its specification. `Button.brm` shows each step.
+
+### Props
+
+- Name the props as React Aria does: `isDisabled`, `onPress`, `onHoverChange`.
+- Take `as`, and render `<{as ?? 'button'} …>`, so the caller can pick the element.
+- End the element with `{...rest}`, so the caller's attributes come last. Its `class` adds to the part's, and its handlers run after the part's own.
+- Show state as `data-*` attributes, with `undefined` for false, so `[data-pressed]` matches only a pressed part.
+
+### State
+
+Give each state one `let` prop, typed `Bindable`, such as `let { pressed = false } = $props<{ pressed?: Bindable<boolean> }>()`. Write it, and call `onChange`:
+
+- `pressed=(true)` starts the part's own copy.
+- `pressed=$bind(signal)` writes the caller's signal.
+- `pressed=$bind(signal, setter)` lets the caller refuse the value.
+
+There is no `defaultPressed`. See [Controlled and uncontrolled](../../docs/proposals.md#controlled-and-uncontrolled).
+
+### Contexts and slots
+
+A part that holds other parts provides their props in the context of each part type, in `src/contexts.ts`. A context value is the props, or `{ slots: { name: props } }`.
+
+- Read the props with `slotProps($getContext(ButtonContext), slot)`.
+- A memo cannot hold handlers. Read the context in a function when a handler runs, and call the context's handler before the part's own.
+- Spread the attributes of the context, from `contextAttributes`, before `{...rest}`, so the caller wins.
+
+### Interactions
+
+`press.brm.ts`, `hover.brm.ts` and `focus.brm.ts` return state and a function for each event. Call them from the handlers of the element. Two modules that need the same event, such as `onKeyDown`, share one handler that calls both.
+
+- The handlers load on the first event, after the browser has moved on. `preventDefault` in a handler is too late. Wrap the handler in `prevent(handler, 'Space')`, which the loader applies by key.
+- A press keeps its pointer with pointer capture, so its `pointerup` reaches the element even outside it. A listener on the document would be added too late to see it.
+- Plain helpers go in a `.ts` file, such as `interactions.ts`. Every export of a `.brm.ts` file is a module function that a component calls at the top of its script.
+
+### Tests
+
+- Test the behaviour of React Aria, with the helpers of `test/interact.ts`: `pointer`, `pressWith`, `press` and `tab`.
+- The handlers of a fixture run after their code loads, so wait for what they log with `page.waitFor`.
+- Add a step to `e2e/suites/ui.mjs` for what happy-dom does not do, such as pointer capture, scrolling and `:focus-visible`. The suite runs axe-core on the page.
