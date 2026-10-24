@@ -2688,6 +2688,17 @@ describe('spreads on components', () => {
 });
 
 describe('rest props', () => {
+  it('leaves out of a rest the props that another $props() call names', async () => {
+    await resume('twoPropsParent', {});
+    const button = document.querySelector('.two-props')!;
+    expect(button.getAttribute('title')).toBe('Open the menu');
+    expect(button.hasAttribute('open')).toBe(false);
+    expect(button.hasAttribute('label')).toBe(false);
+    click(button);
+    await waitFor(() => expect(text('.two-props')).toBe('Menu false'));
+    expect(button.hasAttribute('open')).toBe(false);
+  });
+
   it('updates a spread of a rest prop when the parent passes a new value', async () => {
     await resume('restOuter', {});
     expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('no');

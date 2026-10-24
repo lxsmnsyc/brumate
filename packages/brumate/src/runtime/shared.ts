@@ -163,13 +163,23 @@ export class Binding<T = unknown> {
  * The props that a component destructures, with the values of their
  * bindings. `names` are the props that it destructures by name: the others,
  * which a rest prop holds, keep their bindings, so a spread passes them on.
- * Without `names`, every binding gives its value.
+ * Without `names`, every binding gives its value. `omit` are props that a rest
+ * leaves out, because another `$props()` call of the component names them.
  */
 export function unbind(
   props: Record<string, unknown>,
   names?: readonly string[],
+  omit?: readonly string[],
 ): Record<string, unknown> {
   let result: Record<string, unknown> | undefined;
+  // The props that another `$props()` call of the component names, which a rest leaves out.
+  if (omit) {
+    result = { ...props };
+    for (const key of omit) {
+      delete result[key];
+    }
+    props = result;
+  }
   for (const key of names ?? Object.keys(props)) {
     const value = props[key];
     if (isBinding(value)) {
