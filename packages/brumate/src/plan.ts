@@ -312,10 +312,11 @@ export function clientState(
   }
   // The spreads of an element update together, so a spread that never changes, such as a rest
   // prop, is read in the browser when another spread of the same element changes. Without it,
-  // the update would remove the attributes that it gives, such as a class.
+  // the update would remove the attributes that it gives, such as a class. An attribute of the
+  // element that changes reads them too, as a class of the element adds the class of a spread.
   const liveSpreads = new Set<Site['owner']>();
   for (const site of clientSites) {
-    if (site.kind === 'spread' && site.owner) {
+    if ((site.kind === 'spread' || site.kind === 'attribute') && site.owner) {
       liveSpreads.add(site.owner);
     }
   }

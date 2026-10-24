@@ -2232,6 +2232,16 @@ describe('style variables on dynamic tags', () => {
   });
 });
 
+describe('classes with a spread', () => {
+  it('keeps the class of a spread when the class of the element changes', async () => {
+    await resume('classSpread', {});
+    const box = document.querySelector<HTMLElement>('.box')!;
+    expect(box.className).toBe('box caller');
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(box.className).toBe('box flag caller'));
+  });
+});
+
 describe('style variables with a spread', () => {
   it('keeps the style that a spread passes on, next to the style variables', async () => {
     await resume('spreadStyled', {});
