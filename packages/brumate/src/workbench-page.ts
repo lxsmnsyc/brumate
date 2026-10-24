@@ -402,6 +402,10 @@ function pickStory(next) {
 function controls() {
   const box = $('controls');
   box.replaceChildren();
+  if (current.unreadProps) {
+    box.append(make('div', { class: 'empty-props' }, 'The workbench cannot read the type of the props, such as a type that the file imports. Declare it in the file to get controls.'));
+    return;
+  }
   if (!current.controls.length) {
     box.append(make('div', { class: 'empty-props' }, 'This component takes no props that the workbench can set.'));
     return;
