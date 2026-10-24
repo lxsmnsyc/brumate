@@ -51,6 +51,8 @@
   const mode = $memo(menu?.selectionMode ?? 'none');
   const selected = $memo(Boolean(menu?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(menu?.disabledKeys.includes(id)));
+  // With focus in a field around the menu, the active item shows as focused.
+  const active = $memo(menu?.activeKey !== undefined && menu.activeKey === id);
   const role = $memo(
     submenu || mode === 'none' ? 'menuitem' : mode === 'single' ? 'menuitemradio' : 'menuitemcheckbox',
   );
@@ -74,8 +76,13 @@
   }
 
   function hoverStarted(event: HoverEvent) {
-    // The pointer moves focus, as in a menu of the system.
-    (event.target as HTMLElement).focus({ preventScroll: true });
+    // The pointer moves focus, as in a menu of the system, or makes the item active while focus
+    // stays in a field around the menu.
+    if (menu?.setActive) {
+      menu.setActive(id);
+    } else {
+      (event.target as HTMLElement).focus({ preventScroll: true });
+    }
     submenu?.hoverStart();
   }
 
@@ -132,7 +139,7 @@
   data-open=(submenu?.isOpen || undefined)
   data-pressed=(isPressed || undefined)
   data-hovered=(hovered || undefined)
-  data-focused=(focused || undefined)
+  data-focused=(focused || active || undefined)
   data-focus-visible=(focusVisible || undefined)
   onPointerDown=onPointerDown
   onPointerMove=onPointerMove

@@ -2,7 +2,14 @@
   import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { ListBoxGivenContext, enabledItems, keyOf, moveFrom, textOfItem } from './collection.ts';
+  import {
+    CollectionFocusContext,
+    ListBoxGivenContext,
+    enabledItems,
+    keyOf,
+    moveFrom,
+    textOfItem,
+  } from './collection.ts';
   import type { Key } from './collection.ts';
   import {
     ButtonContext,
@@ -296,8 +303,9 @@
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
     select,
+  });
+  $setContext(CollectionFocusContext, {
     id: listId,
-    virtual: true,
     activeKey,
     setActive: (key: Key) => activate(key),
     filterText: isOpen ? filterText : undefined,

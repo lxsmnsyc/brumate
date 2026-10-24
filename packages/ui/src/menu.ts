@@ -35,6 +35,10 @@ export interface MenuState {
   focusedId: string | undefined;
   /** Acts on an item: selects it, calls `onAction`, and closes the menu unless it stays open. */
   action: (key: Key) => void;
+  /** With focus in a field around the menu, the item that its keys move to. */
+  activeKey?: Key | null;
+  /** With focus in a field around the menu, makes an item the active one. */
+  setActive?: (key: Key) => void;
 }
 
 export const MenuContext: Context<MenuState | null> = createContext<MenuState | null>(

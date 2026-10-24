@@ -311,9 +311,9 @@ export interface ListBoxState {
   action: (key: Key) => void;
   /** True when the ListBox has `onAction`. */
   hasAction: boolean;
-  /** With virtual focus, the item that the keys of the part around the list move to. */
+  /** With focus in a field around the list, the item that its keys move to. */
   activeKey?: Key | null;
-  /** With virtual focus, makes an item the active one. */
+  /** With focus in a field around the list, makes an item the active one. */
   setActive?: (key: Key) => void;
 }
 
@@ -334,29 +334,36 @@ export interface ListBoxGiven {
   select: (key: Key) => void;
   /** Tab on an item, which leaves the list. */
   tab?: () => void;
-  /** The ID of the list, which the part around it names, such as in `aria-controls`. */
-  id?: string;
-  /**
-   * Focus stays in the part around the list, such as the input of a ComboBox, and `activeKey` is
-   * the item that the keys move to, which `aria-activedescendant` names.
-   */
-  virtual?: boolean;
-  activeKey?: Key | null;
-  /** The pointer moved to an item, which becomes the active one. */
-  setActive?: (key: Key) => void;
-  /**
-   * The text that the items must match, such as what was typed in a ComboBox. The list hides the
-   * others once it is on the page, and gives `filtered` the items that show.
-   */
-  filterText?: string;
-  filter?: (text: string, input: string) => boolean;
-  filtered?: (shown: HTMLElement[]) => void;
 }
 
 export const ListBoxGivenContext: Context<ListBoxGiven | null> = createContext<ListBoxGiven | null>(
   'brumate-ui:list-box-given',
   null,
 );
+
+/**
+ * What a field around a collection gives it, such as the input of a ComboBox or an Autocomplete:
+ * focus that stays in the field, and a filter. A ListBox and a Menu read it, and clear it for the
+ * collections inside them.
+ */
+export interface CollectionFocus {
+  /** The ID of the collection, which the field names, such as in `aria-controls`. */
+  id?: string;
+  /** `activeKey` is the item that the keys of the field move to, which `aria-activedescendant` names. */
+  activeKey: Key | null;
+  /** The pointer moved to an item, which becomes the active one. */
+  setActive: (key: Key) => void;
+  /**
+   * The text that the items must match, such as what was typed. The collection hides the others
+   * once it is on the page and when the text changes, and gives `filtered` the items that show.
+   */
+  filterText?: string;
+  filter?: (text: string, input: string) => boolean;
+  filtered?: (shown: HTMLElement[]) => void;
+}
+
+export const CollectionFocusContext: Context<CollectionFocus | null> =
+  createContext<CollectionFocus | null>('brumate-ui:collection-focus', null);
 
 /** What a section gives its Header: its ID, which names the section. */
 export const SectionContext: Context<{ headerId: string } | null> = createContext<{
@@ -394,9 +401,14 @@ export function filterItems(
   list: Element,
   input: string,
   matches: (text: string, input: string) => boolean = contains,
+  role = 'option',
 ): HTMLElement[] {
   const shown: HTMLElement[] = [];
-  for (const item of list.querySelectorAll<HTMLElement>('[role=option][data-key]')) {
+  const selector = role
+    .split('|')
+    .map((name) => `[role=${name}][data-key]`)
+    .join(', ');
+  for (const item of list.querySelectorAll<HTMLElement>(selector)) {
     const visible = input === '' || matches(textOfItem(item), input);
     item.hidden = !visible;
     if (visible) {
@@ -404,7 +416,9 @@ export function filterItems(
     }
   }
   for (const section of list.querySelectorAll<HTMLElement>('[role=group]')) {
-    section.hidden = !section.querySelector('[role=option]:not([hidden])');
+    section.hidden = ![...section.querySelectorAll<HTMLElement>(selector)].some(
+      (item) => !item.hidden,
+    );
   }
   return shown;
 }

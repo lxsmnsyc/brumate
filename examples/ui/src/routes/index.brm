@@ -36,6 +36,7 @@
   import Menu from '@brumate/ui/Menu.brm';
   import MenuItem from '@brumate/ui/MenuItem.brm';
   import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
@@ -79,6 +80,7 @@
   let menuAction = $signal<Key>('none');
   let pet = $signal<Key | null>(null);
   let city = $signal<Key | null>(null);
+  let command = $signal<Key>('none');
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -417,6 +419,22 @@
   <p class="city-state">{city ?? 'None'}</p>
 </section>
 
+<section aria-labelledby="autocomplete">
+  <h2 id="autocomplete">Autocomplete</h2>
+  <Autocomplete>
+    <SearchField class="command-field">
+      <Label>Command</Label>
+      <Input class="command-input" />
+    </SearchField>
+    <Menu class="command-menu" aria-label="Commands" onAction=((key) => (command = key))>
+      <MenuItem id="new" class="option">New file</MenuItem>
+      <MenuItem id="open" class="option">Open file</MenuItem>
+      <MenuItem id="save" class="option">Save</MenuItem>
+    </Menu>
+  </Autocomplete>
+  <p class="command-state">{command}</p>
+</section>
+
 <section aria-labelledby="tooltip">
   <h2 id="tooltip">Tooltip and Toast</h2>
   <TooltipTrigger>
@@ -649,7 +667,8 @@
     outline: none;
   }
 
-  :global(.action-menu) {
+  :global(.action-menu),
+  :global(.command-menu) {
     display: grid;
     min-width: 10rem;
     padding: 0.25rem;
@@ -657,7 +676,8 @@
     background: #fff;
   }
 
-  :global(.action-menu .option[data-focused]) {
+  :global(.action-menu .option[data-focused]),
+  :global(.command-menu .option[data-focused]) {
     background: #eee;
   }
 

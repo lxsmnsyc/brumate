@@ -14,6 +14,7 @@
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
+    CollectionFocusContext,
     ListBoxContext,
     ListBoxGivenContext,
     enabledItems,
@@ -81,6 +82,8 @@
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
   const given = $getContext(ListBoxGivenContext);
+  // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
+  const field = $getContext(CollectionFocusContext);
   const mode = $memo(given ? 'single' : selectionMode);
   const chosen = $memo(given ? given.selectedKeys : selectedKeys);
   const hasAction = $isPassed(onAction);
@@ -132,22 +135,24 @@
     select,
     action,
     hasAction,
-    activeKey: given?.activeKey,
-    setActive: given?.setActive,
+    activeKey: field?.activeKey,
+    setActive: field?.setActive,
   });
+  // The lists inside, such as in an item, have fields of their own.
+  $setContext(CollectionFocusContext, null);
 
   // A part around the list, such as a ComboBox, shows only the items that match its text: when
   // the list is on the page, and each time the text changes.
   function applyFilter() {
-    const text = given?.filterText;
+    const text = field?.filterText;
     const element = root;
     if (text !== undefined && element) {
-      given!.filtered?.(filterItems(element, text, given!.filter));
+      field!.filtered?.(filterItems(element, text, field!.filter));
     }
   }
   $client(() => applyFilter(), 'load');
   $effect(() => {
-    void given?.filterText;
+    void field?.filterText;
     $untrack(applyFilter());
   });
 
@@ -164,7 +169,7 @@
 
   function focused(event: FocusEvent) {
     const element = root;
-    if (given?.virtual) {
+    if (field) {
       return;
     }
     // The list passes its focus on to an item.
@@ -267,9 +272,9 @@
 
 <div
   ref=root
-  id=(given?.id ?? listId)
+  id=(field?.id ?? listId)
   role="listbox"
-  tabindex=(given?.virtual ? '-1' : '0')
+  tabindex=(field ? '-1' : '0')
   data-collection
   aria-multiselectable=(mode === 'multiple' ? 'true' : undefined)
   aria-labelledby=(given?.labelledBy)

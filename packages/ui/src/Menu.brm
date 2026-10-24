@@ -1,9 +1,20 @@
 <script>
-  import { $getContext, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
+    CollectionFocusContext,
     enabledItems,
+    filterItems,
     focusItem,
     focusedItem,
     isTyping,
@@ -61,6 +72,8 @@
   let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
 
   const trigger = $getContext(MenuTriggerContext);
+  // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
+  const field = $getContext(CollectionFocusContext);
   const dialog = $getContext(DialogContext);
   const locale = $getContext(LocaleContext);
   const menuId = $id();
@@ -95,7 +108,32 @@
     trigger?.closeAll();
   }
 
-  $setContext(MenuContext, { selectionMode, selectedKeys, disabledKeys, focusedId, action });
+  $setContext(MenuContext, {
+    selectionMode,
+    selectedKeys,
+    disabledKeys,
+    focusedId,
+    action,
+    activeKey: field?.activeKey,
+    setActive: field?.setActive,
+  });
+  // The collections inside, such as of a submenu, have fields of their own.
+  $setContext(CollectionFocusContext, null);
+
+  // A field around the menu shows only the items that match its text: when the menu is on the
+  // page, and each time the text changes.
+  function applyFilter() {
+    const text = field?.filterText;
+    const element = root;
+    if (text !== undefined && element) {
+      field!.filtered?.(filterItems(element, text, field!.filter, MENU_ITEMS));
+    }
+  }
+  $client(() => applyFilter(), 'load');
+  $effect(() => {
+    void field?.filterText;
+    $untrack(applyFilter());
+  });
   // The items of this menu do not open the submenu of a trigger around it.
   $setContext(SubmenuContext, null);
 
@@ -103,7 +141,7 @@
     const element = root;
     // The menu passes its focus on to an item, as its trigger asks. After a press with a pointer,
     // it keeps focus, and the arrow keys move to an item. A menu on the page starts at its first.
-    if (!element || event.target !== element || document.activeElement !== element) {
+    if (!element || field || event.target !== element || document.activeElement !== element) {
       return;
     }
     const strategy = trigger?.focusStrategy ?? 'first';
@@ -169,9 +207,9 @@
 
 <div
   ref=root
-  id=menuId
+  id=(field?.id ?? menuId)
   role="menu"
-  tabindex=(trigger ? '-1' : '0')
+  tabindex=(trigger || field ? '-1' : '0')
   data-collection
   aria-label=label
   aria-labelledby=(label === undefined ? trigger?.triggerId : undefined)
