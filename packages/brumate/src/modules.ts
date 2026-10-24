@@ -779,9 +779,22 @@ export function expandModules(
     }
     // A returned local takes the name that the component gives it.
     const returnedNames = new Map<string, string>();
+    // The key that returned each local first. A second key would be a copy of the local, and a
+    // copy of a function is a value that the browser cannot get.
+    const returnedBy = new Map<string, string>();
     for (const property of returned.properties as oxc.ObjectProperty[]) {
       const key = (property.key as oxc.IdentifierName).name;
       const target = wanted.get(key);
+      if (property.value.type === 'Identifier' && declared.has(property.value.name)) {
+        const first = returnedBy.get(property.value.name);
+        if (first !== undefined && target && wanted.has(first)) {
+          throw new ModuleError(
+            `${name} returns ${property.value.name} as ${first} and as ${key}. Return each local once, and give the other key a function of its own`,
+            call.statement.start,
+          );
+        }
+        returnedBy.set(property.value.name, key);
+      }
       if (
         target &&
         property.value.type === 'Identifier' &&
