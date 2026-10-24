@@ -12,8 +12,8 @@ export function log(event: PressEvent | HoverEvent): void {
   (globalThis.partEvents ??= []).push({ type: event.type, pointerType: event.pointerType });
 }
 
-export function logChange(type: string): (value: boolean) => void {
-  return (value) => (globalThis.partEvents ??= []).push({ type, value });
+export function logChange(type: string, value: boolean): void {
+  (globalThis.partEvents ??= []).push({ type, value });
 }
 
 export function takeEvents(): Entry[] {

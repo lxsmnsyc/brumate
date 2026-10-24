@@ -1,0 +1,128 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LinkContext } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { interact } from './interact.brm.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A link, as Link of React Aria Components. With `href` it is an <a>, and without it an element
+   * with role="link". It presses as a Button does, and the browser follows the link. Its state
+   * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
+   * and `data-disabled`.
+   *
+   * A disabled link has no `href`, so the browser does not follow it, and it leaves the order of
+   * Tab, as a disabled button does. React Aria keeps it focusable, and prevents the click in a
+   * handler, which brumate runs after the browser has followed it.
+   */
+  const {
+    as,
+    href,
+    slot,
+    isDisabled,
+    isCurrent,
+    onPress,
+    onPressStart,
+    onPressEnd,
+    onPressUp,
+    onPressChange,
+    onHoverStart,
+    onHoverEnd,
+    onHoverChange,
+    onFocusChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    href?: string;
+    slot?: string | null;
+    isDisabled?: boolean;
+    /** The link is to the current page, as in Breadcrumbs. */
+    isCurrent?: boolean;
+    onPress?: (event: PressEvent) => void;
+    onPressStart?: (event: PressEvent) => void;
+    onPressEnd?: (event: PressEvent) => void;
+    onPressUp?: (event: PressEvent) => void;
+    onPressChange?: (pressed: boolean) => void;
+    onHoverStart?: (event: HoverEvent) => void;
+    onHoverEnd?: (event: HoverEvent) => void;
+    onHoverChange?: (hovered: boolean) => void;
+    onFocusChange?: (focused: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(LinkContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
+  const current = $memo(Boolean(isCurrent ?? slotProps(context, slot).isCurrent));
+  const linked = $memo(href !== undefined && !disabled);
+  const element = $memo(as ?? (linked ? 'a' : 'span'));
+  const native = $memo(element === 'a' && linked);
+
+  function given() {
+    return slotProps(context, slot);
+  }
+  function pressed(event: PressEvent) {
+    given().onPress?.(event);
+    onPress?.(event);
+  }
+
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onKeyDown,
+    onKeyUp,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled,
+    pressed,
+    (event: PressEvent) => onPressStart?.(event),
+    (event: PressEvent) => onPressEnd?.(event),
+    (event: PressEvent) => onPressUp?.(event),
+    (value: boolean) => onPressChange?.(value),
+    (event: HoverEvent) => onHoverStart?.(event),
+    (event: HoverEvent) => onHoverEnd?.(event),
+    (value: boolean) => onHoverChange?.(value),
+    (value: boolean) => onFocusChange?.(value),
+  );
+</script>
+
+<{element}
+  href=(linked ? href : undefined)
+  role=(native ? undefined : 'link')
+  tabindex=(native || disabled ? undefined : 0)
+  aria-disabled=(disabled ? 'true' : undefined)
+  aria-current=(current ? 'page' : undefined)
+  data-current=(current || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  onPointerDown=onPointerDown
+  onPointerMove=onPointerMove
+  onPointerUp=onPointerUp
+  onPointerCancel=onPointerCancel
+  onPointerEnter=onPointerEnter
+  onPointerLeave=onPointerLeave
+  onKeyDown=(prevent(onKeyDown, 'Space'))
+  onKeyUp=(prevent(onKeyUp, 'Space'))
+  onClick=onClick
+  onFocus=onFocus
+  onBlur=onBlur
+  {...attributes}
+  {...rest}
+>{children}</>

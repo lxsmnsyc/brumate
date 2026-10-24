@@ -1,0 +1,29 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { SeparatorContext } from './contexts.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A line between parts of the content, as Separator of React Aria Components. Horizontal, it is
+   * an <hr>. Vertical, it is an element with role="separator" and aria-orientation.
+   */
+  const { as, orientation, slot, ...rest } = $props<{
+    as?: string;
+    orientation?: 'horizontal' | 'vertical';
+    slot?: string | null;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(SeparatorContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const direction = $memo(orientation ?? slotProps(context, slot).orientation ?? 'horizontal');
+  const element = $memo(as ?? (direction === 'vertical' ? 'div' : 'hr'));
+</script>
+
+<{element}
+  role=(element === 'hr' ? undefined : 'separator')
+  aria-orientation=(direction === 'vertical' ? 'vertical' : undefined)
+  data-orientation=direction
+  {...attributes}
+  {...rest}
+></>
