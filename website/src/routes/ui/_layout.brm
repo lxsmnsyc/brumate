@@ -662,6 +662,47 @@
     cursor: pointer;
   }
 
+  /* A grid list: rows with a checkbox and a button, whose selected rows take the accent. */
+  :global(.ui-gridlist) {
+    display: grid;
+    width: min(22rem, 100%);
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+  }
+
+  :global(.ui-gridlist:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-gridrow) {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  :global(.ui-gridrow[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-gridrow[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-gridrow[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-gridrow .ui-button) {
+    margin-inline-start: auto;
+    padding: 0.2rem 0.6rem;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

@@ -44,6 +44,8 @@
   import Tag from '@brumate/ui/Tag.brm';
   import TagGroup from '@brumate/ui/TagGroup.brm';
   import TagList from '@brumate/ui/TagList.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
@@ -89,6 +91,8 @@
   let city = $signal<Key | null>(null);
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
+  let pickedFiles = $signal<Key[]>([]);
+  let fileOpened = $signal('none');
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -468,6 +472,19 @@
     </TagList>
   </TagGroup>
   <p class="topic-state">{topics.join(',')}</p>
+</section>
+
+<section aria-labelledby="gridlist">
+  <h2 id="gridlist">GridList</h2>
+  <GridList class="file-grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(pickedFiles)>
+    #for (file of ['notes', 'photos', 'music'] by file) {
+      <GridListItem id=file class="file-row" textValue=file>
+        <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
+        <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
 </section>
 
 <section aria-labelledby="tooltip">

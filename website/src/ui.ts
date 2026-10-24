@@ -46,7 +46,16 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Collections',
-    pages: ['list-box', 'menu', 'select', 'combo-box', 'autocomplete', 'tabs', 'tag-group'],
+    pages: [
+      'list-box',
+      'grid-list',
+      'menu',
+      'select',
+      'combo-box',
+      'autocomplete',
+      'tabs',
+      'tag-group',
+    ],
   },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
@@ -217,6 +226,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Tags that the user can select and remove.',
     href: 'tag-group',
     demo: 'TagGroupDemo',
+  },
+  {
+    title: 'GridList',
+    summary: 'Rows with buttons and checkboxes, to select and act on.',
+    href: 'grid-list',
+    demo: 'GridListDemo',
   },
   {
     title: 'Disclosure',

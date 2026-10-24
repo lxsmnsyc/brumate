@@ -887,6 +887,33 @@ export async function run({ browser, url, runner }) {
     );
   });
 
+  await step(
+    'GridList: rows with Up and Down, controls with Left and Right, and Tab leaves',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('#gridlist').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+      await page.locator('#gridlist').focus();
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('file-row'));
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent?.includes('photos'));
+      await page.keyboard.press('Space');
+      await page.waitForFunction(
+        () => document.querySelector('.file-state')?.textContent === 'photos / none',
+      );
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('file-open'));
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.file-state')?.textContent === 'photos / photos',
+      );
+      // Tab leaves the list from its controls.
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => !document.activeElement?.closest('.file-grid'));
+    },
+  );
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();
