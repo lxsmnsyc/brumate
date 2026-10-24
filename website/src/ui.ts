@@ -143,6 +143,18 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     demo: 'SheetDemo',
   },
   {
+    title: 'Tooltip',
+    summary: 'A short description of a button, on hover and focus.',
+    href: 'overlays#tooltip',
+    demo: 'TooltipDemo',
+  },
+  {
+    title: 'Toast',
+    summary: 'A notice that comes and goes, in a landmark.',
+    href: 'status#toast',
+    demo: 'ToastDemo',
+  },
+  {
     title: 'Breadcrumbs',
     summary: 'A trail to the current page.',
     href: 'structure#breadcrumbs',

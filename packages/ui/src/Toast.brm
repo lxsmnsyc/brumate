@@ -1,0 +1,43 @@
+<script>
+  import { $getContext, $id, $props, $setContext } from 'brumate/signals';
+  import { ButtonContext } from './contexts.ts';
+  import { ToastContext, ToastRegionContext, toastQueue } from './toast.ts';
+  import type { QueuedToast } from './toast.ts';
+
+  /**
+   * A toast of a ToastRegion, as Toast of React Aria Components. It is an `alertdialog` that is
+   * not modal, named by the title of its ToastContent and described by its description.
+   *
+   * - A Button with `slot="close"` closes it, and is named "Close" unless it has a name. Put it
+   *   after the ToastContent, so a screen reader reads the content first.
+   * - It takes focus with Tab and F6, and has `data-toast-key`.
+   */
+  const { toast, children, ...rest } = $props<{
+    toast: QueuedToast<unknown>;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const region = $getContext(ToastRegionContext);
+  const titleId = $id();
+  const descriptionId = $id();
+
+  function close() {
+    toastQueue(region?.queue).close(toast.key);
+  }
+
+  $setContext(ToastContext, { titleId, descriptionId });
+  $setContext(ButtonContext, {
+    slots: { default: {}, close: { 'aria-label': 'Close', onPress: close } },
+  });
+</script>
+
+<div
+  role="alertdialog"
+  aria-modal="false"
+  aria-labelledby=titleId
+  aria-describedby=descriptionId
+  tabindex="0"
+  data-toast-key=(toast.key)
+  {...rest}
+>{children}</div>

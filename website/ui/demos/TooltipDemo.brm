@@ -1,0 +1,21 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+</script>
+
+<TooltipTrigger delay=(600)>
+  <Button class="ui-button">Copy</Button>
+  <Tooltip class="ui-tooltip" offset=(8) transition>
+    <OverlayArrow class="ui-tooltip-arrow" />
+    Copy the link
+  </Tooltip>
+</TooltipTrigger>
+<TooltipTrigger delay=(600)>
+  <Button class="ui-button">Paste</Button>
+  <Tooltip class="ui-tooltip" offset=(8) transition>
+    <OverlayArrow class="ui-tooltip-arrow" />
+    Paste the link
+  </Tooltip>
+</TooltipTrigger>

@@ -34,6 +34,13 @@
   import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
   import Popover from '@brumate/ui/Popover.brm';
   import Sheet from '@brumate/ui/Sheet.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
   import ProgressBar from '@brumate/ui/ProgressBar.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
@@ -306,6 +313,28 @@
   </DialogTrigger>
 </section>
 
+<section aria-labelledby="tooltip">
+  <h2 id="tooltip">Tooltip and Toast</h2>
+  <TooltipTrigger>
+    <Button class="press tip-trigger">Copy</Button>
+    <Tooltip class="tip" offset=(6)>Copy the link</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger>
+    <Button class="press tip-other">Paste</Button>
+    <Tooltip class="tip" offset=(6)>Paste the link</Tooltip>
+  </TooltipTrigger>
+  <Button class="press toast-trigger" onPress=(() => toastQueue<{ title: string }>().add({ title: 'Link copied' }, { timeout: 5000 }))>Notify</Button>
+</section>
+
+<ToastRegion class="toasts" toast=notice transition />
+
+#template notice(toast: QueuedToast<{ title: string }>) {
+  <Toast toast=toast class="toast">
+    <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
+    <Button slot="close" class="press toast-close">×</Button>
+  </Toast>
+}
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -476,6 +505,38 @@
 
   :global(.settings h3) {
     margin: 0;
+  }
+
+  :global(.tip) {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #111;
+    color: #fff;
+    font-size: 0.875rem;
+  }
+
+  :global(.toasts) {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  :global(.toast) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: #111;
+    color: #fff;
+    transition: opacity 0.2s, translate 0.2s;
+  }
+
+  :global(.toast[data-closed]) {
+    opacity: 0;
+    translate: 0 0.5rem;
   }
 
   :global([data-modal-overlay]) {

@@ -56,9 +56,11 @@ export function inertOutside(layer: Element): () => void {
   for (let current: Element | null = layer; current && current !== document.body;) {
     const parent: Element | null = current.parentElement;
     for (const sibling of parent?.children ?? []) {
+      // The toasts stay usable over a modal, as in React Aria.
       if (
         sibling !== current &&
         !sibling.hasAttribute('inert') &&
+        !sibling.hasAttribute('data-toast-region') &&
         !/^(SCRIPT|STYLE|TEMPLATE|LINK)$/.test(sibling.tagName)
       ) {
         sibling.setAttribute('inert', '');
@@ -199,7 +201,7 @@ export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
     const target = event.target as HTMLElement;
     if (layer.contains(target)) {
       last = target;
-    } else {
+    } else if (!target.closest?.('[data-toast-region]')) {
       back();
     }
   };

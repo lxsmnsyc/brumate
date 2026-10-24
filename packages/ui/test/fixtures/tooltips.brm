@@ -1,0 +1,41 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import OverlayArrow from '../../src/OverlayArrow.brm';
+  import Popover from '../../src/Popover.brm';
+  import Tooltip from '../../src/Tooltip.brm';
+  import TooltipTrigger from '../../src/TooltipTrigger.brm';
+
+  let saveOpen = $signal(false);
+</script>
+
+<main class="page">
+  <TooltipTrigger delay=(60) closeDelay=(60) isOpen=$bind(saveOpen)>
+    <Button class="save">Save</Button>
+    <Tooltip class="tip"><OverlayArrow class="arrow" />Save the draft</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger delay=(60) closeDelay=(60)>
+    <Button class="other">Share</Button>
+    <Tooltip class="other-tip">Share the draft</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger delay=(0) trigger="focus">
+    <Button class="focus-only">Help</Button>
+    <Tooltip class="focus-tip">Only on focus</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger delay=(0) isDisabled>
+    <Button class="disabled">Off</Button>
+    <Tooltip class="disabled-tip">Never</Tooltip>
+  </TooltipTrigger>
+  <DialogTrigger>
+    <TooltipTrigger delay=(0) closeDelay=(0)>
+      <Button class="settings">Settings</Button>
+      <Tooltip class="settings-tip">Open the settings</Tooltip>
+    </TooltipTrigger>
+    <Popover class="popover">
+      <Dialog class="dialog" aria-label="Settings">Settings</Dialog>
+    </Popover>
+  </DialogTrigger>
+  <p class="state">{String(saveOpen)}</p>
+</main>
