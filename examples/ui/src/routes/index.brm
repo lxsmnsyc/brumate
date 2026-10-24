@@ -4,6 +4,9 @@
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import FileTrigger from '@brumate/ui/FileTrigger.brm';
   import Form from '@brumate/ui/Form.brm';
@@ -28,6 +31,7 @@
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
   import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import Transition from '@brumate/ui/Transition.brm';
   import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
   import Toolbar from '@brumate/ui/Toolbar.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
@@ -42,6 +46,7 @@
   let dark = $signal(false);
   let align = $signal(['left']);
   let files = $signal('No files picked.');
+  let noteShown = $signal(true);
 
   async function order(form: FormData) {
     'use server';
@@ -228,6 +233,22 @@
   <p class="files">{files}</p>
 </section>
 
+<section aria-labelledby="disclosure">
+  <h2 id="disclosure">Disclosure and Transition</h2>
+  <DisclosureGroup class="faq">
+    <Disclosure id="shipping" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Shipping</Button></Heading>
+      <DisclosurePanel class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
+    </Disclosure>
+    <Disclosure id="returns" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Returns</Button></Heading>
+      <DisclosurePanel class="faq-panel"><span id="return-window">Send it back within thirty days.</span></DisclosurePanel>
+    </Disclosure>
+  </DisclosureGroup>
+  <Button class="press note-toggle" onPress=(() => (noteShown = !noteShown))>Toggle the note</Button>
+  <Transition show=noteShown class="note">A note that fades out.</Transition>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -376,6 +397,14 @@
     height: 0.5rem;
     border: 1px solid #555;
     background: linear-gradient(to right, #2457d6 var(--percentage), transparent 0);
+  }
+
+  :global(.note) {
+    transition: opacity 0.3s;
+  }
+
+  :global(.note[data-closed]) {
+    opacity: 0;
   }
 
   :global(.help) {

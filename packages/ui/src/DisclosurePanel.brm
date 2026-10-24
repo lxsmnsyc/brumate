@@ -1,0 +1,31 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { DisclosurePanelContext } from './contexts.ts';
+
+  /**
+   * The content of a Disclosure. It is a group that its trigger names. While it is collapsed,
+   * it is `hidden="until-found"`, so the find in page of the browser can reach its text and
+   * open it. A browser without `until-found` hides it as `hidden` does.
+   */
+  const { role = 'group', children, ...rest } = $props<{
+    role?: 'group' | 'region';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const state = $getContext(DisclosurePanelContext);
+
+  function found() {
+    state?.expand();
+  }
+</script>
+
+<div
+  id=(state?.id)
+  role=role
+  aria-labelledby=(state?.triggerId)
+  hidden=(state && !state.isExpanded ? 'until-found' : undefined)
+  data-expanded=(state?.isExpanded || undefined)
+  onBeforematch=found
+  {...rest}
+>{children}</div>

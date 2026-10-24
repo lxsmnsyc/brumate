@@ -1,0 +1,29 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let open = $signal(['shipping']);
+</script>
+
+<DisclosureGroup class="ui-accordion" expandedKeys=$bind(open)>
+  #for (item of [
+    { id: 'shipping', title: 'Shipping', text: 'Orders leave the shop in two days.' },
+    { id: 'returns', title: 'Returns', text: 'Send it back within thirty days.' },
+    { id: 'care', title: 'Care', text: 'Wash it cold, and dry it flat.' },
+  ] by item.id) {
+    <Disclosure id=(item.id) class="ui-disclosure">
+      <Heading level=(4)>
+        <Button slot="trigger" class="ui-disclosure-trigger">
+          {item.title}
+          <Icon name="chevron" />
+        </Button>
+      </Heading>
+      <DisclosurePanel class="ui-disclosure-panel">{item.text}</DisclosurePanel>
+    </Disclosure>
+  }
+</DisclosureGroup>

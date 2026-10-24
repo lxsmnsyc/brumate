@@ -292,6 +292,36 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'Disclosure and Transition: Enter expands, a link into a collapsed panel opens it, a note fades out',
+    async () => {
+      await page.goto(`${url}/`);
+      const shipping = page.locator('.faq-trigger', { hasText: 'Shipping' });
+      await shipping.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.faq-trigger')?.getAttribute('aria-expanded') === 'true',
+      );
+      const returns = page.locator('.faq-panel', { hasText: 'thirty days' });
+      assert(
+        (await returns.getAttribute('hidden')) === 'until-found',
+        'the panel is not until-found',
+      );
+      // A link to an ID in the collapsed panel opens it, as find in page does.
+      await page.evaluate(() => {
+        location.hash = 'return-window';
+      });
+      await page.waitForFunction(
+        () => !document.querySelectorAll('.faq-panel')[1]?.hasAttribute('hidden'),
+      );
+      await page.locator('.note-toggle').click();
+      await page.waitForFunction(() => document.querySelector('.note')?.hasAttribute('data-leave'));
+      // It stays for its transition, then leaves the page.
+      assert((await page.locator('.note').count()) === 1, 'the note left before its transition');
+      await page.waitForFunction(() => !document.querySelector('.note'));
+    },
+  );
+
   await step('axe-core: the page has no violations', async () => {
     await page.goto(`${url}/`);
     // axe runs as a script of the page, which Playwright adds.
