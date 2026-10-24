@@ -68,6 +68,12 @@ const files = new Map(
   const { label } = $props<{ label: T.Label }>();
 </script>
 <p>{label}</p>`,
+    '/app/Passed.brm': `<script>
+  import * as api from './api.ts';
+  const { feed } = api;
+  const stories = await $memo(feed());
+</script>
+<p>{stories.length}</p>`,
     '/app/Later.brm': `#defer ('visible') { <p>Later</p> } #else { <p>Wait</p> }`,
     '/app/Any.brm': `<script>
   const { as } = $props<{ as: string }>();
@@ -126,6 +132,7 @@ describe('classifyComponents', () => {
     expect(needs('/app/Where.brm')).toEqual(['route $route']);
     expect(needs('/app/Agent.brm')).toEqual(['request * as server']);
     expect(needs('/app/Stories.brm')).toEqual(['server * as api']);
+    expect(needs('/app/Passed.brm')).toEqual(['server * as api']);
     // A component that renders itself gets the needs of what else it renders.
     expect(needs('/app/Thread.brm')).toEqual(['server feed via /app/Feed.brm']);
     expect(needs('/app/Later.brm')).toEqual(['defer #defer']);
@@ -274,5 +281,39 @@ describe('propControls', () => {
       { filename: '/app/Generic.brm' },
     );
     expect(propControls(file)).toBeUndefined();
+  });
+
+  it('keeps a prop whose name is a number next to a method', () => {
+    const file = parse(
+      `<script>
+  interface A {
+    '0'?: string;
+  }
+  interface B {
+    go(): void;
+  }
+  const props = $props<B & A>();
+</script>
+<p>x</p>`,
+      { filename: '/app/Numbered.brm' },
+    );
+    expect(propControls(file)).toEqual([{ name: '0', optional: true, kind: 'text' }]);
+  });
+
+  it('reads a type that many branches reach in little time', () => {
+    const levels = Array.from({ length: 30 }, (_, index) =>
+      index === 0
+        ? 'interface T0 { label: string; }'
+        : `interface T${index} extends T${index - 1}, T${index - 1} { p${index}?: number; }`,
+    );
+    const file = parse(
+      `<script>
+  ${levels.join('\n  ')}
+  const props = $props<T29>();
+</script>
+<p>x</p>`,
+      { filename: '/app/Deep.brm' },
+    );
+    expect(propControls(file)).toHaveLength(30);
   });
 });
