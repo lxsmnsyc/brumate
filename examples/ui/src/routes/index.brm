@@ -2,10 +2,15 @@
   import { createForm } from 'brumate/forms';
   import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import Form from '@brumate/ui/Form.brm';
   import Input from '@brumate/ui/Input.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
   import SearchField from '@brumate/ui/SearchField.brm';
+  import Switch from '@brumate/ui/Switch.brm';
   import TextArea from '@brumate/ui/TextArea.brm';
   import TextField from '@brumate/ui/TextField.brm';
   import { Order } from '../order.ts';
@@ -25,6 +30,9 @@
   let pinned = $signal(false);
   let query = $signal('');
   let searched = $signal('');
+  let size = $signal<string | null>(null);
+  let toppings = $signal<string[]>([]);
+  let dark = $signal(false);
 
   async function order(form: FormData) {
     'use server';
@@ -145,6 +153,27 @@
   <p class="searched">Searched for {searched || 'nothing yet'}.</p>
 </section>
 
+<section aria-labelledby="boxes">
+  <h2 id="boxes">Checkbox, CheckboxGroup, RadioGroup and Switch</h2>
+  <Form class="pizza">
+    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired=(true)>
+      <Label>Toppings</Label>
+      <Checkbox class="box" value="cheese"><span class="mark" aria-hidden="true"></span>Cheese</Checkbox>
+      <Checkbox class="box" value="olives"><span class="mark" aria-hidden="true"></span>Olives</Checkbox>
+      <FieldError class="error" />
+    </CheckboxGroup>
+    <RadioGroup class="sizes" name="size" value=$bind(size) orientation="horizontal">
+      <Label>Size</Label>
+      <Radio class="box" value="small"><span class="mark round" aria-hidden="true"></span>Small</Radio>
+      <Radio class="box" value="large"><span class="mark round" aria-hidden="true"></span>Large</Radio>
+    </RadioGroup>
+    <Button class="press" type="submit">Order the pizza</Button>
+  </Form>
+  <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
+  <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
+  <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -220,6 +249,46 @@
 
   :global(.search[data-empty] .clear) {
     visibility: hidden;
+  }
+
+  :global(.box) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-inline-end: 1rem;
+  }
+
+  :global(.mark) {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #555;
+    border-radius: 0.25rem;
+  }
+
+  :global(.mark.round) {
+    border-radius: 50%;
+  }
+
+  :global(.box[data-selected] .mark) {
+    background: #2457d6;
+    border-color: #2457d6;
+  }
+
+  :global(.box[data-focus-visible] .mark),
+  :global(.box[data-focus-visible] .track) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.track) {
+    width: 2rem;
+    height: 1rem;
+    border: 2px solid #555;
+    border-radius: 1rem;
+  }
+
+  :global(.theme[data-selected] .track) {
+    background: #2457d6;
   }
 
   :global(.help) {

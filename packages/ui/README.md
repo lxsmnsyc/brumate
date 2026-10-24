@@ -11,6 +11,8 @@ The package is private while its first phase is built.
 ## Parts
 
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
+- `Checkbox`: a label around a native checkbox, with `data-selected`, `data-indeterminate`, `data-pressed` and the focus and hover of its label.
+- `CheckboxGroup`: checkboxes with one value, a list. With `isRequired`, the browser asks for a box on a submit.
 - `FieldError`: the errors of a field, while it is invalid.
 - `Form`: a form that tells its fields how to validate, and gives them the errors of the server by name.
 - `Group`: parts that belong together, with `data-focus-within`, `data-hovered`, `data-disabled` and `data-invalid`.
@@ -20,8 +22,10 @@ The package is private while its first phase is built.
 - `Keyboard`: a keyboard shortcut, left to right in every language.
 - `Label`: the label of a field, with the `id` and `for` that the field gives.
 - `Link`: a link that presses as a button does, with `data-current`. A disabled link has no address.
+- `RadioGroup` and `Radio`: native radios with one name, so the arrow keys move the choice.
 - `SearchField`: a search input with a button that clears it. Escape clears it, and Enter calls `onSubmit`.
 - `Separator`: an `<hr>`, or a vertical separator.
+- `Switch`: a native checkbox with `role="switch"`.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
 - `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.

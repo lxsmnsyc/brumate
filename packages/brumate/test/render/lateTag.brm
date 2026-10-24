@@ -26,6 +26,7 @@
 #loading {
   <{tag} class="late">{clicks}</>
   <RestInner title=String(clicks)>x</RestInner>
+  <input class="late-box" type="checkbox" checked=(clicks > 5)>
 } #else {
   <p class="fallback">Loading</p>
 }

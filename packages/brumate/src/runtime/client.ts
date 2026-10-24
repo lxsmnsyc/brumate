@@ -308,6 +308,9 @@ function readRecord([script, code]: StateRecord): void {
   }
 }
 
+/** True while `refresh` runs the updates of scopes that the server rendered. */
+let refreshing = false;
+
 /**
  * Updates scopes that the server rendered before values changed on the
  * client, such as the body of a `#loading` block that streams in after an
@@ -348,12 +351,17 @@ function refresh(added: Scope[], memosOnly = false): void {
         return;
       }
       const updates = await loadPart(module, 'update', 'state');
-      for (const scope of list) {
-        for (const name of byKind.get(scope.k)!) {
-          if (scopes.has(scope.id)) {
-            (updates[name] as (scope: Scope) => void)(scope);
+      refreshing = true;
+      try {
+        for (const scope of list) {
+          for (const name of byKind.get(scope.k)!) {
+            if (scopes.has(scope.id)) {
+              (updates[name] as (scope: Scope) => void)(scope);
+            }
           }
         }
+      } finally {
+        refreshing = false;
       }
     });
   }
@@ -2036,10 +2044,15 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     // The field takes the value when it differs from the value that updates wrote last, not each
     // time an update runs, so what the user typed or checked stays while the value stays, such
     // as the posted values of a form that validation reads again. Before the first write, the
-    // field is compared as it is now.
+    // field is compared as it is now. An update of a scope that resumed late compares it with
+    // what the server rendered, so a box that the user checked before the code loaded stays.
     const written = fieldValues.get(element) ?? new Map<string, unknown>();
     fieldValues.set(element, written);
-    const before = written.has(name) ? written.get(name) : field[name];
+    let rendered: unknown;
+    if (refreshing) {
+      rendered = name === 'checked' ? field.defaultChecked : field.defaultValue;
+    }
+    const before = written.has(name) ? written.get(name) : (rendered ?? field[name]);
     written.set(name, next);
     if (!Object.is(before, next) && field[name] !== next) {
       field[name] = next;
