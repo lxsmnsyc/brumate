@@ -49,6 +49,10 @@
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
   import Select from '@brumate/ui/Select.brm';
   import SelectValue from '@brumate/ui/SelectValue.brm';
   import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
@@ -92,6 +96,7 @@
   let pet = $signal<Key | null>(null);
   let city = $signal<Key | null>(null);
   let quantity = $signal(1);
+  let span = $signal([20, 60]);
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
@@ -501,6 +506,19 @@
     </Group>
   </NumberField>
   <p class="quantity-state">{quantity}</p>
+</section>
+
+<section aria-labelledby="slider">
+  <h2 id="slider">Slider</h2>
+  <Slider class="span" step=(10) value=$bind(span)>
+    <Label>Span</Label>
+    <SliderOutput class="span-output" />
+    <SliderTrack class="span-track" style="width: 200px; height: 20px; background: #ddd">
+      <SliderThumb class="span-low" index=(0) aria-label="Start" style="top: 0; width: 20px; height: 20px; background: #333" />
+      <SliderThumb class="span-high" index=(1) aria-label="End" style="top: 0; width: 20px; height: 20px; background: #333" />
+    </SliderTrack>
+  </Slider>
+  <p class="span-state">{span.join(' ')}</p>
 </section>
 
 <section aria-labelledby="tooltip">

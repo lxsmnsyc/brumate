@@ -1,0 +1,47 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { SliderContext, closestThumb, startDrag, thumbId, valueAt } from './slider.ts';
+
+  /**
+   * The track of a Slider, as SliderTrack of React Aria Components. It holds the SliderThumbs. A
+   * press on it moves the nearest thumb there, and a drag moves it on. It shows
+   * `data-orientation` and `data-disabled`.
+   */
+  const {
+    style,
+    children,
+    ...rest
+  } = $props<{ style?: string; children?: unknown; [attribute: string]: unknown }>();
+
+  const slider = $getContext(SliderContext);
+  const locale = $getContext(LocaleContext);
+
+  function pressed(event: PointerEvent) {
+    const track = event.currentTarget as HTMLElement;
+    // A press on a thumb is the thumb's own.
+    if (!slider || slider.isDisabled || event.button !== 0 || (event.target as Element).closest?.('[data-slider-thumb]')) {
+      return;
+    }
+    const rtl = locale.direction === 'rtl';
+    const value = valueAt(slider, track, event.clientX, event.clientY, rtl);
+    const index = closestThumb(slider.values, value);
+    document.getElementById(thumbId(slider, index))?.focus({ preventScroll: true });
+    slider.setThumb(index, value);
+    startDrag(
+      event.pointerId,
+      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => slider.setDragging(index, false),
+    );
+  }
+</script>
+
+<div
+  data-slider-track
+  style=(`position: relative; touch-action: none${style ? `; ${style}` : ''}`)
+  data-orientation=(slider?.orientation)
+  data-disabled=(slider?.isDisabled || undefined)
+  onPointerDown=(prevent(pressed))
+  {...rest}
+>{children}</div>

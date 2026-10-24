@@ -34,6 +34,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'text-field',
       'search-field',
       'number-field',
+      'slider',
       'checkbox',
       'checkbox-group',
       'radio-group',
@@ -192,6 +193,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A field for a number, in the format of the locale.',
     href: 'number-field',
     demo: 'NumberFieldDemo',
+  },
+  {
+    title: 'Slider',
+    summary: 'A value, or a range of values, on a track.',
+    href: 'slider',
+    demo: 'SliderDemo',
   },
   {
     title: 'ListBox',

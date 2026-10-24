@@ -1,0 +1,135 @@
+<script>
+  import { $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { SliderContext, percentOf, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
+
+  /**
+   * A thumb of a Slider, as SliderThumb of React Aria Components. `index` is the value that it
+   * moves, 0 by default. It holds an `<input type="range">` out of sight, which a screen reader
+   * reads, the keys move, and a form sends with `name`, also before the code loads.
+   *
+   * - The arrow keys step it, PageUp and PageDown move a tenth of the range, and Home and End go to
+   *   the ends of its range, which the thumbs next to it set.
+   * - A drag moves it.
+   * - It is placed with `left`, or `bottom` when vertical, at its value, and shows
+   *   `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
+   */
+  const {
+    index = 0,
+    name,
+    'aria-label': label,
+    style: ownStyle,
+    children,
+    ...rest
+  } = $props<{
+    index?: number;
+    name?: string;
+    'aria-label'?: string;
+    /** More style, after the place of the thumb. */
+    style?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const slider = $getContext(SliderContext);
+  const locale = $getContext(LocaleContext);
+  let dragging = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  const value = $memo(slider?.values[index] ?? 0);
+  const range = $memo(slider ? thumbRange(slider, index) : [0, 100]);
+  const inputId = $memo(slider ? thumbId(slider, index) : undefined);
+  const percent = $memo(slider ? percentOf(slider, value) * 100 : 0);
+  const vertical = $memo(slider?.orientation === 'vertical');
+  // The thumb sits at its value: from the start of the track, which is the right right to left.
+  const place = $memo(
+    vertical
+      ? `position: absolute; bottom: ${percent}%; transform: translateY(50%)`
+      : locale.direction === 'rtl'
+        ? `position: absolute; right: ${percent}%; transform: translateX(50%)`
+        : `position: absolute; left: ${percent}%; transform: translateX(-50%)`,
+  );
+  const style = $memo(ownStyle ? `${place}; ${ownStyle}` : place);
+
+  function input(event: Event) {
+    slider?.setThumb(index, Number((event.currentTarget as HTMLInputElement).value));
+  }
+
+  function changed() {
+    slider?.setDragging(index, false);
+  }
+
+  // PageUp and PageDown move by a page, which the range input does not know.
+  function keyDown(event: KeyboardEvent) {
+    if (!slider || (event.key !== 'PageUp' && event.key !== 'PageDown')) {
+      return;
+    }
+    slider.setThumb(index, value + (event.key === 'PageUp' ? slider.pageSize : -slider.pageSize));
+    slider.setDragging(index, false);
+  }
+
+  function pressed(event: PointerEvent) {
+    if (!slider || slider.isDisabled || event.button !== 0) {
+      return;
+    }
+    const track = (event.currentTarget as Element).closest('[data-slider-track]');
+    document.getElementById(thumbId(slider, index))?.focus({ preventScroll: true });
+    if (!track) {
+      return;
+    }
+    dragging = true;
+    const rtl = locale.direction === 'rtl';
+    startDrag(
+      event.pointerId,
+      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => {
+        dragging = false;
+        slider.setDragging(index, false);
+      },
+    );
+  }
+
+  function focusIn(event: FocusEvent) {
+    focused = true;
+    focusVisible = (event.target as Element).matches?.(':focus-visible') ?? false;
+  }
+
+  function focusOut() {
+    focused = false;
+    focusVisible = false;
+  }
+</script>
+
+<div
+  data-slider-thumb
+  style=style
+  data-dragging=(dragging || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(slider?.isDisabled || undefined)
+  onPointerDown=(prevent(pressed))
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...rest}
+>
+  {children}
+  <input
+    id=inputId
+    type="range"
+    name=name
+    min=(range[0])
+    max=(range[1])
+    step=(slider?.step)
+    value=(String(value))
+    disabled=(slider?.isDisabled || undefined)
+    aria-label=label
+    aria-labelledby=(slider ? (label ? `${inputId} ${slider.labelId}` : slider.labelId) : undefined)
+    aria-orientation=(vertical ? 'vertical' : undefined)
+    aria-valuetext=(slider?.labels[index])
+    style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0"
+    onInput=input
+    onChange=changed
+    onKeyDown=(prevent(keyDown, 'PageUp', 'PageDown'))
+  >
+</div>
