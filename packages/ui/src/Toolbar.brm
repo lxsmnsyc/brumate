@@ -1,0 +1,43 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { moveFocus, rove } from './toolbar.ts';
+
+  /**
+   * A toolbar, as Toolbar of React Aria Components: role="toolbar", where the arrow keys move
+   * focus between its items, Home and End go to the first and the last, and Tab stops at one
+   * item. Right to left, the arrow keys of a horizontal toolbar turn around. It shows
+   * `data-orientation`.
+   */
+  const { orientation = 'horizontal', children, ...rest } = $props<{
+    orientation?: 'horizontal' | 'vertical';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const locale = $getContext(LocaleContext);
+
+  function keyDown(event: KeyboardEvent) {
+    moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
+  }
+
+  function focusIn(event: FocusEvent) {
+    const toolbar = event.currentTarget as Element;
+    const target = document.activeElement;
+    // Handlers run after the event, so focus can have moved on.
+    if (target && toolbar.contains(target)) {
+      rove(toolbar, target);
+    }
+  }
+</script>
+
+<!-- Up and Down would scroll the page. The other keys keep their default, for a field inside. -->
+<div
+  role="toolbar"
+  aria-orientation=orientation
+  data-orientation=orientation
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown'))
+  onFocusIn=focusIn
+  {...rest}
+>{children}</div>

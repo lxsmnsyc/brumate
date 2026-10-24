@@ -1,0 +1,53 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Breadcrumb from '../../src/Breadcrumb.brm';
+  import Breadcrumbs from '../../src/Breadcrumbs.brm';
+  import Button from '../../src/Button.brm';
+  import FileTrigger from '../../src/FileTrigger.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import Link from '../../src/Link.brm';
+  import Meter from '../../src/Meter.brm';
+  import ProgressBar from '../../src/ProgressBar.brm';
+  import ToggleButton from '../../src/ToggleButton.brm';
+  import ToggleButtonGroup from '../../src/ToggleButtonGroup.brm';
+  import Toolbar from '../../src/Toolbar.brm';
+
+  let align = $signal(['left']);
+  let styles = $signal<string[]>([]);
+  let picked = $signal('');
+</script>
+
+<Toolbar class="tools" aria-label="Text">
+  <Button class="cut">Cut</Button>
+  <Button class="copy">Copy</Button>
+  <Button class="paste">Paste</Button>
+</Toolbar>
+<I18nProvider locale="he-IL">
+  <Toolbar class="rtl" aria-label="Right to left">
+    <Button class="first">A</Button>
+    <Button class="second">B</Button>
+  </Toolbar>
+</I18nProvider>
+<ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection=(true)>
+  <ToggleButton id="left" class="left">Left</ToggleButton>
+  <ToggleButton id="center" class="center">Center</ToggleButton>
+</ToggleButtonGroup>
+<ToggleButtonGroup class="styles" aria-label="Style" selectionMode="multiple" selectedKeys=$bind(styles)>
+  <ToggleButton id="bold" class="bold">Bold</ToggleButton>
+  <ToggleButton id="italic" class="italic">Italic</ToggleButton>
+</ToggleButtonGroup>
+<p class="keys">{align.join(',')}|{styles.join(',')}</p>
+<nav aria-label="Trail">
+  <Breadcrumbs class="trail">
+    <Breadcrumb><Link class="home" href="/">Home</Link></Breadcrumb>
+    <Breadcrumb isCurrent=(true)><Link class="here" href="/docs">Docs</Link></Breadcrumb>
+  </Breadcrumbs>
+</nav>
+<Meter class="disk" value=(40)><Label>Disk</Label></Meter>
+<ProgressBar class="upload" value=(3) maxValue=(4) formatOptions=({ style: 'decimal' })><Label>Upload</Label></ProgressBar>
+<ProgressBar class="waiting" isIndeterminate=(true)><Label>Waiting</Label></ProgressBar>
+<FileTrigger allowsMultiple=(true) acceptedFileTypes=(['image/png']) onSelect=((files) => (picked = String(files?.length ?? 0)))>
+  <Button class="pick">Pick</Button>
+</FileTrigger>
+<p class="picked">{picked}</p>
