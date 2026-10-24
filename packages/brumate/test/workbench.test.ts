@@ -61,6 +61,13 @@ const files = new Map(
   const { depth } = $props<{ depth: number }>();
 </script>
 #if (depth > 0) { <Thread depth=(depth - 1) /> } #else { <Feed /> }`,
+    '/app/Where.brm': `<p>{$route().path}</p>`,
+    '/app/Typed.brm': `<script>
+  import * as T from './api.ts';
+  import * as server from 'brumate/server';
+  const { label } = $props<{ label: T.Label }>();
+</script>
+<p>{label}</p>`,
     '/app/Later.brm': `#defer ('visible') { <p>Later</p> } #else { <p>Wait</p> }`,
     '/app/Any.brm': `<script>
   const { as } = $props<{ as: string }>();
@@ -107,6 +114,8 @@ describe('classifyComponents', () => {
     expect(classes.get('/app/Link.brm')!.selfContained).toBe(true);
     // A call in a comment or a string is not a call.
     expect(classes.get('/app/Quoted.brm')!.selfContained).toBe(true);
+    // A namespace that only types use, or that nothing uses, is not a need.
+    expect(classes.get('/app/Typed.brm')!.selfContained).toBe(true);
   });
 
   it('finds what a component needs, also through the components that it renders', () => {
@@ -114,6 +123,7 @@ describe('classifyComponents', () => {
     expect(needs('/app/Page.brm')).toEqual(['server feed via /app/Feed.brm']);
     expect(needs('/app/Status.brm')).toEqual(['request getEvent']);
     expect(needs('/app/Crumbs.brm')).toEqual(['route $route']);
+    expect(needs('/app/Where.brm')).toEqual(['route $route']);
     expect(needs('/app/Agent.brm')).toEqual(['request * as server']);
     expect(needs('/app/Stories.brm')).toEqual(['server * as api']);
     // A component that renders itself gets the needs of what else it renders.
@@ -201,6 +211,67 @@ describe('propControls', () => {
 </script>
 <p>{label}</p>`,
       { filename: '/app/Imported.brm' },
+    );
+    expect(propControls(file)).toBeUndefined();
+  });
+
+  it('reads a type that two branches reach, and keeps a prop required when one branch requires it', () => {
+    const file = parse(
+      `<script>
+  interface Base {
+    label: number;
+    id: string;
+  }
+  interface Mid extends Base {
+    label: string;
+  }
+  interface Extra {
+    note?: string;
+    id?: string;
+  }
+  const { label } = $props<Mid & Base & Partial<Extra>>();
+</script>
+<p>{label}</p>`,
+      { filename: '/app/Both.brm' },
+    );
+    const controls = propControls(file)!;
+    expect(controls.map((control) => control.name)).toEqual(['label', 'id', 'note']);
+    expect(controls.find((control) => control.name === 'id')!.optional).toBe(false);
+    expect(controls.find((control) => control.name === 'note')!.optional).toBe(true);
+  });
+
+  it('puts the prop of an interface in the place of the one that it replaces', () => {
+    const file = parse(
+      `<script>
+  interface Base {
+    label: number;
+    id: string;
+  }
+  interface Props extends Base {
+    label: string;
+  }
+  const { label } = $props<Props>();
+</script>
+<p>{label}</p>`,
+      { filename: '/app/Override.brm' },
+    );
+    expect(propControls(file)).toEqual([
+      { name: 'label', optional: false, kind: 'text' },
+      { name: 'id', optional: false, kind: 'text' },
+    ]);
+  });
+
+  it('has no controls for a generic type', () => {
+    const file = parse(
+      `<script>
+  interface Base<T> {
+    value: T;
+  }
+  interface Props extends Base<string> {}
+  const { value } = $props<Props>();
+</script>
+<p>{value}</p>`,
+      { filename: '/app/Generic.brm' },
     );
     expect(propControls(file)).toBeUndefined();
   });
