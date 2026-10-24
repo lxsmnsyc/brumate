@@ -103,6 +103,8 @@ export interface Scope {
   c?: Record<number, ScopeId>;
   /** The scope that rendered a component's root scope. */
   o?: Scope;
+  /** The root scopes of the components that this scope rendered, which go with it. */
+  owned?: Set<Scope>;
   /** For children that a component inserted, the scope where they are, for contexts. */
   t?: Scope;
   /** The values that the scope provides, by context key. */
@@ -472,6 +474,9 @@ function addScopes(state: PageState, root: string): Scope[] {
     }
     if (record.o !== undefined) {
       scope.o = scopes.get(record.o);
+      if (scope.o) {
+        (scope.o.owned ??= new Set()).add(scope);
+      }
     }
     if (record.t !== undefined) {
       scope.t = scopes.get(record.t);
@@ -1061,8 +1066,7 @@ async function catchInto(
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(owner, kinds);
-  clear(start, end);
+  removeBlock(owner, kinds, start, end);
   insertHTML(end, (updates[fallback] as (parent: Scope, error: unknown) => string)(owner, error));
 }
 
@@ -1625,8 +1629,18 @@ export function descendants(scope: Scope, kind: number, result: Scope[] = []): S
 }
 
 function destroy(scope: Scope): void {
+  // A scope that a block already removed, such as one that is both owned and in the range.
+  if (scopes.get(scope.id) !== scope) {
+    return;
+  }
   if (scope.children.size > 0) {
     for (const child of Array.from(scope.children)) {
+      destroy(child);
+    }
+  }
+  // The components that it rendered have no parent, so they go through their owner.
+  if (scope.owned) {
+    for (const child of Array.from(scope.owned)) {
       destroy(child);
     }
   }
@@ -1670,7 +1684,51 @@ export function removeScope(scope: Scope): void {
   }
   scopes.delete(scope.id);
   scope.p?.children.delete(scope);
+  scope.o?.owned?.delete(scope);
   treeChanges++;
+}
+
+/**
+ * Removes the markup of a block of `scope`, between its markers, with the scopes in it: the
+ * scopes of its kinds, and the scopes whose markup is in it. Those are the components that the
+ * block rendered, whose owner can be `scope` itself, and the children that a component inserted
+ * there. A scope that holds `scope` keeps its markers in the block, so it stays.
+ */
+function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): void {
+  disposeKinds(scope, kinds);
+  if (scopes.size > 0 && start.nextSibling !== end) {
+    const above = new Set<Scope>();
+    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+      above.add(current);
+    }
+    const inside = new Set<Scope>();
+    const add = (id: string): void => {
+      const found = scopes.get(parseId(id));
+      if (found && !above.has(found)) {
+        inside.add(found);
+      }
+    };
+    for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
+      const walker = document.createTreeWalker(
+        node,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT,
+      );
+      for (let current: Node | null = walker.currentNode; current; current = walker.nextNode()) {
+        if (current.nodeType === 1) {
+          const key = (current as Element).getAttribute('b-b');
+          if (key !== null) {
+            add(key.slice(0, key.indexOf(':')));
+          }
+        } else if (MARKER.test((current as Comment).data)) {
+          add((current as Comment).data.slice(1).split(':')[0]!);
+        }
+      }
+    }
+    for (const found of inside) {
+      destroy(found);
+    }
+  }
+  clear(start, end);
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
@@ -2149,8 +2207,7 @@ export function branch(
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   start.data = `b${scope.id}:${anchor}:${index}`;
   const render = renders[index];
   if (render) {
@@ -2176,8 +2233,7 @@ export function rekey(
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   insertHTML(end, render(scope));
 }
 
@@ -2226,8 +2282,7 @@ export async function reset(
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   let html: string;
   try {
     html = (updates[body] as Render)(scope);
@@ -2252,8 +2307,7 @@ export function fill(scope: Scope, anchor: number, render: Render, kinds: number
   }
   start.data += ':1';
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   insertHTML(end, render(scope));
 }
 
@@ -2731,9 +2785,11 @@ export function setVar(scope: Scope, name: string, value: unknown): void {
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
-  // Children that a component inserted find their contexts where they are, through `t`.
+  // A scope reads the contexts of the scopes above it, not its own, so a component can read a
+  // context and provide it again to the scopes inside it. Children that a component inserted
+  // find their contexts where they are, through `t`.
   for (
-    let current: Scope | undefined = scope;
+    let current: Scope | undefined = scope.t ?? scope.p ?? scope.o;
     current;
     current = current.t ?? current.p ?? current.o
   ) {
@@ -2744,7 +2800,10 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
   return undefined;
 }
 
-/** Writes a provided value, and the slot of every scope that reads it from this provider. */
+/**
+ * Writes a provided value, and the slot of every scope that reads it from this provider. The
+ * provider can read the same context from above, which this does not write.
+ */
 export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
@@ -3059,6 +3118,7 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   rendered.push(created);
   if (module !== undefined && owner) {
     created.o = owner;
+    (owner.owned ??= new Set()).add(created);
     owner = undefined;
   }
   // A scope at the top of children that are inserted elsewhere finds its contexts there.

@@ -596,9 +596,9 @@ export class Context {
   }
 
   /**
-   * Reads a context from the nearest scope that provides it, starting at
-   * `scope`. With `slot`, records which slot holds it, so the client can
-   * update it when the provided value changes.
+   * Reads a context from the nearest scope above `scope` that provides it.
+   * With `slot`, records which slot holds it, so the client can update it
+   * when the provided value changes.
    */
   consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
     if (slot !== undefined) {
@@ -606,7 +606,9 @@ export class Context {
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    for (let id: ScopeId | undefined = scope; id !== undefined;) {
+    // A scope reads the contexts of the scopes above it, not its own, so a component can read a
+    // context and provide it again to the scopes inside it.
+    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
       const node = this.find(id);
       if (node?.values?.has(context.key)) {
         return node.values.get(context.key) as T;

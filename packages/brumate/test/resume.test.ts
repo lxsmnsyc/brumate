@@ -2035,6 +2035,19 @@ describe('head in #loading', () => {
   });
 });
 
+describe('removed portals', () => {
+  it('removes the portal of a component, and runs its cleanups, when a block removes the component', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    click(document.querySelector('.portal-remove')!);
+    await waitFor(() => expect(document.querySelector('.portal-open')).toBeNull());
+    expect(document.querySelector('.owned-portal')).toBeNull();
+    expect(document.body.dataset.cleanups).toBe('1');
+    delete document.body.dataset.cleanups;
+  });
+});
+
 describe('portal targets', () => {
   it('moves the body of a #portal when its target changes', async () => {
     await resume('movingPortal', {});
@@ -2718,6 +2731,34 @@ describe('fields in spreads', () => {
     click(document.querySelector('.bump')!);
     await waitFor(() => expect(field.getAttribute('data-count')).toBe('1'));
     expect(field.value).toBe('typed');
+  });
+});
+
+describe('contexts that change', () => {
+  it('updates a component that reads a context and provides it again, and the readers below it', async () => {
+    await resume('tplContextPage', {});
+    const read = () => [
+      ...['direct', 'child', 'script-direct', 'script-child'].map((label) =>
+        text(`.reader.${label}`),
+      ),
+      text('.relay'),
+      text('.reader.relayed'),
+    ];
+    expect(read()).toEqual(['1', '1', '1', '1', '1', '11']);
+    click(document.querySelector('.bump')!);
+    click(document.querySelector('.script-bump')!);
+    // The relay reads the new value from above, and its children read its new value.
+    await waitFor(() => expect(read()).toEqual(['2', '2', '2', '2', '2', '12']));
+  });
+
+  it('updates a context that the script of a template provides, in markup that the browser renders', async () => {
+    await resume('tplContextPage', {});
+    click(document.querySelector('.show')!);
+    const later = () =>
+      [...document.querySelectorAll('.later .reader')].map((element) => element.textContent);
+    await waitFor(() => expect(later()).toEqual(['1', '1']));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(later()).toEqual(['2', '2']));
   });
 });
 

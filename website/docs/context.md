@@ -68,6 +68,7 @@ $setContext(Locale, locale);
 - Call it at the top level of a script. A `<script>` of a block, such as the body of a `#for`, provides to the markup of that block.
 - Providing a signal passes its value. When the signal changes in the browser, every component that reads the context updates.
 - A component further down can provide the same context again for its own part of the page. A component reads the nearest one.
+- A component can read a context and provide it again, such as a value of its own built on the one above. It reads the one above, and the components inside it read its own. When the value above changes, both update.
 - The value goes to the browser with the page, so it must be a value that brumate can send. See [Serializable values](./reference-serialization.md).
 
 ## Reading a value

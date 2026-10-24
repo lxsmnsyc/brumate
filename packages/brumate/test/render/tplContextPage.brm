@@ -1,0 +1,12 @@
+<script>
+  import TplProvider from './TplProvider.brm';
+  import TplReader from './TplReader.brm';
+  import TplRelay from './TplRelay.brm';
+  import TplScriptProvider from './TplScriptProvider.brm';
+</script>
+
+<TplProvider><TplReader label="child" /></TplProvider>
+<TplScriptProvider>
+  <TplReader label="script-child" />
+  <TplRelay><TplReader label="relayed" /></TplRelay>
+</TplScriptProvider>

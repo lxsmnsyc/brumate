@@ -1,0 +1,13 @@
+<script>
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { Level } from './tplContext.ts';
+
+  // Reads a context from above, and provides it again, one more, to its children.
+  const { children } = $props<{ children?: unknown }>();
+  const level = $getContext(Level);
+  const next = $memo(level + 10);
+  $setContext(Level, next);
+</script>
+
+<span class="relay">{level}</span>
+<div class="relayed">{children}</div>

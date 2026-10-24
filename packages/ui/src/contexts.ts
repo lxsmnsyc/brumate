@@ -183,3 +183,25 @@ export interface DisclosureGroupState {
 
 export const DisclosureGroupContext: Context<DisclosureGroupState | null> =
   createContext<DisclosureGroupState | null>('brumate-ui:disclosure-group', null);
+
+/** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
+export interface OverlayTriggerState {
+  isOpen: boolean;
+  triggerId: string;
+  overlayId: string;
+  open: () => void;
+  close: () => void;
+}
+
+export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
+  createContext<OverlayTriggerState | null>('brumate-ui:overlay-trigger', null);
+
+/** What an overlay gives the Dialog inside it: the function that closes the overlay. */
+export interface DialogState {
+  close: () => void;
+}
+
+export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(
+  'brumate-ui:dialog',
+  null,
+);
