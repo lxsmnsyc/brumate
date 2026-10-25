@@ -288,10 +288,13 @@ export function boot(
 
   const apply = (event: Event, element: Element, entry: Entry): boolean => {
     for (const modifier of entry.modifiers) {
-      // `prevent(ArrowDown,Enter)` prevents only these keys, by `event.key`.
+      // `prevent(ArrowDown,Enter)` prevents only these keys, by `event.key`. A key that commits
+      // or moves within the text of an input method, such as Enter while it composes, is the
+      // input method's, so it keeps its default.
       if (
         modifier === 'prevent' ||
         (modifier.startsWith('prevent(') &&
+          !(event as KeyboardEvent).isComposing &&
           modifier
             .slice(8, -1)
             .split(',')

@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import {
     FieldErrorContext,
@@ -10,7 +10,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, firstErrors, messagesOf } from './fields.ts';
 
   /**
    * A text field, as TextField of React Aria Components. It holds a Label, an Input or a
@@ -22,7 +22,13 @@
    *
    * With `validationBehavior="native"`, the default, the browser checks the field when its form
    * is sent, and the FieldError shows its message. After that, the message follows what the user
-   * types. With "aria", the field is never blocked, and `validate` shows its errors at once.
+   * types. `validate`, the errors of the server and `isInvalid` block the form too, from the first
+   * value. With "aria", the field is never blocked, and `validate` shows its errors at once.
+   *
+   * It shows one source of errors at a time, as React Aria does: those of `field`, then those of
+   * the server, then those of `validate` in the aria behavior, then those of the browser.
+   *
+   * A reset of its form gives it back its first value.
    *
    * `field` takes a field of `createForm` from brumate/forms: its name, ID, value, errors and
    * handlers.
@@ -81,6 +87,8 @@
   let { value = ((field?.attrs as { value?: string } | undefined)?.value) ?? '' } = $props<{
     value?: Bindable<string>;
   }>();
+  // The value that a reset of the form gives back.
+  let initial = $signal(value);
 
   const form = $getContext(FormContext);
   const behavior = $memo(validationBehavior ?? form?.validationBehavior ?? 'native');
@@ -98,29 +106,65 @@
   // The messages of the browser, once the field was checked on a submit.
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
-  // The errors of the server, until the user edits the field.
-  let edited = $signal(false);
+  // The errors of the server, until the user edits the field. New errors of the server, such as
+  // those of a later reply, show again.
+  let edited = $signal<unknown>(undefined);
   const serverErrors = $memo(
-    edited
+    form && edited === form.validationErrors
       ? []
       : messagesOf(
           (fieldName ? form?.validationErrors[fieldName] : undefined) as string | string[] | undefined,
         ),
   );
   const ariaErrors = $memo(behavior === 'aria' && validate ? messagesOf(validate(value)) : []);
-  const errors = $memo([
-    ...(field?.errors ?? []),
-    ...serverErrors,
-    ...(behavior === 'native' && committed ? nativeErrors : []),
-    ...ariaErrors,
-  ]);
+  const errors = $memo(
+    firstErrors(
+      field?.errors ?? [],
+      serverErrors,
+      ariaErrors,
+      behavior === 'native' && committed ? nativeErrors : [],
+    ),
+  );
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
 
   function change(next: string) {
     value = next;
-    edited = true;
+    edited = form?.validationErrors ?? null;
     onChange?.(next);
   }
+
+  // The message that blocks the form in the native behavior, as React Aria sets it: the errors
+  // of the server and of `validate`, or a message of its own for `isInvalid`.
+  function customMessage(text: string): string {
+    const messages = [...serverErrors, ...(validate ? messagesOf(validate(text)) : [])];
+    if (messages.length > 0) {
+      return messages.join(' ');
+    }
+    return isInvalid ? 'Invalid value.' : '';
+  }
+
+  // The value blocks the form in the native behavior. A reset of the form gives back the first
+  // value, as it does for a field of the browser.
+  $effect(() => {
+    const element = document.getElementById(id) as HTMLInputElement | null;
+    if (!element) {
+      return;
+    }
+    if (behavior === 'native') {
+      element.setCustomValidity(customMessage(value));
+    }
+    const owner = element.form;
+    if (!owner) {
+      return;
+    }
+    function reset() {
+      value = initial;
+      committed = false;
+      nativeErrors = [];
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  });
 
   function invalidated(message: string, first: boolean) {
     committed = true;
@@ -136,8 +180,8 @@
     if (!element) {
       return;
     }
-    if (validate && behavior === 'native') {
-      element.setCustomValidity(messagesOf(validate(element.value))[0] ?? '');
+    if (behavior === 'native') {
+      element.setCustomValidity(customMessage(element.value));
     }
     if (committed) {
       nativeErrors = element.validity.valid ? [] : [element.validationMessage];
