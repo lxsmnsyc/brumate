@@ -38,6 +38,7 @@ const parts = {
   "h13": () => (update().catch(() => {}), import("./uses-counter.brm?brumate-client&part=h13")),
   "update": update,
 };
+export const partNames = ["h8","h11","h15","h13","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

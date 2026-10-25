@@ -203,8 +203,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
-- A prop whose name starts with `on`, such as `onChange`, loads its code the first time it is called. In the browser, the call returns a promise.
-- Any other function prop, such as `filter` or `isDisabled`, returns its result, so the child can call it in markup or a memo. Its code loads with the page state.
+- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. The same holds for a function in a [context](./context.md).
 
 ### Handlers in a spread
 

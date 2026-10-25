@@ -108,6 +108,7 @@ const parts = {
   "h19": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h19")),
   "update": update,
 };
+export const partNames = ["h7","h8","h9","h10","h11","h12","c16","h17","h19","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

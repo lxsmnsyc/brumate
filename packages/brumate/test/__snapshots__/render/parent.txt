@@ -30,6 +30,7 @@ const parts = {
   "h6": () => import("./parent.brm?brumate-client&part=h6"),
   "update": update,
 };
+export const partNames = ["h3","h6","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

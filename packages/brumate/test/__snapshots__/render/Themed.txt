@@ -21,6 +21,7 @@ export const g = { 1: { 0: [[1, "u1"]] } };
 const parts = {
   "update": () => import("./Themed.brm?brumate-client&part=update"),
 };
+export const partNames = ["update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

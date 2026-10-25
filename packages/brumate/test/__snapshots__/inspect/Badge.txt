@@ -16,5 +16,5 @@ HTML only
   0 elements and 0 inserted values ship no client code
 
 Client modules, before minifying (bytes, gzip)
-  entry: 296 B, 220 B
+  entry: 333 B, 234 B
   update: 108 B, 109 B

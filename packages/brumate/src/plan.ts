@@ -385,10 +385,6 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     if (site.kind === 'prop' && isTemplateValue(site)) {
       // A template that a component renders in the browser, which the core calls at once.
       symbols.set(site, `t${site.id}`);
-    } else if (site.kind === 'prop' && site.valueProp && isFunctionValue(site)) {
-      // A function whose result the child can need at once, such as a filter in a memo. Its code
-      // loads with the page state, so the browser calls it as the server does.
-      symbols.set(site, `v${site.id}`);
     } else if (site.kind === 'event' || (site.kind === 'prop' && isFunctionValue(site))) {
       symbols.set(site, `h${site.id}`);
     } else if (site.kind === 'client') {

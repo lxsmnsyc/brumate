@@ -67,7 +67,7 @@ export const DEFAULT_MERGE = 4096;
 
 /** The part that holds an export of a client module. */
 export function partOf(name: string): string {
-  return /^[hctv]\d/.test(name) ? name : 'update';
+  return /^[hct]\d/.test(name) ? name : 'update';
 }
 
 // Sites whose code does not run while a body renders.
@@ -234,6 +234,7 @@ class ClientGenerator {
       'const parts = {',
       ...lines,
       '};',
+      `export const partNames = ${JSON.stringify(names)};`,
       '/** Imports a part of this module. */',
       'export function load(part) {',
       '  return parts[part]();',
