@@ -56,9 +56,14 @@
     stopHoverTimer(triggerId);
   }
 
+  // The parent menu closes too, with its `onClose`, and the menus around it.
   function closeAll() {
     close();
-    parentTrigger?.closeAll();
+    if (parent?.closeAll) {
+      parent.closeAll();
+    } else {
+      parentTrigger?.closeAll();
+    }
   }
 
   // Another item of the parent menu took focus, so this submenu is no longer the one in use.

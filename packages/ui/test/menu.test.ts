@@ -189,7 +189,9 @@ it('closes every menu after an action in a submenu', async () => {
   press('Enter');
   await page.waitFor(() => expect(find('.menu')).toBeNull());
   expect(find('.submenu')).toBeNull();
+  // The parent menu closes too, with its `onClose`.
   expect(state(page)[0]).toEqual(['sms']);
+  expect(state(page)[4]).toBe(1);
   expect(state(page)[1]).toBe(false);
 });
 

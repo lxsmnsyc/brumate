@@ -83,3 +83,21 @@ it('acts on a row with Enter and a press when nothing is selectable', async () =
   pressWith(page.get('.sent'));
   await page.waitFor(() => expect(state(page)[1]).toEqual(['inbox', 'sent']));
 });
+
+it('takes Ctrl+A and Escape from a control in a row, and leaves disabled rows out', async () => {
+  const page = await gridlists();
+  const box = page.get('.check-notes input');
+  box.focus();
+  press('a', box, { ctrlKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toEqual(['notes', 'photos']));
+  press('Escape', box);
+  await page.waitFor(() => expect(state(page)[0]).toEqual([]));
+});
+
+it('extends a range with Shift from the row that has focus', async () => {
+  const page = await gridlists();
+  page.get('.grid').focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-notes')));
+  press('ArrowDown', page.get('.row-notes'), { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toEqual(['notes', 'photos']));
+});
