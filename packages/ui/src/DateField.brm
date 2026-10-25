@@ -44,6 +44,7 @@
     isRequired = false,
     isInvalid = false,
     onChange,
+    labelId: givenLabelId,
     children,
     ...rest
   } = $props<{
@@ -58,6 +59,8 @@
     isRequired?: boolean;
     isInvalid?: boolean;
     onChange?: (value: DateString | null) => void;
+    /** The ID of the Label, from a DatePicker around the field, which names its Button too. */
+    labelId?: string;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -65,7 +68,8 @@
 
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);
-  const labelId = $id();
+  const ownLabelId = $id();
+  const labelId = $memo(givenLabelId ?? ownLabelId);
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);

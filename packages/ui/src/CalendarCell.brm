@@ -111,6 +111,7 @@
   <div
     role="button"
     tabindex=(disabled ? undefined : focused ? '0' : '-1')
+    autofocus=((calendar?.autoFocus && focused) || undefined)
     aria-label=label
     aria-disabled=(!selectable || undefined)
     aria-invalid=(invalidValue || undefined)

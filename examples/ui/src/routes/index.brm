@@ -56,6 +56,7 @@
   import DateField from '@brumate/ui/DateField.brm';
   import DateInput from '@brumate/ui/DateInput.brm';
   import TimeField from '@brumate/ui/TimeField.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -107,6 +108,7 @@
   let delivery = $signal<string | null>('2026-10-15');
   let birthday = $signal<string | null>('2026-10-15');
   let pickup = $signal<string | null>('14:30');
+  let departure = $signal<string | null>('2026-10-15');
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
@@ -564,6 +566,26 @@
     <DateInput class="pickup-input" />
   </TimeField>
   <p class="pickup-state">{pickup ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-picker">
+  <h2 id="date-picker">DatePicker</h2>
+  <DatePicker class="departure" name="departure" value=$bind(departure) minValue="2026-10-05">
+    <Label>Departure</Label>
+    <Group class="departure-group">
+      <DateInput class="departure-input" />
+      <Button class="press departure-button">▾</Button>
+    </Group>
+    <Popover class="popover departure-popover">
+      <Dialog>
+        <Calendar class="departure-calendar">
+          <CalendarHeading class="departure-heading" />
+          <CalendarGrid class="departure-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="departure-state">{departure ?? 'none'}</p>
 </section>
 
 <section aria-labelledby="range-calendar">

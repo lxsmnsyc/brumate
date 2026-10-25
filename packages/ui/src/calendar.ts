@@ -42,6 +42,8 @@ export interface CalendarState {
   highlight: (date: DateString) => void;
   /** In a RangeCalendar, drops the first date of a range that is not done. */
   cancel: () => void;
+  /** In a DatePicker, the focused date takes focus when the popover opens. */
+  autoFocus: boolean;
   /** The date that has focus, or that gets it when the grid gets focus. */
   focusedDate: DateString;
   /** The first date that shows. */
@@ -72,6 +74,21 @@ export interface CalendarState {
   /** Selects the focused date, unless it cannot be picked. */
   selectFocused: () => void;
 }
+
+/**
+ * What a DatePicker or a DateRangePicker gives the Calendar or the RangeCalendar in its popover:
+ * the value that it shows, and the function that takes a date or a range and closes the popover.
+ */
+export interface DatePickerState {
+  value: DateString | DateRange | null;
+  select: (value: DateString | DateRange) => void;
+  minValue?: DateString;
+  maxValue?: DateString;
+  isDateUnavailable?: (date: DateString) => boolean;
+}
+
+export const DatePickerContext: Context<DatePickerState | null> =
+  createContext<DatePickerState | null>('brumate-ui:date-picker', null);
 
 export const CalendarContext: Context<CalendarState | null> = createContext<CalendarState | null>(
   'brumate-ui:calendar',

@@ -4,6 +4,7 @@
   import type { DateDuration } from '@internationalized/date';
   import {
     CalendarContext,
+    DatePickerContext,
     alignCenter,
     alignEnd,
     alignStart,
@@ -39,9 +40,9 @@
    *   be picked.
    */
   const {
-    minValue,
-    maxValue,
-    isDateUnavailable,
+    minValue: ownMinValue,
+    maxValue: ownMaxValue,
+    isDateUnavailable: ownUnavailable,
     visibleDuration = { months: 1 },
     pageBehavior = 'visible',
     isDisabled = false,
@@ -72,9 +73,14 @@
     [attribute: string]: unknown;
   }>();
   let { value = null } = $props<{ value?: Bindable<DateString | DateRange | null> }>();
+  // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
+  // apply when the Calendar has none of its own.
+  const picker = $getContext(DatePickerContext);
+  const minValue = $memo(ownMinValue ?? picker?.minValue);
+  const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
   let {
     focusedValue = constrain(
-      toDate(firstOf(value) ?? todayString()),
+      toDate(firstOf(picker ? picker.value : value) ?? todayString()),
       minValue,
       maxValue,
     ).toString(),
@@ -94,11 +100,12 @@
   const end = $memo(endOf(toDate(start), visibleDuration).toString());
   const visible = $memo(rangeLabel(toDate(start), toDate(end), locale.locale));
   const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
-  const selection = $memo(selectionOf(value, anchor, hovered));
+  const current = $memo(picker ? picker.value : value);
+  const selection = $memo(selectionOf(current, anchor, hovered));
   const unavailable = $memo(
     selection !== null &&
       selection.some(
-        (date) => outOfRange(toDate(date), minValue, maxValue) || (isDateUnavailable?.(date) ?? false),
+        (date) => outOfRange(toDate(date), minValue, maxValue) || isDateUnavailable(date),
       ),
   );
   const invalid = $memo(isInvalid || unavailable);
@@ -183,6 +190,11 @@
     ).toString();
   }
 
+  /** True for a date that cannot be picked, by the Calendar's own test or the picker's. */
+  function isDateUnavailable(date: DateString): boolean {
+    return (ownUnavailable ?? picker?.isDateUnavailable)?.(date) ?? false;
+  }
+
   /** The first date of a value: the date, or the start of the range. */
   function firstOf(current: DateString | DateRange | null): DateString | null {
     return typeof current === 'object' && current !== null ? current.start : current;
@@ -206,9 +218,6 @@
 
   /** True when a date between two dates, both in, cannot be picked. */
   function holdsUnavailable(from: DateString, to: DateString): boolean {
-    if (!isDateUnavailable) {
-      return false;
-    }
     for (let date = toDate(from); date.toString() <= to; date = date.add({ days: 1 })) {
       if (isDateUnavailable(date.toString())) {
         return true;
@@ -222,7 +231,7 @@
       return;
     }
     const picked = toDate(date);
-    if (outOfRange(picked, minValue, maxValue) || isDateUnavailable?.(date)) {
+    if (outOfRange(picked, minValue, maxValue) || isDateUnavailable(date)) {
       return;
     }
     focusDate(date);
@@ -240,8 +249,16 @@
       anchor = null;
       hovered = null;
       const next = { start: from, end: to };
+      if (picker) {
+        picker.select(next);
+        return;
+      }
       value = next;
       (onChange as ((value: DateRange) => void) | undefined)?.(next);
+      return;
+    }
+    if (picker) {
+      picker.select(date);
       return;
     }
     if (value !== date) {
@@ -258,13 +275,14 @@
     id,
     locale: locale.locale,
     direction: locale.direction,
-    value: typeof value === 'string' ? value : null,
+    value: typeof current === 'string' ? current : null,
     selection,
     highlight: (date: DateString) => {
       if (anchor !== null) {
         hovered = date;
       }
     },
+    autoFocus: picker !== null,
     cancel: () => {
       anchor = null;
       hovered = null;
@@ -288,7 +306,7 @@
       focusDate(change(toDate(focusedValue)).toString()),
     selectDate,
     selectFocused: () => {
-      if (!isDateUnavailable?.(focusedValue)) {
+      if (!isDateUnavailable(focusedValue)) {
         selectDate(focusedValue);
       }
     },

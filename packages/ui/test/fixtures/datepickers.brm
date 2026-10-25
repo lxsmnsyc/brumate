@@ -1,0 +1,38 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Calendar from '../../src/Calendar.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import CalendarHeading from '../../src/CalendarHeading.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DatePicker from '../../src/DatePicker.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import Group from '../../src/Group.brm';
+  import Label from '../../src/Label.brm';
+  import Popover from '../../src/Popover.brm';
+
+  let trip = $signal<string | null>('2026-10-15');
+</script>
+
+<main>
+  <DatePicker class="trip" name="trip" value=$bind(trip) minValue="2026-10-05">
+    <Label class="trip-label">Departure</Label>
+    <Group class="trip-group">
+      <DateInput class="trip-input" />
+      <Button class="trip-button">▼</Button>
+    </Group>
+    <Popover class="trip-popover">
+      <Dialog class="trip-dialog">
+        <Calendar class="trip-calendar">
+          <header>
+            <Button slot="previous" class="trip-previous">‹</Button>
+            <CalendarHeading class="trip-heading" />
+            <Button slot="next" class="trip-next">›</Button>
+          </header>
+          <CalendarGrid class="trip-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="state">{JSON.stringify([trip])}</p>
+</main>
