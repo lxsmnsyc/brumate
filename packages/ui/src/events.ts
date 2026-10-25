@@ -14,6 +14,8 @@ export interface PressEvent {
   /** The point of the pointer in the viewport, or 0 for a key. */
   x: number;
   y: number;
+  /** The pointer of a press by a pointer, which a long press cancels. */
+  pointerId?: number;
 }
 
 export interface HoverEvent {
