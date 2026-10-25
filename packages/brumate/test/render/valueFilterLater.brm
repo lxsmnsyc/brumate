@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import KeptItems from './KeptItems.brm';
+
+  let shown = $signal(false);
+
+  function even(value: number) {
+    return value % 2 === 0;
+  }
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <KeptItems items=([1, 2, 3, 4, 5, 6]) keep=even />
+}

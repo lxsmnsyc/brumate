@@ -3540,7 +3540,15 @@ export function handlerProp(
     return value;
   }
   const instance = resolveScope(scope);
-  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // The function runs at once and returns its result, as a reference in the page state does.
+  // Its export reads the current values of its scope. Before the code of its component loads,
+  // such as while the browser renders the component for the first time, the function of the
+  // render runs.
+  const handler = (...args: unknown[]): unknown => {
+    const fn = loadedFunction(ref);
+    const all = [...bound, ...args];
+    return fn ? fn(instance, ...all) : (value as (...rest: unknown[]) => unknown)(...all);
+  };
   // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
   // A scope that is not in the page yet has its ID in `scope`.
   handlerReferences.set(

@@ -2288,6 +2288,21 @@ describe('templates called again', () => {
   });
 });
 
+describe('function props in markup that the browser renders', () => {
+  it('return their results, in a memo, in markup and in a handler', async () => {
+    await resume('valueFilterLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4'));
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept']);
+    click(document.querySelector('.more')!);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4,6'));
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.picked')).toBe('true'));
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];
