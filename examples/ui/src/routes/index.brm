@@ -48,6 +48,13 @@
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import Tree from '@brumate/ui/Tree.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Cell from '@brumate/ui/Cell.brm';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
   import TreeItem from '@brumate/ui/TreeItem.brm';
   import { treeData } from '@brumate/ui/data.brm.ts';
   import type { TreeDataNode } from '@brumate/ui/data.ts';
@@ -141,6 +148,23 @@
     ],
   });
   let openFolders = $signal<Key[]>([]);
+  // A table of planets, sorted by the column that the user picks.
+  const planets = [
+    { id: 'mercury', name: 'Mercury', moons: 0 },
+    { id: 'earth', name: 'Earth', moons: 1 },
+    { id: 'mars', name: 'Mars', moons: 2 },
+  ];
+  let planetSort = $signal<SortDescriptor | null>(null);
+  let pickedPlanets = $signal<Key[]>([]);
+  const planetRows = $memo(
+    planetSort
+      ? [...planets].sort((a, b) => {
+          const order =
+            planetSort!.column === 'moons' ? a.moons - b.moons : a.name.localeCompare(b.name);
+          return planetSort!.direction === 'ascending' ? order : -order;
+        })
+      : planets,
+  );
   let pickedFolder = $signal<Key[]>([]);
   let petSent = $signal('');
 
@@ -551,6 +575,27 @@
   <Tree class="folder-tree" aria-label="Folders" items=folders item=folderRow selectionMode="single" selectedKeys=$bind(pickedFolder) expandedKeys=$bind(openFolders) />
   <p class="folder-state">{openFolders.join(',') || 'None'} / {pickedFolder.join(',') || 'None'}</p>
   <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
+</section>
+
+<section aria-labelledby="table">
+  <h2 id="table">Table</h2>
+  <Table class="planet-table" aria-label="Planets" selectionMode="multiple" selectedKeys=$bind(pickedPlanets) sortDescriptor=$bind(planetSort)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="planet-all" aria-label="Select all">All</Checkbox></Column>
+      <Column id="name" class="planet-name-column" isRowHeader allowsSorting>Name</Column>
+      <Column id="moons" class="planet-moons-column" allowsSorting>Moons</Column>
+    </TableHeader>
+    <TableBody>
+      #for (planet of planetRows by planet.id) {
+        <Row id=(planet.id) class=(`planet-row planet-${planet.id}`)>
+          <Cell><Checkbox slot="selection" aria-label=(`Select ${planet.name}`) /></Cell>
+          <Cell class="planet-name">{planet.name}</Cell>
+          <Cell class=(`planet-moons planet-moons-${planet.id}`)>{planet.moons}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+  <p class="planet-state">{pickedPlanets.join(',') || 'None'} / {planetSort ? `${planetSort.column} ${planetSort.direction}` : 'unsorted'}</p>
 </section>
 
 <section aria-labelledby="numberfield">

@@ -703,6 +703,73 @@
     padding: 0.2rem 0.6rem;
   }
 
+  /* A table: its sorted column shows an arrow, and selected rows take the accent. */
+  :global(.ui-table) {
+    width: min(32rem, 100%);
+    border-collapse: collapse;
+    border: 1px solid var(--border);
+    outline: none;
+  }
+
+  :global(.ui-table:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-column) {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    text-align: start;
+    outline: none;
+  }
+
+  :global(.ui-column[data-allows-sorting]) {
+    cursor: pointer;
+  }
+
+  :global(.ui-column[data-sort-direction='ascending'])::after {
+    content: ' ▲';
+  }
+
+  :global(.ui-column[data-sort-direction='descending'])::after {
+    content: ' ▼';
+  }
+
+  :global(.ui-select-column) {
+    width: 2rem;
+  }
+
+  :global(.ui-tablerow) {
+    outline: none;
+  }
+
+  :global(.ui-tablerow[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-tablerow[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-tablerow[data-focus-visible]),
+  :global(.ui-column:focus-visible),
+  :global(.ui-cell:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-cell) {
+    padding: 0.35rem 0.6rem;
+    font-weight: normal;
+    text-align: start;
+    outline: none;
+  }
+
+  :global(.ui-number) {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* A tree: rows indented by their level, with a chevron that turns while the row is open. */
   :global(.ui-tree) {
     display: grid;

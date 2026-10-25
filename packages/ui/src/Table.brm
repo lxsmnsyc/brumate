@@ -1,0 +1,390 @@
+<script>
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    ListBoxContext,
+    enabledItems,
+    focusItem,
+    isTyping,
+    itemsOf,
+    keyOf,
+    keysBetween,
+    lastFocusedOf,
+    nextSelection,
+    rangeOf,
+    sameKeys,
+    setLastFocused,
+    setRange,
+    typeahead,
+  } from './collection.ts';
+  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import { LocaleContext } from './locale.ts';
+  import { tabbables } from './overlay.ts';
+  import { TableContext, nextSort } from './table.ts';
+  import type { SortDescriptor, TableColumn } from './table.ts';
+
+  /**
+   * A table of rows and columns that the user can move through, select and sort, as Table of
+   * React Aria Components. It holds a TableHeader of Column elements and a TableBody of Row
+   * elements, each with a Cell for each column, written out or from a `#for`.
+   *
+   * - Tab stops once, at the row or cell that had focus last, and Tab from inside leaves it.
+   * - Up and Down move between rows, and from a cell to the cell of its column in the next row.
+   *   Up from the first row goes to the column headers.
+   * - Right from a row goes to its first cell, and along its cells, then back to the row. Left
+   *   goes the other way. Right to left, they turn around. On the column headers, they move
+   *   between columns, round the ends.
+   * - Home and End go to the first and the last row, or the first and the last cell of a row.
+   *   With Ctrl or Cmd, they go to the first cell of the first row, or the last of the last.
+   * - Selection is as in a GridList, on the rows. A Checkbox with `slot="selection"` in a Column
+   *   selects all the rows, and one in a Cell selects its row.
+   * - `sortDescriptor` is the column and direction of the sort. A press of a Column with
+   *   `allowsSorting`, or Enter on it, sorts by it, and `onSortChange` hears of it.
+   * - Enter acts on a row with `onRowAction`, and a press does when nothing is selectable.
+   */
+  const {
+    selectionMode = 'none',
+    selectionBehavior = 'toggle',
+    disabledKeys = [],
+    disallowEmptySelection = false,
+    escapeKeyBehavior = 'clearSelection',
+    onRowAction,
+    onSelectionChange,
+    onSortChange,
+    children,
+    ...rest
+  } = $props<{
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onRowAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onSortChange?: (descriptor: SortDescriptor) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  let { sortDescriptor = null } = $props<{ sortDescriptor?: Bindable<SortDescriptor | null> }>();
+
+  const locale = $getContext(LocaleContext);
+  const hasAction = $isPassed(onRowAction);
+  const tableId = $id();
+  let root = $signal<HTMLElement>();
+  // How many rows can be selected, which the browser counts when the selection changes. The
+  // box in the header is checked when they all are.
+  let total = $signal(-1);
+  // The columns, which each Column adds as it renders.
+  const columns: TableColumn[] = [];
+
+  function rows(): HTMLElement[] {
+    const element = root;
+    return element ? itemsOf(element, 'row').filter((row) => row.closest('tbody')) : [];
+  }
+
+  function setSelection(next: Key[]) {
+    if (!sameKeys(next, selectedKeys)) {
+      selectedKeys = next;
+      onSelectionChange?.(next);
+    }
+    total = rows().filter((row) => row.getAttribute('aria-disabled') !== 'true').length;
+  }
+
+  function select(key: Key, request: SelectionRequest) {
+    const element = root;
+    const range = element ? rangeOf(element) : undefined;
+    const shift = Boolean(element && request.shift && range);
+    const items = rows().filter((row) => row.getAttribute('aria-disabled') !== 'true');
+    setSelection(
+      nextSelection(selectedKeys, key, {
+        mode: selectionMode,
+        behavior: selectionBehavior,
+        disallowEmpty: disallowEmptySelection,
+        request: { ...request, shift },
+        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
+        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        disabled: disabledKeys,
+      }),
+    );
+    if (element) {
+      setRange(element, shift ? range!.anchor : key, key);
+    }
+  }
+
+  function action(key: Key) {
+    onRowAction?.(key);
+  }
+
+  function selectableKeys(): Key[] {
+    return rows()
+      .map((row) => keyOf(row)!)
+      .filter((key) => !disabledKeys.includes(key));
+  }
+
+  function toggleAll() {
+    if (selectionMode !== 'multiple') {
+      return;
+    }
+    const all = selectableKeys();
+    setSelection(all.every((key) => selectedKeys.includes(key)) ? [] : all);
+  }
+
+  function sort(column: Key) {
+    const next = nextSort(sortDescriptor, column);
+    sortDescriptor = next;
+    onSortChange?.(next);
+  }
+
+  const selectAll = $memo({
+    all: total > 0 && selectedKeys.length >= total,
+    some: selectedKeys.length > 0,
+  });
+
+  // The rows read the selection from the state of a ListBox, as the rows of a GridList do.
+  $setContext(ListBoxContext, {
+    selectionMode,
+    selectionBehavior,
+    selectedKeys,
+    disabledKeys,
+    select,
+    action,
+    hasAction,
+  });
+  $setContext(TableContext, { columns, sortDescriptor, sort, selectAll, toggleAll });
+
+  /** The row, cell or column header of the table that holds an element. */
+  function itemOf(target: EventTarget | null) {
+    const element = root;
+    const item = (target as Element | null)?.closest?.(
+      '[role=row][data-key], [role=gridcell], [role=rowheader], [role=columnheader]',
+    ) as HTMLElement | null;
+    return item && element?.contains(item) && item.closest('[data-collection]') === element
+      ? item
+      : undefined;
+  }
+
+  function cellsOf(row: HTMLElement): HTMLElement[] {
+    return [...row.children].filter((cell) =>
+      /^(gridcell|rowheader|columnheader)$/.test(cell.getAttribute('role') ?? ''),
+    ) as HTMLElement[];
+  }
+
+  function headers(): HTMLElement[] {
+    const element = root;
+    return element
+      ? [...element.querySelectorAll<HTMLElement>('thead [role=columnheader]')]
+      : [];
+  }
+
+  /** Focuses a row or a header, or a cell, or the first control in a cell, as React Aria does. */
+  function focusOn(item: HTMLElement | undefined) {
+    if (!item) {
+      return;
+    }
+    const role = item.getAttribute('role');
+    focusItem(role === 'gridcell' || role === 'rowheader' ? (tabbables(item)[0] ?? item) : item);
+  }
+
+  function focused(event: FocusEvent) {
+    const element = root;
+    // The table passes its focus on to the row or cell that had it last, or to a row.
+    if (element && event.target === element && document.activeElement === element) {
+      const items = enabledItems(element, 'row').filter((row) => row.closest('tbody'));
+      const last = lastFocusedOf(element);
+      const lastCell = element.querySelector<HTMLElement>('[data-last-focused]');
+      focusOn(
+        lastCell ??
+          items.find((item) => last !== undefined && keyOf(item) === last) ??
+          items.find((item) => item.getAttribute('aria-selected') === 'true') ??
+          items[0] ??
+          headers()[0],
+      );
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    const element = root;
+    const item = itemOf(event.target);
+    if (!element || !item) {
+      return;
+    }
+    // While an item has focus, Tab leaves the table rather than stopping at it.
+    element.tabIndex = -1;
+    element.querySelector('[data-last-focused]')?.removeAttribute('data-last-focused');
+    const row = item.closest<HTMLElement>('[role=row][data-key]');
+    if (row) {
+      setLastFocused(element, keyOf(row)!);
+    }
+    if (item !== row) {
+      item.setAttribute('data-last-focused', '');
+    }
+  }
+
+  function focusOut(event: FocusEvent) {
+    const element = root;
+    if (element && !element.contains(event.relatedTarget as Node | null)) {
+      element.tabIndex = 0;
+    }
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const element = root;
+    const target = event.target as HTMLElement;
+    const item = itemOf(target);
+    if (!element || !item) {
+      return;
+    }
+    // A field in a cell keeps its own keys, other than Up, Down and Tab.
+    const typing =
+      !item.contains(target) || target === item
+        ? false
+        : /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
+          (target instanceof HTMLInputElement &&
+            !/^(checkbox|radio|button|submit|reset)$/.test(target.type));
+    if (event.key === 'Tab') {
+      // Tab leaves the table: the browser moves on from its last control, or back from it.
+      const all = tabbables(element);
+      if (event.shiftKey) {
+        element.focus({ preventScroll: true });
+      } else if (all.length > 0) {
+        all.at(-1)!.focus({ preventScroll: true });
+      }
+      return;
+    }
+    const role = item.getAttribute('role');
+    const isHeader = role === 'columnheader';
+    const isRow = role === 'row';
+    const row = isHeader ? undefined : item.closest<HTMLElement>('[role=row][data-key]')!;
+    const bodyRows = enabledItems(element, 'row').filter((one) => one.closest('tbody'));
+    const rowAt = row ? bodyRows.indexOf(row) : -1;
+    const column = isRow ? -1 : isHeader ? headers().indexOf(item) : cellsOf(row!).indexOf(item);
+    const rtl = locale.direction === 'rtl';
+    const key = row ? keyOf(row) : undefined;
+    const replace = selectionBehavior === 'replace';
+    const toggle = event.ctrlKey || event.metaKey;
+    const global = toggle;
+    let next: HTMLElement | undefined;
+    let moved = false;
+    if (event.key === 'ArrowDown') {
+      moved = true;
+      if (isHeader) {
+        next = bodyRows[0] && cellsOf(bodyRows[0])[column];
+      } else {
+        const below = bodyRows[rowAt + 1];
+        next = below && (isRow ? below : cellsOf(below)[column]);
+      }
+    } else if (event.key === 'ArrowUp') {
+      moved = true;
+      if (!isHeader) {
+        const above = bodyRows[rowAt - 1];
+        next = above
+          ? isRow
+            ? above
+            : cellsOf(above)[column]
+          : headers()[isRow ? 0 : column];
+      }
+    } else if (!typing && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+      moved = true;
+      const forward = (event.key === 'ArrowRight') !== rtl;
+      if (isHeader) {
+        const all = headers();
+        next = all[(column + (forward ? 1 : -1) + all.length) % all.length];
+      } else if (isRow) {
+        const cells = cellsOf(row!);
+        next = forward ? cells[0] : cells.at(-1);
+      } else {
+        next = cellsOf(row!)[column + (forward ? 1 : -1)] ?? row;
+      }
+    } else if (!typing && (event.key === 'Home' || event.key === 'End')) {
+      moved = true;
+      const first = event.key === 'Home';
+      if (isHeader) {
+        const all = headers();
+        next = first ? all[0] : all.at(-1);
+      } else if (isRow || global) {
+        const edge = first ? bodyRows[0] : bodyRows.at(-1);
+        next = edge && (isRow ? edge : first ? cellsOf(edge)[0] : cellsOf(edge).at(-1));
+      } else {
+        const cells = cellsOf(row!);
+        next = first ? cells[0] : cells.at(-1);
+      }
+    }
+    if (moved) {
+      focusOn(next);
+      const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
+      const nextKey = nextRow && !next?.closest('thead') ? keyOf(nextRow) : undefined;
+      if (
+        nextKey === undefined ||
+        nextKey === key ||
+        selectionMode === 'none' ||
+        !/^(ArrowUp|ArrowDown|Home|End)$/.test(event.key)
+      ) {
+        return;
+      }
+      if (event.shiftKey && selectionMode === 'multiple') {
+        select(nextKey, { shift: true, toggle: false });
+      } else if (replace && !toggle) {
+        select(nextKey, { shift: false, toggle: false });
+      }
+      return;
+    }
+    if (typing || (target !== item && !isRow)) {
+      return;
+    }
+    if (isHeader) {
+      const id = item.getAttribute('data-key');
+      if ((event.key === 'Enter' || event.key === ' ') && item.hasAttribute('data-allows-sorting') && id) {
+        sort(JSON.parse(id) as Key);
+      }
+      return;
+    }
+    if (event.key === ' ' && !isTyping(element)) {
+      if (key !== undefined) {
+        select(key, { shift: event.shiftKey, toggle: !replace || toggle });
+      }
+      return;
+    }
+    if (event.key === 'Enter' && key !== undefined) {
+      if (hasAction) {
+        action(key);
+      } else {
+        select(key, { shift: false, toggle: !replace });
+      }
+      return;
+    }
+    if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
+      setSelection(selectableKeys());
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (
+        escapeKeyBehavior === 'clearSelection' &&
+        !disallowEmptySelection &&
+        selectedKeys.length > 0
+      ) {
+        setSelection([]);
+      }
+      return;
+    }
+    if (isRow) {
+      focusOn(typeahead(element, bodyRows, row, event));
+    }
+  }
+</script>
+
+<table
+  ref=root
+  id=tableId
+  role="grid"
+  tabindex="0"
+  data-collection
+  aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
+  onFocus=focused
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
+  {...rest}
+>{children}</table>

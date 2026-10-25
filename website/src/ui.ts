@@ -64,7 +64,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'selection-indicator',
     ],
   },
-  { title: 'Data', pages: ['tree', 'data'] },
+  { title: 'Data', pages: ['table', 'tree', 'data'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -288,6 +288,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Rows with buttons and checkboxes, to select and act on.',
     href: 'grid-list',
     demo: 'GridListDemo',
+  },
+  {
+    title: 'Table',
+    summary: 'Rows and columns that the user can select and sort.',
+    href: 'table',
+    demo: 'TableDemo',
   },
   {
     title: 'Tree',
