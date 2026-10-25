@@ -17,13 +17,13 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 - `selectionBehavior="toggle"`, the default, adds and removes items as checkboxes do. A press, Space and Enter toggle the item.
 - `selectionBehavior="replace"` makes the item the selection, as a list of files does. The selection follows focus. Ctrl or Cmd adds an item, or moves focus alone with the arrow keys.
-- In a multiple selection, Shift with a press or the arrow keys selects a range from the last item selected. Ctrl+A or Cmd+A selects all.
+- In a multiple selection, Shift with a press or the arrow keys selects a range from the last item selected, or else from the item that has focus. Ctrl+A or Cmd+A selects all, other than disabled items.
 - Escape clears the selection, unless `escapeKeyBehavior="none"` or `disallowEmptySelection`.
 - `onSelectionChange` gets the keys after each change.
 
 ## Actions
 
-With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets its key, and `onAction` on the item runs too. With a selection, Enter acts when the ListBox has `onAction`, and selects when it has none.
+With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets its key, and `onAction` on the item runs too. With a selection, Enter acts when the ListBox or the item has `onAction`, and selects when neither has.
 
 ## Keyboard
 
