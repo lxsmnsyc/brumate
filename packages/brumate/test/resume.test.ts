@@ -193,8 +193,8 @@ function moved(record: string): string {
 }
 
 /** Presses a key on the list of the page, and returns the event. */
-function press(key: string): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+function press(key: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
   document.querySelector('.list')!.dispatchEvent(event);
   return event;
 }
@@ -643,6 +643,8 @@ describe('resume', () => {
     expect(press('ArrowDown').defaultPrevented).toBe(true);
     expect(press(' ').defaultPrevented).toBe(true);
     expect(press('Tab').defaultPrevented).toBe(false);
+    // A key of an input method that composes text keeps its default.
+    expect(press('ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
     expect(press('a').defaultPrevented).toBe(false);
     // The handler still runs for every key.
     await waitFor(() => expect(text('.last')).toBe('a'));
@@ -660,6 +662,27 @@ describe('resume', () => {
     expect(event.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('parent'));
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
+  });
+
+  it('writes the handlers of a spread again when they change, and keeps the own ones', async () => {
+    await resume('spreadHandlerChange', {});
+    const field = document.querySelector('.field')!;
+    const enter = (): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      field.dispatchEvent(event);
+      return event;
+    };
+    expect(enter().defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(true));
+    expect(field.getAttribute('b-on')).toMatch(/^click=\S+ keydown:prevent\(Enter\)=\S+@\d+$/);
+    expect(enter().defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.presses')).toBe('2'));
+    // The element's own handler still runs, and the wrapper goes away again.
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(false));
+    expect(enter().defaultPrevented).toBe(false);
   });
 
   it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {

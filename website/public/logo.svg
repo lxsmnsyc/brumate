@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The logo of brumate, as the devtools draw it (LOGO in packages/brumate/src/runtime/devtools.ts). The outline follows the color scheme. -->
+  <style>
+    .line { stroke: #24211e; }
+    @media (prefers-color-scheme: dark) { .line { stroke: #ece8e4; } }
+  </style>
+  <defs>
+    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc38a"/>
+      <stop offset=".5" stop-color="#ee7a3e"/>
+      <stop offset="1" stop-color="#e0445a"/>
+    </linearGradient>
+    <clipPath id="pole"><rect x="7.5" y="2.5" width="8" height="27" rx="4"/></clipPath>
+  </defs>
+  <circle cx="18" cy="19.5" r="10" fill="url(#fill)" clip-path="url(#pole)"/>
+  <g class="line" fill="none" stroke-width="2.2">
+    <rect x="7.5" y="2.5" width="8" height="27" rx="4"/>
+    <circle cx="18" cy="19.5" r="10"/>
+  </g>
+</svg>
