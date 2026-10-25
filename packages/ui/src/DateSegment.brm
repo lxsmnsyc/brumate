@@ -10,7 +10,8 @@
    *
    * - A part is a spinbutton. ArrowUp and ArrowDown step it around its range, and a part that is
    *   not set starts at the placeholder.
-   * - Digits type into it. Once no other digit could follow, focus moves to the next part.
+   * - Digits type into it, and `a` or `p` into AM or PM. Once no other digit could follow, focus
+   *   moves to the next part.
    *   Backspace takes the last digit away, and moves back from an empty part.
    * - It is editable text, so a touch keyboard shows its digits. The browser does not change the
    *   text itself.
@@ -60,7 +61,7 @@
       return;
     }
     for (const char of event.data ?? '') {
-      if (char >= '0' && char <= '9' && field.type(type, Number(char))) {
+      if (field.type(type, char)) {
         move(element, 1);
         return;
       }
@@ -85,7 +86,7 @@
     role="spinbutton"
     tabindex=(field?.isDisabled ? undefined : '0')
     contenteditable=(field?.isDisabled || field?.isReadOnly ? undefined : 'true')
-    inputmode="numeric"
+    inputmode=(segment.type === 'dayPeriod' ? 'text' : 'numeric')
     autocorrect="off"
     spellcheck="false"
     enterkeyhint="next"

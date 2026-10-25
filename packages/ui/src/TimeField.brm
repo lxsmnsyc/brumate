@@ -1,0 +1,180 @@
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+  import { LocaleContext } from './locale.ts';
+  import {
+    DateFieldContext,
+    erasePart,
+    stepTime,
+    timeOf,
+    timePartsOf,
+    timeSegmentsOf,
+    typeTime,
+    usesDayPeriod,
+  } from './segments.ts';
+  import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
+
+  /**
+   * A time of day that the user edits segment by segment, as TimeField of React Aria Components.
+   * It holds the same parts as a DateField: a Label, a DateInput of DateSegments, and a Text with
+   * `slot="description"` and a FieldError.
+   *
+   * - `value` is the time as `HH:MM`, or `HH:MM:SS` with `granularity="second"`, or null until
+   *   every segment is set. `value=(time)` starts its own, and `value=$bind(signal)` writes the
+   *   caller's. `onChange` gets each change.
+   * - `granularity` is the smallest segment: `hour`, `minute`, the default, or `second`.
+   * - The hour shows on a 12-hour clock with AM and PM, or on a 24-hour clock, as the locale does,
+   *   or as `hourCycle` says.
+   * - An empty segment starts at `placeholderValue`, midnight by default.
+   * - `minValue` and `maxValue` make a time invalid, as `isInvalid` does.
+   * - `name` posts the time with a form, from a hidden input.
+   * - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   */
+  const {
+    as = 'div',
+    name,
+    minValue,
+    maxValue,
+    placeholderValue = '00:00',
+    granularity = 'minute',
+    hourCycle,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid = false,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    minValue?: TimeString;
+    maxValue?: TimeString;
+    placeholderValue?: TimeString;
+    granularity?: TimeGranularity;
+    hourCycle?: 12 | 24;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: TimeString | null) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<TimeString | null> }>();
+
+  const locale = $getContext(LocaleContext);
+  const form = $getContext(FormContext);
+  const labelId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
+  let parts = $signal<DateParts>(timePartsOf(value));
+  let typed = $signal('');
+  let edited = $signal(false);
+  const segments = $memo(timeSegmentsOf(parts, placeholderValue, locale.locale, granularity, hourCycle));
+  const errors = $memo(
+    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  );
+  // Times of the same length compare as text, such as `09:30` and `14:00`.
+  const invalid = $memo(
+    isInvalid ||
+      errors.length > 0 ||
+      (value !== null &&
+        ((minValue !== undefined && value < minValue) || (maxValue !== undefined && value > maxValue))),
+  );
+
+  // A time that the caller sets shows in the segments.
+  $effect(() => {
+    const next = value;
+    if ($untrack(timeOf(parts, granularity)) !== next) {
+      $untrack((parts = timePartsOf(next)));
+    }
+  });
+
+  function update(next: DateParts) {
+    parts = next;
+    const time = timeOf(next, granularity);
+    if (time !== value) {
+      value = time;
+      edited = true;
+      onChange?.(time);
+    }
+  }
+
+  function isTimePart(type: SegmentType): type is 'hour' | 'minute' | 'second' | 'dayPeriod' {
+    return type === 'hour' || type === 'minute' || type === 'second' || type === 'dayPeriod';
+  }
+
+  function locked(): boolean {
+    return isDisabled || isReadOnly;
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(DateFieldContext, {
+    segments,
+    labelId,
+    describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid: invalid,
+    direction: locale.direction,
+    step: (type: SegmentType, delta: number) => {
+      if (!locked() && isTimePart(type)) {
+        typed = '';
+        update(stepTime(parts, type, delta, placeholderValue));
+      }
+    },
+    type: (type: SegmentType, char: string) => {
+      if (locked() || !isTimePart(type)) {
+        return false;
+      }
+      const next = typeTime(parts, type, typed, char, placeholderValue, twelve);
+      typed = next.typed;
+      update(next.parts);
+      return next.full;
+    },
+    erase: (type: SegmentType) => {
+      if (locked() || !isTimePart(type)) {
+        return false;
+      }
+      typed = '';
+      // AM and PM are not typed digits, so Backspace moves back from them.
+      if (type === 'dayPeriod') {
+        return true;
+      }
+      const empty = parts[type] === undefined;
+      // An hour on a 12-hour clock is not its digits, so it empties.
+      if (type === 'hour' && twelve) {
+        const next = { ...parts };
+        delete next.hour;
+        update(next);
+      } else {
+        update(erasePart(parts, type));
+      }
+      return empty;
+    },
+    settle: () => {
+      typed = '';
+    },
+  });
+</script>
+
+<{as}
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  {children}
+  <!-- The time for the form, which posts without scripts. -->
+  <input type="hidden" name=name value=(value ?? '') disabled=(isDisabled || undefined)>
+</>

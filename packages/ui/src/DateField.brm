@@ -16,7 +16,7 @@
     stepPart,
     typeDigit,
   } from './segments.ts';
-  import type { DateParts, SegmentType } from './segments.ts';
+  import type { DateParts, DateSegmentType, SegmentType } from './segments.ts';
 
   /**
    * A date that the user edits segment by segment, as DateField of React Aria Components. It
@@ -107,6 +107,10 @@
     }
   }
 
+  function isDatePart(type: SegmentType): type is DateSegmentType {
+    return type === 'year' || type === 'month' || type === 'day';
+  }
+
   function locked(): boolean {
     return isDisabled || isReadOnly;
   }
@@ -124,22 +128,22 @@
     isInvalid: invalid,
     direction: locale.direction,
     step: (type: SegmentType, delta: number) => {
-      if (!locked()) {
+      if (!locked() && isDatePart(type)) {
         typed = '';
         update(stepPart(parts, type, delta, placeholder));
       }
     },
-    type: (type: SegmentType, digit: number) => {
-      if (locked()) {
+    type: (type: SegmentType, char: string) => {
+      if (locked() || !isDatePart(type) || char < '0' || char > '9') {
         return false;
       }
-      const next = typeDigit(parts, type, typed, digit, placeholder);
+      const next = typeDigit(parts, type, typed, Number(char), placeholder);
       typed = next.typed;
       update(next.parts);
       return next.full;
     },
     erase: (type: SegmentType) => {
-      if (locked()) {
+      if (locked() || !isDatePart(type)) {
         return false;
       }
       typed = '';
