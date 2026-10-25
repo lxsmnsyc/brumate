@@ -151,3 +151,14 @@ export interface RadioGroupState {
 
 export const RadioGroupContext: Context<RadioGroupState | null> =
   createContext<RadioGroupState | null>('brumate-ui:radio-group', null);
+
+/** What a ToggleButtonGroup gives its ToggleButtons, which name themselves with `id`. */
+export interface ToggleGroupState {
+  selectionMode: 'single' | 'multiple';
+  selectedKeys: string[];
+  isDisabled: boolean;
+  toggle: (id: string) => void;
+}
+
+export const ToggleGroupContext: Context<ToggleGroupState | null> =
+  createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);

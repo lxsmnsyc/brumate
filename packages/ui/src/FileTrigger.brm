@@ -1,0 +1,52 @@
+<script>
+  import { $id, $props, $setContext } from 'brumate/signals';
+  import { ButtonContext } from './contexts.ts';
+
+  /**
+   * Opens the file picker of the browser from a Button inside, as FileTrigger of React Aria
+   * Components. `onSelect` gets the files that the user picked. The input is hidden, so the
+   * picker needs scripts. For a form that works without them, use a visible file input.
+   */
+  const {
+    acceptedFileTypes,
+    allowsMultiple = false,
+    defaultCamera,
+    acceptDirectory = false,
+    name,
+    onSelect,
+    children,
+  } = $props<{
+    acceptedFileTypes?: string[];
+    allowsMultiple?: boolean;
+    defaultCamera?: 'user' | 'environment';
+    acceptDirectory?: boolean;
+    name?: string;
+    onSelect?: (files: FileList | null) => void;
+    children?: unknown;
+  }>();
+
+  const inputId = $id();
+
+  function open() {
+    document.getElementById(inputId)?.click();
+  }
+
+  function change(event: Event) {
+    onSelect?.((event.currentTarget as HTMLInputElement).files);
+  }
+
+  $setContext(ButtonContext, { onPress: open });
+</script>
+
+{children}
+<input
+  id=inputId
+  type="file"
+  hidden
+  name=name
+  accept=(acceptedFileTypes?.join(','))
+  multiple=(allowsMultiple || undefined)
+  capture=defaultCamera
+  webkitdirectory=(acceptDirectory || undefined)
+  onChange=change
+>

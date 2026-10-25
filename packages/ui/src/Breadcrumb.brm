@@ -1,0 +1,23 @@
+<script>
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { LinkContext } from './contexts.ts';
+  import { slotProps } from './slots.ts';
+
+  /**
+   * One step of Breadcrumbs, as Breadcrumb of React Aria Components: an <li> around a Link.
+   * `isCurrent` marks the page that the trail ends at. Its link gets aria-current="page". React
+   * Aria finds the last step itself, from a collection. Here the caller marks it. It shows
+   * `data-current` and `data-disabled`.
+   */
+  const { isCurrent = false, children, ...rest } = $props<{
+    isCurrent?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const trail = $getContext(LinkContext);
+  const disabled = $memo(Boolean(slotProps(trail, undefined).isDisabled));
+  $setContext(LinkContext, { isCurrent, isDisabled: disabled });
+</script>
+
+<li data-current=(isCurrent || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</li>
