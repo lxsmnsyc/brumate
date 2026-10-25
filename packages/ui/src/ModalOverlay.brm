@@ -195,8 +195,9 @@
     }
   }
 
+  // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !isKeyboardDismissDisabled) {
+    if (event.key === 'Escape' && !isKeyboardDismissDisabled && !event.defaultPrevented) {
       close();
     }
   }
