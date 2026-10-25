@@ -58,6 +58,12 @@
     <Modal class="light" isDismissable>
       <Dialog class="light-dialog" aria-label="Light">
         Light
+        <DialogTrigger>
+          <Button class="lower-trigger">Lower</Button>
+          <Modal class="lower">
+            <Dialog class="lower-dialog" aria-label="Lower">Lower</Dialog>
+          </Modal>
+        </DialogTrigger>
       </Dialog>
     </Modal>
   </DialogTrigger>

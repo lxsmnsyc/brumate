@@ -1,0 +1,14 @@
+<script>
+  import { $props, $setContext } from 'brumate/signals';
+  import { ModalOverlayContext } from './contexts.ts';
+
+  /**
+   * The content of the box of a Modal. A Modal inside it is not the box of this overlay, so it
+   * opens an overlay of its own, as in React Aria.
+   */
+  const { children } = $props<{ children?: unknown }>();
+
+  $setContext(ModalOverlayContext, null);
+</script>
+
+{children}

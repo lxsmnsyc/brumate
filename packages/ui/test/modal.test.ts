@@ -118,6 +118,19 @@ it('opens a Modal inside a Modal as an overlay of its own, which Escape closes a
   expect(find('.modal')!.closest('[inert]')).toBeNull();
 });
 
+it('opens a Modal inside a Modal on its own as an overlay of its own', async () => {
+  const page = await modals();
+  pressWith(page.get('.light-trigger'));
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.light-dialog')));
+  expect(find('.lower')).toBeNull();
+  pressWith(find('.lower-trigger')!);
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.lower-dialog')));
+  expect(find('.lower')!.parentElement!.hasAttribute('data-modal-overlay')).toBe(true);
+  press('Escape', find('.lower-dialog')!);
+  await page.waitFor(() => expect(find('.lower')).toBeNull());
+  expect(find('.light')).not.toBeNull();
+});
+
 it('gives the page back when an open Modal leaves the page', async () => {
   const page = await modals();
   await open(page);
