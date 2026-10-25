@@ -1,7 +1,6 @@
 <script>
   import { prevent } from 'brumate/events';
   import { createForm } from 'brumate/forms';
-  import { prevent } from 'brumate/events';
   import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
