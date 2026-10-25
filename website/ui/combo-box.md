@@ -30,18 +30,20 @@ A text field with a list of suggestions, which shows the items that match what w
 - Typing opens the list, and it shows the items whose text contains what was typed, in any case. The list closes when no item matches.
 - `defaultFilter` decides when an item matches, such as `(text, input) => text.startsWith(input)`.
 - `menuTrigger="focus"` opens the list when the input gets focus, and `"manual"` opens it only with the keys and the Button.
-- ArrowDown and ArrowUp open the list and move through its items, and go round at the ends. Focus stays in the input, and `aria-activedescendant` names the active item. The pointer makes an item active too.
-- Enter and a press pick an item. Its text goes in the input, and the list closes. While the list is closed, Enter sends the form.
-- The Button opens the list with all of its items. It is out of the order of Tab, as the keys of the input do the same.
+- ArrowDown and ArrowUp open the list with all of its items, and move through its items, and go round at the ends. Focus stays in the input, and `aria-activedescendant` names the active item. The pointer makes an item active too.
+- Enter and a press pick an item. Its text goes in the input, and the list closes. With no active item, Enter closes the list as Escape does. While the list is closed, Enter sends the form.
+- The Button opens and closes the list, with all of its items, and focus stays in the input. It is out of the order of Tab, as the keys of the input do the same.
 
 ## Closing
 
-- Escape closes the list. With the list closed, Escape clears the input and the selection.
-- Focus that leaves the field closes the list, and puts the text of the selected item back in the input. `allowsCustomValue` keeps what was typed.
+- Escape closes the list, and puts the text of the selected item back in the input, or clears it when nothing is selected. It never clears the selection. An Escape with nothing to undo goes on to the element around, such as a Dialog.
+- Focus that leaves the field does the same.
+- `allowsCustomValue` keeps what was typed. Text that is not the text of the selected item clears the selection.
+- `isRequired` makes the input required, with `aria-required`.
 
 ## Forms
 
-`name` sends the key of the selected item with its form, also before the code of the page loads. A server error for the `name` in a [Form](./form.md) shows in the FieldError until the selection changes.
+`name` sends the key of the selected item with its form, or the text of the input with `allowsCustomValue`. `formValue="key"` or `"text"` chooses. The value goes with the form also before the code of the page loads. A server error for the `name` in a [Form](./form.md) shows in the FieldError until the selection changes.
 
 ## How it filters
 
