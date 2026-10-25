@@ -64,6 +64,13 @@ export interface DateFieldState {
 export const DateFieldContext: Context<DateFieldState | null> =
   createContext<DateFieldState | null>('brumate-ui:date-field', null);
 
+/** What a DateRangePicker gives its two DateInputs, by their `slot`. */
+export const DateRangeFieldContext: Context<{ start: DateFieldState; end: DateFieldState } | null> =
+  createContext<{ start: DateFieldState; end: DateFieldState } | null>(
+    'brumate-ui:date-range-field',
+    null,
+  );
+
 /** The number of days in the month of a date. */
 function getDaysInMonth(date: CalendarDate): number {
   return endOfMonth(date).day;
@@ -170,6 +177,11 @@ export type DateSegmentType = 'year' | 'month' | 'day';
 
 /** A part of a time that holds a number. */
 export type TimeSegmentType = 'hour' | 'minute' | 'second';
+
+/** True for a part of a date, which a DateField edits. */
+export function isDatePart(type: SegmentType): type is DateSegmentType {
+  return type === 'year' || type === 'month' || type === 'day';
+}
 
 /** A part stepped by `delta`, around its range. A part that is not set takes the placeholder. */
 export function stepPart(

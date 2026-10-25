@@ -1,8 +1,8 @@
 <script>
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { DateFieldContext, focusSegment } from './segments.ts';
-  import type { Segment } from './segments.ts';
+  import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
+  import type { DateFieldState, Segment } from './segments.ts';
   import DateSegment from './DateSegment.brm';
 
   /**
@@ -10,17 +10,28 @@
    * names, with a DateSegment for each part of the date and the text between them.
    *
    * - `segment` is a `#template` that gets each segment, to render your own DateSegment.
+   * - In a DateRangePicker, `slot="start"` and `slot="end"` pick the date that it edits.
    * - ArrowLeft and ArrowRight move focus between the segments, the other way right to left.
    * - It shows `data-disabled` and `data-invalid`.
    */
-  const { segment, ...rest } = $props<{
+  const { segment, slot, ...rest } = $props<{
     segment?: (segment: Segment) => unknown;
+    slot?: 'start' | 'end';
     [attribute: string]: unknown;
   }>();
 
-  const field = $getContext(DateFieldContext);
+  const range = $getContext(DateRangeFieldContext);
+  const single = $getContext(DateFieldContext);
+  /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
+  function picked(): DateFieldState | null {
+    return slot && range ? range[slot] : single;
+  }
+
+  // The segments edit the date of this input.
+  $setContext(DateFieldContext, picked());
 
   function keyDown(event: KeyboardEvent) {
+    const field = picked();
     if (!field || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
       return;
     }
@@ -34,14 +45,14 @@
 
 <div
   role="group"
-  aria-labelledby=(field?.labelId)
-  aria-describedby=(field?.describedBy)
-  data-disabled=(field?.isDisabled || undefined)
-  data-invalid=(field?.isInvalid || undefined)
+  aria-labelledby=(picked()?.labelId)
+  aria-describedby=(picked()?.describedBy)
+  data-disabled=(picked()?.isDisabled || undefined)
+  data-invalid=(picked()?.isInvalid || undefined)
   onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight'))
   {...rest}
 >
-  #for (item of field?.segments ?? [] by item.index) {
+  #for (item of picked()?.segments ?? [] by item.index) {
     #if (segment) {
       {segment(item)}
     } #else {

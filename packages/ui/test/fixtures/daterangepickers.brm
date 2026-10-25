@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DateRangePicker from '../../src/DateRangePicker.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Group from '../../src/Group.brm';
+  import Label from '../../src/Label.brm';
+  import Popover from '../../src/Popover.brm';
+  import RangeCalendar from '../../src/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+</script>
+
+<main>
+  <DateRangePicker class="stay" startName="from" endName="to" value=$bind(stay)>
+    <Label class="stay-label">Stay</Label>
+    <Group class="stay-group">
+      <DateInput slot="start" class="stay-start" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="stay-end" />
+      <Button class="stay-button">▼</Button>
+    </Group>
+    <FieldError class="stay-error">The end is before the start.</FieldError>
+    <Popover class="stay-popover">
+      <Dialog>
+        <RangeCalendar class="stay-calendar">
+          <CalendarGrid class="stay-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <p class="state">{JSON.stringify([stay])}</p>
+</main>

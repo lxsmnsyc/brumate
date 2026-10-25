@@ -235,6 +235,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     demo: 'DatePickerDemo',
   },
   {
+    title: 'DateRangePicker',
+    summary: 'Two date fields and a button that opens a range calendar.',
+    href: 'date-range-picker',
+    demo: 'DateRangePickerDemo',
+  },
+  {
     title: 'ListBox',
     summary: 'A list of options to select, by keyboard and pointer.',
     href: 'list-box',

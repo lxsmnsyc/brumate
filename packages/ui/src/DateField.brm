@@ -7,16 +7,8 @@
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
-  import {
-    DateFieldContext,
-    dateOf,
-    erasePart,
-    partsOf,
-    segmentsOf,
-    stepPart,
-    typeDigit,
-  } from './segments.ts';
-  import type { DateParts, DateSegmentType, SegmentType } from './segments.ts';
+  import { dateSegments } from './date-field.brm.ts';
+  import { DateFieldContext } from './segments.ts';
 
   /**
    * A date that the user edits segment by segment, as DateField of React Aria Components. It
@@ -77,12 +69,14 @@
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString()), minValue, maxValue).toString(),
   );
-  // The parts that are set. The field has a value once all of them are.
-  let parts = $signal<DateParts>(partsOf(value));
-  // The digits typed into the segment that has focus.
-  let typed = $signal('');
+  const { segments, date, step, type, erase, settle } = dateSegments(
+    value,
+    placeholder,
+    locale.locale,
+    isDisabled,
+    isReadOnly,
+  );
   let edited = $signal(false);
-  const segments = $memo(segmentsOf(parts, placeholder, locale.locale));
   const errors = $memo(
     edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
@@ -93,31 +87,15 @@
         (outOfRange(toDate(value), minValue, maxValue) || (isDateUnavailable?.(value) ?? false))),
   );
 
-  // A date that the caller sets shows in the segments.
+  // The field has a value once every segment is set.
   $effect(() => {
-    const next = value;
-    if ($untrack(dateOf(parts)) !== next) {
-      $untrack((parts = partsOf(next)));
+    const next = date;
+    if (next !== $untrack(value)) {
+      $untrack((value = next));
+      edited = true;
+      onChange?.(next);
     }
   });
-
-  function update(next: DateParts) {
-    parts = next;
-    const date = dateOf(next);
-    if (date !== value) {
-      value = date;
-      edited = true;
-      onChange?.(date);
-    }
-  }
-
-  function isDatePart(type: SegmentType): type is DateSegmentType {
-    return type === 'year' || type === 'month' || type === 'day';
-  }
-
-  function locked(): boolean {
-    return isDisabled || isReadOnly;
-  }
 
   $setContext(LabelContext, { id: labelId });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
@@ -131,33 +109,10 @@
     isRequired,
     isInvalid: invalid,
     direction: locale.direction,
-    step: (type: SegmentType, delta: number) => {
-      if (!locked() && isDatePart(type)) {
-        typed = '';
-        update(stepPart(parts, type, delta, placeholder));
-      }
-    },
-    type: (type: SegmentType, char: string) => {
-      if (locked() || !isDatePart(type) || char < '0' || char > '9') {
-        return false;
-      }
-      const next = typeDigit(parts, type, typed, Number(char), placeholder);
-      typed = next.typed;
-      update(next.parts);
-      return next.full;
-    },
-    erase: (type: SegmentType) => {
-      if (locked() || !isDatePart(type)) {
-        return false;
-      }
-      typed = '';
-      const empty = parts[type] === undefined;
-      update(erasePart(parts, type));
-      return empty;
-    },
-    settle: () => {
-      typed = '';
-    },
+    step,
+    type,
+    erase,
+    settle,
   });
 </script>
 
