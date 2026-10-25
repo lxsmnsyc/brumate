@@ -1,8 +1,25 @@
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+  } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { ListBoxGivenContext, SelectValueContext, itemsOf, keyOf } from './collection.ts';
+  import {
+    ListBoxGivenContext,
+    SelectValueContext,
+    isTyping,
+    itemsOf,
+    keyOf,
+    textOfItem,
+    typeahead,
+  } from './collection.ts';
   import type { Key } from './collection.ts';
   import {
     ButtonContext,
@@ -13,6 +30,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
+  import type { PressEvent } from './events.ts';
   import { describedBy, isFirstInvalid, messagesOf } from './fields.ts';
 
   /**
@@ -23,6 +41,8 @@
    * - A press of the Button, ArrowDown and ArrowUp open the list, with focus on the selected
    *   item, or the first. A press, Enter or Space on an item selects it and closes the list.
    *   Escape, Tab and a press outside close it with no change.
+   * - While the list is closed, ArrowLeft and ArrowRight on the Button select the item before or
+   *   after the selected one, and typing selects the item that starts with the text.
    * - `selectedKey=(key)` starts its own selection, and `selectedKey=$bind(signal)` writes the
    *   caller's. `onSelectionChange` gets each new key.
    * - `name` sends the key with its form, also before its code loads. `isRequired` asks the
@@ -64,8 +84,7 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  // The text of the selected item, which the Button shows once the list has been open, and the
-  // key that it is the text of. A key that the caller sets has no text until the list opens.
+  // The text of the selected item, which the Button shows, and the key that it is the text of.
   let selectedText = $signal<string>();
   let textKey = $signal<Key | null>(null);
   // The key that a reset of the form gives back.
@@ -98,12 +117,25 @@
     setOpen(false);
   }
 
-  function select(key: Key) {
-    const list = document.getElementById(overlayId);
-    const items = list ? itemsOf(list.querySelector('[data-collection]') ?? list, 'option') : [];
-    const found = items.find((element) => keyOf(element) === key);
-    selectedText = (found?.dataset.textValue ?? found?.textContent ?? '').trim() || undefined;
+  /**
+   * The items of the list: those of the open list, or those that the Popover keeps out of sight
+   * while it is closed.
+   */
+  function items() {
+    const list =
+      document.getElementById(overlayId) ?? document.getElementById(`${overlayId}-closed`);
+    return list ? itemsOf(list.querySelector('[data-collection]') ?? list, 'option') : [];
+  }
+
+  /** Keeps the text of an item, which the SelectValue shows. */
+  function remember(key: Key | null) {
+    const found = key === null ? undefined : items().find((element) => keyOf(element) === key);
+    selectedText = (found && textOfItem(found)) || undefined;
     textKey = key;
+  }
+
+  function select(key: Key) {
+    remember(key);
     if (key !== selectedKey) {
       selectedKey = key;
       edited = true;
@@ -125,14 +157,42 @@
   }
 
   // The Button keeps its own keys, so the element around it opens the list on the arrow keys.
+  // While the list is closed, ArrowLeft, ArrowRight and typing change the selection.
   function keyDown(event: KeyboardEvent) {
-    if (
-      (event.target as Element).id === triggerId &&
-      (event.key === 'ArrowDown' || event.key === 'ArrowUp')
-    ) {
+    const button = event.target as HTMLElement;
+    if (button.id !== triggerId) {
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       open(event.key === 'ArrowUp' ? 'last' : 'first');
+      return;
+    }
+    if (isOpen || isDisabled) {
+      return;
+    }
+    const enabled = items().filter((item) => item.getAttribute('aria-disabled') !== 'true');
+    const at = enabled.findIndex((item) => keyOf(item) === selectedKey);
+    let next: HTMLElement | undefined;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      // With nothing selected, both keys select the first item, as in React Aria.
+      next = at < 0 ? enabled[0] : enabled[at + (event.key === 'ArrowLeft' ? -1 : 1)];
+    } else {
+      next = typeahead(button, enabled, enabled[at], event);
+    }
+    const key = next && keyOf(next);
+    if (key !== undefined) {
+      select(key);
     }
   }
+
+  // The text of the selected item, once the code loads and when the caller sets another key.
+  $client(() => remember(selectedKey), 'load');
+  $effect(() => {
+    const key = selectedKey;
+    if (key !== textKey) {
+      remember(key);
+    }
+  });
 
   // A reset of the form gives back the first key, as it does for a field of the browser.
   $client(() => {
@@ -159,7 +219,17 @@
     'aria-controls': isOpen ? overlayId : undefined,
     'aria-labelledby': `${valueId} ${labelId}`,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
-    onPress: () => (isOpen ? close() : open()),
+    onPress: (event: PressEvent) => {
+      // Space adds to a typeahead that has text, so it does not open the list then.
+      if (event.pointerType === 'keyboard' && isTyping(event.target)) {
+        return;
+      }
+      if (isOpen) {
+        close();
+      } else {
+        open();
+      }
+    },
   });
   $setContext(OverlayTriggerContext, {
     isOpen,
@@ -168,6 +238,7 @@
     open: () => open(),
     close,
     placement: 'bottom start',
+    keepsContent: true,
   });
   $setContext(ListBoxGivenContext, {
     selectedKeys: selectedKey === null ? [] : [selectedKey],
@@ -193,7 +264,7 @@
   data-required=(isRequired || undefined)
   {...rest}
 >
-  <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>
+  <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'))>{children}</div>
   <!--
     The value for the form, which posts without scripts. It is out of sight and out of the order
     of Tab, and the browser checks it on a submit when the field is required.
