@@ -127,7 +127,14 @@
     // The element is in the page once the markup that `mounted` renders is.
     await nextFrame();
     const target = element;
-    if (token !== run || !target) {
+    if (token !== run) {
+      return;
+    }
+    // Nothing to animate, such as content that renders no element: it is shown at once.
+    if (!target) {
+      opening = false;
+      rested = true;
+      afterEnter?.();
       return;
     }
     beforeEnter?.();
@@ -143,6 +150,7 @@
     const target = element;
     if (!target) {
       mounted = false;
+      afterLeave?.();
       return;
     }
     const done = await leaveSteps(target, classes(), { current: () => token === run }, () => {
