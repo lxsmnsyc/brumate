@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ListBoxGivenContext, SelectValueContext, itemsOf, keyOf } from './collection.ts';
@@ -64,8 +64,14 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  // The text of the selected item, which the Button shows once the list has been open.
+  // The text of the selected item, which the Button shows once the list has been open, and the
+  // key that it is the text of. A key that the caller sets has no text until the list opens.
   let selectedText = $signal<string>();
+  let textKey = $signal<Key | null>(null);
+  // The key that a reset of the form gives back.
+  let initialKey = $signal(selectedKey);
+  // Where focus goes in the list when nothing is selected: ArrowUp opens it at the last item.
+  let focusStrategy = $signal<'first' | 'last'>('first');
   // The message of the browser, once the field was checked on a submit.
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
@@ -83,7 +89,8 @@
     }
   }
 
-  function open() {
+  function open(strategy: 'first' | 'last' = 'first') {
+    focusStrategy = strategy;
     setOpen(true);
   }
 
@@ -96,6 +103,7 @@
     const items = list ? itemsOf(list.querySelector('[data-collection]') ?? list, 'option') : [];
     const found = items.find((element) => keyOf(element) === key);
     selectedText = (found?.dataset.textValue ?? found?.textContent ?? '').trim() || undefined;
+    textKey = key;
     if (key !== selectedKey) {
       selectedKey = key;
       edited = true;
@@ -122,9 +130,25 @@
       (event.target as Element).id === triggerId &&
       (event.key === 'ArrowDown' || event.key === 'ArrowUp')
     ) {
-      open();
+      open(event.key === 'ArrowUp' ? 'last' : 'first');
     }
   }
+
+  // A reset of the form gives back the first key, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(inputId) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      selectedKey = initialKey;
+      committed = false;
+      nativeErrors = [];
+      edited = false;
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
 
   $setContext(LabelContext, { id: labelId });
   $setContext(ButtonContext, {
@@ -135,13 +159,13 @@
     'aria-controls': isOpen ? overlayId : undefined,
     'aria-labelledby': `${valueId} ${labelId}`,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
-    onPress: () => setOpen(!isOpen),
+    onPress: () => (isOpen ? close() : open()),
   });
   $setContext(OverlayTriggerContext, {
     isOpen,
     triggerId,
     overlayId,
-    open,
+    open: () => open(),
     close,
     placement: 'bottom start',
   });
@@ -150,8 +174,14 @@
     labelledBy: labelId,
     select,
     tab: close,
+    focusStrategy,
   });
-  $setContext(SelectValueContext, { id: valueId, selectedKey, selectedText, placeholder });
+  $setContext(SelectValueContext, {
+    id: valueId,
+    selectedKey,
+    selectedText: textKey === selectedKey ? selectedText : undefined,
+    placeholder,
+  });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
 </script>
