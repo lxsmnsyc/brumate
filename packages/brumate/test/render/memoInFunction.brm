@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { type = 'submit', isPending } = $props<{ type?: string; isPending?: boolean }>();
+  const pending = $memo(Boolean(isPending));
+  // Only the function reads this memo, and the markup calls the function.
+  const sends = $memo(!pending && type === 'submit');
+
+  function attributes() {
+    return sends ? { 'data-sends': '' } : { 'data-plain': '' };
+  }
+</script>
+
+<button {...attributes()}>Send</button>

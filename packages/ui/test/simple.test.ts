@@ -61,6 +61,18 @@ it('shows focus within a Group, and its focus ring', async () => {
   const off = page.get('.disabled-group');
   expect(off.getAttribute('aria-disabled')).toBe('true');
   expect(off.hasAttribute('data-invalid')).toBe(true);
+  // aria-disabled of the caller disables it, as in React Aria.
+  expect(page.get('.aria-group').hasAttribute('data-disabled')).toBe(true);
+});
+
+it('calls the hover handlers of a Group', async () => {
+  const page = await simple();
+  takeEvents();
+  pointer('pointerenter', page.get('.aria-group'));
+  pointer('pointerenter', page.get('.hover-group'));
+  await page.waitFor(() =>
+    expect(globalThis.partEvents).toEqual([{ type: 'hoverstart', pointerType: 'mouse' }]),
+  );
 });
 
 it('renders a Link as an <a>, which presses with a key and a pointer', async () => {
@@ -81,6 +93,25 @@ it('renders a Link as an <a>, which presses with a key and a pointer', async () 
   );
 });
 
+it('leaves Space to the browser on a Link, which presses only with Enter', async () => {
+  const page = await simple();
+  for (const name of ['.to', '.span']) {
+    const link = page.get(name);
+    link.focus();
+    const down = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    link.dispatchEvent(down);
+    link.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true, cancelable: true }));
+    // The page scrolls, as for any link.
+    expect(down.defaultPrevented).toBe(false);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(takeEvents()).toEqual([]);
+  press('Enter', page.get('.span'));
+  await page.waitFor(() =>
+    expect(globalThis.partEvents).toEqual([{ type: 'press', pointerType: 'keyboard' }]),
+  );
+});
+
 it('marks the current Link, and leaves out the address of a disabled one', async () => {
   const page = await simple();
   const current = page.get('.current');
@@ -91,8 +122,8 @@ it('marks the current Link, and leaves out the address of a disabled one', async
   expect(off.hasAttribute('href')).toBe(false);
   expect(off.getAttribute('role')).toBe('link');
   expect(off.getAttribute('aria-disabled')).toBe('true');
-  // It stays in the order of Tab, so a keyboard user hears that it is disabled.
-  expect(off.getAttribute('tabindex')).toBe('0');
+  // It leaves the order of Tab, as in React Aria.
+  expect(off.hasAttribute('tabindex')).toBe(false);
   // A link without an address is an element with the role and the focus of a link.
   const span = page.get('.span');
   expect(span.getAttribute('role')).toBe('link');
