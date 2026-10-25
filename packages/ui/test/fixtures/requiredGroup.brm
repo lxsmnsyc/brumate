@@ -1,0 +1,13 @@
+<script>
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import Label from '../../src/Label.brm';
+</script>
+
+<form class="form">
+  <CheckboxGroup class="extras" name="extras" isRequired=(true)>
+    <Label>Extras</Label>
+    <Checkbox class="bacon" value="bacon">Bacon</Checkbox>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+</form>
