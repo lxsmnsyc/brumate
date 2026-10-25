@@ -182,6 +182,46 @@ export async function run({ browser, url, runner }) {
     await page.waitForFunction(() => document.querySelector('.search')?.hasAttribute('data-empty'));
   });
 
+  await step(
+    'Checkbox, RadioGroup and Switch: Space, the arrow keys and a required group',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('.pizza button[type=submit]').click();
+      await page.waitForFunction(() => document.querySelector('.toppings .error')?.textContent);
+      const cheese = page.locator('.toppings input').first();
+      await cheese.focus();
+      await page.keyboard.press('Space');
+      await page.waitForFunction(() =>
+        document.querySelector('.pizza-value')?.textContent?.startsWith('cheese'),
+      );
+      await page.waitForFunction(() => !document.querySelector('.toppings .error'));
+      assert(
+        await page
+          .locator('.toppings .box')
+          .first()
+          .evaluate((element) => element.hasAttribute('data-focus-visible')),
+        'the box shows no focus ring after the keyboard',
+      );
+      // The radios are native, so the arrow keys move the choice.
+      const small = page.locator('.sizes input').first();
+      await small.focus();
+      await page.keyboard.press('Space');
+      await page.waitForFunction(() =>
+        document.querySelector('.pizza-value')?.textContent?.includes('small'),
+      );
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() =>
+        document.querySelector('.pizza-value')?.textContent?.includes('large'),
+      );
+      const theme = page.locator('.theme input');
+      assert((await theme.getAttribute('role')) === 'switch', 'the switch has no role');
+      await page.locator('.theme').click();
+      await page.waitForFunction(() =>
+        document.querySelector('.theme-value')?.textContent?.includes('on'),
+      );
+    },
+  );
+
   await step('axe-core: the page has no violations', async () => {
     await page.goto(`${url}/`);
     // axe runs as a script of the page, which Playwright adds.

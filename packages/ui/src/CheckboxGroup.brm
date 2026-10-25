@@ -1,0 +1,85 @@
+<script>
+  import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import {
+    CheckboxGroupContext,
+    FieldErrorContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
+  import { describedBy } from './fields.ts';
+
+  /**
+   * A group of checkboxes, as CheckboxGroup of React Aria Components. It holds a Label, its
+   * Checkboxes, a Text with `slot="description"` and a FieldError. Its value is the values of
+   * the checked boxes. The element shows `data-disabled`, `data-readonly`, `data-invalid` and
+   * `data-required`.
+   *
+   * `value=([...])` starts its own value, and `value=$bind(signal)` writes the caller's. With
+   * `isRequired`, the browser asks for a box when the form is sent.
+   */
+  const {
+    name,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid = false,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    name?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: string[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = [] } = $props<{ value?: Bindable<string[]> }>();
+
+  const labelId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  // The message of the browser, after a submit with no box checked.
+  let message = $signal('');
+  const errors = $memo(message && value.length === 0 ? [message] : []);
+  const invalid = $memo(isInvalid || errors.length > 0);
+
+  function toggle(item: string, checked: boolean) {
+    value = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
+    onChange?.(value);
+  }
+
+  function invalidated(text: string) {
+    message = text;
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(CheckboxGroupContext, {
+    name,
+    value,
+    isDisabled,
+    isReadOnly,
+    isInvalid: invalid,
+    // Each box is required while none is checked, so the browser checks the group on a submit.
+    isRequired: isRequired && value.length === 0,
+    describedBy: describedBy(invalid && errorId),
+    toggle,
+    onInvalid: invalidated,
+  });
+</script>
+
+<div
+  role="group"
+  aria-labelledby=labelId
+  aria-describedby=(describedBy(descriptionId, invalid && errorId))
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>{children}</div>

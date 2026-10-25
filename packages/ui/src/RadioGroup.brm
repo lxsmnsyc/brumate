@@ -1,0 +1,88 @@
+<script>
+  import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
+  import { describedBy } from './fields.ts';
+
+  /**
+   * A group of radios, as RadioGroup of React Aria Components. It holds a Label, its Radios, a
+   * Text with `slot="description"` and a FieldError. The radios are native, so the arrow keys
+   * move between them and Tab stops at the checked one, as in every browser. The element shows
+   * `data-orientation`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   *
+   * `value=(choice)` starts its own value, and `value=$bind(signal)` writes the caller's. `null`
+   * is no choice.
+   */
+  const {
+    name,
+    orientation = 'vertical',
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid = false,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    name?: string;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<string | null> }>();
+
+  // The radios of a group share a name, which makes them one group for the browser.
+  const ownName = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  let message = $signal('');
+  const errors = $memo(message && value === null ? [message] : []);
+  const invalid = $memo(isInvalid || errors.length > 0);
+
+  function select(next: string) {
+    value = next;
+    onChange?.(next);
+  }
+
+  function invalidated(text: string) {
+    message = text;
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(RadioGroupContext, {
+    name: name ?? ownName,
+    value,
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid: invalid,
+    describedBy: describedBy(invalid && errorId),
+    select,
+    onInvalid: invalidated,
+  });
+</script>
+
+<div
+  role="radiogroup"
+  aria-labelledby=labelId
+  aria-describedby=(describedBy(descriptionId, invalid && errorId))
+  aria-orientation=orientation
+  aria-readonly=(isReadOnly ? 'true' : undefined)
+  aria-invalid=(invalid ? 'true' : undefined)
+  aria-required=(isRequired ? 'true' : undefined)
+  aria-disabled=(isDisabled ? 'true' : undefined)
+  data-orientation=orientation
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>{children}</div>

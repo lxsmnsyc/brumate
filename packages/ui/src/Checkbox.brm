@@ -1,0 +1,148 @@
+<script>
+  import { $client, $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import VisuallyHidden from './VisuallyHidden.brm';
+  import { box } from './box.brm.ts';
+  import { CheckboxGroupContext } from './contexts.ts';
+  import { describedBy } from './fields.ts';
+
+  /**
+   * A checkbox, as Checkbox of React Aria Components: a <label> around a native checkbox, which
+   * a screen reader reads and a form posts without scripts. The label shows the state as
+   * `data-selected`, `data-indeterminate`, `data-pressed`, `data-hovered`, `data-focused`,
+   * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   * Draw the box in the children, from these attributes.
+   *
+   * `isSelected=(true)` starts its own state, and `isSelected=$bind(signal)` writes the caller's.
+   * In a CheckboxGroup, the group keeps the state, and `value` names the box in it.
+   */
+  const {
+    name,
+    value,
+    isIndeterminate = false,
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    name?: string;
+    value?: string;
+    isIndeterminate?: boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (selected: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+
+  const group = $getContext(CheckboxGroupContext);
+  const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
+  const required = $memo(Boolean(isRequired || group?.isRequired));
+  // The browser checked the box on a submit, and it was not valid.
+  let failed = $signal(false);
+  const invalid = $memo(Boolean(isInvalid || group?.isInvalid || failed));
+
+  const {
+    hovered,
+    pressed,
+    focused,
+    focusVisible,
+    onPointerEnter,
+    onPointerLeave,
+    onPointerDown,
+    onPointerUp,
+    onPointerCancel,
+    onKeyDown,
+    onKeyUp,
+    onFocusIn,
+    onFocusOut,
+  } = box(disabled);
+
+  function change(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    // A read-only box keeps its state. The browser toggled it already.
+    if (readOnly) {
+      input.checked = selected;
+      return;
+    }
+    failed = false;
+    if (group) {
+      group.toggle(value ?? '', input.checked);
+    } else {
+      isSelected = input.checked;
+    }
+    onChange?.(input.checked);
+  }
+
+  // The browser shows no message of its own. The group shows it in its FieldError.
+  function invalidated(event: Event) {
+    failed = true;
+    group?.onInvalid((event.currentTarget as HTMLInputElement).validationMessage);
+  }
+</script>
+
+<label
+  data-selected=(selected || undefined)
+  data-indeterminate=(isIndeterminate || undefined)
+  data-pressed=(pressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  data-readonly=(readOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(required || undefined)
+  onPointerEnter=onPointerEnter
+  onPointerLeave=onPointerLeave
+  onPointerDown=onPointerDown
+  onPointerUp=onPointerUp
+  onPointerCancel=onPointerCancel
+  onKeyDown=onKeyDown
+  onKeyUp=onKeyUp
+  onFocusIn=onFocusIn
+  onFocusOut=onFocusOut
+  {...rest}
+>
+  <VisuallyHidden
+    as="input"
+    type="checkbox"
+    name=(name ?? group?.name)
+    value=value
+    checked=selected
+    disabled=(disabled || undefined)
+    required=(required || undefined)
+    aria-readonly=(readOnly ? 'true' : undefined)
+    aria-invalid=(invalid ? 'true' : undefined)
+    aria-describedby=(describedBy(group?.describedBy))
+    onChange=change
+    onInvalid=(prevent(invalidated))
+  />
+  {children}
+  #if (isIndeterminate) {
+    <script>
+      // A box is indeterminate only from code, so only an indeterminate box loads any.
+      let marker = $signal<HTMLElement>();
+      $client(() => {
+        const input = marker?.parentElement?.querySelector('input');
+        if (input) {
+          input.indeterminate = true;
+        }
+        return () => {
+          if (input) {
+            input.indeterminate = false;
+          }
+        };
+      }, 'idle');
+    </script>
+    <span ref=marker hidden></span>
+  }
+</label>
