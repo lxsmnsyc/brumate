@@ -1,0 +1,34 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Meter from '../../src/Meter.brm';
+  import ProgressBar from '../../src/ProgressBar.brm';
+  import ToggleButton from '../../src/ToggleButton.brm';
+  import ToggleButtonGroup from '../../src/ToggleButtonGroup.brm';
+  import Toolbar from '../../src/Toolbar.brm';
+
+  let saved = $signal(false);
+</script>
+
+<Toolbar class="edit" aria-label="Edit">
+  <Button class="save" isDisabled=saved onPress=(() => (saved = true))>Save</Button>
+  <Button class="undo">Undo</Button>
+  <ToggleButtonGroup class="marks" aria-label="Marks" selectionMode="multiple">
+    <ToggleButton id="bold" class="bold">Bold</ToggleButton>
+  </ToggleButtonGroup>
+  <Toolbar class="inner" aria-label="Inner">
+    <Button class="inner-button">Inner</Button>
+  </Toolbar>
+</Toolbar>
+<Toolbar class="side" aria-label="Side" orientation="vertical">
+  <Button class="up">Up</Button>
+  <Button class="down">Down</Button>
+</Toolbar>
+<ToggleButtonGroup class="off" aria-label="Off" isDisabled=(true)>
+  <ToggleButton id="on" class="forced" isDisabled=(false)>On</ToggleButton>
+</ToggleButtonGroup>
+<Meter class="full" value=(150) aria-label="Full" />
+#template spinnerText(state: { valueText?: string; percentage?: number }) {
+  <span class="spinner-text">{state.valueText ?? 'none'}|{String(state.percentage)}</span>
+}
+<ProgressBar class="spinner" isIndeterminate=(true) aria-label="Spinner" content=spinnerText />
