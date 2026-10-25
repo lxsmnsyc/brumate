@@ -4,6 +4,7 @@
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
   import { RadioGroupContext } from './contexts.ts';
+  import { isFirstInvalid } from './fields.ts';
 
   /**
    * A radio of a RadioGroup, as Radio of React Aria Components: a <label> around a native radio.
@@ -60,8 +61,13 @@
     group?.select(value);
   }
 
+  // The first invalid field of the form gets focus, as the browser does with its own message.
   function invalidated(event: Event) {
-    group?.onInvalid((event.currentTarget as HTMLInputElement).validationMessage);
+    const input = event.currentTarget as HTMLInputElement;
+    group?.onInvalid(input.validationMessage);
+    if (isFirstInvalid(input)) {
+      input.focus();
+    }
   }
 </script>
 

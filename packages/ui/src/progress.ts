@@ -5,6 +5,15 @@ export interface ProgressState {
   percentage: number;
   /** The value as the locale writes it, such as "40%". */
   valueText: string;
+  /** The value inside the range, which aria-valuenow gives, as useProgressBar of React Aria. */
+  value: number;
+}
+
+/** The state that the `content` of a ProgressBar gets. An indeterminate bar has no value. */
+export interface ProgressBarState {
+  percentage: number | undefined;
+  valueText: string | undefined;
+  isIndeterminate: boolean;
 }
 
 /** The share of the range that the value fills, and its text in the locale. */
@@ -21,5 +30,6 @@ export function progressOf(
   return {
     percentage: share * 100,
     valueText: format.format(formatOptions.style === 'percent' ? share : clamped),
+    value: clamped,
   };
 }

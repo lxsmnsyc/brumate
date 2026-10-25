@@ -1,5 +1,6 @@
 <script>
   import { createForm } from 'brumate/forms';
+  import { prevent } from 'brumate/events';
   import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
@@ -34,6 +35,7 @@
 
   let presses = $signal(0);
   let last = $signal('nothing yet');
+  let sent = $signal(0);
   let pinned = $signal(false);
   let query = $signal('');
   let searched = $signal('');
@@ -84,6 +86,10 @@
   <Button class="press" isDisabled>Disabled</Button>
   <Button class="press" isPending>Saving</Button>
   <p class="pressed" aria-live="polite">Pressed {presses} times, last with {last}.</p>
+  <form class="send" onSubmit=(prevent(() => sent++))>
+    <Button class="press" type="submit">Send</Button>
+  </form>
+  <p class="sent" aria-live="polite">Sent {sent} times.</p>
 </section>
 
 <section aria-labelledby="keyboard">
@@ -134,6 +140,7 @@
       <TextArea class="field" rows="3" />
     </TextField>
     <Button class="press" type="submit">Sign up</Button>
+    <Button class="press" type="reset">Start again</Button>
   </Form>
 </section>
 
