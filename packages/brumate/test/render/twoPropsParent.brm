@@ -1,0 +1,5 @@
+<script>
+  import TwoProps from './TwoProps.brm';
+</script>
+
+<TwoProps label="Menu" open=(true) title="Open the menu" />

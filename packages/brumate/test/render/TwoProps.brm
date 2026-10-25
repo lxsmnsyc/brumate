@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // The rest leaves out `open`, which the second call names.
+  const { label, ...rest } = $props();
+  let { open = false } = $props();
+</script>
+
+<button class="two-props" {...rest} onClick=(() => (open = !open))>{label} {String(open)}</button>

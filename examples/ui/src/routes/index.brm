@@ -1,5 +1,14 @@
 <script>
+  import { createForm } from 'brumate/forms';
+  import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import TextArea from '@brumate/ui/TextArea.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import { Order } from '../order.ts';
   import Button from '@brumate/ui/Button.brm';
   import Group from '@brumate/ui/Group.brm';
   import Heading from '@brumate/ui/Heading.brm';
@@ -14,6 +23,19 @@
   let presses = $signal(0);
   let last = $signal('nothing yet');
   let pinned = $signal(false);
+  let query = $signal('');
+  let searched = $signal('');
+
+  async function order(form: FormData) {
+    'use server';
+    const submission = await parseSubmission(Order, form);
+    if (submission.status !== 'success') {
+      return submission.reply();
+    }
+    return submission.reply({ reset: true });
+  }
+
+  const { attrs, fields, result } = createForm(order, Order, { defaultValue: { email: '' } });
 </script>
 
 #head {
@@ -81,6 +103,48 @@
   <Separator />
 </section>
 
+<section aria-labelledby="text-field">
+  <h2 id="text-field">TextField, TextArea and FieldError</h2>
+  <Form class="signup">
+    <TextField class="name-field" name="name" isRequired=(true)>
+      <Label>Name</Label>
+      <Input class="field" />
+      <Text slot="description" class="help">As it is on your card.</Text>
+      <FieldError class="error" />
+    </TextField>
+    <TextField class="bio-field" name="bio">
+      <Label>About you</Label>
+      <TextArea class="field" rows="3" />
+    </TextField>
+    <Button class="press" type="submit">Sign up</Button>
+  </Form>
+</section>
+
+<section aria-labelledby="create-form">
+  <h2 id="create-form">With createForm</h2>
+  <form action=order {...attrs} class="order">
+    <TextField field=(fields.email) type="email">
+      <Label>Email for the receipt</Label>
+      <Input class="field" />
+      <FieldError class="error" />
+    </TextField>
+    <Button class="press" type="submit">Order</Button>
+    #if (result?.status === 'success') {
+      <p class="ordered">Ordered.</p>
+    }
+  </form>
+</section>
+
+<section aria-labelledby="search-field">
+  <h2 id="search-field">SearchField</h2>
+  <SearchField class="search" value=$bind(query) onSubmit=((value) => (searched = value))>
+    <Label>Search the parts</Label>
+    <Input class="field" />
+    <Button class="press clear">×</Button>
+  </SearchField>
+  <p class="searched">Searched for {searched || 'nothing yet'}.</p>
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -136,6 +200,26 @@
     align-self: stretch;
     width: 1px;
     background: #555;
+  }
+
+  :global(.field) {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+
+  :global(.field[data-invalid]) {
+    border-color: #b3261e;
+  }
+
+  :global(.error) {
+    display: block;
+    color: #b3261e;
+  }
+
+  :global(.search[data-empty] .clear) {
+    visibility: hidden;
   }
 
   :global(.help) {

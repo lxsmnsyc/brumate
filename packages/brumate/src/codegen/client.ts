@@ -938,17 +938,19 @@ class ClientGenerator {
       }
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
-      // Only a spread that can change has code in the browser.
       const spreads = new Map<oxc.Node, string>();
       for (const item of owner.attributes) {
         if (item.kind !== 'spread' || item === attribute) {
           continue;
         }
+        // A spread that cannot change has code in the browser when each value that it reads has
+        // a slot, such as a rest prop that markup of the browser reads.
         const other = this.plan.graph.nodes.find(
           (candidate) =>
             candidate.kind !== 'source' &&
             candidate.site.node === item.value.ast &&
-            this.plan.graph.live.has(candidate),
+            (this.plan.graph.live.has(candidate) ||
+              candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
         );
         if (other && other.kind !== 'source') {
           spreads.set(

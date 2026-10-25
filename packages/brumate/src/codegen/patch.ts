@@ -82,6 +82,20 @@ export function addValueEdits(
   const sitesByNode = new Map<object, Site>();
   // The names that each `$props()` destructures, by the call.
   const propNames = new Map<oxc.Node, string[]>();
+  // The `$props()` calls whose pattern has a rest element.
+  const restCalls = new Set<oxc.Node>();
+  // The names that the other `$props()` calls destructure.
+  const otherNames = (call: oxc.Node): string[] => {
+    const own = new Set(propNames.get(call));
+    return [
+      ...new Set(
+        [...propNames]
+          .filter(([other]) => other !== call)
+          .flatMap(([, names]) => names)
+          .filter((name) => !own.has(name)),
+      ),
+    ];
+  };
   for (const statement of file.instanceScript?.program.body ?? []) {
     if (statement.type !== 'VariableDeclaration') {
       continue;
@@ -100,6 +114,9 @@ export function addValueEdits(
             return name === undefined ? [] : [name];
           }),
         );
+        if (declarator.id.properties.some((property) => property.type === 'RestElement')) {
+          restCalls.add(init);
+        }
       }
     }
   }
@@ -138,11 +155,15 @@ export function addValueEdits(
         // The props that the component destructures by name get the values of their bindings, and
         // a rest prop keeps them, so a spread passes them on. See `unbind`.
         const names = propNames.get(node);
-        patch.replace(
-          node.start,
-          node.end,
-          names ? `$$b.unbind($$props, ${JSON.stringify(names)})` : '$$b.unbind($$props)',
-        );
+        // A rest prop leaves out the props that another `$props()` call names.
+        const others = names && restCalls.has(node) ? otherNames(node) : [];
+        let code = '$$b.unbind($$props)';
+        if (others.length > 0) {
+          code = `$$b.unbind($$props, ${JSON.stringify(names)}, ${JSON.stringify(others)})`;
+        } else if (names) {
+          code = `$$b.unbind($$props, ${JSON.stringify(names)})`;
+        }
+        patch.replace(node.start, node.end, code);
         return;
       }
       if (name === '$action') {
@@ -194,6 +215,17 @@ export function addValueEdits(
         if (declaration && mode === 'server') {
           // The server computes a memo when it is read. Memos that it reads are read as memos,
           // so a value that is still loading stops it until the load settles.
+          // A memo in a shorthand property, such as `{ id }`, keeps its key.
+          const shorthands = new Set<number>();
+          const findShorthands = (current: oxc.Node): void => {
+            if (current.type === 'Property' && current.shorthand) {
+              shorthands.add(current.value.start);
+            }
+            for (const [, child] of children(current)) {
+              findShorthands(child);
+            }
+          };
+          findShorthands(argument);
           for (const read of site!.reads) {
             if (
               read.range.start !== read.range.end &&
@@ -203,10 +235,11 @@ export function addValueEdits(
             ) {
               // A read with `await` is the read: the value throws when it is still loading.
               const range = read.await ?? read.range;
+              const key = shorthands.has(range.start) ? `${read.declaration.name}: ` : '';
               patch.replace(
                 range.start,
                 range.end,
-                `$$b.read(${promiseName(read.declaration.name)})`,
+                `${key}$$b.read(${promiseName(read.declaration.name)})`,
               );
               replaced.add(read);
             }
