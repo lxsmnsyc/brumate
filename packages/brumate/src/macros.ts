@@ -22,6 +22,8 @@ export const MACROS: Set<string> = new Set([
   '$untrack',
   '$produce',
   '$isPending',
+  '$isBound',
+  '$isPassed',
   '$setContext',
   '$getContext',
   '$route',

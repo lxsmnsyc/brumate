@@ -38,6 +38,19 @@ describe('client functions', () => {
   });
 });
 
+describe('the name of the component function', () => {
+  it('does not hide a name that the script imports', () => {
+    const { server, render } = compile(
+      `<script>\n  import { $getContext } from 'brumate/signals';\n  import { ButtonContext } from './contexts.ts';\n  const value = $getContext(ButtonContext);\n</script>\n<p>{value}</p>`,
+      { filename: 'button-context.brm' },
+    );
+    expect(server).toContain('export default async function ButtonContext$(');
+    expect(server).toContain('ButtonContext$.brumateId');
+    expect(server).toContain('consume(ButtonContext,');
+    expect(render).toContain('export default function ButtonContext$(');
+  });
+});
+
 describe('$untrack', () => {
   it('reads through a called function without depending on what it reads', () => {
     const { report } = inspect(

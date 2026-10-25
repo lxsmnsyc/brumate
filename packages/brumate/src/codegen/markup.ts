@@ -65,13 +65,17 @@ type Part = { static: string } | { code: string };
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-): '$getContext' | '$id' | '$route' | '$navigation' | undefined {
+): '$getContext' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
-  return name === '$getContext' || name === '$id' || name === '$route' || name === '$navigation'
+  return name === '$getContext' ||
+    name === '$id' ||
+    name === '$isPassed' ||
+    name === '$route' ||
+    name === '$navigation'
     ? name
     : undefined;
 }
@@ -615,6 +619,13 @@ export class Emitter {
       if (call === '$id' && declaration?.idIndex !== undefined) {
         this.line(
           `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
+        );
+        continue;
+      }
+      if (call === '$isPassed' && declaration?.passedKey !== undefined) {
+        // The props as the caller passed them, before defaults apply.
+        this.line(
+          `const ${declaration.name} = ${JSON.stringify(declaration.passedKey)} in $$props;`,
         );
         continue;
       }
@@ -1403,25 +1414,32 @@ export class Emitter {
         ? `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
         : undefined;
     };
-    if (value.type !== 'ObjectExpression') {
-      return mark(value) ?? this.source(value);
-    }
-    let code = '';
-    let position = value.start;
-    for (const property of value.properties) {
-      if (property.type !== 'Property' || property.computed) {
-        continue;
+    // The functions can be the values of keys of objects inside the value too.
+    const visit = (node: oxc.Node): string => {
+      if (node.type !== 'ObjectExpression') {
+        return mark(node) ?? this.source(node);
       }
-      const marked = mark(property.value, property.method);
-      if (!marked) {
-        continue;
+      let code = '';
+      let position = node.start;
+      for (const property of node.properties) {
+        if (property.type !== 'Property' || property.computed) {
+          continue;
+        }
+        const marked =
+          property.value.type === 'ObjectExpression'
+            ? visit(property.value)
+            : mark(property.value, property.method);
+        if (!marked) {
+          continue;
+        }
+        code += this.patch.slice(position, property.start);
+        const key = this.patch.slice(property.key.start, property.key.end);
+        code += `${key}: ${marked}`;
+        position = property.end;
       }
-      code += this.patch.slice(position, property.start);
-      const key = this.patch.slice(property.key.start, property.key.end);
-      code += `${key}: ${marked}`;
-      position = property.end;
-    }
-    return code + this.patch.slice(position, value.end);
+      return code + this.patch.slice(position, node.end);
+    };
+    return visit(value);
   }
 
   /** A prop value. A client function is marked so it serializes as a reference. */

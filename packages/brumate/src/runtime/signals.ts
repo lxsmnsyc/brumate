@@ -105,6 +105,22 @@ export function $isPending(_memo: unknown): boolean {
   return compileTimeOnly('$isPending');
 }
 
+/**
+ * True when the parent passed a prop with `$bind`, so a write of it reaches the parent. The prop is
+ * one that the component destructures with `let`. Always false on the server, where nothing writes.
+ */
+export function $isBound(_prop: unknown): boolean {
+  return compileTimeOnly('$isBound');
+}
+
+/**
+ * True when the caller passed the prop, even as `undefined`. A part uses it to tell a controlled
+ * value, such as `value=(null)`, from no value. Declare it with `const` in the component script.
+ */
+export function $isPassed(_prop: unknown): boolean {
+  return compileTimeOnly('$isPassed');
+}
+
 /** Returns an ID that is unique in the page and the same on the server and the client. */
 export function $id(): string {
   return compileTimeOnly('$id');

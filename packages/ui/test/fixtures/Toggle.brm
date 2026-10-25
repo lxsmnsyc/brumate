@@ -1,0 +1,19 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  // A part with state, as every part with state keeps it. `pressed=value` starts the part's own
+  // copy, and `pressed=$bind(signal)` writes the caller's signal.
+  const { label, onChange } = $props<{ label: string; onChange?: (pressed: boolean) => void }>();
+  let { pressed = false } = $props<{ pressed?: Bindable<boolean> }>();
+
+  function setPressed(next: boolean) {
+    if (next === pressed) {
+      return;
+    }
+    pressed = next;
+    onChange?.(next);
+  }
+</script>
+
+<button class=(`toggle ${label}`) aria-pressed=String(pressed) onClick=(() => setPressed(!pressed))>{label}</button>

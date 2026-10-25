@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Toggle from './Toggle.brm';
+
+  let start = $signal(true);
+  let bound = $signal(false);
+  let locked = $signal(false);
+  let changes = $signal('');
+</script>
+
+<Toggle label="own" onChange=((next) => (changes += ` own:${next}`)) />
+<Toggle label="start" pressed=start />
+<Toggle label="bound" pressed=$bind(bound) />
+<Toggle label="locked" pressed=$bind(locked, () => {}) onChange=((next) => (changes += ` locked:${next}`)) />
+<button class="reset" onClick=(() => (start = !start))>Reset</button>
+<p class="values">{String(bound)} {String(locked)}</p>
+<p class="changes">{changes}</p>

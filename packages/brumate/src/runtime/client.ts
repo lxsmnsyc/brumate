@@ -1449,6 +1449,11 @@ export function pending(scope: Scope, slot: number): boolean {
   return loadingSlots.has(`${scope.id}:${slot}`) || scope.s[slot] instanceof Promise;
 }
 
+/** True when a parent bound the prop of the slot with `$bind`. */
+export function isBound(scope: Scope, slot: number): boolean {
+  return scope.b?.[slot] !== undefined;
+}
+
 /** `x++`, `x--`, `++x` and `--x`. */
 export function update(scope: Scope, slot: number, delta: number, prefix: boolean): number {
   const previous = get(scope, slot) as number;

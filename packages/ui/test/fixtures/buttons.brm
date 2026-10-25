@@ -1,0 +1,25 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import { log } from './log.ts';
+
+  let presses = $signal(0);
+</script>
+
+<Button
+  class="plain"
+  onPress=((event) => {
+    log(event);
+    presses++;
+  })
+  onPressStart=((event) => log(event))
+  onPressEnd=((event) => log(event))
+  onPressUp=((event) => log(event))
+  onHoverStart=((event) => log(event))
+  onHoverEnd=((event) => log(event))
+>Press</Button>
+<Button class="disabled" isDisabled=(true) onPress=((event) => log(event))>Disabled</Button>
+<Button class="pending" isPending=(true) onPress=((event) => log(event))>Pending</Button>
+<Button class="link" as="a" href="#top" onPress=((event) => log(event))>Link</Button>
+<Button class="submit" type="submit">Send</Button>
+<p class="presses">{presses}</p>

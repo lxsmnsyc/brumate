@@ -70,6 +70,8 @@ const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
   $title: 'Call $title at the top level of a script',
   $id: 'Create an ID with "const name = $id()" at the top level of a script',
+  $isPassed:
+    'Check a prop with "const name = $isPassed(prop)" at the top level of the component script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
   $route: 'Read the route with "const name = $route()" at the top level of a script',
@@ -762,6 +764,27 @@ class Analyzer {
       return;
     }
 
+    if (name === '$isPassed') {
+      if (kind !== 'const' || id.type !== 'Identifier' || !isComponent) {
+        this.report('error', MISPLACED[name]!, declarator);
+        return;
+      }
+      const [target] = call.arguments;
+      const prop = target?.type === 'Identifier' ? scope.declarations.get(target.name) : undefined;
+      if (call.arguments.length !== 1 || prop?.kind !== 'prop' || prop.propKey === undefined) {
+        this.report(
+          'error',
+          '$isPassed takes a prop that the component destructures, such as $isPassed(value)',
+          call,
+        );
+        return;
+      }
+      // The caller's attributes decide it, so it never changes and depends on nothing.
+      const declaration = this.addDeclaration(scope, id.name, 'const', id);
+      declaration.passedKey = prop.propKey;
+      return;
+    }
+
     if (name === '$route' || name === '$navigation') {
       if (kind !== 'const' || id.type !== 'Identifier') {
         this.report('error', MISPLACED[name]!, declarator);
@@ -949,18 +972,19 @@ class Analyzer {
    * Functions in a provided value run in the browser, where a component that
    * reads the context calls them. Each one is a client root, as a function
    * prop is: the value itself, or the value of a key of an object, such as
-   * `toggle` in `$setContext(Theme, { theme, toggle })`.
+   * `toggle` in `$setContext(Theme, { theme, toggle })`, at any depth.
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites.filter((item) => item.kind === 'provide')) {
-      const value = site.node;
-      const parts =
+      // The value, or the values of the keys of an object, also of objects inside it, such as
+      // `{ slots: { increment: { onPress } } }`.
+      const valuesOf = (value: oxc.Node): oxc.Node[] =>
         value.type === 'ObjectExpression'
           ? value.properties.flatMap((property) =>
-              property.type === 'Property' && !property.computed ? [property.value] : [],
+              property.type === 'Property' && !property.computed ? valuesOf(property.value) : [],
             )
           : [value];
-      for (const part of parts) {
+      for (const part of valuesOf(site.node)) {
         const isFunctionPart =
           isFunction(part) ||
           (part.type === 'Identifier' &&
@@ -1853,6 +1877,26 @@ class Resolver {
               this.visit(argument);
             }
             this.untracked--;
+            return;
+          }
+          if (name === '$isBound') {
+            const [target] = node.arguments;
+            const declaration =
+              target?.type === 'Identifier' && !this.isLocal(target.name)
+                ? lookup(this.site.scope, target.name)
+                : undefined;
+            if (
+              node.arguments.length !== 1 ||
+              declaration?.kind !== 'prop' ||
+              !declaration.writable
+            ) {
+              this.analyzer.report(
+                'error',
+                '$isBound takes a prop that the component destructures with let, such as $isBound(open)',
+                node,
+              );
+            }
+            this.visitChildren(node);
             return;
           }
           if (name === '$isPending') {

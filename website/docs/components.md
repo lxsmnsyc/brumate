@@ -138,6 +138,41 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 - A `const` prop stays read-only. Writing it is a compile error.
 - `$bind` also works on `value` and `checked` of form fields: `<input value=$bind(draft)>`.
 
+### Controlled and uncontrolled
+
+A part such as a dialog keeps its own state, or writes the state of its caller. A `let` prop does both, so the caller picks:
+
+```brm
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  const { onChange } = $props<{ onChange?: (open: boolean) => void }>();
+  let { open = false } = $props<{ open?: Bindable<boolean> }>();
+
+  function toggle() {
+    open = !open;
+    onChange?.(open);
+  }
+</script>
+
+<button aria-expanded=open onClick=toggle>Details</button>
+```
+
+- Without `open`, or with `open=(true)`, the part keeps its own copy. A new value from the caller replaces it.
+- With `open=$bind(settingsOpen)`, the part writes the caller's signal.
+- With `open=$bind(settingsOpen, (next) => …)`, the setter decides. The part shows what the caller keeps.
+
+A part that needs to know how the caller passed a prop asks with `$isPassed` and `$isBound` from `brumate/signals`:
+
+```ts
+let { value } = $props<{ value?: Bindable<string | null> }>();
+// True for value=(null) too, so null can be a value that the caller passed.
+const passed = $isPassed(value);
+// True for value=$bind(selected).
+const bound = () => $isBound(value);
+```
+
 ### Functions as props
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:

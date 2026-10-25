@@ -25,7 +25,7 @@ export function tabbables(root: ParentNode = document.body): HTMLElement[] {
   );
   const positive = found
     .filter((element) => element.tabIndex > 0)
-    .sort((a, b) => a.tabIndex - b.tabIndex);
+    .toSorted((a, b) => a.tabIndex - b.tabIndex);
   return [...positive, ...found.filter((element) => element.tabIndex === 0)];
 }
 
@@ -59,4 +59,30 @@ export function press(
   target.dispatchEvent(
     new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true, ...init }),
   );
+}
+
+/** Sends a pointer event to an element, from a mouse by default, with the first button. */
+export function pointer(type: string, target: Element, init: PointerEventInit = {}): void {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      bubbles: !/^pointer(enter|leave)$/.test(type),
+      cancelable: true,
+      composed: true,
+      ...init,
+    }),
+  );
+}
+
+/**
+ * Presses an element with a pointer, as a browser sends it: pointerdown, pointerup, then a click
+ * with a `detail` of 1. A touch or a pen comes with `pointerType`.
+ */
+export function pressWith(target: Element, init: PointerEventInit = {}): void {
+  pointer('pointerdown', target, init);
+  pointer('pointerup', target, init);
+  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
 }

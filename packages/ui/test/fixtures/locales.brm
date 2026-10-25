@@ -1,0 +1,12 @@
+<script>
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Keyboard from '../../src/Keyboard.brm';
+  import Locale from './Locale.brm';
+</script>
+
+<div class="default"><Locale /></div>
+<I18nProvider locale="ar-EG">
+  <div class="arabic"><Locale /></div>
+  <I18nProvider locale="fr-FR"><div class="french"><Locale /></div></I18nProvider>
+</I18nProvider>
+<Keyboard class="key" title="Paste">⌘V</Keyboard>
