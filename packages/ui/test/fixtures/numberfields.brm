@@ -31,5 +31,18 @@
     <Label>Count</Label>
     <Input class="empty-input" />
   </NumberField>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <NumberField class="qty" name="qty" aria-label="Quantity" isRequired minValue=(0) maxValue=(12) step=(5) value=(10)>
+      <Group>
+        <Button slot="decrement" class="qty-minus">-</Button>
+        <Input class="qty-input" />
+        <Button slot="increment" class="qty-plus">+</Button>
+      </Group>
+    </NumberField>
+    <NumberField class="locked" isReadOnly value=(3)>
+      <Label>Locked</Label>
+      <Input class="locked-input" />
+    </NumberField>
+  </form>
   <p class="state">{JSON.stringify([width, price, Number.isNaN(empty) ? 'NaN' : empty])}</p>
 </main>

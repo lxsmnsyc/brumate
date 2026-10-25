@@ -20,8 +20,10 @@ export interface SliderState {
   label: string;
   /** The value of each thumb in the format of the locale, for `aria-valuetext`. */
   labels: string[];
+  /** The thumbs that a drag moves now, which show `data-dragging`. */
+  dragging: number[];
   setThumb: (index: number, value: number) => void;
-  /** A drag of the thumb started or ended, which `onChangeEnd` follows. */
+  /** A drag of the thumb started or ended. `onChangeEnd` follows the end. */
   setDragging: (index: number, dragging: boolean) => void;
 }
 
@@ -31,7 +33,7 @@ export const SliderContext: Context<SliderState | null> = createContext<SliderSt
 );
 
 /** The ID of the input of a thumb. */
-export function thumbId(slider: SliderState, index: number): string {
+export function thumbId(slider: { id: string }, index: number): string {
   return `${slider.id}-thumb-${index}`;
 }
 
@@ -49,8 +51,8 @@ export function percentOf(slider: SliderState, value: number): number {
   return size > 0 ? clamp((value - slider.minValue) / size, 0, 1) : 0;
 }
 
-/** The value on a step at a point of the track, as the pointer gives it. */
-export function valueAt(
+/** Where a point is on the track, from 0 to 1, or past the ends. */
+export function pointAt(
   slider: SliderState,
   track: Element,
   x: number,
@@ -60,11 +62,24 @@ export function valueAt(
   const box = track.getBoundingClientRect();
   const vertical = slider.orientation === 'vertical';
   const size = vertical ? box.height : box.width;
-  let percent = size > 0 ? (vertical ? y - box.top : x - box.left) / size : 0;
+  const percent = size > 0 ? (vertical ? y - box.top : x - box.left) / size : 0;
   // A vertical track grows upward, and a horizontal one right to left grows to the left.
-  if (vertical || rtl) {
-    percent = 1 - percent;
-  }
+  return vertical || rtl ? 1 - percent : percent;
+}
+
+/**
+ * The value on a step at a point of the track, as the pointer gives it. `offset` is where the
+ * pointer was on a thumb when its drag began, so the thumb does not jump to the pointer.
+ */
+export function valueAt(
+  slider: SliderState,
+  track: Element,
+  x: number,
+  y: number,
+  rtl: boolean,
+  offset = 0,
+): number {
+  const percent = pointAt(slider, track, x, y, rtl) - offset;
   const value = slider.minValue + clamp(percent, 0, 1) * (slider.maxValue - slider.minValue);
   return snapToStep(value, slider.minValue, slider.maxValue, slider.step);
 }
