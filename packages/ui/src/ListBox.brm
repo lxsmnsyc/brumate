@@ -36,6 +36,7 @@
     typeahead,
   } from './collection.ts';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
 
   /**
@@ -140,6 +141,7 @@
   });
   // The lists inside, such as in an item, have fields of their own.
   $setContext(CollectionFocusContext, null);
+  $setContext(FieldInputContext, null);
 
   // A part around the list, such as a ComboBox, shows only the items that match its text: when
   // the list is on the page, and each time the text changes.
