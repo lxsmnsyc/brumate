@@ -25,7 +25,7 @@
    *   `{ months: 1 }`.
    * - The arrow keys move focus by a day and a week, PageUp and PageDown by a month, or a year
    *   with Shift, and Home and End to the start and the end of the month. Enter and Space select
-   *   the date.
+   *   the date. Escape drops the first date of a range that is not done.
    */
   const { offset, cell, ...rest } = $props<{
     offset?: DateDuration;
@@ -81,6 +81,10 @@
       case 'Enter':
       case ' ':
         calendar.selectFocused();
+        return;
+      case 'Escape':
+        // A range that is not done is dropped. Escape is not prevented, so a popover around closes.
+        calendar.cancel();
         return;
       default:
         return;

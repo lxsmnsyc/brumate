@@ -1,0 +1,19 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<RangeCalendar class="ui-calendar" aria-label="Stay" value=$bind(stay)>
+  <header>
+    <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+    <CalendarHeading />
+    <Button slot="next" class="ui-button ui-icon-button">›</Button>
+  </header>
+  <CalendarGrid />
+</RangeCalendar>
+<p>{stay ? `From ${stay.start} to ${stay.end}.` : 'Pick the first night, then the last.'}</p>

@@ -16,7 +16,7 @@
     todayString,
     unitDuration,
   } from './calendar.ts';
-  import type { DateString } from './calendar.ts';
+  import type { DateRange, DateString } from './calendar.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -34,6 +34,9 @@
    *   or by one month with `pageBehavior="single"`.
    * - `focusedValue` is the date that has focus, which starts at the selected date or today.
    * - It shows `data-disabled` and `data-invalid`.
+   * - A RangeCalendar renders it with `range`, so `value` is a range: a first press starts it,
+   *   and a second one ends it. `allowsNonContiguousRanges` lets a range hold dates that cannot
+   *   be picked.
    */
   const {
     minValue,
@@ -47,6 +50,8 @@
     'aria-label': ariaLabel,
     onChange,
     onFocusChange,
+    range = false,
+    allowsNonContiguousRanges = false,
     children,
     ...rest
   } = $props<{
@@ -59,14 +64,24 @@
     isReadOnly?: boolean;
     isInvalid?: boolean;
     'aria-label'?: string;
-    onChange?: (value: DateString) => void;
+    onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
+    range?: boolean;
+    allowsNonContiguousRanges?: boolean;
     onFocusChange?: (date: DateString) => void;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
-  let { value = null } = $props<{ value?: Bindable<DateString | null> }>();
-  let { focusedValue = constrain(toDate(value ?? todayString()), minValue, maxValue).toString() } =
-    $props<{ focusedValue?: Bindable<DateString> }>();
+  let { value = null } = $props<{ value?: Bindable<DateString | DateRange | null> }>();
+  let {
+    focusedValue = constrain(
+      toDate(firstOf(value) ?? todayString()),
+      minValue,
+      maxValue,
+    ).toString(),
+  } = $props<{ focusedValue?: Bindable<DateString> }>();
+  // In a range: the first date of a range that is not done, and the date that it shows the range to.
+  let anchor = $signal<DateString | null>(null);
+  let hovered = $signal<DateString | null>(null);
 
   const locale = $getContext(LocaleContext);
   const id = $id();
@@ -79,9 +94,12 @@
   const end = $memo(endOf(toDate(start), visibleDuration).toString());
   const visible = $memo(rangeLabel(toDate(start), toDate(end), locale.locale));
   const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
+  const selection = $memo(selectionOf(value, anchor, hovered));
   const unavailable = $memo(
-    value !== null &&
-      (outOfRange(toDate(value), minValue, maxValue) || (isDateUnavailable?.(value) ?? false)),
+    selection !== null &&
+      selection.some(
+        (date) => outOfRange(toDate(date), minValue, maxValue) || (isDateUnavailable?.(date) ?? false),
+      ),
   );
   const invalid = $memo(isInvalid || unavailable);
   const previousDisabled = $memo(
@@ -126,6 +144,9 @@
     const next = constrain(toDate(date), minValue, maxValue);
     focusCell(next.toString());
     focusedValue = next.toString();
+    if (anchor !== null) {
+      hovered = focusedValue;
+    }
     onFocusChange?.(focusedValue);
     if (next.compare(toDate(start)) < 0) {
       start = alignEnd(next, visibleDuration, locale.locale, minValue, maxValue).toString();
@@ -162,6 +183,40 @@
     ).toString();
   }
 
+  /** The first date of a value: the date, or the start of the range. */
+  function firstOf(current: DateString | DateRange | null): DateString | null {
+    return typeof current === 'object' && current !== null ? current.start : current;
+  }
+
+  /** The dates that show as selected, from the first to the last. */
+  function selectionOf(
+    current: DateString | DateRange | null,
+    first: DateString | null,
+    to: DateString | null,
+  ): [DateString, DateString] | null {
+    if (first !== null) {
+      const other = to ?? first;
+      return first <= other ? [first, other] : [other, first];
+    }
+    if (current === null) {
+      return null;
+    }
+    return typeof current === 'object' ? [current.start, current.end] : [current, current];
+  }
+
+  /** True when a date between two dates, both in, cannot be picked. */
+  function holdsUnavailable(from: DateString, to: DateString): boolean {
+    if (!isDateUnavailable) {
+      return false;
+    }
+    for (let date = toDate(from); date.toString() <= to; date = date.add({ days: 1 })) {
+      if (isDateUnavailable(date.toString())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function selectDate(date: DateString) {
     if (isDisabled || isReadOnly) {
       return;
@@ -171,9 +226,27 @@
       return;
     }
     focusDate(date);
+    if (range) {
+      // The first press starts a range, and the second one ends it, in either order.
+      if (anchor === null) {
+        anchor = date;
+        hovered = date;
+        return;
+      }
+      const [from, to] = anchor <= date ? [anchor, date] : [date, anchor];
+      if (!allowsNonContiguousRanges && holdsUnavailable(from, to)) {
+        return;
+      }
+      anchor = null;
+      hovered = null;
+      const next = { start: from, end: to };
+      value = next;
+      (onChange as ((value: DateRange) => void) | undefined)?.(next);
+      return;
+    }
     if (value !== date) {
       value = date;
-      onChange?.(date);
+      (onChange as ((value: DateString) => void) | undefined)?.(date);
     }
   }
 
@@ -185,7 +258,17 @@
     id,
     locale: locale.locale,
     direction: locale.direction,
-    value,
+    value: typeof value === 'string' ? value : null,
+    selection,
+    highlight: (date: DateString) => {
+      if (anchor !== null) {
+        hovered = date;
+      }
+    },
+    cancel: () => {
+      anchor = null;
+      hovered = null;
+    },
     focusedDate: focusedValue,
     start,
     end,

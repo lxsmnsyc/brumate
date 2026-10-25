@@ -20,13 +20,28 @@ import type { CalendarDate, DateDuration } from '@internationalized/date';
 /** A date as `YYYY-MM-DD`. */
 export type DateString = string;
 
+/** A range of dates, as RangeCalendar selects it. Both dates are in it. */
+export interface DateRange {
+  start: DateString;
+  end: DateString;
+}
+
 export interface CalendarState {
   /** The ID that the IDs of the cells start with. */
   id: string;
   locale: string;
   direction: 'ltr' | 'rtl';
-  /** The selected date, or null. */
+  /** The selected date, or null. A RangeCalendar has none, and shows its range in `selection`. */
   value: DateString | null;
+  /**
+   * The first and the last date that show as selected: the selected date twice, the selected
+   * range, or the range from the first date of a range to the date under the pointer or focus.
+   */
+  selection: [DateString, DateString] | null;
+  /** In a RangeCalendar, after the first press of a range: the dates show the range to `date`. */
+  highlight: (date: DateString) => void;
+  /** In a RangeCalendar, drops the first date of a range that is not done. */
+  cancel: () => void;
   /** The date that has focus, or that gets it when the grid gets focus. */
   focusedDate: DateString;
   /** The first date that shows. */

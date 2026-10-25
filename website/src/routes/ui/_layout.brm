@@ -851,6 +851,11 @@
     color: var(--bg);
   }
 
+  /* The days inside a range are squares, so the range reads as one band. */
+  :global(.ui-calendar [data-selected]:not([data-selection-start], [data-selection-end])) {
+    border-radius: 0;
+  }
+
   :global(.ui-calendar [data-focus-visible]) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;

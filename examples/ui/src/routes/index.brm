@@ -52,6 +52,7 @@
   import Calendar from '@brumate/ui/Calendar.brm';
   import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
   import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -101,6 +102,7 @@
   let quantity = $signal(1);
   let span = $signal([20, 60]);
   let delivery = $signal<string | null>('2026-10-15');
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
@@ -539,6 +541,15 @@
     <CalendarGrid class="delivery-grid" />
   </Calendar>
   <p class="delivery-state">{delivery ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="range-calendar">
+  <h2 id="range-calendar">RangeCalendar</h2>
+  <RangeCalendar class="stay" aria-label="Stay" value=$bind(stay) isDateUnavailable=closed>
+    <CalendarHeading class="stay-heading" />
+    <CalendarGrid class="stay-grid" />
+  </RangeCalendar>
+  <p class="stay-state">{stay ? `${stay.start} ${stay.end}` : 'none'}</p>
 </section>
 
 <section aria-labelledby="tooltip">

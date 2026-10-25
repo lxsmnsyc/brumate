@@ -15,7 +15,8 @@
    * a button inside, which holds the number of the day, or `children`.
    *
    * - A press selects the date. Only the focused date is in the order of Tab.
-   * - The button shows `data-selected`, `data-focused`, `data-focus-visible`, `data-today`,
+   * - The button shows `data-selected`, `data-selection-start`, `data-selection-end`,
+   *   `data-focused`, `data-focus-visible`, `data-today`,
    *   `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`,
    *   `data-invalid` and `data-pressed`.
    * - A date outside the month of its grid is disabled, and its button is hidden, as React Aria
@@ -44,10 +45,14 @@
     !disabled && (calendar?.isDateUnavailable?.(date) ?? false),
   );
   const selectable = $memo(!disabled && !unavailable);
-  const invalidValue = $memo(Boolean(calendar?.isInvalid && calendar.value === date));
-  const selected = $memo(
-    (selectable && calendar?.value === date) || (invalidValue && !disabled),
+  // In the dates that show as selected: one date, or a range.
+  const inSelection = $memo(
+    Boolean(calendar?.selection && calendar.selection[0] <= date && date <= calendar.selection[1]),
   );
+  const invalidValue = $memo(Boolean(calendar?.isInvalid && inSelection));
+  const selected = $memo((selectable && inSelection) || (invalidValue && !disabled));
+  const selectionStart = $memo(selected && calendar?.selection?.[0] === date);
+  const selectionEnd = $memo(selected && calendar?.selection?.[1] === date);
   const focused = $memo(!outsideMonth && calendar?.focusedDate === date);
   const label = $memo(calendar ? cellLabel(calendar, date, selected) : date);
   const number = $memo(calendar ? dayNumber(date, calendar.locale) : String(Number(date.slice(8))));
@@ -81,6 +86,13 @@
     (event.currentTarget as HTMLElement).removeAttribute('data-focus-visible');
   }
 
+  // After the first press of a range, the date under the pointer ends the range that shows.
+  function pointerEnter() {
+    if (calendar && selectable) {
+      calendar.highlight(date);
+    }
+  }
+
   function pointerDown(event: PointerEvent) {
     (event.currentTarget as HTMLElement).setAttribute('data-pressed', '');
   }
@@ -106,6 +118,8 @@
     data-calendar=(calendar?.id)
     data-date=date
     data-selected=(selected || undefined)
+    data-selection-start=(selectionStart || undefined)
+    data-selection-end=(selectionEnd || undefined)
     data-focused=(focused || undefined)
     data-today=(calendar?.today === date || undefined)
     data-disabled=(disabled || undefined)
@@ -116,6 +130,7 @@
     onClick=pressed
     onFocusIn=focusIn
     onFocusOut=focusOut
+    onPointerEnter=pointerEnter
     onPointerDown=pointerDown
     onPointerUp=pointerUp
     onPointerLeave=pointerUp
