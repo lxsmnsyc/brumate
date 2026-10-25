@@ -210,3 +210,20 @@ it('leaves disabled items out of Ctrl+A, and extends with Shift from the focused
   press('a', document.activeElement!, { ctrlKey: true });
   await page.waitFor(() => expect(state(page)[5]).toEqual(['p1', 'p3']));
 });
+
+it('prevents only the arrow keys of its axis', async () => {
+  const page = await listboxes();
+  const keyDown = (key: string, target: Element) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  // A horizontal list moves with Left and Right.
+  page.get('.r1').focus();
+  press('ArrowRight', page.get('.r1'));
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.r2')));
+  expect(keyDown('ArrowDown', page.get('.apple'))).toBe(true);
+  expect(keyDown('ArrowRight', page.get('.apple'))).toBe(false);
+  expect(keyDown('ArrowRight', page.get('.r1'))).toBe(true);
+  expect(keyDown('ArrowDown', page.get('.r1'))).toBe(false);
+});

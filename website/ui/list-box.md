@@ -30,7 +30,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 - Tab stops at the list once. Focus goes to the item that had focus last, or else to the first selected item, or the first item.
 - The arrow keys move focus, and Home, End, PageUp and PageDown go further. `orientation="horizontal"` uses Left and Right, which turn around right to left. `shouldFocusWrap` goes from the last item to the first.
 - Typing moves to the item whose text starts with what was typed, in the second after each letter. `textValue` sets that text for an item whose content is more than text.
-- The keys that move focus never scroll the page, also before the code of the list loads.
+- The keys that move focus never scroll the page, also before the code of the list loads. The arrow keys of the other axis keep their default, such as Left and Right in a vertical list.
 
 ## Sections
 
@@ -48,6 +48,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 - An item is an `option`. It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 - A `Text` with `slot="label"` names an item, and one with `slot="description"` describes it. A part cannot read its children, so add `hasLabel` and `hasDescription` to the item that has them.
 - The list shows `data-orientation`.
+- An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside, as in React Aria. A [GridList](./grid-list.md) holds rows with controls.
 
 ## How it reads the items
 
