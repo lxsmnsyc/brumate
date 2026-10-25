@@ -2303,6 +2303,15 @@ describe('function props in markup that the browser renders', () => {
   });
 });
 
+describe('shorthand handlers', () => {
+  it('runs a handler that a shorthand gives an element', async () => {
+    await resume('shorthandHandler', {});
+    expect(document.querySelector('.go')!.getAttribute('b-on')).toMatch(/^click=/);
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.go')).toBe('1'));
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];

@@ -48,6 +48,7 @@ Shorthands:
 
 ```brm
 <a {href}>Open</a>            <!-- the same as href=href -->
+<button {onClick}>Go</button>  <!-- the same as onClick=onClick, a handler -->
 <input {...rest}>              <!-- every property of rest as an attribute -->
 <div [name]=value></div>       <!-- the attribute name is an expression -->
 ```

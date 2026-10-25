@@ -428,6 +428,18 @@ class Parser {
       if (readIdentifier(name, 0) !== name) {
         this.fail('Expected a spread or a shorthand attribute', start);
       }
+      // `{onClick}` is a handler, the same as `onClick=onClick`, as in Svelte.
+      if (/^on[A-Z]/.test(name)) {
+        return {
+          kind: 'event',
+          start,
+          end: this.pos,
+          name,
+          event: name.slice(2).toLowerCase(),
+          modifiers: [],
+          handler: this.expression(inner.start, inner.end),
+        };
+      }
       return {
         kind: 'value',
         start,
