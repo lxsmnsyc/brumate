@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Indicators from './fixtures/indicators.brm?brumate-server';
-import { pressWith } from './interact.ts';
+import { press, pressWith } from './interact.ts';
 
 let unmount: (() => void) | undefined;
 afterEach(() => {
@@ -53,4 +53,30 @@ it('animates from the last indicator with the duration of its CSS, and not witho
   await page.waitFor(() => expect(page.get('.size-s').querySelector('.dot')).not.toBeNull());
   await new Promise((done) => setTimeout(done, 50));
   expect(animate).not.toHaveBeenCalled();
+});
+
+it('moves from where the last indicator is now, after the layout changed', async () => {
+  const animate = vi.fn();
+  Element.prototype.animate = animate as unknown as Element['animate'];
+  // happy-dom lays nothing out, so each tab has a box at its own x.
+  const left = { list: 0, grid: 50 };
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const tab = this.closest('.tab-list, .tab-grid');
+    if (!tab) {
+      return new DOMRect(0, 0, 0, 0);
+    }
+    return new DOMRect(tab.classList.contains('tab-list') ? left.list : left.grid, 0, 50, 20);
+  });
+  const page = await indicators();
+  await new Promise((done) => setTimeout(done, 50));
+  // The tabs move after the indicator on the page started, such as on a resize.
+  left.list = 100;
+  left.grid = 150;
+  animate.mockClear();
+  // The keys select, since a press checks where the pointer is in the boxes.
+  page.get('.tab-list').focus();
+  press('ArrowRight', page.get('.tab-list'));
+  await page.waitFor(() => expect(animate).toHaveBeenCalledTimes(1));
+  const [frames] = animate.mock.calls[0]! as [{ transform: string }[]];
+  expect(frames[0]!.transform).toBe('translate(-50px, 0px) scale(1, 1)');
 });
