@@ -31,6 +31,11 @@ export interface Timing {
   hide: (id: string, closeDelay: number, immediate: boolean, hide: () => void) => void;
   /** Cancels the hide of an overlay that waits for its close delay. */
   keep: (id: string) => void;
+  /**
+   * Forgets an overlay whose trigger left the page: its timers stop, and an overlay that showed
+   * starts the cooldown, as if it hid.
+   */
+  forget: (id: string) => void;
 }
 
 /**
@@ -114,6 +119,19 @@ export function timing(): Timing {
       const own = timersOf(id);
       clearTimeout(own.close);
       own.close = undefined;
+    },
+    forget(id) {
+      const own = timers.get(id);
+      clearTimeout(own?.warm);
+      clearTimeout(own?.close);
+      timers.delete(id);
+      if (current?.id === id) {
+        current = undefined;
+        clearTimeout(cooldown);
+        cooldown = setTimeout(() => {
+          warmedUp = false;
+        }, COOLDOWN);
+      }
     },
   };
 }
