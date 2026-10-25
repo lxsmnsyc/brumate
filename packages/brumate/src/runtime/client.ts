@@ -85,9 +85,9 @@ export interface ClientModule {
 /** A part of a client module: one client root, or the updates. */
 export type Part = Record<string, unknown>;
 
-/** The part that holds an export: `h<n>` and `c<n>` have their own, the rest are in `update`. */
+/** The part that holds an export: `h<n>`, `c<n>`, `t<n>` and `v<n>` have their own, the rest are in `update`. */
 function partOf(name: string): string {
-  return /^[hct]\d/.test(name) ? name : 'update';
+  return /^[hctv]\d/.test(name) ? name : 'update';
 }
 
 /** The instance of a scope in the page. */
@@ -760,6 +760,11 @@ function callable(value: unknown, seen: Set<object>): unknown {
     if (isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
     }
+    if (isValueFunction(value.ref)) {
+      const fn = valueReference(value.ref, scopes.get(value.scope), value.args ?? []);
+      handlerReferences.set(fn, value);
+      return fn;
+    }
     const handler = (...args: unknown[]): unknown =>
       call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
     handlerReferences.set(handler, value);
@@ -897,7 +902,10 @@ let lastCall: Promise<unknown> = Promise.resolve();
  * wrapped, so a call that its code makes does not wait for the call around it.
  */
 function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  const loaded = resolve(ref, 'call');
+  const code = valuesReady();
+  const loaded = code
+    ? Promise.all([resolve(ref, 'call'), code]).then(([fn]) => fn)
+    : resolve(ref, 'call');
   const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);
@@ -908,8 +916,48 @@ function isTemplate(ref: string): boolean {
   return /#t\d/.test(ref);
 }
 
-/** The code of templates that is still loading. Updates wait for it, since a render cannot. */
-const loadingTemplates = new Set<Promise<unknown>>();
+/** True for a reference to a function prop whose result the child uses, such as `Page#v3`. */
+function isValueFunction(ref: string): boolean {
+  return /#v\d/.test(ref);
+}
+
+/**
+ * The code of templates and of function props that return values, which is still loading.
+ * Updates wait for it, since a render or a memo cannot.
+ */
+const loadingCode = new Set<Promise<unknown>>();
+
+/** The code of function props that return values, which handlers and calls wait for too. */
+const loadingValues = new Set<Promise<unknown>>();
+
+/** Resolves when the code of the function props that return values has loaded. */
+function valuesReady(): Promise<unknown> | undefined {
+  return loadingValues.size > 0 ? Promise.allSettled([...loadingValues]) : undefined;
+}
+
+/**
+ * A function prop whose result the child uses, such as `isDateUnavailable` or `filter`. Its code
+ * starts to load when the page state is read. Once it has loaded, a call returns the result, as
+ * on the server. Before, a call returns a promise of it.
+ */
+function valueReference(
+  ref: string,
+  scope: Scope | undefined,
+  bound: unknown[],
+): (...args: unknown[]) => unknown {
+  let fn: Handler | undefined;
+  const code: Promise<unknown> = resolve(ref, 'call')
+    .then((handler) => {
+      fn = handler;
+    })
+    .finally(() => {
+      loadingCode.delete(code);
+      loadingValues.delete(code);
+    });
+  loadingCode.add(code);
+  loadingValues.add(code);
+  return (...args) => (fn ? fn(scope, ...bound, ...args) : call(ref, scope, [...bound, ...args]));
+}
 
 /**
  * A `#template` of another component, which renders at once, as markup does.
@@ -922,8 +970,8 @@ function templateReference(ref: string, scope: Scope | undefined): (...args: unk
     .then((handler) => {
       render = handler;
     })
-    .finally(() => loadingTemplates.delete(code));
-  loadingTemplates.add(code);
+    .finally(() => loadingCode.delete(code));
+  loadingCode.add(code);
   // The markup renders where the component inserts it, so it reads the contexts there, as
   // children do.
   return (...args) =>
@@ -1001,10 +1049,13 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
   // The code of the children that the handler can insert loads with it.
+  // So does the code of the function props that the handler can call for their results.
   const children = childrenReady(scope);
-  const loaded = children
-    ? Promise.all([resolve(ref, 'event'), children]).then(([handler]) => handler)
-    : resolve(ref, 'event');
+  const code = valuesReady();
+  const loaded =
+    children || code
+      ? Promise.all([resolve(ref, 'event'), children, code]).then(([handler]) => handler)
+      : resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1516,16 +1567,16 @@ function trigger(scope: Scope, slot: number): void {
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
   const children = childrenReady(scope);
-  if (module && updates && loadingTemplates.size === 0 && !children) {
+  if (module && updates && loadingCode.size === 0 && !children) {
     run(module, updates, scope, slot);
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and
-  // for the templates that the updates can render.
+  // for the templates that the updates can render and the function props that they can call.
   const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.allSettled([...loadingTemplates, children]);
+      await Promise.allSettled([...loadingCode, children]);
       run(loaded, code, scope, slot);
     }
   });

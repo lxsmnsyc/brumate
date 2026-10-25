@@ -179,6 +179,11 @@ export interface Site {
   handler?: oxc.CallExpression;
   /** For the function of `$bind(name, fn)`, the call, which passes it as the setter of the binding. */
   setter?: oxc.CallExpression;
+  /**
+   * True for a prop of a component whose name does not start with `on`, such as `filter`. A
+   * function in it returns a value that the child can need at once, such as in a memo.
+   */
+  valueProp?: boolean;
 }
 
 export type Severity = 'error' | 'warning';

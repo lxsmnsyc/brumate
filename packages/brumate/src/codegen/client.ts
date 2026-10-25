@@ -67,7 +67,7 @@ export const DEFAULT_MERGE = 4096;
 
 /** The part that holds an export of a client module. */
 export function partOf(name: string): string {
-  return /^[hct]\d/.test(name) ? name : 'update';
+  return /^[hctv]\d/.test(name) ? name : 'update';
 }
 
 // Sites whose code does not run while a body renders.
