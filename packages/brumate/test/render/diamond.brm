@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import DiamondChild from './DiamondChild.brm';
+  import { ran } from './runs.ts';
+
+  let count = $signal(1);
+  const double = $memo(count * 2);
+  const sum = $memo(ran('sum', `${count} + ${double}`));
+  const label = $memo(ran('label', `${sum} of ${double}`));
+
+  let letters = $signal(['a', 'b']);
+  const last = $memo(letters.length - 1);
+</script>
+
+<button class="add" onClick=(() => count++)>Add</button>
+<p class="both">{ran('both', `${count} ${double}`)}</p>
+<p class="label">{label}</p>
+<button class="grow" onClick=(() => (letters = [...letters, String.fromCharCode(97 + letters.length)]))>Grow</button>
+<DiamondChild {letters} {last} />
