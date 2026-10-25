@@ -34,7 +34,7 @@ import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, resolveRelative } from './project.ts';
-import { featuresOf, joinFeatures, readsFeatures, writeFeatures } from './features.ts';
+import { allFeatures, featuresOf, joinFeatures, readsFeatures, writeFeatures } from './features.ts';
 import type { Features } from './features.ts';
 import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
@@ -114,6 +114,12 @@ export interface BrumateOptions {
    * view transition.
    */
   navigate?: boolean | NavigateOptions;
+  /**
+   * The features of the core that the client build keeps. By default it leaves out the code of
+   * those that no component of the build uses, such as `#template` values that the browser
+   * calls. `'all'` keeps every feature, for an app that compiles components in the browser.
+   */
+  features?: 'used' | 'all';
   /**
    * Client parts of a component smaller than this many bytes in all, after
    * minifying, become one module, so its first event loads one file. 0
@@ -570,7 +576,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const buildFeatures = (): Promise<Features> =>
     (builtFeatures ??= Promise.all(
       [...files.values()].map(async (file) => featuresOf((await compileFile(file)).result)),
-    ).then(joinFeatures));
+    ).then((all) => {
+      const features = joinFeatures(all);
+      // Client navigation inserts the pages that it loads.
+      features.lateMarkup ||= options.navigate !== false;
+      return features;
+    }));
 
   /** The options of the compile of a file. */
   const compileOptions = (file: string): CompileOptions => ({
@@ -1841,9 +1852,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
     async transform(code, id, transformOptions) {
       // The client build leaves out the code of the features of the core that no component
-      // uses. The dev server and the server build keep every feature.
+      // uses. The dev server and the server build keep every feature, and so does a build with
+      // `features: 'all'`, such as one that compiles components in the browser.
       if (!isServe && !isSsrBuild && !transformOptions?.ssr && readsFeatures(code)) {
-        return { code: writeFeatures(code, await buildFeatures()), map: null };
+        const features = options.features === 'all' ? allFeatures() : await buildFeatures();
+        return { code: writeFeatures(code, features), map: null };
       }
       const [file] = id.split('?');
       // The browser gets the env file without the server variables, and with the values of the

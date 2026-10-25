@@ -1,5 +1,11 @@
 import { trustedHTML } from './trusted.ts';
-import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES, HAS_TITLES } from './features.ts';
+import {
+  HAS_BINDINGS,
+  HAS_CHILDREN,
+  HAS_LATE_MARKUP,
+  HAS_TEMPLATES,
+  HAS_TITLES,
+} from './features.ts';
 import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
@@ -704,12 +710,21 @@ export function init(value: CoreOptions): void {
   build = value.build;
   const queue = stateQueue();
   // Records that are still streaming settle their promises when their scripts run.
-  queue.push = pushRecords;
+  if (HAS_LATE_MARKUP) {
+    queue.push = pushRecords;
+  }
   for (const record of queue.splice(0)) {
     readRecord(record);
   }
-  markerObserver = new MutationObserver(indexAdded);
-  markerObserver.observe(document, { childList: true, subtree: true });
+  if (HAS_LATE_MARKUP) {
+    markerObserver = new MutationObserver(indexAdded);
+    markerObserver.observe(document, { childList: true, subtree: true });
+  } else if (document.readyState === 'loading') {
+    // The page that the browser reads after an `async` script starts is indexed when it ends.
+    document.addEventListener('DOMContentLoaded', () => indexMarkers(document.documentElement), {
+      once: true,
+    });
+  }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
   watchTitles(document);
@@ -1953,9 +1968,11 @@ function findComment(key: string): Comment | undefined {
   if (!comment?.isConnected) {
     // The index has every marker in the page once it reads the records that
     // are waiting. Before the core starts, or between pages, it reads the page.
-    if (markerObserver) {
+    // Without markup that others insert, the index has every marker of the page already, once
+    // the browser has read all of it.
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-    } else {
+    } else if (HAS_LATE_MARKUP || document.readyState === 'loading') {
       indexMarkers(document.documentElement);
     }
     comment = comments.get(key);
@@ -1969,11 +1986,12 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
   if (!element?.isConnected) {
     // As for markers: once the core starts, the index has every bound element in the page,
     // with those of the inserts that are waiting.
-    if (markerObserver) {
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-      indexInserts();
-      element = elements.get(key);
     }
+    // The inserts of the core are read when an update first needs one of their elements.
+    indexInserts();
+    element = elements.get(key);
     // An insert whose first node left the page, such as the first row of a list that was
     // removed, has elements that the walk did not reach.
     if (!element?.isConnected) {
@@ -2025,7 +2043,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   template.innerHTML = trustedHTML(html);
   const fragment = template.content;
   // Markers that others inserted first, so the new markers win over them.
-  if (markerObserver) {
+  if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
   // The scopes that the renders since the last insert made, whose markup this is.
@@ -2062,7 +2080,9 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     hiding!.added(added);
   }
   // The records of this insert, whose markers are indexed and whose handlers listen already.
-  markerObserver?.takeRecords();
+  if (HAS_LATE_MARKUP) {
+    markerObserver?.takeRecords();
+  }
   options.inserted?.();
   for (const fn of afterInsert.splice(0)) {
     fn();

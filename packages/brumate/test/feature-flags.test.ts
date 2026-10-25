@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { compile } from '../src/index.ts';
-import { featuresOf, joinFeatures, writeFeatures } from '../src/features.ts';
+import { featuresOf, joinFeatures, noFeatures, writeFeatures } from '../src/features.ts';
 
 // The features of the core that a component uses, which turn the code of the others off.
 
@@ -13,7 +13,7 @@ it('finds the children that the browser renders, the templates that it calls, an
 </script>
 <button onClick=(() => count++)>{count}</button>
 `);
-  expect(plain).toEqual({ children: false, templates: false, titles: false, bindings: false });
+  expect(plain).toEqual(noFeatures());
   const titled = use(`<script>
   import { $signal } from 'brumate/signals';
   let count = $signal(0);
@@ -35,10 +35,9 @@ it('finds the children that the browser renders, the templates that it calls, an
 `);
   expect(templated.templates).toBe(true);
   expect(joinFeatures([plain, titled, templated])).toEqual({
-    children: false,
+    ...noFeatures(),
     templates: true,
     titles: true,
-    bindings: false,
   });
   const bound = use(`<script>
   import { $bind, $signal } from 'brumate/signals';
@@ -56,11 +55,34 @@ it('writes the features into the code that reads them, and keeps their declarati
     "export const HAS_TITLES = typeof __BRUMATE_HAS_TITLES__ === 'undefined' || __BRUMATE_HAS_TITLES__;",
   ].join('\n');
   const written = writeFeatures(code, {
+    ...noFeatures(),
     children: true,
     templates: true,
-    titles: false,
     bindings: true,
   });
   expect(written).toContain('declare const __BRUMATE_HAS_TITLES__');
   expect(written).toContain("typeof false === 'undefined' || false");
+});
+
+it('finds markup that comes later, blocks, listeners and forms of an $action', () => {
+  const late = use(`<script>
+  import { $action, $client, $memo, $signal } from 'brumate/signals';
+  async function slow() { 'use server'; return 1; }
+  async function sign(form: FormData) { 'use server'; return 1; }
+  const value = $memo(slow());
+  const signed = $action(sign);
+  let el = $signal<HTMLElement>();
+  $client(() => { el; }, 'visible');
+</script>
+#loading (value) {
+  <p>{value}</p>
+} #else {
+  <p>Loading</p>
+}
+#defer ('visible') {
+  <p ref=el>Later</p>
+}
+<form action=sign><button>Go</button></form>
+`);
+  expect(late).toMatchObject({ lateMarkup: true, blocks: true, actions: true, listeners: false });
 });
