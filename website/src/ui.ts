@@ -64,6 +64,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'selection-indicator',
     ],
   },
+  { title: 'Data', pages: ['tree'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -287,6 +288,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Rows with buttons and checkboxes, to select and act on.',
     href: 'grid-list',
     demo: 'GridListDemo',
+  },
+  {
+    title: 'Tree',
+    summary: 'Rows that nest and open and close, such as files in folders.',
+    href: 'tree',
+    demo: 'TreeDemo',
   },
   {
     title: 'SelectionIndicator',

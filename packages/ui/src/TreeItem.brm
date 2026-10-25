@@ -1,0 +1,195 @@
+<script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
+  import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
+  import { interact } from './interact.brm.ts';
+  import { TreeContext, TreeRowContext } from './tree.ts';
+
+  /**
+   * A row of a Tree, as TreeItem of React Aria Components. The `item` template of a Tree renders
+   * one for each item that shows, and the Tree gives it its key and its place in the tree.
+   *
+   * - A Button with `slot="chevron"` opens and closes it. It is not a tab stop, and its label
+   *   says Expand or Collapse.
+   * - A Checkbox with `slot="selection"` shows its selection and toggles it, as in a GridList.
+   * - A press selects it, as the Tree says. When nothing is selectable and the Tree has no
+   *   `onAction`, a press on a row with children opens or closes it.
+   * - `textValue` is the text that typeahead matches, when its content is more than text.
+   * - It shows `data-expanded`, `data-has-child-items` and `data-level`, with the level in the
+   *   `--tree-item-level` CSS variable, and the states of a GridListItem.
+   */
+  const {
+    textValue,
+    isDisabled = false,
+    onAction,
+    children,
+    ...rest
+  } = $props<{
+    textValue?: string;
+    isDisabled?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const tree = $getContext(TreeRowContext);
+  const state = $getContext(TreeContext);
+  const list = $getContext(ListBoxContext);
+  if (!tree) {
+    throw new Error('A TreeItem goes in the `item` template of a Tree.');
+  }
+  const row = $memo(tree.row);
+  const id = $memo(row.key);
+  const rowId = $id();
+  const chevronId = $id();
+  const mode = $memo(list?.selectionMode ?? 'none');
+  const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
+  const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
+
+  function toggle() {
+    if (!disabled && row.hasChildItems) {
+      state?.toggle(id);
+    }
+  }
+
+  // The Checkbox of the selection is checked while the row is selected, and toggles it.
+  $setContext(CheckboxGroupContext, {
+    value: selected ? [''] : [],
+    isDisabled: disabled || mode === 'none',
+    isReadOnly: false,
+    isInvalid: false,
+    isRequired: false,
+    toggle: () => list?.select(id, { shift: false, toggle: true }),
+    onInvalid: () => {},
+  });
+
+  // The chevron opens and closes the row, and focus stays on the row, as in React Aria.
+  $setContext(ButtonContext, {
+    slots: {
+      default: {},
+      chevron: {
+        id: chevronId,
+        tabindex: '-1',
+        'aria-label': row.isExpanded ? 'Collapse' : 'Expand',
+        'aria-labelledby': `${chevronId} ${rowId}`,
+        isDisabled: disabled,
+        onPress: (event: { target: EventTarget | null }) => {
+          toggle();
+          focusItem(
+            ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
+          );
+        },
+      },
+    },
+  });
+
+  function pressed(event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) {
+    if (!list) {
+      return;
+    }
+    if (mode === 'none') {
+      onAction?.();
+      if (list.hasAction) {
+        list.action(id);
+      } else {
+        toggle();
+      }
+      return;
+    }
+    list.select(id, {
+      shift: event.shiftKey,
+      toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
+    });
+  }
+
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown: pressDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onClick: pressClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled,
+    pressed,
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+  );
+
+  /** True for an event that starts on a control in the row, such as a button, whose press it is. */
+  function fromControl(event: Event): boolean {
+    const control = (event.target as Element).closest?.(
+      'a[href], button, input, select, textarea, label, [tabindex]',
+    );
+    return Boolean(control) && control !== event.currentTarget;
+  }
+
+  function onPointerDown(event: PointerEvent) {
+    if (!fromControl(event)) {
+      pressDown(event);
+    }
+  }
+
+  function onClick(event: MouseEvent) {
+    if (!fromControl(event)) {
+      pressClick(event);
+    }
+  }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
+</script>
+
+<div
+  id=rowId
+  role="row"
+  tabindex="-1"
+  data-key=(keyAttribute(id))
+  data-parent=(row.parent === undefined ? undefined : keyAttribute(row.parent))
+  data-text-value=textValue
+  aria-level=(row.level)
+  aria-posinset=(row.position)
+  aria-setsize=(row.size)
+  aria-expanded=(row.hasChildItems ? String(row.isExpanded) : undefined)
+  aria-selected=(mode === 'none' ? undefined : String(selected))
+  aria-disabled=(disabled ? 'true' : undefined)
+  data-expanded=(row.isExpanded || undefined)
+  data-has-child-items=(row.hasChildItems || undefined)
+  data-level=(row.level)
+  data-selected=(selected || undefined)
+  data-disabled=(disabled || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
+  {onClick}
+  {onFocus}
+  {onBlur}
+  {...rest}
+><div role="gridcell" style="display: contents">{children}</div></div>
+
+<style>
+  div[role='row'] {
+    --tree-item-level: ${row.level};
+  }
+</style>

@@ -47,6 +47,8 @@
   import TagList from '@brumate/ui/TagList.brm';
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
   import Calendar from '@brumate/ui/Calendar.brm';
@@ -117,6 +119,25 @@
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
   let fileOpened = $signal('none');
+  // A file tree: folders with children, opened and selected.
+  interface Folder {
+    id: string;
+    name: string;
+    children?: Folder[];
+  }
+  const folders: Folder[] = [
+    {
+      id: 'src',
+      name: 'src',
+      children: [
+        { id: 'app', name: 'app.brm' },
+        { id: 'lib', name: 'lib', children: [{ id: 'util', name: 'util.ts' }] },
+      ],
+    },
+    { id: 'readme', name: 'README.md' },
+  ];
+  let openFolders = $signal<Key[]>([]);
+  let pickedFolder = $signal<Key[]>([]);
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -521,6 +542,12 @@
   <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
 </section>
 
+<section aria-labelledby="tree">
+  <h2 id="tree">Tree</h2>
+  <Tree class="folder-tree" aria-label="Folders" items=folders item=folderRow selectionMode="single" selectedKeys=$bind(pickedFolder) expandedKeys=$bind(openFolders) />
+  <p class="folder-state">{openFolders.join(',') || 'None'} / {pickedFolder.join(',') || 'None'}</p>
+</section>
+
 <section aria-labelledby="numberfield">
   <h2 id="numberfield">NumberField</h2>
   <NumberField class="quantity" name="quantity" minValue=(1) maxValue=(5) value=$bind(quantity)>
@@ -651,6 +678,15 @@
 </section>
 
 <ToastRegion class="toasts" toast=notice transition />
+
+#template folderRow(folder: Folder) {
+  <TreeItem class=(`folder-row folder-${folder.id}`) textValue=(folder.name)>
+    #if (folder.children) {
+      <Button slot="chevron" class="folder-chevron">▸</Button>
+    }
+    {folder.name}
+  </TreeItem>
+}
 
 #template notice(toast: QueuedToast<{ title: string }>) {
   <Toast {toast} class="toast">

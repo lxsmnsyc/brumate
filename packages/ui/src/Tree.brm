@@ -1,0 +1,333 @@
+<script>
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    ListBoxContext,
+    enabledItems,
+    focusItem,
+    isTyping,
+    itemsOf,
+    keyOf,
+    keysBetween,
+    lastFocusedOf,
+    moveFrom,
+    nextSelection,
+    rangeOf,
+    sameKeys,
+    setLastFocused,
+    setRange,
+    typeahead,
+  } from './collection.ts';
+  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import { LocaleContext } from './locale.ts';
+  import { tabbables } from './overlay.ts';
+  import { TreeContext, visibleRows } from './tree.ts';
+  import type { TreeNode } from './tree.ts';
+  import TreeRow from './TreeRow.brm';
+
+  /**
+   * A list of rows that nest and open and close, as Tree of React Aria Components. It renders a
+   * row for each item of `items` that shows, with the `item` template, which renders a TreeItem.
+   * An item with `children` is a parent, even when it is empty.
+   *
+   * - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes.
+   *   The children of a closed item do not render.
+   * - Up and Down move between rows, Home and End to the ends, and letters to the row whose text
+   *   starts with them.
+   * - Right opens a closed row. Left closes an open row, or else moves to the row that holds it.
+   *   Otherwise Left and Right move through the controls in a row and back to the row, right to
+   *   left the other way round.
+   * - Tab stops once, at the row that had focus last, and Tab from inside leaves the tree.
+   * - Selection is as in a GridList: `selectionMode`, `selectionBehavior`, `selectedKeys`, Space,
+   *   Shift, Ctrl+A and Escape. A Checkbox with `slot="selection"` in a row shows and toggles it.
+   * - Enter acts on a row with `onAction`. Without it, and with nothing selectable, Enter and a
+   *   press open and close a row with children.
+   */
+  const {
+    selectionMode = 'none',
+    selectionBehavior = 'toggle',
+    disabledKeys = [],
+    disallowEmptySelection = false,
+    escapeKeyBehavior = 'clearSelection',
+    onAction,
+    onSelectionChange,
+    onExpandedChange,
+    items,
+    item,
+    ...rest
+  } = $props<{
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onExpandedChange?: (keys: Key[]) => void;
+    items: readonly TreeNode[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
+    item: (node: any) => unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<Key[]> }>();
+
+  // The rows that show, in order: each item, then its children while it is open.
+  const rows = $memo(visibleRows(items, expandedKeys));
+
+  function setExpanded(next: Key[]) {
+    if (!sameKeys(next, expandedKeys)) {
+      expandedKeys = next;
+      onExpandedChange?.(next);
+    }
+  }
+
+  function toggleExpanded(key: Key) {
+    setExpanded(
+      expandedKeys.includes(key)
+        ? expandedKeys.filter((open) => open !== key)
+        : [...expandedKeys, key],
+    );
+  }
+
+  $setContext(TreeContext, { toggle: toggleExpanded });
+
+  /** The row that shows the item with a key. */
+  function rowFor(key: Key) {
+    return rows.find((row) => row.key === key);
+  }
+
+  const locale = $getContext(LocaleContext);
+  const hasAction = $isPassed(onAction);
+  const gridId = $id();
+  let root = $signal<HTMLElement>();
+
+  function setSelection(next: Key[]) {
+    if (!sameKeys(next, selectedKeys)) {
+      selectedKeys = next;
+      onSelectionChange?.(next);
+    }
+  }
+
+  function select(key: Key, request: SelectionRequest) {
+    const element = root;
+    const range = element ? rangeOf(element) : undefined;
+    const shift = Boolean(element && request.shift && range);
+    const items = element ? enabledItems(element, 'row') : [];
+    setSelection(
+      nextSelection(selectedKeys, key, {
+        mode: selectionMode,
+        behavior: selectionBehavior,
+        disallowEmpty: disallowEmptySelection,
+        request: { ...request, shift },
+        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
+        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        disabled: disabledKeys,
+      }),
+    );
+    if (element) {
+      setRange(element, shift ? range!.anchor : key, key);
+    }
+  }
+
+  function action(key: Key) {
+    onAction?.(key);
+  }
+
+  // The rows read the selection from the state of a ListBox, which they share with its options.
+  $setContext(ListBoxContext, {
+    selectionMode,
+    selectionBehavior,
+    selectedKeys,
+    disabledKeys,
+    select,
+    action,
+    hasAction,
+  });
+
+  function rowOf(target: EventTarget | null) {
+    const element = root;
+    const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
+    return row && element?.contains(row) && row.closest('[data-collection]') === element
+      ? row
+      : undefined;
+  }
+
+  function focused(event: FocusEvent) {
+    const element = root;
+    // The list passes its focus on to a row.
+    if (element && event.target === element && document.activeElement === element) {
+      const items = enabledItems(element, 'row');
+      const last = lastFocusedOf(element);
+      focusItem(
+        items.find((item) => last !== undefined && keyOf(item) === last) ??
+          items.find((item) => item.getAttribute('aria-selected') === 'true') ??
+          items[0],
+      );
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    const element = root;
+    const row = rowOf(event.target);
+    if (element && row) {
+      // While a row has focus, Tab leaves the list rather than stopping at it.
+      element.tabIndex = -1;
+      setLastFocused(element, keyOf(row)!);
+    }
+  }
+
+  function focusOut(event: FocusEvent) {
+    const element = root;
+    if (element && !element.contains(event.relatedTarget as Node | null)) {
+      element.tabIndex = 0;
+    }
+  }
+
+  /** Left and Right: through the controls of the row and back to the row. */
+  function across(row: HTMLElement, target: HTMLElement, forward: boolean) {
+    const stops = [row, ...tabbables(row)];
+    const at = stops.indexOf(target);
+    focusItem(stops[(at + (forward ? 1 : -1) + stops.length) % stops.length]);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const element = root;
+    const target = event.target as HTMLElement;
+    const row = rowOf(target);
+    if (!element || !row) {
+      return;
+    }
+    // A field in a row keeps its own keys, other than Up, Down and Tab.
+    const typing =
+      target !== row &&
+      (/^(TEXTAREA|SELECT)$/.test(target.tagName) ||
+        (target instanceof HTMLInputElement &&
+          !/^(checkbox|radio|button|submit|reset)$/.test(target.type)));
+    const items = enabledItems(element, 'row');
+    const key = keyOf(row);
+    const rtl = locale.direction === 'rtl';
+    const replace = selectionBehavior === 'replace';
+    const toggle = event.ctrlKey || event.metaKey;
+    if (event.key === 'Tab') {
+      // Tab leaves the list: the browser moves on from its last control, or back from the list.
+      const all = tabbables(element);
+      if (event.shiftKey) {
+        element.focus({ preventScroll: true });
+      } else if (all.length > 0) {
+        all.at(-1)!.focus({ preventScroll: true });
+      }
+      return;
+    }
+    let movement: Movement | undefined;
+    if (event.key === 'ArrowDown') {
+      movement = 'next';
+    } else if (event.key === 'ArrowUp') {
+      movement = 'previous';
+    } else if (!typing && event.key === 'Home') {
+      movement = 'first';
+    } else if (!typing && event.key === 'End') {
+      movement = 'last';
+    }
+    if (movement) {
+      const next = moveFrom(element, items, row, movement, false);
+      const nextKey = next ? keyOf(next) : undefined;
+      focusItem(next);
+      if (nextKey === undefined || selectionMode === 'none') {
+        return;
+      }
+      if (event.shiftKey && selectionMode === 'multiple') {
+        select(nextKey, { shift: true, toggle: false });
+      } else if (replace && !toggle) {
+        select(nextKey, { shift: false, toggle: false });
+      }
+      return;
+    }
+    if (typing) {
+      return;
+    }
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      const expand = (event.key === 'ArrowRight') !== rtl;
+      const state = key === undefined ? undefined : rowFor(key);
+      const enabled = row.getAttribute('aria-disabled') !== 'true';
+      // On the row itself: Right opens it, and Left closes it or moves to the row that holds it.
+      if (target === row && state && enabled) {
+        if (expand && state.hasChildItems && !state.isExpanded) {
+          toggleExpanded(state.key);
+          return;
+        }
+        if (!expand && state.isExpanded) {
+          toggleExpanded(state.key);
+          return;
+        }
+        if (!expand && state.parent !== undefined) {
+          focusItem(itemsOf(element, 'row').find((item) => keyOf(item) === state.parent));
+          return;
+        }
+      }
+      across(row, target, expand);
+      return;
+    }
+    if (target !== row) {
+      return;
+    }
+    if (event.key === ' ' && !isTyping(element)) {
+      if (key !== undefined) {
+        select(key, { shift: event.shiftKey, toggle: !replace || toggle });
+      }
+      return;
+    }
+    if (event.key === 'Enter' && key !== undefined) {
+      if (hasAction) {
+        action(key);
+      } else if (selectionMode === 'none') {
+        // With nothing to select, Enter opens and closes a row with children.
+        if (rowFor(key)?.hasChildItems) {
+          toggleExpanded(key);
+        }
+      } else {
+        select(key, { shift: false, toggle: !replace });
+      }
+      return;
+    }
+    if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
+      setSelection(
+        itemsOf(element, 'row')
+          .map((item) => keyOf(item)!)
+          .filter((item) => !disabledKeys.includes(item)),
+      );
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (
+        escapeKeyBehavior === 'clearSelection' &&
+        !disallowEmptySelection &&
+        selectedKeys.length > 0
+      ) {
+        setSelection([]);
+      }
+      return;
+    }
+    focusItem(typeahead(element, items, row, event));
+  }
+</script>
+
+<div
+  ref=root
+  id=gridId
+  role="treegrid"
+  tabindex="0"
+  data-collection
+  aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
+  onFocus=focused
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
+  {...rest}
+>
+  #for (row of rows by row.key) {
+    <TreeRow {row} {item} />
+  }
+</div>

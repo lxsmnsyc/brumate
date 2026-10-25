@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import Tree from '../../src/Tree.brm';
+  import TreeItem from '../../src/TreeItem.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  interface File {
+    id: string;
+    name: string;
+    children?: File[];
+  }
+
+  const files: File[] = [
+    {
+      id: 'docs',
+      name: 'Documents',
+      children: [
+        { id: 'cv', name: 'cv.pdf' },
+        { id: 'work', name: 'Work', children: [{ id: 'plan', name: 'plan.md' }] },
+      ],
+    },
+    { id: 'photos', name: 'Photos', children: [] },
+    { id: 'notes', name: 'notes.txt' },
+  ];
+  let picked = $signal<Key[]>([]);
+  let open = $signal<Key[]>(['docs']);
+  let opened = $signal<Key[]>([]);
+  let edits = $signal(0);
+</script>
+
+<main class="page">
+  <Tree class="tree" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) expandedKeys=$bind(open) disabledKeys=(['notes']) />
+  <Tree class="plain" aria-label="Folders" items=files item=folder />
+  <Tree class="acting" aria-label="Acting" items=files item=folder onAction=((key) => (opened = [...opened, key])) />
+  <p class="state">{JSON.stringify([picked, open, opened, edits])}</p>
+</main>
+
+#template file(file: File) {
+  <TreeItem class=(`row row-${file.id}`) textValue=(file.name)>
+    <Button slot="chevron" class=(`chevron chevron-${file.id}`)>▸</Button>
+    <Checkbox slot="selection" class=(`check check-${file.id}`) aria-label=(`Select ${file.name}`) />
+    {file.name}
+    <Button class=(`edit edit-${file.id}`) onPress=(() => edits++)>Edit</Button>
+  </TreeItem>
+}
+
+#template folder(file: File) {
+  <TreeItem class=(`leaf leaf-${file.id}`)>{file.name}</TreeItem>
+}

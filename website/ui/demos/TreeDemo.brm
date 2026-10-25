@@ -1,0 +1,47 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface File {
+    id: string;
+    name: string;
+    children?: File[];
+  }
+
+  const files: File[] = [
+    {
+      id: 'docs',
+      name: 'Documents',
+      children: [
+        { id: 'cv', name: 'cv.pdf' },
+        { id: 'work', name: 'Work', children: [{ id: 'plan', name: 'plan.md' }] },
+      ],
+    },
+    { id: 'photos', name: 'Photos', children: [{ id: 'beach', name: 'beach.jpg' }] },
+    { id: 'notes', name: 'notes.txt' },
+  ];
+  let picked = $signal<Key[]>([]);
+  let open = $signal<Key[]>(['docs']);
+</script>
+
+<Tree class="ui-tree" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) expandedKeys=$bind(open) />
+<p>Selected: {picked.join(', ') || 'none'}. Open: {open.join(', ') || 'none'}.</p>
+
+#template file(file: File) {
+  <TreeItem class="ui-treerow" textValue=(file.name)>
+    #if (file.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file.name}`)>
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    </Checkbox>
+    {file.name}
+  </TreeItem>
+}
