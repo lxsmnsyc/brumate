@@ -329,7 +329,16 @@ Cost: about 2 weeks. The request for markup reuses `#defer`, and most of the wor
 
 ### A smaller and faster client
 
-Marko 6 ships a page of the todos benchmark in 9.3 kB (4.4 kB gzip), runtime and app together. Brumate loads 4.7 kB before the first event, and the core of 21.8 kB (8.9 kB gzip) with it. Rolldown already leaves out the features that a page does not use, such as `#offscreen`, spreads and bindings, so splitting the core gains little, about 1.3 kB gzip. The rest is how the core works, and the compiler can take over most of it, as Marko's does.
+The page code loads at the start since #113, so speed is close to Marko's and size is the gap. A run of `pnpm bench` on 2026-10-25, at the tip of the stack of the UI components:
+
+| Metric                  | brumate                | Marko 6              |
+| ----------------------- | ---------------------- | -------------------- |
+| Create 1,000 rows       | 35 ms                  | 33 ms                |
+| Replace 1,000 rows      | 31 ms                  | 26 ms                |
+| Append 1,000 rows       | 32 ms                  | 40 ms                |
+| JS before `load`, todos | 30.6 kB / 13.0 kB gzip | 9.1 kB / 4.4 kB gzip |
+
+Of the 13.0 kB, the core is 9.2 kB, the loader 2.9 kB and the app 0.9 kB. The bytes of the core are spread over many functions. Part of them is code for features that a page does not use, which the bundler keeps because the core reaches it through runtime branches.
 
 What Marko's compiler does that brumate's core does at runtime:
 
@@ -339,22 +348,21 @@ What Marko's compiler does that brumate's core does at runtime:
 | The nodes that an update writes | Kept on the scope when the markup is cloned or resumed                          | Found by a marker or a `b-b` anchor, through an index that a MutationObserver keeps, or a query |
 | What a change runs              | A function for each value, which calls the functions of the values that read it | Tables of updates by slot (`g`), which `run` reads, with the order of the graph at runtime      |
 
-Both resume server markup the same way: markers in the HTML, and a scan of them when the page starts. Brumate keeps its lazy loading: the code of each part loads on the first event that needs it, which is what keeps a large page light, such as the dashboard benchmark at 7.7 kB against 66.7 kB.
-
 #### Steps
 
-Each step is a PR of its own, measured with `pnpm bench` before and after: the size of the core, the rows scenario, and the first click.
+Each step is a PR of its own, measured with `pnpm bench` before and after: the gzip size of the JS before `load`, the rows scenario, and the first click. Size comes first.
 
-1. **Nodes on the scope.** The resume scan and each client render store the nodes that updates write on their scope, by anchor, once. Updates read them from there, so the index, its MutationObserver, and the queries that find a node again go. Alone it saves little, about 1 kB, since a scan of inserted HTML stays until step 2, so it lands with step 2.
-2. **Cloned templates.** A body that the browser renders, of `#if`, `#for`, children and templates, compiles to a `<template>` and a walk string. A render clones it, writes its values, and keeps its nodes, as in step 1, with no HTML string to build, parse and scan. The rows scenario should come close to Marko's, such as 1,000 rows in 18 ms, not 25 ms.
-3. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values and the memos that read it, in the order of the graph. The update tables and the code that reads them go. The functions of a component's updates stay in its update part, so they still load on the first write.
+1. **Features of the build.** The Vite plugin reads which features of the core the components of a build use, and the client build leaves out the code of the others, such as children that the browser renders, templates, titles and bindings. Done in #147: the core of todos goes from 9.2 kB to 8.3 kB gzip.
+2. **More features of the build**, with the same switches: what a page without `#loading`, `#defer` or client navigation never needs, such as the index of markup that arrives later.
+3. **Nodes on the scope, and cloned templates.** The resume scan and each client render store the nodes that updates write on their scope. A body that the browser renders compiles to a `<template>` and a walk string. The index, its MutationObserver, the HTML strings and their scans go.
+4. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values that read it. The update tables and the code that reads them go.
 
 #### Risks
 
 - Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.
 - `#offscreen` and `#defer` rely on the markers of a body as they are now. Each step keeps their tests passing.
 - The devtools read the update tables and the index. They need the same facts from the new places.
-- Lazy loading. A function of step 3 can call a function of another part, such as of a memo in a part that has not loaded, so a call across parts waits for it, as an update waits for its part now.
+- A feature that the build turns off must never be needed. The plugin reads it from the compiled code, and a page state that holds a value of it throws an error that says so.
 
 ## Library
 
