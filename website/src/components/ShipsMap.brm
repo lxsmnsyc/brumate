@@ -11,7 +11,7 @@
   </div>
   <svg viewBox="0 0 720 460" role="img" aria-labelledby="ships-title ships-desc">
     <title id="ships-title">The code an app ships to the browser</title>
-    <desc id="ships-desc">A wireframe of a shop: a header with a search field and a cart, a sidebar with a filter switch, a banner, tabs and three product cards with buttons, and a footer. With brumate, only the search field, the filter switch, the tabs and the buttons ship code, which loads on their events, and the cart badge updates. The rest ships as HTML only. With hydration, every part of the page ships its code and runs again in the browser.</desc>
+    <desc id="ships-desc">A wireframe of a shop: a header with a search field and a cart, a sidebar with a filter switch, a banner, tabs and three product cards with buttons, and a footer. With brumate, only the search field, the filter switch, the tabs and the buttons ship code, which comes with the page, and the cart badge updates. The rest ships as HTML only. With hydration, every part of the page ships its code and runs again in the browser.</desc>
 
     <rect x="10" y="10" width="700" height="440" rx="12" class="sm-frame"></rect>
     <line x1="10" y1="40" x2="710" y2="40" class="sm-rule"></line>
@@ -87,7 +87,7 @@
     </g>
   </svg>
   <figcaption>
-    <span class="ships-brumate">With brumate, only the parts that respond to the user ship code, and each loads on its own event. The rest is HTML.</span>
+    <span class="ships-brumate">With brumate, only the parts that respond to the user ship code, and it comes with the page. The rest is HTML, and nothing renders again.</span>
     <span class="ships-hydration-text">With hydration, the browser loads the code of every part of the page and renders it again, static parts included.</span>
   </figcaption>
 </figure>
