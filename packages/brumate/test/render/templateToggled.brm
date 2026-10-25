@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TemplateToggle from './TemplateToggle.brm';
+  let n = $signal(1);
+</script>
+<button class="inc" onClick=(() => (n = n + 1))>Inc</button>
+<TemplateToggle value=n row=item />
+#template item(v: number) {
+  <span class="it">{v}</span>
+}
