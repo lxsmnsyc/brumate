@@ -289,11 +289,16 @@ export function bindEntry(
  * those of its spreads.
  */
 export function onAttribute(on: string[], own: string): string {
+  const value = onValue(on, own);
+  return value ? ` b-on="${escapeAttribute(value)}"` : '';
+}
+
+/** The value of `b-on`, in the order of `onAttribute`. */
+export function onValue(on: string[], own: string): string {
   const bindings = on.filter((entry) => /=\$(bind#|set:)/.test(entry));
-  const value = [...bindings, own, ...on.filter((entry) => !bindings.includes(entry))]
+  return [...bindings, own, ...on.filter((entry) => !bindings.includes(entry))]
     .filter(Boolean)
     .join(' ');
-  return value ? ` b-on="${escapeAttribute(value)}"` : '';
 }
 
 /** Renders an object of attributes. */
