@@ -84,7 +84,7 @@ it('moves through the items with the arrow keys, and Enter picks one', async () 
   press('Enter', input);
   await page.waitFor(() => expect(find('.list')).toBeNull());
   expect(input.value).toBe('Cherry');
-  expect(state(page)).toEqual(['cherry', 'Cherry']);
+  expect(state(page)).toEqual(['cherry', 'Cherry', null]);
   expect((page.get('.fruit input[type=hidden]') as HTMLInputElement).value).toBe('cherry');
 });
 
@@ -100,7 +100,7 @@ it('picks an item with a press, and the Button shows all the items', async () =>
   expect(state(page)[0]).toBe('banana');
 });
 
-it('closes on Escape, clears on a second Escape, and puts the text back on blur', async () => {
+it('puts the text of the selection back on Escape and on blur, and keeps the selection', async () => {
   const page = await comboboxes();
   const input = page.get('.input') as HTMLInputElement;
   input.focus();
@@ -109,18 +109,51 @@ it('closes on Escape, clears on a second Escape, and puts the text back on blur'
   press('ArrowDown', input);
   press('Enter', input);
   await page.waitFor(() => expect(state(page)[0]).toBe('banana'));
-  // Text that matches no item, then focus that leaves, puts the selected text back.
+  // Escape closes the list and puts the selected text back, as revert of React Aria does.
   type(input, 'Banan');
   await page.waitFor(() => expect(find('.list')).not.toBeNull());
   press('Escape', input);
   await page.waitFor(() => expect(find('.list')).toBeNull());
+  await page.waitFor(() => expect(input.value).toBe('Banana'));
+  // Focus that leaves does the same.
+  type(input, 'Ban');
   page.get('.after').focus();
   input.dispatchEvent(new FocusEvent('blur'));
   await page.waitFor(() => expect(input.value).toBe('Banana'));
+  // A second Escape keeps the selection.
   input.focus();
   press('Escape', input);
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[0]).toBe('banana');
+  expect(input.value).toBe('Banana');
+});
+
+it('clears text that matches nothing on Escape when nothing is selected', async () => {
+  const page = await comboboxes();
+  const input = page.get('.input') as HTMLInputElement;
+  input.focus();
+  type(input, 'ban');
+  await page.waitFor(() => expect(find('.list')).not.toBeNull());
+  press('Escape', input);
   await page.waitFor(() => expect(input.value).toBe(''));
-  expect(state(page)[0]).toBe(null);
+});
+
+it('keeps focus in the input on a press of the Button, which toggles the list', async () => {
+  const page = await comboboxes();
+  const input = page.get('.input') as HTMLInputElement;
+  input.focus();
+  type(input, 'ap');
+  await page.waitFor(() => expect(find('.list')).not.toBeNull());
+  const button = page.get('.fruit button');
+  // The pointer focuses the Button for a moment, and the input blurs.
+  button.focus();
+  input.dispatchEvent(new FocusEvent('blur'));
+  pressWith(button);
+  await page.waitFor(() => expect(find('.list')).toBeNull());
+  await page.waitFor(() => expect(document.activeElement).toBe(input));
+  await new Promise((done) => setTimeout(done, 50));
+  expect(find('.list')).toBeNull();
+  expect(input.value).toBe('ap');
 });
 
 it('closes when nothing matches', async () => {
@@ -132,4 +165,24 @@ it('closes when nothing matches', async () => {
   type(input, 'xyz');
   await page.waitFor(() => expect(find('.list')).toBeNull());
   expect(input.getAttribute('aria-expanded')).toBe('false');
+});
+
+it('keeps custom text, which clears the selection and goes with the form', async () => {
+  const page = await comboboxes();
+  const input = page.get('.tag-input') as HTMLInputElement;
+  expect(input.required).toBe(true);
+  expect(input.getAttribute('aria-required')).toBe('true');
+  input.focus();
+  type(input, 're');
+  await page.waitFor(() => expect(find('.tag-list')).not.toBeNull());
+  press('ArrowDown', input);
+  press('Enter', input);
+  await page.waitFor(() => expect(state(page)[2]).toBe('red'));
+  type(input, 'Reddish');
+  page.get('.after').focus();
+  input.dispatchEvent(new FocusEvent('blur'));
+  await page.waitFor(() => expect(state(page)[2]).toBe(null));
+  expect(input.value).toBe('Reddish');
+  const data = new FormData(page.get('.form') as HTMLFormElement);
+  expect(data.get('tag')).toBe('Reddish');
 });
