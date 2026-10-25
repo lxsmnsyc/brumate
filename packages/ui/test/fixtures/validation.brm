@@ -1,0 +1,80 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Form from '../../src/Form.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import TextField from '../../src/TextField.brm';
+
+  let errors = $signal<Record<string, string>>({ handle: 'That handle is taken' });
+  let title = $signal('Draft');
+  let locked = $signal('cats');
+  let query = $signal('');
+  let searched = $signal(0);
+  let clears = $signal(0);
+</script>
+
+<Form class="aria-form" validationBehavior="aria">
+  <TextField class="aria-email" type="email">
+    <Label>Email</Label>
+    <Input class="aria-email-input" />
+  </TextField>
+</Form>
+
+<Form class="native-form" validationErrors=errors>
+  <TextField class="code" validate=((value) => (value.length < 3 ? 'At least 3 letters' : null))>
+    <Label>Code</Label>
+    <Input class="code-input" />
+    <FieldError class="code-error" />
+  </TextField>
+  <TextField class="handle" name="handle" value="ada">
+    <Label>Handle</Label>
+    <Input class="handle-input" />
+    <FieldError class="handle-error" />
+  </TextField>
+  <TextField class="flagged" isInvalid=(true)>
+    <Label>Flagged</Label>
+    <Input class="flagged-input" />
+  </TextField>
+  <TextField
+    class="order"
+    type="email"
+    field=({
+      id: 'order-email',
+      name: 'email',
+      attrs: { id: 'order-email', name: 'email', value: 'ada@' },
+      errors: ['Write a whole email address'],
+    })
+  >
+    <Label>Order email</Label>
+    <Input class="order-input" />
+    <FieldError class="order-error" />
+  </TextField>
+  <TextField class="title" value=$bind(title)>
+    <Label>Title</Label>
+    <Input class="title-input" />
+  </TextField>
+</Form>
+<button class="reply" type="button" onClick=(() => (errors = { handle: 'That handle is taken' }))>
+  Reply
+</button>
+<p class="title-value">{title}</p>
+
+<SearchField class="locked" isReadOnly=(true) value=$bind(locked) onClear=(() => clears++)>
+  <Label>Locked</Label>
+  <Input class="locked-input" />
+</SearchField>
+<SearchField
+  class="find"
+  value=$bind(query)
+  onClear=(() => clears++)
+  onSubmit=(() => searched++)
+>
+  <Label>Find</Label>
+  <Input class="find-input" />
+  <Button class="find-clear">×</Button>
+</SearchField>
+<p class="searched">{searched}</p>
+<p class="clears">{clears}</p>

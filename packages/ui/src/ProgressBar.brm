@@ -1,9 +1,10 @@
 <script>
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { LocaleContext } from './locale.ts';
   import { progressOf } from './progress.ts';
-  import type { ProgressState } from './progress.ts';
+  import type { ProgressBarState } from './progress.ts';
 
   /**
    * The progress of a task, as ProgressBar of React Aria Components:
@@ -30,30 +31,39 @@
     /** The text of the value, in place of the formatted number. */
     valueLabel?: string;
     formatOptions?: Intl.NumberFormatOptions;
-    content?: (state: ProgressState) => unknown;
+    content?: (state: ProgressBarState) => unknown;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();
+  // A Label inside names it. Without one, aria-label does, and the ID goes.
+  const { present: labelled } = described(labelId);
   const state = $memo(progressOf(value, minValue, maxValue, locale.locale, formatOptions));
   $setContext(LabelContext, { id: labelId });
+
+  // An indeterminate bar has no value, so its content gets none, as in React Aria.
+  function contentState(indeterminate: boolean, percentage: number, valueText: string) {
+    return indeterminate
+      ? { percentage: undefined, valueText: undefined, isIndeterminate: true }
+      : { percentage, valueText, isIndeterminate: false };
+  }
 </script>
 
 <div
   role="progressbar"
-  aria-valuenow=(isIndeterminate ? undefined : value)
+  aria-valuenow=(isIndeterminate ? undefined : state.value)
   aria-valuemin=minValue
   aria-valuemax=maxValue
   aria-valuetext=(isIndeterminate ? undefined : (valueLabel ?? state.valueText))
   data-indeterminate=(isIndeterminate || undefined)
-  aria-labelledby=labelId
+  aria-labelledby=(labelled ? labelId : undefined)
   style=(isIndeterminate ? undefined : `--percentage: ${state.percentage}%`)
   {...rest}
 >
   {children}
   #if (content) {
-    {content({ ...state, valueText: valueLabel ?? state.valueText })}
+    {content(contentState(isIndeterminate, state.percentage, valueLabel ?? state.valueText))}
   }
 </div>
