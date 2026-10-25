@@ -30,6 +30,8 @@ export const MenuTriggerContext: Context<MenuTriggerState | null> =
 export interface MenuState {
   selectionMode: SelectionMode;
   selectedKeys: Key[];
+  /** Closes this menu and every menu around it, after an action. */
+  closeAll?: () => void;
   disabledKeys: Key[];
   /** The ID of the item of this menu that has focus, which a SubmenuTrigger closes for. */
   focusedId: string | undefined;

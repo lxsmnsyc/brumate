@@ -163,7 +163,7 @@
     return (
       items.find((item) => last !== undefined && keyOf(item) === last) ??
       items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-      items[0]
+      (given?.focusStrategy === 'last' ? items.at(-1) : items[0])
     );
   }
 

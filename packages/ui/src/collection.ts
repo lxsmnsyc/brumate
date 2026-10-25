@@ -334,6 +334,8 @@ export interface ListBoxGiven {
   select: (key: Key) => void;
   /** Tab on an item, which leaves the list. */
   tab?: () => void;
+  /** The item that focus goes to when nothing is selected: the first, or the last for ArrowUp. */
+  focusStrategy?: 'first' | 'last';
 }
 
 export const ListBoxGivenContext: Context<ListBoxGiven | null> = createContext<ListBoxGiven | null>(

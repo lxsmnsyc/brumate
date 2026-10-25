@@ -28,7 +28,7 @@ A field that picks one item from a list, which opens from a button.
 
 ## Opening and choosing
 
-- A press of the Button opens the list. So do ArrowDown and ArrowUp on the Button. Focus goes to the selected item, or to the first item.
+- A press of the Button opens the list. So do ArrowDown and ArrowUp on the Button. Focus goes to the selected item, or else to the first item for ArrowDown and the last for ArrowUp.
 - In the list, the arrow keys, Home, End and typing move focus, as in a ListBox.
 - A press, Enter or Space on an item selects it and closes the list. Focus goes back to the Button.
 - Escape, Tab and a press outside close the list with no change.
@@ -37,7 +37,7 @@ A field that picks one item from a list, which opens from a button.
 
 `SelectValue` shows the text of the selected item, or `placeholder` of the Select, `Select an item` by default. It shows `data-placeholder` while nothing is selected.
 
-The items are on the page only while the list is open, so a Select that starts with a selection does not know its text. `render`, a `#template`, names the selection then. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
+The items are on the page only while the list is open, so a Select does not know the text of a key that it starts with, or that the page sets. `render`, a `#template`, names the selection then. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
 
 ```html
 <Button><SelectValue render=sizeName /></Button>
@@ -47,7 +47,7 @@ The items are on the page only while the list is open, so a Select that starts w
 }
 ```
 
-Without `render`, the Button shows the key until an item is chosen.
+Without `render`, the Button shows the key until an item is chosen. A reset of the form gives back the key that the Select started with.
 
 ## Forms
 
