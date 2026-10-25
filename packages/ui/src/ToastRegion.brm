@@ -57,8 +57,11 @@
     const removed = old.filter((item) => !keys.has(item.key) && !leavingToasts.has(item.key));
     // The toast with focus, when it closes.
     const focused = document.activeElement?.closest<HTMLElement>('[data-toast-key]');
+    // Its place among the toasts that stay, which `next` holds, without those that leave.
     const closing = focused && region?.contains(focused) && !keys.has(focused.dataset.toastKey!)
-      ? old.findIndex((item) => item.key === focused.dataset.toastKey)
+      ? old
+          .filter((item) => keys.has(item.key) || item.key === focused.dataset.toastKey)
+          .findIndex((item) => item.key === focused.dataset.toastKey)
       : -1;
     if (transition) {
       // A toast that leaves keeps its place until its leave ends.

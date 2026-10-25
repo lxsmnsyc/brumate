@@ -63,8 +63,14 @@
     if (token !== run || !element) {
       return;
     }
+    // A show during a leave stops what the show before it started.
+    runStops(element);
+    // Escape hides only the tooltip, as in React Aria, so a Dialog or a Popover around the
+    // trigger stays open. This listener runs during the event, so it can prevent it.
     const escape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
         trigger?.close(true);
       }
     };
