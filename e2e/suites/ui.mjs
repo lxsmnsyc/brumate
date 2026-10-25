@@ -969,6 +969,19 @@ export async function run({ browser, url, runner }) {
     );
     const order = await page.locator('.planet-name').allTextContents();
     assert(order.join(',') === 'Mars,Earth,Mercury', `The rows are in the order ${order}`);
+    // A drag of the resizer widens the column.
+    const before = await page.locator('.planet-name-column').evaluate((th) => th.offsetWidth);
+    // The hover scrolls the resizer into view, so its box is where the pointer goes.
+    await page.locator('.planet-resizer').hover();
+    const bar = await page.locator('.planet-resizer').boundingBox();
+    await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bar.x + bar.width / 2 + 60, bar.y + bar.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      (width) => document.querySelector('.planet-name-column').offsetWidth >= width + 50,
+      before,
+    );
     // The box in the header selects every row, in the order of the table.
     await page.locator('.planet-all').click();
     await page.waitForFunction(

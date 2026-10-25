@@ -65,9 +65,9 @@ it('moves between rows and cells with the arrow keys, and up to the column heade
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.col-size')));
   press('ArrowRight');
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.col-edit')));
-  // The columns go round.
+  // The columns go round. A column with a control gives it the focus.
   press('ArrowRight');
-  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.col-select')));
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.select-all input')));
   press('ArrowDown');
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.check-notes input')));
   press('End');

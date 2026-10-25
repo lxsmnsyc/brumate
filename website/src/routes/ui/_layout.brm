@@ -736,6 +736,29 @@
     content: ' ▼';
   }
 
+  :global(.ui-resizable) {
+    max-width: 100%;
+  }
+
+  :global(.ui-resizable-column) {
+    position: relative;
+  }
+
+  /* A resizer: a bar at the end of the header, which shows while it is used. */
+  :global(.ui-resizer) {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 6px;
+    cursor: col-resize;
+    border-inline-end: 2px solid var(--border);
+  }
+
+  :global(.ui-resizer[data-resizing]),
+  :global(.ui-resizer[data-focus-visible]) {
+    border-color: var(--accent);
+  }
+
   :global(.ui-select-column) {
     width: 2rem;
   }

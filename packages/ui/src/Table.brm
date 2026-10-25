@@ -21,7 +21,7 @@
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
-  import { TableContext, nextSort } from './table.ts';
+  import { TableContext, TableResizeContext, nextSort } from './table.ts';
   import type { SortDescriptor, TableColumn } from './table.ts';
 
   /**
@@ -70,6 +70,13 @@
   let { sortDescriptor = null } = $props<{ sortDescriptor?: Bindable<SortDescriptor | null> }>();
 
   const locale = $getContext(LocaleContext);
+  const sizes = $getContext(TableResizeContext);
+  // In a ResizableTableContainer, the table lays out its columns by their widths, and is as wide
+  // as they are once a resize gives them all widths.
+  const resizedWidth = $memo(
+    sizes ? Object.values(sizes.widths).reduce((sum, width) => sum + width, 0) : 0,
+  );
+  const tableWidth = $memo(resizedWidth > 0 ? `${resizedWidth}px` : '100%');
   const hasAction = $isPassed(onRowAction);
   const tableId = $id();
   let root = $signal<HTMLElement>();
@@ -179,12 +186,29 @@
   }
 
   /** Focuses a row or a header, or a cell, or the first control in a cell, as React Aria does. */
-  function focusOn(item: HTMLElement | undefined) {
+  /** The elements in a cell or a column header that take focus, such as a ColumnResizer. */
+  function controlsOf(item: HTMLElement): HTMLElement[] {
+    return [
+      ...item.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]',
+      ),
+    ];
+  }
+
+  /**
+   * Focuses a row, or a cell or a column header, or its first control, or its last one when the
+   * focus comes from after it, as React Aria focuses a cell's children.
+   */
+  function focusOn(item: HTMLElement | undefined, fromAfter = false) {
     if (!item) {
       return;
     }
-    const role = item.getAttribute('role');
-    focusItem(role === 'gridcell' || role === 'rowheader' ? (tabbables(item)[0] ?? item) : item);
+    if (item.getAttribute('role') === 'row') {
+      focusItem(item);
+      return;
+    }
+    const controls = controlsOf(item);
+    focusItem((fromAfter ? controls.at(-1) : controls[0]) ?? item);
   }
 
   function focused(event: FocusEvent) {
@@ -233,7 +257,8 @@
     const element = root;
     const target = event.target as HTMLElement;
     const item = itemOf(target);
-    if (!element || !item) {
+    // A ColumnResizer that resizes keeps the keys.
+    if (!element || !item || target.closest('[data-resizing]')) {
       return;
     }
     // A field in a cell keeps its own keys, other than Up, Down and Tab.
@@ -242,7 +267,7 @@
         ? false
         : /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
           (target instanceof HTMLInputElement &&
-            !/^(checkbox|radio|button|submit|reset)$/.test(target.type));
+            !/^(checkbox|radio|button|submit|reset|range)$/.test(target.type));
     if (event.key === 'Tab') {
       // Tab leaves the table: the browser moves on from its last control, or back from it.
       const all = tabbables(element);
@@ -288,6 +313,16 @@
     } else if (!typing && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       moved = true;
       const forward = (event.key === 'ArrowRight') !== rtl;
+      // From a control in a cell or a header: to the next control in it, then on.
+      if (!isRow && target !== item) {
+        const controls = controlsOf(item);
+        const at = controls.indexOf(target);
+        const stop = at === -1 ? undefined : controls[at + (forward ? 1 : -1)];
+        if (stop) {
+          focusItem(stop);
+          return;
+        }
+      }
       if (isHeader) {
         const all = headers();
         next = all[(column + (forward ? 1 : -1) + all.length) % all.length];
@@ -312,7 +347,8 @@
       }
     }
     if (moved) {
-      focusOn(next);
+      const back = event.key === 'ArrowLeft' ? !rtl : event.key === 'ArrowRight' ? rtl : false;
+      focusOn(next, back);
       const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
       const nextKey = nextRow && !next?.closest('thead') ? keyOf(nextRow) : undefined;
       if (
@@ -381,6 +417,7 @@
   role="grid"
   tabindex="0"
   data-collection
+  data-resizable=(sizes ? '' : undefined)
   aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
   onFocus=focused
   onFocusIn=focusIn
@@ -388,3 +425,10 @@
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
   {...rest}
 >{children}</table>
+
+<style>
+  table[data-resizable] {
+    table-layout: fixed;
+    width: ${tableWidth};
+  }
+</style>

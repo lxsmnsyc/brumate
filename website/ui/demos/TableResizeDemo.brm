@@ -1,0 +1,41 @@
+<script>
+  import Cell from '@brumate/ui/Cell.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import ColumnResizer from '@brumate/ui/ColumnResizer.brm';
+  import ResizableTableContainer from '@brumate/ui/ResizableTableContainer.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+
+  const files = [
+    { id: 'notes', name: 'Notes.txt', kind: 'Text', modified: 'Today' },
+    { id: 'photo', name: 'Beach.jpg', kind: 'Image', modified: 'Yesterday' },
+    { id: 'budget', name: 'Budget.xlsx', kind: 'Sheet', modified: 'Last week' },
+  ];
+</script>
+
+<ResizableTableContainer class="ui-resizable">
+  <Table class="ui-table" aria-label="Files">
+    <TableHeader>
+      <Column id="name" class="ui-column ui-resizable-column" isRowHeader defaultWidth=(160) minWidth=(100)>
+        <span tabindex="-1">Name</span>
+        <ColumnResizer class="ui-resizer" />
+      </Column>
+      <Column id="kind" class="ui-column ui-resizable-column" defaultWidth=(120) minWidth=(80)>
+        <span tabindex="-1">Kind</span>
+        <ColumnResizer class="ui-resizer" />
+      </Column>
+      <Column id="modified" class="ui-column">Modified</Column>
+    </TableHeader>
+    <TableBody>
+      #for (file of files by file.id) {
+        <Row id=(file.id) class="ui-tablerow">
+          <Cell class="ui-cell">{file.name}</Cell>
+          <Cell class="ui-cell">{file.kind}</Cell>
+          <Cell class="ui-cell">{file.modified}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+</ResizableTableContainer>

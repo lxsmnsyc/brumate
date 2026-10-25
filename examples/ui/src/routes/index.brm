@@ -54,6 +54,8 @@
   import TableBody from '@brumate/ui/TableBody.brm';
   import Row from '@brumate/ui/Row.brm';
   import Cell from '@brumate/ui/Cell.brm';
+  import ColumnResizer from '@brumate/ui/ColumnResizer.brm';
+  import ResizableTableContainer from '@brumate/ui/ResizableTableContainer.brm';
   import type { SortDescriptor } from '@brumate/ui/table.ts';
   import TreeItem from '@brumate/ui/TreeItem.brm';
   import { treeData } from '@brumate/ui/data.brm.ts';
@@ -579,10 +581,14 @@
 
 <section aria-labelledby="table">
   <h2 id="table">Table</h2>
+  <ResizableTableContainer class="planet-box">
   <Table class="planet-table" aria-label="Planets" selectionMode="multiple" selectedKeys=$bind(pickedPlanets) sortDescriptor=$bind(planetSort)>
     <TableHeader>
       <Column><Checkbox slot="selection" class="planet-all" aria-label="Select all">All</Checkbox></Column>
-      <Column id="name" class="planet-name-column" isRowHeader allowsSorting>Name</Column>
+      <Column id="name" class="planet-name-column" style="position: relative" isRowHeader allowsSorting defaultWidth=(150) minWidth=(100)>
+        <span tabindex="-1">Name</span>
+        <ColumnResizer class="planet-resizer" style="position: absolute; inset-block: 0; inset-inline-end: 0; width: 8px; cursor: col-resize; background: #ccc" />
+      </Column>
       <Column id="moons" class="planet-moons-column" allowsSorting>Moons</Column>
     </TableHeader>
     <TableBody>
@@ -595,6 +601,7 @@
       }
     </TableBody>
   </Table>
+  </ResizableTableContainer>
   <p class="planet-state">{pickedPlanets.join(',') || 'None'} / {planetSort ? `${planetSort.column} ${planetSort.direction}` : 'unsorted'}</p>
 </section>
 

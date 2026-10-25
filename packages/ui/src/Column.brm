@@ -1,9 +1,10 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import type { Key } from './collection.ts';
   import { interact } from './interact.brm.ts';
-  import { TableContext } from './table.ts';
+  import { ColumnContext, TableContext, TableResizeContext, cssWidth } from './table.ts';
+  import type { ColumnSize } from './table.ts';
 
   /**
    * A column of a Table, as Column of React Aria Components: its header cell. `id` is its key.
@@ -12,6 +13,10 @@
    *   `role="rowheader"`. A Table needs one.
    * - With `allowsSorting`, a press or Enter sorts the Table by the column. It shows `aria-sort`,
    *   `data-allows-sorting` and `data-sort-direction`.
+   * - In a ResizableTableContainer, `width` or `defaultWidth` sets its width, and `minWidth`
+   *   and `maxWidth` its bounds, in pixels. A ColumnResizer in it resizes it, and it shows
+   *   `data-resizing` while it does.
+   * - A control in it, such as a ColumnResizer, takes the focus that the Table gives it.
    * - It shows `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
    */
   const {
@@ -19,6 +24,10 @@
     isRowHeader = false,
     allowsSorting = false,
     textValue,
+    width,
+    defaultWidth,
+    minWidth,
+    maxWidth,
     children,
     ...rest
   } = $props<{
@@ -26,11 +35,31 @@
     isRowHeader?: boolean;
     allowsSorting?: boolean;
     textValue?: string;
+    width?: ColumnSize | null;
+    defaultWidth?: ColumnSize | null;
+    minWidth?: number | null;
+    maxWidth?: number | null;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
 
   const table = $getContext(TableContext);
+  const sizes = $getContext(TableResizeContext);
+  const headerId = $id();
+  // A column without an `id` takes the ID of its header, so a resize keeps its width too.
+  const key = keyAttribute(id ?? headerId);
+  // The width that a resize gave it, or else the one that its props give it.
+  const resized = $memo(sizes?.widths[key]);
+  const size = $memo(
+    resized !== undefined ? `${resized}px` : sizes ? cssWidth(width ?? defaultWidth) : undefined,
+  );
+  const resizing = $memo(sizes?.resizing === key);
+  $setContext(ColumnContext, {
+    key,
+    headerId,
+    minWidth: minWidth ?? 0,
+    maxWidth: maxWidth ?? Number.MAX_SAFE_INTEGER,
+  });
   // The Table learns its columns from them, in order, before its rows render.
   table?.columns.push({ id, isRowHeader });
   const direction = $memo(
@@ -50,13 +79,13 @@
     hovered,
     focused,
     focusVisible,
-    onPointerDown,
+    onPointerDown: pressDown,
     onPointerMove,
     onPointerUp,
     onPointerCancel,
     onPointerEnter,
     onPointerLeave,
-    onClick,
+    onClick: pressClick,
     onFocus,
     onBlur,
   } = interact(
@@ -72,13 +101,39 @@
     () => {},
     () => {},
   );
+
+  /** True for an event that starts on a control in the column, such as a ColumnResizer. */
+  function fromControl(event: Event): boolean {
+    const control = (event.target as Element).closest?.(
+      'a[href], button, input, select, textarea, label, [role=presentation]',
+    );
+    return Boolean(control) && control !== event.currentTarget;
+  }
+
+  function onPointerDown(event: PointerEvent) {
+    if (!fromControl(event)) {
+      pressDown(event);
+    }
+  }
+
+  function onClick(event: MouseEvent) {
+    if (!fromControl(event)) {
+      pressClick(event);
+    }
+  }
 </script>
 
 <th
+  id=headerId
   role="columnheader"
   tabindex="-1"
   scope="col"
-  data-key=(id === undefined ? undefined : keyAttribute(id))
+  data-key=key
+  data-sized=(size === undefined ? undefined : '')
+  data-width=(typeof (width ?? defaultWidth) === 'number' ? (width ?? defaultWidth) : undefined)
+  data-min-width=(minWidth ?? undefined)
+  data-max-width=(maxWidth ?? undefined)
+  data-resizing=(resizing || undefined)
   data-text-value=textValue
   aria-sort=(allowsSorting ? (direction ?? 'none') : undefined)
   data-allows-sorting=(allowsSorting || undefined)
@@ -98,3 +153,9 @@
   {onBlur}
   {...rest}
 >{children}</th>
+
+<style>
+  th[data-sized] {
+    width: ${size};
+  }
+</style>

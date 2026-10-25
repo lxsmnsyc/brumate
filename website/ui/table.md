@@ -54,3 +54,32 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 - A cell with a control, such as a Checkbox or a Button, gives the focus to the control.
 - Home and End go to the first and the last row, or to the first and the last cell of the row. With Ctrl or Cmd on a cell, they go to the first cell of the first row, or the last cell of the last row.
 - Space selects the row, Shift extends a range, Ctrl+A or Cmd+A selects all, and Escape clears the selection. Letters move to the row whose text starts with them.
+
+## Column resizing
+
+```brm demo TableResizeDemo
+
+```
+
+```html
+<ResizableTableContainer onResize=saveWidths>
+  <Table aria-label="Files">
+    <TableHeader>
+      <Column id="name" isRowHeader defaultWidth=(160) minWidth=(100)>
+        <span tabindex="-1">Name</span>
+        <ColumnResizer />
+      </Column>
+      <Column id="kind">Kind</Column>
+    </TableHeader>
+    …
+  </Table>
+</ResizableTableContainer>
+```
+
+- A `ResizableTableContainer` around a Table lets its columns resize. It scrolls the Table when the Table is wider than it.
+- In it, a Column takes `width` or `defaultWidth`, in pixels, a percentage, or `'1fr'`, which shares the width that is left with the other columns. `minWidth` and `maxWidth` bound it, in pixels.
+- A `ColumnResizer` in a Column resizes it with a drag. When a resize starts, every column keeps its width in pixels, as in React Aria, and the Table is as wide as its columns.
+- `onResize` hears of the widths while a resizer moves, and `onResizeEnd` when it stops, as a `Map` from the key of a column to its width.
+- The resizer holds a hidden range input, which a screen reader reads as the width in pixels. A Column gives the focus to its first control. Left and Right move through the controls of a column before they move to the next column, so put a label with `tabindex="-1"` before the resizer, as the demo does, to keep the column sortable with the keys.
+- On the input, Enter starts a resize, the arrow keys change the width by 10 pixels, and Escape, Enter, Space, Tab or a blur end it.
+- A resizer shows `data-resizing`, `data-resizable-direction`, which is `left` at the least width and `right` at the most, `data-hovered`, `data-focused` and `data-focus-visible`. A Column shows `data-resizing` while it resizes.
