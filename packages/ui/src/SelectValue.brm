@@ -7,9 +7,9 @@
    * The value of a Select in its Button, as SelectValue of React Aria Components. It shows the
    * text of the selected item, or the placeholder, with `data-placeholder`.
    *
-   * The items are on the page only while the list is open, so a Select that starts with a
-   * selection does not know its text. `render`, a `#template`, names the selection then. It gets
-   * `selectedKey`, `selectedText` and `isPlaceholder`.
+   * The server does not know the text of a key that the Select starts with, so the HTML shows the
+   * key until the code loads. `render`, a `#template`, names the selection in the HTML too. It
+   * gets `selectedKey`, `selectedText` and `isPlaceholder`.
    */
   const { render, ...rest } = $props<{
     render?: (state: {

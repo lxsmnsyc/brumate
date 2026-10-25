@@ -35,7 +35,9 @@ it('names the collection on the input, which keeps focus while the keys move', a
   const page = await autocompletes();
   const input = page.get('.search-input') as HTMLInputElement;
   const menu = page.get('.commands');
-  await page.waitFor(() => expect(input.getAttribute('aria-controls')).toBe(menu.id));
+  // The markup names the collection, before the code loads.
+  expect(input.getAttribute('aria-controls')).toBe(menu.id);
+  expect(input.getAttribute('aria-autocomplete')).toBe('list');
   expect(menu.getAttribute('tabindex')).toBe('-1');
   input.focus();
   press('ArrowDown', input);
