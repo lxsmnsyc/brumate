@@ -1,8 +1,9 @@
 <script>
-  import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $id, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
+  import { FieldInputContext } from './contexts.ts';
   import type { Key } from './collection.ts';
   import { MENU_ITEMS } from './menu.ts';
 
@@ -28,6 +29,8 @@
 
   const collectionId = $id();
   let activeKey = $signal<Key | null>(null);
+  // The ID of the active item, which the input names in `aria-activedescendant`.
+  let activeId = $signal<string>();
   // The text the collection shows the items of, which changes as the user types.
   let filterText = $signal(inputValue);
   // The text of the last filter, so a filter again with the same text, such as after the active
@@ -57,20 +60,8 @@
     activeKey = key;
     const item = key === null ? undefined : items().find((element) => keyOf(element) === key);
     item?.scrollIntoView?.({ block: 'nearest' });
-    const input = field();
-    if (item?.id) {
-      input?.setAttribute('aria-activedescendant', item.id);
-    } else {
-      input?.removeAttribute('aria-activedescendant');
-    }
+    activeId = item?.id || undefined;
   }
-
-  // The input names the collection that it controls, once the code of the page runs.
-  $client(() => {
-    const input = field();
-    input?.setAttribute('aria-controls', collectionId);
-    input?.setAttribute('aria-autocomplete', 'list');
-  }, 'load');
 
   /** The collection showed the items that match. The first one becomes active. */
   function filtered(shown: HTMLElement[]) {
@@ -131,6 +122,12 @@
     }
   }
 
+  // The input of the field names the collection that it controls, and its active item.
+  $setContext(FieldInputContext, {
+    'aria-controls': collectionId,
+    'aria-autocomplete': 'list',
+    'aria-activedescendant': activeId,
+  });
   $setContext(CollectionFocusContext, {
     id: collectionId,
     activeKey,
