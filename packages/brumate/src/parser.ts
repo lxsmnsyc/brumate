@@ -7,6 +7,7 @@ import type {
   DynamicTagNode,
   EventAttribute,
   Expression,
+  ForBlock,
   FragmentNode,
   KeyBlock,
   Markup,
@@ -989,9 +990,32 @@ class Parser {
           ? 'index'
           : this.expression(keyStart, header.end);
     }
+    const window = this.parseWindow();
     const body = this.parseBody('for');
     const fallback = this.parseBranch('else') ? this.parseBody('else') : undefined;
-    return { kind: 'for', start, end: this.pos, item, index, list, key, body, fallback };
+    return { kind: 'for', start, end: this.pos, item, index, list, key, window, body, fallback };
+  }
+
+  /** `window(height)` or `window(height, count)` after the header of a `#for`. */
+  private parseWindow(): ForBlock['window'] {
+    this.skipWhitespace();
+    if (
+      !this.source.startsWith('window', this.pos) ||
+      /[\w$]/.test(this.source[this.pos + 6] ?? '')
+    ) {
+      return undefined;
+    }
+    const at = this.pos;
+    this.pos += 'window'.length;
+    const inner = this.parseHeader('window', true)!;
+    const code = this.source.slice(inner.start, inner.end);
+    const comma = findTopLevel(code, ',', this.fail);
+    if (code.trim() === '') {
+      this.fail('Expected the height of an item in window(height)', at);
+    }
+    const height = this.expression(inner.start, comma === -1 ? inner.end : inner.start + comma);
+    const count = comma === -1 ? undefined : this.expression(inner.start + comma + 1, inner.end);
+    return { height, count };
   }
 
   private parseSwitch(start: number): Block {

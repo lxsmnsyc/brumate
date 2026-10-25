@@ -1,0 +1,21 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let rows = $signal(Array.from({ length: 100 }, (_, index) => ({ id: index, name: `Row ${index}` })));
+  let picked = $signal(-1);
+</script>
+
+<button class="drop" onClick=(() => (rows = rows.slice(1)))>Drop</button>
+<div class="scroll" style="height: 120px; overflow: auto">
+  <ul class="list">
+    #for (row of rows by row.id) window(30, 6) {
+      <script>
+        let clicks = $signal(0);
+      </script>
+      <li class=(`row row-${row.id}`)>
+        <button class=(`pick pick-${row.id}`) onClick=(() => { clicks++; picked = row.id; })>{row.name} {clicks}</button>
+      </li>
+    }
+  </ul>
+</div>
+<p class="picked">{picked}</p>

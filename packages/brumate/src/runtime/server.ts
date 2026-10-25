@@ -378,7 +378,7 @@ export class Context {
    * Children that render where they are inserted: the scope of the markup
    * that wrote them, and the scope where they are, for their contexts.
    */
-  private readonly inserted: { from: ScopeId; at: ScopeId }[] = [];
+  private readonly inserted: { from: ScopeId; at: ScopeId; tag?: string }[] = [];
   /** Takes back what this context added to the page, from the newest, for `restore`. */
   private readonly undo: (() => void)[] = [];
 
@@ -562,18 +562,28 @@ export class Context {
    * keep `from`, the scope of the markup that wrote them, for their values,
    * and find their contexts from `at`.
    */
-  async children(from: ScopeId, at: ScopeId, renderBody: () => Promise<string>): Promise<string> {
+  async children(
+    from: ScopeId,
+    at: ScopeId,
+    renderBody: () => Promise<string>,
+    tag?: string,
+  ): Promise<string> {
     const { inserted } = this.root;
     // Children that a component passes on, as `<Select>{children}</Select>`, render where the
     // component that gets them inserts them, so they find their contexts there too.
     const outer = inserted.findLast((item) => item.from === at);
-    const entry = { from, at: outer ? outer.at : at };
+    const entry = { from, at: outer ? outer.at : at, tag: tag ?? outer?.tag };
     inserted.push(entry);
     try {
       return await renderBody();
     } finally {
       inserted.splice(inserted.indexOf(entry), 1);
     }
+  }
+
+  /** The tag of the element where the children that render now are inserted, for spacers. */
+  spacerTag(): string {
+    return this.root.inserted.at(-1)?.tag ?? 'div';
   }
 
   /**
@@ -1230,7 +1240,7 @@ const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
 /** Markup that renders where it is inserted, so it can read the contexts there. */
 export interface Lazy {
-  [LAZY]: (ctx: Context, scope: ScopeId | undefined) => Promise<string>;
+  [LAZY]: (ctx: Context, scope: ScopeId | undefined, tag?: string) => Promise<string>;
 }
 
 /**
@@ -1256,7 +1266,7 @@ const RAW: unique symbol = Symbol.for('brumate.raw') as never;
  * class instances.
  */
 class Children implements Lazy {
-  readonly [LAZY]: (ctx: Context, at: ScopeId | undefined) => Promise<string>;
+  readonly [LAZY]: (ctx: Context, at: ScopeId | undefined, tag?: string) => Promise<string>;
   /** The HTML of the first render, under the symbol of raw HTML. */
   [RAW]?: string;
   /**
@@ -1269,16 +1279,24 @@ class Children implements Lazy {
     if (ref !== undefined) {
       this[CHILDREN_REF] = new ChildrenReference(ref, from);
     }
-    this[LAZY] = async (ctx, at) => {
+    this[LAZY] = async (ctx, at, tag) => {
       const html = await (at === undefined
         ? renderBody(ctx)
-        : ctx.children(from, at, () => renderBody(ctx)));
+        : ctx.children(from, at, () => renderBody(ctx), tag));
       if (ref === undefined) {
         this[RAW] ??= html;
       }
       return html;
     };
   }
+}
+
+/**
+ * The tag of the spacers of a windowed list in children: a row in a table body, an item in a
+ * list, as the element where the children are inserted says, or else a `div`.
+ */
+export function spacerTag(ctx: Context): string {
+  return ctx.spacerTag();
 }
 
 /** Makes markup that renders where it is inserted, such as the children of a layout. */
@@ -1321,20 +1339,25 @@ export function actionResult(ctx: Context, fn: unknown): unknown {
  * Renders a value inserted in markup. `ctx` and `scope` are where it is
  * inserted, for markup that renders there.
  */
-export function insert(value: unknown, ctx?: Context, scope?: ScopeId): string | Promise<string> {
+export function insert(
+  value: unknown,
+  ctx?: Context,
+  scope?: ScopeId,
+  tag?: string,
+): string | Promise<string> {
   // A value that is ready renders without a promise, because most inserts are plain text.
   if (
     value !== null &&
     (typeof value === 'object' || typeof value === 'function') &&
     typeof (value as PromiseLike<unknown>).then === 'function'
   ) {
-    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope));
+    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope, tag));
   }
   if (isLazy(value) && ctx) {
-    return value[LAZY](ctx, scope);
+    return value[LAZY](ctx, scope, tag);
   }
   if (Array.isArray(value)) {
-    const parts = value.map((item) => insert(item, ctx, scope));
+    const parts = value.map((item) => insert(item, ctx, scope, tag));
     return parts.every((part) => typeof part === 'string')
       ? parts.join('')
       : Promise.all(parts).then((all) => all.join(''));

@@ -584,6 +584,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
       block.kind === 'client' ||
+      // The browser renders the items of a windowed list as they come into view.
+      (block.kind === 'for' && block.window !== undefined) ||
       // The browser asks for the body of a `#defer` block by its anchor.
       block.kind === 'defer' ||
       portalTarget ||

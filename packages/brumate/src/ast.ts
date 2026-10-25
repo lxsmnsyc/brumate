@@ -180,6 +180,11 @@ export interface ForBlock extends Range {
   list: Expression;
   /** `'index'` keys items by position. */
   key?: Expression | 'index';
+  /**
+   * `window(height, count)`: the browser renders only the items in view, which are about
+   * `height` pixels tall, and the server renders the first `count`.
+   */
+  window?: { height: Expression; count?: Expression };
   body: Body;
   fallback?: Body;
 }

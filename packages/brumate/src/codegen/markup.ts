@@ -265,6 +265,8 @@ export class Emitter {
   /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
   private headBlocks = 0;
   private counter = 0;
+  /** The tags of the elements around the node that renders, innermost last. */
+  private readonly elements: string[] = [];
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
     this.file = file;
@@ -952,9 +954,11 @@ export class Emitter {
           ?.reads.some(
             (read) => read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
           );
+        // Children in a table body or a list get the tag of the spacers of a windowed list in them.
+        const spacer = this.parentSpacer();
         const at =
           this.options.mode === 'server' || readsProp
-            ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}`
+            ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${this.options.mode === 'server' && readsProp && spacer !== undefined ? `, ${JSON.stringify(spacer)}` : ''}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
         const value = this.isPrimitiveInsert(node.expression)
@@ -1313,7 +1317,9 @@ export class Emitter {
       return;
     }
     this.nesting++;
+    this.elements.push(node.tag.toLowerCase());
     this.emitNodes(node.children, scope);
+    this.elements.pop();
     this.nesting--;
     this.html(`</${node.tag}>`);
   }
@@ -1427,9 +1433,12 @@ export class Emitter {
   /** Runs a callback for markup that renders outside this component's elements, such as children. */
   private atTopLevel(callback: () => void): void {
     const nesting = this.nesting;
+    // The elements around markup that renders elsewhere are not these.
+    const elements = this.elements.splice(0);
     this.nesting = 0;
     callback();
     this.nesting = nesting;
+    this.elements.push(...elements);
   }
 
   /** Renders children into a variable, for a component or a dynamic tag. */
@@ -1818,7 +1827,9 @@ export class Emitter {
    */
   private emitFill(block: Block, scope: Scope): boolean {
     // A block in the function of children renders there, which the calls of a clone do not fill.
-    const fill = this.currentFn === 0 ? this.options.fills?.(block) : undefined;
+    // A windowed list renders its first items inline.
+    const windowed = block.kind === 'for' && block.window !== undefined;
+    const fill = this.currentFn === 0 && !windowed ? this.options.fills?.(block) : undefined;
     const anchor = fill && this.anchor(scope, block);
     if (!fill || !anchor) {
       return false;
@@ -1865,7 +1876,11 @@ export class Emitter {
    * clone. `branchNodes` and `listNodes` write its markers, when it has them.
    */
   private emitNodesBlock(block: Block, scope: Scope): boolean {
-    if (this.options.mode !== 'client' || !this.options.hoist) {
+    if (
+      this.options.mode !== 'client' ||
+      !this.options.hoist ||
+      (block.kind === 'for' && block.window !== undefined)
+    ) {
       return false;
     }
     const anchor = this.anchor(scope, block);
@@ -1900,6 +1915,30 @@ export class Emitter {
       return true;
     }
     return false;
+  }
+
+  /** The tag of a spacer in the element around, for a row of a table or an item of a list. */
+  private parentSpacer(): string | undefined {
+    const parent = this.elements.at(-1);
+    if (parent === undefined) {
+      return undefined;
+    }
+    if (/^(tbody|thead|tfoot|table)$/.test(parent)) {
+      return 'tr';
+    }
+    return /^(ul|ol|menu)$/.test(parent) ? 'li' : undefined;
+  }
+
+  /**
+   * The tag of the spacers of a windowed list, as code: a row in a table, an item in a list, or
+   * a `div`. In the children of a component, the element is the one where the component inserts
+   * them, which the render gives as `$$ctx.tag`.
+   */
+  private spacerTag(): string {
+    if (this.elements.length > 0) {
+      return JSON.stringify(this.parentSpacer() ?? 'div');
+    }
+    return this.options.mode === 'server' ? `$$b.spacerTag($$ctx)` : `'div'`;
   }
 
   private open(scope: Scope, block: Block, suffix?: string): void {
@@ -1961,6 +2000,21 @@ export class Emitter {
             `const ${list} = Array.from({ length: ${this.expression(block.count)} }, (_, index) => index);`,
           );
         }
+        // A windowed list renders its first items, between spacers that give it the height of
+        // the rest, and starts the window of the browser. See `windowStart` of the core.
+        const windowed = block.kind === 'for' && block.window ? block.window : undefined;
+        const shown = windowed && this.unique('shown');
+        const spacer = windowed && this.spacerTag();
+        if (windowed) {
+          this.line(
+            `const ${shown} = Math.min(${list}.length, ${windowed.count ? this.expression(windowed.count) : '20'});`,
+          );
+          this.html(`<`);
+          this.code(spacer!);
+          this.html(` data-window="before" aria-hidden="true" style="height: 0px"></`);
+          this.code(spacer!);
+          this.html('>');
+        }
         this.open(scope, block);
         const from = this.itemSource(block);
         const source = from && this.unique('source');
@@ -1969,7 +2023,7 @@ export class Emitter {
           this.line(`const ${source} = ${from};`);
         }
         // An indexed loop, without an iterator and an `[index, item]` pair for each item.
-        this.line(`for (let ${index} = 0; ${index} < ${list}.length; ${index}++) {`);
+        this.line(`for (let ${index} = 0; ${index} < ${shown ?? `${list}.length`}; ${index}++) {`);
         this.line(`const ${item} = ${list}[${index}];`);
         this.emitItem(block, item, index, source);
         this.close();
@@ -1979,6 +2033,20 @@ export class Emitter {
           this.close();
         }
         this.end(block);
+        if (windowed) {
+          const anchor = this.anchor(scope, block)!;
+          this.html(`<`);
+          this.code(spacer!);
+          this.html(` data-window="after" aria-hidden="true" style="height: `);
+          this.code(`((${list}.length - ${shown}) * (${this.expression(windowed.height)}))`);
+          this.html(`px"></`);
+          this.code(spacer!);
+          this.html('><template b-b="');
+          this.code(anchor.scope);
+          this.html(
+            `:${anchor.index}" b-client="load=${this.plan.id}#w${anchor.index}"></template>`,
+          );
+        }
         this.close();
         return;
       }

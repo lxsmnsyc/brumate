@@ -1,0 +1,6 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { children } = $props<{ children?: unknown }>();
+</script>
+
+<tbody class="win-body">{children}</tbody>

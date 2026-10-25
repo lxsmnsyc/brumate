@@ -64,6 +64,28 @@ Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces. 
 
 Pick a key that stays the same for an item, such as an ID from a database. A key that changes renders the item again.
 
+### Windowed lists
+
+A long list can render only the items in view. `window(height)` after the header gives the height of an item in pixels, and the browser renders the items that come into view as the user scrolls:
+
+```html
+<div style="height: 400px; overflow: auto">
+  <table>
+    <tbody>
+      #for (row of rows by row.id) window(32) {
+        <tr><td>{row.name}</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+```
+
+- The server renders the first items, 20 by default, or the count of `window(height, count)`. A spacer before the items and one after give the list the height of all of them, so the page has its height before its code loads.
+- The browser renders the items in view, a few more on each side, as the element that scrolls the list, or the page, scrolls. It measures the items that render, and uses their height for the rest.
+- An item that leaves the view keeps its scope and its nodes while it is in the list, so its state stays. It catches up with the updates that it missed when it comes back.
+- The spacers are rows in a table and items in a list. In the children of a component, they take their tag from the element where the component inserts the children.
+- Keys move between the items that are rendered. Focus that moves to the edge scrolls, and the window renders more.
+
 ## A script in a block
 
 A block body can start with a `<script>`. It runs for each instance of the body, such as for each item of a `#for`, and can declare signals and functions of its own:
