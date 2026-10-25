@@ -1,6 +1,5 @@
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
-  import { prevent } from 'brumate/events';
   import { LinkContext } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
   import { interact } from './interact.brm.ts';
@@ -79,6 +78,7 @@
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onLostPointerCapture,
     onPointerEnter,
     onPointerLeave,
     onKeyDown,
@@ -117,10 +117,11 @@
   onPointerMove=onPointerMove
   onPointerUp=onPointerUp
   onPointerCancel=onPointerCancel
+  onLostPointerCapture=onLostPointerCapture
   onPointerEnter=onPointerEnter
   onPointerLeave=onPointerLeave
-  onKeyDown=(prevent(onKeyDown, 'Space'))
-  onKeyUp=(prevent(onKeyUp, 'Space'))
+  onKeyDown=onKeyDown
+  onKeyUp=onKeyUp
   onClick=onClick
   onFocus=onFocus
   onBlur=onBlur

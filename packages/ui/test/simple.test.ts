@@ -81,6 +81,25 @@ it('renders a Link as an <a>, which presses with a key and a pointer', async () 
   );
 });
 
+it('leaves Space to the browser on a Link, which presses only with Enter', async () => {
+  const page = await simple();
+  for (const name of ['.to', '.span']) {
+    const link = page.get(name);
+    link.focus();
+    const down = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    link.dispatchEvent(down);
+    link.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true, cancelable: true }));
+    // The page scrolls, as for any link.
+    expect(down.defaultPrevented).toBe(false);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(takeEvents()).toEqual([]);
+  press('Enter', page.get('.span'));
+  await page.waitFor(() =>
+    expect(globalThis.partEvents).toEqual([{ type: 'press', pointerType: 'keyboard' }]),
+  );
+});
+
 it('marks the current Link, and leaves out the address of a disabled one', async () => {
   const page = await simple();
   const current = page.get('.current');
