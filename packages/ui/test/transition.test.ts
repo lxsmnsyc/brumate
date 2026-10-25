@@ -90,3 +90,14 @@ it('enters a child after its parent, and leaves the parent after its child', asy
   await page.waitFor(() => expect(page.container.querySelector('.parent')).toBeNull());
   expect(types().indexOf('child-left')).toBeLessThan(types().indexOf('parent-leave'));
 });
+
+it('leaves out an animation that never ends, such as a spinner inside', async () => {
+  const { waitForAnimations } = await import('../src/transition.ts');
+  const never = new Promise<void>(() => {});
+  const animation = (iterations: number, finished: Promise<void>) =>
+    ({ effect: { getComputedTiming: () => ({ iterations }) }, finished }) as unknown as Animation;
+  const element = {
+    getAnimations: () => [animation(Infinity, never), animation(1, Promise.resolve())],
+  } as unknown as Element;
+  await expect(waitForAnimations(element, true)).resolves.toBeUndefined();
+});
