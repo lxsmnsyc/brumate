@@ -117,11 +117,13 @@ export function r2($$p, $$item, $$index) {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2 } from "./produce.brm?brumate-client";
 interface Todo {
     id: string;
     title: string;
     done: boolean;
   }
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"add\" b-on=\"click=Produce_9t90yy#h3\">Add</button><ul><!--x1--><!--/b--></ul><p><!--x2--> done</p>", 3);
 
 export default function Produce($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -143,24 +145,12 @@ export default function Produce($$props: Record<string, never>): string | Docume
       draft.push({ id: String(draft.length + 1), title: 'New', done: false });
     }));
   }
-  $$html += "<button class=\"add\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Produce_9t90yy#h3\">Add</button><ul>";
-  {
-    const $$list0v = ( todos );
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":1-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const todo = $$item1;
-      const $$s2 = $$b.createScope(2, $$s1);
-      $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Produce_9t90yy#h7\">" + $$b.insert((todo.title)) + "</li>";
-      $$b.setSlots($$s2, [todo]);
-      $$b.setItem($$s2, $$item1);
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul><p><!--t" + $$s1 + ":2-->" + $$b.insert((todos.filter((todo) => todo.done).length)) + "<!--/t--> done</p>";
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keepText($$s1, 2, $$e[2], (todos.filter((todo) => todo.done).length));
   $$b.setSlots($$s1, [todos]);
-  return $$html;
+  $$b.fillList($$e[1], $$s1, 1, $$b.listOf(( todos )), $$r2);
+  return $$f;
 }
 
 # HTML

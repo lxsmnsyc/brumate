@@ -79,6 +79,8 @@ export function r2($$p, $$item, $$index) {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2 } from "./fields.brm?brumate-client";
+const $$t0 = $$b.template("<label b-x=\"0\">Email</label><input b-x=\"1\"><p b-x=\"2\">We never share it.</p><!--x3--><!--/b--><button b-x=\"4\" b-on=\"click=Fields_1cs3w3p#h9\">Add</button>", 5);
 
 export default function Fields($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -86,27 +88,15 @@ export default function Fields($$props: Record<string, never>): string | Documen
   const id = $$b.makeId($$s1, 0);
   const hint = $$b.makeId($$s1, 1);
   let names = (['First', 'Last']);
-  $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
-  {
-    const $$list0v = ( names);
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":0-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const name = $$item1;
-      const $$s2 = $$b.createScope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "-->";
-      const field = $$b.makeId($$s2, 0);
-      $$html += "<label" + $$b.attribute("for", (field)) + " b-b=\"" + $$s2 + ":0\">" + $$b.insert((name)) + "</label><input" + $$b.attribute("id", (field)) + ">";
-      $$b.setSlots($$s2, [name, field]);
-      $$b.setItem($$s2, $$item1);
-      $$html += "<!--/i-->";
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "<button b-b=\"" + $$s1 + ":1\" b-on=\"click=Fields_1cs3w3p#h9\">Add</button>";
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.setAttr($$e[0], "for", (id));
+  $$b.setAttr($$e[1], "id", (id));
+  $$b.setAttr($$e[1], "aria-describedby", (hint));
+  $$b.setAttr($$e[2], "id", (hint));
+  $$b.keep($$s1, 1, $$e[4]);
   $$b.setSlots($$s1, [names]);
-  return $$html;
+  $$b.fillList($$e[3], $$s1, 0, $$b.listOf(( names)), $$r2);
+  return $$f;
 }
 
 # HTML

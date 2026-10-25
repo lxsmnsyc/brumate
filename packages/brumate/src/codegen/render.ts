@@ -1,10 +1,11 @@
-import type { Markup, SFCFile } from '../ast.ts';
+import type { Block, Markup, SFCFile } from '../ast.ts';
 import type { oxc } from '../oxc.ts';
 import { componentFunctionName, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { cloneLines } from './template.ts';
+import type { Fill } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { propsType } from './server.ts';
 import { copy } from '../sourcemap.ts';
@@ -136,7 +137,11 @@ export function awaitsPromise(plan: Plan): boolean {
  * Generates the render module: the component's render function for the
  * client, used when a parent renders it inside a block that changes.
  */
-export function generateRender(file: SFCFile, plan: Plan): string {
+export function generateRender(
+  file: SFCFile,
+  plan: Plan,
+  fillOf?: (block: Block) => Fill | undefined,
+): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
   addValueEdits(patch, file, model.sites, 'client');
@@ -211,43 +216,81 @@ export function generateRender(file: SFCFile, plan: Plan): string {
     const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
     moduleBody.push(`const $$css = ${JSON.stringify(css)};`);
   }
-  const emitter = new Emitter(file, plan, patch, { mode: 'client', functions: true });
+  // The render functions of the client entry that fill the nested blocks of the clone.
+  const imported = new Set<string>();
+  const local = (name: string): string => {
+    imported.add(name);
+    return `$$${name}`;
+  };
+  const fills =
+    fillOf &&
+    ((block: Block): Fill | undefined => {
+      const fill = fillOf(block);
+      if (fill?.kind === 'if') {
+        return { kind: 'if', renders: fill.renders.map(local) };
+      }
+      return fill && { kind: 'for', render: local(fill.render) };
+    });
   const generics = file.generics ? `<${file.generics}>` : '';
   // The script can import a name that is the name of the component.
   const fn = componentFunctionName(file, plan.name);
-  emitter.line(
-    `export default function ${fn}${generics}($$props: ${propsType(file)}): string | DocumentFragment {`,
-  );
+  const signature = `export default function ${fn}${generics}($$props: ${propsType(file)}): string | DocumentFragment {`;
   // A render function cannot wait, so a component whose render awaits a promise renders only
   // on the server. Its memos can await: they load in the browser.
   if (awaitsPromise(plan)) {
+    const emitter = new Emitter(file, plan, patch, { mode: 'client', functions: true });
+    emitter.line(signature);
     emitter.line(
       `throw new Error(${JSON.stringify(`${plan.name} awaits a promise in its script or markup, so only the server can render it`)});`,
     );
     emitter.close();
     return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
   }
-  emitter.line(`let $$html = '';`);
-  emitter.line(
-    `const ${emitter.scopeVar(model.component)} = $$b.createScope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,
-  );
-  emitter.emitComponentContent(setup);
-  emitter.flush();
-  // Markup that is one string clones a template, which a constant of the module holds.
-  const constants = new Map<string, string>();
-  const cloned =
-    emitter.flushes.length === 1 &&
-    cloneLines(emitter, (code) => {
-      let name = constants.get(code);
-      if (!name) {
-        name = `$$t${constants.size}`;
-        constants.set(code, name);
-        moduleBody.push(`const ${name} = ${code};`);
-      }
-      return name;
+  const emit = (fill: boolean): { emitter: Emitter; cloned: boolean } => {
+    const emitter = new Emitter(file, plan, patch, {
+      mode: 'client',
+      functions: true,
+      fills: fill ? fills : undefined,
     });
-  emitter.line(cloned ? 'return $$f;' : 'return $$html;');
-  emitter.close();
+    emitter.line(signature);
+    emitter.line(`let $$html = '';`);
+    emitter.line(
+      `const ${emitter.scopeVar(model.component)} = $$b.createScope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,
+    );
+    emitter.emitComponentContent(setup);
+    emitter.flush();
+    // Markup that is one string clones a template, which a constant of the module holds.
+    const constants = new Map<string, string>();
+    const cloned =
+      emitter.flushes.length === 1 &&
+      cloneLines(emitter, (code) => {
+        let name = constants.get(code);
+        if (!name) {
+          name = `$$t${constants.size}`;
+          constants.set(code, name);
+          templates.push(`const ${name} = ${code};`);
+        }
+        return name;
+      });
+    emitter.line(cloned ? 'return $$f;' : 'return $$html;');
+    emitter.close();
+    return { emitter, cloned };
+  };
+  const templates: string[] = [];
+  let emitted = fills ? emit(true) : undefined;
+  // Markup that fills its blocks must clone, so markup that cannot renders again with its blocks.
+  if (!emitted?.cloned) {
+    imported.clear();
+    templates.length = 0;
+    emitted = emit(false);
+  } else if (imported.size > 0) {
+    const base = file.filename.split(/[\\/]/).pop()!;
+    header.push(
+      `import { ${[...imported].map((name) => `${name} as $$${name}`).join(', ')} } from ${JSON.stringify(`./${base}?brumate-client`)};`,
+    );
+  }
+  moduleBody.push(...templates);
+  const { emitter } = emitted;
 
   return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
 }

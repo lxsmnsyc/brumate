@@ -108,37 +108,22 @@ export function r3($$p, $$item, $$index) {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2, r3 as $$r3 } from "./search.brm?brumate-client";
 const search = (...$$a) => $$b.rpc("Search_s4k9u0#search", $$a);
+const $$t0 = $$b.template("<input b-x=\"0\" b-on=\"input=Search_s4k9u0#h4\"><!--x1--><!--/b--><ul><!--x2--><!--/b--></ul>", 3);
 
 export default function Search($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Search_s4k9u0");
   let query = ('');
   const results = (search(query));
-  $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
-  if (false) {
-    $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
-  }
-  $$html += "<ul>";
-  {
-    const $$list0v = ( results);
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":2-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const result = $$item1;
-      const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li b-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
-      $$b.setSlots($$s3, [result]);
-      $$b.setItem($$s3, $$item1);
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul>";
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.setAttr($$e[0], "value", (query));
+  $$b.keep($$s1, 0, $$e[0]);
   $$b.setSlots($$s1, [query, results]);
-  return $$html;
+  $$b.fillBranch($$e[1], $$s1, 1, (false) ? 0 : -1, [$$r2]);
+  $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( results)), $$r3);
+  return $$f;
 }
 
 # HTML

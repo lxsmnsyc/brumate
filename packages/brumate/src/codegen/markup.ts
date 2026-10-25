@@ -734,8 +734,13 @@ export class Emitter {
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
     if (this.plan.styles.css) {
-      // The stylesheet is written once per page, before the first instance.
-      this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
+      // The stylesheet is written once per page, before the first instance. The browser adds it
+      // to the head, so it is not in the markup.
+      if (this.options.mode === 'client') {
+        this.line(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css);`);
+      } else {
+        this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
+      }
     }
     this.emitStatements(setup, component);
     for (const template of this.file.templates) {

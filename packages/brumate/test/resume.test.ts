@@ -77,6 +77,7 @@ function toRender(code: string): string {
   return code
     .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
     .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"')
+    .replace(/\.brm\?brumate-client"/g, '.brm.client.ts"')
     .replace(/\.brm\.ts\?brumate-shared"/g, '.brm.ts.shared.ts"');
 }
 

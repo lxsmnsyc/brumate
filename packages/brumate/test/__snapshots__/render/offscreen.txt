@@ -316,7 +316,7 @@ const $$css = ".flex[s-1oupne3] {\n    display: flex;\n  }";
 export default function Offscreen($$props: Record<string, any>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Offscreen_1oupne3");
-  $$html += $$b.addStyle("Offscreen_1oupne3", $$css);
+  $$b.addStyle("Offscreen_1oupne3", $$css);
   const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"]);
   let tab = (first);
   let count = (0);

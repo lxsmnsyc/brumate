@@ -45,6 +45,11 @@ export interface ClientOutput {
   loaders: Record<string, string[]>;
   /** False when nothing of the component runs in the browser. */
   clientCode: boolean;
+  /**
+   * The render functions of the client entry that fill a nested `#if` or `#for` of a clone,
+   * for the render module, which imports them.
+   */
+  fillOf: (block: Block) => Fill | undefined;
   diagnostics: Diagnostic[];
 }
 
@@ -233,6 +238,7 @@ class ClientGenerator {
         parts,
         loaders: Object.fromEntries(names.map((name) => [name, []])),
         clientCode,
+        fillOf: (block) => this.fillOf(block),
         diagnostics: this.diagnostics,
       };
     }
@@ -253,6 +259,7 @@ class ClientGenerator {
       parts,
       loaders,
       clientCode,
+      fillOf: (block) => this.fillOf(block),
       diagnostics: this.diagnostics,
     };
   }

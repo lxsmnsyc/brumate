@@ -67,6 +67,8 @@ export function r2($$p) {
 import * as $$b from 'brumate/client';
 import Themed from "./Themed.brm?brumate-render";
 import { Theme } from "./theme";
+import { r2 as $$r2 } from "./themes.brm?brumate-client";
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"toggle\" b-on=\"click=Themes_945372#h3\">Toggle</button><button b-x=\"1\" class=\"show\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\"><!--x2--></div><!--x3--><!--/b-->", 4);
 
 export default function Themes($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -74,14 +76,13 @@ export default function Themes($$props: Record<string, never>): string | Documen
   let theme = ('dark');
   let show = (false);
   $$b.provideValue(Theme, theme, $$s1);
-  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div>";
-  if (show) {
-    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
-  }
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.place($$e[2], $$b.componentNodes(Themed, {  }, undefined, $$s1));
   $$b.setSlots($$s1, [theme, show]);
-  return $$html;
+  $$b.fillBranch($$e[3], $$s1, 2, (show) ? 0 : -1, [$$r2]);
+  return $$f;
 }
 
 # HTML
