@@ -2258,6 +2258,19 @@ describe('style variables with a spread', () => {
     expect(box.style.getPropertyValue(name)).toBe('13px');
     expect(tag.style.getPropertyValue(name)).toBe('13px');
   });
+
+  it('removes the style that a spread drops, on its first update, and keeps the variables', async () => {
+    await resume('spreadStyled', {});
+    const box = document.querySelector<HTMLElement>('div.box')!;
+    const tag = document.querySelector<HTMLElement>('section.tag')!;
+    const name = tag.getAttribute('style')!.split(':')[0]!;
+    click(document.querySelector('.flat')!);
+    await waitFor(() => expect(box.style.margin).toBe(''));
+    // The element with no style of its own drops the spread's too.
+    await waitFor(() => expect(tag.style.margin).toBe(''));
+    expect(tag.style.getPropertyValue(name)).toBe('12px');
+    expect(box.style.color).toBe('red');
+  });
 });
 
 describe('function props that return values', () => {
