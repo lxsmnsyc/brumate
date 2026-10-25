@@ -17,6 +17,7 @@
     { id: 3, name: 'Large' },
   ];
   let size = $signal<Key[]>([]);
+  let picks = $signal<Key[]>([]);
 </script>
 
 <main class="page">
@@ -51,10 +52,22 @@
     <ListBoxItem id="copy" class="copy">Copy</ListBoxItem>
     <ListBoxItem id="paste" class="paste">Paste</ListBoxItem>
   </ListBox>
+  <ListBox class="own" aria-label="Own actions">
+    <ListBoxItem id="cut" class="cut" onAction=(() => (acted = [...acted, 'cut item']))>Cut</ListBoxItem>
+  </ListBox>
+  <ListBox class="picks" aria-label="Picks" selectionMode="multiple" selectedKeys=$bind(picks)>
+    <ListBoxItem id="p1" class="p1">One</ListBoxItem>
+    <ListBoxItem id="p2" class="p2" isDisabled>Two</ListBoxItem>
+    <ListBoxItem id="p3" class="p3">Three</ListBoxItem>
+  </ListBox>
   <ListBox class="sizes" aria-label="Size" selectionMode="single" selectedKeys=$bind(size)>
     #for (item of sizes by item.id) {
       <ListBoxItem id=(item.id) class=(`size size-${item.id}`)>{item.name}</ListBoxItem>
     }
   </ListBox>
-  <p class="state">{JSON.stringify([fruit, toppings, files, acted, size])}</p>
+  <ListBox class="row" aria-label="Row" orientation="horizontal">
+    <ListBoxItem id="r1" class="r1">R1</ListBoxItem>
+    <ListBoxItem id="r2" class="r2">R2</ListBoxItem>
+  </ListBox>
+  <p class="state">{JSON.stringify([fruit, toppings, files, acted, size, picks])}</p>
 </main>

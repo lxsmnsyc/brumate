@@ -1,0 +1,31 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '../../src/Label.brm';
+  import Slider from '../../src/Slider.brm';
+  import SliderOutput from '../../src/SliderOutput.brm';
+  import SliderThumb from '../../src/SliderThumb.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+
+  let volume = $signal(40);
+  let range = $signal([20, 80]);
+  let ended = $signal<unknown>(null);
+</script>
+
+<main class="page">
+  <Slider class="volume" value=$bind(volume) step=(10) onChangeEnd=((next: unknown) => (ended = next))>
+    <Label class="volume-label">Volume</Label>
+    <SliderOutput class="volume-output" />
+    <SliderTrack class="volume-track" style="width: 100px; height: 10px">
+      <SliderThumb class="volume-thumb" name="volume" style="top: 2px" />
+    </SliderTrack>
+  </Slider>
+  <Slider class="price" value=$bind(range) formatOptions=({ style: 'currency', currency: 'USD', maximumFractionDigits: 0 })>
+    <Label class="price-label">Price</Label>
+    <SliderOutput class="price-output" />
+    <SliderTrack class="price-track">
+      <SliderThumb class="low" index=(0) aria-label="Minimum" />
+      <SliderThumb class="high" index=(1) aria-label="Maximum" />
+    </SliderTrack>
+  </Slider>
+  <p class="state">{JSON.stringify([volume, range, ended])}</p>
+</main>

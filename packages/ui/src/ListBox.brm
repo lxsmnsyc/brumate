@@ -3,6 +3,7 @@
     $client,
     $effect,
     $getContext,
+    $handler,
     $id,
     $isPassed,
     $memo,
@@ -22,7 +23,6 @@
     focusItem,
     focusedItem,
     isTyping,
-    itemsOf,
     keyOf,
     keysBetween,
     lastFocusedOf,
@@ -36,6 +36,7 @@
     typeahead,
   } from './collection.ts';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
 
   /**
@@ -140,6 +141,7 @@
   });
   // The lists inside, such as in an item, have fields of their own.
   $setContext(CollectionFocusContext, null);
+  $setContext(FieldInputContext, null);
 
   // A part around the list, such as a ComboBox, shows only the items that match its text: when
   // the list is on the page, and each time the text changes.
@@ -163,7 +165,7 @@
     return (
       items.find((item) => last !== undefined && keyOf(item) === last) ??
       items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-      items[0]
+      (given?.focusStrategy === 'last' ? items.at(-1) : items[0])
     );
   }
 
@@ -207,6 +209,10 @@
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
     if (movement) {
+      // Shift extends a range from the item that has focus, when no press started one.
+      if (event.shiftKey && mode === 'multiple' && key !== undefined && !rangeOf(element)) {
+        setRange(element, key);
+      }
       const target = moveFrom(element, items, current, movement, shouldFocusWrap);
       const targetKey = target ? keyOf(target) : undefined;
       focusItem(target);
@@ -228,7 +234,12 @@
       return;
     }
     if (event.key === 'Enter' && key !== undefined) {
-      if (hasAction) {
+      // An item with `onAction` of its own acts too, as the list does with `onAction`.
+      const itemActs = current!.hasAttribute('data-action');
+      if (hasAction || itemActs) {
+        if (itemActs) {
+          current!.dispatchEvent(new CustomEvent('itemaction', { bubbles: false }));
+        }
         action(key);
       } else {
         select(key, { shift: false, toggle: !replace });
@@ -240,11 +251,7 @@
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && mode === 'multiple') {
-      setSelection(
-        itemsOf(element, 'option')
-          .map((item) => keyOf(item)!)
-          .filter((item) => !disabledKeys.includes(item)),
-      );
+      setSelection(items.map((item) => keyOf(item)!));
       // The browser selected the text of the page too, before this handler ran.
       window.getSelection()?.removeAllRanges();
       return;
@@ -256,6 +263,8 @@
         !disallowEmptySelection &&
         chosen.length > 0
       ) {
+        // The Escape clears the selection, so it does not close an overlay around the list too.
+        event.stopPropagation();
         setSelection([]);
       }
       return;
@@ -263,10 +272,18 @@
     const found = typeahead(element, items, current, event);
     if (found) {
       focusItem(found);
-      if (replace && mode === 'single' && !given) {
+      if (replace && mode !== 'none' && !given) {
         select(keyOf(found)!, { shift: false, toggle: false });
       }
     }
+  }
+
+  // Only the arrow keys of its axis are prevented, so the others keep their default, such as
+  // scrolling the page.
+  function keys(horizontal: boolean) {
+    return horizontal
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space')) }
+      : { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Space')) };
   }
 </script>
 
@@ -283,6 +300,6 @@
   onFocus=focused
   onFocusIn=focusIn
   onFocusOut=focusOut
-  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space'))
+  {...keys(orientation === 'horizontal')}
   {...rest}
 >{children}</div>

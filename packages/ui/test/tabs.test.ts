@@ -93,3 +93,33 @@ it('renders a panel anew, with new state, each time its tab is selected again', 
   await page.waitFor(() => expect(find('.toggle')).not.toBeNull());
   expect(page.get('.toggle').getAttribute('aria-pressed')).toBe('false');
 });
+
+it('selects the first enabled tab for a key that no tab has', async () => {
+  const page = await tabs();
+  await page.waitFor(() => expect(page.get('.tab-m2').getAttribute('aria-selected')).toBe('true'));
+  expect(page.get('.tab-m2').getAttribute('tabindex')).toBe('0');
+  expect(page.text('.panel-m2')).toBe('Second.');
+});
+
+it('takes Tab on a panel only when its content takes none', async () => {
+  const page = await tabs();
+  // The panel of Intro holds a button, so Tab goes to it and not to the panel.
+  await page.waitFor(() => expect(page.get('.panel-intro').hasAttribute('tabindex')).toBe(false));
+  expect(page.get('.panel-api').getAttribute('tabindex')).toBe('0');
+});
+
+it('prevents only the arrow keys of its axis, and vertical tabs take all four', async () => {
+  const page = await tabs();
+  const keyDown = (key: string, target: Element) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  page.get('.tab-one').focus();
+  press('ArrowRight', page.get('.tab-one'));
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.tab-two')));
+  expect(keyDown('ArrowRight', page.get('.tab-intro'))).toBe(true);
+  expect(keyDown('ArrowDown', page.get('.tab-intro'))).toBe(false);
+  expect(keyDown('ArrowDown', page.get('.tab-one'))).toBe(true);
+  expect(keyDown('ArrowRight', page.get('.tab-one'))).toBe(true);
+});

@@ -17,20 +17,20 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 - `selectionBehavior="toggle"`, the default, adds and removes items as checkboxes do. A press, Space and Enter toggle the item.
 - `selectionBehavior="replace"` makes the item the selection, as a list of files does. The selection follows focus. Ctrl or Cmd adds an item, or moves focus alone with the arrow keys.
-- In a multiple selection, Shift with a press or the arrow keys selects a range from the last item selected. Ctrl+A or Cmd+A selects all.
+- In a multiple selection, Shift with a press or the arrow keys selects a range from the last item selected, or else from the item that has focus. Ctrl+A or Cmd+A selects all, other than disabled items.
 - Escape clears the selection, unless `escapeKeyBehavior="none"` or `disallowEmptySelection`.
 - `onSelectionChange` gets the keys after each change.
 
 ## Actions
 
-With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets its key, and `onAction` on the item runs too. With a selection, Enter acts when the ListBox has `onAction`, and selects when it has none.
+With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets its key, and `onAction` on the item runs too. With a selection, Enter acts when the ListBox or the item has `onAction`, and selects when neither has.
 
 ## Keyboard
 
 - Tab stops at the list once. Focus goes to the item that had focus last, or else to the first selected item, or the first item.
 - The arrow keys move focus, and Home, End, PageUp and PageDown go further. `orientation="horizontal"` uses Left and Right, which turn around right to left. `shouldFocusWrap` goes from the last item to the first.
 - Typing moves to the item whose text starts with what was typed, in the second after each letter. `textValue` sets that text for an item whose content is more than text.
-- The keys that move focus never scroll the page, also before the code of the list loads.
+- The keys that move focus never scroll the page, also before the code of the list loads. The arrow keys of the other axis keep their default, such as Left and Right in a vertical list.
 
 ## Sections
 
@@ -48,6 +48,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 - An item is an `option`. It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 - A `Text` with `slot="label"` names an item, and one with `slot="description"` describes it. A part cannot read its children, so add `hasLabel` and `hasDescription` to the item that has them.
 - The list shows `data-orientation`.
+- An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside, as in React Aria. A [GridList](./grid-list.md) holds rows with controls.
 
 ## How it reads the items
 

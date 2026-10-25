@@ -24,7 +24,9 @@ async function selects() {
 
 type Page = Awaited<ReturnType<typeof selects>>;
 
-const find = (selector: string) => document.querySelector<HTMLElement>(selector);
+// The open list is in a layer. The Popover keeps a closed one out of sight in the page.
+const find = (selector: string) => document.querySelector<HTMLElement>(`[data-layer] ${selector}`);
+const error = () => document.querySelector('.animal-error');
 
 function state(page: Page) {
   return JSON.parse(page.text('.state')) as unknown[];
@@ -98,7 +100,7 @@ it('skips disabled items, and closes on Escape and Tab with no change', async ()
   await page.waitFor(() => expect(find('.list')).toBeNull());
   await page.waitFor(() => expect(document.activeElement).toBe(trigger));
   press('ArrowUp', trigger);
-  await page.waitFor(() => expect(document.activeElement).toBe(find('.cat')));
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
   press('Tab');
   await page.waitFor(() => expect(find('.list')).toBeNull());
   expect(state(page)[0]).toBe(null);
@@ -109,7 +111,7 @@ it('shows the message of the browser when a required Select is empty on a submit
   const form = page.get('.form') as HTMLFormElement;
   expect(form.checkValidity()).toBe(false);
   form.reportValidity();
-  await page.waitFor(() => expect(find('.animal-error')).not.toBeNull());
+  await page.waitFor(() => expect(error()).not.toBeNull());
   expect(page.get('.animal').hasAttribute('data-invalid')).toBe(true);
   expect(page.get('.trigger').getAttribute('aria-describedby')).toContain(
     page.get('.animal-error').id,
@@ -120,7 +122,7 @@ it('shows the message of the browser when a required Select is empty on a submit
   press('ArrowDown', page.get('.trigger'));
   await page.waitFor(() => expect(document.activeElement).toBe(find('.cat')));
   press('Enter');
-  await page.waitFor(() => expect(find('.animal-error')).toBeNull());
+  await page.waitFor(() => expect(error()).toBeNull());
   expect(form.checkValidity()).toBe(true);
 });
 
@@ -135,4 +137,61 @@ it('names a selection that it starts with by its template, and keys stay numbers
   await page.waitFor(() => expect(find('.size-list')).toBeNull());
   await page.waitFor(() => expect(page.text('.size-value')).toBe('Large'));
   expect(state(page)[2]).toBe(3);
+});
+
+it('opens with ArrowUp at the last item when nothing is selected', async () => {
+  const page = await selects();
+  const trigger = page.get('.trigger');
+  trigger.focus();
+  press('ArrowUp', trigger);
+  // The last item that can take focus: Kangaroo is disabled.
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
+});
+
+it('shows the text of a key that the page sets, from the items it keeps closed', async () => {
+  const page = await selects();
+  pressWith(page.get('.trigger'));
+  await page.waitFor(() => expect(find('.cat')).not.toBeNull());
+  pressWith(find('.cat')!);
+  await page.waitFor(() => expect(page.text('.value')).toBe('Cat'));
+  page.get('.set-dog').click();
+  await page.waitFor(() => expect(page.text('.value')).toBe('Dog'));
+});
+
+it('selects with ArrowLeft, ArrowRight and typing while the list is closed', async () => {
+  const page = await selects();
+  const trigger = page.get('.trigger');
+  trigger.focus();
+  // With nothing selected, ArrowRight selects the first item.
+  press('ArrowRight', trigger);
+  await page.waitFor(() => expect(state(page)[0]).toBe('cat'));
+  expect(page.text('.value')).toBe('Cat');
+  press('ArrowRight', trigger);
+  await page.waitFor(() => expect(state(page)[0]).toBe('dog'));
+  // Kangaroo is disabled, so Dog stays.
+  press('ArrowRight', trigger);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  expect(state(page)[0]).toBe('dog');
+  press('ArrowLeft', trigger);
+  await page.waitFor(() => expect(state(page)[0]).toBe('cat'));
+  press('d', trigger);
+  await page.waitFor(() => expect(state(page)[0]).toBe('dog'));
+  expect(page.text('.value')).toBe('Dog');
+  // Space adds to the typeahead, and does not open the list.
+  press(' ', trigger);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  // The list stays closed.
+  expect(find('.list')).toBeNull();
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+});
+
+it('gives back the first key on a reset of the form', async () => {
+  const page = await selects();
+  pressWith(page.get('.trigger'));
+  await page.waitFor(() => expect(find('.cat')).not.toBeNull());
+  pressWith(find('.cat')!);
+  await page.waitFor(() => expect(state(page)[0]).toBe('cat'));
+  (page.get('.form') as HTMLFormElement).reset();
+  await page.waitFor(() => expect(state(page)[0]).toBe(null));
+  expect(page.text('.value')).toBe('Select an item');
 });

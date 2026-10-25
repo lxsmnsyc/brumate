@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Group from '../../src/Group.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import NumberField from '../../src/NumberField.brm';
+
+  let width = $signal(10);
+  let price = $signal(1234.5);
+  let empty = $signal(Number.NaN);
+</script>
+
+<main class="page">
+  <NumberField class="width" name="width" minValue=(0) maxValue=(20) step=(5) value=$bind(width)>
+    <Label class="label">Width</Label>
+    <Group class="group">
+      <Button slot="decrement" class="minus">-</Button>
+      <Input class="input" />
+      <Button slot="increment" class="plus">+</Button>
+    </Group>
+  </NumberField>
+  <I18nProvider locale="de-DE">
+    <NumberField class="price" value=$bind(price) formatOptions=({ style: 'currency', currency: 'EUR' })>
+      <Label>Price</Label>
+      <Input class="price-input" />
+    </NumberField>
+  </I18nProvider>
+  <NumberField class="empty" value=$bind(empty)>
+    <Label>Count</Label>
+    <Input class="empty-input" />
+  </NumberField>
+  <p class="state">{JSON.stringify([width, price, Number.isNaN(empty) ? 'NaN' : empty])}</p>
+</main>
