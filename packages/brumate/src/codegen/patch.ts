@@ -132,6 +132,53 @@ export function addValueEdits(
       }
     }
   }
+  // Reads of other memos become reads of the memos, so a value that is still loading throws.
+  const readMemos = (site: Site, node: oxc.Node, own?: Declaration): void => {
+    // A memo in a shorthand property, such as `{ id }`, keeps its key.
+    const shorthands = new Set<number>();
+    const findShorthands = (current: oxc.Node): void => {
+      if (current.type === 'Property' && current.shorthand) {
+        shorthands.add(current.value.start);
+      }
+      for (const [, child] of children(current)) {
+        findShorthands(child);
+      }
+    };
+    findShorthands(node);
+    // The target of a write, such as `shown` in `shown = [...shown, name]`, stays a name.
+    const targets = new Set(site.writes.map((write) => write.range.start));
+    for (const read of site.reads) {
+      if (
+        read.range.start !== read.range.end &&
+        read.range.start >= node.start &&
+        read.range.end <= node.end &&
+        !targets.has(read.range.start) &&
+        read.declaration !== own &&
+        !inline.has(read.declaration) &&
+        !replaced.has(read) &&
+        (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
+      ) {
+        // A read with `await` is the read: the value throws when it is still loading.
+        const range = read.await ?? read.range;
+        const key = shorthands.has(range.start) ? `${read.declaration.name}: ` : '';
+        patch.replace(
+          range.start,
+          range.end,
+          `${key}$$b.read(${promiseName(read.declaration.name)})`,
+        );
+        replaced.add(read);
+      }
+    }
+  };
+  if (mode === 'server') {
+    // A function can run while the server renders, such as one that the markup calls. The render
+    // waits only for the memos that the markup reads, so the function reads its memos itself.
+    for (const site of sites) {
+      if (site.kind === 'function') {
+        readMemos(site, site.node as oxc.Node);
+      }
+    }
+  }
   const visit = (node: oxc.Node): void => {
     if (node.type === 'AwaitExpression') {
       const argument = node.argument;
@@ -215,35 +262,7 @@ export function addValueEdits(
         if (declaration && mode === 'server') {
           // The server computes a memo when it is read. Memos that it reads are read as memos,
           // so a value that is still loading stops it until the load settles.
-          // A memo in a shorthand property, such as `{ id }`, keeps its key.
-          const shorthands = new Set<number>();
-          const findShorthands = (current: oxc.Node): void => {
-            if (current.type === 'Property' && current.shorthand) {
-              shorthands.add(current.value.start);
-            }
-            for (const [, child] of children(current)) {
-              findShorthands(child);
-            }
-          };
-          findShorthands(argument);
-          for (const read of site!.reads) {
-            if (
-              read.range.start !== read.range.end &&
-              read.declaration !== declaration &&
-              !inline.has(read.declaration) &&
-              (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
-            ) {
-              // A read with `await` is the read: the value throws when it is still loading.
-              const range = read.await ?? read.range;
-              const key = shorthands.has(range.start) ? `${read.declaration.name}: ` : '';
-              patch.replace(
-                range.start,
-                range.end,
-                `${key}$$b.read(${promiseName(read.declaration.name)})`,
-              );
-              replaced.add(read);
-            }
-          }
+          readMemos(site!, argument, declaration);
           patch.replace(
             node.start,
             argument.start,
