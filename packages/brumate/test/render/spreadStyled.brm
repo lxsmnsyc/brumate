@@ -6,6 +6,7 @@
   let margin = $signal(2);
 </script>
 
-<SpreadStyledBox size=size style=(`margin: ${margin}px`) />
+<SpreadStyledBox size=size style=(margin > 0 ? `margin: ${margin}px` : undefined) />
 <button class="grow" onClick=(() => size++)>Grow</button>
 <button class="wider" onClick=(() => margin++)>Wider</button>
+<button class="flat" onClick=(() => (margin = 0))>Flat</button>
