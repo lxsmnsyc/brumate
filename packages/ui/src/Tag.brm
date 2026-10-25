@@ -59,8 +59,9 @@
       (item) => !keys.some((key) => keyAttribute(key) === item.dataset.key),
     );
     group.remove(keys);
-    // The tag leaves once the caller's list updates, so focus moves after that.
-    setTimeout(() => focusItem(next), 0);
+    // The tag leaves once the caller's list updates, so focus moves after that. With no tag
+    // left, the list takes focus.
+    setTimeout(() => (next ? focusItem(next) : (list as HTMLElement | null)?.focus()), 0);
   }
 
   function keyDown(event: KeyboardEvent) {

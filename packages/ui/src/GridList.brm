@@ -7,7 +7,6 @@
     enabledItems,
     focusItem,
     isTyping,
-    itemsOf,
     keyOf,
     keysBetween,
     lastFocusedOf,
@@ -189,8 +188,18 @@
       movement = 'first';
     } else if (!typing && event.key === 'End') {
       movement = 'last';
+    } else if (event.key === 'PageDown') {
+      movement = 'pageDown';
+    } else if (event.key === 'PageUp') {
+      movement = 'pageUp';
     }
     if (movement) {
+      // Home and End do not scroll the page. The markup prevents the other keys.
+      event.preventDefault();
+      // Shift extends a range from the row that has focus, when no press started one.
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+        setRange(element, key);
+      }
       const next = moveFrom(element, items, row, movement, false);
       const nextKey = next ? keyOf(next) : undefined;
       focusItem(next);
@@ -211,29 +220,10 @@
       across(row, target, (event.key === 'ArrowRight') !== rtl);
       return;
     }
-    if (target !== row) {
-      return;
-    }
-    if (event.key === ' ' && !isTyping(element)) {
-      if (key !== undefined) {
-        select(key, { shift: event.shiftKey, toggle: !replace || toggle });
-      }
-      return;
-    }
-    if (event.key === 'Enter' && key !== undefined) {
-      if (hasAction) {
-        action(key);
-      } else {
-        select(key, { shift: false, toggle: !replace });
-      }
-      return;
-    }
+    // Ctrl+A and Escape work from the controls of a row too.
     if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
-      setSelection(
-        itemsOf(element, 'row')
-          .map((item) => keyOf(item)!)
-          .filter((item) => !disabledKeys.includes(item)),
-      );
+      event.preventDefault();
+      setSelection(items.map((item) => keyOf(item)!));
       window.getSelection()?.removeAllRanges();
       return;
     }
@@ -243,11 +233,42 @@
         !disallowEmptySelection &&
         selectedKeys.length > 0
       ) {
+        // The Escape clears the selection, so it does not close an overlay around the list too.
+        event.stopPropagation();
         setSelection([]);
       }
       return;
     }
-    focusItem(typeahead(element, items, row, event));
+    if (target !== row) {
+      return;
+    }
+    if (event.key === ' ' && !isTyping(element)) {
+      event.preventDefault();
+      if (key !== undefined) {
+        select(key, { shift: event.shiftKey, toggle: !replace || toggle });
+      }
+      return;
+    }
+    if (event.key === 'Enter' && key !== undefined) {
+      // A row with `onAction` of its own acts too, as the list does with `onAction`.
+      const rowActs = row.hasAttribute('data-action');
+      if (hasAction || rowActs) {
+        if (rowActs) {
+          row.dispatchEvent(new CustomEvent('itemaction', { bubbles: false }));
+        }
+        action(key);
+      } else {
+        select(key, { shift: false, toggle: !replace });
+      }
+      return;
+    }
+    const found = typeahead(element, items, row, event);
+    if (found) {
+      focusItem(found);
+      if (replace && selectionMode !== 'none') {
+        select(keyOf(found)!, { shift: false, toggle: false });
+      }
+    }
   }
 </script>
 
