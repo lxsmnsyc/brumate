@@ -183,8 +183,13 @@ export function press(
     if (disabled) {
       return;
     }
-    // A click with no pointer or key before it, such as from a screen reader or element.click().
-    const kind: PointerKind = event.detail === 0 || pointer === undefined ? 'virtual' : 'mouse';
+    // A click with no pointer or key before it, such as from a screen reader or element.click(),
+    // presses as virtual. A click of a pointer whose press was cancelled, such as by a long
+    // press, presses nothing, as in React Aria.
+    if (event.detail !== 0) {
+      return;
+    }
+    const kind: PointerKind = 'virtual';
     start(kind, target, event);
     onPressUp?.(pressEvent('pressup', kind, target, event));
     end(target, event, true);
