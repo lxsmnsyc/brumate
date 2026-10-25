@@ -22,3 +22,8 @@ export function describedBy(...ids: (string | false | undefined | null)[]): stri
   const value = ids.filter(Boolean).join(' ');
   return value || undefined;
 }
+
+/** The first list of messages that has any, as React Aria shows one source of errors at a time. */
+export function firstErrors(...lists: string[][]): string[] {
+  return lists.find((list) => list.length > 0) ?? [];
+}
