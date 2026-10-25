@@ -65,5 +65,9 @@
       <ListBoxItem id=(item.id) class=(`size size-${item.id}`)>{item.name}</ListBoxItem>
     }
   </ListBox>
+  <ListBox class="row" aria-label="Row" orientation="horizontal">
+    <ListBoxItem id="r1" class="r1">R1</ListBoxItem>
+    <ListBoxItem id="r2" class="r2">R2</ListBoxItem>
+  </ListBox>
   <p class="state">{JSON.stringify([fruit, toppings, files, acted, size, picks])}</p>
 </main>
