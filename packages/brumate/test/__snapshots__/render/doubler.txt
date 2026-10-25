@@ -58,7 +58,7 @@ export function b5($$s) {
 const $$k2 = $$b.template("<span class=\"pending\">Loading</span>", 0);
 export function r2($$p) {
   let $$html = '';
-  const [$$f, $$e] = $$b.clone($$k2);
+  const $$e = $$b.clone($$k2), $$f = $$e[0];
   return $$f;
 }
 
@@ -82,7 +82,7 @@ export default function Doubler($$props: Record<string, never>): string | Docume
   const $$s1 = $$b.createScope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
   const doubled = (double(count));
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
   $$b.keep($$s1, 1, $$e[1]);

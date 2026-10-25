@@ -155,7 +155,7 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  const [$$f, $$e] = $$b.clone($$k4);
+  const $$e = $$b.clone($$k4), $$f = $$e[3];
   (row.label.endsWith('!')) && $$e[0].setAttribute("class", "marked");
   $$b.keep($$s2, 0, $$e[0]);
   $$b.keep($$s2, 1, $$e[1]);
@@ -171,7 +171,7 @@ export function r3($$p) {
   let $$html = '';
   let picks = $$b.get($$p, 1);
   const $$s3 = $$b.createScope(3, $$p);
-  const [$$f, $$e] = $$b.clone($$k5);
+  const $$e = $$b.clone($$k5), $$f = $$e[1];
   (picks % 2 === 1) && $$e[0].classList.add("odd");
   $$b.keep($$s3, 0, $$e[0]);
   return $$f;
@@ -183,7 +183,7 @@ export function r4($$p, $$item, $$index) {
   const $$s4 = $$b.createScope(4, $$p);
   $$b.setSlots($$s4, [row]);
   $$b.setItem($$s4, $$item);
-  const [$$f, $$e] = $$b.clone($$k6);
+  const $$e = $$b.clone($$k6), $$f = $$e[3];
   $$b.nameComment($$e[0], "i" + $$s4);
   $$b.keep($$s4, 0, $$e[1]);
   $$b.setContent($$e[1], (row.id), $$s4);
@@ -215,7 +215,7 @@ export default function Compact($$props: { initial: Row[] }): string | DocumentF
         item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
       );
     }
-    const [$$f, $$e] = $$b.clone($$t0);
+    const $$e = $$b.clone($$t0), $$f = $$e[3];
     (row.label.endsWith('!')) && $$e[0].setAttribute("class", "marked");
     $$b.keep($$s2, 0, $$e[0]);
     $$b.keep($$s2, 1, $$e[1]);
@@ -229,12 +229,12 @@ export default function Compact($$props: { initial: Row[] }): string | DocumentF
   const $$body3 = () => {
     let $$html = '';
     const $$s3 = $$b.createScope(3, $$s1);
-    const [$$f, $$e] = $$b.clone($$t1);
+    const $$e = $$b.clone($$t1), $$f = $$e[1];
     (picks % 2 === 1) && $$e[0].classList.add("odd");
     $$b.keep($$s3, 0, $$e[0]);
     return $$f;
   };
-  const [$$f, $$e] = $$b.clone($$t2);
+  const $$e = $$b.clone($$t2), $$f = $$e[7];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.keep($$s1, 2, $$e[2]);

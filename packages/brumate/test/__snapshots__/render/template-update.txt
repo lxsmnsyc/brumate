@@ -69,7 +69,7 @@ export default function TemplateUpdate($$props: Record<string, never>): string |
     $$b.setSlots($$s2, [label, amount]);
     return $$b.raw($$html);
   }
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.setContent($$e[1], (price('Subtotal', total)), $$s1);

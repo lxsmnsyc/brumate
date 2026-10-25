@@ -87,7 +87,7 @@ export default function Loading($$props: Record<string, never>): string | Docume
   let count = (0);
   const greeting = (async () => (`Hello ${await ready}`))();
     const $$s2 = $$b.createScope(2, $$s1);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
   $$b.setContent($$e[1], (greeting));

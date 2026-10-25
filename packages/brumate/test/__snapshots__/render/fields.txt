@@ -88,7 +88,7 @@ export default function Fields($$props: Record<string, never>): string | Documen
   const id = $$b.makeId($$s1, 0);
   const hint = $$b.makeId($$s1, 1);
   let names = (['First', 'Last']);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[5];
   $$b.setAttr($$e[0], "for", (id));
   $$b.setAttr($$e[1], "id", (id));
   $$b.setAttr($$e[1], "aria-describedby", (hint));

@@ -50,7 +50,7 @@ export default function Counter($$props: Record<string, never>): string | Docume
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.setContent($$e[0], (label));
   $$b.keep($$s1, 0, $$e[1]);
   $$b.keepText($$s1, 1, $$e[2], (count));

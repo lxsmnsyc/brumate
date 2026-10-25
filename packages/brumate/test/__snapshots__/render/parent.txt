@@ -48,7 +48,7 @@ const $$k0 = $$b.template("<em b-x=\"0\"></em>", 1);
 export function n0($$p) {
   let $$html = '';
   let label = $$b.get($$p, 1);
-  const [$$f, $$e] = $$b.clone($$k0);
+  const $$e = $$b.clone($$k0), $$f = $$e[1];
   $$b.setContent($$e[0], (label));
   return $$f;
 }
@@ -66,11 +66,11 @@ export default function Parent($$props: Record<string, never>): string | Documen
   const label = 'Count';
   const $$children0 = $$b.children($$s1, () => {
     let $$html = '';
-    const [$$f, $$e] = $$b.clone($$t0);
+    const $$e = $$b.clone($$t0), $$f = $$e[1];
     $$b.setContent($$e[0], (label));
     return $$f;
   });
-  const [$$f, $$e] = $$b.clone($$t1);
+  const $$e = $$b.clone($$t1), $$f = $$e[2];
   $$b.place($$e[0], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0));
   $$b.place($$e[1], $$b.componentNodes(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1));
   $$b.setSlots($$s1, [count, label]);

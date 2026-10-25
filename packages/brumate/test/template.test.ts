@@ -206,12 +206,30 @@ it('clones markup with nothing to write', () => {
 it('finds the marked elements in the parsed template, and removes their marks', () => {
   init({ load: () => undefined, listen: () => {} });
   const table = template('<table><tr><td b-x="0"></td><td>b</td><td b-x="1"></td></tr></table>', 2);
-  const [fragment, elements] = clone(table);
-  expect(elements.map((element) => element.tagName)).toEqual(['TD', 'TD']);
-  expect(elements[1]!.previousElementSibling!.textContent).toBe('b');
+  const nodes = clone(table);
+  const fragment = nodes[2]!;
+  expect(nodes.slice(0, 2).map((element) => element.tagName)).toEqual(['TD', 'TD']);
+  expect(nodes[1]!.previousElementSibling!.textContent).toBe('b');
   expect(fragment.querySelector('[b-x]')).toBeNull();
-  // A second clone reads the same paths.
-  const [, again] = clone(table);
-  expect(again[0]).not.toBe(elements[0]);
-  expect(again.map((element) => element.tagName)).toEqual(['TD', 'TD']);
+  // A second clone takes the same walk.
+  const again = clone(table);
+  expect(again[0]).not.toBe(nodes[0]);
+  expect(again.slice(0, 2).map((element) => element.tagName)).toEqual(['TD', 'TD']);
+});
+
+it('walks to marked nodes in any order of their marks, up, along and down', () => {
+  init({ load: () => undefined, listen: () => {} });
+  // The marks are not in the order of the markup, and the walk goes up two levels between them.
+  const nested = template(
+    '<div><p><b b-x="2"></b><!--x0--></p><i></i></div><ul><li></li><li b-x="1"></li></ul><em b-x="3"></em>',
+    4,
+  );
+  const nodes = clone(nested);
+  expect(nodes[0]!.nodeType).toBe(8);
+  expect(nodes[0]!.previousSibling!.nodeName).toBe('B');
+  expect(nodes[1]!.nodeName).toBe('LI');
+  expect(nodes[1]!.previousSibling!.nodeName).toBe('LI');
+  expect(nodes[2]!.nodeName).toBe('B');
+  expect(nodes[3]!.nodeName).toBe('EM');
+  expect(nodes[4]!.nodeType).toBe(11);
 });

@@ -173,7 +173,7 @@ export function r5($$p, $$item, $$index) {
   const item = $$item;
   const i = $$index;
   const $$s5 = $$b.createScope(5, $$p);
-  const [$$f, $$e] = $$b.clone($$k4);
+  const $$e = $$b.clone($$k4), $$f = $$e[2];
   $$b.keep($$s5, 0, $$e[0]);
   $$b.appendText($$s5, 2, $$e[0], (item));
   $$b.keepText($$s5, 1, $$e[1], (i));
@@ -184,7 +184,7 @@ export function r5($$p, $$item, $$index) {
 const $$k5 = $$b.template("<li>Empty</li>", 0);
 export function r6($$p) {
   let $$html = '';
-  const [$$f, $$e] = $$b.clone($$k5);
+  const $$e = $$b.clone($$k5), $$f = $$e[0];
   return $$f;
 }
 export function r11($$p) {
@@ -198,7 +198,7 @@ export function k11($$s) {
 const $$k6 = $$b.template("Dynamic", 0);
 export function n0($$p) {
   let $$html = '';
-  const [$$f, $$e] = $$b.clone($$k6);
+  const $$e = $$b.clone($$k6), $$f = $$e[0];
   return $$f;
 }
 
@@ -233,12 +233,12 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
   const $$body0 = () => {
     let $$html = '';
-    const [$$f, $$e] = $$b.clone($$t0);
+    const $$e = $$b.clone($$t0), $$f = $$e[0];
     return $$f;
   };
   const $$body1 = () => {
     let $$html = '';
-    const [$$f, $$e] = $$b.clone($$t1);
+    const $$e = $$b.clone($$t1), $$f = $$e[0];
     return $$f;
   };
   $$html += $$b.nodes($$b.branchNodes($$s1, 3, (tab === 'a') ? 0 : 1, [$$body0, $$body1])) + "<ul>";
@@ -247,7 +247,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const item = $$item2;
     const i = $$index3;
     const $$s5 = $$b.createScope(5, $$s1);
-    const [$$f, $$e] = $$b.clone($$t2);
+    const $$e = $$b.clone($$t2), $$f = $$e[2];
     $$b.keep($$s5, 0, $$e[0]);
     $$b.appendText($$s5, 2, $$e[0], (item));
     $$b.keepText($$s5, 1, $$e[1], (i));
@@ -257,14 +257,14 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   };
   const $$body5 = () => {
     let $$html = '';
-    const [$$f, $$e] = $$b.clone($$t3);
+    const $$e = $$b.clone($$t3), $$f = $$e[0];
     return $$f;
   };
   $$html += $$b.nodes($$b.listNodes($$s1, 4, $$b.listOf(( list)), $$body4, $$body5)) + "</ul>";
   const $$body8 = ($$item6, $$index7) => {
     let $$html = '';
     const item = $$item6;
-    const [$$f, $$e] = $$b.clone($$t4);
+    const $$e = $$b.clone($$t4), $$f = $$e[1];
     $$b.setContent($$e[0], (item));
     return $$f;
   };
@@ -272,7 +272,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   const $$body11 = ($$item9, $$index10) => {
     let $$html = '';
     const n = $$index10;
-    const [$$f, $$e] = $$b.clone($$t5);
+    const $$e = $$b.clone($$t5), $$f = $$e[1];
     $$b.putText($$e[0], (row(n)));
     return $$f;
   };
@@ -290,7 +290,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children14 = $$b.children($$s12, () => {
       let $$html = '';
-      const [$$f, $$e] = $$b.clone($$t6);
+      const $$e = $$b.clone($$t6), $$f = $$e[0];
       return $$f;
     });
     $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children14, undefined, $$s12);

@@ -3439,7 +3439,8 @@ interface Template {
   /** How many elements the render writes, which have `b-x` in `html`. */
   count: number;
   t?: HTMLTemplateElement;
-  paths?: number[][];
+  /** The moves that reach the marked nodes of a clone. See `walkOf`. */
+  walk?: number[];
 }
 
 /** A template of the markup of a render, which `clone` parses once. */
@@ -3486,21 +3487,93 @@ function parseTemplate(source: Template): number[][] {
   return paths;
 }
 
-/** Clones a template. Returns the fragment, and the elements that the template marks. */
-export function clone(source: Template): [DocumentFragment, Element[]] {
-  const paths = (source.paths ??= parseTemplate(source));
-  const fragment = source.t!.content.cloneNode(true) as DocumentFragment;
-  const nodes = paths.map((path) => {
-    let node: Node = fragment;
-    for (const index of path) {
+// The moves of a walk: a number from 0 is the index of the node that the walk is at, and the
+// others move it.
+const FIRST_CHILD = -1;
+const PARENT = -2;
+// `NEXT - n` moves to the `n`th next sibling.
+const NEXT = -2;
+
+/**
+ * The moves that reach the marked nodes of a template, in the order of the markup, from one to
+ * the next: up to the ancestor that they share, along its children, and down. A clone makes
+ * them once for its template, as Marko encodes a walk, so the clones of a render do not walk
+ * from the top for each node or make an array of paths.
+ */
+function walkOf(paths: number[][]): number[] {
+  const order = paths
+    .map((path, mark) => ({ path, mark }))
+    .sort((a, b) => {
+      for (let depth = 0; depth < Math.min(a.path.length, b.path.length); depth++) {
+        if (a.path[depth] !== b.path[depth]) {
+          return a.path[depth]! - b.path[depth]!;
+        }
+      }
+      return a.path.length - b.path.length;
+    });
+  const moves: number[] = [];
+  const along = (count: number): void => {
+    if (count > 0) {
+      moves.push(NEXT - count);
+    }
+  };
+  let current: number[] = [];
+  for (const { path, mark } of order) {
+    let shared = 0;
+    while (shared < current.length && current[shared] === path[shared]) {
+      shared++;
+    }
+    let depth = shared;
+    if (shared < current.length) {
+      // Up to the child of the shared ancestor that holds the last node, then along to the
+      // child that holds this one.
+      for (let up = current.length - 1; up > shared; up--) {
+        moves.push(PARENT);
+      }
+      along(path[shared]! - current[shared]!);
+      depth++;
+    }
+    for (; depth < path.length; depth++) {
+      moves.push(FIRST_CHILD);
+      along(path[depth]!);
+    }
+    moves.push(mark);
+    current = path;
+  }
+  return moves;
+}
+
+/**
+ * A node of a clone: an element, the comment of an insert, or the fragment. The type lets the
+ * render pass each to the write that takes it.
+ */
+type ClonedNode = Element & Comment & DocumentFragment;
+
+/**
+ * Clones a template. Returns the nodes that the template marks, by their index, and the fragment
+ * after them, in one array.
+ */
+export function clone(source: Template): ClonedNode[] {
+  const walk = (source.walk ??= walkOf(parseTemplate(source)));
+  const fragment = source.t!.content.cloneNode(true);
+  const nodes: Node[] = new Array(source.count + 1);
+  nodes[source.count] = fragment;
+  let node: Node = fragment;
+  for (let index = 0; index < walk.length; index++) {
+    const move = walk[index]!;
+    if (move >= 0) {
+      nodes[move] = node;
+    } else if (move === FIRST_CHILD) {
       node = node.firstChild!;
-      for (let step = 0; step < index; step++) {
+    } else if (move === PARENT) {
+      node = node.parentNode!;
+    } else {
+      for (let step = NEXT - move; step > 0; step--) {
         node = node.nextSibling!;
       }
     }
-    return node as Element;
-  });
-  return [fragment, nodes];
+  }
+  return nodes as ClonedNode[];
 }
 
 /**

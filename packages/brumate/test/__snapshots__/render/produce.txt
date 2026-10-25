@@ -110,7 +110,7 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  const [$$f, $$e] = $$b.clone($$k2);
+  const $$e = $$b.clone($$k2), $$f = $$e[1];
   (todo.done) && $$e[0].setAttribute("class", "done");
   $$b.keep($$s2, 0, $$e[0]);
   $$b.setContent($$e[0], (todo.title), $$s2);
@@ -149,7 +149,7 @@ export default function Produce($$props: Record<string, never>): string | Docume
       draft.push({ id: String(draft.length + 1), title: 'New', done: false });
     }));
   }
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keepText($$s1, 2, $$e[2], (todos.filter((todo) => todo.done).length));
   $$b.setSlots($$s1, [todos]);

@@ -68,7 +68,7 @@ export default function Shared($$props: Record<string, never>): string | Documen
   function bump(by: number) {
     count += by * STEP;
   }
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.putText($$e[2], (label));

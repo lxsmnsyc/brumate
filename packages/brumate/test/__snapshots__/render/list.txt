@@ -150,7 +150,7 @@ export function r3($$p, $$item, $$index) {
   const count = $$item;
   const i = $$index;
   const $$s3 = $$b.createScope(3, $$p);
-  const [$$f, $$e] = $$b.clone($$k4);
+  const $$e = $$b.clone($$k4), $$f = $$e[3];
   $$b.keep($$s3, 0, $$e[0]);
   $$b.keepText($$s3, 1, $$e[1], (row(i)));
   $$b.place($$e[2], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2));
@@ -167,18 +167,18 @@ export function r4($$p) {
   const $$s4 = $$b.createScope(4, $$p);
   const $$children0 = $$b.children($$s4, () => {
     let $$html = '';
-    const [$$f, $$e] = $$b.clone($$k5);
+    const $$e = $$b.clone($$k5), $$f = $$e[1];
     $$b.setContent($$e[0], (label));
     return $$f;
   });
-  const [$$f, $$e] = $$b.clone($$k6);
+  const $$e = $$b.clone($$k6), $$f = $$e[1];
   $$b.place($$e[0], $$b.componentNodes(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0));
   return $$f;
 }
 export function n0($$p) {
   let $$html = '';
   let label = $$b.get($$p.p, 2);
-  const [$$f, $$e] = $$b.clone($$k5);
+  const $$e = $$b.clone($$k5), $$f = $$e[1];
   $$b.setContent($$e[0], (label));
   return $$f;
 }
@@ -205,7 +205,7 @@ export default function List($$props: Record<string, never>): string | DocumentF
     $$b.setSlots($$s2, [index]);
     return $$b.raw($$html);
   }
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.setSlots($$s1, [counts, show, label]);

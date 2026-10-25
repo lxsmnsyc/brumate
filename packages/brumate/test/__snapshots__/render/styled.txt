@@ -52,7 +52,7 @@ const $$k2 = $$b.template("<p b-x=\"0\" s-9wx0az class=\"big\">Big</p>", 1);
 export function r2($$p) {
   let $$html = '';
   let big = $$b.get($$p, 0);
-  const [$$f, $$e] = $$b.clone($$k2);
+  const $$e = $$b.clone($$k2), $$f = $$e[1];
   $$b.setAttr($$e[0], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined));
   $$b.setAttr($$e[0], "b-v", $$p);
   return $$f;
@@ -69,7 +69,7 @@ export default function Styled($$props: Record<string, never>): string | Documen
   const $$s1 = $$b.createScope(1, undefined, "Styled_9wx0az");
   $$b.addStyle("Styled_9wx0az", $$css);
   let big = (false);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
   $$b.setAttr($$e[0], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px"));
   $$b.setAttr($$e[0], "b-v", $$s1);
   $$b.setAttr($$e[1], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined));

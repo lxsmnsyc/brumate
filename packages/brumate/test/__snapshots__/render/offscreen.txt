@@ -245,7 +245,7 @@ export function r2($$p) {
   const $$body0 = () => {
     let $$html = '';
     const $$s4 = $$b.createScope(4, $$s2);
-    const [$$f, $$e] = $$b.clone($$k4);
+    const $$e = $$b.clone($$k4), $$f = $$e[1];
     $$b.appendText($$s4, 0, $$e[0], (count));
     return $$f;
   };
@@ -253,7 +253,7 @@ export function r2($$p) {
   const $$portal1 = (() => {
     let $$html = '';
     const $$s5 = $$b.createScope(5, $$s2);
-    const [$$f, $$e] = $$b.clone($$k5);
+    const $$e = $$b.clone($$k5), $$f = $$e[2];
     $$b.nameComment($$e[0], "P" + $$s5);
     $$b.appendText($$s5, 0, $$e[1], (count));
     return $$f;
@@ -274,7 +274,7 @@ export function r4($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
   const $$s4 = $$b.createScope(4, $$p);
-  const [$$f, $$e] = $$b.clone($$k4);
+  const $$e = $$b.clone($$k4), $$f = $$e[1];
   $$b.appendText($$s4, 0, $$e[0], (count));
   return $$f;
 }
@@ -349,7 +349,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
     const $$body0 = () => {
       let $$html = '';
       const $$s4 = $$b.createScope(4, $$s2);
-      const [$$f, $$e] = $$b.clone($$t0);
+      const $$e = $$b.clone($$t0), $$f = $$e[1];
       $$b.appendText($$s4, 0, $$e[0], (count));
       return $$f;
     };
@@ -357,7 +357,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
     const $$portal1 = (() => {
       let $$html = '';
       const $$s5 = $$b.createScope(5, $$s2);
-      const [$$f, $$e] = $$b.clone($$t1);
+      const $$e = $$b.clone($$t1), $$f = $$e[2];
       $$b.nameComment($$e[0], "P" + $$s5);
       $$b.appendText($$s5, 0, $$e[1], (count));
       return $$f;

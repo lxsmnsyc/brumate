@@ -58,7 +58,7 @@ export function b5($$s) {
 const $$k2 = $$b.template("<div class=\"b\"><!--x0--></div>", 1);
 export function r2($$p) {
   let $$html = '';
-  const [$$f, $$e] = $$b.clone($$k2);
+  const $$e = $$b.clone($$k2), $$f = $$e[1];
   $$b.place($$e[0], $$b.componentNodes(Themed, {  }, undefined, $$p));
   return $$f;
 }
@@ -76,7 +76,7 @@ export default function Themes($$props: Record<string, never>): string | Documen
   let theme = ('dark');
   let show = (false);
   $$b.provideValue(Theme, theme, $$s1);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.place($$e[2], $$b.componentNodes(Themed, {  }, undefined, $$s1));

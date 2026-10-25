@@ -125,7 +125,7 @@ export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  const [$$f, $$e] = $$b.clone($$k2);
+  const $$e = $$b.clone($$k2), $$f = $$e[3];
   (todo.done) && $$e[0].setAttribute("class", "done");
   $$b.keep($$s2, 0, $$e[0]);
   $$b.keepText($$s2, 1, $$e[1], (todo.title));
@@ -161,7 +161,7 @@ export default function Todos($$props: { initial: Todo[] }): string | DocumentFr
     draft = '';
     await persist(todos);
   }
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setAttr($$e[1], "value", (draft));
   $$b.keep($$s1, 1, $$e[1]);

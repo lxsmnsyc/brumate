@@ -91,7 +91,7 @@ export function u7($$s) {
 const $$k4 = $$b.template("<p class=\"pending\">Searching</p>", 0);
 export function r2($$p) {
   let $$html = '';
-  const [$$f, $$e] = $$b.clone($$k4);
+  const $$e = $$b.clone($$k4), $$f = $$e[0];
   return $$f;
 }
 const $$k5 = $$b.template("<li b-x=\"0\"></li>", 1);
@@ -99,7 +99,7 @@ export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
   const $$s3 = $$b.createScope(3, $$p);
-  const [$$f, $$e] = $$b.clone($$k5);
+  const $$e = $$b.clone($$k5), $$f = $$e[1];
   $$b.keep($$s3, 0, $$e[0]);
   $$b.setContent($$e[0], (result), $$s3);
   $$b.setSlots($$s3, [result]);
@@ -118,7 +118,7 @@ export default function Search($$props: Record<string, never>): string | Documen
   const $$s1 = $$b.createScope(1, undefined, "Search_s4k9u0");
   let query = ('');
   const results = (search(query));
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
   $$b.setAttr($$e[0], "value", (query));
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setSlots($$s1, [query, results]);

@@ -179,7 +179,7 @@ export default function Memos($$props: Record<string, never>): string | Document
   const same = (copy);
   const late = (items.length + double);
     const $$s2 = $$b.createScope(2, $$s1);
-  const [$$f, $$e] = $$b.clone($$t0);
+  const $$e = $$b.clone($$t0), $$f = $$e[15];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
   $$b.keepText($$s1, 1, $$e[1], (double));

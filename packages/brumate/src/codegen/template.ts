@@ -533,7 +533,8 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   const flush = tops[0];
   const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
   const name = hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
-  const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
+  // The clone gives its marked nodes, then its fragment.
+  const lines = [`${indent}const $$e = $$b.clone(${name}), $$f = $$e[${found.writes.length}];`];
   // The calls that fill the nested blocks, after the slots of the body are set, which the
   // renders of the blocks read.
   const fills: string[] = [];
