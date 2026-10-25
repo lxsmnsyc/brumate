@@ -3028,6 +3028,15 @@ async function renderView(
  * A component that renders a route, with its slots rendering where the
  * layout inserts them. `props` go to every view, such as `params`.
  */
+/** The component IDs of a view and of the views in its slots. */
+function viewIds(view: ResolvedView): string[] {
+  const id = (view.component as { brumateId?: string }).brumateId;
+  return [
+    ...(id === undefined ? [] : [id]),
+    ...Object.values(view.slots).flatMap((slot) => viewIds(slot)),
+  ];
+}
+
 function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
   return (_props, ctx) => {
     const own: Record<string, unknown> = { ...props };
@@ -3076,6 +3085,12 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
    * passes them from the client build.
    */
   hints?: string[];
+  /**
+   * The URLs of the bundle of each root component, such as a route or a layout, by component ID:
+   * its chunk and the chunks that it imports. A page adds those of its views to `hints`, so the
+   * code of the page loads with the HTML. `virtual:brumate/routes` passes them.
+   */
+  bundleHints?: Record<string, string[]>;
   /**
    * Receives the `Link` values of `hints` before the page renders, so a
    * server can send them as `103 Early Hints`, such as with Node's
@@ -3160,7 +3175,14 @@ async function renderPage(
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
-  const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
+  const hints = request.headers.has('x-brumate-base')
+    ? []
+    : [
+        ...new Set([
+          ...(options.hints ?? []),
+          ...viewIds(view).flatMap((id) => options.bundleHints?.[id] ?? []),
+        ]),
+      ];
   // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
   // header cannot, so the links are in the head only.
   const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;

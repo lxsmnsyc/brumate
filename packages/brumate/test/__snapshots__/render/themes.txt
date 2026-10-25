@@ -25,19 +25,21 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
 Themes.brumateId = "Themes_945372";
 
 # Client entry
+import * as $$p0 from "./themes.brm?brumate-client&part=h3";
+import * as $$p1 from "./themes.brm?brumate-client&part=h4";
+import * as $$p2 from "./themes.brm?brumate-client&part=update";
 export const id = "Themes_945372";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
-const update = () => import("./themes.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h3")),
-  "h4": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h4")),
-  "update": update,
+  "h3": $$p0,
+  "h4": $$p1,
+  "update": $$p2,
 };
 export const partNames = ["h3","h4","update"];
-/** Imports a part of this module. */
+/** A part of this module. */
 export function load(part) {
-  return parts[part]();
+  return Promise.resolve(parts[part]);
 }
 
 # Client part: h3

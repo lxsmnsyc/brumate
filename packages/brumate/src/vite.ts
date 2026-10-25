@@ -169,6 +169,8 @@ export interface BrumateOptions {
 const START = 'virtual:brumate/start';
 /** Exports `load(id)`, which imports the client module of a component. */
 const MANIFEST = 'virtual:brumate/manifest';
+/** `virtual:brumate/bundle/<id>` imports the client modules of a root component and those it renders. */
+const BUNDLE = 'virtual:brumate/bundle/';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
 /** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
@@ -643,6 +645,89 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     envChecked.add(result);
   };
 
+  /** The components that a component imports, by file. */
+  const componentImports = async (file: string): Promise<string[]> => {
+    const { result } = await compileFile(file);
+    const found: string[] = [];
+    for (const declaration of result.plan.graph.model.declarations) {
+      const source = declaration.imported?.source;
+      const target = source?.endsWith('.brm') ? resolveComponent(source, file) : undefined;
+      if (target !== undefined) {
+        found.push(target);
+      }
+    }
+    return found;
+  };
+
+  /**
+   * The bundles of a build: for each component that no other component imports, such as a
+   * route or a page, the components with client code that it can render. The page loads the
+   * bundles of its roots at once, as one chunk each, so its code comes in one request.
+   */
+  const bundles = async (kept: Set<string>): Promise<Map<string, string[]>> => {
+    const imports = new Map<string, string[]>();
+    await Promise.all(
+      [...files.values()].map(async (file) => {
+        try {
+          imports.set(file, await componentImports(file));
+        } catch {
+          imports.set(file, []);
+        }
+      }),
+    );
+    const imported = new Set([...imports.values()].flat());
+    const result = new Map<string, string[]>();
+    for (const [id, file] of files) {
+      if (imported.has(file)) {
+        continue;
+      }
+      const seen = new Set<string>();
+      const walk = (current: string): void => {
+        if (seen.has(current)) {
+          return;
+        }
+        seen.add(current);
+        for (const next of imports.get(current) ?? []) {
+          walk(next);
+        }
+      };
+      walk(file);
+      const members = [...seen].filter((member) => kept.has(member));
+      if (members.length > 0) {
+        result.set(id, members);
+      }
+    }
+    return result;
+  };
+
+  /** The ID of each component file. */
+  const idOf = (file: string): string | undefined => {
+    for (const [id, other] of files) {
+      if (other === file) {
+        return id;
+      }
+    }
+    return undefined;
+  };
+
+  /** A bundle module: the client modules of a root component and of those it renders. */
+  const bundleModule = async (root: string): Promise<string> => {
+    const list = [...files];
+    const needed = await Promise.all(
+      list.map(async ([, file]) => (await compileFile(file)).result.clientCode),
+    );
+    const kept = new Set(list.filter((_, index) => needed[index]).map(([, file]) => file));
+    const members = (await bundles(kept)).get(root) ?? [];
+    return [
+      ...members.map(
+        (file, index) => `import * as $$c${index} from ${JSON.stringify(`${file}${CLIENT_QUERY}`)};`,
+      ),
+      'export const modules = {',
+      ...members.map((file, index) => `  ${JSON.stringify(idOf(file))}: $$c${index},`),
+      '};',
+    ].join('\n');
+  };
+
   const manifest = async (): Promise<string> => {
     const list = [...files];
     // A build leaves out the components that have no client code. The core treats a
@@ -652,6 +737,53 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       list.map(async ([, file]) => isServe || (await compileFile(file)).result.clientCode),
     );
     const kept = list.filter((_, index) => needed[index]);
+    if (!isServe) {
+      // A build loads code by bundles of roots, so each component's code is in the chunk of
+      // the page instead of a chunk of its own.
+      const groups = await bundles(new Set(kept.map(([, file]) => file)));
+      const owners = new Map<string, string>();
+      for (const [root, members] of groups) {
+        for (const member of members) {
+          const id = idOf(member);
+          if (id !== undefined && !owners.has(id)) {
+            owners.set(id, root);
+          }
+        }
+      }
+      return [
+        'const bundles = {',
+        ...[...groups.keys()].map(
+          (root) => `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
+        ),
+        '};',
+        `const owners = ${JSON.stringify(Object.fromEntries(owners))};`,
+        'const loaded = new Map();',
+        'const pending = new Map();',
+        '/** Loads the bundle of a root component of the page. Undefined for a component that is not a root. */',
+        'export function loadBundle(root) {',
+        '  let promise = pending.get(root);',
+        '  if (!promise && bundles[root]) {',
+        '    promise = bundles[root]().then((bundle) => {',
+        '      for (const [id, module] of Object.entries(bundle.modules)) {',
+        '        loaded.set(id, module);',
+        '      }',
+        '    });',
+        '    pending.set(root, promise);',
+        '    promise.catch(() => pending.delete(root));',
+        '  }',
+        '  return promise;',
+        '}',
+        '/** The client module of a component, from the bundles of the page, or else from a bundle that holds it. */',
+        'export function load(id) {',
+        '  if (loaded.has(id)) {',
+        '    return Promise.resolve(loaded.get(id));',
+        '  }',
+        '  const waiting = [...pending.values()];',
+        '  const owner = () => (loaded.has(id) || !owners[id] ? loaded.get(id) : loadBundle(owners[id]).then(() => loaded.get(id)));',
+        '  return waiting.length > 0 ? Promise.allSettled(waiting).then(owner) : owners[id] ? owner() : undefined;',
+        '}',
+      ].join('\n');
+    }
     const entries = kept.map(
       ([id, file]) =>
         `  ${JSON.stringify(id)}: () => import(${JSON.stringify(`${file}${CLIENT_QUERY}`)}),`,
@@ -774,9 +906,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    * The modules that every page loads early, which the client build wrote,
    * or none before a client build or in development.
    */
-  const clientHints = (): string[] => {
+  const clientHints = (): { all: string[]; bundles: Record<string, string[]> } => {
     const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
-    return !isServe && existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as string[]) : [];
+    if (isServe || !existsSync(file)) {
+      return { all: [], bundles: {} };
+    }
+    const read = JSON.parse(readFileSync(file, 'utf8')) as
+      | string[]
+      | { all: string[]; bundles: Record<string, string[]> };
+    return Array.isArray(read) ? { all: read, bundles: {} } : read;
   };
 
   /** The route tree module. A DOM test gets the server version of each component in it. */
@@ -791,7 +929,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       isServe,
       middlewareFile(),
       buildId,
-      clientHints(),
+      clientHints().all,
+      clientHints().bundles,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -1438,10 +1577,28 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         };
         add(loaderChunk);
         add(coreChunk);
+        // The chunks of the bundle of each root, which its pages load early too.
+        const bundleHints: Record<string, string[]> = {};
+        for (const chunk of chunks.values()) {
+          const facade = chunk.facadeModuleId ?? '';
+          if (!facade.startsWith(`\0${BUNDLE}`)) {
+            continue;
+          }
+          const files = new Set<string>();
+          const walk = (name: string): void => {
+            const found = chunks.get(name);
+            if (found && !files.has(name) && !hints.has(name)) {
+              files.add(name);
+              found.imports.forEach(walk);
+            }
+          };
+          walk(chunk.fileName);
+          bundleHints[facade.slice(BUNDLE.length + 1)] = [...files].map((name) => `${base}${name}`);
+        }
         await mkdir(path.join(outDir, '.brumate'), { recursive: true });
         await writeFile(
           path.join(outDir, HINTS_FILE),
-          JSON.stringify([...hints].map((name) => `${base}${name}`)),
+          JSON.stringify({ all: [...hints].map((name) => `${base}${name}`), bundles: bundleHints }),
         );
         if (buildId !== undefined) {
           const written = Object.values(bundle).map((item) => item.fileName);
@@ -1490,7 +1647,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async resolveId(id, importer, resolveOptions) {
-      if (id === START || id === MANIFEST || id === SERVER || id === ROUTES || id === TESTING) {
+      if (
+        id === START ||
+        id === MANIFEST ||
+        id === SERVER ||
+        id === ROUTES ||
+        id === TESTING ||
+        id.startsWith(BUNDLE)
+      ) {
         return `\0${id}`;
       }
       // In code that the browser loads, only components import the env file, because the
@@ -1560,10 +1724,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           options.navigate === false
             ? "import { startWithoutNavigation as start } from 'brumate/static-loader';"
             : "import { start } from 'brumate/loader';",
-          `import { load } from ${JSON.stringify(MANIFEST)};`,
+          `import { load${isServe ? '' : ', loadBundle'} } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ', loadBundle'}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
@@ -1575,6 +1739,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${MANIFEST}`) {
         return await manifest();
+      }
+      if (id.startsWith(`\0${BUNDLE}`)) {
+        return await bundleModule(id.slice(BUNDLE.length + 1));
       }
       if (id === `\0${SERVER}`) {
         // A DOM test gets the server code of each file too, so its calls can run in the test.

@@ -210,34 +210,24 @@ class ClientGenerator {
         diagnostics: this.diagnostics,
       };
     }
-    // A handler that writes a slot that the page shows loads the updates with its own part,
-    // so the write does not wait for another request.
-    const writers = this.liveWrites();
+    // The page loads every part of a component with it, so the entry imports them, and a bundle
+    // of the page holds them with the entry.
     const loaders: Record<string, string[]> = {};
     for (const name of names) {
-      loaders[name] =
-        name !== 'update' && parts.update && writers.has(name) ? [name, 'update'] : [name];
+      loaders[name] = [name];
     }
-    const withUpdate = Object.values(loaders).some((list) => list.length > 1);
-    const lines = Object.entries(loaders).map(([name, [own, extra]]) => {
-      if (name === 'update' && withUpdate) {
-        return '  "update": update,';
-      }
-      const load = `import(${JSON.stringify(this.partPath(own!))})`;
-      return `  ${JSON.stringify(name)}: () => ${extra ? `(update().catch(() => {}), ${load})` : load},`;
-    });
     const entry = [
+      ...names.map(
+        (name, index) => `import * as $$p${index} from ${JSON.stringify(this.partPath(name))};`,
+      ),
       ...table,
-      ...(withUpdate
-        ? [`const update = () => import(${JSON.stringify(this.partPath('update'))});`]
-        : []),
       'const parts = {',
-      ...lines,
+      ...names.map((name, index) => `  ${JSON.stringify(name)}: $$p${index},`),
       '};',
       `export const partNames = ${JSON.stringify(names)};`,
-      '/** Imports a part of this module. */',
+      '/** A part of this module. */',
       'export function load(part) {',
-      '  return parts[part]();',
+      '  return Promise.resolve(parts[part]);',
       '}',
       '',
     ];
@@ -249,34 +239,6 @@ class ClientGenerator {
       clientCode,
       diagnostics: this.diagnostics,
     };
-  }
-
-  /**
-   * The parts whose code can write a slot that an update reads, or that call
-   * shared code of a module function, which can write one.
-   */
-  private liveWrites(): Set<string> {
-    const live = new Set<Declaration>();
-    for (const edge of this.plan.graph.edges) {
-      const from = edge.from;
-      if ((from.kind === 'source' || from.kind === 'memo') && this.updates.has(edge.to)) {
-        live.add(from.declaration);
-      }
-    }
-    const result = new Set<string>();
-    for (const [name, sites] of this.reach) {
-      for (const site of sites) {
-        if (
-          site.writes.some((write) => live.has(write.declaration)) ||
-          site.reads.some((read) => read.declaration.kind === 'reset') ||
-          this.shared?.find(site.node) !== undefined
-        ) {
-          result.add(name);
-          break;
-        }
-      }
-    }
-    return result;
   }
 
   /** The import path of a part, relative to the component's file. */

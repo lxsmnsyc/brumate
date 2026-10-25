@@ -140,6 +140,8 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /** Loads the bundle of a root component of the page, before the modules in it. */
+  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** Imports a part of a module, once for each part, as the loader preloads it. */
   loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
@@ -486,6 +488,12 @@ function addScopes(state: PageState, root: string): Scope[] {
     }
     if (record.t !== undefined) {
       scope.t = scopes.get(record.t);
+    }
+  }
+  // The bundles of the roots first, so the components that they hold load with them.
+  for (const scope of added) {
+    if (scope.m) {
+      void options.loadBundle?.(scope.m)?.catch(() => {});
     }
   }
   for (const scope of added) {
