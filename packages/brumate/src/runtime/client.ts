@@ -2105,9 +2105,7 @@ function insertHTML(
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size
-    ? fragments.flatMap((part) => [...part.childNodes])
-    : undefined;
+  const added = hiding?.bodies.size ? fragments.flatMap((part) => [...part.childNodes]) : undefined;
   for (const part of fragments) {
     if ('parent' in before) {
       before.parent.append(part);
@@ -2446,6 +2444,8 @@ export function branch(
   index: number,
   renders: (Render | undefined)[],
   kinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   const start = blockStart(scope, anchor);
   if (!start) {
@@ -2457,10 +2457,53 @@ export function branch(
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
   start.data = `b${scope.id}:${anchor}:${index}`;
-  const render = renders[index];
+  const render = inPlace(scope, renders[index], holderKind, holderAnchor);
   if (render) {
     insertHTML(end, render(scope));
   }
+}
+
+/**
+ * The component that holds a block of `scope` in its children, from the kind of the scope that
+ * renders the component and the anchor of the component there, which the compiler gives.
+ */
+function holderOf(scope: Scope, kind?: number, anchor?: number): Scope | undefined {
+  if (kind === undefined || anchor === undefined) {
+    return undefined;
+  }
+  for (let current: Scope | undefined = scope; current; current = current.p) {
+    if (current.k === kind) {
+      const id = current.c?.[anchor];
+      return id === undefined ? undefined : scopes.get(id);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A render of a body of a block in the children of a component, which renders as children that
+ * the component inserted, so the scopes that it makes read the contexts there, as the scopes
+ * that the server made do.
+ */
+function inPlace(
+  scope: Scope,
+  render: Render | undefined,
+  kind?: number,
+  anchor?: number,
+): Render | undefined {
+  const holder = render && holderOf(scope, kind, anchor);
+  if (!holder) {
+    return render;
+  }
+  return (parent, item, index) => {
+    const entry = { from: scope, at: holder };
+    insertedChildren.push(entry);
+    try {
+      return render(parent, item, index);
+    } finally {
+      insertedChildren.splice(insertedChildren.indexOf(entry), 1);
+    }
+  };
 }
 
 /** Renders the body of `#key` again when its value changes. */
@@ -2470,6 +2513,8 @@ export function rekey(
   value: unknown,
   render: Render,
   kinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   scope.keys ??= new Map();
   if (scope.keys.has(anchor) && Object.is(scope.keys.get(anchor), value)) {
@@ -2482,7 +2527,7 @@ export function rekey(
   }
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
-  insertHTML(end, render(scope));
+  insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
 }
 
 /**
@@ -2496,6 +2541,8 @@ export function retag(
   value: unknown,
   render: Render,
   kinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   scope.keys ??= new Map();
   if (!scope.keys.has(anchor) && typeof value === 'string') {
@@ -2509,7 +2556,7 @@ export function retag(
       return;
     }
   }
-  rekey(scope, anchor, value, render, kinds);
+  rekey(scope, anchor, value, render, kinds, holderKind, holderAnchor);
 }
 
 /**
@@ -2843,15 +2890,19 @@ export function list(
   anchor: number,
   items: unknown[],
   key: (item: unknown, index: number) => unknown,
-  render: Render,
+  given: Render,
   assign: (scope: Scope, item: unknown, index: number) => void,
-  fallback: Render | undefined,
+  givenFallback: Render | undefined,
   fallbackKinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
+  const render = inPlace(scope, given, holderKind, holderAnchor)!;
+  const fallback = inPlace(scope, givenFallback, holderKind, holderAnchor);
   const end = rangeEnd(start);
   const previous = new Map<unknown, Item>();
   let others: Node[] | undefined;

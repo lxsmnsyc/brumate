@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ThemeBox from './ThemeBox.brm';
+  import Themed from './Themed.brm';
+
+  let names = $signal(['a']);
+  let shown = $signal(false);
+</script>
+
+<button class="add" onClick=(() => (names = [...names, 'b']))>Add</button>
+<button class="show" onClick=(() => (shown = !shown))>Show</button>
+<ThemeBox>
+  #for (name of names by name) {
+    <p class=(`item item-${name}`)><Themed /></p>
+  }
+  #if (shown) {
+    <p class="later"><Themed /></p>
+  }
+</ThemeBox>

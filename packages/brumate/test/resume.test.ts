@@ -2289,6 +2289,17 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('blocks in children', () => {
+  it('render the bodies that the browser adds with the contexts where the children are', async () => {
+    await resume('blockInChildren', {});
+    expect(text('.item-a')).toBe('boxed');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.item-b')).toBe('boxed'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.later')).toBe('boxed'));
+  });
+});
+
 describe('cloned markup', () => {
   it('builds the blocks that never update inside a clone, and its handlers run', async () => {
     await resume('clonedStatic', {});

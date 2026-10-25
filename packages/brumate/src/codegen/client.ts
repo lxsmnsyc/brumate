@@ -1076,11 +1076,23 @@ class ClientGenerator {
     return `r${this.plan.bodyScopes.get(body)!.id}`;
   }
 
+  /**
+   * For a block in the children of a component of this file: the kind of the scope of the
+   * component and its anchor, with which the core finds the component, so the new bodies of the
+   * block read its contexts.
+   */
+  private holderArgument(block: Block): string {
+    const holder = this.plan.blockHolders.get(block);
+    const anchor = holder && this.plan.anchors.get(holder.node);
+    return holder && anchor !== undefined ? `, ${holder.scope.id}, ${anchor}` : '';
+  }
+
   private emitBlockUpdate(block: Block, fn: string, base: Scope): void {
     const anchor = this.plan.anchors.get(block);
     if (anchor === undefined) {
       return;
     }
+    const held = this.holderArgument(block);
     const headers = this.headerSites(block);
     const header = (index: number): string => this.rewriter.rewrite(headers[index]!, '$$s', base);
     switch (block.kind) {
@@ -1096,7 +1108,7 @@ class ClientGenerator {
           this.renderName(body),
         );
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)});\n}`,
+          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)}${held});\n}`,
         );
         return;
       }
@@ -1114,7 +1126,7 @@ class ClientGenerator {
         this.emit(
           [
             `export function ${fn}($$s) {`,
-            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)});`,
+            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)}${held});`,
             '}',
           ].join('\n'),
         );
@@ -1142,7 +1154,7 @@ class ClientGenerator {
         const [inner] = block.body.children;
         const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)});\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)}${held});\n}`,
         );
         return;
       }
