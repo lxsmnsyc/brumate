@@ -37,6 +37,8 @@
       </Popover>
     </Select>
     <button class="submit" type="submit">Send</button>
+    <button class="reset" type="reset">Reset</button>
+    <button class="set-dog" type="button" onClick=(() => (animal = 'dog'))>Dog</button>
   </form>
   <Select class="size" name="size" selectedKey=$bind(size)>
     <Label>Size</Label>
