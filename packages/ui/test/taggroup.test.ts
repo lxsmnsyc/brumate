@@ -94,3 +94,14 @@ it('removes the selected tags with Backspace on one of them', async () => {
   press('Backspace');
   await page.waitFor(() => expect(state(page)[0]).toEqual(['travel', 'gaming']));
 });
+
+it('focuses the list when no tag that can take focus stays', async () => {
+  const page = await taggroups();
+  // Gaming is disabled, so it cannot take focus once the others go.
+  for (const tag of ['news', 'travel', 'shopping']) {
+    page.get(`.tag-${tag}`).focus();
+    press('Delete');
+    await page.waitFor(() => expect(document.querySelector(`.tag-${tag}`)).toBeNull());
+  }
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.list')));
+});
