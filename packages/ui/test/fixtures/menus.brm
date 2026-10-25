@@ -12,6 +12,7 @@
 
   let acted = $signal<Key[]>([]);
   let open = $signal(false);
+  let closes = $signal(0);
   let align = $signal<Key[]>(['left']);
   let styles = $signal<Key[]>([]);
   const files = [
@@ -25,7 +26,7 @@
   <MenuTrigger isOpen=$bind(open)>
     <Button class="trigger">Actions</Button>
     <Popover class="popover">
-      <Menu class="menu" disabledKeys=(['delete']) onAction=((key) => (acted = [...acted, key]))>
+      <Menu class="menu" disabledKeys=(['delete']) onAction=((key) => (acted = [...acted, key])) onClose=(() => closes++)>
         #for (file of files by file.id) {
           <MenuItem id=(file.id) class=(`item-${file.id}`)>{file.name}</MenuItem>
         }
@@ -61,5 +62,5 @@
     </MenuSection>
   </Menu>
   <button class="after" type="button">After</button>
-  <p class="state">{JSON.stringify([acted, open, align, styles])}</p>
+  <p class="state">{JSON.stringify([acted, open, align, styles, closes])}</p>
 </main>
