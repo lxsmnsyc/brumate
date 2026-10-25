@@ -1,11 +1,19 @@
 <script>
-  import { $signal } from 'brumate/signals';
+  import { $bind, $signal } from 'brumate/signals';
   import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Heading from '@brumate/ui/Heading.brm';
   import Keyboard from '@brumate/ui/Keyboard.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
 
   let presses = $signal(0);
   let last = $signal('nothing yet');
+  let pinned = $signal(false);
 </script>
 
 #head {
@@ -44,6 +52,35 @@
   <p>Paste with <Keyboard>⌘V</Keyboard>.</p>
 </section>
 
+<section aria-labelledby="toggle-button">
+  <h2 id="toggle-button">ToggleButton</h2>
+  <p>It stays pressed, and the page binds its state.</p>
+  <ToggleButton class="press pin" isSelected=$bind(pinned)>Pin</ToggleButton>
+  <p class="pinned">The note is {pinned ? 'pinned' : 'not pinned'}.</p>
+</section>
+
+<section aria-labelledby="link">
+  <h2 id="link">Link</h2>
+  <p>
+    <Link class="link" href="#link">This section</Link>,
+    <Link class="link" href="#main" isCurrent=(true)>the current page</Link> and
+    <Link class="link" href="#main" isDisabled=(true)>a disabled link</Link>.
+  </p>
+</section>
+
+<section aria-labelledby="group">
+  <h2 id="group">Group, Label, Text, Heading and Separator</h2>
+  <Heading level=(3)>A field of parts</Heading>
+  <Label for="amount">Amount</Label>
+  <Group class="amount" aria-label="Amount">
+    <input id="amount" class="amount-field" inputmode="numeric" aria-describedby="amount-help">
+    <Separator orientation="vertical" class="divider" />
+    <Button class="press" aria-label="Add one">+</Button>
+  </Group>
+  <Text id="amount-help" class="help">A whole number.</Text>
+  <Separator />
+</section>
+
 <style>
   /* The page's own look for the parts, from their data attributes. */
   :global(.press) {
@@ -66,6 +103,44 @@
   :global(.press[data-focus-visible]) {
     outline: 3px solid #2457d6;
     outline-offset: 2px;
+  }
+
+  :global(.press[data-selected]) {
+    background: #2457d6;
+    color: #fff;
+  }
+
+  :global(.link[data-current]) {
+    font-weight: 700;
+  }
+
+  :global(.link[data-disabled]) {
+    color: #595959;
+  }
+
+  :global(.amount) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+  }
+
+  :global(.amount[data-focus-within]) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.divider) {
+    align-self: stretch;
+    width: 1px;
+    background: #555;
+  }
+
+  :global(.help) {
+    display: block;
+    color: #595959;
   }
 
   :global(.press[data-disabled]),

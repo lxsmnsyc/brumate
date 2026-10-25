@@ -2687,6 +2687,47 @@ describe('spreads on components', () => {
   });
 });
 
+describe('rest props', () => {
+  it('updates a spread of a rest prop when the parent passes a new value', async () => {
+    await resume('restOuter', {});
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('no');
+    click(document.querySelector('.flip')!);
+    await waitFor(() =>
+      expect(document.querySelector('.plain')!.getAttribute('title')).toBe('yes'),
+    );
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('yes');
+  });
+});
+
+describe('markup that streams in after a write', () => {
+  it('updates a dynamic tag and a rest prop that stream in, and keeps the attributes of two spreads', async () => {
+    const server = await import(file('lateTag.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.count')!);
+    await waitFor(() =>
+      expect(document.querySelector('.both')!.getAttribute('title')).toBe('clicks 1'),
+    );
+    // The other spread keeps its attribute when one of them updates.
+    expect(document.querySelector('.both')!.getAttribute('data-clicks')).toBe('1');
+    server.release('section');
+    // The element as it streams in, before the update of its scope runs.
+    let late: Element | null = null;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+      late ??= document.querySelector('.late');
+    }
+    late = late!;
+    expect(late.localName).toBe('section');
+    // The update of the streamed scope writes the new value into the element that is there.
+    await waitFor(() => expect(text('.late')).toBe('1'));
+    expect(late.isConnected).toBe(true);
+    await waitFor(() => expect(document.querySelector('.plain')!.getAttribute('title')).toBe('1'));
+    expect(document.querySelector('.plain')!.className).toBe('plain');
+  });
+});
+
 describe('bindings of elements', () => {
   it('writes a signal from the value of an input, a box and a select', async () => {
     await resume('bindInputs', {});
