@@ -4,5 +4,6 @@
 !language-configuration.json
 !node_modules/brumate-typescript-plugin-pack/**
 !package.json
+!icon.png
 !README.md
 !LICENSE
