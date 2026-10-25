@@ -1452,7 +1452,7 @@ describe('resume', () => {
       }
     });
     observer.observe(list, { childList: true });
-    // Each insert puts a fragment into the list: of its markup, or of the templates it cloned.
+    // Each insert puts a fragment into the list: of the template that a new item cloned.
     const insert = vi.spyOn(list, 'insertBefore');
 
     click(document.querySelector('.fill')!);
@@ -1469,9 +1469,10 @@ describe('resume', () => {
       'f',
     ]);
     expect(buttons().map((button) => button.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
-    // The items that stay are not moved, and new items next to each other go in with one insert.
+    // The items that stay are not moved. Each new item goes in with its own insert, so its nodes
+    // move once, and nothing else is inserted.
     expect(removed).toEqual([]);
-    expect(inserts).toHaveLength(3);
+    expect(inserts).toHaveLength(4);
 
     // The new items resume like the others.
     click(buttons()[4]!);

@@ -2060,16 +2060,14 @@ function clear(start: Node, end: Node): void {
  * Inserts rendered HTML before a node, or at the end of a parent, and runs
  * the work that waits for it.
  */
-function insertHTML(before: Node | { parent: ParentNode }, html: string | DocumentFragment): void {
+function insertHTML(
+  before: Node | { parent: ParentNode },
+  html: string | DocumentFragment | DocumentFragment[],
+): void {
   // A fragment that the browser cloned from a template keeps its elements on their scopes, so
-  // it is not parsed or indexed.
+  // it is not parsed or indexed. The clones of a list go in one by one, so each node moves once.
   const cloned = typeof html !== 'string';
-  let fragment: DocumentFragment;
-  if (cloned) {
-    fragment = html;
-  } else {
-    fragment = parseHTML(html);
-  }
+  const fragments = cloned ? (Array.isArray(html) ? html : [html]) : [parseHTML(html)];
   // Markers that others inserted first, so the new markers win over them.
   if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
@@ -2081,16 +2079,16 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
   const fromServer = !cloned && SERVER_SCOPES.test(html);
   const ids = fromServer ? new Set<ScopeId>() : undefined;
   const markup = clonedMarkup;
-  if (!cloned || markup) {
-    // The elements of HTML in a clone are read now, since the clone is not indexed later.
-    indexMarkers(fragment, ids, fromServer || cloned || !HAS_CLIENT_HTML);
-    clonedMarkup = false;
+  for (const fragment of fragments) {
+    if (!cloned || markup) {
+      // The elements of HTML in a clone are read now, since the clone is not indexed later.
+      indexMarkers(fragment, ids, fromServer || cloned || !HAS_CLIENT_HTML);
+      // A clone's handlers were read from its template, unless it holds markup that it rendered.
+      options.listen(fragment);
+    }
+    watchTitles(fragment);
   }
-  // A clone's handlers were read from its template, unless it holds markup that it rendered.
-  if (!cloned || markup) {
-    options.listen(fragment);
-  }
-  watchTitles(fragment);
+  clonedMarkup = false;
   const server: Scope[] = [];
   for (const id of ids ?? []) {
     const scope = typeof id === 'number' && id < 0 ? undefined : scopes.get(id);
@@ -2098,6 +2096,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
       server.push(scope);
     }
   }
+  const fragment = fragments[0]!;
   if (HAS_CLIENT_HTML && !cloned && !fromServer && fragment.firstChild) {
     unindexed.push([fragment.firstChild, fragment.lastChild!]);
     // Many inserts that no update read are indexed at once, so they do not hold their nodes.
@@ -2106,11 +2105,15 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
-  if ('parent' in before) {
-    before.parent.append(fragment);
-  } else {
-    before.parentNode!.insertBefore(fragment, before);
+  const added = hiding?.bodies.size
+    ? fragments.flatMap((part) => [...part.childNodes])
+    : undefined;
+  for (const part of fragments) {
+    if ('parent' in before) {
+      before.parent.append(part);
+    } else {
+      before.parentNode!.insertBefore(part, before);
+    }
   }
   if (added) {
     hiding!.added(added);
@@ -2935,7 +2938,7 @@ export function list(
   // New items next to each other go into the page with one insert: their HTML, or the
   // fragments that they cloned.
   let added = '';
-  let addedNodes: DocumentFragment | undefined;
+  let addedNodes: DocumentFragment[] | undefined;
   const flushAdded = (): void => {
     if (added) {
       insertHTML(cursor, added);
@@ -2953,7 +2956,7 @@ export function list(
       if (typeof out === 'string') {
         added += out;
       } else {
-        (addedNodes ??= document.createDocumentFragment()).append(out);
+        (addedNodes ??= []).push(out);
       }
       continue;
     }
