@@ -68,27 +68,27 @@ export function u7($$s) {
 # Render module
 import * as $$b from 'brumate/client';
 import { getEvent } from "brumate/server";
+const $$t0 = $$b.template("<i b-x=\"0\"></i>", 1);
+const $$t1 = $$b.template("<button b-x=\"0\" class=\"count\" b-on=\"click=Deferred_1mbnfwf#h1\"></button><!--x1--><p class=\"fallback\">Loading</p>", 2);
 
 export default function Deferred($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Deferred_1mbnfwf");
   let count = (1);
-  $$html += "<button class=\"count\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Deferred_1mbnfwf#h1\">" + $$b.insert((count)) + "</button>";
-  {
-    const $$list0v = ( [1, 2]);
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const n = $$item1;
-      $$html += "<i>" + $$b.insert((n)) + "</i>";
-    }
-  }
+  const $$body2 = ($$item0, $$index1) => {
+    let $$html = '';
+    const n = $$item0;
+    const [$$f, $$e] = $$b.clone($$t0);
+    $$b.setContent($$e[0], (n));
+    return $$f;
+  };
   $$b.deferInBrowser("Deferred_1mbnfwf");
-  {
-    $$html += "<p class=\"fallback\">Loading</p>";
-  }
+  const [$$f, $$e] = $$b.clone($$t1);
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setContent($$e[0], (count), $$s1);
+  $$b.place($$e[1], $$b.listNodes(undefined, undefined, $$b.listOf(( [1, 2])), $$body2, undefined));
   $$b.setSlots($$s1, [count]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

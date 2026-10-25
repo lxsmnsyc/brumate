@@ -91,26 +91,25 @@ export default function Portal($$props: Record<string, never>): string | Documen
   const $$s1 = $$b.createScope(1, undefined, "Portal_17ywlhi");
   let open = (false);
   $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
-  if (open) {
-    $$html += "<!--b" + $$s1 + ":1:0-->";
-    const $$portal0 = (() => {
+  const $$body0 = () => {
+    let $$html = '';
+    const $$portal1 = (() => {
       let $$html = '';
       const $$s3 = $$b.createScope(3, $$s1);
       $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
       return $$html;
     })();
-    $$b.addPortal($$portal0);
-    $$html += "<!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
-  }
-  const $$portal1 = (() => {
+    $$b.addPortal($$portal1);
+    return $$html;
+  };
+  $$html += $$b.nodes($$b.branchNodes($$s1, 1, (open) ? 0 : -1, [$$body0]));
+  const $$portal2 = (() => {
     let $$html = '';
     const $$s4 = $$b.createScope(4, $$s1);
     $$html += "<!--P" + $$s4 + "--><p class=\"note\">Always here</p><!--/P-->";
     return $$html;
   })();
-  $$b.addPortal($$portal1);
+  $$b.addPortal($$portal2);
   $$html += "</div><section id=\"target\"></section><template b-b=\"" + $$s1 + ":2\" b-client=\"load=Portal_17ywlhi#k5\"></template>";
   $$b.setSlots($$s1, [open]);
   return $$html;

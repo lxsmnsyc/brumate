@@ -54,6 +54,8 @@ const TEXT_CLOSE = '<!--/t-->';
 const BLOCK_START = '<!--b';
 const COMPONENT = /^\$\$b\.component\(/;
 const DYNAMIC = /^\$\$b\.dynamic\(/;
+// The nodes of a block that renders where it is.
+const NODES = /^\$\$b\.nodes\(([\s\S]*)\)$/;
 // The rest of the start comment of a block: `:anchor`, maybe `:index`, and `-->`.
 const MARKER_END = /^:(\d+)((?::-?\d+)?)-->/;
 const BLOCK_END = /^:(\d+)(?::-1)?--><!--\/b-->/;
@@ -294,6 +296,14 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       reader.append(`<!--x${mark}-->`);
       continue;
     }
+    // A block that renders where it is, whose nodes go in the place of a comment.
+    const nodes = NODES.exec(code);
+    if (nodes && !reader.inTag && !reader.raw) {
+      const mark = writes.length;
+      writes.push([{ kind: 'component', call: nodes[1]! }]);
+      reader.append(`<!--x${mark}-->`);
+      continue;
+    }
     // A dynamic tag, which builds its element where it is.
     if (DYNAMIC.test(code) && !reader.inTag && !reader.raw) {
       const mark = writes.length;
@@ -422,7 +432,7 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       declared.add(declaration[1]!);
     }
     if (at > first && at < last && !line.startsWith('const $$') && !line.startsWith('let $$')) {
-      if (line !== '});' && !line.startsWith('$$b.')) {
+      if (line !== '});' && line !== '};' && !line.startsWith('$$b.')) {
         return false;
       }
     }

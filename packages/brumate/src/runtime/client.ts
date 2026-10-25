@@ -3667,6 +3667,73 @@ export function setAttr(element: Element, name: string, value: unknown): void {
   }
 }
 
+/** The nodes of a block that renders where it is, in HTML: a place, which the parse fills. */
+export function nodes(fragment: DocumentFragment): string {
+  return holdPlace(fragment);
+}
+
+/** What a body gave, as nodes: its clone, or its HTML, which the insert of the clone indexes. */
+function bodyNodes(out: string | DocumentFragment): DocumentFragment {
+  if (typeof out !== 'string') {
+    return out;
+  }
+  clonedMarkup = true;
+  return parseHTML(out);
+}
+
+/** The markers of a block that renders where it is, around its nodes, with the start kept. */
+function blockNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  data: string,
+  content: DocumentFragment,
+): DocumentFragment {
+  if (scope === undefined || anchor === undefined) {
+    return content;
+  }
+  const start = document.createComment(data);
+  keepBlock(start, scope, data, anchor);
+  content.prepend(start);
+  content.append(document.createComment('/b'));
+  return content;
+}
+
+/**
+ * Renders an `#if` or a `#switch` where it is: the branch at `index`, or nothing for -1, between
+ * its markers when it has them, which `branch` updates later.
+ */
+export function branchNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  index: number,
+  bodies: (() => string | DocumentFragment)[],
+): DocumentFragment {
+  const body = bodies[index];
+  const content = body ? bodyNodes(body()) : document.createDocumentFragment();
+  return blockNodes(scope, anchor, `b${scope}:${anchor}:${index}`, content);
+}
+
+/**
+ * Renders a `#for` or a `#repeat` where it is: its items, or its fallback for none, between its
+ * markers when it has them, which `list` updates later.
+ */
+export function listNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  items: unknown[],
+  body: (item: unknown, index: number) => string | DocumentFragment,
+  fallback: (() => string | DocumentFragment) | undefined,
+): DocumentFragment {
+  const content = document.createDocumentFragment();
+  for (let index = 0; index < items.length; index++) {
+    content.append(bodyNodes(body(items[index], index)));
+  }
+  if (items.length === 0 && fallback) {
+    content.append(bodyNodes(fallback()));
+  }
+  return blockNodes(scope, anchor, `b${scope}:${anchor}`, content);
+}
+
 /** Writes attributes that code of a start tag gave as their text, as HTML has them. */
 export function setAttrText(element: Element, text: string): void {
   if (text) {

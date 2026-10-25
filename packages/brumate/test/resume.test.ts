@@ -2289,6 +2289,20 @@ describe('spreads and attributes of other code', () => {
 });
 
 describe('cloned markup', () => {
+  it('builds the blocks that never update inside a clone, and its handlers run', async () => {
+    await resume('clonedStatic', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.box i')).toBe('a'));
+    expect([...document.querySelectorAll('.box i')].map((item) => item.textContent)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(document.querySelector('.wide')).not.toBeNull();
+    expect(document.querySelector('.narrow')).toBeNull();
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+  });
+
   it('fills the blocks inside a clone, which update in place after', async () => {
     await resume('clonedBlocks', {});
     click(document.querySelector('.open')!);

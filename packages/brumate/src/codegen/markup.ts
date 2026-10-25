@@ -1824,6 +1824,66 @@ export class Emitter {
     return true;
   }
 
+  /**
+   * Emits a function that renders a body, as a constant, and returns its name. The function
+   * clones its markup when it can, and gives its HTML otherwise.
+   */
+  private bodyFunction(params: string, content: () => void): string {
+    const name = this.unique('body');
+    this.line(`const ${name} = (${params}) => {`);
+    const fn = this.currentFn;
+    this.line(`let $$html = '';`);
+    content();
+    this.flush();
+    const cloned = cloneLines(this, this.options.hoist!, fn);
+    this.line(cloned ? 'return $$f;' : 'return $$html;');
+    this.close('};');
+    return name;
+  }
+
+  /**
+   * In the browser, an `#if`, a `#switch`, a `#for` or a `#repeat` that renders where it is
+   * builds its nodes with a function for each body, so the markup around it and its bodies can
+   * clone. `branchNodes` and `listNodes` write its markers, when it has them.
+   */
+  private emitNodesBlock(block: Block, scope: Scope): boolean {
+    if (this.options.mode !== 'client' || !this.options.hoist) {
+      return false;
+    }
+    const anchor = this.anchor(scope, block);
+    const marks = anchor ? `${anchor.scope}, ${anchor.index}` : 'undefined, undefined';
+    if (block.kind === 'if' || block.kind === 'switch') {
+      const branches = block.kind === 'if' ? block.branches : block.cases;
+      const bodies = branches.map((branch) =>
+        this.bodyFunction('', () => this.emitBody(branch.body)),
+      );
+      const fallback = block.fallback;
+      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      // The index of the branch that shows, then its function.
+      let index = other ? String(branches.length) : '-1';
+      for (let at = branches.length - 1; at >= 0; at--) {
+        index = `${this.expression(branches[at]!.condition)} ? ${at} : ${index}`;
+      }
+      const names = `[${[...bodies, ...(other ? [other] : [])].join(', ')}]`;
+      this.code(`$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`);
+      return true;
+    }
+    if (block.kind === 'for' || block.kind === 'repeat') {
+      const item = this.unique('item');
+      const index = this.unique('index');
+      const body = this.bodyFunction(`${item}, ${index}`, () => this.emitItem(block, item, index));
+      const fallback = block.fallback;
+      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      const items =
+        block.kind === 'for'
+          ? `$$b.listOf(${this.expression(block.list)})`
+          : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
+      this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
+      return true;
+    }
+    return false;
+  }
+
   private open(scope: Scope, block: Block, suffix?: string): void {
     const anchor = this.anchor(scope, block);
     if (anchor) {
@@ -1840,7 +1900,7 @@ export class Emitter {
   }
 
   private emitBlock(block: Block, scope: Scope): void {
-    if (this.emitFill(block, scope)) {
+    if (this.emitFill(block, scope) || this.emitNodesBlock(block, scope)) {
       return;
     }
     switch (block.kind) {
