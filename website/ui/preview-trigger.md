@@ -8,7 +8,8 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 
 - A `PreviewTrigger` holds a [Link](./link.md) or a [Button](./button.md), and a [Popover](./popover.md). Unlike a [Tooltip](./tooltip.md), the preview can hold links and buttons.
 - Hover and focus from the keyboard show it after `delay`, 600 milliseconds by default. Once a preview has shown, the others show at once, until none has shown for half a second.
-- A touch that holds the trigger for half a second shows it. The release that follows presses nothing, so a link does not navigate.
+- A touch that holds the trigger for half a second shows it, as React Aria's `useLongPress` does. The press of the trigger is cancelled, so the release presses nothing and a link does not navigate. The browser shows no menu for the held link.
+- Escape closes it wherever focus is. Focus inside it, or on the trigger, keeps it open while the pointer moves elsewhere.
 - It is not modal, and focus stays where it is when it shows. The trigger gets `aria-expanded` and `aria-controls`.
 - `isOpen` is the state. See [State](./state.md). `isDisabled` never shows it.
 
