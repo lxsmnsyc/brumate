@@ -1,5 +1,5 @@
 <script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import type { ButtonContextProps, LinkContextProps } from './contexts.ts';
@@ -99,7 +99,7 @@
     given(button)?.onPressStart?.(event);
     given(link)?.onPressStart?.(event);
     if (event.pointerType === 'touch') {
-      startLongPress(triggerId, () => open(true));
+      startLongPress(triggerId, event.pointerId, () => open(true));
     } else {
       close(true);
     }
@@ -115,6 +115,13 @@
   function given<T extends object>(value: ContextValue<T> | null): T | undefined {
     return value && !('slots' in value) ? value : undefined;
   }
+
+  // A trigger that leaves the page stops its timers, so they open nothing later, and the next
+  // preview still waits for its delay.
+  $client(() => () => {
+    cancelLongPress(triggerId);
+    previews.forget(overlayId);
+  }, 'load');
 
   // While it is open, the page decides when it closes.
   $effect(() => {
@@ -159,8 +166,13 @@
     overlayId,
     open: () => open(true),
     // The popover closes it, such as on Escape, and gives focus back, which does not open it again.
+    // A press outside gives no focus back, so the trigger opens it again on its next focus.
     close: () => {
-      dismissed.add(triggerId);
+      const active = document.activeElement;
+      const layer = document.getElementById(overlayId)?.closest('[data-layer]');
+      if (active && (document.getElementById(triggerId)?.contains(active) || layer?.contains(active))) {
+        dismissed.add(triggerId);
+      }
       close(true);
     },
     isPreview: true,
