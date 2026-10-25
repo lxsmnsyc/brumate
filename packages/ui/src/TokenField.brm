@@ -1,0 +1,80 @@
+<script>
+  import { $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
+  import type { TokenSegment } from './token-field.ts';
+
+  /**
+   * A field of text with tokens in it, such as tags, mentions or commands, as TokenField of React
+   * Aria Components. It holds a Label, a TokenInput, and a Text with `slot="description"`.
+   *
+   * - `value` is an array of segments, `{ type: 'text' | 'token', text }`, which the page state
+   *   holds. `onChange` hears of changes.
+   * - `pattern` is a regular expression, as a string, whose matches become tokens once a space
+   *   follows them, such as `'[#@]\\S+'` for tags and mentions.
+   * - `placeholder`, `allowsNewlines`, `isDisabled`, `isReadOnly`, and `role`: `textbox`, or
+   *   `searchbox` or `combobox`.
+   * - With `name`, a form sends the text of the value.
+   */
+  const {
+    pattern,
+    placeholder,
+    allowsNewlines = false,
+    isDisabled = false,
+    isReadOnly = false,
+    role = 'textbox',
+    name,
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    pattern?: string;
+    placeholder?: string;
+    allowsNewlines?: boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    role?: 'textbox' | 'searchbox' | 'combobox';
+    name?: string;
+    onChange?: (value: TokenSegment[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = [] } = $props<{ value?: Bindable<TokenSegment[]> }>();
+
+  const labelId = $id();
+  const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const text = $memo(segmentsText(value));
+
+  function setValue(next: TokenSegment[]) {
+    if (!sameSegments(next, value)) {
+      value = next;
+      onChange?.(next);
+    }
+  }
+
+  // The box of the field is no element that a label can point at, so the label names it by ID.
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(TokenFieldContext, {
+    value,
+    setValue,
+    pattern,
+    placeholder,
+    allowsNewlines,
+    isDisabled,
+    isReadOnly,
+    role,
+    labelId,
+    descriptionId: hasDescription ? descriptionId : undefined,
+  });
+</script>
+
+<div data-disabled=(isDisabled || undefined) data-readonly=(isReadOnly || undefined) {...rest}>
+  {children}
+  #if (name) {
+    <input type="hidden" {name} value=text disabled=(isDisabled || undefined) />
+  }
+</div>

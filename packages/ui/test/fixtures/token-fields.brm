@@ -1,0 +1,33 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '../../src/Label.brm';
+  import Text from '../../src/Text.brm';
+  import Token from '../../src/Token.brm';
+  import TokenField from '../../src/TokenField.brm';
+  import TokenInput from '../../src/TokenInput.brm';
+  import type { TokenSegment } from '../../src/token-field.ts';
+
+  let value = $signal<TokenSegment[]>([
+    { type: 'text', text: 'Hi ' },
+    { type: 'token', text: '@ann' },
+    { type: 'text', text: ' there' },
+  ]);
+</script>
+
+<form class="form">
+  <TokenField class="field" name="message" pattern="[#@]\S+" placeholder="Write" value=$bind(value)>
+    <Label class="label">Message</Label>
+    <TokenInput class="input" token=mention />
+    <Text slot="description" class="description">Mention with @</Text>
+  </TokenField>
+  <TokenField class="empty" placeholder="Nothing yet" isReadOnly>
+    <Label>Empty</Label>
+    <TokenInput class="empty-input" />
+  </TokenField>
+</form>
+<button class="reset" type="button" onClick=(() => (value = [{ type: 'token', text: '#tag' }]))>Reset</button>
+<p class="state">{JSON.stringify(value)}</p>
+
+#template mention(segment: TokenSegment) {
+  <Token class="mention">{segment.text}</Token>
+}

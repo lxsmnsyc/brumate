@@ -33,6 +33,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     pages: [
       'text-field',
       'search-field',
+      'token-field',
       'number-field',
       'slider',
       'checkbox',
@@ -306,6 +307,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A tree of links that shows the page that the user is on.',
     href: 'navigation-tree',
     demo: 'NavigationTreeDemo',
+  },
+  {
+    title: 'TokenField',
+    summary: 'Text with mentions and tags that the user types.',
+    href: 'token-field',
+    demo: 'TokenFieldDemo',
   },
   {
     title: 'List and tree data',

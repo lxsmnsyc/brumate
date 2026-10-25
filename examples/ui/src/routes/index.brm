@@ -49,6 +49,10 @@
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import Tree from '@brumate/ui/Tree.brm';
   import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
   import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
   import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
   import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
@@ -154,6 +158,7 @@
     ],
   });
   let openFolders = $signal<Key[]>([]);
+  let note = $signal<TokenSegment[]>([{ type: 'text', text: 'Hi ' }]);
   // A tree of links to the sections of this page.
   interface Section extends NavigationNode {
     title: string;
@@ -599,6 +604,15 @@
   <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
 </section>
 
+<section aria-labelledby="token-field">
+  <h2 id="token-field">TokenField</h2>
+  <TokenField class="note-field" pattern="[#@]\S+" value=$bind(note)>
+    <Label>Note</Label>
+    <TokenInput class="note-input" token=noteToken style="border: 1px solid #555; padding: 0.5rem; min-width: 16rem" />
+  </TokenField>
+  <p class="note-state">{note.map((segment) => (segment.type === 'token' ? `[${segment.text}]` : segment.text)).join('')}</p>
+</section>
+
 <section aria-labelledby="navigation-tree">
   <h2 id="navigation-tree">NavigationTree</h2>
   <nav aria-label="Sections">
@@ -762,6 +776,10 @@
 </section>
 
 <ToastRegion class="toasts" toast=notice transition />
+
+#template noteToken(segment: TokenSegment) {
+  <Token class="note-token" style="background: #ddd; padding: 0 0.3rem">{segment.text}</Token>
+}
 
 #template sectionRow(section: Section) {
   <NavigationTreeItem class=(`section-row section-${section.id}`) textValue=(section.title) href=(section.href)>

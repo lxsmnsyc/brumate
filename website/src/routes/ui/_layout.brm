@@ -835,6 +835,27 @@
     padding: 0 0.5rem;
   }
 
+  /* A field of text with tokens: each token is a chip in the line of text. */
+  :global(.ui-token-input) {
+    min-height: 2.5rem;
+    line-height: 1.8;
+  }
+
+  :global(.ui-token) {
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  :global(.ui-mention) {
+    color: var(--accent);
+  }
+
+  :global(.ui-token[data-selected]) {
+    background: var(--accent-soft);
+  }
+
   :global(.ui-navlink) {
     color: inherit;
     text-decoration: none;
