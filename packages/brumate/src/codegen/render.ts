@@ -246,11 +246,24 @@ export function generateRender(
     emitter.close();
     return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
   }
+  // The templates of the module, for the markup and the children that clone.
+  const constants = new Map<string, string>();
+  const templates: string[] = [];
+  const hoist = (code: string): string => {
+    let name = constants.get(code);
+    if (!name) {
+      name = `$$t${constants.size}`;
+      constants.set(code, name);
+      templates.push(`const ${name} = ${code};`);
+    }
+    return name;
+  };
   const emit = (fill: boolean): { emitter: Emitter; cloned: boolean } => {
     const emitter = new Emitter(file, plan, patch, {
       mode: 'client',
       functions: true,
       fills: fill ? fills : undefined,
+      hoist,
     });
     emitter.line(signature);
     emitter.line(`let $$html = '';`);
@@ -259,27 +272,17 @@ export function generateRender(
     );
     emitter.emitComponentContent(setup);
     emitter.flush();
-    // Markup that is one string clones a template, which a constant of the module holds.
-    const constants = new Map<string, string>();
-    const cloned = cloneLines(emitter, (code) => {
-      let name = constants.get(code);
-      if (!name) {
-        name = `$$t${constants.size}`;
-        constants.set(code, name);
-        templates.push(`const ${name} = ${code};`);
-      }
-      return name;
-    });
+    const cloned = cloneLines(emitter, hoist);
     emitter.line(cloned ? 'return $$f;' : 'return $$html;');
     emitter.close();
     return { emitter, cloned };
   };
-  const templates: string[] = [];
   let emitted = fills ? emit(true) : undefined;
   // Markup that fills its blocks must clone, so markup that cannot renders again with its blocks.
   if (!emitted?.cloned) {
     imported.clear();
     templates.length = 0;
+    constants.clear();
     emitted = emit(false);
   } else if (imported.size > 0) {
     const base = file.filename.split(/[\\/]/).pop()!;

@@ -3259,7 +3259,7 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
   return (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
-    ? value.render(resolveScope(scope))
+    ? holdPlace(value.render(resolveScope(scope)))
     : insertValue(value);
 }
 
@@ -3273,9 +3273,9 @@ const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  */
 class Children {
   private given: Scope | ScopeId | undefined;
-  private readonly html: () => string;
+  private readonly html: () => string | DocumentFragment;
 
-  constructor(from: Scope | ScopeId | undefined, html: () => string) {
+  constructor(from: Scope | ScopeId | undefined, html: () => string | DocumentFragment) {
     this.given = from;
     this.html = html;
   }
@@ -3289,7 +3289,7 @@ class Children {
     return scope;
   }
 
-  render(at: Scope | undefined): string {
+  render(at: Scope | undefined): string | DocumentFragment {
     if (!at) {
       return this.html();
     }
@@ -3339,11 +3339,14 @@ class RenderedChildren extends Children {
 
   constructor(scope: ScopeId, ref: string) {
     // The export returns HTML, as the render of a block does.
-    super(scope, () => String(this.code!(this.from)));
+    super(scope, () => {
+      const out = this.code!(this.from);
+      return out instanceof DocumentFragment ? out : String(out);
+    });
     this.ref = ref;
   }
 
-  override render(at: Scope | undefined): string {
+  override render(at: Scope | undefined): string | DocumentFragment {
     if (this.code && this.from) {
       return super.render(at);
     }
@@ -3418,7 +3421,10 @@ function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
 }
 
 /** The children of a component that the client renders. See `Children`. */
-export function children(from: Scope | ScopeId | undefined, html: () => string): Children {
+export function children(
+  from: Scope | ScopeId | undefined,
+  html: () => string | DocumentFragment,
+): Children {
   return new Children(from, html);
 }
 
@@ -3567,9 +3573,8 @@ function keepMarkers(
     (found.n ??= [])[anchor] = place;
   }
   if (value !== null && value !== undefined && typeof value !== 'boolean') {
-    // Children, a template or raw HTML: their markup, which the insert of the clone indexes.
-    place.after(parseHTML(insert(value, undefined, at)));
-    clonedMarkup = true;
+    // Children, a template or raw HTML.
+    place.after(insertNodes(value, at));
   }
 }
 
@@ -3662,10 +3667,24 @@ export function setContent(element: Element, value: unknown, at?: ScopeId | Scop
     element.textContent = String(value);
     return;
   }
-  // Children, a template or raw HTML render their markup here, which the insert of the clone
-  // indexes, as it would in HTML. Their work after the insert waits for it too.
-  element.replaceChildren(parseHTML(insert(value, undefined, at)));
+  // Children, a template or raw HTML render here. Their work after the insert waits for it.
+  element.replaceChildren(insertNodes(value, at));
+}
+
+/**
+ * The nodes of children, a template or raw HTML in cloned markup: the clone of children whose
+ * markup clones, or the markup, which the insert of the clone indexes, as it would in HTML.
+ */
+function insertNodes(value: unknown, at: ScopeId | Scope | undefined): DocumentFragment {
+  const out =
+    HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
+      ? value.render(resolveScope(at))
+      : insert(value, undefined, at);
+  if (typeof out !== 'string') {
+    return out;
+  }
   clonedMarkup = true;
+  return parseHTML(out);
 }
 
 /** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
@@ -3744,11 +3763,14 @@ export function component<P>(
   if (parent) {
     setOwner(parent);
   }
-  const out = Child(props);
+  return holdPlace(Child(props));
+}
+
+/** The markup of a render, or for a clone, a comment that holds its place, which a parse fills. */
+function holdPlace(out: string | DocumentFragment): string {
   if (typeof out === 'string') {
     return out;
   }
-  // A child that clones its markup: HTML holds its place, which the parse fills.
   const key = placedCount++;
   placed.set(key, out);
   return `<!--f${key}-->`;

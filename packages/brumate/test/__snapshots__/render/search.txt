@@ -88,17 +88,18 @@ export function a3($$s, $$item, $$index) {
 export function u7($$s) {
   $$b.content($$s, 0, $$b.get($$s, 0));
 }
+const $$k4 = $$b.template("<p class=\"pending\">Searching</p>", 0);
 export function r2($$p) {
   let $$html = '';
-  $$html += "<p class=\"pending\">Searching</p>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k4);
+  return $$f;
 }
-const $$k4 = $$b.template("<li b-x=\"0\"></li>", 1);
+const $$k5 = $$b.template("<li b-x=\"0\"></li>", 1);
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
   const $$s3 = $$b.createScope(3, $$p);
-  const [$$f, $$e] = $$b.clone($$k4);
+  const [$$f, $$e] = $$b.clone($$k5);
   $$b.keep($$s3, 0, $$e[0]);
   $$b.setContent($$e[0], (result), $$s3);
   $$b.setSlots($$s3, [result]);

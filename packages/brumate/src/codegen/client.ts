@@ -1241,6 +1241,7 @@ class ClientGenerator {
       mode: 'client',
       outer: { inside, base, baseVar: '$$p' },
       fills: fill ? (nested) => this.fillOf(nested) : undefined,
+      hoist: (code) => this.hoist(code),
     });
     const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
     const isCatch = block.kind === 'try' && block.fallback === body;
@@ -1378,6 +1379,7 @@ class ClientGenerator {
       const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
         mode: 'client',
         outer: { inside, base, baseVar: '$$p' },
+        hoist: (code) => this.hoist(code),
       });
       emitter.line(`export function ${symbol}($$p) {`);
       emitter.line(`let $$html = '';`);
@@ -1412,7 +1414,8 @@ class ClientGenerator {
       }
       emitter.emitChildrenBody(node, scope);
       emitter.flush();
-      emitter.line('return $$html;');
+      const cloned = cloneLines(emitter, (code) => this.hoist(code));
+      emitter.line(cloned ? 'return $$f;' : 'return $$html;');
       emitter.close();
       this.emit(emitter.lines.join('\n'));
     }

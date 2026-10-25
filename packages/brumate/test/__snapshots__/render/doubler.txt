@@ -55,10 +55,11 @@ const $$k1 = [2];
 export function b5($$s) {
   $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = $$b.template("<span class=\"pending\">Loading</span>", 0);
 export function r2($$p) {
   let $$html = '';
-  $$html += "<span class=\"pending\">Loading</span>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k2);
+  return $$f;
 }
 
 # Client part: shared

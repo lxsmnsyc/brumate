@@ -18,6 +18,7 @@ import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { serverFunctionId } from '../plan.ts';
+import { cloneLines } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
@@ -111,10 +112,21 @@ export interface EmitterOptions {
    * for renders inline.
    */
   fills?: (block: Block) => Fill | undefined;
+  /**
+   * Makes a constant of the module, for the templates that the functions of children clone. The
+   * functions of children render HTML without it.
+   */
+  hoist?: (code: string) => string;
 }
 
-/** Where a line of a render is. See `Emitter.levels`. */
-export type Level = 'top' | 'control' | 'nested' | 'outside';
+/**
+ * Where a line of a render is: in which function, by its number, or -1 outside any, and whether
+ * in an `if`, a loop or another branch of it. See `Emitter.levels`.
+ */
+export interface Level {
+  fn: number;
+  control: boolean;
+}
 
 /** The render functions that fill a nested block of a clone. */
 export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: string };
@@ -218,15 +230,15 @@ export class Emitter {
   /** Each `$$html +=` line, by its index in `lines`, with its parts, for cloned templates. */
   readonly flushes: { line: number; parts: Part[] }[] = [];
   /**
-   * Where each line of `lines` is, for cloned templates: `top` in the body of the outer
-   * function, `control` in an `if`, a loop or another branch of it, and `nested` in a function
-   * inside it, such as the function of children. Plain `{` blocks do not count.
+   * Where each line of `lines` is, for cloned templates: in which function, the first being 0,
+   * and whether in a branch or a loop of it. Plain `{` blocks do not count.
    */
   readonly levels: Level[] = [];
   /** The lines that open or close a plain `{` block, which a clone can drop. */
   readonly plainBraces: Set<number> = new Set();
   /** The kinds of the `{` that are open: of a function, a branch or loop, or a plain block. */
-  private braces: ('fn' | 'control' | 'plain')[] = [];
+  private braces: { kind: 'fn' | 'control' | 'plain'; fn?: number }[] = [];
+  private fnCount = 0;
   /**
    * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
    * `$$m` in a call is the start comment of the block.
@@ -356,42 +368,42 @@ export class Emitter {
       if (trimmed === '{') {
         this.plainBraces.add(this.lines.length - 1);
       }
-      this.braces.push(
-        trimmed === '{'
-          ? 'plain'
-          : /=> \{$|^(?:export )?(?:default )?function\b/.test(trimmed)
-            ? 'fn'
-            : 'control',
-      );
+      if (trimmed === '{') {
+        this.braces.push({ kind: 'plain' });
+      } else if (/=> \{$|^(?:export )?(?:default )?function\b/.test(trimmed)) {
+        this.braces.push({ kind: 'fn', fn: this.fnCount++ });
+      } else {
+        this.braces.push({ kind: 'control' });
+      }
     }
   }
 
   close(code = '}'): void {
     this.flush();
     this.depth--;
-    if (this.braces.pop() === 'plain' && code === '}') {
+    if (this.braces.pop()?.kind === 'plain' && code === '}') {
       this.plainBraces.add(this.lines.length);
     }
     this.push(`${'  '.repeat(this.depth)}${code}`);
     if (code.endsWith('{')) {
       this.depth++;
-      this.braces.push('control');
+      this.braces.push({ kind: 'control' });
     }
+  }
+
+  /** The number of the function that the next line is in, or -1. */
+  get currentFn(): number {
+    return this.braces.findLast((brace) => brace.kind === 'fn')?.fn ?? -1;
   }
 
   /** Adds a line, with where it is. */
   private push(line: string): void {
     this.lines.push(line);
-    const kinds = this.braces.filter((kind) => kind !== 'plain');
-    this.levels.push(
-      kinds[0] !== 'fn'
-        ? 'outside'
-        : kinds.length === 1
-          ? 'top'
-          : kinds[1] === 'fn'
-            ? 'nested'
-            : 'control',
-    );
+    const at = this.braces.findLastIndex((brace) => brace.kind === 'fn');
+    this.levels.push({
+      fn: at === -1 ? -1 : this.braces[at]!.fn!,
+      control: this.braces.slice(at + 1).some((brace) => brace.kind === 'control'),
+    });
   }
 
   /** Copies source code, keeping the indentation of its lines relative to the first. */
@@ -1433,10 +1445,13 @@ export class Emitter {
     this.line(
       `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, () => {`,
     );
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
-    this.line('return $$html;');
+    // Children whose markup can clone give the clone, which the insert puts in place.
+    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+    this.line(cloned ? 'return $$f;' : 'return $$html;');
     this.close('});');
     return name;
   }
@@ -1784,7 +1799,8 @@ export class Emitter {
    * the call that fills the block after the clone. Returns false for a block that renders inline.
    */
   private emitFill(block: Block, scope: Scope): boolean {
-    const fill = this.options.fills?.(block);
+    // A block in the function of children renders there, which the calls of a clone do not fill.
+    const fill = this.currentFn === 0 ? this.options.fills?.(block) : undefined;
     const anchor = fill && this.anchor(scope, block);
     if (!fill || !anchor) {
       return false;

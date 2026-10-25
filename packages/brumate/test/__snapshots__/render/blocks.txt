@@ -181,10 +181,11 @@ export function r5($$p, $$item, $$index) {
   $$b.setItem($$s5, $$item);
   return $$f;
 }
+const $$k5 = $$b.template("<li>Empty</li>", 0);
 export function r6($$p) {
   let $$html = '';
-  $$html += "<li>Empty</li>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k5);
+  return $$f;
 }
 export function r11($$p) {
   let $$html = '';
@@ -194,14 +195,16 @@ export function r11($$p) {
 export function k11($$s) {
   $$b.fill($$s, 5, r11);
 }
+const $$k6 = $$b.template("Dynamic", 0);
 export function n0($$p) {
   let $$html = '';
-  $$html += "Dynamic";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k6);
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("Dynamic", 0);
 
 export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string | DocumentFragment {
   let $$html = '';
@@ -277,8 +280,8 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children11 = $$b.children($$s12, () => {
       let $$html = '';
-      $$html += "Dynamic";
-      return $$html;
+      const [$$f, $$e] = $$b.clone($$t0);
+      return $$f;
     });
     $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children11, undefined, $$s12);
   }

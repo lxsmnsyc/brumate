@@ -158,7 +158,8 @@ export function r3($$p, $$item, $$index) {
   $$b.setItem($$s3, $$item);
   return $$f;
 }
-const $$k5 = $$b.template("<section><!--x0--></section>", 1);
+const $$k5 = $$b.template("<em b-x=\"0\"></em>", 1);
+const $$k6 = $$b.template("<section><!--x0--></section>", 1);
 export function r4($$p) {
   let $$html = '';
   let counts = $$b.get($$p, 0);
@@ -166,18 +167,20 @@ export function r4($$p) {
   const $$s4 = $$b.createScope(4, $$p);
   const $$children0 = $$b.children($$s4, () => {
     let $$html = '';
-    $$html += "<em>" + $$b.insert((label)) + "</em>";
-    return $$html;
+    const [$$f, $$e] = $$b.clone($$k5);
+    $$b.setContent($$e[0], (label));
+    return $$f;
   });
-  const [$$f, $$e] = $$b.clone($$k5);
+  const [$$f, $$e] = $$b.clone($$k6);
   $$b.place($$e[0], $$b.componentNodes(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0));
   return $$f;
 }
 export function n0($$p) {
   let $$html = '';
   let label = $$b.get($$p.p, 2);
-  $$html += "<em>" + $$b.insert((label)) + "</em>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k5);
+  $$b.setContent($$e[0], (label));
+  return $$f;
 }
 
 # Render module

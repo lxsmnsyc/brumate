@@ -250,7 +250,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       }
       const mark = writes.length;
       writes.push([
-        { kind: 'text', scope: code, anchor: Number(textEnd[1]), value: textInsert[1]! },
+        {
+          kind: 'text',
+          scope: code,
+          anchor: Number(textEnd[1]),
+          value: textInsert[1]!,
+          at: textInsert[2],
+        },
       ]);
       // One comment, so the static text around it stays apart when the template is parsed. The
       // clone puts a text node in its place, which it keeps.
@@ -302,11 +308,11 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     return undefined;
   }
-  // Markers of blocks need the HTML of a render, and so does a body that writes nothing, which
-  // gains nothing from a clone. The loader starts each `<template>` of a block once, such as of
-  // a `$client` callback, so a clone of one would start nothing.
+  // Other comments, such as markers that a write does not name, need the HTML of a render. The
+  // loader starts each `<template>` of a block once, such as of a `$client` callback, so a clone
+  // of one would start nothing. Markup with no writes clones too, which is faster than a parse.
   const comments = reader.html.replace(/<!--x\d+-->|<!--\/b-->/g, '');
-  if (writes.length === 0 || comments.includes('<!--') || /<template\b/i.test(reader.html)) {
+  if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
   return { html: reader.html, writes };
@@ -320,10 +326,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
  * The lines between the first and the last `$$html +=` can only declare the values of the
  * writes, which run after them. Plain `{` blocks around them go, so the writes see them.
  */
-export function cloneLines(emitter: Emitter, hoist: (code: string) => string): boolean {
+export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn = 0): boolean {
   const { lines: source, levels } = emitter;
-  const tops = emitter.flushes.filter((flush) => levels[flush.line] === 'top');
-  if (tops.length === 0 || emitter.flushes.some((flush) => levels[flush.line] === 'control')) {
+  // Lines of the function, and lines in its branches and loops. Others are in functions inside.
+  const isTop = (at: number): boolean => levels[at]!.fn === fn && !levels[at]!.control;
+  const isControl = (at: number): boolean => levels[at]!.fn === fn && levels[at]!.control;
+  const tops = emitter.flushes.filter((flush) => isTop(flush.line));
+  if (tops.length === 0 || emitter.flushes.some((flush) => isControl(flush.line))) {
     return false;
   }
   const first = tops[0]!.line;
@@ -332,8 +341,8 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string): b
   const dropped = new Set<number>();
   const declared = new Set<string>();
   for (let at = 0; at < source.length; at++) {
-    if (flushLines.has(at) || levels[at] !== 'top') {
-      if (at > first && at < last && levels[at] !== 'nested' && !flushLines.has(at)) {
+    if (flushLines.has(at) || !isTop(at)) {
+      if (at > first && at < last && isControl(at)) {
         return false;
       }
       continue;
@@ -423,18 +432,31 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string): b
   // The clone and its writes go where the last `$$html +=` was, after the values they read.
   const result: string[] = [];
   const resultLevels: Level[] = [];
+  const moved = new Map<number, number>();
+  const level: Level = { fn, control: false };
   source.forEach((line, at) => {
     if (at === last) {
       result.push(...lines);
-      resultLevels.push(...lines.map((): Level => 'top'));
+      resultLevels.push(...lines.map(() => level));
     } else if (!flushLines.has(at) && !dropped.has(at)) {
+      moved.set(at, result.length);
       result.push(line);
       resultLevels.push(levels[at]!);
     }
   });
   result.push(...fills);
-  resultLevels.push(...fills.map((): Level => 'top'));
+  resultLevels.push(...fills.map(() => level));
   source.splice(0, source.length, ...result);
   levels.splice(0, levels.length, ...resultLevels);
+  // The lines of the other `$$html +=` and plain blocks, such as of a function inside, moved.
+  const others = emitter.flushes
+    .filter((flush) => !flushLines.has(flush.line))
+    .map((flush) => ({ ...flush, line: moved.get(flush.line)! }));
+  emitter.flushes.splice(0, emitter.flushes.length, ...others);
+  const braces = [...emitter.plainBraces].filter((at) => !dropped.has(at));
+  emitter.plainBraces.clear();
+  for (const at of braces) {
+    emitter.plainBraces.add(moved.get(at)!);
+  }
   return true;
 }

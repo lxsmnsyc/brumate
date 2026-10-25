@@ -145,8 +145,10 @@ it('renders HTML for markers, raw text, blocks of the loader, and other code', (
   ).toBeUndefined();
   // Code that is not one of the writes.
   expect(clonedTemplate([{ static: '<p>' }, { code: 'await Child($$props)' }])).toBeUndefined();
-  // Nothing to write.
-  expect(clonedTemplate([{ static: '<p>Hi</p>' }])).toBeUndefined();
+});
+
+it('clones markup with nothing to write', () => {
+  expect(clonedTemplate([{ static: '<p>Hi</p>' }])).toEqual({ html: '<p>Hi</p>', writes: [] });
 });
 
 // The browser adds a <tbody>, which happy-dom does not. The paths come from the parsed template
