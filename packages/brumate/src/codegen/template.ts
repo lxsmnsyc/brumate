@@ -16,6 +16,8 @@ export type Write =
   | { kind: 'block'; scope: string; anchor: number }
   /** A child component or a dynamic tag, which renders in the place of a marked comment. */
   | { kind: 'component'; call: string }
+  /** The attributes of spreads on the marked element, and then its `b-on`. */
+  | { kind: 'call'; call: string }
   /** The start comment of a block whose markup is in the template, which the scope keeps. */
   | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
@@ -31,6 +33,8 @@ export interface ClonedTemplate {
 }
 
 const ATTRIBUTE = /^\$\$b\.attribute\(("(?:[^"\\]|\\.)*"), ([\s\S]*)\)$/;
+// The spreads of an element, and its `b-on` with the handlers of the spreads.
+const SPREAD = /^\$\$b\.(spread|onAttribute)\(([\s\S]*)\)$/;
 // `$$b.insert(value)`, or `$$b.insert(value, undefined, scope)`, whose value can be children or
 // a template, which render where they are inserted with the contexts of the scope.
 const INSERT = /^\$\$b\.insert\(([\s\S]*?)(?:, undefined, ([\w$.]+))?\)$/;
@@ -207,6 +211,12 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     const attribute = ATTRIBUTE.exec(code);
     if (attribute && reader.inTag) {
       add({ kind: 'attribute', name: attribute[1]!, value: attribute[2]! });
+      continue;
+    }
+    const spread = SPREAD.exec(code);
+    if (spread && reader.inTag) {
+      const helper = spread[1] === 'spread' ? 'setSpread' : 'setOn';
+      add({ kind: 'call', call: `$$b.${helper}($$m, ${spread[2]})` });
       continue;
     }
     const insert = INSERT.exec(code);
@@ -408,6 +418,8 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
         lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
       } else if (write.kind === 'component') {
         lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
+      } else if (write.kind === 'call') {
+        lines.push(`${indent}${write.call.replace('$$m', () => `$$e[${index}]`)};`);
       } else if (write.kind === 'marker') {
         lines.push(
           `${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, ${JSON.stringify(write.suffix)});`,

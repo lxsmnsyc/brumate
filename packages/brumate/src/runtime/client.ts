@@ -3509,8 +3509,13 @@ export function keep(scope: ScopeId, anchor: number, element: Element): void {
   }
   if (element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
+  } else {
+    keptAs.set(element, `${scope}:${anchor}`);
   }
 }
+
+/** The `b-b` of kept elements without it, for a `b-on` that a spread gives later. */
+const keptAs = new WeakMap<Element, string>();
 
 /**
  * Puts the value of a text insert of cloned markup in the place of its comment. A text value is
@@ -3658,6 +3663,38 @@ export function setAttr(element: Element, name: string, value: unknown): void {
   const written = attributeText(name, value);
   if (written !== undefined) {
     element.setAttribute(name, written);
+  }
+}
+
+/** Writes the spreads of an element of cloned markup, as `spread` writes them in HTML. */
+export function setSpread(
+  element: Element,
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): void {
+  const text = spread(attributes, on, names);
+  if (text) {
+    // As HTML, so they are written as they are in HTML.
+    const parsed = parseHTML(`<b${text}>`).firstChild as Element;
+    for (const attribute of Array.from(parsed.attributes)) {
+      element.setAttribute(attribute.name, attribute.value);
+    }
+  }
+}
+
+/** Writes the `b-on` of an element of cloned markup with spreads, as `onAttribute` does. */
+export function setOn(element: Element, on: string[], own: string): void {
+  const value = onValue(on, own);
+  if (value) {
+    element.setAttribute('b-on', value);
+    // A handler finds its scope from the `b-b` of its element.
+    const bound = keptAs.get(element);
+    if (bound && !element.hasAttribute('b-b')) {
+      element.setAttribute('b-b', bound);
+    }
+    // The loader listens to the events of the handlers of the spreads.
+    options.listen(element);
   }
 }
 
