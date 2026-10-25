@@ -1,0 +1,19 @@
+<script>
+  import Tree from '../../src/Tree.brm';
+  import TreeItem from '../../src/TreeItem.brm';
+  import Virtualizer from '../../src/Virtualizer.brm';
+
+  interface File {
+    id: string;
+    name: string;
+  }
+  const files: File[] = Array.from({ length: 200 }, (_, index) => ({ id: `f${index}`, name: `File ${index}` }));
+</script>
+
+<Virtualizer class="box" rowHeight=(24) style="height: 120px">
+  <Tree class="tree" aria-label="Files" items=files item=file />
+</Virtualizer>
+
+#template file(file: File) {
+  <TreeItem class=(`row row-${file.id}`)>{file.name}</TreeItem>
+}

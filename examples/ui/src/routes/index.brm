@@ -48,6 +48,7 @@
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import Tree from '@brumate/ui/Tree.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
   import NavigationTree from '@brumate/ui/NavigationTree.brm';
   import Token from '@brumate/ui/Token.brm';
   import TokenField from '@brumate/ui/TokenField.brm';
@@ -158,6 +159,8 @@
     ],
   });
   let openFolders = $signal<Key[]>([]);
+  // A long list of files, which renders only the rows in view.
+  const manyFiles = Array.from({ length: 1000 }, (_, index) => ({ id: `many-${index}`, name: `File ${index}` }));
   let note = $signal<TokenSegment[]>([{ type: 'text', text: 'Hi ' }]);
   // A tree of links to the sections of this page.
   interface Section extends NavigationNode {
@@ -604,6 +607,13 @@
   <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
 </section>
 
+<section aria-labelledby="virtualizer">
+  <h2 id="virtualizer">Virtualizer</h2>
+  <Virtualizer class="many-box" rowHeight=(24) style="height: 120px">
+    <Tree class="many-tree" aria-label="Many files" items=manyFiles item=manyRow />
+  </Virtualizer>
+</section>
+
 <section aria-labelledby="token-field">
   <h2 id="token-field">TokenField</h2>
   <TokenField class="note-field" pattern="[#@]\S+" value=$bind(note)>
@@ -776,6 +786,10 @@
 </section>
 
 <ToastRegion class="toasts" toast=notice transition />
+
+#template manyRow(file: { id: string; name: string }) {
+  <TreeItem class=(`many-row many-${file.id}`) style="height: 24px">{file.name}</TreeItem>
+}
 
 #template noteToken(segment: TokenSegment) {
   <Token class="note-token" style="background: #ddd; padding: 0 0.3rem">{segment.text}</Token>

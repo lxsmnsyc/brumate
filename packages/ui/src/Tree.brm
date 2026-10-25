@@ -23,6 +23,7 @@
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { TreeContext, visibleRows } from './tree.ts';
+  import { VirtualizerContext } from './virtualizer.ts';
   import type { TreeNode } from './tree.ts';
   import TreeRow from './TreeRow.brm';
 
@@ -51,6 +52,7 @@
     disallowEmptySelection = false,
     escapeKeyBehavior = 'clearSelection',
     keyboardNavigationBehavior = 'arrow',
+    rowHeight,
     onAction,
     onSelectionChange,
     onExpandedChange,
@@ -68,6 +70,11 @@
      * them the focus, as a NavigationTree does. The arrow keys still move between rows.
      */
     keyboardNavigationBehavior?: 'arrow' | 'tab';
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the Tree gives it too.
+     */
+    rowHeight?: number;
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
     onExpandedChange?: (keys: Key[]) => void;
@@ -105,6 +112,8 @@
   }
 
   const locale = $getContext(LocaleContext);
+  const virtualizer = $getContext(VirtualizerContext);
+  const windowHeight = $memo(rowHeight ?? virtualizer?.rowHeight);
   const hasAction = $isPassed(onAction);
   const gridId = $id();
   let root = $signal<HTMLElement>();
@@ -360,7 +369,13 @@
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
   {...rest}
 >
-  #for (row of rows by row.key) {
-    <TreeRow {row} {item} />
+  #if (windowHeight) {
+    #for (row of rows by row.key) window(windowHeight) {
+      <TreeRow {row} {item} />
+    }
+  } #else {
+    #for (row of rows by row.key) {
+      <TreeRow {row} {item} />
+    }
   }
 </div>

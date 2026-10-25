@@ -1,0 +1,29 @@
+<script>
+  import { $props, $setContext } from 'brumate/signals';
+  import { VirtualizerContext } from './virtualizer.ts';
+
+  /**
+   * A box that scrolls a long collection and renders only the rows in view, as Virtualizer of
+   * React Aria Components with a ListLayout. Give it a height.
+   *
+   * - A Tree in it takes `rowHeight`, the height of a row in pixels, and renders only the rows in
+   *   view.
+   * - The rows of a GridList, a ListBox or a Table come from a `#for` of the caller, which takes
+   *   `window(rowHeight)` for the same. See the windowed lists of `#for`.
+   */
+  const { rowHeight = 32, children, ...rest } = $props<{
+    rowHeight?: number;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  $setContext(VirtualizerContext, { rowHeight });
+</script>
+
+<div data-virtualizer {...rest}>{children}</div>
+
+<style>
+  div {
+    overflow: auto;
+  }
+</style>

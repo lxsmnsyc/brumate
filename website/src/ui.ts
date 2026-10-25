@@ -65,7 +65,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'selection-indicator',
     ],
   },
-  { title: 'Data', pages: ['table', 'tree', 'navigation-tree', 'data'] },
+  { title: 'Data', pages: ['table', 'tree', 'navigation-tree', 'virtualizer', 'data'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -313,6 +313,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Text with mentions and tags that the user types.',
     href: 'token-field',
     demo: 'TokenFieldDemo',
+  },
+  {
+    title: 'Virtualizer',
+    summary: 'Thousands of rows that render as they come into view.',
+    href: 'virtualizer',
+    demo: 'VirtualizerDemo',
   },
   {
     title: 'List and tree data',

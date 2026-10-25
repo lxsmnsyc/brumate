@@ -857,6 +857,15 @@
     background: var(--accent-soft);
   }
 
+  :global(.ui-virtualizer) {
+    height: 16rem;
+    width: min(22rem, 100%);
+  }
+
+  :global(.ui-virtualizer .ui-tree) {
+    width: 100%;
+  }
+
   :global(.ui-navlink) {
     color: inherit;
     text-decoration: none;
