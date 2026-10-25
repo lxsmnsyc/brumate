@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, keyOf, movementOf, moveFrom } from './collection.ts';
   import { LocaleContext } from './locale.ts';
@@ -11,6 +11,8 @@
    *
    * - Tab stops at the selected tab once. The arrow keys move to the next and the previous tab,
    *   and go round. Right to left, Left and Right turn around. Home and End go to the ends.
+   * - Horizontal tabs use Left and Right, and leave Up and Down to the page. Vertical tabs use all
+   *   four.
    * - With automatic activation, the tab that the keys move to is selected.
    */
   const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
@@ -21,7 +23,10 @@
 
   function keyDown(event: KeyboardEvent) {
     const list = event.currentTarget as HTMLElement;
-    const movement = movementOf(event.key, orientation, locale.direction);
+    // Vertical tabs move with Left and Right too, as in React Aria.
+    const movement =
+      movementOf(event.key, orientation, locale.direction) ??
+      (orientation === 'vertical' ? movementOf(event.key, 'horizontal', locale.direction) : undefined);
     if (!movement || movement === 'pageDown' || movement === 'pageUp') {
       return;
     }
@@ -34,6 +39,18 @@
       tabs?.select(key);
     }
   }
+
+  // Only the arrow keys of its axis are prevented, so the others keep their default, such as
+  // scrolling the page.
+  function keys(vertical: boolean) {
+    return vertical
+      ? {
+          onKeyDown: $handler(
+            prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'),
+          ),
+        }
+      : { onKeyDown: $handler(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'Home', 'End')) };
+  }
 </script>
 
 <div
@@ -41,6 +58,6 @@
   data-collection
   aria-orientation=(orientation === 'vertical' ? 'vertical' : undefined)
   data-orientation=orientation
-  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'))
+  {...keys(orientation === 'vertical')}
   {...rest}
 >{children}</div>
