@@ -193,8 +193,8 @@ function moved(record: string): string {
 }
 
 /** Presses a key on the list of the page, and returns the event. */
-function press(key: string): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+function press(key: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
   document.querySelector('.list')!.dispatchEvent(event);
   return event;
 }
@@ -621,6 +621,8 @@ describe('resume', () => {
     expect(press('ArrowDown').defaultPrevented).toBe(true);
     expect(press(' ').defaultPrevented).toBe(true);
     expect(press('Tab').defaultPrevented).toBe(false);
+    // A key of an input method that composes text keeps its default.
+    expect(press('ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
     expect(press('a').defaultPrevented).toBe(false);
     // The handler still runs for every key.
     await waitFor(() => expect(text('.last')).toBe('a'));
