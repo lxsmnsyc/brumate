@@ -25,6 +25,8 @@
 <Text class="description" slot="description">Your full name</Text>
 <Group class="group" aria-label="Amount"><input class="amount"><button type="button" class="more">+</button></Group>
 <Group class="disabled-group" isDisabled=(true) isInvalid=(true)>Off</Group>
+<Group class="aria-group" aria-disabled="true" onHoverStart=((event) => log(event))>Aria</Group>
+<Group class="hover-group" onHoverStart=((event) => log(event))>Hover</Group>
 <Link class="to" href="#top" onPress=((event) => log(event))>Top</Link>
 <Link class="current" href="#here" isCurrent=(true)>Here</Link>
 <Link class="off" href="#off" isDisabled=(true)>Off</Link>

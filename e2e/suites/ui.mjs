@@ -156,6 +156,12 @@ export async function run({ browser, url, runner }) {
       assert(described?.includes(errorId), `aria-describedby is ${described}`);
       await name.fill('Ada');
       await page.waitForFunction(() => !document.querySelector('.name-field .error'));
+      // A reset gives the field its first value, and the browser checks it again.
+      await page.locator('.signup button[type=reset]').click();
+      await page.waitForTimeout(100);
+      assert((await name.inputValue()) === '', `the field holds ${await name.inputValue()}`);
+      await page.locator('.signup button[type=submit]').click();
+      await page.waitForFunction(() => document.querySelector('.name-field .error')?.textContent);
     },
   );
 
@@ -198,15 +204,21 @@ export async function run({ browser, url, runner }) {
     'Checkbox, RadioGroup and Switch: Space, the arrow keys and a required group',
     async () => {
       await page.goto(`${url}/`);
+      // The boxes are required once the code of the group runs.
+      await page.waitForFunction(() => document.querySelector('.toppings input')?.required);
       await page.locator('.pizza button[type=submit]').click();
       await page.waitForFunction(() => document.querySelector('.toppings .error')?.textContent);
-      const cheese = page.locator('.toppings input').first();
-      await cheese.focus();
+      // The first invalid box of the form gets focus, as the browser does with its own message.
+      await page.waitForFunction(
+        () => document.activeElement === document.querySelector('.toppings input'),
+      );
       await page.keyboard.press('Space');
       await page.waitForFunction(() =>
         document.querySelector('.pizza-value')?.textContent?.startsWith('cheese'),
       );
       await page.waitForFunction(() => !document.querySelector('.toppings .error'));
+      // The group keeps the state of every box, so the others are valid again too.
+      await page.waitForFunction(() => !document.querySelector('.toppings [aria-invalid]'));
       assert(
         await page
           .locator('.toppings .box')
@@ -257,20 +269,13 @@ export async function run({ browser, url, runner }) {
   });
 
   await step(
-    'Accessibility fixes: a disabled link in the order of Tab, read-only boxes, descriptions',
+    'Accessibility fixes: a disabled link out of the order of Tab, read-only boxes, descriptions',
     async () => {
       await page.goto(`${url}/`);
       const off = page.locator('.link', { hasText: 'a disabled link' });
       assert(
-        (await off.getAttribute('tabindex')) === '0',
-        'the disabled link is out of the order of Tab',
-      );
-      await off.focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(100);
-      assert(
-        await off.evaluate((element) => element === document.activeElement),
-        'Enter on the disabled link moved away',
+        (await off.getAttribute('tabindex')) === null,
+        'the disabled link is in the order of Tab',
       );
       // A read-only radio keeps its choice on a click and on the arrow keys.
       const thin = page.locator('.crust input').first();
