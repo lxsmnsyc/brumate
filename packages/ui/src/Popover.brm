@@ -16,11 +16,13 @@
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import {
+    blurOutside,
     containTab,
     focusInto,
     hold,
     inertOutside,
     keepFocus,
+    lockScroll,
     pressOutside,
     release,
   } from './overlay.ts';
@@ -98,6 +100,10 @@
 
   function close() {
     if (own) {
+      // A press outside during the leave closes nothing again.
+      if (!isOpen) {
+        return;
+      }
       isOpen = false;
       onOpenChange?.(false);
     } else {
@@ -111,7 +117,8 @@
     await nextFrame();
     const element = panel;
     const holder = layer;
-    if (token !== run || !element || !holder) {
+    // The popover can leave the page within the frame, such as on a route change.
+    if (token !== run || !element?.isConnected || !holder) {
       return;
     }
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
@@ -135,11 +142,17 @@
         ),
       );
     }
-    // A preview is never modal.
+    // A preview is never modal. A modal popover makes the page inert and locks its scroll, and
+    // closes on a press outside, as usePopover of React Aria. One that is not modal closes when
+    // focus leaves it.
     if (!isNonModal && !trigger?.isPreview) {
-      stops.push(inertOutside(holder), keepFocus(holder, element));
+      stops.push(inertOutside(holder), keepFocus(holder, element), lockScroll());
     }
-    stops.push(pressOutside(holder, anchor, close));
+    if (isNonModal) {
+      stops.push(blurOutside(holder, anchor, close));
+    } else {
+      stops.push(pressOutside(holder, anchor, close));
+    }
     if (transition && !(await enterSteps(element, stepClasses(), { current: () => token === run }))) {
       return;
     }

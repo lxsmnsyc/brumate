@@ -131,10 +131,11 @@ export function computePosition(
     }
     top = clamp(top + options.crossOffset, pad, viewport.height - pad - overlay.height);
   }
-  // The arrow points at the middle of the trigger, from the edge of the overlay.
+  // The arrow points at the middle of the trigger, from the edge of the overlay. It stays on the
+  // overlay, as in React Aria, when the overlay is pushed away from the edge of the viewport.
   const arrow = vertical
-    ? trigger.left + trigger.width / 2 - left
-    : trigger.top + trigger.height / 2 - top;
+    ? clamp(trigger.left + trigger.width / 2 - left, 0, overlay.width)
+    : clamp(trigger.top + trigger.height / 2 - top, 0, overlay.height);
   const maxHeight = vertical ? Math.max(0, room[side]) : viewport.height - pad * 2;
   return { top, left, side, arrow, maxHeight };
 }

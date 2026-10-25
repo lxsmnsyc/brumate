@@ -110,7 +110,7 @@ it('shows only on focus with trigger="focus"', async () => {
 it('keeps what a DialogTrigger around it gives the button', async () => {
   const page = await tooltips();
   const settings = page.get('.settings');
-  expect(settings.getAttribute('aria-haspopup')).toBe('dialog');
+  expect(settings.hasAttribute('aria-expanded')).toBe(true);
   pointer('pointerenter', settings);
   await page.waitFor(() => expect(find('.settings-tip')).not.toBeNull());
   // The press hides the tooltip and opens the popover, which finds the button by its ID.

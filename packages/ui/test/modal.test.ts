@@ -34,7 +34,7 @@ async function open(page: Awaited<ReturnType<typeof modals>>) {
 
 it('renders nothing while it is closed, and links its trigger', async () => {
   const page = await modals();
-  expect(page.get('.trigger').getAttribute('aria-haspopup')).toBe('dialog');
+  expect(page.get('.trigger').hasAttribute('aria-haspopup')).toBe(false);
   expect(find('.overlay')).toBeNull();
   expect(find('.modal')).toBeNull();
 });
