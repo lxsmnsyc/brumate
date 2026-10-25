@@ -101,6 +101,30 @@ it('closes a toast after its timeout, at least 5 seconds, and stops the time whi
   }
 });
 
+it('counts down again once the last toast closes while the toasts were paused', () => {
+  vi.useFakeTimers();
+  try {
+    const queue = new ToastQueue<string>('emptied');
+    const closed: string[] = [];
+    const key = queue.add('looked at');
+    // The pointer is over the region, and the user closes its only toast. The region leaves the
+    // page, so no pointerleave resumes the timeouts.
+    queue.pauseAll();
+    queue.close(key);
+    queue.add('next', { timeout: 5000, onClose: () => closed.push('next') });
+    vi.advanceTimersByTime(5000);
+    expect(closed).toEqual(['next']);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('takes the limit of the call that names one, also when the queue is there', () => {
+  const first = toastQueue('limited');
+  expect(first.maxVisibleToasts).toBe(5);
+  expect(toastQueue('limited', 2).maxVisibleToasts).toBe(2);
+});
+
 it('shows at most maxVisibleToasts, and counts down only those', () => {
   vi.useFakeTimers();
   try {

@@ -27,6 +27,16 @@
       </Dialog>
     </Popover>
   </DialogTrigger>
+  <DialogTrigger>
+    <Button class="loose-trigger">Loose</Button>
+    <Popover class="loose-popover" isNonModal>
+      <Dialog class="loose-dialog" aria-label="Loose">
+        <Heading slot="title">Ignored</Heading>
+        <Button class="loose-button">Inside</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <button class="elsewhere" type="button">Elsewhere</button>
   <button class="outside" type="button">Outside</button>
   <DialogTrigger isOpen=$bind(open)>
     <Button class="trigger">Settings</Button>
