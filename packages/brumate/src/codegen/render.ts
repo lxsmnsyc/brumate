@@ -273,7 +273,7 @@ export function generateRender(
     emitter.emitComponentContent(setup);
     emitter.flush();
     const cloned = cloneLines(emitter, hoist);
-    emitter.line(cloned ? 'return $$f;' : 'return $$html;');
+    emitter.line(emitter.returnLine(0, cloned));
     emitter.close();
     return { emitter, cloned };
   };

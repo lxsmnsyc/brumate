@@ -2,6 +2,7 @@ import { trustedHTML } from './trusted.ts';
 import {
   HAS_BINDINGS,
   HAS_CHILDREN,
+  HAS_CLIENT_HTML,
   HAS_LATE_MARKUP,
   HAS_TEMPLATES,
   HAS_TITLES,
@@ -1999,7 +2000,9 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
       indexAdded(markerObserver.takeRecords());
     }
     // The inserts of the core are read when an update first needs one of their elements.
-    indexInserts();
+    if (HAS_CLIENT_HTML) {
+      indexInserts();
+    }
     element = elements.get(key);
     // An insert whose first node left the page, such as the first row of a list that was
     // removed, has elements that the walk did not reach.
@@ -2078,7 +2081,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
   const markup = clonedMarkup;
   if (!cloned || markup) {
     // The elements of HTML in a clone are read now, since the clone is not indexed later.
-    indexMarkers(fragment, ids, fromServer || cloned);
+    indexMarkers(fragment, ids, fromServer || cloned || !HAS_CLIENT_HTML);
     clonedMarkup = false;
   }
   // A clone's handlers were read from its template, unless it holds markup that it rendered.
@@ -2093,7 +2096,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
       server.push(scope);
     }
   }
-  if (!cloned && !fromServer && fragment.firstChild) {
+  if (HAS_CLIENT_HTML && !cloned && !fromServer && fragment.firstChild) {
     unindexed.push([fragment.firstChild, fragment.lastChild!]);
     // Many inserts that no update read are indexed at once, so they do not hold their nodes.
     if (unindexed.length > 256) {
@@ -3259,7 +3262,9 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
   return (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
-    ? holdPlace(value.render(resolveScope(scope)))
+    ? HAS_CLIENT_HTML
+      ? holdPlace(value.render(resolveScope(scope)))
+      : (value.render(resolveScope(scope)) as string)
     : insertValue(value);
 }
 
@@ -3610,6 +3615,18 @@ function fillRange(place: Comment, html: string, nodes: DocumentFragment | undef
   }
 }
 
+/**
+ * Names a comment of cloned markup that names a scope, such as the start of an item. The start
+ * of a portal, which its scope looks for when it goes, is indexed.
+ */
+export function nameComment(place: Comment, data: string): void {
+  place.data = data;
+  if (data[0] === 'P') {
+    comments.set(data, place);
+    portals++;
+  }
+}
+
 /** Names the start marker of a block whose markup is in the clone, and keeps it on its scope. */
 export function markBlock(place: Comment, scope: ScopeId, anchor: number, suffix: string): void {
   keepBlock(place, scope, `b${scope}:${anchor}${suffix}`, anchor);
@@ -3823,7 +3840,7 @@ function parseHTML(html: string): DocumentFragment {
   const template = document.createElement('template');
   template.innerHTML = trustedHTML(html);
   const fragment = template.content;
-  if (placed.size > 0 && html.includes('<!--f')) {
+  if (HAS_CLIENT_HTML && placed.size > 0 && html.includes('<!--f')) {
     const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
     const places: Comment[] = [];
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -4125,12 +4142,12 @@ export function deferInBrowser(id: string): void {
 }
 
 /** Adds the markup of a `#head` block to the document's head. */
-export function addHead(html: string): void {
+export function addHead(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.head }, html));
 }
 
 /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
-export function addPortal(html: string): void {
+export function addPortal(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.body }, html));
 }
 

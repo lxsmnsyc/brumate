@@ -1278,7 +1278,7 @@ class ClientGenerator {
     if (fill && !cloned) {
       return undefined;
     }
-    emitter.line(cloned ? 'return $$f;' : 'return $$html;');
+    emitter.line(emitter.returnLine(0, cloned));
     emitter.close();
     return emitter.lines.join('\n');
   }
@@ -1415,7 +1415,7 @@ class ClientGenerator {
       emitter.emitChildrenBody(node, scope);
       emitter.flush();
       const cloned = cloneLines(emitter, (code) => this.hoist(code));
-      emitter.line(cloned ? 'return $$f;' : 'return $$html;');
+      emitter.line(emitter.returnLine(0, cloned));
       emitter.close();
       this.emit(emitter.lines.join('\n'));
     }

@@ -62,16 +62,19 @@ const $$k1 = [2, 3];
 export function b2($$s) {
   $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = $$b.template("<!--x0--><dialog class=\"modal\" open>Hello<button b-x=\"1\" class=\"close\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->", 2);
 export function r2($$p) {
   let $$html = '';
   const $$portal0 = (() => {
     let $$html = '';
     const $$s3 = $$b.createScope(3, $$p);
-    $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
-    return $$html;
+    const [$$f, $$e] = $$b.clone($$k2);
+    $$b.nameComment($$e[0], "P" + $$s3);
+    $$b.keep($$s3, 0, $$e[1]);
+    return $$f;
   })();
   $$b.addPortal($$portal0);
-  return $$html;
+  return '';
 }
 export function r5($$p) {
   let $$html = '';
@@ -85,6 +88,8 @@ export function k5($$s) {
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("<!--x0--><dialog class=\"modal\" open>Hello<button b-x=\"1\" class=\"close\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->", 2);
+const $$t1 = $$b.template("<!--x0--><p class=\"note\">Always here</p><!--/P-->", 1);
 
 export default function Portal($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -96,18 +101,21 @@ export default function Portal($$props: Record<string, never>): string | Documen
     const $$portal1 = (() => {
       let $$html = '';
       const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<!--P" + $$s3 + "--><dialog class=\"modal\" open>Hello<button class=\"close\" b-b=\"" + $$s3 + ":0\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->";
-      return $$html;
+      const [$$f, $$e] = $$b.clone($$t0);
+      $$b.nameComment($$e[0], "P" + $$s3);
+      $$b.keep($$s3, 0, $$e[1]);
+      return $$f;
     })();
     $$b.addPortal($$portal1);
-    return $$html;
+    return '';
   };
   $$html += $$b.nodes($$b.branchNodes($$s1, 1, (open) ? 0 : -1, [$$body0]));
   const $$portal2 = (() => {
     let $$html = '';
     const $$s4 = $$b.createScope(4, $$s1);
-    $$html += "<!--P" + $$s4 + "--><p class=\"note\">Always here</p><!--/P-->";
-    return $$html;
+    const [$$f, $$e] = $$b.clone($$t1);
+    $$b.nameComment($$e[0], "P" + $$s4);
+    return $$f;
   })();
   $$b.addPortal($$portal2);
   $$html += "</div><section id=\"target\"></section><template b-b=\"" + $$s1 + ":2\" b-client=\"load=Portal_17ywlhi#k5\"></template>";

@@ -184,7 +184,7 @@ export function r4($$p, $$item, $$index) {
   $$b.setSlots($$s4, [row]);
   $$b.setItem($$s4, $$item);
   const [$$f, $$e] = $$b.clone($$k6);
-  $$e[0].data = "i" + $$s4;
+  $$b.nameComment($$e[0], "i" + $$s4);
   $$b.keep($$s4, 0, $$e[1]);
   $$b.setContent($$e[1], (row.id), $$s4);
   $$b.keep($$s4, 1, $$e[2]);

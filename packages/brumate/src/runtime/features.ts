@@ -11,6 +11,7 @@ declare const __BRUMATE_HAS_LATE_MARKUP__: boolean | undefined;
 declare const __BRUMATE_HAS_BLOCKS__: boolean | undefined;
 declare const __BRUMATE_HAS_LISTENERS__: boolean | undefined;
 declare const __BRUMATE_HAS_ACTIONS__: boolean | undefined;
+declare const __BRUMATE_HAS_CLIENT_HTML__: boolean | undefined;
 
 /** Children that the browser renders with an export of their own, each time they are inserted. */
 export const HAS_CHILDREN: boolean =
@@ -47,3 +48,10 @@ export const HAS_LISTENERS: boolean =
 /** Forms of an `$action`, which send their data with `fetch`. */
 export const HAS_ACTIONS: boolean =
   typeof __BRUMATE_HAS_ACTIONS__ === 'undefined' || __BRUMATE_HAS_ACTIONS__;
+
+/**
+ * Markup that the browser renders as HTML, not as a clone of a template. Without it, the core
+ * indexes each insert at once, and HTML holds no places for clones.
+ */
+export const HAS_CLIENT_HTML: boolean =
+  typeof __BRUMATE_HAS_CLIENT_HTML__ === 'undefined' || __BRUMATE_HAS_CLIENT_HTML__;

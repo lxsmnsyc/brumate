@@ -340,7 +340,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       continue;
     }
     // A comment that names a scope, such as `<!--i`, the scope, `-->`.
-    const named = /<!--([a-z])$/.exec(reader.html);
+    const named = /<!--([a-zA-Z])$/.exec(reader.html);
     if (SCOPE.test(code) && named && nextStatic?.startsWith('-->')) {
       reader.takeBack(named[0], 'text');
       const mark = writes.length;
@@ -412,7 +412,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   // Other comments, such as markers that a write does not name, need the HTML of a render. The
   // loader starts each `<template>` of a block once, such as of a `$client` callback, so a clone
   // of one would start nothing. Markup with no writes clones too, which is faster than a parse.
-  const comments = reader.html.replace(/<!--x\d+-->|<!--\/[bi]-->/g, '');
+  const comments = reader.html.replace(/<!--x\d+-->|<!--\/[biP]-->/g, '');
   if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
@@ -512,7 +512,7 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       } else if (write.kind === 'component') {
         lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
       } else if (write.kind === 'comment') {
-        lines.push(`${indent}$$e[${index}].data = ${write.data};`);
+        lines.push(`${indent}$$b.nameComment($$e[${index}], ${write.data});`);
       } else if (write.kind === 'put') {
         lines.push(
           `${indent}$$b.putText($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,

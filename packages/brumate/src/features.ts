@@ -20,6 +20,8 @@ export interface Features {
   listeners: boolean;
   /** Forms of an `$action`. */
   actions: boolean;
+  /** Markup that the browser renders as HTML, not as a clone of a template. */
+  clientHTML: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -33,6 +35,7 @@ export function noFeatures(): Features {
     blocks: false,
     listeners: false,
     actions: false,
+    clientHTML: false,
   };
 }
 
@@ -59,6 +62,8 @@ export function featuresOf(result: CompileResult): Features {
     blocks: /\bb-(?:client|defer)\b/.test(result.server),
     listeners: /\bb-listen\b/.test(result.server),
     actions: /\$\$b\.action\(/.test(result.server),
+    // A render function that gives HTML. One with no markup gives an empty string.
+    clientHTML: /\breturn \$\$html;/.test(client),
   };
 }
 
@@ -74,6 +79,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.blocks ||= features.blocks;
     joined.listeners ||= features.listeners;
     joined.actions ||= features.actions;
+    joined.clientHTML ||= features.clientHTML;
   }
   return joined;
 }
@@ -88,6 +94,7 @@ const GLOBALS: Record<keyof Features, string> = {
   blocks: '__BRUMATE_HAS_BLOCKS__',
   listeners: '__BRUMATE_HAS_LISTENERS__',
   actions: '__BRUMATE_HAS_ACTIONS__',
+  clientHTML: '__BRUMATE_HAS_CLIENT_HTML__',
 };
 
 /** True for code that reads a feature, such as the core. */

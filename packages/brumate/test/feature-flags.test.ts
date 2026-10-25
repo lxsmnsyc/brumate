@@ -6,7 +6,7 @@ import { featuresOf, joinFeatures, noFeatures, writeFeatures } from '../src/feat
 
 const use = (source: string) => featuresOf(compile(source, { filename: 'App.brm' }));
 
-it('finds the children that the browser renders, the templates that it calls, and titles', () => {
+it('finds the children that the browser renders, the templates that it calls, titles and HTML', () => {
   const plain = use(`<script>
   import { $signal } from 'brumate/signals';
   let count = $signal(0);
@@ -34,6 +34,23 @@ it('finds the children that the browser renders, the templates that it calls, an
 <button onClick=(() => count++)>{count}</button>
 `);
   expect(templated.templates).toBe(true);
+  // A `#head` block and a template clone in the browser. A `#try` renders HTML.
+  expect(titled.clientHTML).toBe(false);
+  expect(templated.clientHTML).toBe(false);
+  const tried = use(`<script>
+  import { $signal } from 'brumate/signals';
+  let open = $signal(false);
+</script>
+<button onClick=(() => (open = !open))>Open</button>
+#if (open) {
+  #try {
+    <p>{String(open)}</p>
+  } #catch (error) {
+    <p>Failed</p>
+  }
+}
+`);
+  expect(tried.clientHTML).toBe(true);
   expect(joinFeatures([plain, titled, templated])).toEqual({
     ...noFeatures(),
     templates: true,

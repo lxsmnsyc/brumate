@@ -225,6 +225,7 @@ export function e33($$s) {
         });
 }
 const $$k4 = $$b.template("<p b-x=\"0\" s-1oupne3 class=\"late\">Late </p>", 1);
+const $$k5 = $$b.template("<!--x0--><aside b-x=\"1\" s-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
 export function r2($$p) {
   let $$html = '';
   let inner = $$b.get($$p, 2);
@@ -252,8 +253,10 @@ export function r2($$p) {
   const $$portal1 = (() => {
     let $$html = '';
     const $$s5 = $$b.createScope(5, $$s2);
-    $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + $$b.insert((count)) + "<!--/t--></aside><!--/P-->";
-    return $$html;
+    const [$$f, $$e] = $$b.clone($$k5);
+    $$b.nameComment($$e[0], "P" + $$s5);
+    $$b.appendText($$s5, 0, $$e[1], (count));
+    return $$f;
   })();
   $$b.addPortal($$portal1);
   $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);
@@ -314,6 +317,7 @@ import * as $$b from 'brumate/client';
 import OffscreenChild from "./OffscreenChild.brm?brumate-render";
 const $$css = ".flex[s-1oupne3] {\n    display: flex;\n  }";
 const $$t0 = $$b.template("<p b-x=\"0\" s-1oupne3 class=\"late\">Late </p>", 1);
+const $$t1 = $$b.template("<!--x0--><aside b-x=\"1\" s-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
 
 export default function Offscreen($$props: Record<string, any>): string | DocumentFragment {
   let $$html = '';
@@ -353,8 +357,10 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
     const $$portal1 = (() => {
       let $$html = '';
       const $$s5 = $$b.createScope(5, $$s2);
-      $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + $$b.insert((count)) + "<!--/t--></aside><!--/P-->";
-      return $$html;
+      const [$$f, $$e] = $$b.clone($$t1);
+      $$b.nameComment($$e[0], "P" + $$s5);
+      $$b.appendText($$s5, 0, $$e[1], (count));
+      return $$f;
     })();
     $$b.addPortal($$portal1);
     $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);

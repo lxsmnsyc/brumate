@@ -391,6 +391,18 @@ export class Emitter {
     }
   }
 
+  /**
+   * The return of a render function of the browser: its clone, its HTML, or an empty string
+   * for a function with no markup, which is not HTML that the core must parse.
+   */
+  returnLine(fn: number, cloned: boolean): string {
+    if (cloned) {
+      return 'return $$f;';
+    }
+    const markup = this.flushes.some((flush) => this.levels[flush.line]!.fn === fn);
+    return markup ? 'return $$html;' : "return '';";
+  }
+
   /** The number of the function that the next line is in, or -1. */
   get currentFn(): number {
     return this.braces.findLast((brace) => brace.kind === 'fn')?.fn ?? -1;
@@ -1451,7 +1463,7 @@ export class Emitter {
     this.flush();
     // Children whose markup can clone give the clone, which the insert puts in place.
     const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
-    this.line(cloned ? 'return $$f;' : 'return $$html;');
+    this.line(this.returnLine(fn, cloned));
     this.close('});');
     return name;
   }
@@ -1671,6 +1683,7 @@ export class Emitter {
     }
     const name = this.unique('portal');
     this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     this.createScope(body);
     this.html('<!--P');
@@ -1681,7 +1694,12 @@ export class Emitter {
     this.headBlocks -= block.kind === 'head' ? 1 : 0;
     this.html('<!--/P-->');
     this.flush();
-    this.line('return $$html;');
+    // In the browser, the body clones its markup when it can.
+    const cloned =
+      this.options.mode === 'client' &&
+      this.options.hoist !== undefined &&
+      cloneLines(this, this.options.hoist, fn);
+    this.line(cloned ? 'return $$f;' : 'return $$html;');
     this.close('})();');
     // `#head` content goes to the document's head, and portal content to the end of the page.
     this.line(`${this.helper(block.kind === 'head' ? 'head' : 'portal')}(${name});`);
@@ -1836,7 +1854,7 @@ export class Emitter {
     content();
     this.flush();
     const cloned = cloneLines(this, this.options.hoist!, fn);
-    this.line(cloned ? 'return $$f;' : 'return $$html;');
+    this.line(this.returnLine(fn, cloned));
     this.close('};');
     return name;
   }
