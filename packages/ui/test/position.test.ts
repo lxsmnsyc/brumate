@@ -56,3 +56,11 @@ it('places the overlay beside the trigger for a side placement', () => {
   expect(position.left).toBe(288);
   expect(position.top).toBe(85);
 });
+
+it('keeps the arrow on the overlay when the overlay is pushed from the edge', () => {
+  // A trigger at the left edge: the overlay is pushed right, past the middle of the trigger.
+  const edge = { top: 100, bottom: 130, left: -40, right: 0, width: 40, height: 30 } as DOMRect;
+  const position = computePosition(edge, overlay, viewport, options);
+  expect(position.left).toBe(12);
+  expect(position.arrow).toBe(0);
+});
