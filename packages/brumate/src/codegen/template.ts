@@ -542,7 +542,13 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
     // The scope of the anchor of the element, where its content finds its contexts.
     const anchored = writes.find((write) => write.kind === 'anchor');
     const at = anchored?.kind === 'anchor' ? `, ${anchored.scope}` : '';
-    for (const write of writes) {
+    // The calls of an element, such as its spreads and their `b-on`, come first, so `keep` sees
+    // a `b-on` and writes the `b-b` that its handlers read.
+    const ordered = [
+      ...writes.filter((write) => write.kind === 'call'),
+      ...writes.filter((write) => write.kind !== 'call'),
+    ];
+    for (const write of ordered) {
       if (write.kind === 'anchor') {
         lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
       } else if (write.kind === 'last') {

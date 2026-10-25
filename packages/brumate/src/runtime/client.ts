@@ -3515,13 +3515,8 @@ export function keep(scope: ScopeId, anchor: number, element: Element): void {
   }
   if (element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
-  } else {
-    keptAs.set(element, `${scope}:${anchor}`);
   }
 }
-
-/** The `b-b` of kept elements without it, for a `b-on` that a spread gives later. */
-const keptAs = new WeakMap<Element, string>();
 
 /**
  * Puts the value of a text insert of cloned markup in the place of its comment. A text value is
@@ -3784,12 +3779,8 @@ export function setSpread(
 export function setOn(element: Element, on: string[], own: string): void {
   const value = onValue(on, own);
   if (value) {
+    // Before `keep`, which then writes the `b-b` that the handlers read.
     element.setAttribute('b-on', value);
-    // A handler finds its scope from the `b-b` of its element.
-    const bound = keptAs.get(element);
-    if (bound && !element.hasAttribute('b-b')) {
-      element.setAttribute('b-b', bound);
-    }
     // The loader listens to the events of the handlers of the spreads.
     options?.listen(element);
   }
