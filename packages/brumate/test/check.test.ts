@@ -19,6 +19,13 @@ describe('toTypeScript', () => {
     expect(code).toContain('$$component(Badge, { label: (label), });');
   });
 
+  it('names a prop of a shorthand by the name after its brace', () => {
+    const code = body(
+      "<script>\n  import { $props } from 'brumate/signals';\n  import Badge from './Badge.brm';\n  const { label, onPick } = $props<{ label: string; onPick: () => void }>();\n</script>\n\n<Badge {label} {onPick} />",
+    );
+    expect(code).toContain('$$component(Badge, { label: (label), onPick: (onPick), });');
+  });
+
   it('names the component function so that the file can import its component name', () => {
     const { code } = toTypeScript(
       "<script>\n  import { SignIn } from './auth.ts';\n</script>\n\n<p>{SignIn()}</p>",
