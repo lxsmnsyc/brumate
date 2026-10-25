@@ -41,6 +41,17 @@ const FEATURES = `<script>
 }
 `;
 
+const TITLED = `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+</script>
+
+#head {
+  <title>{\`Count \${count}\`}</title>
+}
+<button onClick=(() => count++)>{count}</button>
+`;
+
 interface Built {
   /** The chunk that holds the core. */
   core: Rolldown.OutputChunk;
@@ -127,6 +138,15 @@ describe('features of the core', () => {
     expect(chunk.code).not.toContain('important');
     // The code that reads the pages that navigation adds is not in the bundle.
     expect(chunks.some((item) => item.moduleIds.includes(runtime('client-routes')))).toBe(false);
+    // No component has a <title> or a #template that the browser calls, so their code is out
+    // of the core.
+    expect(chunk.code).not.toContain('title[b-t]');
+    expect(chunk.code).not.toContain('#t\\d');
+  });
+
+  it('keeps the code of a <title> in markup when a component has one', async () => {
+    const { core: chunk } = await buildApp('title', TITLED, { navigate: false });
+    expect(chunk.code).toContain('title[b-t]');
   });
 
   it('keeps the updates that the components call, and the code of client navigation', async () => {

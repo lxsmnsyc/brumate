@@ -1,4 +1,5 @@
 import { trustedHTML } from './trusted.ts';
+import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES, HAS_TITLES } from './features.ts';
 import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
@@ -757,7 +758,7 @@ function spreadEntries(attributes: Record<string, unknown>): string[] {
       );
     }
     // A binding that a rest prop passed on writes its slot, or calls its setter.
-    if ((name === 'value' || name === 'checked') && isBinding(value)) {
+    if ((name === 'value' || name === 'checked') && HAS_BINDINGS && isBinding(value)) {
       on.push(bindEntry(name, value.ref, setterReference(value.set)));
     }
   }
@@ -774,12 +775,12 @@ function setterReference(set: unknown): FunctionReference | undefined {
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
-  if (value instanceof ChildrenReference) {
+  if (HAS_CHILDREN && value instanceof ChildrenReference) {
     // The scope can come later in the state, such as of a page that navigation loads.
     return new RenderedChildren(value.scope, value.ref);
   }
   if (value instanceof FunctionReference) {
-    if (isTemplate(value.ref)) {
+    if (HAS_TEMPLATES && isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
     }
     // The code of the components on the page loads with the page, and handlers and updates wait
@@ -1214,7 +1215,7 @@ export function bindings(
   const target = typeof scope === 'object' ? scope : scopes.get(scope);
   for (const [name, slot] of Object.entries(slots)) {
     const value = props[name];
-    if (target && isBinding(value)) {
+    if (target && HAS_BINDINGS && isBinding(value)) {
       (target.b ??= {})[slot] = value.target;
     }
   }
@@ -2146,7 +2147,7 @@ function write(
 ): void {
   // The same template again at an insert updates in place, with its new arguments, as a snippet
   // of Svelte does. Its elements and their focus stay.
-  if (key && value instanceof TemplateCall) {
+  if (HAS_TEMPLATES && key && value instanceof TemplateCall) {
     const known = templateInserts.get(key) ?? renderedTemplate(value, at);
     // The template's `a` export gives the slots of its arguments, also of destructured ones.
     const slotsOf = loadedFunction(`${value.ref}a`) as
@@ -2184,8 +2185,13 @@ function write(
   // Children and templates render here, at the scope of the insert, for its contexts. The first
   // scope that a template makes is its own, which holds its arguments.
   const made = nextId;
-  insertHTML(end ?? { parent }, value instanceof Children ? value.render(at) : insertValue(value));
-  if (key) {
+  insertHTML(
+    end ?? { parent },
+    (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
+      ? value.render(at)
+      : insertValue(value),
+  );
+  if (HAS_TEMPLATES && key) {
     const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
     if (scope) {
       templateInserts.set(key, { ref: (value as TemplateCall).ref, scope });
@@ -2223,7 +2229,7 @@ function renderedTemplate(
 const fieldValues = new WeakMap<Element, Map<string, unknown>>();
 
 function setAttribute(element: Element, name: string, value: unknown, spread = false): void {
-  if (isBinding(value)) {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   // A write of the same value changes nothing on screen, yet it still costs a style check and
@@ -3022,7 +3028,7 @@ function syncTitle(): void {
  * block that adds or removes one, or a change of its text, sets the title.
  */
 function watchTitles(root: ParentNode): void {
-  if (titleObserver || !root.querySelector(PAGE_TITLE)) {
+  if (!HAS_TITLES || titleObserver || !root.querySelector(PAGE_TITLE)) {
     return;
   }
   titleObserver = new MutationObserver((records) => {
@@ -3073,7 +3079,7 @@ export function spreadProps(
 
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
-  if (isBinding(value)) {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   const id = scope.c?.[anchor];
@@ -3174,7 +3180,9 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
-  return value instanceof Children ? value.render(resolveScope(scope)) : insertValue(value);
+  return (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
+    ? value.render(resolveScope(scope))
+    : insertValue(value);
 }
 
 /** Children that render where they are inserted, and the scopes that they find contexts from. */
@@ -3315,6 +3323,9 @@ function findMarker(data: string): Comment | undefined {
  * runs in the scope can insert them at once. Undefined when there is nothing to load.
  */
 function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
+  if (!HAS_CHILDREN) {
+    return undefined;
+  }
   const waiting: Promise<void>[] = [];
   const seen = new Set<Scope>();
   for (let current = scope; current && !seen.has(current); current = current.p ?? current.o) {

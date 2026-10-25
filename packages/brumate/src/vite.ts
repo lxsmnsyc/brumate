@@ -34,6 +34,8 @@ import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, resolveRelative } from './project.ts';
+import { featuresOf, joinFeatures, readsFeatures, writeFeatures } from './features.ts';
+import type { Features } from './features.ts';
 import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
   findPackages,
@@ -562,6 +564,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     refreshed = refreshedNames([...contents, ...scriptSources]);
     compiled.clear();
   };
+
+  /** The features of the core that the components of the build use, once for the build. */
+  let builtFeatures: Promise<Features> | undefined;
+  const buildFeatures = (): Promise<Features> =>
+    (builtFeatures ??= Promise.all(
+      [...files.values()].map(async (file) => featuresOf((await compileFile(file)).result)),
+    ).then(joinFeatures));
 
   /** The options of the compile of a file. */
   const compileOptions = (file: string): CompileOptions => ({
@@ -1831,6 +1840,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async transform(code, id, transformOptions) {
+      // The client build leaves out the code of the features of the core that no component
+      // uses. The dev server and the server build keep every feature.
+      if (!isServe && !isSsrBuild && !transformOptions?.ssr && readsFeatures(code)) {
+        return { code: writeFeatures(code, await buildFeatures()), map: null };
+      }
       const [file] = id.split('?');
       // The browser gets the env file without the server variables, and with the values of the
       // public ones, read now.
