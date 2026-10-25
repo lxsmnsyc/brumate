@@ -31,11 +31,15 @@
    * - Typing opens the list and shows the items whose text contains what was typed. ArrowDown
    *   and ArrowUp open it too, and move through its items, while focus stays in the input. Enter
    *   and a press pick an item, and its text goes in the input.
-   * - The Button opens the list with all of its items.
-   * - Escape closes the list, and clears the input when it is closed. Focus that leaves the field
-   *   closes it, and puts the text of the selected item back, unless `allowsCustomValue`.
+   * - The Button opens and closes the list, with all of its items, and focus stays in the input.
+   * - Escape closes the list and puts the text of the selected item back in the input, or clears
+   *   it when nothing is selected. Focus that leaves the field does the same. With
+   *   `allowsCustomValue`, the text stays, and text that is not the selected item's clears the
+   *   selection.
+   * - Enter picks the active item. With no active item, it closes the list the same way.
    * - `selectedKey` and `inputValue` start their own state, or bind with `$bind`.
-   * - `name` sends the key with its form, also before its code loads.
+   * - `name` sends the key with its form, also before its code loads, or the text with
+   *   `allowsCustomValue`. `formValue` chooses.
    * - The element shows `data-open`, `data-disabled`, `data-invalid` and `data-required`.
    */
   const {
@@ -45,6 +49,7 @@
     isRequired = false,
     isInvalid,
     allowsCustomValue = false,
+    formValue = allowsCustomValue ? 'text' : 'key',
     menuTrigger = 'input',
     defaultFilter,
     onSelectionChange,
@@ -59,6 +64,8 @@
     isRequired?: boolean;
     isInvalid?: boolean;
     allowsCustomValue?: boolean;
+    /** What the form gets: the key of the selection, or the text of the input. */
+    formValue?: 'key' | 'text';
     /** What opens the list: typing (the default), focus, or only the keys and the Button. */
     menuTrigger?: 'input' | 'focus' | 'manual';
     /** Whether an item's text matches what was typed. By default, it contains it. */
@@ -93,6 +100,8 @@
   // The item that becomes active once the list shows its items.
   let strategy = $signal<'first' | 'last' | 'keep'>('keep');
   let edited = $signal(false);
+  // A press of the Button puts focus back in the input, which does not open the list again.
+  let refocused = $signal(false);
   const errors = $memo(
     edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
@@ -184,6 +193,10 @@
   }
 
   function focused() {
+    if (refocused) {
+      refocused = false;
+      return;
+    }
     if (menuTrigger === 'focus' && !isOpen) {
       open('keep', true);
     }
@@ -195,21 +208,38 @@
   }
 
   function left() {
-    // A press in the list moves focus there for a moment, and the press puts it back.
+    // A press in the list or of the Button moves focus there for a moment, and the press puts
+    // it back.
     const active = document.activeElement;
     if (
       active &&
-      (active.id === inputId || document.getElementById(overlayId)?.contains(active))
+      (active.id === inputId ||
+        active.id === buttonId ||
+        document.getElementById(overlayId)?.contains(active))
     ) {
       return;
     }
+    commit();
+  }
+
+  /**
+   * Closes the list, and puts the text of the selected item back in the input, or '' when
+   * nothing is selected, as revert of React Aria does. With `allowsCustomValue`, the text stays,
+   * and the selection goes when the text is not its item's.
+   */
+  function commit() {
     setOpen(false);
-    if (!allowsCustomValue) {
-      const back = selectedKey === null ? '' : (selectedText ?? inputValue);
-      if (back !== inputValue) {
-        inputValue = back;
-        onInputChange?.(back);
+    if (allowsCustomValue) {
+      if (selectedKey !== null && inputValue !== selectedText) {
+        selectedKey = null;
+        onSelectionChange?.(null);
       }
+      return;
+    }
+    const back = selectedKey === null ? '' : (selectedText ?? inputValue);
+    if (back !== inputValue) {
+      inputValue = back;
+      onInputChange?.(back);
     }
   }
 
@@ -224,8 +254,9 @@
       case 'ArrowDown':
       case 'ArrowUp': {
         const down = event.key === 'ArrowDown';
+        // The arrow keys open the list with all of its items.
         if (!isOpen || !element) {
-          open(down ? 'first' : 'last', !edited || selectedKey !== null);
+          open(down ? 'first' : 'last', true);
           return;
         }
         const next = moveFrom(element, items, current, down ? 'next' : 'previous', true);
@@ -233,19 +264,29 @@
         return;
       }
       case 'Enter':
+        // A key that confirms the text of an input method is not a pick.
+        if (event.isComposing) {
+          return;
+        }
         // Enter picks the active item, and sends the form only when the list is closed.
-        if (isOpen && activeKey !== null) {
-          event.preventDefault();
-          select(activeKey);
-        }
-        return;
-      case 'Escape':
         if (isOpen) {
-          setOpen(false);
-        } else if (inputValue !== '') {
-          typed('');
+          event.preventDefault();
+          if (activeKey !== null) {
+            select(activeKey);
+          } else {
+            commit();
+          }
         }
         return;
+      case 'Escape': {
+        // An Escape that has something to undo stops here, so it does not close a dialog too.
+        const back = selectedKey === null ? '' : (selectedText ?? inputValue);
+        if (isOpen || (!allowsCustomValue && inputValue !== back)) {
+          event.stopPropagation();
+        }
+        commit();
+        return;
+      }
       case 'Tab':
         setOpen(false);
         return;
@@ -266,6 +307,8 @@
     'aria-controls': isOpen ? listId : undefined,
     'aria-activedescendant': isOpen ? activeId : undefined,
     'aria-invalid': invalid ? 'true' : undefined,
+    'aria-required': isRequired ? 'true' : undefined,
+    required: isRequired || undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
     onChange: typed,
     onBlur: blurred,
@@ -286,7 +329,10 @@
       } else {
         open('keep', true);
       }
-      input()?.focus();
+      if (document.activeElement?.id !== inputId) {
+        refocused = true;
+        input()?.focus();
+      }
     },
   });
   $setContext(OverlayTriggerContext, {
@@ -328,7 +374,7 @@
   <input
     type="hidden"
     name=name
-    value=(selectedKey === null ? '' : String(selectedKey))
+    value=(formValue === 'text' ? inputValue : selectedKey === null ? '' : String(selectedKey))
     disabled=(isDisabled || undefined)
   >
 </>

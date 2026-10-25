@@ -98,7 +98,7 @@ it('skips disabled items, and closes on Escape and Tab with no change', async ()
   await page.waitFor(() => expect(find('.list')).toBeNull());
   await page.waitFor(() => expect(document.activeElement).toBe(trigger));
   press('ArrowUp', trigger);
-  await page.waitFor(() => expect(document.activeElement).toBe(find('.cat')));
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
   press('Tab');
   await page.waitFor(() => expect(find('.list')).toBeNull());
   expect(state(page)[0]).toBe(null);
@@ -135,4 +135,35 @@ it('names a selection that it starts with by its template, and keys stay numbers
   await page.waitFor(() => expect(find('.size-list')).toBeNull());
   await page.waitFor(() => expect(page.text('.size-value')).toBe('Large'));
   expect(state(page)[2]).toBe(3);
+});
+
+it('opens with ArrowUp at the last item when nothing is selected', async () => {
+  const page = await selects();
+  const trigger = page.get('.trigger');
+  trigger.focus();
+  press('ArrowUp', trigger);
+  // The last item that can take focus: Kangaroo is disabled.
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.dog')));
+});
+
+it('does not show the text of an item that is no longer selected', async () => {
+  const page = await selects();
+  pressWith(page.get('.trigger'));
+  await page.waitFor(() => expect(find('.cat')).not.toBeNull());
+  pressWith(find('.cat')!);
+  await page.waitFor(() => expect(page.text('.value')).toBe('Cat'));
+  // The page sets another key. Its text is not known while the list is closed.
+  page.get('.set-dog').click();
+  await page.waitFor(() => expect(page.text('.value')).toBe('dog'));
+});
+
+it('gives back the first key on a reset of the form', async () => {
+  const page = await selects();
+  pressWith(page.get('.trigger'));
+  await page.waitFor(() => expect(find('.cat')).not.toBeNull());
+  pressWith(find('.cat')!);
+  await page.waitFor(() => expect(state(page)[0]).toBe('cat'));
+  (page.get('.form') as HTMLFormElement).reset();
+  await page.waitFor(() => expect(state(page)[0]).toBe(null));
+  expect(page.text('.value')).toBe('Select an item');
 });
