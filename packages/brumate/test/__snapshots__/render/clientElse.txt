@@ -19,22 +19,12 @@ export default async function ClientElse($$props: Record<string, never>, $$ctx: 
 ClientElse.brumateId = "ClientElse_1w4g5uu";
 
 # Client entry
-import * as $$p0 from "./clientElse.brm?brumate-client&part=h1";
-import * as $$p1 from "./clientElse.brm?brumate-client&part=h4";
-import * as $$p2 from "./clientElse.brm?brumate-client&part=update";
+export * from "./clientElse.brm?brumate-client&part=h1";
+export * from "./clientElse.brm?brumate-client&part=h4";
+export * from "./clientElse.brm?brumate-client&part=update";
 export const id = "ClientElse_1w4g5uu";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"], [2, "u3"], [3, "u5"]] } };
-const parts = {
-  "h1": $$p0,
-  "h4": $$p1,
-  "update": $$p2,
-};
-export const partNames = ["h1","h4","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h1
 import * as $$b from 'brumate/client';

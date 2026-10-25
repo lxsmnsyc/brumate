@@ -49,16 +49,16 @@ Handlers run after the event has finished dispatching. The core passes them an e
 
 The compiler splits the client code of each component into parts. The bundler loads a part as `App.brm?brumate-client&part=<name>`.
 
-| Part             | Holds                                                                                                           | Loads                         |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Entry, `App.brm` | The component ID, the props map, the update table `g`, `load(part)` and `partNames`, and an import of each part | With the page                 |
-| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback                                      | With the page                 |
-| `update`         | Memos, bindings, block updates, effects, list helpers and render functions                                      | With the page                 |
-| `shared`         | Functions that more than one part calls, and the module script                                                  | With the parts that import it |
+| Part             | Holds                                                                               | Loads                         |
+| ---------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Entry, `App.brm` | The component ID, the props map, the update table `g`, and the exports of each part | With the page                 |
+| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback          | With the page                 |
+| `update`         | Memos, bindings, block updates, effects, list helpers and render functions          | With the page                 |
+| `shared`         | Functions that more than one part calls, and the module script                      | With the parts that import it |
 
 - A local function that only one part calls goes into that part.
 - Each part imports only what its code reads. Server function stubs are copied into each part that calls them.
-- The core finds an export by its name: `h<n>` and `c<n>` are in the part of the same name, and everything else is in `update`.
+- The entry exports the exports of every part, so the core finds an export by its name on the entry.
 
 ### `merge`
 

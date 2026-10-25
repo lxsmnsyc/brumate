@@ -63,30 +63,16 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
 Compact.brumateId = "Compact_omhyaj";
 
 # Client entry
-import * as $$p0 from "./compact.brm?brumate-client&part=h13";
-import * as $$p1 from "./compact.brm?brumate-client&part=h2";
-import * as $$p2 from "./compact.brm?brumate-client&part=h3";
-import * as $$p3 from "./compact.brm?brumate-client&part=h4";
-import * as $$p4 from "./compact.brm?brumate-client&part=h5";
-import * as $$p5 from "./compact.brm?brumate-client&part=h6";
-import * as $$p6 from "./compact.brm?brumate-client&part=update";
+export * from "./compact.brm?brumate-client&part=h13";
+export * from "./compact.brm?brumate-client&part=h2";
+export * from "./compact.brm?brumate-client&part=h3";
+export * from "./compact.brm?brumate-client&part=h4";
+export * from "./compact.brm?brumate-client&part=h5";
+export * from "./compact.brm?brumate-client&part=h6";
+export * from "./compact.brm?brumate-client&part=update";
 export const id = "Compact_omhyaj";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [1, "b15"]], 1: [[3, "u14"]] }, 2: { 0: [[2, "u10"], [2, "u11"], [2, "u12"]] }, 4: { 0: [[4, "u17"], [4, "u18"]] } };
-const parts = {
-  "h13": $$p0,
-  "h2": $$p1,
-  "h3": $$p2,
-  "h4": $$p3,
-  "h5": $$p4,
-  "h6": $$p5,
-  "update": $$p6,
-};
-export const partNames = ["h13","h2","h3","h4","h5","h6","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h13
 import * as $$b from 'brumate/client';

@@ -23,20 +23,11 @@ export default async function Styled($$props: Record<string, never>, $$ctx: $$b.
 Styled.brumateId = "Styled_9wx0az";
 
 # Client entry
-import * as $$p0 from "./styled.brm?brumate-client&part=h3";
-import * as $$p1 from "./styled.brm?brumate-client&part=update";
+export * from "./styled.brm?brumate-client&part=h3";
+export * from "./styled.brm?brumate-client&part=update";
 export const id = "Styled_9wx0az";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u1"], [1, "u2"], [1, "b4"]] } };
-const parts = {
-  "h3": $$p0,
-  "update": $$p1,
-};
-export const partNames = ["h3","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';

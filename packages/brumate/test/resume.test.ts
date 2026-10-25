@@ -133,9 +133,10 @@ afterEach(() => {
 });
 
 /** Delays loading some parts, to test the order in which handlers run. */
+/** Milliseconds that the module of each component takes to load, by ID, or `all` for every one. */
 type PartDelays = Record<string, number>;
 
-/** The parts that the loader and the core loaded, as `<component>:<part>`. */
+/** The components whose modules the loader and the core loaded, by ID. */
 const loadedParts: string[] = [];
 
 async function resume(
@@ -158,15 +159,9 @@ async function startLoader(delays: PartDelays = {}, serial?: SerialEntry): Promi
   stop = start({
     ...(serial ? { serial: async () => serial } : {}),
     load: async (id) => {
-      const module = await import(modules.get(id)!);
-      return {
-        ...module,
-        load: async (part: string) => {
-          loadedParts.push(`${id}:${part}`);
-          await new Promise((done) => setTimeout(done, delays[part] ?? 0));
-          return module.load(part);
-        },
-      };
+      loadedParts.push(id);
+      await new Promise((done) => setTimeout(done, delays[id] ?? delays.all ?? 0));
+      return import(modules.get(id)!);
     },
   });
 }
@@ -239,15 +234,8 @@ async function failingHandlers(server: string): Promise<{
     stop = start({
       build: 'b1',
       onError: (error) => reported.push(String(error)),
-      load: async (id) => {
-        const module = await import(modules.get(id)!);
-        return {
-          ...module,
-          // The handlers fail to load, as a module that throws or a file that is gone does.
-          load: (part: string) =>
-            part.startsWith('h') ? Promise.reject(new Error('Top level')) : module.load(part),
-        };
-      },
+      // The code of the page fails to load, as a module that throws or a file that is gone does.
+      load: () => Promise.reject(new Error('Top level')),
     });
   };
   await restart();
@@ -481,10 +469,8 @@ describe('resume', () => {
   it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
     const id = 'Disclosure_104dejl';
-    // Every part loads without an event, also of the button in the closed #if.
-    await waitFor(() =>
-      expect(loadedParts.toSorted()).toEqual([`${id}:c3`, `${id}:h4`, `${id}:h8`, `${id}:update`]),
-    );
+    // The module loads without an event, with every part, also of the button in the closed #if.
+    await waitFor(() => expect(loadedParts).toEqual([id]));
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
     click(document.querySelector('.inc')!);
@@ -803,7 +789,7 @@ describe('resume', () => {
 
     // The body still fails, so the fallback renders again, and its button still works.
     click(document.querySelector('.retry')!);
-    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c:update'));
+    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c'));
     await waitFor(() => expect(text('.error')).toBe('Error: Not ready'));
 
     const shared = await import(file('retry.brm.client.shared.ts'));
@@ -1007,17 +993,16 @@ describe('resume', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
   });
 
-  it('sends the error of a handler that fails to load to #try when the build is the same', async () => {
+  it('reports the error of code that fails to load when the build is the same', async () => {
     sessionStorage.clear();
     const { reload, skews, reported } = await failingHandlers('b1');
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
-    expect(reported).toEqual(['Error: Top level']);
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).not.toHaveBeenCalled();
     expect(skews).toEqual([]);
   });
 
-  it('loads the page again once for each build when the code of a handler is gone', async () => {
+  it('loads the page again once for each build when the code of the page is gone', async () => {
     sessionStorage.clear();
     const { reload, skews, reported, restart } = await failingHandlers('b2');
     click(document.querySelector('.throw')!);
@@ -1027,9 +1012,8 @@ describe('resume', () => {
     // is gone too, and the page does not load again for the same build.
     await restart();
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(reported).toEqual(['Error: Top level']);
   });
 
   it('loads async memos again when their inputs change', async () => {
@@ -1388,8 +1372,8 @@ describe('resume', () => {
 
   it('runs handlers in the order of their events', async () => {
     vi.stubGlobal('fetch', async () => new Response(toChunkStream(undefined)));
-    // The input handler's part loads after the submit handler's part.
-    await resume('todos', { initial: [] }, { h7: 100 });
+    // The events come while the code of the page loads.
+    await resume('todos', { initial: [] }, { all: 100 });
     const field = document.querySelector('input')!;
     field.value = 'First';
     field.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2650,8 +2634,8 @@ describe('bindings', () => {
 
 describe('calls of functions of other components', () => {
   it('runs them in the order that they were made, also when the code of the first is slower', async () => {
-    // h1 is the first function of the parent, which loads after the second.
-    await resume('orderedCalls', {}, { h1: 80 });
+    // The calls come while the code of the page loads.
+    await resume('orderedCalls', {}, { all: 80 });
     click(document.querySelector('.both')!);
     await waitFor(() => expect(text('.log')).toBe('ab'));
   });

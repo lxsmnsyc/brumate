@@ -27,26 +27,14 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
 UsesCounter.brumateId = "UsesCounter_1euyiut";
 
 # Client entry
-import * as $$p0 from "./uses-counter.brm?brumate-client&part=h8";
-import * as $$p1 from "./uses-counter.brm?brumate-client&part=h11";
-import * as $$p2 from "./uses-counter.brm?brumate-client&part=h15";
-import * as $$p3 from "./uses-counter.brm?brumate-client&part=h13";
-import * as $$p4 from "./uses-counter.brm?brumate-client&part=update";
+export * from "./uses-counter.brm?brumate-client&part=h8";
+export * from "./uses-counter.brm?brumate-client&part=h11";
+export * from "./uses-counter.brm?brumate-client&part=h15";
+export * from "./uses-counter.brm?brumate-client&part=h13";
+export * from "./uses-counter.brm?brumate-client&part=update";
 export const id = "UsesCounter_1euyiut";
 export const props = {  };
 export const g = { 1: { 1: [[1, "m2"], [1, "u9"]], 2: [[1, "u10"]], 3: [[1, "u12"]], 0: [[1, "u14"]] } };
-const parts = {
-  "h8": $$p0,
-  "h11": $$p1,
-  "h15": $$p2,
-  "h13": $$p3,
-  "update": $$p4,
-};
-export const partNames = ["h8","h11","h15","h13","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h8
 import * as $$m0 from "./counting.brm.ts?brumate-shared";

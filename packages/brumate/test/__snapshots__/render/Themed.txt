@@ -15,18 +15,10 @@ export default async function Themed($$props: Record<string, never>, $$ctx: $$b.
 Themed.brumateId = "Themed_qy9qd3";
 
 # Client entry
-import * as $$p0 from "./Themed.brm?brumate-client&part=update";
+export * from "./Themed.brm?brumate-client&part=update";
 export const id = "Themed_qy9qd3";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u1"]] } };
-const parts = {
-  "update": $$p0,
-};
-export const partNames = ["update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: update
 import * as $$b from 'brumate/client';

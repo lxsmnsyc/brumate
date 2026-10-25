@@ -53,22 +53,12 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
 Produce.brumateId = "Produce_9t90yy";
 
 # Client entry
-import * as $$p0 from "./produce.brm?brumate-client&part=h7";
-import * as $$p1 from "./produce.brm?brumate-client&part=h3";
-import * as $$p2 from "./produce.brm?brumate-client&part=update";
+export * from "./produce.brm?brumate-client&part=h7";
+export * from "./produce.brm?brumate-client&part=h3";
+export * from "./produce.brm?brumate-client&part=update";
 export const id = "Produce_9t90yy";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b4"], [1, "u9"]] }, 2: { 0: [[2, "u6"], [2, "u8"]] } };
-const parts = {
-  "h7": $$p0,
-  "h3": $$p1,
-  "update": $$p2,
-};
-export const partNames = ["h7","h3","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h7
 import * as $$b from 'brumate/client';

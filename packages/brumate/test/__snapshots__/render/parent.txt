@@ -21,22 +21,12 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
 Parent.brumateId = "Parent_4bs4t8";
 
 # Client entry
-import * as $$p0 from "./parent.brm?brumate-client&part=h3";
-import * as $$p1 from "./parent.brm?brumate-client&part=h6";
-import * as $$p2 from "./parent.brm?brumate-client&part=update";
+export * from "./parent.brm?brumate-client&part=h3";
+export * from "./parent.brm?brumate-client&part=h6";
+export * from "./parent.brm?brumate-client&part=update";
 export const id = "Parent_4bs4t8";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]] } };
-const parts = {
-  "h3": $$p0,
-  "h6": $$p1,
-  "update": $$p2,
-};
-export const partNames = ["h3","h6","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';

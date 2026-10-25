@@ -37,20 +37,11 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
 Fields.brumateId = "Fields_1cs3w3p";
 
 # Client entry
-import * as $$p0 from "./fields.brm?brumate-client&part=h9";
-import * as $$p1 from "./fields.brm?brumate-client&part=update";
+export * from "./fields.brm?brumate-client&part=h9";
+export * from "./fields.brm?brumate-client&part=update";
 export const id = "Fields_1cs3w3p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b5"]] }, 2: { 0: [[2, "u7"]] } };
-const parts = {
-  "h9": $$p0,
-  "update": $$p1,
-};
-export const partNames = ["h9","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h9
 import * as $$b from 'brumate/client';

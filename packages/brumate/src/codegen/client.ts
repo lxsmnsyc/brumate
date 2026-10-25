@@ -210,25 +210,15 @@ class ClientGenerator {
         diagnostics: this.diagnostics,
       };
     }
-    // The page loads every part of a component with it, so the entry imports them, and a bundle
-    // of the page holds them with the entry.
+    // The page loads every part of a component with it, so the entry exports them, and a bundle
+    // of the page holds them with the entry. The names of the parts' exports are their own.
     const loaders: Record<string, string[]> = {};
     for (const name of names) {
       loaders[name] = [name];
     }
     const entry = [
-      ...names.map(
-        (name, index) => `import * as $$p${index} from ${JSON.stringify(this.partPath(name))};`,
-      ),
+      ...names.map((name) => `export * from ${JSON.stringify(this.partPath(name))};`),
       ...table,
-      'const parts = {',
-      ...names.map((name, index) => `  ${JSON.stringify(name)}: $$p${index},`),
-      '};',
-      `export const partNames = ${JSON.stringify(names)};`,
-      '/** A part of this module. */',
-      'export function load(part) {',
-      '  return Promise.resolve(parts[part]);',
-      '}',
       '',
     ];
     return {
