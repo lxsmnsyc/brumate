@@ -67,6 +67,9 @@
     onFocusOut,
   } = box(disabled);
 
+  // The click of a read-only box, which the wrapper prevents.
+  function keep() {}
+
   function change(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     // A read-only box keeps its state. The browser toggled it already.
@@ -112,20 +115,40 @@
   onFocusOut=onFocusOut
   {...rest}
 >
-  <VisuallyHidden
-    as="input"
-    type="checkbox"
-    name=(name ?? group?.name)
-    value=value
-    checked=selected
-    disabled=(disabled || undefined)
-    required=(required || undefined)
-    aria-readonly=(readOnly ? 'true' : undefined)
-    aria-invalid=(invalid ? 'true' : undefined)
-    aria-describedby=(describedBy(group?.describedBy))
-    onChange=change
-    onInvalid=(prevent(invalidated))
-  />
+  <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
+       announces no change. -->
+  #if (readOnly) {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      name=(name ?? group?.name)
+      value=value
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(required || undefined)
+      aria-readonly=(readOnly ? 'true' : undefined)
+      aria-invalid=(invalid ? 'true' : undefined)
+      aria-describedby=(describedBy(group?.describedBy))
+      onChange=change
+      onClick=(prevent(keep))
+      onInvalid=(prevent(invalidated))
+    />
+  } #else {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      name=(name ?? group?.name)
+      value=value
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(required || undefined)
+      aria-readonly=(readOnly ? 'true' : undefined)
+      aria-invalid=(invalid ? 'true' : undefined)
+      aria-describedby=(describedBy(group?.describedBy))
+      onChange=change
+      onInvalid=(prevent(invalidated))
+    />
+  }
   {children}
   #if (isIndeterminate) {
     <script>

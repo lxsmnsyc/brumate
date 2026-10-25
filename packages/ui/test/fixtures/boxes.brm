@@ -34,5 +34,11 @@
     <FieldError class="sizes-error" />
   </RadioGroup>
   <Switch class="dark" isSelected=$bind(dark)>Dark mode</Switch>
+  <Switch class="fixed" isReadOnly=(true)>Fixed</Switch>
+  <RadioGroup class="locked-sizes" value="small" isReadOnly=(true)>
+    <Label>Locked size</Label>
+    <Radio class="locked-small" value="small">Small</Radio>
+    <Radio class="locked-large" value="large">Large</Radio>
+  </RadioGroup>
 </form>
 <p class="values">{String(terms)}|{toppings.join(',')}|{size ?? 'none'}|{String(dark)}</p>

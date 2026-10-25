@@ -38,6 +38,9 @@
     onFocusOut,
   } = box(disabled);
 
+  // The click of a read-only box, which the wrapper prevents.
+  function keep() {}
+
   function change(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     if (!input.checked) {
@@ -83,17 +86,35 @@
   onFocusOut=onFocusOut
   {...rest}
 >
-  <VisuallyHidden
-    as="input"
-    type="radio"
-    name=(group?.name)
-    value=value
-    checked=selected
-    disabled=(disabled || undefined)
-    required=(group?.isRequired || undefined)
-    aria-describedby=(group?.describedBy)
-    onChange=change
-    onInvalid=(prevent(invalidated))
-  />
+  <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
+       announces no change. -->
+  #if (readOnly) {
+    <VisuallyHidden
+      as="input"
+      type="radio"
+      name=(group?.name)
+      value=value
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(group?.isRequired || undefined)
+      aria-describedby=(group?.describedBy)
+      onChange=change
+      onClick=(prevent(keep))
+      onInvalid=(prevent(invalidated))
+    />
+  } #else {
+    <VisuallyHidden
+      as="input"
+      type="radio"
+      name=(group?.name)
+      value=value
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(group?.isRequired || undefined)
+      aria-describedby=(group?.describedBy)
+      onChange=change
+      onInvalid=(prevent(invalidated))
+    />
+  }
   {children}
 </label>

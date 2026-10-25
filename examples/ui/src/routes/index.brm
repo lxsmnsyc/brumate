@@ -179,6 +179,12 @@
     <Button class="press" type="submit">Order the pizza</Button>
   </Form>
   <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
+  <RadioGroup class="crust" name="crust" value="thin" isReadOnly=(true) orientation="horizontal">
+    <Label>Crust, set by the shop</Label>
+    <Radio class="box" value="thin"><span class="mark round" aria-hidden="true"></span>Thin</Radio>
+    <Radio class="box" value="thick"><span class="mark round" aria-hidden="true"></span>Thick</Radio>
+  </RadioGroup>
+  <Checkbox class="box sauce" isSelected=(true) isReadOnly=(true)><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
   <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
   <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
 </section>
