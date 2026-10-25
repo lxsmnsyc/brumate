@@ -114,3 +114,61 @@ it('moves the nearest thumb to a press on the track, and drags it', async () => 
   pointer('pointerup', window as unknown as Element, {});
   await page.waitFor(() => expect(state(page)[2]).toBe(null));
 });
+
+it('keeps a disabled thumb still, and lists three values in the format of the locale', async () => {
+  const page = await sliders();
+  expect(page.text('.levels-output')).toBe('10, 50, 90');
+  expect(range(page, '.l1').disabled).toBe(true);
+  expect(page.get('.l1').hasAttribute('data-disabled')).toBe(true);
+  expect(range(page, '.l0').getAttribute('aria-orientation')).toBe('horizontal');
+  const track = page.get('.levels-track');
+  layout(track, 100);
+  // 50 is nearest the disabled thumb, so the press moves nothing.
+  pointer('pointerdown', track, { clientX: 52, clientY: 5 });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[3]).toEqual([10, 50, 90]);
+  pointer('pointerup', window as unknown as Element, {});
+});
+
+it('marks the thumb that a press on the track drags, and ignores a press with a modifier', async () => {
+  const page = await sliders();
+  const track = page.get('.price-track');
+  layout(track, 200);
+  pointer('pointerdown', track, { clientX: 10, clientY: 5, ctrlKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[1]).toEqual([20, 80]);
+  pointer('pointerdown', track, { clientX: 10, clientY: 5 });
+  await page.waitFor(() => expect(state(page)[1]).toEqual([5, 80]));
+  expect(page.get('.low').hasAttribute('data-dragging')).toBe(true);
+  pointer('pointerup', window as unknown as Element, {});
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(false));
+});
+
+it('drags a thumb from where the pointer took it, and two pointers drag two thumbs', async () => {
+  const page = await sliders();
+  layout(page.get('.price-track'), 200);
+  // The low thumb is at 40 of 200. The pointer takes it 6 to the right of its center.
+  pointer('pointerdown', page.get('.low'), { clientX: 46, clientY: 5, pointerId: 1 });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(true));
+  pointer('pointermove', window as unknown as Element, { clientX: 50, clientY: 5, buttons: 1, pointerId: 1 });
+  // 4 to the right is 2 more, not a jump to the pointer.
+  await page.waitFor(() => expect(state(page)[1]).toEqual([22, 80]));
+  pointer('pointerdown', page.get('.high'), { clientX: 160, clientY: 5, pointerId: 2, pointerType: 'touch' });
+  await page.waitFor(() => expect(page.get('.high').hasAttribute('data-dragging')).toBe(true));
+  // The first drag goes on.
+  expect(page.get('.low').hasAttribute('data-dragging')).toBe(true);
+  pointer('pointerup', window as unknown as Element, { pointerId: 2 });
+  await page.waitFor(() => expect(page.get('.high').hasAttribute('data-dragging')).toBe(false));
+  expect(page.get('.low').hasAttribute('data-dragging')).toBe(true);
+  pointer('pointerup', window as unknown as Element, { pointerId: 1 });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(false));
+});
+
+it('gives back the first values on a reset of the form', async () => {
+  const page = await sliders();
+  slide(range(page, '.l2'), 70);
+  await page.waitFor(() => expect(state(page)[3]).toEqual([10, 50, 70]));
+  (page.get('.form') as HTMLFormElement).reset();
+  await page.waitFor(() => expect(state(page)[3]).toEqual([10, 50, 90]));
+  expect(range(page, '.l2').value).toBe('90');
+});
