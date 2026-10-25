@@ -114,6 +114,7 @@
     disabledKeys,
     focusedId,
     action,
+    closeAll,
     activeKey: field?.activeKey,
     setActive: field?.setActive,
   });
