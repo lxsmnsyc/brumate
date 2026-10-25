@@ -46,6 +46,8 @@
    *   as it is, and Tab can leave the popover.
    * - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`. It
    *   waits for its leave before it leaves the page, and is inert while it leaves.
+   * - In a Select, its content stays in the page while it is closed, out of sight, so the
+   *   Select knows its items.
    */
   const {
     placement = 'bottom',
@@ -266,4 +268,7 @@
       }
     </div>
   }
+} #else if (trigger?.keepsContent) {
+  <!-- Out of sight, and out of the tree of accessibility and of the order of Tab. -->
+  <div id=(`${trigger.overlayId}-closed`) style="display: none">{children}</div>
 }
