@@ -14,6 +14,7 @@
   import {
     ButtonContext,
     FieldErrorContext,
+    FieldInputContext,
     FormContext,
     InputContext,
     LabelContext,
@@ -350,6 +351,8 @@
     labelledBy: labelId,
     select,
   });
+  // An Autocomplete around names its own collection, not the list of the ComboBox.
+  $setContext(FieldInputContext, null);
   $setContext(CollectionFocusContext, {
     id: listId,
     activeKey,

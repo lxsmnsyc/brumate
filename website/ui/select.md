@@ -32,12 +32,14 @@ A field that picks one item from a list, which opens from a button.
 - In the list, the arrow keys, Home, End and typing move focus, as in a ListBox.
 - A press, Enter or Space on an item selects it and closes the list. Focus goes back to the Button.
 - Escape, Tab and a press outside close the list with no change.
+- While the list is closed, ArrowLeft and ArrowRight on the Button select the item before or after the selected one. With nothing selected, both select the first item. Typing selects the item that starts with the text. The list stays closed.
+- The Popover keeps the items in the page while it is closed, out of sight, so the Select can read them.
 
 ## The value in the Button
 
 `SelectValue` shows the text of the selected item, or `placeholder` of the Select, `Select an item` by default. It shows `data-placeholder` while nothing is selected.
 
-The items are on the page only while the list is open, so a Select does not know the text of a key that it starts with, or that the page sets. `render`, a `#template`, names the selection then. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
+The server does not know the text of a key that the Select starts with, so the HTML shows the key until the code loads. `render`, a `#template`, names the selection in the HTML too. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
 
 ```html
 <Button><SelectValue render=sizeName /></Button>
@@ -47,7 +49,7 @@ The items are on the page only while the list is open, so a Select does not know
 }
 ```
 
-Without `render`, the Button shows the key until an item is chosen. A reset of the form gives back the key that the Select started with.
+A reset of the form gives back the key that the Select started with.
 
 ## Forms
 
