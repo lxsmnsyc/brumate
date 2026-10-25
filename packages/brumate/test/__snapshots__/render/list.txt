@@ -135,6 +135,7 @@ export function b12($$s) {
 export function u13($$s) {
   $$b.prop($$s, 0, "value", $$b.get($$s.p, 0).length);
 }
+const $$k4 = $$b.template("<li b-x=\"0\"><!--x1--><!--x2--></li>", 3);
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   let label = $$b.get($$p, 2);
@@ -149,24 +150,28 @@ export function r3($$p, $$item, $$index) {
   const count = $$item;
   const i = $$index;
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li b-b=\"" + $$s3 + ":0\"><!--t" + $$s3 + ":1-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2) + "</li>";
+  const [$$f, $$e] = $$b.clone($$k4);
+  $$b.keep($$s3, 0, $$e[0]);
+  $$b.keepText($$s3, 1, $$e[1], (row(i)));
+  $$b.place($$e[2], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2));
   $$b.setSlots($$s3, [count, i]);
   $$b.setItem($$s3, $$item);
-  return $$html;
+  return $$f;
 }
+const $$k5 = $$b.template("<section><!--x0--></section>", 1);
 export function r4($$p) {
   let $$html = '';
   let counts = $$b.get($$p, 0);
   let label = $$b.get($$p, 2);
   const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<section>";
   const $$children0 = $$b.children($$s4, () => {
     let $$html = '';
     $$html += "<em>" + $$b.insert((label)) + "</em>";
     return $$html;
   });
-  $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0) + "</section>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k5);
+  $$b.place($$e[0], $$b.componentNodes(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0));
+  return $$f;
 }
 export function n0($$p) {
   let $$html = '';
@@ -178,6 +183,8 @@ export function n0($$p) {
 # Render module
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
+import { r3 as $$r3, r4 as $$r4 } from "./list.brm?brumate-client";
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"add\" b-on=\"click=List_12rwm68#h6\">Add</button><button b-x=\"1\" class=\"show\" b-on=\"click=List_12rwm68#h7\">Show</button><ul><!--x2--><!--/b--></ul><!--x3--><!--/b-->", 4);
 
 export default function List($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -195,38 +202,13 @@ export default function List($$props: Record<string, never>): string | DocumentF
     $$b.setSlots($$s2, [index]);
     return $$b.raw($$html);
   }
-  $$html += "<button class=\"add\" b-b=\"" + $$s1 + ":0\" b-on=\"click=List_12rwm68#h6\">Add</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=List_12rwm68#h7\">Show</button><ul>";
-  {
-    const $$list0v = ( counts );
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":2-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const count = $$item1;
-      const i = $$index2;
-      const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li b-b=\"" + $$s3 + ":0\"><!--t" + $$s3 + ":1-->" + $$b.insert((row(i))) + "<!--/t-->" + $$b.component(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2) + "</li>";
-      $$b.setSlots($$s3, [count, i]);
-      $$b.setItem($$s3, $$item1);
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul>";
-  if (show) {
-    $$html += "<!--b" + $$s1 + ":3:0-->";
-    const $$s4 = $$b.createScope(4, $$s1);
-    $$html += "<section>";
-    const $$children3 = $$b.children($$s4, () => {
-      let $$html = '';
-      $$html += "<em>" + $$b.insert((label)) + "</em>";
-      return $$html;
-    });
-    $$html += $$b.component(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children3 }, undefined, $$s4, 0) + "</section><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":3:-1--><!--/b-->";
-  }
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
   $$b.setSlots($$s1, [counts, show, label]);
-  return $$html;
+  $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( counts )), $$r3);
+  $$b.fillBranch($$e[3], $$s1, 3, (show) ? 0 : -1, [$$r4]);
+  return $$f;
 }
 
 # HTML

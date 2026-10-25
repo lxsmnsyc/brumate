@@ -1273,10 +1273,7 @@ class ClientGenerator {
     }
     emitter.flush();
     // The body of an `#if` or a `#for` whose markup is one string clones a template.
-    const cloned =
-      (block.kind === 'if' || block.kind === 'for') && emitter.flushes.length === 1
-        ? this.cloneRender(emitter)
-        : false;
+    const cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
     if (fill && !cloned) {
       return undefined;
     }

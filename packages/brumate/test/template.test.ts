@@ -102,15 +102,29 @@ it('renders a child component in the place of a comment', () => {
   ]);
 });
 
+it('marks the start of a block whose markup is in the template', () => {
+  const found = clonedTemplate([
+    { static: '<ul><!--b' },
+    { code: '$$s2' },
+    { static: ':0:1--><li>a</li><!--/b--></ul>' },
+  ])!;
+  expect(found.html).toBe('<ul><!--x0--><li>a</li><!--/b--></ul>');
+  expect(found.writes).toEqual([[{ kind: 'marker', scope: '$$s2', anchor: 0, suffix: ':1' }]]);
+});
+
+it('builds the element of a dynamic tag in the place of a comment', () => {
+  const found = clonedTemplate([
+    { static: '<div>' },
+    { code: '$$b.dynamic((tag), {}, undefined, undefined, $$s2)' },
+    { static: '</div>' },
+  ])!;
+  expect(found.html).toBe('<div><!--x0--></div>');
+  expect(found.writes).toEqual([
+    [{ kind: 'component', call: '$$b.dynamicNodes((tag), {}, undefined, undefined, $$s2)' }],
+  ]);
+});
+
 it('renders HTML for markers, raw text, blocks of the loader, and other code', () => {
-  // A block inside, with markup in it.
-  expect(
-    clonedTemplate([
-      { static: '<ul><!--b' },
-      { code: '$$s2' },
-      { static: ':0--><li>a</li><!--/b--></ul>' },
-    ]),
-  ).toBeUndefined();
   // The content of a <textarea> is its text.
   expect(
     clonedTemplate([

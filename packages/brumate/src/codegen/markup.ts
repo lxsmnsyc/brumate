@@ -113,6 +113,9 @@ export interface EmitterOptions {
   fills?: (block: Block) => Fill | undefined;
 }
 
+/** Where a line of a render is. See `Emitter.levels`. */
+export type Level = 'top' | 'control' | 'nested' | 'outside';
+
 /** The render functions that fill a nested block of a clone. */
 export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: string };
 
@@ -214,6 +217,16 @@ export class Emitter {
   readonly lines: string[] = [];
   /** Each `$$html +=` line, by its index in `lines`, with its parts, for cloned templates. */
   readonly flushes: { line: number; parts: Part[] }[] = [];
+  /**
+   * Where each line of `lines` is, for cloned templates: `top` in the body of the outer
+   * function, `control` in an `if`, a loop or another branch of it, and `nested` in a function
+   * inside it, such as the function of children. Plain `{` blocks do not count.
+   */
+  readonly levels: Level[] = [];
+  /** The lines that open or close a plain `{` block, which a clone can drop. */
+  readonly plainBraces: Set<number> = new Set();
+  /** The kinds of the `{` that are open: of a function, a branch or loop, or a plain block. */
+  private braces: ('fn' | 'control' | 'plain')[] = [];
   /**
    * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
    * `$$m` in a call is the start comment of the block.
@@ -336,19 +349,49 @@ export class Emitter {
 
   line(code: string): void {
     this.flush();
-    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    this.push(`${'  '.repeat(this.depth)}${code}`);
     if (code.endsWith('{')) {
       this.depth++;
+      const trimmed = code.trim();
+      if (trimmed === '{') {
+        this.plainBraces.add(this.lines.length - 1);
+      }
+      this.braces.push(
+        trimmed === '{'
+          ? 'plain'
+          : /=> \{$|^(?:export )?(?:default )?function\b/.test(trimmed)
+            ? 'fn'
+            : 'control',
+      );
     }
   }
 
   close(code = '}'): void {
     this.flush();
     this.depth--;
-    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    if (this.braces.pop() === 'plain' && code === '}') {
+      this.plainBraces.add(this.lines.length);
+    }
+    this.push(`${'  '.repeat(this.depth)}${code}`);
     if (code.endsWith('{')) {
       this.depth++;
+      this.braces.push('control');
     }
+  }
+
+  /** Adds a line, with where it is. */
+  private push(line: string): void {
+    this.lines.push(line);
+    const kinds = this.braces.filter((kind) => kind !== 'plain');
+    this.levels.push(
+      kinds[0] !== 'fn'
+        ? 'outside'
+        : kinds.length === 1
+          ? 'top'
+          : kinds[1] === 'fn'
+            ? 'nested'
+            : 'control',
+    );
   }
 
   /** Copies source code, keeping the indentation of its lines relative to the first. */
@@ -359,7 +402,7 @@ export class Emitter {
     const indent = '  '.repeat(this.depth);
     code.split('\n').forEach((line, index) => {
       const text = index === 0 ? line : line.replace(new RegExp(`^ {0,${column}}`), '');
-      this.lines.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
+      this.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
     });
   }
 
@@ -386,7 +429,7 @@ export class Emitter {
     const value = parts
       .map((part) => ('static' in part ? JSON.stringify(part.static) : part.code))
       .join(' + ');
-    this.lines.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
+    this.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
   }
 
   /**

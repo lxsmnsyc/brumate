@@ -79,19 +79,22 @@ export const ready = new Promise<string>((resolve) => {
 export function release(value: string): void {
     open(value);
   }
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"outer\" b-on=\"click=Loading_1sx8r1u#h2\"></button><p b-x=\"1\" class=\"greeting\"></p><button b-x=\"2\" class=\"inner\" b-on=\"click=Loading_1sx8r1u#h5\"></button>", 3);
 
 export default function Loading($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Loading_1sx8r1u");
   let count = (0);
   const greeting = (async () => (`Hello ${await ready}`))();
-  $$html += "<button class=\"outer\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Loading_1sx8r1u#h2\">" + $$b.insert((count)) + "</button>";
-  {
     const $$s2 = $$b.createScope(2, $$s1);
-    $$html += "<p class=\"greeting\">" + $$b.insert((greeting)) + "</p><button class=\"inner\" b-b=\"" + $$s2 + ":0\" b-on=\"click=Loading_1sx8r1u#h5\">" + $$b.insert((count)) + "</button>";
-  }
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setContent($$e[0], (count), $$s1);
+  $$b.setContent($$e[1], (greeting));
+  $$b.keep($$s2, 0, $$e[2]);
+  $$b.setContent($$e[2], (count), $$s2);
   $$b.setSlots($$s1, [count]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

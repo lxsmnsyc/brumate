@@ -3599,6 +3599,11 @@ function fillRange(place: Comment, html: string, nodes: DocumentFragment | undef
   }
 }
 
+/** Names the start marker of a block whose markup is in the clone, and keeps it on its scope. */
+export function markBlock(place: Comment, scope: ScopeId, anchor: number, suffix: string): void {
+  keepBlock(place, scope, `b${scope}:${anchor}${suffix}`, anchor);
+}
+
 /**
  * Fills a nested `#if` of cloned markup with the branch at `index`, or nothing for -1, before
  * the clone is in the page. `branch` updates it later.
@@ -3703,7 +3708,7 @@ function parseHTML(html: string): DocumentFragment {
 }
 
 /** Puts a child component that a clone renders in the place of its comment. */
-export function place(at: Comment, out: string | DocumentFragment): void {
+export function place(at: Comment, out: string | Node): void {
   if (typeof out === 'string') {
     // A component that renders HTML: its markup, which the insert of the clone indexes.
     at.replaceWith(parseHTML(out));
@@ -3766,6 +3771,46 @@ export function componentNodes<P>(
     setOwner(parent);
   }
   return Child(props);
+}
+
+/**
+ * Renders a dynamic tag for a clone: the element, with its attributes and content, or what a
+ * component renders.
+ */
+export function dynamicNodes(
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  _ctx?: unknown,
+  scope?: Scope | number,
+): string | Node {
+  if (typeof tag === 'function') {
+    return componentNodes(
+      tag as Component,
+      inner ? { ...attributes, children: inner } : attributes,
+      undefined,
+      scope,
+    );
+  }
+  const name = String(tag);
+  // The start tag as HTML, so the attributes are written as `dynamic` writes them.
+  const element = parseHTML(`<${name}${spreadText(attributes)}>`).firstChild as Element;
+  const bound = element.getAttribute('b-b');
+  if (bound) {
+    const [id, anchor] = bound.split(':');
+    const kept = scopes.get(Number(id));
+    if (kept) {
+      (kept.n ??= [])[Number(anchor)] = element;
+    }
+  }
+  if (element.hasAttribute('b-on')) {
+    // The insert of the clone listens to the events of the handlers.
+    clonedMarkup = true;
+  }
+  if (inner && !VOID_ELEMENTS.has(name)) {
+    setContent(element, inner, scope);
+  }
+  return element;
 }
 
 export function dynamic(

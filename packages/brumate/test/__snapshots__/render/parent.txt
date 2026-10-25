@@ -54,6 +54,7 @@ export function n0($$p) {
 # Render module
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
+const $$t0 = $$b.template("<!--x0--><!--x1-->", 2);
 
 export default function Parent($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -65,9 +66,11 @@ export default function Parent($$props: Record<string, never>): string | Documen
     $$html += "<em>" + $$b.insert((label)) + "</em>";
     return $$html;
   });
-  $$html += $$b.component(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0) + $$b.component(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1);
+  const [$$f, $$e] = $$b.clone($$t0);
+  $$b.place($$e[0], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0));
+  $$b.place($$e[1], $$b.componentNodes(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1));
   $$b.setSlots($$s1, [count, label]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

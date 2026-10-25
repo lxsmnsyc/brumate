@@ -261,17 +261,15 @@ export function generateRender(
     emitter.flush();
     // Markup that is one string clones a template, which a constant of the module holds.
     const constants = new Map<string, string>();
-    const cloned =
-      emitter.flushes.length === 1 &&
-      cloneLines(emitter, (code) => {
-        let name = constants.get(code);
-        if (!name) {
-          name = `$$t${constants.size}`;
-          constants.set(code, name);
-          templates.push(`const ${name} = ${code};`);
-        }
-        return name;
-      });
+    const cloned = cloneLines(emitter, (code) => {
+      let name = constants.get(code);
+      if (!name) {
+        name = `$$t${constants.size}`;
+        constants.set(code, name);
+        templates.push(`const ${name} = ${code};`);
+      }
+      return name;
+    });
     emitter.line(cloned ? 'return $$f;' : 'return $$html;');
     emitter.close();
     return { emitter, cloned };

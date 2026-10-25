@@ -1,7 +1,7 @@
 // Cloned templates of the markup that the browser renders. A render whose markup is one string
 // of static HTML, attributes, the content of elements, and anchors compiles to a `<template>`
 // that it clones, and writes the elements that it marks. The rest renders HTML.
-import type { Emitter, Part } from './markup.ts';
+import type { Emitter, Level, Part } from './markup.ts';
 
 /** What a render writes on an element of its clone. */
 export type Write =
@@ -14,8 +14,10 @@ export type Write =
   | { kind: 'last'; scope: string; anchor: number; value: string; at?: string }
   /** A nested block, whose start comment the clone marks, and which a call fills. */
   | { kind: 'block'; scope: string; anchor: number }
-  /** A child component, which renders in the place of a marked comment. */
-  | { kind: 'component'; call: string };
+  /** A child component or a dynamic tag, which renders in the place of a marked comment. */
+  | { kind: 'component'; call: string }
+  /** The start comment of a block whose markup is in the template, which the scope keeps. */
+  | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
 export interface ClonedTemplate {
   /**
@@ -40,6 +42,9 @@ const TEXT_END = /^:(\d+)-->/;
 const TEXT_CLOSE = '<!--/t-->';
 const BLOCK_START = '<!--b';
 const COMPONENT = /^\$\$b\.component\(/;
+const DYNAMIC = /^\$\$b\.dynamic\(/;
+// The rest of the start comment of a block: `:anchor`, maybe `:index`, and `-->`.
+const MARKER_END = /^:(\d+)((?::-?\d+)?)-->/;
 const BLOCK_END = /^:(\d+)(?::-1)?--><!--\/b-->/;
 
 const VOID = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
@@ -261,6 +266,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       reader.append(`<!--x${mark}-->`);
       continue;
     }
+    // A dynamic tag, which builds its element where it is.
+    if (DYNAMIC.test(code) && !reader.inTag && !reader.raw) {
+      const mark = writes.length;
+      writes.push([{ kind: 'component', call: code.replace(DYNAMIC, '$$$$b.dynamicNodes(') }]);
+      reader.append(`<!--x${mark}-->`);
+      continue;
+    }
     // A nested block with nothing in it yet: `<!--b`, the scope, `:anchor-->`, `<!--/b-->`.
     const blockEnd = nextStatic === undefined ? null : BLOCK_END.exec(nextStatic);
     if (SCOPE.test(code) && reader.html.endsWith(BLOCK_START) && blockEnd) {
@@ -269,6 +281,16 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       writes.push([{ kind: 'block', scope: code, anchor: Number(blockEnd[1]) }]);
       reader.append(`<!--x${mark}--><!--/b-->`);
       list[index + 1] = { static: nextStatic!.slice(blockEnd[0].length) };
+      continue;
+    }
+    // The start of a block whose markup follows in the template, such as of a dynamic tag.
+    const marker = nextStatic === undefined ? null : MARKER_END.exec(nextStatic);
+    if (SCOPE.test(code) && !reader.inTag && reader.html.endsWith(BLOCK_START) && marker) {
+      reader.takeBack(BLOCK_START, 'text');
+      const mark = writes.length;
+      writes.push([{ kind: 'marker', scope: code, anchor: Number(marker[1]), suffix: marker[2]! }]);
+      reader.append(`<!--x${mark}-->`);
+      list[index + 1] = { static: nextStatic!.slice(marker[0].length) };
       continue;
     }
     const end = nextStatic === undefined ? null : ANCHOR_END.exec(nextStatic);
@@ -283,7 +305,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   // Markers of blocks need the HTML of a render, and so does a body that writes nothing, which
   // gains nothing from a clone. The loader starts each `<template>` of a block once, such as of
   // a `$client` callback, so a clone of one would start nothing.
-  const comments = reader.html.replace(/<!--x\d+-->(?:<!--\/b-->)?/g, '');
+  const comments = reader.html.replace(/<!--x\d+-->|<!--\/b-->/g, '');
   if (writes.length === 0 || comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
@@ -291,16 +313,66 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
 }
 
 /**
- * Replaces the one `$$html +=` line of a render with a clone of a template, and the writes on
- * the elements that it marks. `hoist` makes a constant of the module. Returns false when the
- * markup needs HTML.
+ * Replaces the `$$html +=` lines of a render with a clone of a template, and the writes on the
+ * elements that it marks. `hoist` makes a constant of the module. Returns false when the markup
+ * needs HTML, such as markup in a branch or a loop of the render.
+ *
+ * The lines between the first and the last `$$html +=` can only declare the values of the
+ * writes, which run after them. Plain `{` blocks around them go, so the writes see them.
  */
 export function cloneLines(emitter: Emitter, hoist: (code: string) => string): boolean {
-  const [flush] = emitter.flushes;
-  const found = clonedTemplate([...flush!.parts]);
+  const { lines: source, levels } = emitter;
+  const tops = emitter.flushes.filter((flush) => levels[flush.line] === 'top');
+  if (tops.length === 0 || emitter.flushes.some((flush) => levels[flush.line] === 'control')) {
+    return false;
+  }
+  const first = tops[0]!.line;
+  const last = tops.at(-1)!.line;
+  const flushLines = new Set(tops.map((flush) => flush.line));
+  const dropped = new Set<number>();
+  const declared = new Set<string>();
+  for (let at = 0; at < source.length; at++) {
+    if (flushLines.has(at) || levels[at] !== 'top') {
+      if (at > first && at < last && levels[at] !== 'nested' && !flushLines.has(at)) {
+        return false;
+      }
+      continue;
+    }
+    const line = source[at]!.trim();
+    // Plain blocks go, so the clone and the writes see what the blocks declare.
+    if (emitter.plainBraces.has(at)) {
+      dropped.add(at);
+      continue;
+    }
+    const declaration = /^(?:const|let) ([\w$]+) =/.exec(line);
+    if (declaration) {
+      // Two blocks can declare the same name, which one function cannot.
+      if (declared.has(declaration[1]!)) {
+        return false;
+      }
+      declared.add(declaration[1]!);
+    }
+    if (at > first && at < last && !line.startsWith('const $$') && !line.startsWith('let $$')) {
+      if (line !== '});' && !line.startsWith('$$b.')) {
+        return false;
+      }
+    }
+  }
+  // One list of parts, with the static parts next to each other as one.
+  const parts: Part[] = [];
+  for (const part of tops.flatMap((flush) => flush.parts)) {
+    const previous = parts.at(-1);
+    if (previous && 'static' in previous && 'static' in part) {
+      parts[parts.length - 1] = { static: previous.static + part.static };
+    } else {
+      parts.push({ ...part });
+    }
+  }
+  const found = clonedTemplate(parts);
   if (!found) {
     return false;
   }
+  const flush = tops[0];
   const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
   const name = hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
   const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
@@ -327,6 +399,10 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string): b
         lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
       } else if (write.kind === 'component') {
         lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
+      } else if (write.kind === 'marker') {
+        lines.push(
+          `${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, ${JSON.stringify(write.suffix)});`,
+        );
       } else if (write.kind === 'block') {
         const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
         if (call === undefined) {
@@ -344,7 +420,21 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string): b
   if (missing) {
     return false;
   }
-  emitter.lines.splice(flush!.line, 1, ...lines);
-  emitter.lines.push(...fills);
+  // The clone and its writes go where the last `$$html +=` was, after the values they read.
+  const result: string[] = [];
+  const resultLevels: Level[] = [];
+  source.forEach((line, at) => {
+    if (at === last) {
+      result.push(...lines);
+      resultLevels.push(...lines.map((): Level => 'top'));
+    } else if (!flushLines.has(at) && !dropped.has(at)) {
+      result.push(line);
+      resultLevels.push(levels[at]!);
+    }
+  });
+  result.push(...fills);
+  resultLevels.push(...fills.map((): Level => 'top'));
+  source.splice(0, source.length, ...result);
+  levels.splice(0, levels.length, ...resultLevels);
   return true;
 }
