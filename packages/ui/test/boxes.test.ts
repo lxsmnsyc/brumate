@@ -3,6 +3,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Boxes from './fixtures/boxes.brm?brumate-server';
+import RequiredGroup from './fixtures/requiredGroup.brm?brumate-server';
 import { pointer, press } from './interact.ts';
 
 let unmount: (() => void) | undefined;
@@ -98,6 +99,30 @@ it('asks for a box of a required group on a submit, and shows the message', asyn
   input(page, '.olives').click();
   await page.waitFor(() => expect(page.container.querySelector('.toppings-error')).toBeNull());
   expect(input(page, '.cheese').required).toBe(false);
+  // The group keeps the state of every box, so the box that the user did not check is valid too.
+  await page.waitFor(() => expect(input(page, '.cheese').hasAttribute('aria-invalid')).toBe(false));
+  expect(page.get('.cheese').hasAttribute('data-invalid')).toBe(false);
+});
+
+it('renders the boxes of a required group optional, so a form posts without scripts', async () => {
+  const { render } = await import('brumate/server');
+  const { html } = await render(RequiredGroup, {});
+  const inputs = html.match(/<input[^>]*>/g) ?? [];
+  expect(inputs).toHaveLength(2);
+  expect(inputs.filter((tag) => / required/.test(tag))).toEqual([]);
+  // Once the code of the group runs, the browser asks for a box.
+  const page = await mount(RequiredGroup, {});
+  unmount = page.unmount;
+  await page.waitFor(() => expect(input(page, '.bacon').required).toBe(true), 3000);
+});
+
+it('keeps a box indeterminate after a click, while the prop says so', async () => {
+  const page = await boxes();
+  const box = input(page, '.mixed');
+  await page.waitFor(() => expect(box.indeterminate).toBe(true), 3000);
+  box.click();
+  await page.waitFor(() => expect(box.indeterminate).toBe(true));
+  expect(box.checked).toBe(true);
 });
 
 it('gives the radios of a RadioGroup one name, and writes the choice', async () => {
