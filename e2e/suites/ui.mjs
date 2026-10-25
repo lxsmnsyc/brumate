@@ -204,15 +204,21 @@ export async function run({ browser, url, runner }) {
     'Checkbox, RadioGroup and Switch: Space, the arrow keys and a required group',
     async () => {
       await page.goto(`${url}/`);
+      // The boxes are required once the code of the group runs.
+      await page.waitForFunction(() => document.querySelector('.toppings input')?.required);
       await page.locator('.pizza button[type=submit]').click();
       await page.waitForFunction(() => document.querySelector('.toppings .error')?.textContent);
-      const cheese = page.locator('.toppings input').first();
-      await cheese.focus();
+      // The first invalid box of the form gets focus, as the browser does with its own message.
+      await page.waitForFunction(
+        () => document.activeElement === document.querySelector('.toppings input'),
+      );
       await page.keyboard.press('Space');
       await page.waitForFunction(() =>
         document.querySelector('.pizza-value')?.textContent?.startsWith('cheese'),
       );
       await page.waitForFunction(() => !document.querySelector('.toppings .error'));
+      // The group keeps the state of every box, so the others are valid again too.
+      await page.waitForFunction(() => !document.querySelector('.toppings [aria-invalid]'));
       assert(
         await page
           .locator('.toppings .box')
