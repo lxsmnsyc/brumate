@@ -21,14 +21,15 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 - A `GridList` holds `GridListItem` elements, each with an `id`, its key. It needs `aria-label` or `aria-labelledby`.
 - Selection is as in a [ListBox](./list-box.md): `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
 - A `Checkbox` with `slot="selection"` and no `value` in a row shows whether the row is selected, and toggles it.
-- `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable.
+- `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable. `onAction` on a row runs too.
 
 ## Keyboard
 
 - Tab stops at the list once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the list leaves it.
 - Up and Down move between rows, and Home and End go to the first and the last row. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.
 - Left and Right move through the controls in a row, and back to the row. Right to left, they turn around.
-- Space selects the row that has focus, Shift extends a range, Ctrl+A or Cmd+A selects all, and Escape clears the selection.
+- Space selects the row that has focus, and Shift extends a range from it. Ctrl+A or Cmd+A selects all but the disabled rows, and Escape clears the selection, also from a control in a row.
+- PageUp and PageDown move by the height of the list.
 - A text field in a row keeps its own keys, other than Up, Down and Tab.
 
 ## Rows
