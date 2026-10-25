@@ -43,8 +43,10 @@ export function u1($$s) {
 export function u2($$s) {
   $$b.setVar($$s, "--s-9wx0az-1", $$b.get($$s, 0) ? '20px' : '12px');
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b4($$s) {
-  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

@@ -51,8 +51,10 @@ export const h9 = ($$s) => ($$b.set($$s, 0, [...$$b.get($$s, 0), 'Middle']));
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = ($$item) => $$item;
+const $$k1 = [];
 export function b5($$s) {
-  $$b.list($$s, 0, $$b.listOf($$b.get($$s, 0)), ($$item) => $$item, r2, a2, undefined, []);
+  $$b.list($$s, 0, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;

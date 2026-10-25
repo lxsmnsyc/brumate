@@ -86,8 +86,10 @@ export { add$ as h3 };
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = ($$item, $$index) => { const todo = $$item; return todo.id; };
+const $$k1 = [];
 export function b4($$s) {
-  $$b.list($$s, 1, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const todo = $$item; return todo.id; }, r2, a2, undefined, []);
+  $$b.list($$s, 1, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;

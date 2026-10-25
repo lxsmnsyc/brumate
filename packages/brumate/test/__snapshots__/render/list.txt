@@ -100,8 +100,10 @@ import Child from "./Child.brm?brumate-render";
 export function u5($$s) {
   $$b.text($$s, 0, $$b.get($$s, 0) + 1);
 }
+const $$k0 = ($$item, $$index) => $$index;
+const $$k1 = [];
 export function b8($$s) {
-  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => $$index, r3, a3, undefined, []);
+  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), $$k0, r3, a3, undefined, $$k1);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -125,8 +127,10 @@ return row($$b.get($$s, 1));
 export function u10($$s) {
   $$b.prop($$s, 2, "value", $$b.get($$s, 0));
 }
+const $$k2 = [r4];
+const $$k3 = [4];
 export function b12($$s) {
-  $$b.branch($$s, 3, ($$b.get($$s, 1)) ? 0 : -1, [r4], [4]);
+  $$b.branch($$s, 3, ($$b.get($$s, 1)) ? 0 : -1, $$k2, $$k3);
 }
 export function u13($$s) {
   $$b.prop($$s, 0, "value", $$b.get($$s.p, 0).length);

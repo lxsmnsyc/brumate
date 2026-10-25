@@ -98,8 +98,10 @@ export function m2($$s) {
 export function u6($$s) {
   $$b.attr($$s, 1, "value", $$b.get($$s, 1));
 }
+const $$k0 = ($$item, $$index) => { const todo = $$item; return todo.id; };
+const $$k1 = [];
 export function b8($$s) {
-  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const todo = $$item; return todo.id; }, r2, a2, undefined, []);
+  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;

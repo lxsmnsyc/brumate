@@ -710,15 +710,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     );
     const kept = new Set(list.filter((_, index) => needed[index]).map(([, file]) => file));
     const members = (await bundles(kept)).get(root) ?? [];
-    return [
-      ...members.map(
-        (file, index) =>
-          `import * as $$c${index} from ${JSON.stringify(`${file}${CLIENT_QUERY}`)};`,
-      ),
-      'export const modules = {',
-      ...members.map((file, index) => `  ${JSON.stringify(idOf(file))}: $$c${index},`),
-      '};',
-    ].join('\n');
+    // Each module is a plain object of its exports. A namespace object, from `import * as`,
+    // would make the bundler write a getter for each export.
+    const imports: string[] = [];
+    const objects: string[] = [];
+    for (const [index, file] of members.entries()) {
+      const { result } = await compileFile(file);
+      const names = exportNames([
+        result.client,
+        ...Object.entries(result.parts)
+          .filter(([name]) => name !== 'shared')
+          .map(([, code]) => code),
+      ]);
+      imports.push(
+        `import { ${names.map((name) => `${name} as $$c${index}_${name}`).join(', ')} } from ${JSON.stringify(`${file}${CLIENT_QUERY}`)};`,
+      );
+      objects.push(
+        `  ${JSON.stringify(idOf(file))}: { ${names.map((name) => `${name}: $$c${index}_${name}`).join(', ')} },`,
+      );
+    }
+    return [...imports, 'export const modules = {', ...objects, '};'].join('\n');
   };
 
   const manifest = async (): Promise<string> => {
@@ -2080,3 +2091,27 @@ export type {
   PrerenderedPage,
 } from './prerender.ts';
 export type { Budget, BuildReport } from './report.ts';
+
+/** The names that compiled client code exports, such as `h4`, `u5` and `g`. */
+function exportNames(codes: string[]): string[] {
+  const names = new Set<string>();
+  for (const code of codes) {
+    for (const match of code.matchAll(
+      /^export (?:async )?(?:function\*? |const |let |var )([\w$]+)|^export \{([^}]*)\}/gm,
+    )) {
+      if (match[1]) {
+        names.add(match[1]);
+      }
+      for (const item of match[2]?.split(',') ?? []) {
+        const name = item
+          .trim()
+          .split(/\s+as\s+/)
+          .pop();
+        if (name) {
+          names.add(name);
+        }
+      }
+    }
+  }
+  return [...names];
+}

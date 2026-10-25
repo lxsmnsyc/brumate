@@ -55,8 +55,9 @@ export function r2($$p) {
   $$html += "<p class=\"body\">Client <!--t" + $$s2 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
   return $$html;
 }
+const $$k0 = [3];
 export function k2($$s) {
-  $$b.fill($$s, 1, r2, [3]);
+  $$b.fill($$s, 1, r2, $$k0);
 }
 
 # Render module

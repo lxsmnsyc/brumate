@@ -221,6 +221,28 @@ describe('client entries and handlers', () => {
     expect(client).not.toContain('export function load');
   });
 
+  it('keeps the constants of updates at the top of their module', () => {
+    const { parts } = compile(
+      [
+        '<script>',
+        "  import { $signal } from 'brumate/signals';",
+        '  let items = $signal([1, 2]);',
+        '  let open = $signal(true);',
+        '</script>',
+        '<button onClick=(() => (items = [...items, 3]))>Add</button>',
+        '<button onClick=(() => (open = !open))>Toggle</button>',
+        '<ul>#for (item of items by item) {<li>{item}</li>}</ul>',
+        '#if (open) {<p>Open</p>}',
+      ].join('\n'),
+      { filename: 'T.brm' },
+    );
+    const update = parts.update!;
+    // The key reads only the item, and the kinds and the renders never change.
+    expect(update).toMatch(/const \$\$k\d+ = \(\$\$item, \$\$index\) => \{/);
+    expect(update).toMatch(/, \$\$k\d+, r\d+, a\d+, undefined, \$\$k\d+\);/);
+    expect(update).toMatch(/\$\$b\.branch\(\$\$s, \d+, .+, \$\$k\d+, \$\$k\d+\)/);
+  });
+
   it('puts the code of a small component into its entry', () => {
     const {
       client,

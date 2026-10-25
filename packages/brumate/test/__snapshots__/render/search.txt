@@ -70,11 +70,15 @@ export function m2($$s) {
 export function u3($$s) {
   $$b.attr($$s, 0, "value", $$b.get($$s, 0));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 1, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 1, ($$b.pending($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = ($$item) => $$item;
+const $$k3 = [];
 export function b6($$s) {
-  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 1)), ($$item) => $$item, r3, a3, undefined, []);
+  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 1)), $$k2, r3, a3, undefined, $$k3);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;

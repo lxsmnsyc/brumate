@@ -143,6 +143,30 @@ class ClientGenerator {
     lines.push(code);
   }
 
+  /** The module constants of each part, by their code. */
+  private readonly constants = new Map<string, Map<string, string>>();
+  private constantCount = 0;
+
+  /**
+   * A constant of the module of the current part, such as a list of scope kinds or a key
+   * function that reads no scope, so an update does not make it again on each run.
+   */
+  private hoist(code: string): string {
+    let known = this.constants.get(this.part);
+    if (!known) {
+      known = new Map();
+      this.constants.set(this.part, known);
+    }
+    let name = known.get(code);
+    if (!name) {
+      // The parts of a small component share one module, so the names differ between parts.
+      name = `$$k${this.constantCount++}`;
+      known.set(code, name);
+      this.emit(`const ${name} = ${code};`);
+    }
+    return name;
+  }
+
   generate(): ClientOutput {
     this.collectRenders();
     this.checkSupport();
@@ -1060,7 +1084,7 @@ class ClientGenerator {
           this.renderName(body),
         );
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, [${renders.join(', ')}], [${this.kinds(blockBodies(block)).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)});\n}`,
         );
         return;
       }
@@ -1071,12 +1095,14 @@ class ClientGenerator {
             ? `$$b.listOf(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
+        // A key that reads only the item is the same function for every update.
+        const keyName = key.includes('$$s') ? key : this.hoist(key);
         const fallback = block.fallback ? this.renderName(block.fallback) : 'undefined';
         const fallbackKinds = block.fallback ? this.kinds([block.fallback]) : [];
         this.emit(
           [
             `export function ${fn}($$s) {`,
-            `  $$b.list($$s, ${anchor}, ${items}, ${key}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, [${fallbackKinds.join(', ')}]);`,
+            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)});`,
             '}',
           ].join('\n'),
         );
@@ -1104,7 +1130,7 @@ class ClientGenerator {
         const [inner] = block.body.children;
         const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)});\n}`,
         );
         return;
       }
@@ -1237,7 +1263,9 @@ class ClientGenerator {
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
         // The fallback's scopes go when the body renders in its place.
-        const fallback = block.fallback ? `, [${this.kinds([block.fallback]).join(', ')}]` : '';
+        const fallback = block.fallback
+          ? `, ${this.hoist(`[${this.kinds([block.fallback]).join(', ')}]`)}`
+          : '';
         this.emit(
           `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );

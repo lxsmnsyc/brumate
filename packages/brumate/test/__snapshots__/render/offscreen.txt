@@ -190,8 +190,10 @@ export function u23($$s) {
 export function u24($$s) {
   $$b.text($$s, 6, $$b.get($$s.p, 1));
 }
+const $$k0 = [r4];
+const $$k1 = [4];
 export function b25($$s) {
-  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, [r4], [4]);
+  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, $$k0, $$k1);
 }
 export function u26($$s) {
   $$b.text($$s, 0, $$b.get($$s.p.p, 1));
@@ -208,8 +210,10 @@ export function b29($$s) {
 export function u30($$s) {
   $$b.text($$s, 0, $$b.get($$s.p, 1));
 }
+const $$k2 = [r7];
+const $$k3 = [7, 8];
 export function b31($$s) {
-  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, [r7], [7, 8]);
+  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, $$k2, $$k3);
 }
 export function b32($$s) {
   $$b.offscreen($$s, 0, $$b.get($$s.p, 0) === 'a', r8, 8);

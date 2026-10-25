@@ -50,8 +50,10 @@ import { Theme } from "./theme";
 export function u2($$s) {
   $$b.updateContext($$s, Theme, $$b.get($$s, 0));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

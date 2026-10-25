@@ -50,8 +50,10 @@ export function u3($$s) {
 export function u4($$s) {
   $$b.content($$s, 1, $$b.get($$s, 1));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';
