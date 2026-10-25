@@ -283,6 +283,6 @@
   onFocus=focused
   onFocusIn=focusIn
   onFocusOut=focusOut
-  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space'))
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter'))
   {...rest}
 >{children}</div>

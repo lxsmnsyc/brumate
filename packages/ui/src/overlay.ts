@@ -151,7 +151,9 @@ function canFocus(element: Element | null | undefined): element is HTMLElement {
 
 /**
  * Keeps what an open overlay holds: the functions that stop what it started, and where focus
- * was before it opened.
+ * was before it opened. An overlay that shows again while it is open first gives back what it
+ * held, so the page that it made inert is not taken as the page before it opened. It keeps
+ * where focus was before the first.
  */
 export function hold(
   overlay: Element,
@@ -160,7 +162,16 @@ export function hold(
   triggerId?: string,
   fromInside = false,
 ): void {
-  held.set(overlay, { stops, returnTo, startPoint: selectionPoint(), triggerId, fromInside });
+  const before = held.get(overlay);
+  for (const stop of before?.stops ?? []) {
+    stop();
+  }
+  held.set(
+    overlay,
+    before
+      ? { ...before, stops, triggerId }
+      : { stops, returnTo, startPoint: selectionPoint(), triggerId, fromInside },
+  );
 }
 
 /**

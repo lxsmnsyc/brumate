@@ -103,6 +103,15 @@ it('selects one item with Space and a press, and a press again clears it', async
   expect(state(page)[0]).toEqual([]);
 });
 
+it('prevents Enter, so a press of the element that gets focus next does not follow', async () => {
+  const page = await listboxes();
+  page.get('.apple').focus();
+  const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+  page.get('.apple').dispatchEvent(enter);
+  expect(enter.defaultPrevented).toBe(true);
+  await page.waitFor(() => expect(state(page)[0]).toEqual(['apple']));
+});
+
 it('adds and removes items of a multiple selection, extends it with Shift, and Ctrl+A and Escape', async () => {
   const page = await listboxes();
   pressWith(page.get('.feta'));

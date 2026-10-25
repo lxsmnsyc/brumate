@@ -121,6 +121,9 @@ export function timing(): Timing {
 /** The timing of tooltips. */
 export const tooltips: Timing = timing();
 
+/** The triggers that a press holds down. The focus that a press gives them shows no tooltip. */
+export const pressedTriggers: WeakSet<Element> = new WeakSet();
+
 /** The timing of previews, apart from tooltips, as in React Aria. */
 export const previews: Timing = timing();
 
