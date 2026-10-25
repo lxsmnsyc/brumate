@@ -49,20 +49,11 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
 Search.brumateId = "Search_s4k9u0";
 
 # Client entry
-import * as $$p0 from "./search.brm?brumate-client&part=h4";
-import * as $$p1 from "./search.brm?brumate-client&part=update";
+export * from "./search.brm?brumate-client&part=h4";
+export * from "./search.brm?brumate-client&part=update";
 export const id = "Search_s4k9u0";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u3"]], 1: [[1, "b5"], [1, "b6"]] }, 3: { 0: [[3, "u7"]] } };
-const parts = {
-  "h4": $$p0,
-  "update": $$p1,
-};
-export const partNames = ["h4","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h4
 import * as $$b from 'brumate/client';

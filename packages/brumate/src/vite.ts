@@ -720,7 +720,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const members = (await bundles(kept)).get(root) ?? [];
     return [
       ...members.map(
-        (file, index) => `import * as $$c${index} from ${JSON.stringify(`${file}${CLIENT_QUERY}`)};`,
+        (file, index) =>
+          `import * as $$c${index} from ${JSON.stringify(`${file}${CLIENT_QUERY}`)};`,
       ),
       'export const modules = {',
       ...members.map((file, index) => `  ${JSON.stringify(idOf(file))}: $$c${index},`),
@@ -753,7 +754,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return [
         'const bundles = {',
         ...[...groups.keys()].map(
-          (root) => `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
+          (root) =>
+            `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
         ),
         '};',
         `const owners = ${JSON.stringify(Object.fromEntries(owners))};`,

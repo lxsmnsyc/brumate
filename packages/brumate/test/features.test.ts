@@ -131,9 +131,7 @@ describe('features of the core', () => {
 
   it('keeps the updates that the components call, and the code of client navigation', async () => {
     const { core: chunk, chunks } = await buildApp('features', FEATURES);
-    expect(chunk.exports).toEqual(
-      expect.arrayContaining(['list', 'branch', 'portalTo']),
-    );
+    expect(chunk.exports).toEqual(expect.arrayContaining(['list', 'branch', 'portalTo']));
     // Client navigation loads it with the core, after a navigation.
     const routes = chunks.find((item) => item.moduleIds.includes(runtime('client-routes')));
     expect(routes).toBeDefined();

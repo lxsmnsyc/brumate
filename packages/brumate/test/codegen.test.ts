@@ -208,17 +208,17 @@ describe('client entries and handlers', () => {
     expect(code).not.toContain('.bind(');
   });
 
-  it('imports the parts of a component in its entry, so they load with the page', () => {
+  it('exports the parts of a component from its entry, so they load with the page', () => {
     const { client } = compile(
       counterSource(
         '<button onClick=(() => bump(1))>A</button><button onClick=(() => hidden++)>B</button>',
       ),
       { filename: 'T.brm' },
     );
-    expect(client).toMatch(/import \* as \$\$p0 from "\.\/T\.brm\?brumate-client&part=h\d+";/);
-    expect(client).toMatch(/import \* as \$\$p\d from "\.\/T\.brm\?brumate-client&part=update";/);
+    expect(client).toMatch(/export \* from "\.\/T\.brm\?brumate-client&part=h\d+";/);
+    expect(client).toContain('export * from "./T.brm?brumate-client&part=update";');
     expect(client).not.toContain('import(');
-    expect(client).toMatch(/export const partNames = \["h\d+","h\d+","update"\];/);
+    expect(client).not.toContain('export function load');
   });
 
   it('puts the code of a small component into its entry', () => {
@@ -261,11 +261,11 @@ describe('client entries and handlers', () => {
     expect(small.parts).toEqual({});
     expect(small.client).not.toContain('export function load');
     expect(Object.keys(small.loaders)).toHaveLength(3);
-    // Eight handlers keep one module per part, so an event loads only its own.
+    // Eight handlers keep one module per part, which the entry exports.
     expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
     const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });
     expect(Object.keys(large.parts)).toHaveLength(9);
-    expect(large.client).toContain('export function load');
+    expect(large.client).toContain('export * from');
   });
 });
 

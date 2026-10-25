@@ -19,22 +19,12 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
 Shared.brumateId = "Shared_1xpln25";
 
 # Client entry
-import * as $$p0 from "./shared.brm?brumate-client&part=h2";
-import * as $$p1 from "./shared.brm?brumate-client&part=h3";
-import * as $$p2 from "./shared.brm?brumate-client&part=update";
+export * from "./shared.brm?brumate-client&part=h2";
+export * from "./shared.brm?brumate-client&part=h3";
+export * from "./shared.brm?brumate-client&part=update";
 export const id = "Shared_1xpln25";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u5"]] } };
-const parts = {
-  "h2": $$p0,
-  "h3": $$p1,
-  "update": $$p2,
-};
-export const partNames = ["h2","h3","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';

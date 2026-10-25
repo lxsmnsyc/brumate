@@ -61,26 +61,14 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
 List.brumateId = "List_12rwm68";
 
 # Client entry
-import * as $$p0 from "./list.brm?brumate-client&part=h6";
-import * as $$p1 from "./list.brm?brumate-client&part=h7";
-import * as $$p2 from "./list.brm?brumate-client&part=h11";
-import * as $$p3 from "./list.brm?brumate-client&part=h14";
-import * as $$p4 from "./list.brm?brumate-client&part=update";
+export * from "./list.brm?brumate-client&part=h6";
+export * from "./list.brm?brumate-client&part=h7";
+export * from "./list.brm?brumate-client&part=h11";
+export * from "./list.brm?brumate-client&part=h14";
+export * from "./list.brm?brumate-client&part=update";
 export const id = "List_12rwm68";
 export const props = {  };
 export const g = { 2: { 0: [[2, "u5"]] }, 1: { 0: [[1, "b8"], [4, "u13"]], 1: [[1, "b12"]] }, 3: { 1: [[3, "u9"]], 0: [[3, "u10"]] } };
-const parts = {
-  "h6": $$p0,
-  "h7": $$p1,
-  "h11": $$p2,
-  "h14": $$p3,
-  "update": $$p4,
-};
-export const partNames = ["h6","h7","h11","h14","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h6
 import * as $$b from 'brumate/client';

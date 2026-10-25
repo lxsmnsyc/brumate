@@ -102,24 +102,13 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
 Blocks.brumateId = "Blocks_jlmev2";
 
 # Client entry
-import * as $$p0 from "./blocks.brm?brumate-client&part=c4";
-import * as $$p1 from "./blocks.brm?brumate-client&part=h6";
-import * as $$p2 from "./blocks.brm?brumate-client&part=h20";
-import * as $$p3 from "./blocks.brm?brumate-client&part=update";
+export * from "./blocks.brm?brumate-client&part=c4";
+export * from "./blocks.brm?brumate-client&part=h6";
+export * from "./blocks.brm?brumate-client&part=h20";
+export * from "./blocks.brm?brumate-client&part=update";
 export const id = "Blocks_jlmev2";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
-const parts = {
-  "c4": $$p0,
-  "h6": $$p1,
-  "h20": $$p2,
-  "update": $$p3,
-};
-export const partNames = ["c4","h6","h20","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: c4
 import * as $$b from 'brumate/client';

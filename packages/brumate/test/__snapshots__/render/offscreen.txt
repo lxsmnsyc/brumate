@@ -92,36 +92,19 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
 Offscreen.brumateId = "Offscreen_1oupne3";
 
 # Client entry
-import * as $$p0 from "./offscreen.brm?brumate-client&part=h7";
-import * as $$p1 from "./offscreen.brm?brumate-client&part=h8";
-import * as $$p2 from "./offscreen.brm?brumate-client&part=h9";
-import * as $$p3 from "./offscreen.brm?brumate-client&part=h10";
-import * as $$p4 from "./offscreen.brm?brumate-client&part=h11";
-import * as $$p5 from "./offscreen.brm?brumate-client&part=h12";
-import * as $$p6 from "./offscreen.brm?brumate-client&part=c16";
-import * as $$p7 from "./offscreen.brm?brumate-client&part=h17";
-import * as $$p8 from "./offscreen.brm?brumate-client&part=h19";
-import * as $$p9 from "./offscreen.brm?brumate-client&part=update";
+export * from "./offscreen.brm?brumate-client&part=h7";
+export * from "./offscreen.brm?brumate-client&part=h8";
+export * from "./offscreen.brm?brumate-client&part=h9";
+export * from "./offscreen.brm?brumate-client&part=h10";
+export * from "./offscreen.brm?brumate-client&part=h11";
+export * from "./offscreen.brm?brumate-client&part=h12";
+export * from "./offscreen.brm?brumate-client&part=c16";
+export * from "./offscreen.brm?brumate-client&part=h17";
+export * from "./offscreen.brm?brumate-client&part=h19";
+export * from "./offscreen.brm?brumate-client&part=update";
 export const id = "Offscreen_1oupne3";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b13"], [1, "b29"], [7, "b32"]], 1: [[2, "e15"], [3, "u22"], [2, "u24"], [2, "b25"], [4, "u26"], [5, "u27"], [2, "u28"], [6, "u30"], [8, "e33"]], 2: [[2, "b21"]], 4: [[2, "u23"]], 3: [[1, "b31"]] }, 2: { 0: [[2, "u18"], [2, "u20"]] } };
-const parts = {
-  "h7": $$p0,
-  "h8": $$p1,
-  "h9": $$p2,
-  "h10": $$p3,
-  "h11": $$p4,
-  "h12": $$p5,
-  "c16": $$p6,
-  "h17": $$p7,
-  "h19": $$p8,
-  "update": $$p9,
-};
-export const partNames = ["h7","h8","h9","h10","h11","h12","c16","h17","h19","update"];
-/** A part of this module. */
-export function load(part) {
-  return Promise.resolve(parts[part]);
-}
 
 # Client part: h7
 import * as $$b from 'brumate/client';

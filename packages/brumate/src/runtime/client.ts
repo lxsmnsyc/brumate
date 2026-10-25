@@ -68,8 +68,6 @@ export interface ClientModule {
    * itself, as a small component's module does.
    */
   load?: (part: string) => Promise<Part>;
-  /** The parts that `load` imports. The core loads them all with the page. */
-  partNames?: string[];
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
   /**
@@ -953,15 +951,9 @@ function loadComponent(id: string): void {
     return;
   }
   pageComponents.add(id);
-  // A part that fails to load is reported when a handler or an update needs it.
+  // The entry of a component holds all of its code. A load that fails is reported when a
+  // handler or an update needs it.
   const code: Promise<unknown> = loadModule(id, 'state')
-    .then((module) =>
-      Promise.all(
-        (module.load ? (module.partNames ?? []) : []).map((name) =>
-          loadPart(module, name, 'state'),
-        ),
-      ),
-    )
     .catch(() => {})
     .finally(() => loadingCode.delete(code));
   loadingCode.add(code);
