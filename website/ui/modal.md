@@ -12,7 +12,8 @@ A dialog over the page, which the user deals with before they go on, such as a c
 - The overlay is `position: fixed` over the whole window. It has `data-modal-overlay`, and sets `--visual-viewport-height`, the height of the window without a keyboard on the screen. The Modal has `data-modal`.
 - While it is open, the rest of the page is `inert` and does not scroll. The root gets `overflow: hidden`, and a padding as wide as the scrollbar, so the page does not move sideways.
 - Focus moves into it, stays inside, and goes back when it closes, as in a [Popover](./popover.md#focus).
-- Escape closes it, unless `isKeyboardDismissDisabled`. A press on the overlay, outside the Modal, closes it only with `isDismissable`.
+- Escape closes it, unless `isKeyboardDismissDisabled`. A press on the overlay, outside the Modal, closes it only with `isDismissable`. The press is a pointerdown and a pointerup of the first button.
+- A Modal inside a Modal opens an overlay of its own, over the first, and Escape closes only the top one.
 - A [Sheet](./sheet.md) is a Modal along an edge of the window.
 
 ## Animating it

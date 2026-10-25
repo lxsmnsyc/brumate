@@ -16,11 +16,13 @@
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import {
+    blurOutside,
     containTab,
     focusInto,
     hold,
     inertOutside,
     keepFocus,
+    lockScroll,
     pressOutside,
     release,
   } from './overlay.ts';
@@ -99,6 +101,10 @@
 
   function close() {
     if (own) {
+      // A press outside during the leave closes nothing again.
+      if (!isOpen) {
+        return;
+      }
       isOpen = false;
       onOpenChange?.(false);
     } else {
@@ -112,7 +118,8 @@
     await nextFrame();
     const element = panel;
     const holder = layer;
-    if (token !== run || !element || !holder) {
+    // The popover can leave the page within the frame, such as on a route change.
+    if (token !== run || !element?.isConnected || !holder) {
       return;
     }
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
@@ -143,11 +150,18 @@
         ),
       );
     }
-    // A preview and a submenu are never modal.
-    if (!isNonModal && !trigger?.isPreview && !trigger?.isNonModal) {
-      stops.push(inertOutside(holder), keepFocus(holder, element));
+    // A preview is never modal, and a submenu is not either. A modal popover makes the page inert
+    // and locks its scroll, and closes on a press outside, as usePopover of React Aria. One that
+    // is not modal closes when focus leaves it.
+    const modal = !isNonModal && !trigger?.isNonModal;
+    if (modal && !trigger?.isPreview) {
+      stops.push(inertOutside(holder), keepFocus(holder, element), lockScroll());
     }
-    stops.push(pressOutside(holder, anchor, close));
+    if (modal) {
+      stops.push(pressOutside(holder, anchor, close));
+    } else {
+      stops.push(blurOutside(holder, anchor, close));
+    }
     if (transition && !(await enterSteps(element, stepClasses(), { current: () => token === run }))) {
       return;
     }
@@ -210,8 +224,9 @@
     return placementPassed ? placement : (trigger?.placement ?? placement);
   }
 
+  // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !event.defaultPrevented) {
       close();
     }
   }
