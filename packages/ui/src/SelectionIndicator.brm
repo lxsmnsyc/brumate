@@ -11,6 +11,8 @@
    * - When the selection moves, the new one moves from where the last one was, with the
    *   `transition-duration` and `transition-timing-function` of its CSS. With no duration, it
    *   does not move. It does not move when the user asks for less motion.
+   * - It moves from where the last one is now, also when the layout changed since, such as on a
+   *   resize.
    */
   const { as = 'span', children, ...rest } = $props<{
     as?: string;
