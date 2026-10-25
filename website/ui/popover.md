@@ -8,7 +8,7 @@ An overlay beside its trigger, such as a menu of settings.
 
 - A [DialogTrigger](./dialog.md#dialogtrigger) holds a `Button`, which opens the popover, and a `Popover`, which often holds a [Dialog](./dialog.md).
 - It renders in a [layer](./layers.md) at the end of the page, or at the end of the layer of the overlay around it.
-- Escape and a press outside close it.
+- Escape and a press outside close it. A press is a pointerdown and a pointerup of the first button, so a touch that scrolls the page closes nothing. Only the topmost of nested overlays closes.
 - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`, as a [Transition](./transition.md) does.
 
 ## Placement
@@ -20,8 +20,8 @@ An overlay beside its trigger, such as a menu of settings.
 
 ## Focus
 
-- It is modal: the rest of the page is `inert`, and focus stays inside. Tab and Shift+Tab wrap at its ends, and focus that lands outside or on nothing, such as when the focused element is removed, goes back to the last element that had it.
-- `isNonModal` leaves the page and focus as they are.
+- It is modal: the rest of the page is `inert` and does not scroll, and focus stays inside. Tab and Shift+Tab wrap at its ends, and focus that lands outside or on nothing, such as when the focused element is removed, goes back to the last element that had it.
+- `isNonModal` leaves the page and focus as they are. A press outside does not close it, and focus that leaves it does, as in React Aria.
 - Focus moves into it once it has entered. When it closes, focus goes back:
   - to the element that had focus before it opened;
   - or, when that element is gone, to the trigger with the same ID, such as a trigger that rendered again;

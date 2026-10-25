@@ -60,12 +60,18 @@ export async function waitForAnimations(element: Element, subtree = false): Prom
   // on before any of them is read.
   await Promise.resolve();
   try {
-    const animations = element.getAnimations({ subtree });
+    // An animation that never ends, such as a spinner inside, is not part of the transition.
+    const animations = element.getAnimations({ subtree }).filter(ends);
     // An animation that is cancelled, such as by the opposite transition, ends the wait too.
     await Promise.all(animations.map(async (animation) => animation.finished.catch(() => {})));
   } catch {
     // A browser without getAnimations goes on at once.
   }
+}
+
+/** True for an animation that ends: one that does not repeat forever. */
+export function ends(animation: Animation): boolean {
+  return animation.effect?.getComputedTiming().iterations !== Infinity;
 }
 
 /** Resolves on the next frame, once the browser has drawn the changes before it. */
