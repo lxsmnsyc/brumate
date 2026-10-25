@@ -38,18 +38,19 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
 Retry.brumateId = "Retry_pyus3c";
 
 # Client entry
+import * as $$p0 from "./retry.brm?brumate-client&part=h2";
+import * as $$p1 from "./retry.brm?brumate-client&part=update";
 export const id = "Retry_pyus3c";
 export const props = {  };
 export const g = { 3: { 0: [[3, "u1"]] } };
-const update = () => import("./retry.brm?brumate-client&part=update");
 const parts = {
-  "h2": () => (update().catch(() => {}), import("./retry.brm?brumate-client&part=h2")),
-  "update": update,
+  "h2": $$p0,
+  "update": $$p1,
 };
 export const partNames = ["h2","update"];
-/** Imports a part of this module. */
+/** A part of this module. */
 export function load(part) {
-  return parts[part]();
+  return Promise.resolve(parts[part]);
 }
 
 # Client part: h2

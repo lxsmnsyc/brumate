@@ -21,6 +21,14 @@ The loader:
 
 The core reads the state records that the page's scripts handed over, and links each scope to its parent. It does not render the page again. For each component that has a scope on the page, it loads the client entry and all of its parts. A component that the browser renders later, such as in an `#if` body, loads its code when its scope is made.
 
+## Bundles
+
+A build groups the client code by root components: the components that no other component imports, such as routes, layouts and pages. The bundle of a root holds the client entries and the parts of every component that it can render, so the code of a page comes in one chunk, with the chunks that it shares with other pages.
+
+- The loader starts the bundles of the components in the page state at once, with the core.
+- A page of `handleRoute` gets `<link rel="modulepreload">` for the loader, the core and the bundles of its route and layouts, so they download with the HTML.
+- The dev server loads each component's module on its own, so an edit updates the page in place.
+
 ## Events and calls
 
 An event that comes before the code of the page has loaded waits for it. Then the core:
@@ -41,12 +49,12 @@ Handlers run after the event has finished dispatching. The core passes them an e
 
 The compiler splits the client code of each component into parts. The bundler loads a part as `App.brm?brumate-client&part=<name>`.
 
-| Part             | Holds                                                                      | Loads                                         |
-| ---------------- | -------------------------------------------------------------------------- | --------------------------------------------- |
-| Entry, `App.brm` | The component ID, the props map, the update table `g`, `load(part)` and `partNames` | With the page                 |
-| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback | With the page                                 |
-| `update`         | Memos, bindings, block updates, effects, list helpers and render functions | With the page                                 |
-| `shared`         | Functions that more than one part calls, and the module script             | With the parts that import it                 |
+| Part             | Holds                                                                                                           | Loads                         |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Entry, `App.brm` | The component ID, the props map, the update table `g`, `load(part)` and `partNames`, and an import of each part | With the page                 |
+| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback                                      | With the page                 |
+| `update`         | Memos, bindings, block updates, effects, list helpers and render functions                                      | With the page                 |
+| `shared`         | Functions that more than one part calls, and the module script                                                  | With the parts that import it |
 
 - A local function that only one part calls goes into that part.
 - Each part imports only what its code reads. Server function stubs are copied into each part that calls them.

@@ -208,16 +208,17 @@ describe('client entries and handlers', () => {
     expect(code).not.toContain('.bind(');
   });
 
-  it('starts loading the updates with a handler that writes a slot that they read', () => {
+  it('imports the parts of a component in its entry, so they load with the page', () => {
     const { client } = compile(
       counterSource(
         '<button onClick=(() => bump(1))>A</button><button onClick=(() => hidden++)>B</button>',
       ),
       { filename: 'T.brm' },
     );
-    expect(client).toMatch(/"h\d+": \(\) => \(update\(\)\.catch\(\(\) => \{\}\), import\(/);
-    // `hidden` has no update, so its handler loads its own part only.
-    expect(client).toMatch(/"h\d+": \(\) => import\("\.\/T\.brm\?brumate-client&part=h\d+"\),/);
+    expect(client).toMatch(/import \* as \$\$p0 from "\.\/T\.brm\?brumate-client&part=h\d+";/);
+    expect(client).toMatch(/import \* as \$\$p\d from "\.\/T\.brm\?brumate-client&part=update";/);
+    expect(client).not.toContain('import(');
+    expect(client).toMatch(/export const partNames = \["h\d+","h\d+","update"\];/);
   });
 
   it('puts the code of a small component into its entry', () => {

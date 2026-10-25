@@ -71,7 +71,12 @@ async function buildApp(
         'brumate/signals': runtime('signals'),
       },
     },
-    build: { write: false, minify: true, rolldownOptions: { input: 'src/client.ts' } },
+    // The chunk of the core keeps the names of its exports, so the tests can read them.
+    build: {
+      write: false,
+      minify: true,
+      rolldownOptions: { input: 'src/client.ts', output: { minifyInternalExports: false } },
+    },
   })) as Rolldown.RolldownOutput;
   const chunks = result.output.filter(
     (item): item is Rolldown.OutputChunk => item.type === 'chunk',
@@ -90,7 +95,7 @@ describe('features of the core', () => {
 
   it('leaves out what a counter without client navigation does not use', async () => {
     const { core: chunk, chunks } = await buildApp('counter', COUNTER, { navigate: false });
-    expect(chunk.exports).toEqual(expect.arrayContaining(['get', 'content', 'update', 'loader']));
+    expect(chunk.exports).toEqual(expect.arrayContaining(['get', 'content', 'update']));
     for (const name of [
       // Updates of blocks that the component has none of.
       'list',
@@ -127,7 +132,7 @@ describe('features of the core', () => {
   it('keeps the updates that the components call, and the code of client navigation', async () => {
     const { core: chunk, chunks } = await buildApp('features', FEATURES);
     expect(chunk.exports).toEqual(
-      expect.arrayContaining(['list', 'branch', 'portalTo', 'leavePage', 'removeScope']),
+      expect.arrayContaining(['list', 'branch', 'portalTo']),
     );
     // Client navigation loads it with the core, after a navigation.
     const routes = chunks.find((item) => item.moduleIds.includes(runtime('client-routes')));

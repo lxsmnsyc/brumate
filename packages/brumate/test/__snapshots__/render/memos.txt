@@ -54,20 +54,23 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
 Memos.brumateId = "Memos_1khoa0p";
 
 # Client entry
+import * as $$p0 from "./memos.brm?brumate-client&part=h15";
+import * as $$p1 from "./memos.brm?brumate-client&part=h24";
+import * as $$p2 from "./memos.brm?brumate-client&part=h30";
+import * as $$p3 from "./memos.brm?brumate-client&part=update";
 export const id = "Memos_1khoa0p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "m4"], [1, "m7"], [1, "u16"]], 2: [[1, "m3"], [1, "m14"], [1, "u17"]], 3: [[1, "m6"], [1, "m8"], [1, "u18"]], 5: [[1, "m6"]], 7: [[1, "m8"], [1, "u22"]], 10: [[1, "m13"], [1, "u26"]], 1: [[1, "m14"]], 4: [[1, "u19"]], 6: [[1, "u21"]], 8: [[1, "u23"]], 9: [[1, "u25"]], 13: [[1, "u27"]], 11: [[1, "u28"]], 12: [[1, "u29"]], 14: [[2, "u36"]] } };
-const update = () => import("./memos.brm?brumate-client&part=update");
 const parts = {
-  "h15": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h15")),
-  "h24": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h24")),
-  "h30": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h30")),
-  "update": update,
+  "h15": $$p0,
+  "h24": $$p1,
+  "h30": $$p2,
+  "update": $$p3,
 };
 export const partNames = ["h15","h24","h30","update"];
-/** Imports a part of this module. */
+/** A part of this module. */
 export function load(part) {
-  return parts[part]();
+  return Promise.resolve(parts[part]);
 }
 
 # Client part: h15

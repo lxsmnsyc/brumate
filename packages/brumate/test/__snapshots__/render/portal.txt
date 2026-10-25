@@ -37,19 +37,21 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
 Portal.brumateId = "Portal_17ywlhi";
 
 # Client entry
+import * as $$p0 from "./portal.brm?brumate-client&part=h1";
+import * as $$p1 from "./portal.brm?brumate-client&part=h3";
+import * as $$p2 from "./portal.brm?brumate-client&part=update";
 export const id = "Portal_17ywlhi";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b2"]] } };
-const update = () => import("./portal.brm?brumate-client&part=update");
 const parts = {
-  "h1": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h1")),
-  "h3": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h3")),
-  "update": update,
+  "h1": $$p0,
+  "h3": $$p1,
+  "update": $$p2,
 };
 export const partNames = ["h1","h3","update"];
-/** Imports a part of this module. */
+/** A part of this module. */
 export function load(part) {
-  return parts[part]();
+  return Promise.resolve(parts[part]);
 }
 
 # Client part: h1

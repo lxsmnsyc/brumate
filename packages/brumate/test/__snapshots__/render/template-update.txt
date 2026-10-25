@@ -21,18 +21,19 @@ export default async function TemplateUpdate($$props: Record<string, never>, $$c
 TemplateUpdate.brumateId = "TemplateUpdate_kx4ubq";
 
 # Client entry
+import * as $$p0 from "./template-update.brm?brumate-client&part=h3";
+import * as $$p1 from "./template-update.brm?brumate-client&part=update";
 export const id = "TemplateUpdate_kx4ubq";
 export const props = {  };
 export const g = { 2: { 0: [[2, "u1"]], 1: [[2, "u2"]] }, 1: { 0: [[1, "u4"]] } };
-const update = () => import("./template-update.brm?brumate-client&part=update");
 const parts = {
-  "h3": () => (update().catch(() => {}), import("./template-update.brm?brumate-client&part=h3")),
-  "update": update,
+  "h3": $$p0,
+  "update": $$p1,
 };
 export const partNames = ["h3","update"];
-/** Imports a part of this module. */
+/** A part of this module. */
 export function load(part) {
-  return parts[part]();
+  return Promise.resolve(parts[part]);
 }
 
 # Client part: h3
