@@ -105,7 +105,16 @@ export interface EmitterOptions {
    * expression for that scope's instance.
    */
   outer?: { inside: Scope[]; base: Scope; baseVar: string };
+  /**
+   * For a render that clones a template: the render functions of the nested `#if` and `#for`
+   * blocks that it fills after the clone, in place of their markup. A block that it gives none
+   * for renders inline.
+   */
+  fills?: (block: Block) => Fill | undefined;
 }
+
+/** The render functions that fill a nested block of a clone. */
+export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: string };
 
 /** Writes code that renders markup to an HTML string, on the server or on the client. */
 /** The exports of the core that do on the client what the server's render context does. */
@@ -205,6 +214,11 @@ export class Emitter {
   readonly lines: string[] = [];
   /** Each `$$html +=` line, by its index in `lines`, with its parts, for cloned templates. */
   readonly flushes: { line: number; parts: Part[] }[] = [];
+  /**
+   * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
+   * `$$m` in a call is the start comment of the block.
+   */
+  readonly fills: Map<string, string> = new Map();
   private readonly file: SFCFile;
   private readonly plan: Plan;
   private readonly patch: Patch;
@@ -1717,6 +1731,35 @@ export class Emitter {
     this.close('});');
   }
 
+  /**
+   * Writes the markers of a nested `#if` or `#for` of a clone, with nothing between them, and
+   * the call that fills the block after the clone. Returns false for a block that renders inline.
+   */
+  private emitFill(block: Block, scope: Scope): boolean {
+    const fill = this.options.fills?.(block);
+    const anchor = fill && this.anchor(scope, block);
+    if (!fill || !anchor) {
+      return false;
+    }
+    let call: string;
+    if (fill.kind === 'if' && block.kind === 'if') {
+      // The index of the branch that shows, or of the fallback, or -1.
+      let index = block.fallback ? String(block.branches.length) : '-1';
+      for (let at = block.branches.length - 1; at >= 0; at--) {
+        index = `${this.expression(block.branches[at]!.condition)} ? ${at} : ${index}`;
+      }
+      call = `$$b.fillBranch($$m, ${anchor.scope}, ${anchor.index}, ${index}, [${fill.renders.join(', ')}])`;
+    } else if (fill.kind === 'for' && block.kind === 'for') {
+      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.listOf(${this.expression(block.list)}), ${fill.render})`;
+    } else {
+      return false;
+    }
+    this.open(scope, block, fill.kind === 'if' ? '-1' : undefined);
+    this.end(block);
+    this.fills.set(`${anchor.scope}:${anchor.index}`, call);
+    return true;
+  }
+
   private open(scope: Scope, block: Block, suffix?: string): void {
     const anchor = this.anchor(scope, block);
     if (anchor) {
@@ -1733,6 +1776,9 @@ export class Emitter {
   }
 
   private emitBlock(block: Block, scope: Scope): void {
+    if (this.emitFill(block, scope)) {
+      return;
+    }
     switch (block.kind) {
       case 'if':
       case 'switch': {

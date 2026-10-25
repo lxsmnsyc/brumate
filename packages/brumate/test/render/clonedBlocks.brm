@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let items = $signal(['a', 'b']);
+  let more = $signal(true);
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+<button class="add" onClick=(() => (items = [...items, 'c']))>Add</button>
+<button class="less" onClick=(() => (more = !more))>Less</button>
+#if (open) {
+  <section class="box">
+    <ul class="items">
+      #for (item of items) {
+        <li>{item}</li>
+      }
+    </ul>
+    #if (more) {
+      <em class="more">More</em>
+    }
+  </section>
+}

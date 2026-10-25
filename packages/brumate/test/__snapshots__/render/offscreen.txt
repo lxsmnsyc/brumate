@@ -265,12 +265,14 @@ export function r3($$p) {
   $$html += "<p s-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
   return $$html;
 }
+const $$k4 = $$b.template("<p b-x=\"0\" s-1oupne3 class=\"late\">Late </p>", 1);
 export function r4($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
   const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k4);
+  $$b.appendText($$s4, 0, $$e[0], (count));
+  return $$f;
 }
 export function r6($$p) {
   let $$html = '';

@@ -167,15 +167,19 @@ export function r4($$p) {
   $$html += "<p>B</p>";
   return $$html;
 }
+const $$k4 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
 export function r5($$p, $$item, $$index) {
   let $$html = '';
   const item = $$item;
   const i = $$index;
   const $$s5 = $$b.createScope(5, $$p);
-  $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
+  const [$$f, $$e] = $$b.clone($$k4);
+  $$b.keep($$s5, 0, $$e[0]);
+  $$b.appendText($$s5, 2, $$e[0], (item));
+  $$b.keepText($$s5, 1, $$e[1], (i));
   $$b.setSlots($$s5, [item, i]);
   $$b.setItem($$s5, $$item);
-  return $$html;
+  return $$f;
 }
 export function r6($$p) {
   let $$html = '';

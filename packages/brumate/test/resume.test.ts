@@ -2287,6 +2287,46 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('cloned markup', () => {
+  it('fills the blocks inside a clone, which update in place after', async () => {
+    await resume('clonedBlocks', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('ab'));
+    expect(document.querySelector('.more')).not.toBeNull();
+    const first = document.querySelector('.items li')!;
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+    // The list kept the items that stay.
+    expect(document.querySelector('.items li')).toBe(first);
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).toBeNull());
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).not.toBeNull());
+    // Closed and opened again, the clone fills its blocks with the values of now.
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).toBeNull());
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+  });
+
+  it('writes the text of an insert in a clone, and updates the text node that it keeps', async () => {
+    await resume('clonedText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada, you have 1 items.'));
+    const hello = document.querySelector('.hello')!;
+    // The clone holds a text node in place of each insert, and no markers.
+    expect([...hello.childNodes].map((node) => node.nodeType)).toEqual([3, 3, 3, 3, 3]);
+    const name = hello.childNodes[1]!;
+    // At the end of its element, the text node is the last child, with no comment either.
+    const last = document.querySelector('.last')!;
+    expect([...last.childNodes].map((node) => node.nodeType)).toEqual([3, 3]);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada!, you have 2 items.'));
+    expect(hello.childNodes[1]).toBe(name);
+    expect(text('.last')).toBe('Bye Ada!');
+  });
+});
+
 describe('templates called again', () => {
   it('update in place with their new arguments, and keep their elements', async () => {
     await resume('templateInPlace', {});

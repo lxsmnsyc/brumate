@@ -18,6 +18,7 @@ import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { clonedTemplate } from './template.ts';
+import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
@@ -1227,6 +1228,10 @@ class ClientGenerator {
     const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
     const name = this.hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
     const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
+    // The calls that fill the nested blocks, after the slots of the body are set, which the
+    // renders of the blocks read.
+    const fills: string[] = [];
+    let missing = false;
     found.writes.forEach((writes, index) => {
       // The scope of the anchor of the element, where its content finds its contexts.
       const anchored = writes.find((write) => write.kind === 'anchor');
@@ -1234,63 +1239,128 @@ class ClientGenerator {
       for (const write of writes) {
         if (write.kind === 'anchor') {
           lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
+        } else if (write.kind === 'last') {
+          lines.push(
+            `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value});`,
+          );
+        } else if (write.kind === 'text') {
+          lines.push(
+            `${indent}$$b.keepText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value});`,
+          );
         } else if (write.kind === 'attribute') {
           lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
+        } else if (write.kind === 'block') {
+          const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
+          if (call === undefined) {
+            missing = true;
+          } else {
+            fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
+          }
         } else {
           lines.push(`${indent}$$b.setContent($$e[${index}], ${write.value}${at});`);
         }
       }
     });
+    if (missing) {
+      return false;
+    }
     emitter.lines.splice(flush!.line, 1, ...lines);
+    emitter.lines.push(...fills);
     return true;
+  }
+
+  /**
+   * The code of the render function of a body. With `fill`, the body fills its nested blocks
+   * after it clones its template, and gives undefined when it cannot clone.
+   */
+  private emitRender(scope: Scope, body: Body, block: Block, fill: boolean): string | undefined {
+    const base = scope.parent!;
+    const inside = this.inside(scope);
+    const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+      mode: 'client',
+      outer: { inside, base, baseVar: '$$p' },
+      fills: fill ? (nested) => this.fillOf(nested) : undefined,
+    });
+    const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
+    const isCatch = block.kind === 'try' && block.fallback === body;
+    let params = '';
+    if (isItem) {
+      params = ', $$item, $$index';
+    } else if (isCatch) {
+      params = ', $$error';
+    }
+    emitter.line(`export function r${scope.id}($$p${params}) {`);
+    emitter.line(`let $$html = '';`);
+    if (block.kind === 'try' && isCatch) {
+      if (block.error) {
+        emitter.line(`const ${block.error.name} = $$error;`);
+      }
+      if (block.reset) {
+        emitter.line(`const ${block.reset.name} = undefined;`);
+      }
+    }
+    for (const line of this.prologue(inside, base)) {
+      emitter.line(line);
+    }
+    for (const template of inside.slice(1)) {
+      emitter.emitTemplate(template.template!);
+    }
+    if (isItem) {
+      emitter.emitItem(block, '$$item', '$$index');
+    } else {
+      emitter.emitBody(body);
+    }
+    emitter.flush();
+    // The body of an `#if` or a `#for` whose markup is one string clones a template.
+    const cloned =
+      (block.kind === 'if' || block.kind === 'for') && emitter.flushes.length === 1
+        ? this.cloneRender(emitter)
+        : false;
+    if (fill && !cloned) {
+      return undefined;
+    }
+    emitter.line(cloned ? 'return $$f;' : 'return $$html;');
+    emitter.close();
+    return emitter.lines.join('\n');
+  }
+
+  /** The name of the render function of a body, when the module has one. */
+  private renderOf(body: object | undefined): string | undefined {
+    const scope = body && this.plan.bodyScopes.get(body as never);
+    return scope && this.renders.has(scope) ? `r${scope.id}` : undefined;
+  }
+
+  /**
+   * The render functions that fill a nested `#if` or `#for` of a clone, when the module has
+   * them all. A `#for` with an `#else` renders inline.
+   */
+  private fillOf(block: Block): Fill | undefined {
+    if (block.kind === 'if') {
+      const bodies = [...block.branches.map((branch) => branch.body), block.fallback].filter(
+        (body) => body !== undefined,
+      );
+      const renders = bodies.map((body) => this.renderOf(body));
+      return renders.every((name) => name !== undefined)
+        ? { kind: 'if', renders: renders as string[] }
+        : undefined;
+    }
+    if (block.kind === 'for' && !block.fallback) {
+      const render = this.renderOf(block.body);
+      return render ? { kind: 'for', render } : undefined;
+    }
+    return undefined;
   }
 
   private emitRenders(): void {
     for (const [scope, { body, block }] of this.renders) {
+      const clonable = block.kind === 'if' || block.kind === 'for';
+      // A body that fills its nested blocks must clone, so one that cannot renders again inline.
+      const lines =
+        (clonable && this.emitRender(scope, body, block, true)) ||
+        this.emitRender(scope, body, block, false)!;
+      this.emit(lines);
       const base = scope.parent!;
-      const inside = this.inside(scope);
-      const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
-        mode: 'client',
-        outer: { inside, base, baseVar: '$$p' },
-      });
-      const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
-      const isCatch = block.kind === 'try' && block.fallback === body;
-      let params = '';
-      if (isItem) {
-        params = ', $$item, $$index';
-      } else if (isCatch) {
-        params = ', $$error';
-      }
-      emitter.line(`export function r${scope.id}($$p${params}) {`);
-      emitter.line(`let $$html = '';`);
-      if (block.kind === 'try' && isCatch) {
-        if (block.error) {
-          emitter.line(`const ${block.error.name} = $$error;`);
-        }
-        if (block.reset) {
-          emitter.line(`const ${block.reset.name} = undefined;`);
-        }
-      }
-      for (const line of this.prologue(inside, base)) {
-        emitter.line(line);
-      }
-      for (const template of inside.slice(1)) {
-        emitter.emitTemplate(template.template!);
-      }
-      if (isItem) {
-        emitter.emitItem(block, '$$item', '$$index');
-      } else {
-        emitter.emitBody(body);
-      }
-      emitter.flush();
-      // The body of an `#if` or a `#for` whose markup is one string clones a template.
-      const cloned =
-        (block.kind === 'if' || block.kind === 'for') && emitter.flushes.length === 1
-          ? this.cloneRender(emitter)
-          : false;
-      emitter.line(cloned ? 'return $$f;' : 'return $$html;');
-      emitter.close();
-      this.emit(emitter.lines.join('\n'));
+
       if (block.kind === 'portal' && block.target) {
         const header = this.model.sites.find(
           (site) => site.kind === 'block' && site.block === block,

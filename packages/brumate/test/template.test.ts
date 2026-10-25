@@ -35,10 +35,48 @@ it('marks the elements that a render writes, with their attributes, anchors and 
   ]);
 });
 
+it('puts a comment for a text insert between static text, and none at the end of an element', () => {
+  const found = clonedTemplate([
+    { static: '<p>Hello <!--t' },
+    { code: '$$s2' },
+    { static: ':0-->' },
+    { code: '$$b.insert((name))' },
+    { static: '<!--/t-->, and <!--t' },
+    { code: '$$s2' },
+    { static: ':1-->' },
+    { code: '$$b.insert((other))' },
+    { static: '<!--/t--></p>' },
+  ])!;
+  expect(found.html).toBe('<p b-x="1">Hello <!--x0-->, and </p>');
+  expect(found.writes).toEqual([
+    [{ kind: 'text', scope: '$$s2', anchor: 0, value: '(name)' }],
+    [{ kind: 'last', scope: '$$s2', anchor: 1, value: '(other)' }],
+  ]);
+});
+
+it('marks the start of a nested block with nothing in it, which a call fills', () => {
+  const found = clonedTemplate([
+    { static: '<ul><!--b' },
+    { code: '$$s2' },
+    { static: ':0--><!--/b--></ul><!--b' },
+    { code: '$$s2' },
+    { static: ':1:-1--><!--/b-->' },
+  ])!;
+  expect(found.html).toBe('<ul><!--x0--><!--/b--></ul><!--x1--><!--/b-->');
+  expect(found.writes).toEqual([
+    [{ kind: 'block', scope: '$$s2', anchor: 0 }],
+    [{ kind: 'block', scope: '$$s2', anchor: 1 }],
+  ]);
+});
+
 it('renders HTML for markers, children, raw text, blocks of the loader, and other code', () => {
-  // A block inside, with its markers.
+  // A block inside, with markup in it.
   expect(
-    clonedTemplate([{ static: '<ul><!--b' }, { code: '$$s2' }, { static: ':0--><!--/b--></ul>' }]),
+    clonedTemplate([
+      { static: '<ul><!--b' },
+      { code: '$$s2' },
+      { static: ':0--><li>a</li><!--/b--></ul>' },
+    ]),
   ).toBeUndefined();
   // Children render where they are inserted.
   expect(

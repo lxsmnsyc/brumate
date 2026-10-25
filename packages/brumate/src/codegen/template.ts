@@ -7,12 +7,19 @@ import type { Part } from './markup.ts';
 export type Write =
   | { kind: 'anchor'; scope: string; anchor: number }
   | { kind: 'attribute'; name: string; value: string }
-  | { kind: 'content'; value: string };
+  | { kind: 'content'; value: string }
+  /** A text insert, whose place in the clone a marked comment holds. */
+  | { kind: 'text'; scope: string; anchor: number; value: string }
+  /** A text insert at the end of the marked element, which needs no comment. */
+  | { kind: 'last'; scope: string; anchor: number; value: string }
+  /** A nested block, whose start comment the clone marks, and which a call fills. */
+  | { kind: 'block'; scope: string; anchor: number };
 
 export interface ClonedTemplate {
   /**
    * The static HTML of the template. Each element that the render writes has `b-x` with its
-   * index, which the browser reads, and removes, when it parses the template.
+   * index, which the browser reads, and removes, when it parses the template. A text insert is
+   * a comment, `<!--x` and its index, which the clone replaces with a text node.
    */
   html: string;
   /** The writes on the marked elements, by their index. */
@@ -27,6 +34,13 @@ const PLACED = /, undefined, [\w$.]+\)$/;
 const SCOPE = /^\$\$s\d+$/;
 const ANCHOR_START = ' b-b="';
 const ANCHOR_END = /^:(\d+)"/;
+const TEXT_START = '<!--t';
+const TEXT_END = /^:(\d+)-->/;
+const TEXT_CLOSE = '<!--/t-->';
+const BLOCK_START = '<!--b';
+const BLOCK_END = /^:(\d+)(?::-1)?--><!--\/b-->/;
+
+const VOID = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
 
 /** Elements whose content is text that the parser keeps as it is, or that hold no markup. */
 const RAW_TEXT = /^(?:script|style|textarea|title|template|noscript|xmp|iframe|noembed|noframes)$/;
@@ -47,6 +61,10 @@ class Reader {
   nameEnd = -1;
   /** Whether the element that started last has a raw text content, such as a `<textarea>`. */
   raw = false;
+  /** The elements that are open, innermost last. */
+  readonly open: number[] = [];
+  /** Where the start tag of each element can take another attribute, by its number. */
+  private readonly ends = new Map<number, number>();
   private state: 'text' | 'open' | 'name' | 'tag' | 'quote' | 'close' | 'comment' = 'text';
   private quote = '';
   private name = '';
@@ -102,6 +120,7 @@ class Reader {
         case 'close':
           if (char === '>') {
             this.state = 'text';
+            this.open.pop();
           }
           break;
         case 'comment':
@@ -122,19 +141,33 @@ class Reader {
       this.inTag = false;
       this.justOpened = true;
       this.raw = RAW_TEXT.test(this.name.toLowerCase());
+      this.ends.set(this.element, this.nameEnd);
+      if (!VOID.test(this.name) && !this.html.endsWith('/>')) {
+        this.open.push(this.element);
+      }
     }
   }
 
-  /** Takes back the start of an attribute that the reader is in, such as `b-b="`. */
-  takeBack(text: string): void {
+  /** Takes back the start of an attribute, such as `b-b="`, or of a comment, such as `<!--t`. */
+  takeBack(text: string, state: 'tag' | 'text'): void {
     this.html = this.html.slice(0, -text.length);
-    this.state = 'tag';
+    this.state = state;
   }
 
-  /** Writes text into the start tag of the element that started last, after its name. */
-  insertIntoTag(text: string): void {
-    this.html = this.html.slice(0, this.nameEnd) + text + this.html.slice(this.nameEnd);
-    this.nameEnd += text.length;
+  /** Writes text into the start tag of an element, after its name: of the one that started last. */
+  insertIntoTag(text: string, element = this.element): void {
+    const at = element === this.element ? this.nameEnd : this.ends.get(element)!;
+    this.html = this.html.slice(0, at) + text + this.html.slice(at);
+    // The start tags after it move along.
+    for (const [other, end] of this.ends) {
+      if (end >= at && other !== element) {
+        this.ends.set(other, end + text.length);
+      }
+    }
+    if (element === this.element || this.nameEnd > at) {
+      this.nameEnd += text.length;
+    }
+    this.ends.set(element, element === this.element ? this.nameEnd : at + text.length);
   }
 }
 
@@ -144,13 +177,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   const writes: Write[][] = [];
   /** The index of each marked element, by its number in the order of the markup. */
   const marks = new Map<number, number>();
-  const add = (write: Write): void => {
-    let index = marks.get(reader.element);
+  const add = (write: Write, element = reader.element): void => {
+    let index = marks.get(element);
     if (index === undefined) {
       index = writes.length;
-      marks.set(reader.element, index);
+      marks.set(element, index);
       writes.push([]);
-      reader.insertIntoTag(` b-x="${index}"`);
+      reader.insertIntoTag(` b-x="${index}"`, element);
     }
     writes[index]!.push(write);
   };
@@ -174,19 +207,70 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       add({ kind: 'content', value: insert[1]! });
       continue;
     }
+    // A text insert: `<!--t`, the scope, `:anchor-->`, the value, then `<!--/t-->`.
+    const textEnd = nextStatic === undefined ? null : TEXT_END.exec(nextStatic);
+    const value = list[index + 2];
+    const close = list[index + 3];
+    const textInsert =
+      value && 'code' in value && !PLACED.test(value.code) ? INSERT.exec(value.code) : null;
+    if (
+      SCOPE.test(code) &&
+      reader.html.endsWith(TEXT_START) &&
+      textEnd &&
+      nextStatic!.length === textEnd[0].length &&
+      textInsert &&
+      close &&
+      'static' in close &&
+      close.static.startsWith(TEXT_CLOSE)
+    ) {
+      reader.takeBack(TEXT_START, 'text');
+      const rest = close.static.slice(TEXT_CLOSE.length);
+      const parent = reader.open.at(-1);
+      // At the end of its element, the clone appends the text node to the element.
+      if (rest.startsWith('</') && parent !== undefined) {
+        add(
+          { kind: 'last', scope: code, anchor: Number(textEnd[1]), value: textInsert[1]! },
+          parent,
+        );
+        list[index + 3] = { static: rest };
+        index += 2;
+        continue;
+      }
+      const mark = writes.length;
+      writes.push([
+        { kind: 'text', scope: code, anchor: Number(textEnd[1]), value: textInsert[1]! },
+      ]);
+      // One comment, so the static text around it stays apart when the template is parsed. The
+      // clone puts a text node in its place, which it keeps.
+      reader.append(`<!--x${mark}-->`);
+      list[index + 3] = { static: close.static.slice(TEXT_CLOSE.length) };
+      index += 2;
+      continue;
+    }
+    // A nested block with nothing in it yet: `<!--b`, the scope, `:anchor-->`, `<!--/b-->`.
+    const blockEnd = nextStatic === undefined ? null : BLOCK_END.exec(nextStatic);
+    if (SCOPE.test(code) && reader.html.endsWith(BLOCK_START) && blockEnd) {
+      reader.takeBack(BLOCK_START, 'text');
+      const mark = writes.length;
+      writes.push([{ kind: 'block', scope: code, anchor: Number(blockEnd[1]) }]);
+      reader.append(`<!--x${mark}--><!--/b-->`);
+      list[index + 1] = { static: nextStatic!.slice(blockEnd[0].length) };
+      continue;
+    }
     const end = nextStatic === undefined ? null : ANCHOR_END.exec(nextStatic);
     if (SCOPE.test(code) && reader.inTag && reader.html.endsWith(ANCHOR_START) && end) {
-      reader.takeBack(ANCHOR_START);
+      reader.takeBack(ANCHOR_START, 'tag');
       add({ kind: 'anchor', scope: code, anchor: Number(end[1]) });
       list[index + 1] = { static: nextStatic!.slice(end[0].length) };
       continue;
     }
     return undefined;
   }
-  // Markers of blocks and of text inserts need the HTML of a render, and so does a body that
-  // writes nothing, which gains nothing from a clone. The loader starts each `<template>` of a
-  // block once, such as of a `$client` callback, so a clone of one would start nothing.
-  if (writes.length === 0 || reader.html.includes('<!--') || /<template\b/i.test(reader.html)) {
+  // Markers of blocks need the HTML of a render, and so does a body that writes nothing, which
+  // gains nothing from a clone. The loader starts each `<template>` of a block once, such as of
+  // a `$client` callback, so a clone of one would start nothing.
+  const comments = reader.html.replace(/<!--x\d+-->(?:<!--\/b-->)?/g, '');
+  if (writes.length === 0 || comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
   return { html: reader.html, writes };

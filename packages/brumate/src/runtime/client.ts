@@ -135,8 +135,11 @@ export interface Scope {
   h?: HiddenBody;
   /** Effects and `$client` callbacks to run when the `#offscreen` body around the scope shows. */
   w?: Set<string>;
-  /** The elements that updates write, by anchor, of markup that the browser cloned. */
-  n?: Element[];
+  /**
+   * The nodes that updates write, by anchor, of markup that the browser cloned: elements, and
+   * the start comments of text inserts.
+   */
+  n?: Node[];
 }
 
 export interface CoreOptions {
@@ -1135,7 +1138,7 @@ async function catchInto(
   error: unknown,
 ): Promise<void> {
   const updates = await loadPart(module, 'update');
-  const start = findComment(`b${owner.id}:${anchor}`);
+  const start = blockStart(owner, anchor);
   if (!start) {
     return;
   }
@@ -1985,7 +1988,7 @@ function findComment(key: string): Comment | undefined {
 function findElement(scope: ScopeId, anchor: number): Element | null {
   const own = scopes.get(scope)?.n?.[anchor];
   if (own?.isConnected) {
-    return own;
+    return own as Element;
   }
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
@@ -2008,6 +2011,14 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
     }
   }
   return element?.isConnected ? element : null;
+}
+
+/** The start marker of a block: kept on its scope in a clone, or found in the page. */
+function blockStart(scope: Scope, anchor: number): Comment | undefined {
+  const kept = scope.n?.[anchor];
+  return kept?.isConnected && kept.nodeType === 8
+    ? (kept as Comment)
+    : findComment(`b${scope.id}:${anchor}`);
 }
 
 /** Returns the marker that ends the range that `start` opens. */
@@ -2142,7 +2153,23 @@ export function portalTo(
 
 /** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */
 export function text(scope: Scope, anchor: number, value: unknown): void {
-  const start = findComment(`t${scope.id}:${anchor}`);
+  // A clone keeps the text node of the insert, or the start comment of its markers.
+  let kept = scope.n?.[anchor];
+  if (kept?.nodeType === 3 && kept.isConnected) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const text = String(value);
+      if ((kept as Text).data !== text) {
+        (kept as Text).data = text;
+      }
+      return;
+    }
+    // Another value needs the markers of an insert around it, which the text node gets now.
+    const start = document.createComment(`t${scope.id}:${anchor}`);
+    (kept as Text).before(start);
+    (kept as Text).after(document.createComment('/t'));
+    scope.n![anchor] = kept = start;
+  }
+  const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
   if (start) {
     write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
   }
@@ -2414,7 +2441,7 @@ export function branch(
   renders: (Render | undefined)[],
   kinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2443,7 +2470,7 @@ export function rekey(
     return;
   }
   scope.keys.set(anchor, value);
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2466,7 +2493,7 @@ export function retag(
 ): void {
   scope.keys ??= new Map();
   if (!scope.keys.has(anchor) && typeof value === 'string') {
-    const start = findComment(`b${scope.id}:${anchor}`);
+    const start = blockStart(scope, anchor);
     let node = start?.nextSibling;
     while (node && node.nodeType !== 1 && node.nodeType !== 8) {
       node = node.nextSibling;
@@ -2492,7 +2519,7 @@ export async function reset(
   kinds: number[],
 ): Promise<void> {
   const updates = await loadPart(await loadModule(id), 'update');
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2515,7 +2542,7 @@ export async function reset(
  * `kinds` are the scope IDs inside the fallback, whose instances go.
  */
 export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   // A block that rendered its body has a third number.
   if (!start || start.data.split(':').length > 2) {
     return;
@@ -2538,7 +2565,7 @@ export function offscreen(
   render: Render,
   kind: number,
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2815,7 +2842,7 @@ export function list(
   fallback: Render | undefined,
   fallbackKinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -3420,7 +3447,7 @@ function parseTemplate(source: Template): number[][] {
   element.innerHTML = trustedHTML(source.html);
   const root = element.content;
   const paths: number[][] = Array.from({ length: source.count });
-  for (const marked of root.querySelectorAll('[b-x]')) {
+  const pathOf = (marked: Node): number[] => {
     const path: number[] = [];
     for (let node: Node = marked; node !== root; node = node.parentNode!) {
       let index = 0;
@@ -3429,8 +3456,19 @@ function parseTemplate(source: Template): number[][] {
       }
       path.unshift(index);
     }
-    paths[Number(marked.getAttribute('b-x'))] = path;
+    return path;
+  };
+  for (const marked of root.querySelectorAll('[b-x]')) {
+    paths[Number(marked.getAttribute('b-x'))] = pathOf(marked);
     marked.removeAttribute('b-x');
+  }
+  // The start comments of text inserts, `<!--x` and an index, which each clone names.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const mark = /^x(\d+)$/.exec((node as Comment).data);
+    if (mark) {
+      paths[Number(mark[1])] = pathOf(node);
+    }
   }
   // The loader listens to the events of the handlers of the template once, not of each clone.
   options.listen(root);
@@ -3468,6 +3506,129 @@ export function keep(scope: ScopeId, anchor: number, element: Element): void {
   if (element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
   }
+}
+
+/**
+ * Puts the value of a text insert of cloned markup in the place of its comment. A text value is
+ * a text node, which the scope keeps, as Solid keeps it, so an update sets its data. Other
+ * values render between the markers of an insert, as in HTML.
+ */
+export function keepText(scope: ScopeId, anchor: number, place: Comment, value: unknown): void {
+  const found = scopes.get(scope);
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    place.replaceWith(node);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  keepMarkers(scope, anchor, place, value);
+}
+
+/** Puts a text insert at the end of an element of cloned markup, as `keepText` does. */
+export function appendText(scope: ScopeId, anchor: number, parent: Element, value: unknown): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    parent.append(node);
+    const found = scopes.get(scope);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  const place = document.createComment('');
+  parent.append(place);
+  keepMarkers(scope, anchor, place, value);
+}
+
+/** Gives a value that is not text the markers of an insert, and renders it between them. */
+function keepMarkers(scope: ScopeId, anchor: number, place: Comment, value: unknown): void {
+  const found = scopes.get(scope);
+  place.data = `t${scope}:${anchor}`;
+  place.after(document.createComment('/t'));
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  if (value !== null && value !== undefined && typeof value !== 'boolean') {
+    // Children, a template or raw HTML: their markup, which the insert of the clone indexes.
+    const parsed = document.createElement('template');
+    parsed.innerHTML = trustedHTML(insert(value, undefined, scope));
+    place.after(parsed.content);
+    clonedMarkup = true;
+  }
+}
+
+/** Names the start marker of a nested block of cloned markup, and keeps it on its scope. */
+function keepBlock(
+  place: Comment,
+  scope: ScopeId,
+  data: string,
+  anchor: number,
+): Scope | undefined {
+  place.data = data;
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  return found;
+}
+
+/** Puts what renders gave into the range that a marker of cloned markup opens. */
+function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
+  if (html) {
+    // Markup that a render gave as HTML, which the insert of the clone indexes.
+    const parsed = document.createElement('template');
+    parsed.innerHTML = trustedHTML(html);
+    place.after(parsed.content);
+    clonedMarkup = true;
+  } else if (nodes) {
+    place.after(nodes);
+  }
+}
+
+/**
+ * Fills a nested `#if` of cloned markup with the branch at `index`, or nothing for -1, before
+ * the clone is in the page. `branch` updates it later.
+ */
+export function fillBranch(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  index: number,
+  renders: Render[],
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}:${index}`, anchor);
+  const render = renders[index];
+  if (found && render) {
+    const out = render(found);
+    fillRange(place, typeof out === 'string' ? out : '', typeof out === 'string' ? undefined : out);
+  }
+}
+
+/** Fills a nested `#for` of cloned markup with its items, before the clone is in the page. */
+export function fillList(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  items: unknown[],
+  render: Render,
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}`, anchor);
+  if (!found) {
+    return;
+  }
+  let html = '';
+  let nodes: DocumentFragment | undefined;
+  for (let index = 0; index < items.length; index++) {
+    const out = render(found, items[index], index);
+    if (typeof out === 'string') {
+      html += out;
+    } else {
+      (nodes ??= document.createDocumentFragment()).append(out);
+    }
+  }
+  fillRange(place, html, nodes);
 }
 
 /** Writes an attribute of an element of cloned markup, as `attribute` writes it in HTML. */
