@@ -70,6 +70,7 @@
   import TreeItem from '@brumate/ui/TreeItem.brm';
   import { treeData } from '@brumate/ui/data.brm.ts';
   import type { TreeDataNode } from '@brumate/ui/data.ts';
+  import { moveKeys } from '@brumate/ui/data.ts';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
   import Calendar from '@brumate/ui/Calendar.brm';
@@ -140,6 +141,7 @@
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
+  let gridFiles = $signal(['notes', 'photos', 'music']);
   let fileOpened = $signal('none');
   // A file tree: folders with children, opened and selected.
   interface Folder {
@@ -599,15 +601,23 @@
 
 <section aria-labelledby="gridlist">
   <h2 id="gridlist">GridList</h2>
-  <GridList class="file-grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(pickedFiles)>
-    #for (file of ['notes', 'photos', 'music'] by file) {
-      <GridListItem id=file class="file-row" textValue=file>
+  <GridList
+    class="file-grid"
+    aria-label="Files"
+    selectionMode="multiple"
+    selectedKeys=$bind(pickedFiles)
+    onReorder=((event) => (gridFiles = moveKeys(gridFiles, event.target.key, event.keys, event.target.dropPosition === 'after', (file) => file)))
+  >
+    #for (file of gridFiles by file) {
+      <GridListItem id=file class=(`file-row file-${file}`) textValue=file>
+        <Button slot="drag" class=(`file-drag drag-${file}`)>≡</Button>
         <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
         <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
       </GridListItem>
     }
   </GridList>
   <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+  <p class="file-order">{gridFiles.join(',')}</p>
 </section>
 
 <section aria-labelledby="tree">

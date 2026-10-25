@@ -698,6 +698,33 @@
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
+  :global(.ui-gridrow[data-dragging]) {
+    opacity: 0.5;
+  }
+
+  :global(.ui-gridrow[data-drop-target='before']) {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+
+  :global(.ui-gridrow[data-drop-target='after']) {
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  :global(.ui-grip) {
+    display: grid;
+    place-items: center;
+    padding: 0.15rem;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    cursor: grab;
+  }
+
+  :global(.ui-grip:focus-visible) {
+    outline: 2px solid var(--accent);
+  }
+
   :global(.ui-gridrow .ui-button) {
     margin-inline-start: auto;
     padding: 0.2rem 0.6rem;

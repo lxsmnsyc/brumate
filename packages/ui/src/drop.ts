@@ -67,3 +67,37 @@ export function dragTypes(data: DataTransfer): Set<string> {
   }
   return types;
 }
+
+/** Where a drop between the rows of a collection goes: before or after the row of `key`. */
+export interface DropTarget {
+  key: import('./collection.ts').Key;
+  dropPosition: 'before' | 'after';
+}
+
+/** The rows that a drag in a collection moves, and where they go, as onReorder of React Aria. */
+export interface ReorderEvent {
+  keys: import('./collection.ts').Key[];
+  target: DropTarget;
+}
+
+/** The data of a dragged row, as a string in each of its types, such as `text/plain`. */
+export type DragItem = Record<string, string>;
+
+/** The type that marks a drag of rows, whose value is the ID of the collection. */
+export const ROWS_TYPE = 'application/x-brumate-rows';
+
+/**
+ * Puts the items of a drag in its DataTransfer. A DataTransfer holds one value of each type, so
+ * the values of the items of a type are joined with new lines.
+ */
+export function setDragData(data: DataTransfer, items: readonly DragItem[]): void {
+  const types = new Map<string, string[]>();
+  for (const item of items) {
+    for (const [type, value] of Object.entries(item)) {
+      types.set(type, [...(types.get(type) ?? []), value]);
+    }
+  }
+  for (const [type, values] of types) {
+    data.setData(type, values.join('\n'));
+  }
+}
