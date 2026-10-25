@@ -357,6 +357,17 @@ Each step is a PR of its own, measured with `pnpm bench` before and after: the g
 3. **Nodes on the scope, and cloned templates.** The resume scan and each client render store the nodes that updates write on their scope. A body that the browser renders compiles to a `<template>` and a walk string. The index, its MutationObserver, the HTML strings and their scans go.
 4. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values that read it. The update tables and the code that reads them go.
 
+#### Later: fixed walks
+
+A clone finds the elements that its render writes with a walk of paths at runtime, which the browser reads from `b-x` marks in the parsed template. Solid and Svelte emit the walk as code instead, each node into a variable. The branch `exp/fixed-walk` tries it on the rows of the benchmark, on 2026-10-25:
+
+| Script of each operation |  Runtime walk |    Fixed walk | Marko 6 |
+| ------------------------ | ------------: | ------------: | ------: |
+| Create 1,000 rows        |  about 6.1 ms |  about 5.2 ms |  5.0 ms |
+| Replace 1,000 rows       | about 11.6 ms | about 11.4 ms | 10.8 ms |
+
+Creating rows takes about 0.9 ms less, and replacing them about the same. Both take about 28 ms from the click to the paint, so the gain is 2 to 3% of it. The walk is a line of code for each node on the path to an element, in each component, and the compiler must know that the parser keeps the markup as it is written, as Solid checks the nesting of elements. It waits until speed matters more than size.
+
 #### Risks
 
 - Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.
