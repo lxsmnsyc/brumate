@@ -1,0 +1,36 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import type { DropEvent } from '@brumate/ui/drop.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  let received = $signal<string[]>([]);
+
+  async function dropped(event: DropEvent) {
+    const names: string[] = [];
+    for (const item of event.items) {
+      if (item.kind === 'file') {
+        names.push(item.name);
+      } else if (item.types.has('text/plain')) {
+        names.push(await item.getText('text/plain'));
+      }
+    }
+    received = names;
+  }
+</script>
+
+<DropZone class="ui-dropzone" onDrop=dropped>
+  <Text slot="label">
+    #if (received.length > 0) {
+      {received.join(', ')}
+    } #else {
+      Drop or paste text or files here
+    }
+  </Text>
+  <FileTrigger allowsMultiple onSelect=((files) => (received = [...(files ?? [])].map((file) => file.name)))>
+    <Button class="ui-button"><Icon name="upload" /> Browse</Button>
+  </FileTrigger>
+</DropZone>

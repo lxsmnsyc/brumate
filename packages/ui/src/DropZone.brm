@@ -1,0 +1,181 @@
+<script>
+  import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { TextContext } from './contexts.ts';
+  import { dragTypes, dropItems } from './drop.ts';
+  import type { DropEvent, DropOperation } from './drop.ts';
+  import VisuallyHidden from './VisuallyHidden.brm';
+
+  /**
+   * An area that takes drops of text and files, as DropZone of React Aria Components.
+   *
+   * - `onDrop` gets the items of a drop: text, with `getText(type)`, and files, with `getFile()`.
+   *   `onDropEnter` and `onDropExit` hear of a drag over it.
+   * - `getDropOperation`, with the types of the drag, can refuse it with `'cancel'`.
+   * - Keyboard and screen reader users focus a hidden button, which a click on the area focuses
+   *   too, and paste: the paste drops its items. A Text with `slot="label"` names the button.
+   * - A FileTrigger in it picks files from the device.
+   * - It shows `data-drop-target` while a drag is over it, `data-hovered`, `data-focused`,
+   *   `data-focus-visible` and `data-disabled`.
+   */
+  const {
+    onDrop,
+    onDropEnter,
+    onDropExit,
+    getDropOperation,
+    isDisabled = false,
+    'aria-label': label = 'DropZone',
+    children,
+    ...rest
+  } = $props<{
+    onDrop?: (event: DropEvent) => void;
+    onDropEnter?: () => void;
+    onDropExit?: () => void;
+    getDropOperation?: (types: Set<string>, allowed: DropOperation[]) => DropOperation;
+    isDisabled?: boolean;
+    'aria-label'?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const textId = $id();
+  const buttonId = $id();
+  let target = $signal(false);
+  let hovered = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  // How many elements of the area the drag is over, since dragenter and dragleave come for each.
+  let depth = $signal(0);
+  $setContext(TextContext, { slots: { label: { id: textId } } });
+
+  /** The operation of a drag of these types: copy, unless `getDropOperation` says otherwise. */
+  function operation(types: Set<string>): DropOperation {
+    if (isDisabled) {
+      return 'cancel';
+    }
+    return getDropOperation ? getDropOperation(types, ['copy', 'move', 'link']) : 'copy';
+  }
+
+  function dragEnter(event: DragEvent) {
+    if (!event.dataTransfer || operation(dragTypes(event.dataTransfer)) === 'cancel') {
+      return;
+    }
+    depth++;
+    if (!target) {
+      target = true;
+      onDropEnter?.();
+    }
+  }
+
+  function dragOver(event: DragEvent) {
+    const chosen = event.dataTransfer ? operation(dragTypes(event.dataTransfer)) : 'cancel';
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = chosen === 'cancel' ? 'none' : chosen;
+    }
+  }
+
+  function dragLeave() {
+    if (depth > 0) {
+      depth--;
+    }
+    if (depth === 0 && target) {
+      target = false;
+      onDropExit?.();
+    }
+  }
+
+  function drop(event: DragEvent) {
+    const data = event.dataTransfer;
+    depth = 0;
+    if (target) {
+      target = false;
+      onDropExit?.();
+    }
+    if (!data) {
+      return;
+    }
+    const chosen = operation(dragTypes(data));
+    if (chosen === 'cancel') {
+      return;
+    }
+    onDrop?.({ type: 'drop', items: dropItems(data), x: event.clientX, y: event.clientY, dropOperation: chosen });
+  }
+
+  function paste(event: ClipboardEvent) {
+    const data = event.clipboardData;
+    if (!data || isDisabled || operation(dragTypes(data)) === 'cancel') {
+      return;
+    }
+    onDrop?.({ type: 'drop', items: dropItems(data), x: 0, y: 0, dropOperation: 'copy' });
+  }
+
+  let zone = $signal<HTMLElement>();
+  let button = $signal<HTMLElement>();
+
+  // The data of a drop or a paste can be read only while its event runs, so native listeners,
+  // which run at once, read it. The page's markup prevents the default of a drag over the area,
+  // so the browser lets a drop happen there.
+  $client(() => {
+    const element = zone;
+    const control = button;
+    if (!element || !control) {
+      return undefined;
+    }
+    element.addEventListener('dragenter', dragEnter);
+    element.addEventListener('dragover', dragOver);
+    element.addEventListener('dragleave', dragLeave);
+    element.addEventListener('drop', drop);
+    control.addEventListener('paste', paste);
+    return () => {
+      element.removeEventListener('dragenter', dragEnter);
+      element.removeEventListener('dragover', dragOver);
+      element.removeEventListener('dragleave', dragLeave);
+      element.removeEventListener('drop', drop);
+      control.removeEventListener('paste', paste);
+    };
+  }, 'load');
+
+  /** A click on the area, not on a control in it, focuses its button. */
+  function clicked(event: MouseEvent) {
+    const control = (event.target as Element).closest('a[href], button, input, select, textarea, [tabindex]');
+    if (!control || control === event.currentTarget) {
+      document.getElementById(buttonId)?.focus({ preventScroll: true });
+    }
+  }
+</script>
+
+<div
+  ref=zone
+  data-drop-target=(target || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(isDisabled || undefined)
+  onDragOver=(prevent(() => {}))
+  onDrop=(prevent(() => {}))
+  onClick=clicked
+  onPointerEnter=(() => (hovered = true))
+  onPointerLeave=(() => (hovered = false))
+  {...rest}
+>
+  <VisuallyHidden>
+    <button
+      ref=button
+      id=buttonId
+      type="button"
+      aria-label=label
+      aria-labelledby=(`${buttonId} ${textId}`)
+      disabled=(isDisabled || undefined)
+      onPaste=(prevent(() => {}))
+      onFocus=((event: FocusEvent) => {
+        focused = true;
+        focusVisible = (event.currentTarget as Element).matches?.(':focus-visible') ?? false;
+      })
+      onBlur=(() => {
+        focused = false;
+        focusVisible = false;
+      })
+    ></button>
+  </VisuallyHidden>
+  {children}
+</div>

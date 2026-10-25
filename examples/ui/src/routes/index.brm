@@ -12,6 +12,7 @@
   import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
   import Form from '@brumate/ui/Form.brm';
   import Input from '@brumate/ui/Input.brm';
   import Radio from '@brumate/ui/Radio.brm';
@@ -122,6 +123,7 @@
   let dark = $signal(false);
   let align = $signal(['left']);
   let files = $signal('No files picked.');
+  let dropCount = $signal(0);
   let noteShown = $signal(true);
   let animals = $signal<Key[]>([]);
   let menuAction = $signal<Key>('none');
@@ -391,6 +393,14 @@
     <Button class="press">Pick files</Button>
   </FileTrigger>
   <p class="files">{files}</p>
+</section>
+
+<section aria-labelledby="drop-zone">
+  <h2 id="drop-zone">DropZone</h2>
+  <DropZone class="drop-zone" onDrop=((event) => { dropCount = event.items.length; })>
+    <Text slot="label">Drop here</Text>
+  </DropZone>
+  <p class="drop-state">{dropCount} items dropped.</p>
 </section>
 
 <section aria-labelledby="disclosure">

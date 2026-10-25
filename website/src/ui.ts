@@ -26,7 +26,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   { title: 'Start', pages: ['', 'styling', 'state', 'resuming', 'layers', 'influences'] },
   {
     title: 'Buttons',
-    pages: ['button', 'toggle-button', 'toggle-button-group', 'link', 'file-trigger'],
+    pages: ['button', 'toggle-button', 'toggle-button-group', 'link', 'file-trigger', 'drop-zone'],
   },
   {
     title: 'Forms',
@@ -109,6 +109,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Opens the file picker from a button.',
     href: 'file-trigger',
     demo: 'FileTriggerDemo',
+  },
+  {
+    title: 'DropZone',
+    summary: 'An area that takes drops and pastes of text and files.',
+    href: 'drop-zone',
+    demo: 'DropZoneDemo',
   },
   {
     title: 'TextField',
