@@ -6,12 +6,13 @@
   import PreviewTrigger from '../../src/PreviewTrigger.brm';
 
   let open = $signal(false);
+  let presses = $signal(0);
 </script>
 
 <main class="page">
   <button class="before" type="button">Before</button>
   <PreviewTrigger delay=(60) closeDelay=(60) isOpen=$bind(open)>
-    <Link class="author" href="#ada">Ada</Link>
+    <Link class="author" href="#ada" onPress=(() => presses++)>Ada</Link>
     <Popover class="card" placement="bottom start">
       <p>Ada writes about engines.</p>
       <Button class="follow">Follow</Button>
@@ -24,4 +25,5 @@
     <Popover class="other-card"><p>Grace writes compilers.</p></Popover>
   </PreviewTrigger>
   <p class="state">{String(open)}</p>
+  <p class="presses">{presses}</p>
 </main>
