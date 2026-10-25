@@ -11,10 +11,8 @@
    * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
    * and `data-disabled`.
    *
-   * A disabled link has no `href`, so the browser does not follow it. React Aria prevents the
-   * click in a handler instead, which brumate runs after the browser has followed it. It stays
-   * in the order of Tab, as in React Aria, so a keyboard user finds it and hears that it is
-   * disabled.
+   * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
+   * the order of Tab, as in React Aria, whose useLink gives it no tabindex.
    */
   const {
     as,
@@ -104,7 +102,7 @@
 <{element}
   href=(linked ? href : undefined)
   role=(native ? undefined : 'link')
-  tabindex=(native ? undefined : 0)
+  tabindex=(native || disabled ? undefined : 0)
   aria-disabled=(disabled ? 'true' : undefined)
   aria-current=(current ? 'page' : undefined)
   data-current=(current || undefined)

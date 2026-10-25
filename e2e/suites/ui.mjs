@@ -269,20 +269,13 @@ export async function run({ browser, url, runner }) {
   });
 
   await step(
-    'Accessibility fixes: a disabled link in the order of Tab, read-only boxes, descriptions',
+    'Accessibility fixes: a disabled link out of the order of Tab, read-only boxes, descriptions',
     async () => {
       await page.goto(`${url}/`);
       const off = page.locator('.link', { hasText: 'a disabled link' });
       assert(
-        (await off.getAttribute('tabindex')) === '0',
-        'the disabled link is out of the order of Tab',
-      );
-      await off.focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(100);
-      assert(
-        await off.evaluate((element) => element === document.activeElement),
-        'Enter on the disabled link moved away',
+        (await off.getAttribute('tabindex')) === null,
+        'the disabled link is in the order of Tab',
       );
       // A read-only radio keeps its choice on a click and on the arrow keys.
       const thin = page.locator('.crust input').first();
