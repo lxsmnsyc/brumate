@@ -125,3 +125,21 @@ it('removes the content with unmount=(true), and hides it offscreen with its sta
   await page.waitFor(() => expect(kept.style.display).toBe('none'));
   expect(kept.isConnected).toBe(true);
 });
+
+it('puts a disclosure without an id into its group, so one opens at a time', async () => {
+  const page = await disclosures();
+  pressWith(page.get('.first-trigger'));
+  await page.waitFor(() => expect(page.get('.first').hasAttribute('data-expanded')).toBe(true));
+  pressWith(page.get('.second-trigger'));
+  await page.waitFor(() => expect(page.get('.second').hasAttribute('data-expanded')).toBe(true));
+  await page.waitFor(() => expect(page.get('.first').hasAttribute('data-expanded')).toBe(false));
+});
+
+it('keeps the panel of a disabled disclosure closed, also for find in page', async () => {
+  const page = await disclosures();
+  const panel = page.get('.locked-panel');
+  expect(panel.getAttribute('hidden')).toBe('');
+  panel.dispatchEvent(new Event('beforematch', { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(page.get('.locked').hasAttribute('data-expanded')).toBe(false);
+});

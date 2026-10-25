@@ -46,3 +46,17 @@
   <Button slot="trigger" class="kept-trigger">Kept</Button>
   <DisclosurePanel unmount="offscreen" class="kept-panel">Kept when closed</DisclosurePanel>
 </Disclosure>
+<DisclosureGroup class="anon">
+  <Disclosure class="first">
+    <Button slot="trigger" class="first-trigger">First</Button>
+    <DisclosurePanel class="first-panel">One.</DisclosurePanel>
+  </Disclosure>
+  <Disclosure class="second">
+    <Button slot="trigger" class="second-trigger">Second</Button>
+    <DisclosurePanel class="second-panel">Two.</DisclosurePanel>
+  </Disclosure>
+</DisclosureGroup>
+<Disclosure class="locked" isDisabled>
+  <Button slot="trigger" class="locked-trigger">Locked</Button>
+  <DisclosurePanel class="locked-panel">Secret.</DisclosurePanel>
+</Disclosure>
