@@ -2194,7 +2194,9 @@ function setAttribute(element: Element, name: string, value: unknown, spread = f
 function withVariables(element: HTMLElement, style: string | undefined): string | undefined {
   const variables: string[] = [];
   for (const property of Array.from(element.style)) {
-    if (/^--s-[\w-]+-\d+$/.test(property)) {
+    // A style that writes the variable itself, such as one that the element's own style
+    // attribute builds, keeps its new value alone.
+    if (/^--s-[\w-]+-\d+$/.test(property) && !style?.includes(`${property}:`)) {
       variables.push(`${property}:${element.style.getPropertyValue(property)}`);
     }
   }

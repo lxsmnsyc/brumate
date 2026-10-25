@@ -974,8 +974,10 @@ class ClientGenerator {
       const own = owner.attributes.flatMap((item) =>
         item.kind === 'static' || item.kind === 'value' ? [item.name] : [],
       );
+      // The scope attribute is the element's own. Its style is not: a spread can write one, and
+      // an update writes the style variables again with whatever style the spread passes on.
       if (this.plan.styles.css) {
-        own.push(this.plan.styles.attribute, 'style');
+        own.push(this.plan.styles.attribute);
       }
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
