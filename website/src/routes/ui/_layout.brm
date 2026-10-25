@@ -849,7 +849,8 @@
   }
 
   :global(.ui-mention) {
-    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
   }
 
   :global(.ui-token[data-selected]) {
