@@ -1,5 +1,16 @@
 <script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $handler,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
@@ -17,6 +28,7 @@
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
+    addStep,
     clamp,
     listenToWheel,
     nextStep,
@@ -39,7 +51,12 @@
    *   steps again and again. Home and End go to the minimum and the maximum. The wheel steps it
    *   while the input has focus, unless `isWheelDisabled`.
    * - `value` is the number, or `NaN` when the field is empty. `value=(n)` starts its own, and
-   *   `value=$bind(signal)` writes the caller's. `name` sends the number with its form.
+   *   `value=$bind(signal)` writes the caller's. `name` sends the number with its form, as it
+   *   reads in the input, so Enter sends what was typed. A reset of the form gives back the
+   *   first number.
+   * - `isRequired` asks the browser to check it on a submit, and the FieldError shows the message.
+   * - `aria-label` and `aria-labelledby` name the input when there is no Label, and the Buttons
+   *   say what they increase and decrease.
    */
   const {
     as = 'div',
@@ -54,6 +71,8 @@
     isInvalid,
     isWheelDisabled = false,
     onChange,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
     children,
     ...rest
   } = $props<{
@@ -69,6 +88,8 @@
     isInvalid?: boolean;
     isWheelDisabled?: boolean;
     onChange?: (value: number) => void;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -83,14 +104,21 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
+  const { present: hasLabel } = described(labelId);
+  // The number that a reset of the form gives back.
+  let initialValue = $signal(value);
   // A percent counts in hundredths, as in React Aria.
   const stepSize = $memo(step ?? (formatOptions?.style === 'percent' ? 0.01 : 1));
   // The text in the input, which is the formatted number until the user types.
   let text = $signal(format(value));
   let edited = $signal(false);
-  const errors = $memo(
-    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
-  );
+  // The message of the browser, once the field was checked on a submit.
+  let committed = $signal(false);
+  let nativeErrors = $signal<string[]>([]);
+  const errors = $memo([
+    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(committed ? nativeErrors : []),
+  ]);
   const invalid = $memo(
     Boolean(isInvalid) ||
       errors.length > 0 ||
@@ -98,11 +126,26 @@
         ((minValue !== undefined && value < minValue) || (maxValue !== undefined && value > maxValue))),
   );
   const locked = $memo(isDisabled || isReadOnly);
+  // The number as it reads in the input, before it is committed.
+  const typedValue = $memo(text.trim() === '' ? Number.NaN : parser().parse(text));
+  // A Button can step when a step stays in the range, as in React Aria.
   const canIncrement = $memo(
-    !locked && (Number.isNaN(value) || maxValue === undefined || value < maxValue),
+    !locked &&
+      (Number.isNaN(typedValue) ||
+        maxValue === undefined ||
+        snapToStep(typedValue, minValue, maxValue, stepSize) > typedValue ||
+        addStep(typedValue, stepSize, 1) <= maxValue),
   );
   const canDecrement = $memo(
-    !locked && (Number.isNaN(value) || minValue === undefined || value > minValue),
+    !locked &&
+      (Number.isNaN(typedValue) ||
+        minValue === undefined ||
+        snapToStep(typedValue, minValue, maxValue, stepSize) < typedValue ||
+        addStep(typedValue, stepSize, -1) >= minValue),
+  );
+  // The Buttons say what they change: the field by its label, or by its `aria-label`.
+  const fieldLabelledBy = $memo(
+    [hasLabel ? labelId : undefined, ariaLabelledBy].filter(Boolean).join(' ') || undefined,
   );
   // A percent or a fraction needs the decimal keys of a touch keyboard.
   const inputMode = $memo(
@@ -188,6 +231,10 @@
     if ((event.target as Element).id !== inputId || locked) {
       return;
     }
+    // A key with a modifier, such as Shift with an arrow to select text, is not a step.
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) {
+      return;
+    }
     switch (event.key) {
       case 'ArrowUp':
       case 'PageUp':
@@ -199,13 +246,11 @@
         return;
       case 'Home':
         if (minValue !== undefined) {
-          event.preventDefault();
           setValue(minValue);
         }
         return;
       case 'End':
         if (maxValue !== undefined) {
-          event.preventDefault();
           setValue(snapToStep(maxValue, minValue, maxValue, stepSize));
         }
         return;
@@ -242,6 +287,50 @@
     commit();
   }
 
+  // The loader prevents the keys before the code loads, so the wrapper names them. A field that
+  // cannot change keeps every key, and Home and End step only to a limit that there is.
+  function keys(isLocked: boolean, hasMin: boolean, hasMax: boolean) {
+    if (isLocked) {
+      return { onKeyDown: $handler(keyDown) };
+    }
+    if (hasMin && hasMax) {
+      return {
+        onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End')),
+      };
+    }
+    if (hasMin) {
+      return { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home')) };
+    }
+    if (hasMax) {
+      return { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'End')) };
+    }
+    return { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown')) };
+  }
+
+  function invalidated(message: string, first: boolean) {
+    committed = true;
+    nativeErrors = message ? [message] : [];
+    if (first) {
+      input()?.focus();
+    }
+  }
+
+  // A reset of the form gives back the first number, as it does for a field of the browser.
+  $client(() => {
+    const owner = input()?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      setValue(initialValue);
+      edited = false;
+      committed = false;
+      nativeErrors = [];
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
   /** A press of a Button steps at once, and again while it is held. Focus stays in the input. */
   function held(sign: 1 | -1, event: PressEvent) {
     input()?.focus({ preventScroll: true });
@@ -271,10 +360,13 @@
     'aria-roledescription': 'Number field',
     disabled: isDisabled || undefined,
     readonly: isReadOnly || undefined,
-    'aria-required': isRequired || undefined,
+    required: isRequired || undefined,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy && hasLabel ? `${labelId} ${ariaLabelledBy}` : ariaLabelledBy,
     'aria-invalid': invalid ? 'true' : undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
     onChange: typed,
+    onInvalid: invalidated,
     onFocus: focused,
     onBlur: blurred,
   });
@@ -282,8 +374,8 @@
     slots: {
       increment: {
         id: incrementId,
-        'aria-label': 'Increase',
-        'aria-labelledby': `${incrementId} ${labelId}`,
+        'aria-label': ariaLabel ? `Increase ${ariaLabel}` : 'Increase',
+        'aria-labelledby': fieldLabelledBy ? `${incrementId} ${fieldLabelledBy}` : undefined,
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canIncrement,
@@ -292,8 +384,8 @@
       },
       decrement: {
         id: decrementId,
-        'aria-label': 'Decrease',
-        'aria-labelledby': `${decrementId} ${labelId}`,
+        'aria-label': ariaLabel ? `Decrease ${ariaLabel}` : 'Decrease',
+        'aria-labelledby': fieldLabelledBy ? `${decrementId} ${fieldLabelledBy}` : undefined,
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canDecrement,
@@ -315,13 +407,13 @@
 >
   <div
     style="display: contents"
-    onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
+    {...keys(locked, minValue !== undefined, maxValue !== undefined)}
   >{children}</div>
   <!-- The number for the form, which posts without scripts. -->
   <input
     type="hidden"
     name=name
-    value=(Number.isNaN(value) ? '' : String(value))
+    value=(Number.isNaN(typedValue) ? '' : String(typedValue))
     disabled=(isDisabled || undefined)
   >
 </>
