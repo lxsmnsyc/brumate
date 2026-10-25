@@ -1,11 +1,13 @@
 <script>
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
 
   /**
    * A dialog, as Dialog of React Aria Components, inside a Popover or a Modal. A Heading with
    * `slot="title"` names it, and a Button with `slot="close"` closes it. The overlay around it
-   * moves focus into it when it opens.
+   * moves focus into it when it opens. `aria-label` names it in place of the Heading, as in
+   * React Aria, and a dialog without a Heading leaves out aria-labelledby once the browser is idle.
    */
   const { role = 'dialog', children, ...rest } = $props<{
     role?: 'dialog' | 'alertdialog';
@@ -16,6 +18,7 @@
   const overlay = $getContext(DialogContext);
   const trigger = $getContext(OverlayTriggerContext);
   const titleId = $id();
+  const { present: titled } = described(titleId);
 
   function close() {
     if (overlay) {
@@ -30,4 +33,9 @@
   $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
 </script>
 
-<section {role} tabindex="-1" aria-labelledby=titleId {...rest}>{children}</section>
+<section
+  {role}
+  tabindex="-1"
+  aria-labelledby=(titled && rest['aria-label'] === undefined ? titleId : undefined)
+  {...rest}
+>{children}</section>

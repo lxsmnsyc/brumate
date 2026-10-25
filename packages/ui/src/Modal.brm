@@ -1,5 +1,5 @@
 <script>
-  import { $bind, $getContext, $isPassed, $props } from 'brumate/signals';
+  import { $bind, $getContext, $isPassed, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ModalOverlayContext } from './contexts.ts';
   import ModalOverlay from './ModalOverlay.brm';
@@ -29,6 +29,8 @@
 
   const overlay = $getContext(ModalOverlayContext);
   const passed = $isPassed(isOpen);
+  // A Modal inside this one is not its box, so it opens an overlay of its own, as in React Aria.
+  $setContext(ModalOverlayContext, null);
 </script>
 
 #template box() {
