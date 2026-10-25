@@ -107,7 +107,8 @@
     await nextFrame();
     const element = overlay;
     const holder = layer;
-    if (token !== run || !element || !holder) {
+    // The overlay can leave the page within the frame, such as on a route change.
+    if (token !== run || !element?.isConnected || !holder) {
       return;
     }
     const stops: (() => void)[] = [];
@@ -118,16 +119,25 @@
       lockScroll(),
       followViewport(element),
     );
-    if (isDismissable) {
-      // A press on the overlay itself is outside the Modal. A press in a layer inside is not.
-      const pressed = (event: PointerEvent): void => {
-        if (event.target === element) {
-          close();
-        }
-      };
-      element.addEventListener('pointerdown', pressed);
-      stops.push(() => element.removeEventListener('pointerdown', pressed));
-    }
+    // A press on the overlay itself is outside the Modal. A press in a layer inside is not. As
+    // useInteractOutside of React Aria, it is a pointerdown and a pointerup of the first button,
+    // so the page under a touch is not clicked once the overlay is gone.
+    let started = false;
+    const down = (event: PointerEvent): void => {
+      started = event.button === 0 && event.target === element;
+    };
+    const up = (event: PointerEvent): void => {
+      if (started && event.target === element && isDismissable) {
+        close();
+      }
+      started = false;
+    };
+    element.addEventListener('pointerdown', down);
+    element.addEventListener('pointerup', up);
+    stops.push(() => {
+      element.removeEventListener('pointerdown', down);
+      element.removeEventListener('pointerup', up);
+    });
     if (
       transition &&
       !(await enterSteps(element, stepClasses(), { current: () => token === run, subtree: true }))
@@ -185,8 +195,9 @@
     }
   }
 
+  // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !isKeyboardDismissDisabled) {
+    if (event.key === 'Escape' && !isKeyboardDismissDisabled && !event.defaultPrevented) {
       close();
     }
   }
