@@ -676,7 +676,7 @@ describe('await', () => {
       `${header}  const user = $memo(load(id));\n</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <p>{(await user).name}</p>\n}`,
       { filename: 'T.brm' },
     );
-    expect(modules.update).toContain('$$b.insert(((user).name))');
+    expect(modules.update).toContain('$$b.setContent($$e[0], ((user).name), $$s2)');
     expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
   });
 

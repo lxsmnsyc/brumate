@@ -60,7 +60,7 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
   'TSModuleDeclaration',
 ]);
 
-type Part = { static: string } | { code: string };
+export type Part = { static: string } | { code: string };
 
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
@@ -203,6 +203,8 @@ const DATA_SHAPED = new Set(['if', 'switch', 'for', 'repeat', 'try', 'offscreen'
 
 export class Emitter {
   readonly lines: string[] = [];
+  /** Each `$$html +=` line, by its index in `lines`, with its parts, for cloned templates. */
+  readonly flushes: { line: number; parts: Part[] }[] = [];
   private readonly file: SFCFile;
   private readonly plan: Plan;
   private readonly patch: Patch;
@@ -366,6 +368,7 @@ export class Emitter {
     }
     const parts = this.parts;
     this.parts = [];
+    this.flushes.push({ line: this.lines.length, parts });
     const value = parts
       .map((part) => ('static' in part ? JSON.stringify(part.static) : part.code))
       .join(' + ');

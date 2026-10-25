@@ -1,0 +1,90 @@
+// @vitest-environment happy-dom
+import { expect, it } from 'vitest';
+import { clonedTemplate } from '../src/codegen/template.ts';
+import { clone, init, template } from '../src/runtime/client.ts';
+
+// The cloned templates of markup that the browser renders: which renders get one, and what the
+// browser finds in a clone.
+
+const row = [
+  { static: '<tr' },
+  { code: "$$b.attribute(\"class\", (row.done ? 'done' : ''))" },
+  { static: ' b-b="' },
+  { code: '$$s2' },
+  { static: ':0"><td title="a > b" b-b="' },
+  { code: '$$s2' },
+  { static: ':1">' },
+  { code: '$$b.insert((row.label))' },
+  { static: '</td><td><a b-on="click=App#h3">x</a></td></tr>' },
+];
+
+it('marks the elements that a render writes, with their attributes, anchors and content', () => {
+  const found = clonedTemplate(row)!;
+  expect(found.html).toBe(
+    '<tr b-x="0"><td b-x="1" title="a > b"></td><td><a b-on="click=App#h3">x</a></td></tr>',
+  );
+  expect(found.writes).toEqual([
+    [
+      { kind: 'attribute', name: '"class"', value: "(row.done ? 'done' : '')" },
+      { kind: 'anchor', scope: '$$s2', anchor: 0 },
+    ],
+    [
+      { kind: 'anchor', scope: '$$s2', anchor: 1 },
+      { kind: 'content', value: '(row.label)' },
+    ],
+  ]);
+});
+
+it('renders HTML for markers, children, raw text, blocks of the loader, and other code', () => {
+  // A block inside, with its markers.
+  expect(
+    clonedTemplate([{ static: '<ul><!--b' }, { code: '$$s2' }, { static: ':0--><!--/b--></ul>' }]),
+  ).toBeUndefined();
+  // Children render where they are inserted.
+  expect(
+    clonedTemplate([
+      { static: '<div b-b="' },
+      { code: '$$s2' },
+      { static: ':0">' },
+      { code: '$$b.insert((children), undefined, $$p)' },
+      { static: '</div>' },
+    ]),
+  ).toBeUndefined();
+  // The content of a <textarea> is its text.
+  expect(
+    clonedTemplate([
+      { static: '<textarea b-b="' },
+      { code: '$$s2' },
+      { static: ':0">' },
+      { code: '$$b.insert((text))' },
+      { static: '</textarea>' },
+    ]),
+  ).toBeUndefined();
+  // The loader starts each <template> of a block once.
+  expect(
+    clonedTemplate([
+      { static: '<template b-b="' },
+      { code: '$$s2' },
+      { static: ':0" b-client="load=App#k3"></template>' },
+    ]),
+  ).toBeUndefined();
+  // A component, or any code that is not one of the writes.
+  expect(clonedTemplate([{ static: '<p>' }, { code: 'await Child($$props)' }])).toBeUndefined();
+  // Nothing to write.
+  expect(clonedTemplate([{ static: '<p>Hi</p>' }])).toBeUndefined();
+});
+
+// The browser adds a <tbody>, which happy-dom does not. The paths come from the parsed template
+// either way, so they follow what the parser did.
+it('finds the marked elements in the parsed template, and removes their marks', () => {
+  init({ load: () => undefined, listen: () => {} });
+  const table = template('<table><tr><td b-x="0"></td><td>b</td><td b-x="1"></td></tr></table>', 2);
+  const [fragment, elements] = clone(table);
+  expect(elements.map((element) => element.tagName)).toEqual(['TD', 'TD']);
+  expect(elements[1]!.previousElementSibling!.textContent).toBe('b');
+  expect(fragment.querySelector('[b-x]')).toBeNull();
+  // A second clone reads the same paths.
+  const [, again] = clone(table);
+  expect(again[0]).not.toBe(elements[0]);
+  expect(again.map((element) => element.tagName)).toEqual(['TD', 'TD']);
+});

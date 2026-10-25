@@ -1451,14 +1451,14 @@ describe('resume', () => {
       }
     });
     observer.observe(list, { childList: true });
-    // Each insert parses its markup in a template.
-    const create = vi.spyOn(document, 'createElement');
+    // Each insert puts a fragment into the list: of its markup, or of the templates it cloned.
+    const insert = vi.spyOn(list, 'insertBefore');
 
     click(document.querySelector('.fill')!);
     await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(6));
     observer.disconnect();
-    const templates = create.mock.calls.filter(([tag]) => tag === 'template');
-    create.mockRestore();
+    const inserts = insert.mock.calls.filter(([node]) => node instanceof DocumentFragment);
+    insert.mockRestore();
     expect([...list.querySelectorAll('span')].map((span) => span.textContent)).toEqual([
       'a',
       'b',
@@ -1470,7 +1470,7 @@ describe('resume', () => {
     expect(buttons().map((button) => button.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
     // The items that stay are not moved, and new items next to each other go in with one insert.
     expect(removed).toEqual([]);
-    expect(templates).toHaveLength(3);
+    expect(inserts).toHaveLength(3);
 
     // The new items resume like the others.
     click(buttons()[4]!);

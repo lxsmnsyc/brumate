@@ -43,6 +43,8 @@ A function of another component, such as a function prop, a function in a contex
 
 The core holds only the helpers that the build's components call. A build without `#for`, `$produce` or `$optimistic` leaves their code out, and a build with `navigate: false` leaves out the code that reads the pages that navigation adds. That code loads after the first client navigation, as a small module of its own.
 
+The body of an `#if` or a `#for` whose markup is elements, attributes and text compiles to a `<template>`. The browser parses it once, clones it for each render, and writes the values on the elements that the template marks, with no HTML to build or parse. Other bodies, such as those with components, children or blocks inside, render HTML.
+
 The client build also leaves out the code of the features that no component uses:
 
 - children that the browser renders, `#template` values that it calls, `<title>` in markup, and `$bind` passed to another component;

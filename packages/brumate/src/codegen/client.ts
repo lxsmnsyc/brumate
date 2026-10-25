@@ -17,6 +17,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
+import { clonedTemplate } from './template.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
@@ -1213,6 +1214,37 @@ class ClientGenerator {
     }
   }
 
+  /**
+   * Replaces the one `$$html +=` line of a render with a clone of a template and the writes on
+   * its elements. Returns false when the markup needs HTML.
+   */
+  private cloneRender(emitter: Emitter): boolean {
+    const [flush] = emitter.flushes;
+    const found = clonedTemplate([...flush!.parts]);
+    if (!found) {
+      return false;
+    }
+    const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
+    const name = this.hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
+    const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
+    found.writes.forEach((writes, index) => {
+      // The scope of the anchor of the element, where its content finds its contexts.
+      const anchored = writes.find((write) => write.kind === 'anchor');
+      const at = anchored?.kind === 'anchor' ? `, ${anchored.scope}` : '';
+      for (const write of writes) {
+        if (write.kind === 'anchor') {
+          lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
+        } else if (write.kind === 'attribute') {
+          lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
+        } else {
+          lines.push(`${indent}$$b.setContent($$e[${index}], ${write.value}${at});`);
+        }
+      }
+    });
+    emitter.lines.splice(flush!.line, 1, ...lines);
+    return true;
+  }
+
   private emitRenders(): void {
     for (const [scope, { body, block }] of this.renders) {
       const base = scope.parent!;
@@ -1251,7 +1283,12 @@ class ClientGenerator {
         emitter.emitBody(body);
       }
       emitter.flush();
-      emitter.line('return $$html;');
+      // The body of an `#if` or a `#for` whose markup is one string clones a template.
+      const cloned =
+        (block.kind === 'if' || block.kind === 'for') && emitter.flushes.length === 1
+          ? this.cloneRender(emitter)
+          : false;
+      emitter.line(cloned ? 'return $$f;' : 'return $$html;');
       emitter.close();
       this.emit(emitter.lines.join('\n'));
       if (block.kind === 'portal' && block.target) {

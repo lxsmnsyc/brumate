@@ -135,6 +135,8 @@ export interface Scope {
   h?: HiddenBody;
   /** Effects and `$client` callbacks to run when the `#offscreen` body around the scope shows. */
   w?: Set<string>;
+  /** The elements that updates write, by anchor, of markup that the browser cloned. */
+  n?: Element[];
 }
 
 export interface CoreOptions {
@@ -1981,6 +1983,10 @@ function findComment(key: string): Comment | undefined {
 }
 
 function findElement(scope: ScopeId, anchor: number): Element | null {
+  const own = scopes.get(scope)?.n?.[anchor];
+  if (own?.isConnected) {
+    return own;
+  }
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
@@ -2038,10 +2044,18 @@ function clear(start: Node, end: Node): void {
  * Inserts rendered HTML before a node, or at the end of a parent, and runs
  * the work that waits for it.
  */
-function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
-  const template = document.createElement('template');
-  template.innerHTML = trustedHTML(html);
-  const fragment = template.content;
+function insertHTML(before: Node | { parent: ParentNode }, html: string | DocumentFragment): void {
+  // A fragment that the browser cloned from a template keeps its elements on their scopes, so
+  // it is not parsed or indexed.
+  const cloned = typeof html !== 'string';
+  let fragment: DocumentFragment;
+  if (cloned) {
+    fragment = html;
+  } else {
+    const template = document.createElement('template');
+    template.innerHTML = trustedHTML(html);
+    fragment = template.content;
+  }
   // Markers that others inserted first, so the new markers win over them.
   if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
@@ -2050,10 +2064,18 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
   const client = rendered.splice(0);
   // Markup from the server, such as `children`, names scopes with IDs that are not negative.
   // Only then are the elements of the insert read for them now.
-  const fromServer = SERVER_SCOPES.test(html);
+  const fromServer = !cloned && SERVER_SCOPES.test(html);
   const ids = fromServer ? new Set<ScopeId>() : undefined;
-  indexMarkers(fragment, ids, fromServer);
-  options.listen(fragment);
+  const markup = clonedMarkup;
+  if (!cloned || markup) {
+    // The elements of HTML in a clone are read now, since the clone is not indexed later.
+    indexMarkers(fragment, ids, fromServer || cloned);
+    clonedMarkup = false;
+  }
+  // A clone's handlers were read from its template, unless it holds markup that it rendered.
+  if (!cloned || markup) {
+    options.listen(fragment);
+  }
   watchTitles(fragment);
   const server: Scope[] = [];
   for (const id of ids ?? []) {
@@ -2062,7 +2084,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
       server.push(scope);
     }
   }
-  if (!fromServer && fragment.firstChild) {
+  if (!cloned && !fromServer && fragment.firstChild) {
     unindexed.push([fragment.firstChild, fragment.lastChild!]);
     // Many inserts that no update read are indexed at once, so they do not hold their nodes.
     if (unindexed.length > 256) {
@@ -2382,7 +2404,7 @@ function updateSpreadEntries(element: Element, values: Record<string, unknown>):
   options.listen(element);
 }
 
-type Render = (parent: Scope, item?: unknown, index?: number) => string;
+type Render = (parent: Scope, item?: unknown, index?: number) => string | DocumentFragment;
 
 /** Shows the branch at `index` of `#if` or `#switch`, or nothing for -1. */
 export function branch(
@@ -2476,7 +2498,7 @@ export async function reset(
   }
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
-  let html: string;
+  let html: string | DocumentFragment;
   try {
     html = (updates[body] as Render)(scope);
   } catch (error) {
@@ -2880,20 +2902,33 @@ export function list(
   }
   // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
-  // New items next to each other go into the page with one insert.
+  // New items next to each other go into the page with one insert: their HTML, or the
+  // fragments that they cloned.
   let added = '';
+  let addedNodes: DocumentFragment | undefined;
+  const flushAdded = (): void => {
+    if (added) {
+      insertHTML(cursor, added);
+      added = '';
+    } else if (addedNodes) {
+      insertHTML(cursor, addedNodes);
+    }
+    addedNodes = undefined;
+  };
   for (let index = 0; index < count; index++) {
     const id = keys[index];
     const item = previous.get(id);
     if (!item) {
-      added += render(scope, items[index], index);
+      const out = render(scope, items[index], index);
+      if (typeof out === 'string') {
+        added += out;
+      } else {
+        (addedNodes ??= document.createDocumentFragment()).append(out);
+      }
       continue;
     }
     // Before the item's updates run, so they see the new items before it.
-    if (added) {
-      insertHTML(cursor, added);
-      added = '';
-    }
+    flushAdded();
     previous.delete(id);
     // Slots that keep their values do not trigger updates.
     assign(item.scope, items[index], index);
@@ -2911,9 +2946,7 @@ export function list(
       }
     }
   }
-  if (added) {
-    insertHTML(cursor, added);
-  }
+  flushAdded();
   for (const item of previous.values()) {
     destroy(item.scope);
     for (let node: Node | null = item.first; node;) {
@@ -3363,6 +3396,102 @@ function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
 export function children(from: Scope | ScopeId | undefined, html: () => string): Children {
   return new Children(from, html);
 }
+
+/** Markup that the browser clones, and the paths to the elements that its render writes. */
+interface Template {
+  html: string;
+  /** How many elements the render writes, which have `b-x` in `html`. */
+  count: number;
+  t?: HTMLTemplateElement;
+  paths?: number[][];
+}
+
+/** A template of the markup of a render, which `clone` parses once. */
+export function template(html: string, count: number): Template {
+  return { html, count };
+}
+
+/**
+ * Parses a template, and finds the path to each element that it marks with `b-x`, as the parser
+ * placed it: after the parser's own changes, such as a `<tbody>` that it adds.
+ */
+function parseTemplate(source: Template): number[][] {
+  const element = document.createElement('template');
+  element.innerHTML = trustedHTML(source.html);
+  const root = element.content;
+  const paths: number[][] = Array.from({ length: source.count });
+  for (const marked of root.querySelectorAll('[b-x]')) {
+    const path: number[] = [];
+    for (let node: Node = marked; node !== root; node = node.parentNode!) {
+      let index = 0;
+      for (let before = node.previousSibling; before; before = before.previousSibling) {
+        index++;
+      }
+      path.unshift(index);
+    }
+    paths[Number(marked.getAttribute('b-x'))] = path;
+    marked.removeAttribute('b-x');
+  }
+  // The loader listens to the events of the handlers of the template once, not of each clone.
+  options.listen(root);
+  source.t = element;
+  return paths;
+}
+
+/** Clones a template. Returns the fragment, and the elements that the template marks. */
+export function clone(source: Template): [DocumentFragment, Element[]] {
+  const paths = (source.paths ??= parseTemplate(source));
+  const fragment = source.t!.content.cloneNode(true) as DocumentFragment;
+  const nodes = paths.map((path) => {
+    let node: Node = fragment;
+    for (const index of path) {
+      node = node.firstChild!;
+      for (let step = 0; step < index; step++) {
+        node = node.nextSibling!;
+      }
+    }
+    return node as Element;
+  });
+  return [fragment, nodes];
+}
+
+/**
+ * Keeps an element of cloned markup on its scope, where updates find it. An element at the top
+ * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to
+ * find the scope.
+ */
+export function keep(scope: ScopeId, anchor: number, element: Element): void {
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = element;
+  }
+  if (element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+    element.setAttribute('b-b', `${scope}:${anchor}`);
+  }
+}
+
+/** Writes an attribute of an element of cloned markup, as `attribute` writes it in HTML. */
+export function setAttr(element: Element, name: string, value: unknown): void {
+  const written = attributeText(name, value);
+  if (written !== undefined) {
+    element.setAttribute(name, written);
+  }
+}
+
+/** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
+export function setContent(element: Element, value: unknown, at?: ScopeId): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    element.textContent = String(value);
+    return;
+  }
+  // Children, a template or raw HTML render their markup here, which the insert of the clone
+  // indexes, as it would in HTML. Their work after the insert waits for it too.
+  element.innerHTML = trustedHTML(insert(value, undefined, at));
+  clonedMarkup = true;
+}
+
+/** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
+let clonedMarkup = false;
 
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.

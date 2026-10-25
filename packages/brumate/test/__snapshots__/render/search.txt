@@ -93,14 +93,17 @@ export function r2($$p) {
   $$html += "<p class=\"pending\">Searching</p>";
   return $$html;
 }
+const $$k4 = $$b.template("<li b-x=\"0\"></li>", 1);
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li b-b=\"" + $$s3 + ":0\">" + $$b.insert((result)) + "</li>";
+  const [$$f, $$e] = $$b.clone($$k4);
+  $$b.keep($$s3, 0, $$e[0]);
+  $$b.setContent($$e[0], (result), $$s3);
   $$b.setSlots($$s3, [result]);
   $$b.setItem($$s3, $$item);
-  return $$html;
+  return $$f;
 }
 
 # Render module
