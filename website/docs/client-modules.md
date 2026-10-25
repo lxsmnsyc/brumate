@@ -43,7 +43,7 @@ A function of another component, such as a function prop, a function in a contex
 
 The core holds only the helpers that the build's components call. A build without `#for`, `$produce` or `$optimistic` leaves their code out, and a build with `navigate: false` leaves out the code that reads the pages that navigation adds. That code loads after the first client navigation, as a small module of its own.
 
-The body of an `#if` or a `#for` whose markup is elements, attributes, text and `#if` or `#for` blocks compiles to a `<template>`. The browser parses it once, clones it for each render, and writes the values on the elements that the template marks, with no HTML to build or parse. A text value is a text node, which an update sets, as in Solid. The blocks inside fill before the clone goes into the page. Other bodies, such as those with components or children inside, render HTML.
+The body of an `#if` or a `#for` whose markup is elements, attributes, text and `#if` or `#for` blocks compiles to a `<template>`. The browser parses it once, clones it for each render, and writes the values on the elements that the template marks, with no HTML to build or parse. A text value is a text node, which an update sets, as in Solid. The blocks inside fill before the clone goes into the page. A child component renders in its place in the clone, and the render module of a component whose markup is one string clones a template too. Other markup renders HTML, such as a component whose markup holds blocks.
 
 The client build also leaves out the code of the features that no component uses:
 

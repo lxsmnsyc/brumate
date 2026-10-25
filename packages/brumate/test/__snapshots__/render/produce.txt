@@ -123,7 +123,7 @@ interface Todo {
     done: boolean;
   }
 
-export default function Produce($$props: Record<string, never>): string {
+export default function Produce($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Produce_9t90yy");
   let todos = ([

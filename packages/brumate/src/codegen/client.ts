@@ -17,7 +17,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
-import { clonedTemplate } from './template.ts';
+import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
@@ -1220,53 +1220,7 @@ class ClientGenerator {
    * its elements. Returns false when the markup needs HTML.
    */
   private cloneRender(emitter: Emitter): boolean {
-    const [flush] = emitter.flushes;
-    const found = clonedTemplate([...flush!.parts]);
-    if (!found) {
-      return false;
-    }
-    const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
-    const name = this.hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
-    const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
-    // The calls that fill the nested blocks, after the slots of the body are set, which the
-    // renders of the blocks read.
-    const fills: string[] = [];
-    let missing = false;
-    found.writes.forEach((writes, index) => {
-      // The scope of the anchor of the element, where its content finds its contexts.
-      const anchored = writes.find((write) => write.kind === 'anchor');
-      const at = anchored?.kind === 'anchor' ? `, ${anchored.scope}` : '';
-      for (const write of writes) {
-        if (write.kind === 'anchor') {
-          lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
-        } else if (write.kind === 'last') {
-          lines.push(
-            `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value});`,
-          );
-        } else if (write.kind === 'text') {
-          lines.push(
-            `${indent}$$b.keepText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value});`,
-          );
-        } else if (write.kind === 'attribute') {
-          lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
-        } else if (write.kind === 'block') {
-          const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
-          if (call === undefined) {
-            missing = true;
-          } else {
-            fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
-          }
-        } else {
-          lines.push(`${indent}$$b.setContent($$e[${index}], ${write.value}${at});`);
-        }
-      }
-    });
-    if (missing) {
-      return false;
-    }
-    emitter.lines.splice(flush!.line, 1, ...lines);
-    emitter.lines.push(...fills);
-    return true;
+    return cloneLines(emitter, (code) => this.hoist(code));
   }
 
   /**

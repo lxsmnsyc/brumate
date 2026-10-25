@@ -159,7 +159,7 @@ export function label(value: number): Promise<string> {
     return Promise.resolve(`#${value}`);
   }
 
-export default function Memos($$props: Record<string, never>): string {
+export default function Memos($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Memos_1khoa0p");
   let count = (3);

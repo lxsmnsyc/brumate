@@ -565,7 +565,7 @@ describe('await', () => {
     expect(modules.h5).toContain(
       'console.log(($$b.get($$s, 1)).name, $$b.update($$s, 0, 1, false))',
     );
-    expect(render).toContain('$$b.insert(((user).name))');
+    expect(render).toContain('$$b.keepText($$s1, 0, $$e[0], ((user).name));');
     for (const code of [...Object.values(modules), render]) {
       expect(parseSync('code.ts', code).errors).toEqual([]);
     }
@@ -638,7 +638,7 @@ describe('await', () => {
     );
     expect(server).toContain('const settings = await load(0);');
     expect(render).toMatch(
-      /export default function T\(\$\$props: [^)]*\): string \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
+      /export default function T\(\$\$props: [^)]*\): string \| DocumentFragment \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
     );
     expect(parseSync('render.ts', render).errors).toEqual([]);
   });

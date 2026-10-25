@@ -86,7 +86,7 @@ export function k5($$s) {
 # Render module
 import * as $$b from 'brumate/client';
 
-export default function Portal($$props: Record<string, never>): string {
+export default function Portal($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Portal_17ywlhi");
   let open = (false);

@@ -313,7 +313,7 @@ import * as $$b from 'brumate/client';
 import OffscreenChild from "./OffscreenChild.brm?brumate-render";
 const $$css = ".flex[s-1oupne3] {\n    display: flex;\n  }";
 
-export default function Offscreen($$props: Record<string, any>): string {
+export default function Offscreen($$props: Record<string, any>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Offscreen_1oupne3");
   $$html += $$b.addStyle("Offscreen_1oupne3", $$css);

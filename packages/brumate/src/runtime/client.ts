@@ -2063,9 +2063,7 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string | Docume
   if (cloned) {
     fragment = html;
   } else {
-    const template = document.createElement('template');
-    template.innerHTML = trustedHTML(html);
-    fragment = template.content;
+    fragment = parseHTML(html);
   }
   // Markers that others inserted first, so the new markers win over them.
   if (HAS_LATE_MARKUP && markerObserver) {
@@ -3513,7 +3511,13 @@ export function keep(scope: ScopeId, anchor: number, element: Element): void {
  * a text node, which the scope keeps, as Solid keeps it, so an update sets its data. Other
  * values render between the markers of an insert, as in HTML.
  */
-export function keepText(scope: ScopeId, anchor: number, place: Comment, value: unknown): void {
+export function keepText(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
   const found = scopes.get(scope);
   if (typeof value === 'string' || typeof value === 'number') {
     const node = document.createTextNode(String(value));
@@ -3523,11 +3527,17 @@ export function keepText(scope: ScopeId, anchor: number, place: Comment, value: 
     }
     return;
   }
-  keepMarkers(scope, anchor, place, value);
+  keepMarkers(scope, anchor, place, value, at);
 }
 
 /** Puts a text insert at the end of an element of cloned markup, as `keepText` does. */
-export function appendText(scope: ScopeId, anchor: number, parent: Element, value: unknown): void {
+export function appendText(
+  scope: ScopeId,
+  anchor: number,
+  parent: Element,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
   if (typeof value === 'string' || typeof value === 'number') {
     const node = document.createTextNode(String(value));
     parent.append(node);
@@ -3539,11 +3549,17 @@ export function appendText(scope: ScopeId, anchor: number, parent: Element, valu
   }
   const place = document.createComment('');
   parent.append(place);
-  keepMarkers(scope, anchor, place, value);
+  keepMarkers(scope, anchor, place, value, at);
 }
 
 /** Gives a value that is not text the markers of an insert, and renders it between them. */
-function keepMarkers(scope: ScopeId, anchor: number, place: Comment, value: unknown): void {
+function keepMarkers(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope,
+): void {
   const found = scopes.get(scope);
   place.data = `t${scope}:${anchor}`;
   place.after(document.createComment('/t'));
@@ -3552,9 +3568,7 @@ function keepMarkers(scope: ScopeId, anchor: number, place: Comment, value: unkn
   }
   if (value !== null && value !== undefined && typeof value !== 'boolean') {
     // Children, a template or raw HTML: their markup, which the insert of the clone indexes.
-    const parsed = document.createElement('template');
-    parsed.innerHTML = trustedHTML(insert(value, undefined, scope));
-    place.after(parsed.content);
+    place.after(parseHTML(insert(value, undefined, at)));
     clonedMarkup = true;
   }
 }
@@ -3578,9 +3592,7 @@ function keepBlock(
 function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
   if (html) {
     // Markup that a render gave as HTML, which the insert of the clone indexes.
-    const parsed = document.createElement('template');
-    parsed.innerHTML = trustedHTML(html);
-    place.after(parsed.content);
+    place.after(parseHTML(html));
     clonedMarkup = true;
   } else if (nodes) {
     place.after(nodes);
@@ -3640,14 +3652,14 @@ export function setAttr(element: Element, name: string, value: unknown): void {
 }
 
 /** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
-export function setContent(element: Element, value: unknown, at?: ScopeId): void {
+export function setContent(element: Element, value: unknown, at?: ScopeId | Scope): void {
   if (typeof value === 'string' || typeof value === 'number') {
     element.textContent = String(value);
     return;
   }
   // Children, a template or raw HTML render their markup here, which the insert of the clone
   // indexes, as it would in HTML. Their work after the insert waits for it too.
-  element.innerHTML = trustedHTML(insert(value, undefined, at));
+  element.replaceChildren(parseHTML(insert(value, undefined, at)));
   clonedMarkup = true;
 }
 
@@ -3656,7 +3668,50 @@ let clonedMarkup = false;
 
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
-export type Component<P = any> = (props: P) => string;
+export type Component<P = any> = (props: P) => string | DocumentFragment;
+
+/**
+ * The clones of components that HTML holds a place for, by the number in the place,
+ * `<!--f` and the number. HTML that the browser parses gets them back in their places.
+ */
+const placed = new Map<number, DocumentFragment>();
+let placedCount = 0;
+
+/** Parses HTML that the browser renders, with the clones that it holds places for. */
+function parseHTML(html: string): DocumentFragment {
+  const template = document.createElement('template');
+  template.innerHTML = trustedHTML(html);
+  const fragment = template.content;
+  if (placed.size > 0 && html.includes('<!--f')) {
+    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+    const places: Comment[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (/^f\d+$/.test((node as Comment).data)) {
+        places.push(node as Comment);
+      }
+    }
+    for (const place of places) {
+      const key = Number(place.data.slice(1));
+      const nodes = placed.get(key);
+      if (nodes) {
+        placed.delete(key);
+        place.replaceWith(nodes);
+      }
+    }
+  }
+  return fragment;
+}
+
+/** Puts a child component that a clone renders in the place of its comment. */
+export function place(at: Comment, out: string | DocumentFragment): void {
+  if (typeof out === 'string') {
+    // A component that renders HTML: its markup, which the insert of the clone indexes.
+    at.replaceWith(parseHTML(out));
+    clonedMarkup = true;
+  } else {
+    at.replaceWith(out);
+  }
+}
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
   if (typeof scope === 'object') {
@@ -3676,6 +3731,32 @@ export function component<P>(
   scope?: Scope | number,
   anchor?: number,
 ): string {
+  const parent = resolveScope(scope);
+  if (parent && anchor !== undefined) {
+    parent.c ??= {};
+    parent.c[anchor] = nextId;
+  }
+  if (parent) {
+    setOwner(parent);
+  }
+  const out = Child(props);
+  if (typeof out === 'string') {
+    return out;
+  }
+  // A child that clones its markup: HTML holds its place, which the parse fills.
+  const key = placedCount++;
+  placed.set(key, out);
+  return `<!--f${key}-->`;
+}
+
+/** Renders a child component for a clone: its markup as HTML, or the clone that it made. */
+export function componentNodes<P>(
+  Child: Component<P>,
+  props: P,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  anchor?: number,
+): string | DocumentFragment {
   const parent = resolveScope(scope);
   if (parent && anchor !== undefined) {
     parent.c ??= {};

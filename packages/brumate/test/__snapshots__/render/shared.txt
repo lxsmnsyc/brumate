@@ -60,7 +60,7 @@ import * as $$b from 'brumate/client';
 export const STEP = 2;
 const label = 'Count';
 
-export default function Shared($$props: Record<string, never>): string {
+export default function Shared($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Shared_1xpln25");
   let count = (0);

@@ -141,7 +141,7 @@ interface Todo {
   }
 const persist = (...$$a) => $$b.rpc("Todos_t3g9lr#persist", $$a);
 
-export default function Todos($$props: { initial: Todo[] }): string {
+export default function Todos($$props: { initial: Todo[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Todos_t3g9lr");
   const { initial } = $$b.unbind($$props, ["initial"]);

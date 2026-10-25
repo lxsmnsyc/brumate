@@ -181,7 +181,7 @@ export function r4($$p, $$item, $$index) {
 import * as $$b from 'brumate/client';
 interface Row { id: string; label: string; note: string | number }
 
-export default function Compact($$props: { initial: Row[] }): string {
+export default function Compact($$props: { initial: Row[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Compact_omhyaj");
   const { initial } = $$b.unbind($$props, ["initial"]);

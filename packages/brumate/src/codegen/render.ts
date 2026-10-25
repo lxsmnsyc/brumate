@@ -4,6 +4,7 @@ import { componentFunctionName, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
+import { cloneLines } from './template.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { propsType } from './server.ts';
 import { copy } from '../sourcemap.ts';
@@ -214,7 +215,9 @@ export function generateRender(file: SFCFile, plan: Plan): string {
   const generics = file.generics ? `<${file.generics}>` : '';
   // The script can import a name that is the name of the component.
   const fn = componentFunctionName(file, plan.name);
-  emitter.line(`export default function ${fn}${generics}($$props: ${propsType(file)}): string {`);
+  emitter.line(
+    `export default function ${fn}${generics}($$props: ${propsType(file)}): string | DocumentFragment {`,
+  );
   // A render function cannot wait, so a component whose render awaits a promise renders only
   // on the server. Its memos can await: they load in the browser.
   if (awaitsPromise(plan)) {
@@ -229,7 +232,21 @@ export function generateRender(file: SFCFile, plan: Plan): string {
     `const ${emitter.scopeVar(model.component)} = $$b.createScope(${model.component.id}, undefined, ${JSON.stringify(plan.id)});`,
   );
   emitter.emitComponentContent(setup);
-  emitter.line('return $$html;');
+  emitter.flush();
+  // Markup that is one string clones a template, which a constant of the module holds.
+  const constants = new Map<string, string>();
+  const cloned =
+    emitter.flushes.length === 1 &&
+    cloneLines(emitter, (code) => {
+      let name = constants.get(code);
+      if (!name) {
+        name = `$$t${constants.size}`;
+        constants.set(code, name);
+        moduleBody.push(`const ${name} = ${code};`);
+      }
+      return name;
+    });
+  emitter.line(cloned ? 'return $$f;' : 'return $$html;');
   emitter.close();
 
   return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');

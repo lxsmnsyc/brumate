@@ -80,7 +80,7 @@ export function r2($$p, $$item, $$index) {
 # Render module
 import * as $$b from 'brumate/client';
 
-export default function Fields($$props: Record<string, never>): string {
+export default function Fields($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Fields_1cs3w3p");
   const id = $$b.makeId($$s1, 0);

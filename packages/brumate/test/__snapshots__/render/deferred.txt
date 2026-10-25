@@ -69,7 +69,7 @@ export function u7($$s) {
 import * as $$b from 'brumate/client';
 import { getEvent } from "brumate/server";
 
-export default function Deferred($$props: Record<string, never>): string {
+export default function Deferred($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Deferred_1mbnfwf");
   let count = (1);

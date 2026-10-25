@@ -55,7 +55,7 @@ export function n0($$p) {
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
 
-export default function Parent($$props: Record<string, never>): string {
+export default function Parent($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Parent_4bs4t8");
   let count = (1);

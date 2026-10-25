@@ -1,19 +1,21 @@
 // Cloned templates of the markup that the browser renders. A render whose markup is one string
 // of static HTML, attributes, the content of elements, and anchors compiles to a `<template>`
 // that it clones, and writes the elements that it marks. The rest renders HTML.
-import type { Part } from './markup.ts';
+import type { Emitter, Part } from './markup.ts';
 
 /** What a render writes on an element of its clone. */
 export type Write =
   | { kind: 'anchor'; scope: string; anchor: number }
   | { kind: 'attribute'; name: string; value: string }
-  | { kind: 'content'; value: string }
+  | { kind: 'content'; value: string; at?: string }
   /** A text insert, whose place in the clone a marked comment holds. */
-  | { kind: 'text'; scope: string; anchor: number; value: string }
+  | { kind: 'text'; scope: string; anchor: number; value: string; at?: string }
   /** A text insert at the end of the marked element, which needs no comment. */
-  | { kind: 'last'; scope: string; anchor: number; value: string }
+  | { kind: 'last'; scope: string; anchor: number; value: string; at?: string }
   /** A nested block, whose start comment the clone marks, and which a call fills. */
-  | { kind: 'block'; scope: string; anchor: number };
+  | { kind: 'block'; scope: string; anchor: number }
+  /** A child component, which renders in the place of a marked comment. */
+  | { kind: 'component'; call: string };
 
 export interface ClonedTemplate {
   /**
@@ -27,10 +29,9 @@ export interface ClonedTemplate {
 }
 
 const ATTRIBUTE = /^\$\$b\.attribute\(("(?:[^"\\]|\\.)*"), ([\s\S]*)\)$/;
-// `$$b.insert(value)`. Children and templates, `$$b.insert(value, undefined, scope)`, render
-// where they are inserted, so a body that has them renders HTML.
-const INSERT = /^\$\$b\.insert\(([\s\S]*)\)$/;
-const PLACED = /, undefined, [\w$.]+\)$/;
+// `$$b.insert(value)`, or `$$b.insert(value, undefined, scope)`, whose value can be children or
+// a template, which render where they are inserted with the contexts of the scope.
+const INSERT = /^\$\$b\.insert\(([\s\S]*?)(?:, undefined, ([\w$.]+))?\)$/;
 const SCOPE = /^\$\$s\d+$/;
 const ANCHOR_START = ' b-b="';
 const ANCHOR_END = /^:(\d+)"/;
@@ -38,6 +39,7 @@ const TEXT_START = '<!--t';
 const TEXT_END = /^:(\d+)-->/;
 const TEXT_CLOSE = '<!--/t-->';
 const BLOCK_START = '<!--b';
+const COMPONENT = /^\$\$b\.component\(/;
 const BLOCK_END = /^:(\d+)(?::-1)?--><!--\/b-->/;
 
 const VOID = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
@@ -202,17 +204,16 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       add({ kind: 'attribute', name: attribute[1]!, value: attribute[2]! });
       continue;
     }
-    const insert = PLACED.test(code) ? null : INSERT.exec(code);
+    const insert = INSERT.exec(code);
     if (insert && reader.justOpened && !reader.raw && nextStatic?.startsWith('</')) {
-      add({ kind: 'content', value: insert[1]! });
+      add({ kind: 'content', value: insert[1]!, at: insert[2] });
       continue;
     }
     // A text insert: `<!--t`, the scope, `:anchor-->`, the value, then `<!--/t-->`.
     const textEnd = nextStatic === undefined ? null : TEXT_END.exec(nextStatic);
     const value = list[index + 2];
     const close = list[index + 3];
-    const textInsert =
-      value && 'code' in value && !PLACED.test(value.code) ? INSERT.exec(value.code) : null;
+    const textInsert = value && 'code' in value ? INSERT.exec(value.code) : null;
     if (
       SCOPE.test(code) &&
       reader.html.endsWith(TEXT_START) &&
@@ -229,7 +230,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       // At the end of its element, the clone appends the text node to the element.
       if (rest.startsWith('</') && parent !== undefined) {
         add(
-          { kind: 'last', scope: code, anchor: Number(textEnd[1]), value: textInsert[1]! },
+          {
+            kind: 'last',
+            scope: code,
+            anchor: Number(textEnd[1]),
+            value: textInsert[1]!,
+            at: textInsert[2],
+          },
           parent,
         );
         list[index + 3] = { static: rest };
@@ -245,6 +252,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       reader.append(`<!--x${mark}-->`);
       list[index + 3] = { static: close.static.slice(TEXT_CLOSE.length) };
       index += 2;
+      continue;
+    }
+    // A child component, which renders where it is, after the elements before it.
+    if (COMPONENT.test(code) && !reader.inTag && !reader.raw) {
+      const mark = writes.length;
+      writes.push([{ kind: 'component', call: code.replace(COMPONENT, '$$$$b.componentNodes(') }]);
+      reader.append(`<!--x${mark}-->`);
       continue;
     }
     // A nested block with nothing in it yet: `<!--b`, the scope, `:anchor-->`, `<!--/b-->`.
@@ -274,4 +288,63 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     return undefined;
   }
   return { html: reader.html, writes };
+}
+
+/**
+ * Replaces the one `$$html +=` line of a render with a clone of a template, and the writes on
+ * the elements that it marks. `hoist` makes a constant of the module. Returns false when the
+ * markup needs HTML.
+ */
+export function cloneLines(emitter: Emitter, hoist: (code: string) => string): boolean {
+  const [flush] = emitter.flushes;
+  const found = clonedTemplate([...flush!.parts]);
+  if (!found) {
+    return false;
+  }
+  const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
+  const name = hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
+  const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
+  // The calls that fill the nested blocks, after the slots of the body are set, which the
+  // renders of the blocks read.
+  const fills: string[] = [];
+  let missing = false;
+  found.writes.forEach((writes, index) => {
+    // The scope of the anchor of the element, where its content finds its contexts.
+    const anchored = writes.find((write) => write.kind === 'anchor');
+    const at = anchored?.kind === 'anchor' ? `, ${anchored.scope}` : '';
+    for (const write of writes) {
+      if (write.kind === 'anchor') {
+        lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
+      } else if (write.kind === 'last') {
+        lines.push(
+          `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+        );
+      } else if (write.kind === 'text') {
+        lines.push(
+          `${indent}$$b.keepText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+        );
+      } else if (write.kind === 'attribute') {
+        lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
+      } else if (write.kind === 'component') {
+        lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
+      } else if (write.kind === 'block') {
+        const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
+        if (call === undefined) {
+          missing = true;
+        } else {
+          fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
+        }
+      } else {
+        lines.push(
+          `${indent}$$b.setContent($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : at});`,
+        );
+      }
+    }
+  });
+  if (missing) {
+    return false;
+  }
+  emitter.lines.splice(flush!.line, 1, ...lines);
+  emitter.lines.push(...fills);
+  return true;
 }

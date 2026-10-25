@@ -69,23 +69,46 @@ it('marks the start of a nested block with nothing in it, which a call fills', (
   ]);
 });
 
-it('renders HTML for markers, children, raw text, blocks of the loader, and other code', () => {
+it('gives an insert that can hold children the scope where it renders', () => {
+  const found = clonedTemplate([
+    { static: '<div b-b="' },
+    { code: '$$s2' },
+    { static: ':0">' },
+    { code: '$$b.insert((children), undefined, $$p)' },
+    { static: '</div>' },
+  ])!;
+  expect(found.writes).toEqual([
+    [
+      { kind: 'anchor', scope: '$$s2', anchor: 0 },
+      { kind: 'content', value: '(children)', at: '$$p' },
+    ],
+  ]);
+});
+
+it('renders a child component in the place of a comment', () => {
+  const found = clonedTemplate([
+    { static: '<div>' },
+    { code: '$$b.component(Badge, { "label": (name) }, undefined, $$s2, 0)' },
+    { static: '</div>' },
+  ])!;
+  expect(found.html).toBe('<div><!--x0--></div>');
+  expect(found.writes).toEqual([
+    [
+      {
+        kind: 'component',
+        call: '$$b.componentNodes(Badge, { "label": (name) }, undefined, $$s2, 0)',
+      },
+    ],
+  ]);
+});
+
+it('renders HTML for markers, raw text, blocks of the loader, and other code', () => {
   // A block inside, with markup in it.
   expect(
     clonedTemplate([
       { static: '<ul><!--b' },
       { code: '$$s2' },
       { static: ':0--><li>a</li><!--/b--></ul>' },
-    ]),
-  ).toBeUndefined();
-  // Children render where they are inserted.
-  expect(
-    clonedTemplate([
-      { static: '<div b-b="' },
-      { code: '$$s2' },
-      { static: ':0">' },
-      { code: '$$b.insert((children), undefined, $$p)' },
-      { static: '</div>' },
     ]),
   ).toBeUndefined();
   // The content of a <textarea> is its text.
@@ -106,7 +129,7 @@ it('renders HTML for markers, children, raw text, blocks of the loader, and othe
       { static: ':0" b-client="load=App#k3"></template>' },
     ]),
   ).toBeUndefined();
-  // A component, or any code that is not one of the writes.
+  // Code that is not one of the writes.
   expect(clonedTemplate([{ static: '<p>' }, { code: 'await Child($$props)' }])).toBeUndefined();
   // Nothing to write.
   expect(clonedTemplate([{ static: '<p>Hi</p>' }])).toBeUndefined();

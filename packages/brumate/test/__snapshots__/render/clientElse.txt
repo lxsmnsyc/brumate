@@ -63,7 +63,7 @@ export function k2($$s) {
 # Render module
 import * as $$b from 'brumate/client';
 
-export default function ClientElse($$props: Record<string, never>): string {
+export default function ClientElse($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "ClientElse_1w4g5uu");
   let count = (0);

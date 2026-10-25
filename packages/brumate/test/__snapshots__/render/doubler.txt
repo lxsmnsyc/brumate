@@ -74,7 +74,7 @@ export function double(value: number): Promise<number> {
     return new Promise((done) => setTimeout(() => done(value * 2), 150));
   }
 
-export default function Doubler($$props: Record<string, never>): string {
+export default function Doubler($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
