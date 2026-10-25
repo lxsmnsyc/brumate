@@ -105,14 +105,18 @@ export function u8($$s) {
 export function u9($$s) {
   $$b.text($$s, 2, $$b.get($$s, 0).filter((todo) => todo.done).length);
 }
+const $$k2 = $$b.template("<li b-x=\"0\" b-on=\"click=Produce_9t90yy#h7\"></li>", 1);
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Produce_9t90yy#h7\">" + $$b.insert((todo.title)) + "</li>";
+  const [$$f, $$e] = $$b.clone($$k2);
+  (todo.done) && $$e[0].setAttribute("class", "done");
+  $$b.keep($$s2, 0, $$e[0]);
+  $$b.setContent($$e[0], (todo.title), $$s2);
   $$b.setSlots($$s2, [todo]);
   $$b.setItem($$s2, $$item);
-  return $$html;
+  return $$f;
 }
 
 # Render module

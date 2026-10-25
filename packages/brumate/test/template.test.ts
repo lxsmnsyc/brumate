@@ -124,6 +124,34 @@ it('builds the element of a dynamic tag in the place of a comment', () => {
   ]);
 });
 
+it('puts an insert with no markers, names comments, and writes attributes that code gives', () => {
+  const found = clonedTemplate([
+    { static: '<!--i' },
+    { code: '$$p.id' },
+    { static: '--><li' },
+    { code: '((done) ? " class=\\"done\\"" : "")' },
+    { code: '$$b.action("action", "A#save", "method")' },
+    { static: ' b-v="' },
+    { code: '$$s2' },
+    { static: '">' },
+    { code: '$$b.insert((name))' },
+    { static: ' and ' },
+    { code: '$$b.insert((children), undefined, $$s2)' },
+    { static: '</li>' },
+  ])!;
+  expect(found.html).toBe('<!--x0--><li b-x="1"><!--x2--> and <!--x3--></li>');
+  expect(found.writes).toEqual([
+    [{ kind: 'comment', data: '"i" + $$p.id' }],
+    [
+      { kind: 'call', call: '(done) && $$m.setAttribute("class", "done")' },
+      { kind: 'call', call: '$$b.setAttrText($$m, $$b.action("action", "A#save", "method"))' },
+      { kind: 'attribute', name: '"b-v"', value: '$$s2' },
+    ],
+    [{ kind: 'put', value: '(name)' }],
+    [{ kind: 'put', value: '(children)', at: '$$s2' }],
+  ]);
+});
+
 it('renders HTML for markers, raw text, blocks of the loader, and other code', () => {
   // The content of a <textarea> is its text.
   expect(

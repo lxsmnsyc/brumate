@@ -18,6 +18,10 @@ export type Write =
   | { kind: 'component'; call: string }
   /** The attributes of spreads on the marked element, and then its `b-on`. */
   | { kind: 'call'; call: string }
+  /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
+  | { kind: 'comment'; data: string }
+  /** A value with no markers around it, which renders in the place of a marked comment. */
+  | { kind: 'put'; value: string; at?: string }
   /** The start comment of a block whose markup is in the template, which the scope keeps. */
   | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
@@ -33,12 +37,15 @@ export interface ClonedTemplate {
 }
 
 const ATTRIBUTE = /^\$\$b\.attribute\(("(?:[^"\\]|\\.)*"), ([\s\S]*)\)$/;
+// An attribute that a condition adds, with a value that has no character references.
+const CONDITIONAL = /^\(\(([\s\S]*)\) \? " ([\w:-]+)=\\"([^"\\&]*)\\"" : ""\)$/;
 // The spreads of an element, and its `b-on` with the handlers of the spreads.
 const SPREAD = /^\$\$b\.(spread|onAttribute)\(([\s\S]*)\)$/;
 // `$$b.insert(value)`, or `$$b.insert(value, undefined, scope)`, whose value can be children or
 // a template, which render where they are inserted with the contexts of the scope.
 const INSERT = /^\$\$b\.insert\(([\s\S]*?)(?:, undefined, ([\w$.]+))?\)$/;
-const SCOPE = /^\$\$s\d+$/;
+// A scope ID: of a scope that the render makes, or of an instance, such as the parent of children.
+const SCOPE = /^\$\$(?:s\d+|s\d+\.id|p\.id)$/;
 const ANCHOR_START = ' b-b="';
 const ANCHOR_END = /^:(\d+)"/;
 const TEXT_START = '<!--t';
@@ -77,6 +84,11 @@ class Reader {
   /** Where the start tag of each element can take another attribute, by its number. */
   private readonly ends = new Map<number, number>();
   private state: 'text' | 'open' | 'name' | 'tag' | 'quote' | 'close' | 'comment' = 'text';
+
+  /** In a quoted attribute value. */
+  get inQuote(): boolean {
+    return this.state === 'quote';
+  }
   private quote = '';
   private name = '';
 
@@ -316,6 +328,44 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       list[index + 1] = { static: nextStatic!.slice(end[0].length) };
       continue;
     }
+    // A comment that names a scope, such as `<!--i`, the scope, `-->`.
+    const named = /<!--([a-z])$/.exec(reader.html);
+    if (SCOPE.test(code) && named && nextStatic?.startsWith('-->')) {
+      reader.takeBack(named[0], 'text');
+      const mark = writes.length;
+      writes.push([{ kind: 'comment', data: `${JSON.stringify(named[1])} + ${code}` }]);
+      reader.append(`<!--x${mark}-->`);
+      list[index + 1] = { static: nextStatic.slice(3) };
+      continue;
+    }
+    // A value in quotes, such as `b-v="`, the scope, `"`.
+    const quoted = / ([^\s"'=<>/]+)="$/.exec(reader.html);
+    if (reader.inQuote && quoted && nextStatic?.startsWith('"')) {
+      reader.takeBack(quoted[0], 'tag');
+      add({ kind: 'attribute', name: JSON.stringify(quoted[1]), value: code });
+      list[index + 1] = { static: nextStatic.slice(1) };
+      continue;
+    }
+    // Other code in a start tag gives the text of its attributes, such as a class that a
+    // condition adds, or the attributes of a form of an action.
+    if (reader.inTag && !reader.inQuote && !reader.html.endsWith('=')) {
+      // An attribute that a condition adds, `cond ? " name=\"value\"" : ""`, is set as it is.
+      const added = CONDITIONAL.exec(code);
+      add({
+        kind: 'call',
+        call: added
+          ? `(${added[1]}) && $$m.setAttribute(${JSON.stringify(added[2])}, ${JSON.stringify(added[3]!.replace(/\\"/g, '"'))})`
+          : `$$b.setAttrText($$m, ${code})`,
+      });
+      continue;
+    }
+    // An insert with no markers, whose value renders once where it is.
+    if (insert && !reader.inTag && !reader.raw) {
+      const mark = writes.length;
+      writes.push([{ kind: 'put', value: insert[1]!, at: insert[2] }]);
+      reader.append(`<!--x${mark}-->`);
+      continue;
+    }
     return undefined;
   }
   // Other comments, such as markers that a write does not name, need the HTML of a render. The
@@ -418,6 +468,12 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
         lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
       } else if (write.kind === 'component') {
         lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
+      } else if (write.kind === 'comment') {
+        lines.push(`${indent}$$e[${index}].data = ${write.data};`);
+      } else if (write.kind === 'put') {
+        lines.push(
+          `${indent}$$b.putText($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+        );
       } else if (write.kind === 'call') {
         lines.push(`${indent}${write.call.replace('$$m', () => `$$e[${index}]`)};`);
       } else if (write.kind === 'marker') {

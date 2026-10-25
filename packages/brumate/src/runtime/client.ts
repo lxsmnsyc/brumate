@@ -3475,7 +3475,8 @@ function parseTemplate(source: Template): number[][] {
     }
   }
   // The loader listens to the events of the handlers of the template once, not of each clone.
-  options.listen(root);
+  // A render before the core starts, such as in a test, has nothing that listens yet.
+  options?.listen(root);
   source.t = element;
   return paths;
 }
@@ -3666,6 +3667,25 @@ export function setAttr(element: Element, name: string, value: unknown): void {
   }
 }
 
+/** Writes attributes that code of a start tag gave as their text, as HTML has them. */
+export function setAttrText(element: Element, text: string): void {
+  if (text) {
+    const parsed = parseHTML(`<b${text}>`).firstChild as Element;
+    for (const attribute of Array.from(parsed.attributes)) {
+      element.setAttribute(attribute.name, attribute.value);
+    }
+  }
+}
+
+/** Puts a value with no markers in the place of a comment of cloned markup, as `insert` does. */
+export function putText(place: Comment, value: unknown, at?: ScopeId | Scope): void {
+  place.replaceWith(
+    typeof value === 'string' || typeof value === 'number'
+      ? document.createTextNode(String(value))
+      : insertNodes(value, at),
+  );
+}
+
 /** Writes the spreads of an element of cloned markup, as `spread` writes them in HTML. */
 export function setSpread(
   element: Element,
@@ -3673,14 +3693,7 @@ export function setSpread(
   on?: string[],
   names?: boolean,
 ): void {
-  const text = spread(attributes, on, names);
-  if (text) {
-    // As HTML, so they are written as they are in HTML.
-    const parsed = parseHTML(`<b${text}>`).firstChild as Element;
-    for (const attribute of Array.from(parsed.attributes)) {
-      element.setAttribute(attribute.name, attribute.value);
-    }
-  }
+  setAttrText(element, spread(attributes, on, names));
 }
 
 /** Writes the `b-on` of an element of cloned markup with spreads, as `onAttribute` does. */
@@ -3694,7 +3707,7 @@ export function setOn(element: Element, on: string[], own: string): void {
       element.setAttribute('b-b', bound);
     }
     // The loader listens to the events of the handlers of the spreads.
-    options.listen(element);
+    options?.listen(element);
   }
 }
 

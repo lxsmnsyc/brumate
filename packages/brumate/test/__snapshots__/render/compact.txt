@@ -150,14 +150,21 @@ export function u17($$s) {
 export function u18($$s) {
   $$b.content($$s, 1, $$b.get($$s, 0).label);
 }
+const $$k4 = $$b.template("<li b-x=\"0\"><span b-x=\"1\" class=\"label\"></span><i b-x=\"2\" class=\"note\"></i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>", 3);
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+  const [$$f, $$e] = $$b.clone($$k4);
+  (row.label.endsWith('!')) && $$e[0].setAttribute("class", "marked");
+  $$b.keep($$s2, 0, $$e[0]);
+  $$b.keep($$s2, 1, $$e[1]);
+  $$b.setContent($$e[1], (row.label), $$s2);
+  $$b.keep($$s2, 2, $$e[2]);
+  $$b.setContent($$e[2], (row.note), $$s2);
   $$b.setSlots($$s2, [row]);
   $$b.setItem($$s2, $$item);
-  return $$html;
+  return $$f;
 }
 export function r3($$p) {
   let $$html = '';
