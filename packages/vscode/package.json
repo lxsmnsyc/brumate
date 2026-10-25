@@ -78,6 +78,7 @@
   "activationEvents": [
     "onLanguage:brumate"
   ],
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.100.0"
   }
