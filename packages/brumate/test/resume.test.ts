@@ -2251,6 +2251,21 @@ describe('effect order', () => {
   });
 });
 
+describe('effect cleanups', () => {
+  it('does not run an effect again for a value that only its cleanup reads', async () => {
+    const log: string[] = [];
+    (globalThis as { cleanupLog?: string[] }).cleanupLog = log;
+    await resume('effectCleanup', {});
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1']));
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(text('.b-value')).toBe('1'));
+    expect(log).toEqual(['run 1']);
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1', 'clean 1', 'run 2']));
+  });
+});
+
 describe('several roots', () => {
   it('resumes two roots on one page when the second starts above the first', async () => {
     const counter = await import(file('counter.brm.ts'));

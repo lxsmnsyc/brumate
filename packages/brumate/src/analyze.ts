@@ -1717,6 +1717,22 @@ class Resolver {
       case 'Identifier':
         this.reference(node, 'read');
         return;
+      case 'ReturnStatement':
+        // The cleanup that an effect returns runs later, so what it reads is not what the effect
+        // depends on, as in Svelte and Solid.
+        if (
+          node.argument &&
+          isFunction(node.argument) &&
+          this.functionDepth === 0 &&
+          (this.site.kind === 'effect' || this.site.kind === 'client')
+        ) {
+          this.untracked++;
+          this.visit(node.argument);
+          this.untracked--;
+          return;
+        }
+        this.visitChildren(node);
+        return;
       case 'MemberExpression':
         this.visit(node.object);
         if (node.computed) {
