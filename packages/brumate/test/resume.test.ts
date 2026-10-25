@@ -642,6 +642,27 @@ describe('resume', () => {
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
   });
 
+  it('writes the handlers of a spread again when they change, and keeps the own ones', async () => {
+    await resume('spreadHandlerChange', {});
+    const field = document.querySelector('.field')!;
+    const enter = (): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      field.dispatchEvent(event);
+      return event;
+    };
+    expect(enter().defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(true));
+    expect(field.getAttribute('b-on')).toMatch(/^click=\S+ keydown:prevent\(Enter\)=\S+@\d+$/);
+    expect(enter().defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.presses')).toBe('2'));
+    // The element's own handler still runs, and the wrapper goes away again.
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(false));
+    expect(enter().defaultPrevented).toBe(false);
+  });
+
   it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {
     const server = await import(file('scriptHandlers.brm.ts'));
     const { html } = await renderParts(server.default, {});
