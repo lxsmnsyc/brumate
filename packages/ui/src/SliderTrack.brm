@@ -16,15 +16,31 @@
 
   function pressed(event: PointerEvent) {
     const track = event.currentTarget as HTMLElement;
-    // A press on a thumb is the thumb's own.
-    if (!slider || slider.isDisabled || event.button !== 0 || (event.target as Element).closest?.('[data-slider-thumb]')) {
+    // A press on a thumb is the thumb's own. A press with a modifier, or while a thumb is dragged,
+    // moves nothing, as in React Aria.
+    if (
+      !slider ||
+      slider.isDisabled ||
+      event.button !== 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      slider.dragging.length > 0 ||
+      (event.target as Element).closest?.('[data-slider-thumb]')
+    ) {
       return;
     }
     const rtl = locale.direction === 'rtl';
     const value = valueAt(slider, track, event.clientX, event.clientY, rtl);
     const index = closestThumb(slider.values, value);
-    document.getElementById(thumbId(slider, index))?.focus({ preventScroll: true });
+    const thumb = document.getElementById(thumbId(slider, index)) as HTMLInputElement | null;
+    // The nearest thumb is disabled, so the press moves nothing.
+    if (thumb?.disabled) {
+      return;
+    }
+    thumb?.focus({ preventScroll: true });
     slider.setThumb(index, value);
+    slider.setDragging(index, true);
     startDrag(
       event.pointerId,
       (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),

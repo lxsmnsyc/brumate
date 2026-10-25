@@ -113,3 +113,50 @@ it('reads a number in the format of the locale, and an empty field is NaN', asyn
   empty.dispatchEvent(new FocusEvent('blur'));
   await page.waitFor(() => expect(state(page)[2]).toBe('NaN'));
 });
+
+const keyDown = (key: string, target: Element, init: KeyboardEventInit = {}) => {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+  target.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
+it('names the input and its Buttons by aria-label, and disables a Button a step would pass', async () => {
+  const page = await numberfields();
+  const input = page.get('.qty-input') as HTMLInputElement;
+  expect(input.getAttribute('aria-label')).toBe('Quantity');
+  expect(input.required).toBe(true);
+  expect(page.get('.qty-plus').getAttribute('aria-label')).toBe('Increase Quantity');
+  await page.waitFor(() => expect(page.get('.qty-plus').hasAttribute('aria-labelledby')).toBe(false));
+  // 10 + 5 passes the maximum of 12, as in React Aria.
+  expect(page.get('.qty-plus').hasAttribute('disabled')).toBe(true);
+  expect(page.get('.qty-minus').hasAttribute('disabled')).toBe(false);
+});
+
+it('sends what was typed, and a reset gives back the first number', async () => {
+  const page = await numberfields();
+  const input = page.get('.qty-input') as HTMLInputElement;
+  const hidden = page.get('.qty input[type=hidden]') as HTMLInputElement;
+  input.focus();
+  type(input, '7');
+  // Enter submits before the code commits, so the form reads the typed number.
+  await page.waitFor(() => expect(hidden.value).toBe('7'));
+  input.blur();
+  await page.waitFor(() => expect(input.value).toBe('5'));
+  (page.get('.form') as HTMLFormElement).reset();
+  await page.waitFor(() => expect(input.value).toBe('10'));
+  expect(hidden.value).toBe('10');
+});
+
+it('prevents Home and End only with a limit, and keys with a modifier do not step', async () => {
+  const page = await numberfields();
+  const input = page.get('.qty-input') as HTMLInputElement;
+  input.focus();
+  press('ArrowDown', input, { shiftKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(input.value).toBe('10');
+  expect(keyDown('Home', page.get('.empty-input'))).toBe(false);
+  // A field that cannot change keeps its keys.
+  expect(keyDown('ArrowUp', page.get('.locked-input'))).toBe(false);
+  expect(keyDown('Home', input)).toBe(true);
+  await page.waitFor(() => expect(input.value).toBe('0'));
+});
