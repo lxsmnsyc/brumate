@@ -109,6 +109,16 @@ export const InputContext: Context<ContextValue<InputContextProps> | null> =
 export const TextAreaContext: Context<ContextValue<InputContextProps> | null> =
   createContext<ContextValue<InputContextProps> | null>('brumate-ui:textarea', null);
 
+/**
+ * Attributes that a part around a field gives the input of the field, such as an Autocomplete
+ * that names its collection. A TextField or a SearchField passes them on, and the Input or the
+ * TextArea renders them under those of the field.
+ */
+export const FieldInputContext: Context<Record<string, unknown> | null> = createContext<Record<
+  string,
+  unknown
+> | null>('brumate-ui:field-input', null);
+
 /** The state of the validation of a field, which its FieldError shows. */
 export interface FieldErrorState {
   id: string;
@@ -223,6 +233,11 @@ export interface OverlayTriggerState {
   placement?: Placement;
   /** False when focus stays where it is as the overlay opens, such as a submenu opened by hover. */
   autoFocus?: boolean;
+  /**
+   * The content stays in the page while the overlay is closed, out of sight, in an element with
+   * the ID `${overlayId}-closed`. A Select reads its items there, for the keys of its Button.
+   */
+  keepsContent?: boolean;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
