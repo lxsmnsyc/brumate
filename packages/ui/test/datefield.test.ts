@@ -1,0 +1,160 @@
+// The tests of DateField follow the tests of DateField in React Aria.
+import { afterEach, expect, it } from 'vitest';
+import { mount } from 'virtual:brumate/testing';
+import DateFields from './fixtures/datefields.brm?brumate-server';
+import { press } from './interact.ts';
+
+let unmount: (() => void) | undefined;
+afterEach(() => {
+  unmount?.();
+});
+
+async function fields() {
+  const page = await mount(DateFields, {});
+  unmount = page.unmount;
+  return page;
+}
+
+type Page = Awaited<ReturnType<typeof fields>>;
+
+function state(page: Page) {
+  return JSON.parse(page.text('.state')) as unknown[];
+}
+
+function segments(page: Page, input: string) {
+  return [...page.get(input).querySelectorAll<HTMLElement>('[data-segment]')].map(
+    (item) => item.textContent,
+  );
+}
+
+function segment(page: Page, input: string, type: string) {
+  return page.get(`${input} [data-type="${type}"]`);
+}
+
+/** Types text into the segment that has focus: a keydown, then the browser asks to insert it. */
+function type(text: string) {
+  for (const char of text) {
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: char, bubbles: true, cancelable: true }),
+    );
+    document.activeElement!.dispatchEvent(
+      new InputEvent('beforeinput', {
+        inputType: 'insertText',
+        data: char,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }
+}
+
+function backspace() {
+  document.activeElement!.dispatchEvent(
+    new InputEvent('beforeinput', {
+      inputType: 'deleteContentBackward',
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
+it('shows the segments in the order of the locale, as spinbuttons named by the label', async () => {
+  const page = await fields();
+  expect(segments(page, '.due-input')).toEqual(['10', '/', '15', '/', '2026']);
+  expect(segments(page, '.german-input')).toEqual(['15', '.', '10', '.', '2026']);
+  expect(segments(page, '.empty-input')).toEqual(['mm', '/', 'dd', '/', 'yyyy']);
+  const group = page.get('.due-input');
+  expect(group.getAttribute('role')).toBe('group');
+  expect(group.getAttribute('aria-labelledby')).toBe(page.get('.due-label').id);
+  const month = segment(page, '.due-input', 'month');
+  expect(month.getAttribute('role')).toBe('spinbutton');
+  expect(month.getAttribute('aria-label')).toBe('month');
+  expect(month.getAttribute('aria-labelledby')).toBe(`${month.id} ${page.get('.due-label').id}`);
+  expect(month.getAttribute('aria-valuenow')).toBe('10');
+  expect(month.getAttribute('aria-valuemax')).toBe('12');
+  expect(month.getAttribute('aria-describedby')).toBe(page.get('.due-help').id);
+  expect(month.getAttribute('contenteditable')).toBe('true');
+  expect(month.getAttribute('inputmode')).toBe('numeric');
+  expect(segment(page, '.empty-input', 'day').getAttribute('aria-valuetext')).toBe('Empty');
+  expect(segment(page, '.empty-input', 'day').hasAttribute('data-placeholder')).toBe(true);
+  expect(segment(page, '.empty-input', 'day').classList.contains('custom')).toBe(true);
+  expect((page.get('.due input[type="hidden"]') as HTMLInputElement).value).toBe('2026-10-15');
+});
+
+it('steps a segment around its range with the arrow keys, and starts an empty one at the placeholder', async () => {
+  const page = await fields();
+  const month = segment(page, '.due-input', 'month');
+  month.focus();
+  press('ArrowUp', month);
+  press('ArrowUp', month);
+  await page.waitFor(() => expect(state(page)[0]).toBe('2026-12-15'));
+  press('ArrowUp', month);
+  await page.waitFor(() => expect(month.textContent).toBe('1'));
+  // January 2026 is before the minimum, so the field is invalid.
+  await page.waitFor(() => expect(page.get('.due').hasAttribute('data-invalid')).toBe(true));
+  expect(page.get('.due-error').textContent).toBe('Out of range');
+  expect(month.getAttribute('aria-describedby')).toBe(
+    `${page.get('.due-help').id} ${page.get('.due-error').id}`,
+  );
+  const day = segment(page, '.empty-input', 'day');
+  day.focus();
+  press('ArrowUp', day);
+  await page.waitFor(() => expect(day.textContent).toBe('25'));
+  // Two parts are still empty, so the field has no date yet.
+  expect(state(page)[1]).toBeNull();
+});
+
+it('types digits into each segment and moves on when one is full', async () => {
+  const page = await fields();
+  segment(page, '.empty-input', 'month').focus();
+  type('1');
+  await page.waitFor(() => expect(segment(page, '.empty-input', 'month').textContent).toBe('1'));
+  type('2');
+  // No month starts with 12, so focus moves to the day.
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(segment(page, '.empty-input', 'day')),
+  );
+  type('4');
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(segment(page, '.empty-input', 'year')),
+  );
+  type('2027');
+  await page.waitFor(() => expect(state(page)[1]).toBe('2027-12-04'));
+  expect(segments(page, '.empty-input')).toEqual(['12', '/', '4', '/', '2027']);
+});
+
+it('takes digits away with Backspace, empties the date, and moves back from an empty segment', async () => {
+  const page = await fields();
+  const year = segment(page, '.due-input', 'year');
+  year.focus();
+  backspace();
+  await page.waitFor(() => expect(year.textContent).toBe('202'));
+  // Year 202 is a year too, as in React Aria.
+  expect(state(page)[0]).toBe('0202-10-15');
+  backspace();
+  backspace();
+  backspace();
+  await page.waitFor(() => expect(year.textContent).toBe('yyyy'));
+  await page.waitFor(() => expect(state(page)[0]).toBeNull());
+  expect((page.get('.due input[type="hidden"]') as HTMLInputElement).value).toBe('');
+  backspace();
+  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
+});
+
+it('moves between the segments with ArrowLeft and ArrowRight', async () => {
+  const page = await fields();
+  const input = page.get('.due-input');
+  segment(page, '.due-input', 'month').focus();
+  press('ArrowRight', input);
+  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
+  press('ArrowRight', input);
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(segment(page, '.due-input', 'year')),
+  );
+  press('ArrowLeft', input);
+  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
+  // A digit that does not fill the day keeps focus in it.
+  type('1');
+  await page.waitFor(() => expect(segment(page, '.due-input', 'day').textContent).toBe('1'));
+  expect(document.activeElement).toBe(segment(page, '.due-input', 'day'));
+});

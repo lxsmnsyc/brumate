@@ -42,7 +42,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'form',
     ],
   },
-  { title: 'Dates', pages: ['calendar', 'range-calendar'] },
+  { title: 'Dates', pages: ['calendar', 'range-calendar', 'date-field'] },
   {
     title: 'Overlays',
     pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
@@ -212,6 +212,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'The days of a month, to pick a range of dates.',
     href: 'range-calendar',
     demo: 'RangeCalendarDemo',
+  },
+  {
+    title: 'DateField',
+    summary: 'A date that the user types segment by segment.',
+    href: 'date-field',
+    demo: 'DateFieldDemo',
   },
   {
     title: 'ListBox',

@@ -1,0 +1,51 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { DateFieldContext, focusSegment } from './segments.ts';
+  import type { Segment } from './segments.ts';
+  import DateSegment from './DateSegment.brm';
+
+  /**
+   * The segments of a DateField, as DateInput of React Aria Components: a group that its Label
+   * names, with a DateSegment for each part of the date and the text between them.
+   *
+   * - `segment` is a `#template` that gets each segment, to render your own DateSegment.
+   * - ArrowLeft and ArrowRight move focus between the segments, the other way right to left.
+   * - It shows `data-disabled` and `data-invalid`.
+   */
+  const { segment, ...rest } = $props<{
+    segment?: (segment: Segment) => unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const field = $getContext(DateFieldContext);
+
+  function keyDown(event: KeyboardEvent) {
+    if (!field || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+      return;
+    }
+    const group = event.currentTarget as HTMLElement;
+    const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
+    const at = editable.indexOf(document.activeElement as HTMLElement);
+    const forward = (event.key === 'ArrowRight') !== (field.direction === 'rtl');
+    focusSegment(editable[at + (forward ? 1 : -1)]);
+  }
+</script>
+
+<div
+  role="group"
+  aria-labelledby=(field?.labelId)
+  aria-describedby=(field?.describedBy)
+  data-disabled=(field?.isDisabled || undefined)
+  data-invalid=(field?.isInvalid || undefined)
+  onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight'))
+  {...rest}
+>
+  #for (item of field?.segments ?? [] by item.index) {
+    #if (segment) {
+      {segment(item)}
+    } #else {
+      <DateSegment segment=item />
+    }
+  }
+</div>
