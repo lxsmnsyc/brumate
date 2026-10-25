@@ -34,9 +34,9 @@
 </script>
 
 #if (passed) {
-  <Modal isOpen=$bind(isOpen) isDismissable=isDismissable data-sheet data-side=physical {...rest}>
+  <Modal isOpen=$bind(isOpen) {isDismissable} data-sheet data-side=physical {...rest}>
     {children}
   </Modal>
 } #else {
-  <Modal isDismissable=isDismissable data-sheet data-side=physical {...rest}>{children}</Modal>
+  <Modal {isDismissable} data-sheet data-side=physical {...rest}>{children}</Modal>
 }

@@ -82,7 +82,7 @@
   <span aria-hidden="true" data-segment data-type="literal" {...rest}>{segment.text}</span>
 } #else {
   <span
-    id=id
+    {id}
     role="spinbutton"
     tabindex=(field?.isDisabled ? undefined : '0')
     contenteditable=(field?.isDisabled || field?.isReadOnly ? undefined : 'true')

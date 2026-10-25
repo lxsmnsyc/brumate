@@ -100,7 +100,7 @@
   <div
     ref=element
     id=(state?.id)
-    role=role
+    {role}
     aria-labelledby=(state?.triggerId)
     hidden=(!shown && unmount === false ? 'until-found' : undefined)
     inert=(leaving || undefined)

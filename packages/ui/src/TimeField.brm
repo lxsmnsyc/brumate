@@ -176,5 +176,5 @@
 >
   {children}
   <!-- The time for the form, which posts without scripts. -->
-  <input type="hidden" name=name value=(value ?? '') disabled=(isDisabled || undefined)>
+  <input type="hidden" {name} value=(value ?? '') disabled=(isDisabled || undefined)>
 </>

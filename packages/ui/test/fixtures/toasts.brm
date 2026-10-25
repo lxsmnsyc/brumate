@@ -22,7 +22,7 @@
 <ToastRegion queue="tests" class="region" toast=item transition />
 
 #template item(toast: QueuedToast<{ title: string }>) {
-  <Toast toast=toast class="toast">
+  <Toast {toast} class="toast">
     <ToastContent class="content">
       <Text slot="title" class="title">{toast.content.title}</Text>
       <Text slot="description" class="description">The draft is safe.</Text>

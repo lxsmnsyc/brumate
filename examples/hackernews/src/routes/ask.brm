@@ -11,4 +11,4 @@
   const page = pageOf(getEvent().request.url);
 </script>
 
-<Feed path="/ask" page=page />
+<Feed path="/ask" {page} />

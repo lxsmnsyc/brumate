@@ -66,15 +66,15 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(isDisabled || undefined)
   data-readonly=(isReadOnly || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onKeyDown=onKeyDown
-  onKeyUp=onKeyUp
-  onFocusIn=onFocusIn
-  onFocusOut=onFocusOut
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onPointerUp}
+  {onPointerCancel}
+  {onKeyDown}
+  {onKeyUp}
+  {onFocusIn}
+  {onFocusOut}
   {...rest}
 >
   <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
@@ -84,8 +84,8 @@
       as="input"
       type="checkbox"
       role="switch"
-      name=name
-      value=value
+      {name}
+      {value}
       checked=isSelected
       disabled=(isDisabled || undefined)
       aria-readonly=(isReadOnly ? 'true' : undefined)
@@ -97,8 +97,8 @@
       as="input"
       type="checkbox"
       role="switch"
-      name=name
-      value=value
+      {name}
+      {value}
       checked=isSelected
       disabled=(isDisabled || undefined)
       aria-readonly=(isReadOnly ? 'true' : undefined)

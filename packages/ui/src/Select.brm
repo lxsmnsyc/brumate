@@ -170,7 +170,7 @@
   -->
   <input
     id=inputId
-    name=name
+    {name}
     value=(selectedKey === null ? '' : String(selectedKey))
     required=(isRequired || undefined)
     disabled=(isDisabled || undefined)

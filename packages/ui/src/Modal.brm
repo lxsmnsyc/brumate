@@ -40,16 +40,16 @@
 } #else if (passed) {
   <ModalOverlay
     isOpen=$bind(isOpen)
-    isDismissable=isDismissable
-    isKeyboardDismissDisabled=isKeyboardDismissDisabled
-    transition=transition
-    onOpenChange=onOpenChange
+    {isDismissable}
+    {isKeyboardDismissDisabled}
+    {transition}
+    {onOpenChange}
   >{box()}</ModalOverlay>
 } #else {
   <ModalOverlay
-    isDismissable=isDismissable
-    isKeyboardDismissDisabled=isKeyboardDismissDisabled
-    transition=transition
-    onOpenChange=onOpenChange
+    {isDismissable}
+    {isKeyboardDismissDisabled}
+    {transition}
+    {onOpenChange}
   >{box()}</ModalOverlay>
 }

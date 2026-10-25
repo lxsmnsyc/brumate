@@ -128,14 +128,14 @@
   data-hovered=(hovered || undefined)
   data-focused=(focused || undefined)
   data-focus-visible=(focusVisible || undefined)
-  onPointerDown=onPointerDown
-  onPointerMove=onPointerMove
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onClick=onClick
-  onFocus=onFocus
-  onBlur=onBlur
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
+  {onClick}
+  {onFocus}
+  {onBlur}
   {...rest}
 ><div role="gridcell" style="display: contents">{children}</div></div>

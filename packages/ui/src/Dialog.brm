@@ -30,4 +30,4 @@
   $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
 </script>
 
-<section role=role tabindex="-1" aria-labelledby=titleId {...rest}>{children}</section>
+<section {role} tabindex="-1" aria-labelledby=titleId {...rest}>{children}</section>

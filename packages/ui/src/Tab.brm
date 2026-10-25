@@ -83,16 +83,16 @@
   data-hovered=(hovered || undefined)
   data-focused=(focused || undefined)
   data-focus-visible=(focusVisible || undefined)
-  onPointerDown=onPointerDown
-  onPointerMove=onPointerMove
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onKeyDown=onKeyDown
-  onKeyUp=onKeyUp
-  onClick=onClick
-  onFocus=onFocus
-  onBlur=onBlur
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
+  {onKeyDown}
+  {onKeyUp}
+  {onClick}
+  {onFocus}
+  {onBlur}
   {...rest}
 >{children}</div>

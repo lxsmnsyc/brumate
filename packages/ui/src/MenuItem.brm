@@ -123,7 +123,7 @@
 
 <div
   id=(submenu?.triggerId ?? ownId)
-  role=role
+  {role}
   tabindex="-1"
   data-key=(keyAttribute(id))
   data-text-value=textValue
@@ -141,14 +141,14 @@
   data-hovered=(hovered || undefined)
   data-focused=(focused || active || undefined)
   data-focus-visible=(focusVisible || undefined)
-  onPointerDown=onPointerDown
-  onPointerMove=onPointerMove
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onClick=onClick
-  onFocus=onFocus
-  onBlur=onBlur
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
+  {onClick}
+  {onFocus}
+  {onBlur}
   {...rest}
 >{children}</div>

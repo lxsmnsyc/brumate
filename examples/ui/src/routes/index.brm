@@ -624,7 +624,7 @@
 <ToastRegion class="toasts" toast=notice transition />
 
 #template notice(toast: QueuedToast<{ title: string }>) {
-  <Toast toast=toast class="toast">
+  <Toast {toast} class="toast">
     <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
     <Button slot="close" class="press toast-close">×</Button>
   </Toast>

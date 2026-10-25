@@ -54,10 +54,10 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(disabled || undefined)
   data-invalid=(invalid || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onFocus=onFocus
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onFocus}
   onBlur=blur
   onKeyDown=keyDown
   onInput=input

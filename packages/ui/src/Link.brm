@@ -146,17 +146,17 @@
   data-focused=(focused || undefined)
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(disabled || undefined)
-  onPointerDown=onPointerDown
-  onPointerMove=onPointerMove
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
   onKeyDown=(prevent(onKeyDown, 'Space'))
   onKeyUp=(prevent(onKeyUp, 'Space'))
-  onClick=onClick
-  onFocus=onFocus
-  onBlur=onBlur
+  {onClick}
+  {onFocus}
+  {onBlur}
   {...attributes}
   {...rest}
 >{children}</>

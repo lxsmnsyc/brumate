@@ -57,7 +57,7 @@
 </script>
 
 <{as}
-  role=role
+  {role}
   aria-disabled=(disabled ? 'true' : undefined)
   aria-invalid=(invalid ? 'true' : undefined)
   data-hovered=(hovered || undefined)

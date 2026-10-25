@@ -49,7 +49,7 @@
     <h2>{story.comments_count === 1 ? '1 comment' : `${story.comments_count} comments`}</h2>
     <ul class="comment-list">
       #for (comment of story.comments by comment.id) {
-        <Comment comment=comment />
+        <Comment {comment} />
       } #else {
         <li class="none">No comments yet.</li>
       }

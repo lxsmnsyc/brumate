@@ -116,7 +116,7 @@
           #if (cell) {
             {cell(date)}
           } #else {
-            <CalendarCell date=date />
+            <CalendarCell {date} />
           }
         }
       </tr>

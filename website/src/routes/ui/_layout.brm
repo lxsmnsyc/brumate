@@ -6,7 +6,7 @@
   const { children } = $props();
 </script>
 
-<DocsShell section="ui" sections=sections label="Parts">{children}</DocsShell>
+<DocsShell section="ui" {sections} label="Parts">{children}</DocsShell>
 
 <style>
   /*

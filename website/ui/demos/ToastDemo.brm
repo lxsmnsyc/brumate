@@ -28,7 +28,7 @@
 <ToastRegion queue="demo" class="ui-toasts" toast=notice transition />
 
 #template notice(toast: QueuedToast<Notice>) {
-  <Toast toast=toast class="ui-toast">
+  <Toast {toast} class="ui-toast">
     <ToastContent class="ui-toast-content">
       <Text slot="title" class="ui-toast-title">{toast.content.title}</Text>
       <Text slot="description">{toast.content.description}</Text>

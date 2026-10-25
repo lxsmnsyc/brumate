@@ -28,8 +28,8 @@
 
 <Calendar
   range=(true)
-  allowsNonContiguousRanges=allowsNonContiguousRanges
+  {allowsNonContiguousRanges}
   value=$bind(value)
-  onChange=onChange
+  {onChange}
   {...rest}
 >{children}</Calendar>

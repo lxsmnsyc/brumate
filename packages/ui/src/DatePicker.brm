@@ -97,13 +97,13 @@
 
 <DateField
   value=$bind(value)
-  minValue=minValue
-  maxValue=maxValue
-  isDateUnavailable=isDateUnavailable
-  isDisabled=isDisabled
-  isReadOnly=isReadOnly
-  onChange=onChange
-  labelId=labelId
+  {minValue}
+  {maxValue}
+  {isDateUnavailable}
+  {isDisabled}
+  {isReadOnly}
+  {onChange}
+  {labelId}
   data-open=(isOpen || undefined)
   {...rest}
 >{children}</DateField>
