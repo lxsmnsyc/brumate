@@ -2330,7 +2330,7 @@ export function attrs(
         element,
         new Set(
           (written === null ? element.getAttributeNames() : written.split(' ')).filter(
-            (name) => !own.includes(name) && !name.startsWith('b-'),
+            (name) => name !== '' && !own.includes(name) && !name.startsWith('b-'),
           ),
         ),
       );

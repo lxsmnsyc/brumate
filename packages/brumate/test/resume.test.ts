@@ -2300,6 +2300,17 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('a spread that writes nothing on the server', () => {
+  it('keeps the attributes that other code set on its first update', async () => {
+    await resume('spreadEmpty', {});
+    const box = document.querySelector<HTMLElement>('.wrap > div')!;
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.fill')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('Full'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
 describe('templates called again', () => {
   it('update in place with their new arguments, and keep their elements', async () => {
     await resume('templateInPlace', {});
