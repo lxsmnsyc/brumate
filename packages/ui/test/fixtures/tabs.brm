@@ -9,6 +9,7 @@
 
   let section = $signal<Key | null>(null);
   let manual = $signal<Key | null>('two');
+  let missing = $signal<Key | null>('gone');
 </script>
 
 <main class="page">
@@ -32,5 +33,13 @@
     <TabPanel id="one" class="panel-one">First.</TabPanel>
     <TabPanel id="two" class="panel-two">Second.</TabPanel>
   </Tabs>
-  <p class="state">{JSON.stringify([section, manual])}</p>
+  <Tabs class="missing" selectedKey=$bind(missing)>
+    <TabList aria-label="Missing">
+      <Tab id="m1" class="tab-m1" isDisabled>M1</Tab>
+      <Tab id="m2" class="tab-m2">M2</Tab>
+    </TabList>
+    <TabPanel id="m1">First.</TabPanel>
+    <TabPanel id="m2" class="panel-m2">Second.</TabPanel>
+  </Tabs>
+  <p class="state">{JSON.stringify([section, manual, missing])}</p>
 </main>
