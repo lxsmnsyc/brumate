@@ -185,6 +185,8 @@ export interface DisclosurePanelState {
   id: string;
   triggerId: string;
   isExpanded: boolean;
+  /** A disabled disclosure keeps its panel closed, also for find in page. */
+  isDisabled: boolean;
   expand: () => void;
 }
 

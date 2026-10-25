@@ -68,7 +68,7 @@ export class ToastQueue<T> {
     /** The name of the queue, which its ToastRegion elements name in `queue`. */
     readonly name: string,
     /** How many toasts show at a time. The others wait, in the order that they came. */
-    readonly maxVisibleToasts = 5,
+    public maxVisibleToasts = 5,
   ) {}
 
   /** The toasts that show, newest first. */
@@ -99,6 +99,11 @@ export class ToastQueue<T> {
     const [entry] = this.entries.splice(index, 1);
     entry!.timer?.pause();
     entry!.onClose?.();
+    // The region leaves the page with its last toast, so no pointerleave or focusout comes to
+    // resume the timeouts. The toasts that come next count down again.
+    if (this.entries.length === 0) {
+      this.paused = false;
+    }
     this.update();
   }
 
@@ -154,6 +159,9 @@ export function toastQueue<T = unknown>(
   if (!queue) {
     queue = new ToastQueue<unknown>(name, maxVisibleToasts);
     queues.set(name, queue);
+  } else if (maxVisibleToasts !== undefined) {
+    // A call with a limit sets it, also when another call made the queue first.
+    queue.maxVisibleToasts = maxVisibleToasts;
   }
   return queue as ToastQueue<T>;
 }
@@ -210,8 +218,11 @@ export function listenForF6(): void {
       restoreFocus(inside.dataset.queue!);
       return;
     }
-    const toast = document.querySelector<HTMLElement>('[role=region][data-queue] [data-toast-key]');
-    if (toast && !toast.closest('[inert]')) {
+    // A toast that leaves is inert, so F6 goes to the first one that stays.
+    const toast = [
+      ...document.querySelectorAll<HTMLElement>('[role=region][data-queue] [data-toast-key]'),
+    ].find((element) => !element.closest('[inert]'));
+    if (toast) {
       event.preventDefault();
       rememberFocus(toast.closest<HTMLElement>('[data-queue]')!.dataset.queue!, active);
       toast.focus();
