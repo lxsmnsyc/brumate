@@ -563,8 +563,11 @@ export class Context {
    * and find their contexts from `at`.
    */
   async children(from: ScopeId, at: ScopeId, renderBody: () => Promise<string>): Promise<string> {
-    const entry = { from, at };
     const { inserted } = this.root;
+    // Children that a component passes on, as `<Select>{children}</Select>`, render where the
+    // component that gets them inserts them, so they find their contexts there too.
+    const outer = inserted.findLast((item) => item.from === at);
+    const entry = { from, at: outer ? outer.at : at };
     inserted.push(entry);
     try {
       return await renderBody();

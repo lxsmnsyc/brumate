@@ -701,6 +701,31 @@ describe('resume', () => {
       expect(document.querySelector('.popover')).toBeNull();
     });
 
+    it('gives children that a component passes on the contexts of the component that inserts them', async () => {
+      const server = await import(file('spikeWrapped.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      expect(html).toMatch(/<span class="label" id="[^"]+"/);
+      expect(html).toContain('aria-expanded="false"');
+      // In the browser, the trigger opens its select through the same context.
+      await resume('spikeWrapped', {});
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
+    });
+
+    it('gives children that a component passes on its contexts in markup that the browser renders', async () => {
+      await resume('spikeWrappedLater', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.label')).not.toBeNull());
+      expect(document.querySelector('.label')!.id).not.toBe('');
+      expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('false');
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
+    });
+
     it('gives children the contexts of the component in markup that the browser renders', async () => {
       await resume('spikeLater', {});
       click(document.querySelector('.show')!);

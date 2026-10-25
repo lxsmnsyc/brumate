@@ -3124,7 +3124,16 @@ class Children {
     if (!at) {
       return this.html();
     }
-    const entry = { from: this.from, at };
+    // Children that a component passes on render where the component that gets them inserts
+    // them, so they find their contexts there too.
+    let target = at;
+    for (let index = insertedChildren.length - 1; index >= 0; index--) {
+      if (insertedChildren[index]!.from === at) {
+        target = insertedChildren[index]!.at;
+        break;
+      }
+    }
+    const entry = { from: this.from, at: target };
     insertedChildren.push(entry);
     try {
       return this.html();

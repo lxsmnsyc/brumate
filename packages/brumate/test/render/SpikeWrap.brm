@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import SpikeSelect from './SpikeSelect.brm';
+
+  // Passes its children on to a select, which provides the context that they read.
+  const { children } = $props<{ children?: unknown }>();
+</script>
+
+<SpikeSelect>{children}</SpikeSelect>

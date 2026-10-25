@@ -1,0 +1,11 @@
+<script>
+  import SpikeButton from './SpikeButton.brm';
+  import SpikeLabel from './SpikeLabel.brm';
+  import SpikeWrap from './SpikeWrap.brm';
+  import SpikeValue from './SpikeValue.brm';
+</script>
+
+<SpikeWrap>
+  <SpikeLabel>Animal</SpikeLabel>
+  <SpikeButton><SpikeValue /></SpikeButton>
+</SpikeWrap>
