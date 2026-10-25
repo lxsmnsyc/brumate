@@ -27,8 +27,14 @@
 
   const inputId = $id();
 
+  // The input forgets the files of before, so a change fires when the user picks the same file
+  // again, such as after an upload that failed. React Aria does the same.
   function open() {
-    document.getElementById(inputId)?.click();
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (input) {
+      input.value = '';
+      input.click();
+    }
   }
 
   function change(event: Event) {
