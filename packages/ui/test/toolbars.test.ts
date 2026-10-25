@@ -81,6 +81,9 @@ it('marks the current step of the trail', async () => {
   expect(page.get('.here').getAttribute('aria-current')).toBe('page');
   expect(page.get('.here').closest('li')!.hasAttribute('data-current')).toBe(true);
   expect(page.get('.home').hasAttribute('aria-current')).toBe(false);
+  // The current step is disabled, so its link does not load the page that is open.
+  expect(page.get('.here').hasAttribute('href')).toBe(false);
+  expect(page.get('.here').closest('li')!.hasAttribute('data-disabled')).toBe(true);
 });
 
 it('gives a Meter and a ProgressBar their values, range, text and label', async () => {
@@ -107,7 +110,14 @@ it('opens the file picker from its button, and passes the files on', async () =>
   expect(input.multiple).toBe(true);
   expect(input.accept).toBe('image/png');
   let opened = false;
-  input.addEventListener('click', () => (opened = true));
+  // The input forgets the files of before, so the same file fires a change again.
+  let cleared = false;
+  Object.defineProperty(input, 'value', {
+    configurable: true,
+    get: () => '',
+    set: (value: string) => (cleared ||= value === ''),
+  });
+  input.addEventListener('click', () => (opened = cleared));
   pressWith(page.get('.pick'));
   await page.waitFor(() => expect(opened).toBe(true));
   input.dispatchEvent(new Event('change', { bubbles: true }));

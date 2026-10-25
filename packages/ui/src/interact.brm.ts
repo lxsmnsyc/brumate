@@ -25,9 +25,11 @@ export function interact(
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onLostPointerCapture,
     onKeyDown: pressKeyDown,
     onKeyUp,
     onClick,
+    onBlur: pressBlur,
   } = press(pressDisabled, onPress, onPressStart, onPressEnd, onPressUp, onPressChange);
   const { hovered, onPointerEnter, onPointerLeave } = hover(
     disabled,
@@ -39,7 +41,7 @@ export function interact(
     focused,
     focusVisible,
     onFocus,
-    onBlur,
+    onBlur: ringBlur,
     onKeyDown: ringKeyDown,
     onPointerDown: ringPointerDown,
   } = focusRing(undefined, undefined, onFocusChange);
@@ -54,6 +56,11 @@ export function interact(
     pressKeyDown(event);
   }
 
+  function blur(event: FocusEvent) {
+    pressBlur(event);
+    ringBlur(event);
+  }
+
   return {
     pressed,
     hovered,
@@ -63,12 +70,13 @@ export function interact(
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onLostPointerCapture,
     onPointerEnter,
     onPointerLeave,
     onKeyDown: keyDown,
     onKeyUp,
     onClick,
     onFocus,
-    onBlur,
+    onBlur: blur,
   };
 }

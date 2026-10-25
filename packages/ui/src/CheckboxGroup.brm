@@ -1,5 +1,5 @@
 <script>
-  import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import {
     CheckboxGroupContext,
@@ -18,6 +18,10 @@
    *
    * `value=([...])` starts its own value, and `value=$bind(signal)` writes the caller's. With
    * `isRequired`, the browser asks for a box when the form is sent.
+   *
+   * The browser knows no required group of checkboxes, only required boxes. So the boxes are
+   * required only once the code of the group runs, which makes them optional as soon as one is
+   * checked. Without scripts, the form posts with no box checked, and the server checks it.
    */
   const {
     name,
@@ -58,6 +62,12 @@
     message = text;
   }
 
+  // The code of the group runs, so it can make the boxes optional when one is checked.
+  let running = $signal(false);
+  $client(() => {
+    running = true;
+  }, 'load');
+
   $setContext(LabelContext, { id: labelId });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
@@ -68,7 +78,7 @@
     isReadOnly,
     isInvalid: invalid,
     // Each box is required while none is checked, so the browser checks the group on a submit.
-    isRequired: isRequired && value.length === 0,
+    isRequired: isRequired && running && value.length === 0,
     describedBy: describedBy(invalid && errorId),
     toggle,
     onInvalid: invalidated,
