@@ -109,7 +109,19 @@ export function moveFrom(
   if (items.length === 0) {
     return undefined;
   }
-  const at = from ? items.indexOf(from) : -1;
+  let at = from ? items.indexOf(from) : -1;
+  // From an item that cannot take focus, such as a disabled one that a click focused, the moves
+  // go from where it is: next is the first item after it, and previous the last before it.
+  if (from && at === -1 && (movement === 'next' || movement === 'previous')) {
+    const after = items.findIndex(
+      (item) => from.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    if (movement === 'next') {
+      return after === -1 ? (wrap ? items[0] : items.at(-1)) : items[after];
+    }
+    at = after === -1 ? items.length : after;
+    return at === 0 ? (wrap ? items.at(-1) : items[0]) : items[at - 1];
+  }
   switch (movement) {
     case 'first':
       return items[0];
