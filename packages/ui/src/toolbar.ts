@@ -18,18 +18,24 @@ export function isNested(toolbar: Element): boolean {
 /** The items of a toolbar that can take focus, in order, also those of a nested group. */
 export function toolbarItems(toolbar: Element): HTMLElement[] {
   return [...toolbar.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (item) => !item.closest('[hidden], [inert]') && item.getAttribute('aria-disabled') !== 'true',
+    (item) =>
+      !item.closest('[hidden], [inert]') &&
+      !item.matches(':disabled') &&
+      item.getAttribute('aria-disabled') !== 'true',
   );
 }
 
-function isTextField(element: Element): boolean {
-  return (
-    element.tagName === 'TEXTAREA' ||
-    (element.tagName === 'INPUT' &&
-      !/^(button|checkbox|radio|submit|reset|image|range|color|file)$/.test(
-        (element as HTMLInputElement).type,
-      ))
-  );
+/** True for the keys that move the caret of a field, which a toolbar leaves to it. */
+function movesCaret(element: Element, key: string): boolean {
+  if (element.tagName === 'TEXTAREA') {
+    return true;
+  }
+  const field =
+    element.tagName === 'INPUT' &&
+    !/^(button|checkbox|radio|submit|reset|image|range|color|file)$/.test(
+      (element as HTMLInputElement).type,
+    );
+  return field && key !== 'ArrowUp' && key !== 'ArrowDown';
 }
 
 /** Keeps only `current` in the order of Tab. */
@@ -58,7 +64,7 @@ export function moveFocus(
   const items = toolbarItems(toolbar);
   const at = items.indexOf(document.activeElement as HTMLElement);
   // A text field keeps the keys that move its caret.
-  if (at === -1 || (isTextField(items[at]!) && key !== 'ArrowUp' && key !== 'ArrowDown')) {
+  if (at === -1 || movesCaret(items[at]!, key)) {
     return undefined;
   }
   // Right to left, the arrow keys of a horizontal toolbar turn around.
@@ -83,4 +89,34 @@ export function moveFocus(
     next.focus();
   }
   return next;
+}
+
+/**
+ * Keeps one item in the order of Tab while the items change. An item that held it can become
+ * disabled or leave the toolbar, such as a button that a press disables, and then Tab would skip
+ * the toolbar. Returns a function that stops.
+ */
+export function keepTabStop(toolbar: Element): () => void {
+  const check = (): void => {
+    if (isNested(toolbar)) {
+      return;
+    }
+    const items = toolbarItems(toolbar);
+    // Before the first focus, every item is in the order of Tab.
+    if (!items.some((item) => item.hasAttribute('tabindex'))) {
+      return;
+    }
+    const stop = items.find((item) => item.tabIndex === 0) ?? items[0];
+    if (stop) {
+      rove(toolbar, stop);
+    }
+  };
+  const observer = new MutationObserver(check);
+  observer.observe(toolbar, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
+  });
+  return () => observer.disconnect();
 }
