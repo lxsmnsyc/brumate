@@ -52,7 +52,11 @@ import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { originalPosition } from './sourcemap.ts';
 import { toNodeHeaders } from './runtime/cookies.ts';
-import { errorPayload } from './dev-error.ts';
+import { errorPage, errorPayload } from './dev-error.ts';
+import type { renderToStream as RenderToStream } from './runtime/server.ts';
+import { workbenchPage } from './workbench-page.ts';
+import { classifyComponents, propControls } from './workbench.ts';
+import { parse as parseComponent } from './parser.ts';
 import { BRUMATE_VERSION } from './version.ts';
 import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
@@ -185,6 +189,8 @@ const INSPECT = '/__brumate/inspect';
 const POSITION = '/__brumate/position';
 /** The dev server sends the source of a file for the Errors tab of the devtools at this path. */
 const SOURCE = '/__brumate/source';
+/** The workbench of the dev server, which shows the components that depend only on their props. */
+const WORKBENCH = '/__brumate/workbench';
 
 /** What tells two lists of packages of components apart. */
 function packagesKey(list: BrumatePackage[]): string {
@@ -499,7 +505,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
     }
-    await analyze();
+    try {
+      await analyze();
+    } finally {
+      // A list of the workbench made while the scan ran has the files from before it.
+      workbenchList = undefined;
+    }
   };
 
   /**
@@ -906,6 +917,173 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       graph,
       text,
     };
+  };
+
+  /** The components of the app for the workbench, with what each one needs and its controls. */
+  /**
+   * The stories of a component: the named exports of the `.stories.ts` file next to it, each a
+   * set of props. Values that JSON cannot hold, such as functions, are left out.
+   */
+  const workbenchStories = async (
+    server: ViteDevServer,
+    file: string,
+  ): Promise<{ stories: { name: string; props: unknown }[]; storiesError?: string }> => {
+    const storiesFile = file.replace(/\.brm$/, '.stories.ts');
+    if (!existsSync(storiesFile)) {
+      return { stories: [] };
+    }
+    try {
+      const module = (await server.ssrLoadModule(storiesFile)) as Record<string, unknown>;
+      const stories = Object.entries(module)
+        .filter(([name, props]) => name !== 'default' && props && typeof props === 'object')
+        .map(([name, props]) => ({ name, props: JSON.parse(JSON.stringify(props)) as unknown }));
+      return { stories };
+    } catch (error) {
+      return { stories: [], storiesError: error instanceof Error ? error.message : String(error) };
+    }
+  };
+
+  /** The group of a component of a package: its name, and the folder under the directory of its files. */
+  const packageGroup = (owner: BrumatePackage, file: string): string => {
+    const directory = owner.directories.find((item) => file.startsWith(`${item}/`)) ?? owner.root;
+    const folder = path.posix.dirname(file.slice(directory.length + 1));
+    return folder === '.' ? owner.name : `${owner.name}/${folder}`;
+  };
+
+  const workbenchComponents = async (
+    server: ViteDevServer,
+  ): Promise<{ file: string; selfContained: boolean; [key: string]: unknown }[]> => {
+    const routes = `${routesDirectory()}/`;
+    const list = [...new Set(files.values())];
+    const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+    const sources = new Map(list.map((file, index) => [file, contents[index]!]));
+    const classes = classifyComponents(sources, {
+      resolve: resolveComponent,
+      serverImport: (file, specifier, name) => serverImport(file, specifier, name) !== undefined,
+    });
+    const relative = (file: string): string => normalizePath(path.relative(root, file));
+    const shown = list.filter((file) => !file.startsWith(routes) && classes.has(file));
+    const stories = await Promise.all(shown.map((file) => workbenchStories(server, file)));
+    return shown
+      .map((file, index) => {
+        const found = classes.get(file)!;
+        let controls: unknown[] | undefined = [];
+        try {
+          controls = propControls(parseComponent(sources.get(file)!, { filename: file }));
+        } catch {
+          // The compile of the file reports the error. The page says that it has no controls.
+          controls = undefined;
+        }
+        // A component of a package is grouped under the name of the package, and the others by
+        // their folder.
+        const owner = packageOf(packages, file);
+        return {
+          file: relative(file),
+          group: owner ? packageGroup(owner, file) : path.posix.dirname(relative(file)),
+          // The name that the page shows: the import of a component of a package, or its path.
+          label: owner ? `${packageGroup(owner, file)}/${path.basename(file)}` : relative(file),
+          name: path.basename(file, '.brm'),
+          selfContained: found.selfContained,
+          needs: found.needs.map((need) => ({ ...need, via: need.via && relative(need.via) })),
+          controls: controls ?? [],
+          unreadProps: controls === undefined,
+          ...stories[index],
+        };
+      })
+      .sort((a, b) => a.file.localeCompare(b.file));
+  };
+
+  // The last list of the workbench. A frame renders on each change of a prop, so it reads this
+  // list, and a change of a file clears it.
+  let workbenchList: ReturnType<typeof workbenchComponents> | undefined;
+
+  /** Makes the list of the workbench and keeps it, unless it fails, so a later read tries again. */
+  const listWorkbench = (server: ViteDevServer): ReturnType<typeof workbenchComponents> => {
+    const list = workbenchComponents(server);
+    workbenchList = list;
+    list.catch(() => {
+      if (workbenchList === list) {
+        workbenchList = undefined;
+      }
+    });
+    return list;
+  };
+
+  /**
+   * Answers the workbench: its page, the list of components, and the frame that renders one
+   * component on the server with props, and resumes it in the browser as a page does.
+   */
+  const serveWorkbench = async (
+    server: ViteDevServer,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    if (url.pathname === WORKBENCH || url.pathname === `${WORKBENCH}/`) {
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end(workbenchPage(WORKBENCH));
+      return;
+    }
+    if (url.pathname === `${WORKBENCH}/components`) {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify(await listWorkbench(server)));
+      return;
+    }
+    if (url.pathname !== `${WORKBENCH}/frame`) {
+      response.statusCode = 404;
+      response.end();
+      return;
+    }
+    // Only a component that the workbench lists as self-contained, by its path from the root.
+    // Any other renders without the request, the route or the server that it needs, and fails.
+    const asked = url.searchParams.get('file') ?? '';
+    const listed = (await (workbenchList ?? listWorkbench(server))).some(
+      (component) => component.file === asked && component.selfContained,
+    );
+    const file = listed
+      ? [...files.values()].find(
+          (candidate) => normalizePath(path.relative(root, candidate)) === asked,
+        )
+      : undefined;
+    if (!file) {
+      response.statusCode = 404;
+      response.end(`No self-contained component "${asked}"`);
+      return;
+    }
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    try {
+      const props = JSON.parse(url.searchParams.get('props') || '{}') as Record<string, unknown>;
+      const component = (await server.ssrLoadModule(file)).default;
+      const { renderToStream } = await server.ssrLoadModule('brumate/server');
+      const stream = (renderToStream as typeof RenderToStream)(component, props, {
+        start: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${path.basename(file, '.brm')}</title></head><body>`,
+        end: '</body></html>',
+        // The client of Vite and the loader, as the entry of an app starts it.
+        scripts: `<script type="module" src="/@vite/client"></script><script type="module" src="/@id/__x00__${START}"></script>`,
+      });
+      const reader = stream.getReader();
+      for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- The page streams in order.
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        response.write(value);
+      }
+      response.end();
+    } catch (error) {
+      // Once the page has started, its status is sent, and a second document would land inside
+      // the first. The error goes to the terminal, and the page ends where it stopped.
+      if (response.headersSent) {
+        server.config.logger.error(
+          error instanceof Error ? (error.stack ?? error.message) : String(error),
+        );
+        response.end();
+        return;
+      }
+      response.statusCode = 500;
+      response.end(errorPage(error, server));
+    }
   };
 
   const handleDevRPC = async (
@@ -1550,6 +1728,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       });
       server.watcher.on('all', (event, file) => {
+        workbenchList = undefined;
         // The names of the server variables are part of what each component compiles with.
         if (normalizePath(file) === envFile()) {
           compiled.clear();
@@ -1676,6 +1855,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               response.end(JSON.stringify(place ? { ...place, file } : null));
             })
             .catch(next);
+          return;
+        }
+        if (request.method === 'GET' && request.url?.startsWith(WORKBENCH)) {
+          void serveWorkbench(server, request, response).catch(next);
           return;
         }
         if (request.method === 'GET' && request.url?.startsWith(`${INSPECT}/`)) {

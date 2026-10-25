@@ -5,5 +5,5 @@
   let own = $signal(0);
 </script>
 
-<{as ?? 'button'} onClick=(() => own++) {...rest}>{children}</>
+<{as ?? 'button'} class={ 'as-button': true } onClick=(() => own++) {...rest}>{children}</>
 <span class="own">{own}</span>

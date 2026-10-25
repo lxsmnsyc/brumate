@@ -14,7 +14,7 @@ export interface ComponentUsage {
 }
 
 /** Returns the import specifier of a name that the file imports. */
-function importSource(file: SFCFile, name: string): string | undefined {
+export function importSource(file: SFCFile, name: string): string | undefined {
   const programs = [file.moduleScript?.program, file.instanceScript?.program];
   for (const program of programs) {
     for (const statement of program?.body ?? []) {

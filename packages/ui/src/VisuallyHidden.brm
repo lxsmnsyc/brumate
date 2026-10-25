@@ -1,0 +1,44 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  /**
+   * Hides its content from sight and keeps it for screen readers, as `VisuallyHidden` of React
+   * Aria does. With `focusable`, the content shows while it or an element in it has focus, such
+   * as a link to skip to the content.
+   */
+  const { as = 'span', focusable = false, children, ...rest } = $props<{
+    as?: string;
+    focusable?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's, as mergeProps of React Aria does. -->
+<{as} class={ 'visually-hidden': true, focusable } data-focusable=(focusable || undefined) {...rest}>{children}</>
+
+<style>
+  /* The styles of React Aria's VisuallyHidden, which hide the content and keep its size out of the layout. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+  }
+
+  .visually-hidden.focusable:focus-within {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+  }
+</style>
