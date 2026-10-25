@@ -11,6 +11,7 @@
 
   let fruit = $signal<Key | null>(null);
   let text = $signal('');
+  let tag = $signal<Key | null>(null);
   const fruits = ['Apple', 'Apricot', 'Banana', 'Cherry'];
 </script>
 
@@ -28,7 +29,17 @@
         </ListBox>
       </Popover>
     </ComboBox>
+    <ComboBox class="tag" name="tag" allowsCustomValue isRequired selectedKey=$bind(tag)>
+      <Label>Tag</Label>
+      <Input class="tag-input" />
+      <Popover>
+        <ListBox class="tag-list">
+          <ListBoxItem id="red" class="tag-red">Red</ListBoxItem>
+          <ListBoxItem id="green" class="tag-green">Green</ListBoxItem>
+        </ListBox>
+      </Popover>
+    </ComboBox>
   </form>
   <button class="after" type="button">After</button>
-  <p class="state">{JSON.stringify([fruit, text])}</p>
+  <p class="state">{JSON.stringify([fruit, text, tag])}</p>
 </main>
