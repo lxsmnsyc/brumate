@@ -164,11 +164,23 @@ it('writes the text of a <textarea>, and attributes with static text and code in
     { code: '$$s3' },
     { static: '--><li>a</li><!--/i--></ul>' },
   ])!;
-  expect(found.html).toBe('<textarea b-x="0"></textarea><ul><!--x1--><li>a</li><!--/i--></ul>');
+  expect(found.html).toBe(
+    '<textarea b-x="0" class="field"></textarea><ul><!--x1--><li>a</li><!--/i--></ul>',
+  );
   expect(found.writes[0]).toEqual([
-    { kind: 'call', call: '$$b.setAttrText($$m, " class=\\"field" + (((wide) ? " wide" : "")) + "\\"")' },
+    { kind: 'call', call: '(wide) && $$m.classList.add("wide")' },
     { kind: 'anchor', scope: '$$s2', anchor: 0 },
     { kind: 'content', value: '(text)', at: undefined },
+  ]);
+  // Other code in the quotes gives HTML, so the attribute is parsed whole.
+  const other = clonedTemplate([
+    { static: '<p title="a ' },
+    { code: '(name)' },
+    { static: '">Hi</p>' },
+  ])!;
+  expect(other.html).toBe('<p b-x="0">Hi</p>');
+  expect(other.writes).toEqual([
+    [{ kind: 'call', call: '$$b.setAttrText($$m, " title=\\"a " + ((name)) + "\\"")' }],
   ]);
 });
 

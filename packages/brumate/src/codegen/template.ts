@@ -37,6 +37,35 @@ export interface ClonedTemplate {
 }
 
 const ATTRIBUTE = /^\$\$b\.attribute\(("(?:[^"\\]|\\.)*"), ([\s\S]*)\)$/;
+// A class that a condition adds to others, `cond ? " name" : ""`, with no character references.
+const CLASS_TOKEN = /^\(\(([\s\S]*)\) \? " ([^"\\&<>]+)" : ""\)$/;
+
+/**
+ * The static classes of a `class` with code in its quotes, and the calls that add the classes
+ * that conditions add, when each piece of code is such a condition. `parts` are the parts of
+ * the value after its static `prefix`, up to its closing quote.
+ */
+function classTokens(parts: Part[], prefix: string): { text: string; calls: string[] } | undefined {
+  let text = prefix;
+  const calls: string[] = [];
+  for (const part of parts) {
+    if ('static' in part) {
+      text += part.static;
+      continue;
+    }
+    const token = CLASS_TOKEN.exec(part.code);
+    if (!token) {
+      return undefined;
+    }
+    const names = token[2]!
+      .trim()
+      .split(/\s+/)
+      .map((name) => JSON.stringify(name));
+    calls.push(`(${token[1]}) && $$m.classList.add(${names.join(', ')})`);
+  }
+  return /[&<>"]/.test(text) ? undefined : { text: text.trim().replace(/\s+/g, ' '), calls };
+}
+
 // An attribute that a condition adds, with a value that has no character references.
 const CONDITIONAL = /^\(\(([\s\S]*)\) \? " ([\w:-]+)=\\"([^"\\&]*)\\"" : ""\)$/;
 // The spreads of an element, and its `b-on` with the handlers of the spreads.
@@ -364,6 +393,8 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       const pieces = [JSON.stringify(mixed[0])];
       let at = index;
       let closed = false;
+      // The static text of the value before its closing quote.
+      let tail = '';
       for (; at < list.length; at++) {
         const piece = list[at]!;
         if ('code' in piece) {
@@ -376,13 +407,28 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
           continue;
         }
         pieces.push(JSON.stringify(piece.static.slice(0, quote + 1)));
+        tail = piece.static.slice(0, quote);
         list[at] = { static: piece.static.slice(quote + 1) };
         closed = true;
         break;
       }
       if (closed) {
         reader.takeBack(mixed[0], 'tag');
-        add({ kind: 'call', call: `$$b.setAttrText($$m, ${pieces.join(' + ')})` });
+        const classes =
+          mixed[1] === 'class'
+            ? classTokens([...list.slice(index, at), { static: tail }], mixed[2]!)
+            : undefined;
+        if (classes) {
+          // The static classes stay in the template, and a condition adds each of the others.
+          if (classes.text) {
+            reader.append(` class="${classes.text}"`);
+          }
+          for (const call of classes.calls) {
+            add({ kind: 'call', call });
+          }
+        } else {
+          add({ kind: 'call', call: `$$b.setAttrText($$m, ${pieces.join(' + ')})` });
+        }
         index = at - 1;
         continue;
       }
