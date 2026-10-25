@@ -107,3 +107,19 @@ it('takes Tab on a panel only when its content takes none', async () => {
   await page.waitFor(() => expect(page.get('.panel-intro').hasAttribute('tabindex')).toBe(false));
   expect(page.get('.panel-api').getAttribute('tabindex')).toBe('0');
 });
+
+it('prevents only the arrow keys of its axis, and vertical tabs take all four', async () => {
+  const page = await tabs();
+  const keyDown = (key: string, target: Element) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  page.get('.tab-one').focus();
+  press('ArrowRight', page.get('.tab-one'));
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.tab-two')));
+  expect(keyDown('ArrowRight', page.get('.tab-intro'))).toBe(true);
+  expect(keyDown('ArrowDown', page.get('.tab-intro'))).toBe(false);
+  expect(keyDown('ArrowDown', page.get('.tab-one'))).toBe(true);
+  expect(keyDown('ArrowRight', page.get('.tab-one'))).toBe(true);
+});
