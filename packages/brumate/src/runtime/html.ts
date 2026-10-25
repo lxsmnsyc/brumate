@@ -304,14 +304,21 @@ export function onAttribute(on: string[], own: string): string {
 }
 
 /** Renders an object of attributes. */
-export function spread(attributes: Record<string, unknown>): string {
+export function spread(attributes: Record<string, unknown>, names = false): string {
   let result = '';
+  const written: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
     if (name !== 'children' && !/^on[A-Z]/.test(name)) {
-      result += attribute(name, value);
+      const text = attribute(name, value);
+      if (text) {
+        result += text;
+        written.push(name);
+      }
     }
   }
-  return result;
+  // `b-s` names the attributes of a spread that changes in the browser. Its first update there
+  // removes only those.
+  return names && written.length > 0 ? `${result} b-s="${written.join(' ')}"` : result;
 }
 
 export const VOID_ELEMENTS: Set<string> = new Set([

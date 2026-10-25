@@ -738,7 +738,11 @@ const MODIFIERS = Symbol.for('brumate.modifiers');
  * made from a reference goes into `on` as a `b-on` entry, with the scope and
  * the arguments of its reference and the modifiers of its wrappers.
  */
-export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+export function spread(
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): string {
   if (on) {
     for (const [name, value] of Object.entries(attributes)) {
       const reference =
@@ -756,7 +760,7 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
       }
     }
   }
-  return spreadText(attributes);
+  return spreadText(attributes, names);
 }
 
 /** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
@@ -2275,15 +2279,18 @@ export function attrs(
 ): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    // The first update in the browser takes the attributes that are not the element's own, nor
-    // those of brumate, as the ones that the server's spread wrote.
+    // The first update in the browser takes the attributes that `b-s` names as the ones that
+    // the spread wrote, so it keeps the attributes that other code set, such as an
+    // `aria-controls` that a `$client` callback added. Without `b-s`, it takes the attributes
+    // that are not the element's own, nor those of brumate.
     if (!spreadNames.has(element)) {
+      const written = element.getAttribute('b-s');
       spreadNames.set(
         element,
         new Set(
-          element
-            .getAttributeNames()
-            .filter((name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name)),
+          (written === null ? element.getAttributeNames() : written.split(' ')).filter(
+            (name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name),
+          ),
         ),
       );
     }

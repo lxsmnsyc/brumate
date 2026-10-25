@@ -1123,6 +1123,19 @@ export class Emitter {
     const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
       ? ([] as string[])
       : undefined;
+    // A spread that changes in the browser names the attributes that it wrote, so its first
+    // update there removes only those, and keeps attributes that other code set.
+    const liveSpread = node.attributes.some((attribute) => {
+      const site =
+        attribute.kind === 'spread' ? this.sitesByNode.get(attribute.value.ast) : undefined;
+      return site !== undefined && this.plan.clientSites.has(site);
+    });
+    const spreadArguments = (handlers: string | undefined): string => {
+      if (liveSpread) {
+        return `, ${handlers ?? 'undefined'}, true`;
+      }
+      return handlers ? `, ${handlers}` : '';
+    };
     for (const attribute of node.attributes) {
       if (
         variables &&
@@ -1170,7 +1183,7 @@ export class Emitter {
         }
         case 'spread':
           this.code(
-            `$$b.spread(${this.expression(attribute.value)}${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+            `$$b.spread(${this.expression(attribute.value)}${spreadArguments(spreadHandlers)})`,
           );
           break;
         case 'computed':
@@ -1193,7 +1206,7 @@ export class Emitter {
     }
     if (merged) {
       this.code(
-        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
       );
     }
     if (anchor) {

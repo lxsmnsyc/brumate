@@ -3661,14 +3661,18 @@ async function renderRoute(
  * function belongs to and the modifiers of its wrappers. A function that
  * refers to nothing in the browser is left out.
  */
-export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+export function spread(
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): string {
   // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
   // its handlers come first, as the element's own.
   const entries = on && attributes['b-on'];
   if (typeof entries === 'string') {
     on!.unshift(entries);
     const { 'b-on': _, ...rest } = attributes;
-    return spread(rest, on);
+    return spread(rest, on, names);
   }
   for (const [name, value] of Object.entries(attributes)) {
     const reference =
@@ -3686,7 +3690,7 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
       on.push(bindEntry(name, value.ref, setter));
     }
   }
-  return spreadAttributes(attributes);
+  return spreadAttributes(attributes, names);
 }
 
 export { onAttribute };

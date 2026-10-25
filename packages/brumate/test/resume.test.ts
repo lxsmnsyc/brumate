@@ -2227,6 +2227,18 @@ describe('function props that return values', () => {
   });
 });
 
+describe('spreads and attributes of other code', () => {
+  it('keeps an attribute that a $client callback set when the spread updates', async () => {
+    await resume('spreadKeeps', {});
+    const box = document.querySelector('.box')!;
+    expect(box.getAttribute('b-s')).toBe('class title');
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];
