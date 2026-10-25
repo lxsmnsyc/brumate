@@ -277,6 +277,28 @@ describe('resume', () => {
     client.dispose();
   });
 
+  it('runs no callback of an element that left the page with its scope', async () => {
+    document.body.innerHTML = '';
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    const ran: unknown[] = [];
+    client.init({
+      load: async () => ({
+        id: 'Test',
+        props: {},
+        g: {},
+        load: async () => ({ c1: (scope: unknown) => ran.push(scope) }),
+      }),
+      listen: () => {},
+    });
+    // A `$client` callback for when the page is idle, whose page went before the browser was.
+    const template = document.createElement('template');
+    template.setAttribute('b-b', '9:0');
+    await client.handle(template, 'Test#c1');
+    expect(ran).toEqual([]);
+    client.dispose();
+  });
+
   it('settles promises from state records that arrive later', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
     let settle!: (value: number) => void;
@@ -2120,6 +2142,71 @@ describe('removed portals', () => {
     expect(document.querySelector('.owned-portal')).toBeNull();
     expect(document.body.dataset.cleanups).toBe('1');
     delete document.body.dataset.cleanups;
+  });
+});
+
+describe('children that a block inserts again', () => {
+  const probe = (name: string) => document.querySelector<HTMLElement>(`.${name}`);
+  const cleanups = () => Number(document.body.dataset.cleanups ?? 0);
+
+  it('renders children of the server with new scopes each time a block shows them', async () => {
+    delete document.body.dataset.cleanups;
+    await resume('reinsertedChildren', {});
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    // Closing destroys them, and runs their cleanups.
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).toBeNull());
+    expect(cleanups()).toBe(1);
+    // Opening renders them again, with state of their own and a ref to the new element.
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).not.toBeNull());
+    expect(probe('inline-probe')!.textContent).toBe('');
+    // A template that the children pass on renders with them.
+    expect(text('.reinsert-label')).toBe('Named');
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    delete document.body.dataset.cleanups;
+  });
+
+  it('renders children in a portal again each time it opens', async () => {
+    delete document.body.dataset.cleanups;
+    await resume('reinsertedChildren', {});
+    for (let round = 1; round <= 2; round++) {
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- Each round opens the portal again.
+      await waitFor(() => expect(probe('portal-probe')).not.toBeNull());
+      expect(probe('portal-probe')!.textContent).toBe('');
+      click(probe('portal-probe')!);
+      // oxlint-disable-next-line no-await-in-loop -- The click reads the ref of this round.
+      await waitFor(() => expect(probe('portal-probe')!.textContent).toBe('1:true'));
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- The portal closes before the next round.
+      await waitFor(() => expect(probe('portal-probe')).toBeNull());
+      expect(cleanups()).toBe(round);
+    }
+    delete document.body.dataset.cleanups;
+  });
+});
+
+describe('a stopped loader', () => {
+  it('starts nothing from markup that the core inserts after the stop', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    const anchor = document.querySelector('template[b-client$="#k3"]')!.getAttribute('b-b')!;
+    stop?.();
+    stop = undefined;
+    const client = await import('../src/runtime/client.ts');
+    // The core inserts markup with the hooks of the loader that started it. Started again, the
+    // template would add the portal a second time.
+    client.portalTo(
+      client.scopeOf(0)!,
+      'body',
+      () => `<template b-b="${anchor}" b-client="load=PortalOwner_1w2qt1f#k3"></template>`,
+    );
+    await new Promise((done) => setTimeout(done, 50));
+    expect(document.querySelectorAll('.owned-portal')).toHaveLength(1);
   });
 });
 

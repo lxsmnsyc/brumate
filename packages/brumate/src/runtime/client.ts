@@ -17,6 +17,7 @@ import type { Raw } from './html.ts';
 import {
   Binding,
   CHILDREN,
+  ChildrenReference,
   ElementReference,
   FunctionReference,
   ITEM,
@@ -761,6 +762,10 @@ function setterReference(set: unknown): FunctionReference | undefined {
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
+  if (value instanceof ChildrenReference) {
+    // The scope can come later in the state, such as of a page that navigation loads.
+    return new RenderedChildren(value.scope, value.ref);
+  }
   if (value instanceof FunctionReference) {
     if (isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
@@ -966,6 +971,12 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
+  // A callback that the browser runs later, such as a `$client` callback for when the page is
+  // idle, does not run once its element and its scope are gone, such as after the block or the
+  // page that held it was removed.
+  if (anchor && !scope && !element.isConnected) {
+    return Promise.resolve();
+  }
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
@@ -999,7 +1010,11 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref, 'event');
+  // The code of the children that the handler can insert loads with it.
+  const children = childrenReady(scope);
+  const loaded = children
+    ? Promise.all([resolve(ref, 'event'), children]).then(([handler]) => handler)
+    : resolve(ref, 'event');
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1510,7 +1525,8 @@ function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
-  if (module && updates && loadingTemplates.size === 0) {
+  const children = childrenReady(scope);
+  if (module && updates && loadingTemplates.size === 0 && !children) {
     run(module, updates, scope, slot);
     return;
   }
@@ -1519,7 +1535,7 @@ function trigger(scope: Scope, slot: number): void {
   const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.allSettled(loadingTemplates);
+      await Promise.allSettled([...loadingTemplates, children]);
       run(loaded, code, scope, slot);
     }
   });
@@ -1661,6 +1677,8 @@ function destroy(scope: Scope): void {
   const start = portals > 0 ? comments.get(`P${scope.id}`) : undefined;
   if (start?.isConnected) {
     const end = rangeEnd(start);
+    // The components in it go too, such as children that a component inserted there.
+    destroyRange(scope, start, end);
     clear(start, end);
     start.remove();
     end.remove();
@@ -1709,6 +1727,15 @@ export function removeScope(scope: Scope): void {
  */
 function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): void {
   disposeKinds(scope, kinds);
+  destroyRange(scope, start, end);
+  clear(start, end);
+}
+
+/**
+ * Destroys the scopes whose markup is between two nodes, such as the components of a block that
+ * closes, but not the scope of the block or those around it.
+ */
+function destroyRange(scope: Scope, start: Node, end: Node): void {
   if (scopes.size > 0 && start.nextSibling !== end) {
     const above = new Set<Scope>();
     for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
@@ -1741,7 +1768,6 @@ function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): voi
       destroy(found);
     }
   }
-  clear(start, end);
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
@@ -3058,12 +3084,21 @@ const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  * is the scope of the markup that wrote them.
  */
 class Children {
-  private readonly from: Scope | undefined;
+  private given: Scope | ScopeId | undefined;
   private readonly html: () => string;
 
   constructor(from: Scope | ScopeId | undefined, html: () => string) {
-    this.from = resolveScope(from);
+    this.given = from;
     this.html = html;
+  }
+
+  /** The scope that the children were written in, found when they render. */
+  protected get from(): Scope | undefined {
+    const scope = resolveScope(this.given);
+    if (scope) {
+      this.given = scope;
+    }
+    return scope;
   }
 
   render(at: Scope | undefined): string {
@@ -3078,6 +3113,93 @@ class Children {
       insertedChildren.splice(insertedChildren.indexOf(entry), 1);
     }
   }
+}
+
+/**
+ * Children that the server rendered, which the browser renders with their own export each time
+ * a component inserts them, so each insert makes new scopes, as the body of a block does. The
+ * code of the export loads before the code that can insert them runs. See `childrenReady`.
+ */
+class RenderedChildren extends Children {
+  readonly ref: string;
+  private code: Handler | undefined;
+  private loading: Promise<void> | undefined;
+
+  constructor(scope: ScopeId, ref: string) {
+    // The export returns HTML, as the render of a block does.
+    super(scope, () => String(this.code!(this.from)));
+    this.ref = ref;
+  }
+
+  override render(at: Scope | undefined): string {
+    if (this.code && this.from) {
+      return super.render(at);
+    }
+    // An insert that ran before the code, such as an update that a parent ran at once, or before
+    // the state of its scope, such as markup of a page that navigation is still reading. A marker
+    // holds the place, and the children render there once both are ready, where they were
+    // inserted, so they read the contexts there.
+    const marker = `C${(nextChildren += 1)}`;
+    const fill = (tries: number): void => {
+      const node = findMarker(marker);
+      if (!node) {
+        return;
+      }
+      if (!this.from) {
+        if (tries > 0) {
+          setTimeout(() => fill(tries - 1), 0);
+        }
+        return;
+      }
+      insertHTML(node, super.render(at));
+      node.remove();
+    };
+    void this.load().then(() => fill(100));
+    return `<!--${marker}-->`;
+  }
+
+  get loaded(): boolean {
+    return this.code !== undefined;
+  }
+
+  load(): Promise<void> {
+    this.loading ??= resolve(this.ref, 'template').then((handler) => {
+      this.code = handler;
+    });
+    return this.loading;
+  }
+}
+
+/** The count of the markers of children that wait for their code. */
+let nextChildren = 0;
+
+/** The comment of a marker, such as of children that wait for their code. */
+function findMarker(data: string): Comment | undefined {
+  const walker = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if ((node as Comment).data === data) {
+      return node as Comment;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Loads the code of the children that the scope, or a component around it, holds, so code that
+ * runs in the scope can insert them at once. Undefined when there is nothing to load.
+ */
+function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
+  const waiting: Promise<void>[] = [];
+  const seen = new Set<Scope>();
+  for (let current = scope; current && !seen.has(current); current = current.p ?? current.o) {
+    seen.add(current);
+    for (const value of current.s) {
+      if (value instanceof RenderedChildren && !value.loaded) {
+        waiting.push(value.load());
+      }
+    }
+  }
+  return waiting.length > 0 ? Promise.allSettled(waiting) : undefined;
 }
 
 /** The children of a component that the client renders. See `Children`. */

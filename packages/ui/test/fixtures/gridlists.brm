@@ -1,0 +1,32 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import GridList from '../../src/GridList.brm';
+  import GridListItem from '../../src/GridListItem.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let picked = $signal<Key[]>([]);
+  let opened = $signal<Key[]>([]);
+  let edits = $signal(0);
+  const files = ['notes', 'photos', 'music'];
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <GridList class="grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked) disabledKeys=(['music'])>
+    #for (file of files by file) {
+      <GridListItem id=file class=(`row row-${file}`) textValue=file>
+        <Checkbox slot="selection" class=(`check check-${file}`) aria-label=(`Select ${file}`) />
+        {file}
+        <Button class=(`edit edit-${file}`) onPress=(() => edits++)>Edit</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <GridList class="actions" aria-label="Actions" onAction=((key) => (opened = [...opened, key]))>
+    <GridListItem id="inbox" class="inbox">Inbox</GridListItem>
+    <GridListItem id="sent" class="sent">Sent</GridListItem>
+  </GridList>
+  <button class="after" type="button">After</button>
+  <p class="state">{JSON.stringify([picked, opened, edits])}</p>
+</main>

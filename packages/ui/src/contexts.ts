@@ -1,6 +1,7 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
+import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
@@ -94,6 +95,7 @@ export interface InputContextProps extends AttributeProps {
   onChange?: (value: string) => void;
   onInvalid?: (message: string, first: boolean) => void;
   onKeyDown?: (key: string, event: KeyboardEvent) => void;
+  onFocus?: () => void;
   onBlur?: () => void;
   /** Enter keeps no default, so it sends no form, as in a search field. */
   isEnterPrevented?: boolean;
@@ -183,6 +185,8 @@ export interface DisclosurePanelState {
   id: string;
   triggerId: string;
   isExpanded: boolean;
+  /** A disabled disclosure keeps its panel closed, also for find in page. */
+  isDisabled: boolean;
   expand: () => void;
 }
 
@@ -211,6 +215,12 @@ export interface OverlayTriggerState {
    * is when it opens.
    */
   isPreview?: boolean;
+  /** The overlay is not modal, such as a submenu, whose parent menu stays usable. */
+  isNonModal?: boolean;
+  /** The placement that the trigger asks for, such as `end top` for a submenu. */
+  placement?: Placement;
+  /** False when focus stays where it is as the overlay opens, such as a submenu opened by hover. */
+  autoFocus?: boolean;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =

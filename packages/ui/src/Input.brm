@@ -57,6 +57,11 @@
     return { onKeyDown: $handler(keyDown) };
   }
 
+  function focus(event: FocusEvent) {
+    onFocus(event);
+    given().onFocus?.();
+  }
+
   function blur(event: FocusEvent) {
     ringBlur(event);
     given().onBlur?.();
@@ -72,7 +77,7 @@
   onPointerEnter=onPointerEnter
   onPointerLeave=onPointerLeave
   onPointerDown=onPointerDown
-  onFocus=onFocus
+  onFocus=focus
   onBlur=blur
   {...keys(enterPrevented, escapePrevented)}
   onInput=input

@@ -1,0 +1,134 @@
+<script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { TextContext } from './contexts.ts';
+  import type { PressEvent } from './events.ts';
+  import { interact } from './interact.brm.ts';
+  import { ListBoxContext, keyAttribute } from './collection.ts';
+  import type { Key } from './collection.ts';
+
+  /**
+   * An option of a ListBox, as ListBoxItem of React Aria Components. `id` is its key.
+   *
+   * - A press selects it, as the ListBox says, or acts on it when the ListBox selects nothing.
+   * - `textValue` is the text that typeahead matches, when its content is more than text.
+   * - A Text with `slot="label"` names it, and one with `slot="description"` describes it. A
+   *   part cannot read its children, so `hasLabel` and `hasDescription` say they are there.
+   * - It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused`
+   *   and `data-focus-visible`.
+   */
+  const {
+    id,
+    textValue,
+    isDisabled = false,
+    hasLabel = false,
+    hasDescription = false,
+    onAction,
+    children,
+    ...rest
+  } = $props<{
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    /** It has a Text with `slot="label"`, which names it. */
+    hasLabel?: boolean;
+    /** It has a Text with `slot="description"`, which describes it. */
+    hasDescription?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const list = $getContext(ListBoxContext);
+  const optionId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const mode = $memo(list?.selectionMode ?? 'none');
+  const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
+  const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
+  // With virtual focus, focus stays outside the list, and the active item shows as focused.
+  const active = $memo(list?.activeKey !== undefined && list.activeKey === id);
+
+  $setContext(TextContext, {
+    slots: {
+      default: {},
+      label: { id: labelId },
+      description: { id: descriptionId },
+    },
+  });
+
+  function pressed(event: PressEvent) {
+    if (!list) {
+      return;
+    }
+    if (mode === 'none') {
+      onAction?.();
+      list.action(id);
+      return;
+    }
+    list.select(id, {
+      shift: event.shiftKey,
+      toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
+    });
+  }
+
+  // The keys of an option are the ListBox's, so the option takes the pointer, the focus and the
+  // hover, and a click with no pointer, such as from a screen reader.
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled,
+    pressed,
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => list?.setActive?.(id),
+    () => {},
+    () => {},
+    () => {},
+  );
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
+</script>
+
+<div
+  id=optionId
+  role="option"
+  tabindex="-1"
+  data-key=(keyAttribute(id))
+  data-text-value=textValue
+  aria-selected=(mode === 'none' ? undefined : String(selected))
+  aria-disabled=(disabled ? 'true' : undefined)
+  aria-labelledby=(hasLabel ? labelId : undefined)
+  aria-describedby=(hasDescription ? descriptionId : undefined)
+  data-selected=(selected || undefined)
+  data-disabled=(disabled || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || active || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  onPointerDown=onPointerDown
+  onPointerMove=onPointerMove
+  onPointerUp=onPointerUp
+  onPointerCancel=onPointerCancel
+  onPointerEnter=onPointerEnter
+  onPointerLeave=onPointerLeave
+  onClick=onClick
+  onFocus=onFocus
+  onBlur=onBlur
+  {...rest}
+>{children}</div>

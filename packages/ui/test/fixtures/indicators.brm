@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import SelectionIndicator from '../../src/SelectionIndicator.brm';
+  import Tab from '../../src/Tab.brm';
+  import TabList from '../../src/TabList.brm';
+  import TabPanel from '../../src/TabPanel.brm';
+  import Tabs from '../../src/Tabs.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let size = $signal<Key[]>(['m']);
+</script>
+
+<main class="page">
+  <Tabs>
+    <TabList aria-label="Views">
+      <Tab id="list" class="tab-list">List<SelectionIndicator class="bar" style="transition-duration: 200ms" /></Tab>
+      <Tab id="grid" class="tab-grid">Grid<SelectionIndicator class="bar" style="transition-duration: 200ms" /></Tab>
+    </TabList>
+    <TabPanel id="list">The list.</TabPanel>
+    <TabPanel id="grid">The grid.</TabPanel>
+  </Tabs>
+  <ListBox aria-label="Size" selectionMode="single" selectedKeys=$bind(size)>
+    <ListBoxItem id="s" class="size-s">S<SelectionIndicator class="dot" /></ListBoxItem>
+    <ListBoxItem id="m" class="size-m">M<SelectionIndicator class="dot" /></ListBoxItem>
+  </ListBox>
+</main>

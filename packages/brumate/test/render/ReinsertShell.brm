@@ -1,0 +1,24 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Shows its children while open, in place or in a portal at the end of the page.
+  const { open, portal = false, children } = $props<{
+    open: boolean;
+    portal?: boolean;
+    children?: unknown;
+  }>();
+</script>
+
+#template body() {
+  <div class="reinsert-portal">{children}</div>
+}
+
+#if (open) {
+  #if (portal) {
+    #portal ('body') {
+      {body()}
+    }
+  } #else {
+    <div class="reinsert-inline">{children}</div>
+  }
+}

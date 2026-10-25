@@ -1,0 +1,30 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let animal = $signal<Key | null>(null);
+  const animals = ['Aardvark', 'Cat', 'Dog', 'Kangaroo', 'Koala', 'Panda', 'Penguin', 'Snake'];
+</script>
+
+<ComboBox class="ui-select" name="animal" selectedKey=$bind(animal)>
+  <Label>Favorite animal</Label>
+  <div class="ui-combobox-box">
+    <Input class="ui-input" placeholder="Type to search" />
+    <Button class="ui-button ui-select-button" />
+  </div>
+  <Popover class="ui-popover ui-select-popover">
+    <ListBox class="ui-listbox">
+      #for (name of animals by name) {
+        <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+      }
+    </ListBox>
+  </Popover>
+</ComboBox>
+<p>Selected: {animal ?? 'none'}.</p>

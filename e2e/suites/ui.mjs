@@ -666,6 +666,350 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'ListBox: Tab, the arrow keys, typeahead, Space, Shift, and no scroll of the page',
+    async () => {
+      await page.goto(`${url}/`);
+      const list = page.locator('.animals');
+      await list.scrollIntoViewIfNeeded();
+      const y = await page.evaluate(() => window.scrollY);
+      await page.locator('#listbox').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+      await page.locator('#listbox').focus();
+      await page.keyboard.press('Tab');
+      // The list passes its focus on to its first item.
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Aardvark');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Dog');
+      assert((await page.evaluate(() => window.scrollY)) === y, 'the arrow keys scrolled the page');
+      await page.keyboard.press('Space');
+      await page.waitForFunction(
+        () => document.querySelector('.animals-state')?.textContent === 'Dog',
+      );
+      // Typeahead moves to the item that starts with what is typed, across sections.
+      await page.keyboard.type('pe');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Penguin');
+      await page.keyboard.press('Shift+ArrowUp');
+      await page.keyboard.press('Shift+ArrowUp');
+      await page.waitForFunction(
+        () => document.querySelector('.animals-state')?.textContent === 'Dog, Kangaroo',
+      );
+      // Tab leaves the list, and Shift+Tab comes back to the item that had focus.
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => !document.activeElement?.closest('.animals'));
+      await page.keyboard.press('Shift+Tab');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Kangaroo');
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(
+        () => document.querySelector('.animals-state')?.textContent === 'None',
+      );
+    },
+  );
+
+  await step(
+    'Menu: ArrowDown opens it, the arrow keys go round, a submenu opens and closes, and Enter acts',
+    async () => {
+      await page.goto(`${url}/`);
+      const trigger = page.locator('.edit-trigger');
+      await trigger.focus();
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Cut');
+      const y = await page.evaluate(() => window.scrollY);
+      // The arrow keys go round, past the disabled item, and never scroll the page.
+      await page.keyboard.press('ArrowUp');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Share');
+      assert((await page.evaluate(() => window.scrollY)) === y, 'the arrow keys scrolled the page');
+      await page.keyboard.press('ArrowUp');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Copy');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Email');
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Share');
+      assert((await page.locator('.share-menu').count()) === 0, 'the submenu stayed open');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Email');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.menu-state')?.textContent === 'messages',
+      );
+      await page.waitForFunction(() => document.querySelectorAll('.action-menu').length === 0);
+      await page.waitForFunction(() => document.activeElement?.classList.contains('edit-trigger'));
+      // A pointer that rests on the item opens the submenu, and another item closes it.
+      await trigger.click();
+      await page.locator('.share').hover();
+      await page.waitForSelector('.share-menu', { timeout: 3000 });
+      await page.locator('.action-menu >> text=Cut').first().hover();
+      await page.waitForFunction(() => !document.querySelector('.share-menu'));
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => document.querySelectorAll('.action-menu').length === 0);
+    },
+  );
+
+  await step(
+    'Select: a required one stops its form, the arrow keys open it, and Enter picks an item',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('.pet-send').click();
+      // The browser checks the hidden input, and focus moves to the Button with the message.
+      await page.waitForSelector('.pet-error');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('pet-trigger'));
+      assert((await page.locator('.pet-state').textContent()) === 'Not sent', 'the form was sent');
+      const y = await page.evaluate(() => window.scrollY);
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Cat');
+      assert((await page.evaluate(() => window.scrollY)) === y, 'ArrowDown scrolled the page');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('pet-trigger'));
+      assert((await page.locator('.pet-trigger').textContent())?.trim() === 'Dog', 'no value');
+      await page.waitForFunction(() => !document.querySelector('.pet-error'));
+      await page.locator('.pet-send').click();
+      await page.waitForFunction(() => document.querySelector('.pet-state')?.textContent === 'dog');
+    },
+  );
+
+  await step(
+    'ComboBox: typing filters, the arrow keys keep focus in the input, and Enter picks',
+    async () => {
+      await page.goto(`${url}/`);
+      const input = page.locator('.city-input');
+      await input.click();
+      await page.keyboard.type('l');
+      await page.waitForSelector('.city-list');
+      // The items that contain "l": Berlin, Lisbon, London.
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.city-list [role=option]')].filter((item) => !item.hidden)
+            .length === 3,
+      );
+      await page.keyboard.type('o');
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.city-list [role=option]')]
+            .filter((item) => !item.hidden)
+            .map((item) => item.textContent)
+            .join() === 'London',
+      );
+      const y = await page.evaluate(() => window.scrollY);
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() =>
+        document.activeElement?.getAttribute('aria-activedescendant'),
+      );
+      assert(
+        await page.evaluate(() => document.activeElement?.classList.contains('city-input')),
+        'focus left the input',
+      );
+      assert((await page.evaluate(() => window.scrollY)) === y, 'ArrowDown scrolled the page');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.city-state')?.textContent === 'london',
+      );
+      assert((await input.inputValue()) === 'London', 'the input did not get the text');
+      // The Button shows every item again, and a press picks one.
+      await page.locator('.city-toggle').click();
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.city-list [role=option]')].filter((item) => !item.hidden)
+            .length === 5,
+      );
+      await page.locator('.city-list >> text=Madrid').click();
+      await page.waitForFunction(
+        () => document.querySelector('.city-state')?.textContent === 'madrid',
+      );
+      assert((await input.inputValue()) === 'Madrid', 'the press did not set the text');
+    },
+  );
+
+  await step(
+    'Autocomplete: typing filters a menu, the arrow keys move, and Enter acts',
+    async () => {
+      await page.goto(`${url}/`);
+      const input = page.locator('.command-input');
+      await input.click();
+      await page.keyboard.type('file');
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.command-menu [role=menuitem]')]
+            .filter((item) => !item.hidden)
+            .map((item) => item.textContent)
+            .join() === 'New file,Open file',
+      );
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => {
+        const id = document.activeElement?.getAttribute('aria-activedescendant');
+        return id && document.getElementById(id)?.textContent === 'Open file';
+      });
+      assert(
+        await page.evaluate(() => document.activeElement?.classList.contains('command-input')),
+        'focus left the input',
+      );
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.command-state')?.textContent === 'open',
+      );
+      // Escape clears the field, and every item shows again.
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.command-menu [role=menuitem]')].filter(
+            (item) => !item.hidden,
+          ).length === 3,
+      );
+    },
+  );
+
+  await step('Tabs: Tab stops at the selected tab, and the arrow keys select', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.planet-tab >> text=Mercury').focus();
+    const y = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Venus');
+    await page.waitForFunction(
+      () => document.querySelector('.planet-panel')?.textContent === 'The hottest.',
+    );
+    assert((await page.evaluate(() => window.scrollY)) === y, 'the arrow keys scrolled the page');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Earth');
+    // Tab moves on into the panel, and Shift+Tab comes back to the selected tab.
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('planet-panel'));
+    await page.keyboard.press('Shift+Tab');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Earth');
+    await page.locator('.planet-tab >> text=Mercury').click();
+    await page.waitForFunction(
+      () => document.querySelector('.planet-panel')?.textContent === 'The closest to the Sun.',
+    );
+    // The indicator is only in the selected tab, and it slides there from the last one.
+    await page.locator('.planet-tab >> text=Venus').click();
+    await page.waitForFunction(() => {
+      const bars = document.querySelectorAll('.planet-bar');
+      return bars.length === 1 && bars[0].closest('.planet-tab')?.textContent === 'Venus';
+    });
+    assert(
+      await page.evaluate(() => document.querySelector('.planet-bar').getAnimations().length === 1),
+      'the indicator did not move',
+    );
+  });
+
+  await step('TagGroup: the arrow keys move between tags, and Delete removes one', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('#taggroup').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+    await page.locator('#taggroup').focus();
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.textContent?.startsWith('css'));
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.activeElement?.textContent?.startsWith('html'));
+    await page.keyboard.press('Delete');
+    await page.waitForFunction(
+      () => document.querySelector('.topic-state')?.textContent === 'css,js,svg',
+    );
+    // Focus moves on to the next tag.
+    await page.waitForFunction(() => document.activeElement?.textContent?.startsWith('js'));
+    await page.locator('.topic-remove').last().click();
+    await page.waitForFunction(
+      () => document.querySelector('.topic-state')?.textContent === 'css,js',
+    );
+  });
+
+  await step(
+    'GridList: rows with Up and Down, controls with Left and Right, and Tab leaves',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('#gridlist').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+      await page.locator('#gridlist').focus();
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('file-row'));
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.textContent?.includes('photos'));
+      await page.keyboard.press('Space');
+      await page.waitForFunction(
+        () => document.querySelector('.file-state')?.textContent === 'photos / none',
+      );
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('file-open'));
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.file-state')?.textContent === 'photos / photos',
+      );
+      // Tab leaves the list from its controls.
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => !document.activeElement?.closest('.file-grid'));
+    },
+  );
+
+  await step('axe-core: an open menu has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.edit-trigger').focus();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Cut');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Email');
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // An open menu is modal, as in React Aria, so the rest of the page is inert. axe skips its
+      // rules of the whole page while a dialog is open, but a menu is not a dialog, so the rules
+      // that look for the main landmark, the first heading and content outside landmarks are
+      // off here alone.
+      const result = await window.axe.run(document, {
+        rules: {
+          'landmark-one-main': { enabled: false },
+          'page-has-heading-one': { enabled: false },
+          region: { enabled: false },
+        },
+      });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
+  await step('axe-core: an open select has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.pet-trigger').focus();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Cat');
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // As for a menu: the list of a select is modal and not a dialog, so axe's rules of the
+      // whole page see the inert page. They are off here alone.
+      const result = await window.axe.run(document, {
+        rules: {
+          'landmark-one-main': { enabled: false },
+          'page-has-heading-one': { enabled: false },
+          region: { enabled: false },
+        },
+      });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
+  await step('axe-core: an open combobox has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.city-input').click();
+    await page.keyboard.type('l');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-activedescendant'));
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // The list renders at the end of <body>, outside the landmarks, as in React Aria, so the
+      // rule "region" is off here alone. The list is not modal, so the page keeps its landmarks.
+      const result = await window.axe.run(document, { rules: { region: { enabled: false } } });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
   await step('axe-core: a tooltip, a toast and a preview have no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.toast-trigger').click();

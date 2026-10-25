@@ -1,6 +1,6 @@
 <script>
-  import { createForm } from 'brumate/forms';
   import { prevent } from 'brumate/events';
+  import { createForm } from 'brumate/forms';
   import { parseSubmission } from 'brumate/server';
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
@@ -29,6 +29,28 @@
   import Keyboard from '@brumate/ui/Keyboard.brm';
   import Label from '@brumate/ui/Label.brm';
   import Link from '@brumate/ui/Link.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
   import Meter from '@brumate/ui/Meter.brm';
   import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
   import Modal from '@brumate/ui/Modal.brm';
@@ -51,6 +73,7 @@
   import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
   import Toolbar from '@brumate/ui/Toolbar.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
 
   let presses = $signal(0);
   let last = $signal('nothing yet');
@@ -64,6 +87,15 @@
   let align = $signal(['left']);
   let files = $signal('No files picked.');
   let noteShown = $signal(true);
+  let animals = $signal<Key[]>([]);
+  let menuAction = $signal<Key>('none');
+  let pet = $signal<Key | null>(null);
+  let city = $signal<Key | null>(null);
+  let command = $signal<Key>('none');
+  let topics = $signal(['css', 'html', 'js', 'svg']);
+  let pickedFiles = $signal<Key[]>([]);
+  let fileOpened = $signal('none');
+  let petSent = $signal('');
 
   async function order(form: FormData) {
     'use server';
@@ -321,6 +353,147 @@
   </DialogTrigger>
 </section>
 
+<section aria-labelledby="listbox">
+  <h2 id="listbox">ListBox</h2>
+  <ListBox class="listbox animals" aria-label="Animals" selectionMode="multiple" selectedKeys=$bind(animals)>
+    <ListBoxSection>
+      <Header class="listbox-header">Mammals</Header>
+      #for (animal of ['Aardvark', 'Cat', 'Dog', 'Kangaroo'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+    <ListBoxSection>
+      <Header class="listbox-header">Birds</Header>
+      #for (animal of ['Kiwi', 'Penguin', 'Robin'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+  </ListBox>
+  <p class="animals-state">{animals.join(', ') || 'None'}</p>
+</section>
+
+<section aria-labelledby="menu">
+  <h2 id="menu">Menu</h2>
+  <MenuTrigger>
+    <Button class="press edit-trigger">Edit</Button>
+    <Popover class="popover" placement="bottom start">
+      <Menu class="action-menu" onAction=((key) => (menuAction = key))>
+        <MenuItem id="cut" class="option">Cut</MenuItem>
+        <MenuItem id="copy" class="option">Copy</MenuItem>
+        <MenuItem id="paste" class="option" isDisabled>Paste</MenuItem>
+        <SubmenuTrigger>
+          <MenuItem id="share" class="option share">Share</MenuItem>
+          <Popover class="popover">
+            <Menu class="action-menu share-menu" onAction=((key) => (menuAction = key))>
+              <MenuItem id="email" class="option">Email</MenuItem>
+              <MenuItem id="messages" class="option">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p class="menu-state">{menuAction}</p>
+</section>
+
+<section aria-labelledby="select">
+  <h2 id="select">Select</h2>
+  <form
+    class="pet-form"
+    onSubmit=(prevent((event) => {
+      petSent = String(new FormData(event.currentTarget as HTMLFormElement).get('pet'));
+    }))
+  >
+    <Select class="pet-select" name="pet" isRequired selectedKey=$bind(pet)>
+      <Label>Pet</Label>
+      <Button class="press pet-trigger"><SelectValue /></Button>
+      <FieldError class="pet-error" />
+      <Popover class="popover pet-popover">
+        <ListBox class="listbox pet-list">
+          #for (name of ['Cat', 'Dog', 'Fish'] by name) {
+            <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+          }
+        </ListBox>
+      </Popover>
+    </Select>
+    <button class="press pet-send" type="submit">Send</button>
+  </form>
+  <p class="pet-state">{petSent || 'Not sent'}</p>
+</section>
+
+<section aria-labelledby="combobox">
+  <h2 id="combobox">ComboBox</h2>
+  <ComboBox class="city-box" name="city" selectedKey=$bind(city)>
+    <Label>City</Label>
+    <Input class="city-input" />
+    <Button class="press city-toggle">Show</Button>
+    <Popover class="popover city-popover">
+      <ListBox class="listbox city-list">
+        #for (name of ['Berlin', 'Bern', 'Lisbon', 'London', 'Madrid'] by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <p class="city-state">{city ?? 'None'}</p>
+</section>
+
+<section aria-labelledby="autocomplete">
+  <h2 id="autocomplete">Autocomplete</h2>
+  <Autocomplete>
+    <SearchField class="command-field">
+      <Label>Command</Label>
+      <Input class="command-input" />
+    </SearchField>
+    <Menu class="command-menu" aria-label="Commands" onAction=((key) => (command = key))>
+      <MenuItem id="new" class="option">New file</MenuItem>
+      <MenuItem id="open" class="option">Open file</MenuItem>
+      <MenuItem id="save" class="option">Save</MenuItem>
+    </Menu>
+  </Autocomplete>
+  <p class="command-state">{command}</p>
+</section>
+
+<section aria-labelledby="tabs">
+  <h2 id="tabs">Tabs</h2>
+  <Tabs>
+    <TabList class="planet-tabs" aria-label="Planets">
+      <Tab id="mercury" class="planet-tab">Mercury<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="venus" class="planet-tab">Venus<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="earth" class="planet-tab">Earth<SelectionIndicator class="planet-bar" /></Tab>
+    </TabList>
+    <TabPanel id="mercury" class="planet-panel">The closest to the Sun.</TabPanel>
+    <TabPanel id="venus" class="planet-panel">The hottest.</TabPanel>
+    <TabPanel id="earth" class="planet-panel">Home.</TabPanel>
+  </Tabs>
+</section>
+
+<section aria-labelledby="taggroup">
+  <h2 id="taggroup">TagGroup</h2>
+  <TagGroup onRemove=((keys) => (topics = topics.filter((topic) => !keys.includes(topic))))>
+    <Label>Topics</Label>
+    <TagList class="topic-list">
+      #for (topic of topics by topic) {
+        <Tag id=topic class="topic">{topic}<Button slot="remove" class="press topic-remove">×</Button></Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <p class="topic-state">{topics.join(',')}</p>
+</section>
+
+<section aria-labelledby="gridlist">
+  <h2 id="gridlist">GridList</h2>
+  <GridList class="file-grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(pickedFiles)>
+    #for (file of ['notes', 'photos', 'music'] by file) {
+      <GridListItem id=file class="file-row" textValue=file>
+        <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
+        <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+</section>
+
 <section aria-labelledby="tooltip">
   <h2 id="tooltip">Tooltip and Toast</h2>
   <TooltipTrigger>
@@ -524,6 +697,75 @@
 
   :global(.settings h3) {
     margin: 0;
+  }
+
+  :global(.listbox) {
+    display: grid;
+    max-width: 16rem;
+    max-height: 12rem;
+    overflow: auto;
+    padding: 0.25rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+  }
+
+  :global(.listbox:focus-visible) {
+    outline: 3px solid #2457d6;
+  }
+
+  :global(.listbox-header) {
+    padding: 0.5rem 0.5rem 0.25rem;
+    color: #595959;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  :global(.option) {
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+    outline: none;
+  }
+
+  :global(.planet-tab) {
+    position: relative;
+  }
+
+  :global(.planet-bar) {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #333;
+    transition-duration: 0.2s;
+  }
+
+  :global(.action-menu),
+  :global(.command-menu) {
+    display: grid;
+    min-width: 10rem;
+    padding: 0.25rem;
+    border: 1px solid #ccc;
+    background: #fff;
+  }
+
+  :global(.action-menu .option[data-focused]),
+  :global(.command-menu .option[data-focused]) {
+    background: #eee;
+  }
+
+  :global(.option[data-hovered]) {
+    background: #f1f1f1;
+  }
+
+  :global(.option[data-focus-visible]) {
+    outline: 2px solid #2457d6;
+    outline-offset: -2px;
+  }
+
+  :global(.option[data-selected]) {
+    background: #2457d6;
+    color: #fff;
   }
 
   :global(.tip) {

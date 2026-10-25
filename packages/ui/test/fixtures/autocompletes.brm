@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '../../src/Autocomplete.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Menu from '../../src/Menu.brm';
+  import MenuItem from '../../src/MenuItem.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let ran = $signal<Key[]>([]);
+  let query = $signal('');
+  let picked = $signal<Key[]>([]);
+</script>
+
+<main class="page">
+  <Autocomplete inputValue=$bind(query)>
+    <SearchField class="search">
+      <Input class="search-input" aria-label="Search the commands" />
+    </SearchField>
+    <Menu class="commands" aria-label="Commands" onAction=((key) => (ran = [...ran, key]))>
+      <MenuItem id="new" class="new">New file</MenuItem>
+      <MenuItem id="open" class="open">Open file</MenuItem>
+      <MenuItem id="save" class="save">Save</MenuItem>
+    </Menu>
+  </Autocomplete>
+  <Autocomplete>
+    <SearchField class="fruit-search">
+      <Label>Fruit</Label>
+      <Input class="fruit-input" />
+    </SearchField>
+    <ListBox class="fruits" aria-label="Fruit" selectionMode="multiple" selectedKeys=$bind(picked)>
+      <ListBoxItem id="apple" class="apple">Apple</ListBoxItem>
+      <ListBoxItem id="banana" class="banana">Banana</ListBoxItem>
+    </ListBox>
+  </Autocomplete>
+  <p class="state">{JSON.stringify([ran, query, picked])}</p>
+</main>

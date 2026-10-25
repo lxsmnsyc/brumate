@@ -473,6 +473,315 @@
     }
   }
 
+  /* A list of options, whose selected options take the accent. */
+  :global(.ui-listbox) {
+    display: grid;
+    width: min(16rem, 100%);
+    max-height: 14rem;
+    overflow: auto;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    outline: none;
+  }
+
+  :global(.ui-listbox:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-listbox-header) {
+    padding: 0.5rem 0.6rem 0.25rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  :global(.ui-option) {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-option[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-option[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-option[data-selected]) {
+    background: var(--accent-strong);
+    color: var(--bg);
+  }
+
+  :global(.ui-option[data-disabled]) {
+    color: var(--muted);
+  }
+
+  /* Parts side by side, such as the triggers of two menus. */
+  :global(.ui-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* A select: a field whose button shows the value, and a list as wide as the button. */
+  :global(.ui-select) {
+    display: grid;
+    gap: 0.35rem;
+    width: min(16rem, 100%);
+  }
+
+  :global(.ui-select-button) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 400;
+    text-align: start;
+  }
+
+  :global(.ui-select-button)::after {
+    color: var(--muted);
+    content: '▾';
+  }
+
+  :global(.ui-select-value[data-placeholder]) {
+    color: var(--muted);
+  }
+
+  :global(.ui-select-popover .ui-listbox) {
+    width: var(--trigger-width);
+    box-shadow: var(--shadow);
+  }
+
+  /* A combobox: an input and its button in one box. */
+  :global(.ui-combobox-box) {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  :global(.ui-combobox-box:focus-within) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-combobox-box .ui-input) {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+  }
+
+  :global(.ui-combobox-box .ui-select-button) {
+    border: 0;
+    background: none;
+  }
+
+  /* Tabs: a row of tabs whose selected one takes the accent, over its panel. */
+  :global(.ui-tablist) {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  :global(.ui-tab) {
+    padding: 0.45rem 0.8rem;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-tab[data-hovered]) {
+    color: var(--text);
+  }
+
+  :global(.ui-tab[data-selected]) {
+    border-color: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  :global(.ui-tab[data-focus-visible]),
+  :global(.ui-tabpanel:focus-visible) {
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-tabpanel) {
+    padding: 0.75rem 0.25rem;
+    outline: none;
+  }
+
+  /* Tags: rounded chips in a row, whose selected ones take the accent. */
+  :global(.ui-taglist) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    outline: none;
+  }
+
+  :global(.ui-tag) {
+    display: inline-flex;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-tag[data-hovered]) {
+    border-color: var(--muted);
+  }
+
+  :global(.ui-tag[data-selected]) {
+    border-color: var(--accent-strong);
+    background: var(--accent-strong);
+    color: var(--bg);
+  }
+
+  :global(.ui-tag[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-tag-remove) {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* A grid list: rows with a checkbox and a button, whose selected rows take the accent. */
+  :global(.ui-gridlist) {
+    display: grid;
+    width: min(22rem, 100%);
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+  }
+
+  :global(.ui-gridlist:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-gridrow) {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  :global(.ui-gridrow[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-gridrow[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-gridrow[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-gridrow .ui-button) {
+    margin-inline-start: auto;
+    padding: 0.2rem 0.6rem;
+  }
+
+  /* A bar under the selected tab, which slides to the next one. */
+  :global(.ui-tab:has(.ui-indicator)) {
+    position: relative;
+  }
+
+  :global(.ui-tablist-sliding .ui-tab[data-selected]) {
+    border-color: transparent;
+  }
+
+  :global(.ui-indicator) {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    transition-duration: 0.25s;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
+  :global(.ui-menu) {
+    display: grid;
+    min-width: 11rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    outline: none;
+  }
+
+  :global(.ui-menu-item) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.ui-menu-item[data-focused]),
+  :global(.ui-menu-item[data-open]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-menu-item[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-menu-item[data-disabled]) {
+    color: var(--muted);
+  }
+
+  /* A checked item shows a mark, and an item with a submenu an arrow. */
+  :global(.ui-menu-item[role='menuitemradio']::before),
+  :global(.ui-menu-item[role='menuitemcheckbox']::before) {
+    width: 1rem;
+    content: '';
+  }
+
+  :global(.ui-menu-item[aria-checked='true']::before) {
+    content: '✓';
+  }
+
+  :global(.ui-menu-item[aria-haspopup]::after) {
+    margin-inline-start: auto;
+    color: var(--muted);
+    content: '›';
+  }
+
+  :global(.ui-menu hr) {
+    width: 100%;
+    margin: 0.25rem 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
   /* A tooltip fades in above its trigger, with an arrow. */
   :global(.ui-tooltip) {
     z-index: 30;
@@ -646,6 +955,15 @@
     background: var(--bg);
     box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
     transition: opacity 0.18s, translate 0.18s;
+  }
+
+  /* The list of a select is the box itself. */
+  :global(.ui-popover.ui-select-popover) {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
   }
 
   :global(.ui-popover[data-closed]) {

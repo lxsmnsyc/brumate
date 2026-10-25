@@ -68,6 +68,7 @@ export function pressEvent(
     altKey: Boolean(keys.altKey),
     x: (event as PointerEvent).clientX ?? 0,
     y: (event as PointerEvent).clientY ?? 0,
+    pointerId: (event as PointerEvent).pointerId,
   };
 }
 

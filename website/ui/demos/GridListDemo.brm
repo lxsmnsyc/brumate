@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  let picked = $signal<Key[]>([]);
+  let opened = $signal('nothing yet');
+  const files = ['Notes.txt', 'Photos', 'Budget.xlsx', 'Music'];
+</script>
+
+<GridList class="ui-gridlist" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked)>
+  #for (file of files by file) {
+    <GridListItem id=file class="ui-gridrow" textValue=file>
+      <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file}`)>
+        <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+      </Checkbox>
+      {file}
+      <Button class="ui-button" onPress=(() => (opened = file))>Open</Button>
+    </GridListItem>
+  }
+</GridList>
+<p>Selected: {picked.join(', ') || 'none'}. Opened: {opened}.</p>

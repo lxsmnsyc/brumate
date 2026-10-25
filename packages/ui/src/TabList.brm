@@ -1,0 +1,46 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { enabledItems, focusItem, keyOf, movementOf, moveFrom } from './collection.ts';
+  import { LocaleContext } from './locale.ts';
+  import { TabsContext } from './tabs.ts';
+
+  /**
+   * The list of the tabs of Tabs, as TabList of React Aria Components. It needs `aria-label`, or
+   * `aria-labelledby`.
+   *
+   * - Tab stops at the selected tab once. The arrow keys move to the next and the previous tab,
+   *   and go round. Right to left, Left and Right turn around. Home and End go to the ends.
+   * - With automatic activation, the tab that the keys move to is selected.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const tabs = $getContext(TabsContext);
+  const locale = $getContext(LocaleContext);
+  const orientation = $memo(tabs?.orientation ?? 'horizontal');
+
+  function keyDown(event: KeyboardEvent) {
+    const list = event.currentTarget as HTMLElement;
+    const movement = movementOf(event.key, orientation, locale.direction);
+    if (!movement || movement === 'pageDown' || movement === 'pageUp') {
+      return;
+    }
+    const items = enabledItems(list, 'tab');
+    const current = items.find((item) => item === document.activeElement);
+    const target = moveFrom(list, items, current, movement, true);
+    focusItem(target);
+    const key = target ? keyOf(target) : undefined;
+    if (key !== undefined && tabs?.keyboardActivation !== 'manual') {
+      tabs?.select(key);
+    }
+  }
+</script>
+
+<div
+  role="tablist"
+  data-collection
+  aria-orientation=(orientation === 'vertical' ? 'vertical' : undefined)
+  data-orientation=orientation
+  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'))
+  {...rest}
+>{children}</div>

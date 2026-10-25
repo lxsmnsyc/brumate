@@ -1,0 +1,150 @@
+<script>
+  import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import { MENU_ITEMS } from './menu.ts';
+
+  /**
+   * A field that filters a Menu or a ListBox next to it, as Autocomplete of React Aria
+   * Components. It holds a SearchField or a TextField, and the collection. It renders only its
+   * children.
+   *
+   * - Typing shows the items whose text contains the text, in any case, and makes the first one
+   *   active. `filter` changes the match.
+   * - ArrowDown and ArrowUp move through the items, round the ends, while focus stays in the
+   *   input, and `aria-activedescendant` names the active item. The pointer makes an item active.
+   * - Enter presses the active item, so a Menu acts on it, and a ListBox selects it or acts on it.
+   * - `inputValue` starts its own text, or binds with `$bind`. `onInputChange` gets each change.
+   */
+  const { filter, onInputChange, children } = $props<{
+    /** Whether an item's text matches what was typed. By default, it contains it. */
+    filter?: (text: string, input: string) => boolean;
+    onInputChange?: (value: string) => void;
+    children?: unknown;
+  }>();
+  let { inputValue = '' } = $props<{ inputValue?: Bindable<string> }>();
+
+  const collectionId = $id();
+  let activeKey = $signal<Key | null>(null);
+  // The text the collection shows the items of, which changes as the user types.
+  let filterText = $signal(inputValue);
+  // The text of the last filter, so a filter again with the same text, such as after the active
+  // item changed, keeps the active item.
+  let appliedText = $signal(inputValue);
+  let root = $signal<HTMLElement>();
+
+  function collection() {
+    return document.getElementById(collectionId);
+  }
+
+  /** The input of the field: the first text input that is not in the collection. */
+  function field(): HTMLInputElement | undefined {
+    const list = collection();
+    return [...(root?.querySelectorAll<HTMLInputElement>('input, textarea') ?? [])].find(
+      (element) => !list?.contains(element) && element.type !== 'hidden',
+    );
+  }
+
+  function items() {
+    const list = collection();
+    return list ? enabledItems(list, `option|${MENU_ITEMS}`) : [];
+  }
+
+  /** Makes an item active, and names it on the input. */
+  function activate(key: Key | null) {
+    activeKey = key;
+    const item = key === null ? undefined : items().find((element) => keyOf(element) === key);
+    item?.scrollIntoView?.({ block: 'nearest' });
+    const input = field();
+    if (item?.id) {
+      input?.setAttribute('aria-activedescendant', item.id);
+    } else {
+      input?.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  // The input names the collection that it controls, once the code of the page runs.
+  $client(() => {
+    const input = field();
+    input?.setAttribute('aria-controls', collectionId);
+    input?.setAttribute('aria-autocomplete', 'list');
+  }, 'load');
+
+  /** The collection showed the items that match. The first one becomes active. */
+  function filtered(shown: HTMLElement[]) {
+    if (appliedText === filterText) {
+      return;
+    }
+    appliedText = filterText;
+    const first = items()[0];
+    activate(filterText !== '' && first && shown.length > 0 ? (keyOf(first) ?? null) : null);
+  }
+
+  function typed(event: Event) {
+    if (event.target === field()) {
+      changed((event.target as HTMLInputElement).value);
+    }
+  }
+
+  function changed(value: string) {
+    if (value === filterText) {
+      return;
+    }
+    inputValue = value;
+    filterText = value;
+    onInputChange?.(value);
+  }
+
+  // A field can change its text with no `input` event, such as a SearchField that Escape or its
+  // Button clears, so the text is read again once the key or the press has done its work.
+  function settle() {
+    setTimeout(() => {
+      const input = field();
+      if (input) {
+        changed(input.value);
+      }
+    }, 0);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if (event.target !== field()) {
+      return;
+    }
+    const list = collection();
+    const all = items();
+    const current = all.find((element) => keyOf(element) === activeKey);
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && list) {
+      const next = moveFrom(list, all, current, event.key === 'ArrowDown' ? 'next' : 'previous', true);
+      activate(next ? (keyOf(next) ?? null) : null);
+      return;
+    }
+    // Enter presses the active item, as a click with no pointer does.
+    if (event.key === 'Enter' && current) {
+      event.preventDefault();
+      current.click();
+      return;
+    }
+    if (event.key === 'Escape') {
+      settle();
+    }
+  }
+
+  $setContext(CollectionFocusContext, {
+    id: collectionId,
+    activeKey,
+    setActive: (key: Key) => activate(key),
+    filterText,
+    filter,
+    filtered,
+  });
+</script>
+
+<div
+  ref=root
+  style="display: contents"
+  onInput=typed
+  onClick=settle
+  onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))
+>{children}</div>

@@ -1,0 +1,34 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let last = $signal<Key>('nothing yet');
+  const commands = [
+    { id: 'new', name: 'New file' },
+    { id: 'open', name: 'Open file' },
+    { id: 'save', name: 'Save' },
+    { id: 'rename', name: 'Rename' },
+    { id: 'close', name: 'Close tab' },
+  ];
+</script>
+
+<div class="ui-select">
+  <Autocomplete>
+    <SearchField class="ui-field">
+      <Label>Commands</Label>
+      <Input class="ui-input" placeholder="Type a command" />
+    </SearchField>
+    <Menu class="ui-menu" aria-label="Commands" onAction=((key) => (last = key))>
+      #for (command of commands by command.id) {
+        <MenuItem id=(command.id) class="ui-menu-item">{command.name}</MenuItem>
+      }
+    </Menu>
+  </Autocomplete>
+</div>
+<p>Last command: {last}.</p>

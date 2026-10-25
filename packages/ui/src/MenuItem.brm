@@ -1,0 +1,154 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { keyAttribute } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import { TextContext } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { interact } from './interact.brm.ts';
+  import { MenuContext, SubmenuContext } from './menu.ts';
+
+  /**
+   * An item of a Menu, as MenuItem of React Aria Components. `id` is its key.
+   *
+   * - A press, Enter or Space acts on it, as the Menu says. Inside a SubmenuTrigger, it opens
+   *   the submenu instead.
+   * - The pointer moves focus to it.
+   * - In a menu that selects, it is a `menuitemradio` or a `menuitemcheckbox`, with
+   *   `aria-checked`.
+   * - `textValue` is the text that typeahead matches, when its content is more than text. A
+   *   Text with `slot="label"` names it, and one with `slot="description"` describes it, which
+   *   `hasLabel` and `hasDescription` say are there.
+   * - It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused`,
+   *   `data-focus-visible`, and `data-open` while its submenu is open.
+   */
+  const {
+    id,
+    textValue,
+    isDisabled = false,
+    hasLabel = false,
+    hasDescription = false,
+    onAction,
+    children,
+    ...rest
+  } = $props<{
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    /** It has a Text with `slot="label"`, which names it. */
+    hasLabel?: boolean;
+    /** It has a Text with `slot="description"`, which describes it. */
+    hasDescription?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const menu = $getContext(MenuContext);
+  const submenu = $getContext(SubmenuContext);
+  const ownId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const mode = $memo(menu?.selectionMode ?? 'none');
+  const selected = $memo(Boolean(menu?.selectedKeys.includes(id)));
+  const disabled = $memo(isDisabled || Boolean(menu?.disabledKeys.includes(id)));
+  // With focus in a field around the menu, the active item shows as focused.
+  const active = $memo(menu?.activeKey !== undefined && menu.activeKey === id);
+  const role = $memo(
+    submenu || mode === 'none' ? 'menuitem' : mode === 'single' ? 'menuitemradio' : 'menuitemcheckbox',
+  );
+
+  $setContext(TextContext, {
+    slots: {
+      default: {},
+      label: { id: labelId },
+      description: { id: descriptionId },
+    },
+  });
+
+  function pressed(event: PressEvent) {
+    if (submenu) {
+      // A key or a screen reader moves focus into the submenu, and a pointer leaves it here.
+      submenu.open('first', event.pointerType === 'keyboard' || event.pointerType === 'virtual');
+      return;
+    }
+    onAction?.();
+    menu?.action(id);
+  }
+
+  function hoverStarted(event: HoverEvent) {
+    // The pointer moves focus, as in a menu of the system, or makes the item active while focus
+    // stays in a field around the menu.
+    if (menu?.setActive) {
+      menu.setActive(id);
+    } else {
+      (event.target as HTMLElement).focus({ preventScroll: true });
+    }
+    submenu?.hoverStart();
+  }
+
+  function hoverEnded() {
+    submenu?.hoverEnd();
+  }
+
+  // The keys of an item are the Menu's, so the item takes the pointer, the focus and the hover,
+  // and a click with no pointer, such as from a screen reader or from the Menu for a key.
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled,
+    pressed,
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    hoverStarted,
+    hoverEnded,
+    () => {},
+    () => {},
+  );
+</script>
+
+<div
+  id=(submenu?.triggerId ?? ownId)
+  role=role
+  tabindex="-1"
+  data-key=(keyAttribute(id))
+  data-text-value=textValue
+  aria-checked=(role === 'menuitem' ? undefined : String(selected))
+  aria-disabled=(disabled ? 'true' : undefined)
+  aria-haspopup=(submenu ? 'menu' : undefined)
+  aria-expanded=(submenu ? String(submenu.isOpen) : undefined)
+  aria-controls=(submenu?.isOpen ? submenu.overlayId : undefined)
+  aria-labelledby=(hasLabel ? labelId : undefined)
+  aria-describedby=(hasDescription ? descriptionId : undefined)
+  data-selected=(selected || undefined)
+  data-disabled=(disabled || undefined)
+  data-open=(submenu?.isOpen || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || active || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  onPointerDown=onPointerDown
+  onPointerMove=onPointerMove
+  onPointerUp=onPointerUp
+  onPointerCancel=onPointerCancel
+  onPointerEnter=onPointerEnter
+  onPointerLeave=onPointerLeave
+  onClick=onClick
+  onFocus=onFocus
+  onBlur=onBlur
+  {...rest}
+>{children}</div>
