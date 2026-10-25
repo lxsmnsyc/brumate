@@ -19,6 +19,9 @@
     "typecheck": "brumate-tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@internationalized/number": "^3.6.9"
+  },
   "devDependencies": {
     "@brumate/tsc": "workspace:*",
     "brumate": "workspace:*",

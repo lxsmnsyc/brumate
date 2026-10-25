@@ -1,0 +1,135 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { NumberFormatter } from '@internationalized/number';
+  import { LabelContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+  import { snapToStep } from './numbers.ts';
+  import { SliderContext } from './slider.ts';
+
+  /**
+   * A slider with one thumb or several, as Slider of React Aria Components. It holds a Label, a
+   * SliderOutput, and a SliderTrack with a SliderThumb for each value.
+   *
+   * - `value` is a number for one thumb, or a list of numbers for several. `value=(n)` starts its
+   *   own, and `value=$bind(signal)` writes the caller's. `onChange` gets each change, and
+   *   `onChangeEnd` the value once a drag or a key ends.
+   * - The values stay between `minValue` and `maxValue` (0 and 100 by default), on a `step`, and
+   *   in order: a thumb cannot pass the thumbs next to it.
+   * - `formatOptions` and the locale format the values, for the output and for screen readers.
+   * - It is a group that the Label names, and shows `data-orientation` and `data-disabled`.
+   */
+  const {
+    minValue = 0,
+    maxValue = 100,
+    step = 1,
+    orientation = 'horizontal',
+    isDisabled = false,
+    formatOptions,
+    onChange,
+    onChangeEnd,
+    children,
+    ...rest
+  } = $props<{
+    minValue?: number;
+    maxValue?: number;
+    step?: number;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    formatOptions?: Intl.NumberFormatOptions;
+    onChange?: (value: number | number[]) => void;
+    onChangeEnd?: (value: number | number[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = minValue } = $props<{ value?: Bindable<number | number[]> }>();
+
+  const locale = $getContext(LocaleContext);
+  const id = $id();
+  const labelId = $id();
+  // Each value on a step, between the values next to it.
+  const values = $memo(order(Array.isArray(value) ? value : [value]));
+  const pageSize = $memo(
+    Math.max(snapToStep((maxValue - minValue) / 10, 0, undefined, step), step),
+  );
+  const labels = $memo(values.map((item) => format(item)));
+  const label = $memo(rangeLabel(values));
+
+  function order(list: number[]): number[] {
+    return list.map((item, index) =>
+      snapToStep(
+        item,
+        index === 0 ? minValue : list[index - 1],
+        index === list.length - 1 ? maxValue : list[index + 1],
+        step,
+      ),
+    );
+  }
+
+  function format(number: number): string {
+    return new NumberFormatter(locale.locale, formatOptions).format(number);
+  }
+
+  /** One value, two as a range, such as `20 – 80`, or more as a list. */
+  function rangeLabel(list: number[]): string {
+    if (list.length === 2) {
+      const formatter = new Intl.NumberFormat(locale.locale, formatOptions) as Intl.NumberFormat & {
+        formatRange?: (start: number, end: number) => string;
+      };
+      if (formatter.formatRange) {
+        return formatter.formatRange(list[0]!, list[1]!);
+      }
+    }
+    return list.map((item) => format(item)).join(', ');
+  }
+
+  function emit(list: number[]): number | number[] {
+    return Array.isArray(value) ? list : list[0]!;
+  }
+
+  function setThumb(index: number, next: number) {
+    if (isDisabled) {
+      return;
+    }
+    const low = index === 0 ? minValue : values[index - 1]!;
+    const high = index === values.length - 1 ? maxValue : values[index + 1]!;
+    const snapped = snapToStep(next, low, high, step);
+    if (snapped === values[index]) {
+      return;
+    }
+    const list = values.map((item, at) => (at === index ? snapped : item));
+    value = emit(list);
+    onChange?.(value);
+  }
+
+  function setDragging(_index: number, dragging: boolean) {
+    if (!dragging) {
+      onChangeEnd?.(emit(values));
+    }
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(SliderContext, {
+    values,
+    minValue,
+    maxValue,
+    step,
+    pageSize,
+    orientation,
+    isDisabled,
+    id,
+    labelId,
+    label,
+    labels,
+    setThumb,
+    setDragging,
+  });
+</script>
+
+<div
+  role="group"
+  aria-labelledby=labelId
+  data-orientation=orientation
+  data-disabled=(isDisabled || undefined)
+  {...rest}
+>{children}</div>

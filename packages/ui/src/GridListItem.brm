@@ -1,6 +1,6 @@
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import type { Key } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
@@ -33,6 +33,8 @@
   }>();
 
   const list = $getContext(ListBoxContext);
+  // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
+  const acts = $isPassed(onAction);
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
@@ -117,6 +119,8 @@
 
 <div
   role="row"
+  data-action=(acts || undefined)
+  onItemaction=(() => onAction?.())
   tabindex="-1"
   data-key=(keyAttribute(id))
   data-text-value=textValue

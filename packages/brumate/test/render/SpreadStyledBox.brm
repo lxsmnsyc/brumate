@@ -1,0 +1,14 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { size, as = 'section', ...rest } = $props<{ size: number; as?: string; [name: string]: unknown }>();
+</script>
+
+<style>
+  .box {
+    font-size: ${size}px;
+  }
+</style>
+
+<div class="box" style="color: red" {...rest}>Box</div>
+<{as} class="box tag" {...rest}>Tag</>

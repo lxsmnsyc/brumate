@@ -25,7 +25,7 @@
     typeahead,
   } from './collection.ts';
   import type { Key, SelectionMode } from './collection.ts';
-  import { DialogContext } from './contexts.ts';
+  import { DialogContext, FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
 
@@ -114,11 +114,13 @@
     disabledKeys,
     focusedId,
     action,
+    closeAll,
     activeKey: field?.activeKey,
     setActive: field?.setActive,
   });
   // The collections inside, such as of a submenu, have fields of their own.
   $setContext(CollectionFocusContext, null);
+  $setContext(FieldInputContext, null);
 
   // A field around the menu shows only the items that match its text: when the menu is on the
   // page, and each time the text changes.

@@ -2170,7 +2170,10 @@ function setAttribute(element: Element, name: string, value: unknown, spread = f
       field[name] = next;
     }
   }
-  const written = attributeText(name, value);
+  let written = attributeText(name, value);
+  if (name === 'style' && element.hasAttribute('b-v')) {
+    written = withVariables(element as HTMLElement, written);
+  }
   if (element.getAttribute(name) === (written ?? null)) {
     return;
   }
@@ -2182,6 +2185,23 @@ function setAttribute(element: Element, name: string, value: unknown, spread = f
   if (name === 'style') {
     hiding?.styled(element);
   }
+}
+
+/**
+ * A new style for a top-level element of a component, with the style variables of the component
+ * that the element has now, so a style that a spread passes on does not remove them.
+ */
+function withVariables(element: HTMLElement, style: string | undefined): string | undefined {
+  const variables: string[] = [];
+  for (const property of Array.from(element.style)) {
+    if (/^--s-[\w-]+-\d+$/.test(property)) {
+      variables.push(`${property}:${element.style.getPropertyValue(property)}`);
+    }
+  }
+  if (variables.length === 0) {
+    return style;
+  }
+  return style ? `${variables.join(';')};${style}` : variables.join(';');
 }
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
