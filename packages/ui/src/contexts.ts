@@ -164,5 +164,8 @@ export interface ToggleGroupState {
   toggle: (id: string) => void;
 }
 
+/** True inside a Toolbar, so a toolbar inside it is a group, as useToolbar of React Aria does. */
+export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar', false);
+
 export const ToggleGroupContext: Context<ToggleGroupState | null> =
   createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);

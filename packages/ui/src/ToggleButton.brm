@@ -27,8 +27,9 @@
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  // A disabled group disables every button, as in React Aria, even one with isDisabled=(false).
   const disabled = $memo(
-    isDisabled ?? (group?.isDisabled || slotProps(context, slot).isDisabled),
+    Boolean(isDisabled || group?.isDisabled || slotProps(context, slot).isDisabled),
   );
   // In a group, the group keeps the selection.
   const selected = $memo(group && id !== undefined ? group.selectedKeys.includes(id) : isSelected);
