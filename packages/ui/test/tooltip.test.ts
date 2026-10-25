@@ -100,17 +100,52 @@ it('hides on Escape and on a press of its trigger', async () => {
   await page.waitFor(() => expect(find('.tip')).toBeNull());
 });
 
-it('shows only on focus with trigger="focus"', async () => {
+it('shows only on focus with trigger="focus", and stays when the pointer passes over', async () => {
   const page = await tooltips();
   pointer('pointerenter', page.get('.focus-only'));
   await wait(100);
   expect(find('.focus-tip')).toBeNull();
+  press('Tab', document.body);
+  page.get('.focus-only').focus();
+  await page.waitFor(() => expect(find('.focus-tip')).not.toBeNull());
+  pointer('pointerenter', page.get('.focus-only'));
+  pointer('pointerleave', page.get('.focus-only'));
+  await wait(100);
+  expect(find('.focus-tip')).not.toBeNull();
+});
+
+it('hides on Escape inside a popover, and the popover stays open', async () => {
+  const page = await tooltips();
+  pressWith(page.get('.menu-trigger'));
+  await page.waitFor(() => expect(find('.inside')).not.toBeNull());
+  await wait(600);
+  pointer('pointerenter', find('.inside')!);
+  await page.waitFor(() => expect(find('.inside-tip')).not.toBeNull());
+  press('Escape', find('.inside')!);
+  await page.waitFor(() => expect(find('.inside-tip')).toBeNull());
+  await wait(50);
+  expect(find('.tip-popover')).not.toBeNull();
+});
+
+it('forgets the delay of a trigger that leaves the page, so the next tooltip still waits', async () => {
+  const page = await tooltips();
+  await wait(600);
+  pointer('pointerenter', page.get('.gone'));
+  page.get('.drop').click();
+  await page.waitFor(() => expect(page.container.querySelector('.gone')).toBeNull());
+  await wait(200);
+  expect(find('.gone-tip')).toBeNull();
+  // Nothing warmed up, so another tooltip waits for its delay.
+  pointer('pointerenter', page.get('.other'));
+  await wait(20);
+  expect(find('.other-tip')).toBeNull();
+  await page.waitFor(() => expect(find('.other-tip')).not.toBeNull());
 });
 
 it('keeps what a DialogTrigger around it gives the button', async () => {
   const page = await tooltips();
   const settings = page.get('.settings');
-  expect(settings.getAttribute('aria-haspopup')).toBe('dialog');
+  expect(settings.hasAttribute('aria-expanded')).toBe(true);
   pointer('pointerenter', settings);
   await page.waitFor(() => expect(find('.settings-tip')).not.toBeNull());
   // The press hides the tooltip and opens the popover, which finds the button by its ID.
