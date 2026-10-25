@@ -1,0 +1,9 @@
+<script>
+  import KeptItems from './KeptItems.brm';
+
+  function even(value: number) {
+    return value % 2 === 0;
+  }
+</script>
+
+<KeptItems items=([1, 2, 3, 4, 5, 6]) keep=even />

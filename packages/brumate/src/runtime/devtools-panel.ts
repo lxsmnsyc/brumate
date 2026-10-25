@@ -1251,7 +1251,7 @@ export function togglePanel(
         for (const raw of (handled.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
           const [head, ref = ''] = raw.split('=') as [string, string];
           const [handlerComponent, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
-          const part = /^[hct]\d/.test(name) ? name : 'update';
+          const part = /^[hctv]\d/.test(name) ? name : 'update';
           const load =
             state.loads.get(`${handlerComponent}:${part}`) ??
             state.loads.get(`${handlerComponent}:all`);
@@ -1741,7 +1741,7 @@ export function togglePanel(
       const [head, ref = ''] = raw.split('=') as [string, string];
       const [type, ...modifiers] = head.split(':');
       const [component, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
-      const part = /^[hct]\d/.test(name) ? name : 'update';
+      const part = /^[hctv]\d/.test(name) ? name : 'update';
       const load = state.loads.get(`${component}:${part}`) ?? state.loads.get(`${component}:all`);
       const info = known.get(component);
       let status = pill('not loaded');

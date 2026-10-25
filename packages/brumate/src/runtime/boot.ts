@@ -229,7 +229,7 @@ export function boot(
     if (!ref.startsWith('$')) {
       // A handler that a spread passed on names its scope after `@`.
       const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-      found = [id, /^[hct]\d/.test(name) ? name : 'update'];
+      found = [id, /^[hctv]\d/.test(name) ? name : 'update'];
     }
     parts.set(ref, found);
     return found;

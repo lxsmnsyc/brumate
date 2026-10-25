@@ -1282,7 +1282,7 @@ class Analyzer {
             scope,
             attribute.value,
             `${isComponent ? 'prop' : 'attribute'} ${tag}.${attribute.name}`,
-            { owner: node },
+            isComponent ? { owner: node, valueProp: true } : { owner: node },
           );
           break;
         case 'event': {

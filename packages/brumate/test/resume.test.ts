@@ -2287,6 +2287,23 @@ describe('style variables with a spread', () => {
   });
 });
 
+describe('function props that return values', () => {
+  it('returns the result of a function prop in a memo, in markup and in a handler', async () => {
+    await resume('valueFilter', {});
+    const shown = document.querySelector('.shown')!;
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept', 'dropped']));
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(shown.textContent).toBe('2,4,6'));
+    expect(marks().at(-1)).toBe('kept');
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(document.querySelector('.picked')!.textContent).toBe('true'));
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];
