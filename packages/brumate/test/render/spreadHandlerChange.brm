@@ -1,0 +1,21 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+
+  let guarded = $signal(false);
+  let presses = $signal(0);
+
+  function pressed() {
+    presses++;
+  }
+
+  // The wrapper of the handler follows the state.
+  function keys(guard: boolean) {
+    return guard
+      ? { 'data-guarded': '', onKeyDown: $handler(prevent(pressed, 'Enter')) }
+      : { onKeyDown: $handler(pressed) };
+  }
+</script>
+
+<input class="field" {...keys(guarded)} onClick=(() => (guarded = !guarded)) />
+<p class="presses">{presses}</p>
