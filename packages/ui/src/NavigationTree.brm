@@ -1,0 +1,40 @@
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+  import { NavigationTreeContext, ancestorsOf } from './navigation-tree.ts';
+  import type { NavigationNode } from './navigation-tree.ts';
+  import Tree from './Tree.brm';
+
+  /**
+   * A tree of links, such as the pages of a site, as NavigationTree of React Aria Components. It
+   * takes `items` and an `item` template as a Tree does, and each item can have an `href`. The
+   * template renders a NavigationTreeItem with a NavigationTreeItemLink.
+   *
+   * - Nothing is selected. `selectedRoute` names the page that shows: its item is the current
+   *   one, and its link has `aria-current="page"`.
+   * - The links are in the order of Tab. Up and Down move between the rows, Right opens a row,
+   *   and Left closes it or moves to the row that holds it.
+   * - `expandedKeys` holds the keys of the open items, as in a Tree.
+   * - It is no landmark. Put it in a `nav` with a label, as React Aria says.
+   */
+  const { selectedRoute = null, items, item, onExpandedChange, ...rest } = $props<{
+    selectedRoute?: string | null;
+    items: readonly NavigationNode[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items are the caller's.
+    item: (node: any) => unknown;
+    onExpandedChange?: (keys: Key[]) => void;
+    [attribute: string]: unknown;
+  }>();
+  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<Key[]> }>();
+
+  const ancestors = $memo(ancestorsOf(items, selectedRoute));
+  $setContext(NavigationTreeContext, { selectedRoute, ancestors });
+
+  function expanded(keys: Key[]) {
+    expandedKeys = keys;
+    onExpandedChange?.(keys);
+  }
+</script>
+
+<Tree {items} {item} selectionMode="none" keyboardNavigationBehavior="tab" {expandedKeys} onExpandedChange=expanded {...rest} />

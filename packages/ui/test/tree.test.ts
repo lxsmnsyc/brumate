@@ -92,6 +92,10 @@ it('opens and closes with the chevron, which keeps focus on the row', async () =
   await page.waitFor(() => expect(keys(page, '.tree')).toEqual(['docs', 'photos', 'notes']));
   expect(state(page)[0]).toEqual([]);
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-docs')));
+  // The label follows the state, so the second press comes after the first is done.
+  await page.waitFor(() =>
+    expect(page.get('.chevron-docs').getAttribute('aria-label')).toBe('Expand'),
+  );
   pressWith(page.get('.chevron-docs'));
   await page.waitFor(() => expect(keys(page, '.tree')).toContain('cv'));
   expect(page.get('.chevron-docs').getAttribute('aria-label')).toBe('Collapse');

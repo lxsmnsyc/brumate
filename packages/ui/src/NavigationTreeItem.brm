@@ -1,0 +1,39 @@
+<script>
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { NavigationLinkContext, NavigationTreeContext } from './navigation-tree.ts';
+  import { TreeItemAttributesContext, TreeRowContext } from './tree.ts';
+  import TreeItem from './TreeItem.brm';
+
+  /**
+   * A row of a NavigationTree, as NavigationTreeItem of React Aria Components. It is a TreeItem
+   * with an `href`, which its NavigationTreeItemLink links to.
+   *
+   * - It shows `data-href`, `data-current` when `href` is the route of the tree, and
+   *   `data-current-ancestor` while it is closed and holds the current item.
+   */
+  const { href, textValue, isDisabled, onAction, children, ...rest } = $props<{
+    href?: string;
+    textValue?: string;
+    isDisabled?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const tree = $getContext(NavigationTreeContext);
+  const place = $getContext(TreeRowContext);
+  const current = $memo(href !== undefined && href !== '' && tree?.selectedRoute === href);
+  const ancestor = $memo(
+    Boolean(place && !place.row.isExpanded && tree?.ancestors.includes(place.row.key)),
+  );
+  $setContext(NavigationLinkContext, { href, isCurrent: current });
+  // The row gets its attributes through a context, so the TreeItem's own props stay as they are.
+  $setContext(TreeItemAttributesContext, {
+    'data-href': href || undefined,
+    'data-current': current || undefined,
+    'data-current-ancestor': ancestor || undefined,
+    ...rest,
+  });
+</script>
+
+<TreeItem {textValue} {isDisabled} {onAction}>{children}</TreeItem>

@@ -48,6 +48,10 @@
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import Tree from '@brumate/ui/Tree.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
   import Table from '@brumate/ui/Table.brm';
   import TableHeader from '@brumate/ui/TableHeader.brm';
   import Column from '@brumate/ui/Column.brm';
@@ -150,6 +154,22 @@
     ],
   });
   let openFolders = $signal<Key[]>([]);
+  // A tree of links to the sections of this page.
+  interface Section extends NavigationNode {
+    title: string;
+    children?: Section[];
+  }
+  const sections: Section[] = [
+    {
+      id: 'collections',
+      title: 'Collections',
+      children: [
+        { id: 'tree-link', title: 'Tree', href: '#tree' },
+        { id: 'table-link', title: 'Table', href: '#table' },
+      ],
+    },
+    { id: 'slider-link', title: 'Slider', href: '#slider' },
+  ];
   // A table of planets, sorted by the column that the user picks.
   const planets = [
     { id: 'mercury', name: 'Mercury', moons: 0 },
@@ -579,6 +599,13 @@
   <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
 </section>
 
+<section aria-labelledby="navigation-tree">
+  <h2 id="navigation-tree">NavigationTree</h2>
+  <nav aria-label="Sections">
+    <NavigationTree class="section-tree" aria-label="Sections" items=sections item=sectionRow selectedRoute="#table" />
+  </nav>
+</section>
+
 <section aria-labelledby="table">
   <h2 id="table">Table</h2>
   <ResizableTableContainer class="planet-box">
@@ -735,6 +762,15 @@
 </section>
 
 <ToastRegion class="toasts" toast=notice transition />
+
+#template sectionRow(section: Section) {
+  <NavigationTreeItem class=(`section-row section-${section.id}`) textValue=(section.title) href=(section.href)>
+    #if (section.children) {
+      <Button slot="chevron" class="section-chevron">▸</Button>
+    }
+    <NavigationTreeItemLink class=(`section-link section-link-${section.id}`)>{section.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}
 
 #template folderRow(folder: TreeDataNode<Folder>) {
   <TreeItem class=(`folder-row folder-${folder.id}`) textValue=(folder.value.name)>

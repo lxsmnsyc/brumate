@@ -64,7 +64,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'selection-indicator',
     ],
   },
-  { title: 'Data', pages: ['table', 'tree', 'data'] },
+  { title: 'Data', pages: ['table', 'tree', 'navigation-tree', 'data'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -300,6 +300,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Rows that nest and open and close, such as files in folders.',
     href: 'tree',
     demo: 'TreeDemo',
+  },
+  {
+    title: 'NavigationTree',
+    summary: 'A tree of links that shows the page that the user is on.',
+    href: 'navigation-tree',
+    demo: 'NavigationTreeDemo',
   },
   {
     title: 'List and tree data',

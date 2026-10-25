@@ -50,6 +50,7 @@
     disabledKeys = [],
     disallowEmptySelection = false,
     escapeKeyBehavior = 'clearSelection',
+    keyboardNavigationBehavior = 'arrow',
     onAction,
     onSelectionChange,
     onExpandedChange,
@@ -62,6 +63,11 @@
     disabledKeys?: Key[];
     disallowEmptySelection?: boolean;
     escapeKeyBehavior?: 'clearSelection' | 'none';
+    /**
+     * `'tab'` keeps the controls of the rows, such as links, in the order of Tab, and gives
+     * them the focus, as a NavigationTree does. The arrow keys still move between rows.
+     */
+    keyboardNavigationBehavior?: 'arrow' | 'tab';
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
     onExpandedChange?: (keys: Key[]) => void;
@@ -171,6 +177,10 @@
   function focusIn(event: FocusEvent) {
     const element = root;
     const row = rowOf(event.target);
+    if (tabMode && row && element) {
+      setLastFocused(element, keyOf(row)!);
+      return;
+    }
     if (element && row) {
       // While a row has focus, Tab leaves the list rather than stopping at it.
       element.tabIndex = -1;
@@ -180,7 +190,8 @@
 
   function focusOut(event: FocusEvent) {
     const element = root;
-    if (element && !element.contains(event.relatedTarget as Node | null)) {
+    // In tab mode the tree is no stop of its own, since its links are.
+    if (element && !tabMode && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
     }
   }
@@ -190,6 +201,13 @@
     const stops = [row, ...tabbables(row)];
     const at = stops.indexOf(target);
     focusItem(stops[(at + (forward ? 1 : -1) + stops.length) % stops.length]);
+  }
+
+  const tabMode = keyboardNavigationBehavior === 'tab';
+
+  /** Focuses a row, or in tab mode its first control, such as its link. */
+  function focusRow(row: HTMLElement | undefined) {
+    focusItem(tabMode && row ? (tabbables(row)[0] ?? row) : row);
   }
 
   function keyDown(event: KeyboardEvent) {
@@ -211,6 +229,10 @@
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
     if (event.key === 'Tab') {
+      // In tab mode, Tab goes through the controls of the rows, as the browser moves it.
+      if (tabMode) {
+        return;
+      }
       // Tab leaves the list: the browser moves on from its last control, or back from the list.
       const all = tabbables(element);
       if (event.shiftKey) {
@@ -233,7 +255,7 @@
     if (movement) {
       const next = moveFrom(element, items, row, movement, false);
       const nextKey = next ? keyOf(next) : undefined;
-      focusItem(next);
+      focusRow(next);
       if (nextKey === undefined || selectionMode === 'none') {
         return;
       }
@@ -251,8 +273,9 @@
       const expand = (event.key === 'ArrowRight') !== rtl;
       const state = key === undefined ? undefined : rowFor(key);
       const enabled = row.getAttribute('aria-disabled') !== 'true';
-      // On the row itself: Right opens it, and Left closes it or moves to the row that holds it.
-      if (target === row && state && enabled) {
+      // On the row itself, or anywhere in it in tab mode: Right opens it, and Left closes it or
+      // moves to the row that holds it.
+      if ((target === row || tabMode) && state && enabled) {
         if (expand && state.hasChildItems && !state.isExpanded) {
           toggleExpanded(state.key);
           return;
@@ -262,11 +285,21 @@
           return;
         }
         if (!expand && state.parent !== undefined) {
-          focusItem(itemsOf(element, 'row').find((item) => keyOf(item) === state.parent));
+          focusRow(itemsOf(element, 'row').find((item) => keyOf(item) === state.parent));
           return;
         }
       }
-      across(row, target, expand);
+      // In tab mode, Left and Right only open and close rows, as in React Aria.
+      if (!tabMode) {
+        across(row, target, expand);
+      }
+      return;
+    }
+    // A link of a row in tab mode keeps Enter and Space, and letters move to a row.
+    if (tabMode && target !== row) {
+      if (event.key.length === 1 && event.key !== ' ' && !toggle) {
+        focusRow(typeahead(element, items, row, event));
+      }
       return;
     }
     if (target !== row) {
@@ -318,7 +351,7 @@
   ref=root
   id=gridId
   role="treegrid"
-  tabindex="0"
+  tabindex=(tabMode ? undefined : '0')
   data-collection
   aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
   onFocus=focused

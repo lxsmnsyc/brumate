@@ -835,6 +835,25 @@
     padding: 0 0.5rem;
   }
 
+  :global(.ui-navlink) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :global(.ui-navlink[aria-current='page']) {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  :global(.ui-navrow[data-current-ancestor])::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin-inline-start: auto;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
   :global(.ui-chevron) {
     display: inline-grid;
     place-items: center;
