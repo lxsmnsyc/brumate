@@ -5,7 +5,7 @@
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
   import { CheckboxGroupContext } from './contexts.ts';
-  import { describedBy } from './fields.ts';
+  import { describedBy, isFirstInvalid } from './fields.ts';
 
   /**
    * A checkbox, as Checkbox of React Aria Components: a <label> around a native checkbox, which
@@ -47,9 +47,10 @@
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
   const required = $memo(Boolean(isRequired || group?.isRequired));
-  // The browser checked the box on a submit, and it was not valid.
+  // The browser checked the box on a submit, and it was not valid. In a group, the group keeps
+  // this state for every box, as in React Aria, so a check of any box clears all of them.
   let failed = $signal(false);
-  const invalid = $memo(Boolean(isInvalid || group?.isInvalid || failed));
+  const invalid = $memo(Boolean(isInvalid || (group ? group.isInvalid : failed)));
 
   const {
     hovered,
@@ -78,6 +79,8 @@
       return;
     }
     failed = false;
+    // A click clears the indeterminate state of the input. It stays while the prop says so.
+    input.indeterminate = isIndeterminate;
     if (group) {
       group.toggle(value ?? '', input.checked);
     } else {
@@ -87,9 +90,14 @@
   }
 
   // The browser shows no message of its own. The group shows it in its FieldError.
+  // The first invalid field of the form gets focus, as the browser does with its own message.
   function invalidated(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
     failed = true;
-    group?.onInvalid((event.currentTarget as HTMLInputElement).validationMessage);
+    group?.onInvalid(input.validationMessage);
+    if (isFirstInvalid(input)) {
+      input.focus();
+    }
   }
 </script>
 
@@ -152,7 +160,8 @@
   {children}
   #if (isIndeterminate) {
     <script>
-      // A box is indeterminate only from code, so only an indeterminate box loads any.
+      // A box is indeterminate only from code, so only an indeterminate box loads any. It loads
+      // with the page, so a screen reader soon reads the box as mixed.
       let marker = $signal<HTMLElement>();
       $client(() => {
         const input = marker?.parentElement?.querySelector('input');
@@ -164,7 +173,7 @@
             input.indeterminate = false;
           }
         };
-      }, 'idle');
+      }, 'load');
     </script>
     <span ref=marker hidden></span>
   }
