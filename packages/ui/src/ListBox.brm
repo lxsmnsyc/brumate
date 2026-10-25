@@ -3,6 +3,7 @@
     $client,
     $effect,
     $getContext,
+    $handler,
     $id,
     $isPassed,
     $memo,
@@ -274,6 +275,14 @@
       }
     }
   }
+
+  // Only the arrow keys of its axis are prevented, so the others keep their default, such as
+  // scrolling the page.
+  function keys(horizontal: boolean) {
+    return horizontal
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space')) }
+      : { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Space')) };
+  }
 </script>
 
 <div
@@ -289,6 +298,6 @@
   onFocus=focused
   onFocusIn=focusIn
   onFocusOut=focusOut
-  onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space'))
+  {...keys(orientation === 'horizontal')}
   {...rest}
 >{children}</div>
