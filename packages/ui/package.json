@@ -1,0 +1,34 @@
+{
+  "name": "@brumate/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Accessible, unstyled components for brumate, after React Aria Components and Terracotta",
+  "license": "MIT",
+  "files": [
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    "./*.brm": "./src/*.brm",
+    "./*.brm.ts": "./src/*.brm.ts"
+  },
+  "scripts": {
+    "typecheck": "brumate-tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@brumate/tsc": "workspace:*",
+    "brumate": "workspace:*",
+    "happy-dom": "^20.14.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  },
+  "peerDependencies": {
+    "brumate": "workspace:*"
+  },
+  "brumate": {
+    "version": 1,
+    "dir": "src"
+  }
+}

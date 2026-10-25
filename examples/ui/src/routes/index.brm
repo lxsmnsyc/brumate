@@ -1,0 +1,19 @@
+<script>
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+</script>
+
+#head {
+  <title>@brumate/ui</title>
+}
+
+<h1>@brumate/ui</h1>
+<p>Every part of the package, with the styles of this page only. Tab from the top of the page to see the link that skips to the content.</p>
+
+<section aria-labelledby="visually-hidden">
+  <h2 id="visually-hidden">VisuallyHidden</h2>
+  <p>The button shows only a mark, and its name is hidden from sight.</p>
+  <button type="button" class="close">
+    <span aria-hidden="true">×</span>
+    <VisuallyHidden>Close</VisuallyHidden>
+  </button>
+</section>
