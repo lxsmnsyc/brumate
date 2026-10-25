@@ -398,6 +398,14 @@ describe('memos that read memos', () => {
     }
     expect(rest).toMatch(/<p class="label">(<!--t\d+:0-->)?ADA(<!--\/t-->)?<\/p>/);
   });
+
+  it('gives a function that the markup calls the memos that only it reads', async () => {
+    const module = await import(new URL('memoInFunction.brm.ts', output).href);
+    const { html } = await renderParts(module.default, {});
+    expect(html).toContain('data-sends');
+    const pending = await renderParts(module.default, { isPending: true });
+    expect(pending.html).toContain('data-plain');
+  });
 });
 
 // The values of the elements in classes.brm, in order, as the runtime gets them.
