@@ -973,6 +973,14 @@ export async function run({ browser, url, runner }) {
     await page.locator('.folder-src .folder-chevron').click();
     await page.waitForFunction(() => document.querySelector('.folder-app') === null);
     await page.waitForFunction(() => document.activeElement?.classList.contains('folder-src'));
+    // The tree data adds a file, which shows once its folder opens.
+    await page.locator('.folder-add').click();
+    await page.locator('.folder-src .folder-chevron').click();
+    await page.waitForFunction(() => document.querySelector('.folder-main') !== null);
+    assert(
+      (await page.locator('.folder-main').getAttribute('aria-posinset')) === '3',
+      'The added file is not the third in its folder',
+    );
   });
 
   await step(

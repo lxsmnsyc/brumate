@@ -1,0 +1,46 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import { treeData } from '@brumate/ui/data.brm.ts';
+  import type { TreeDataNode } from '@brumate/ui/data.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface File {
+    id: string;
+    name: string;
+    children?: File[];
+  }
+
+  const { items, selectedKeys, append, remove, removeSelectedItems } = treeData<File>({
+    initialItems: [
+      { id: 'docs', name: 'Documents', children: [{ id: 'cv', name: 'cv.pdf' }] },
+      { id: 'notes', name: 'notes.txt' },
+    ],
+  });
+  let count = $signal(0);
+
+  function add() {
+    count++;
+    append('docs', { id: `new-${count}`, name: `untitled-${count}.md` });
+  }
+</script>
+
+<Tree class="ui-tree" aria-label="Files" items=items item=file selectionMode="multiple" selectedKeys=$bind(selectedKeys) expandedKeys=(['docs']) />
+<p>
+  <Button class="ui-button" onPress=add>Add to Documents</Button>
+  <Button class="ui-button" onPress=removeSelectedItems>Remove selected</Button>
+</p>
+
+#template file(node: TreeDataNode<File>) {
+  <TreeItem class="ui-treerow" textValue=(node.value.name)>
+    #if (node.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    {node.value.name}
+    <Button class="ui-button ui-row-action" aria-label=(`Remove ${node.value.name}`) onPress=(() => remove(node.id))>×</Button>
+  </TreeItem>
+}

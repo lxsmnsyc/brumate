@@ -49,6 +49,8 @@
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import Tree from '@brumate/ui/Tree.brm';
   import TreeItem from '@brumate/ui/TreeItem.brm';
+  import { treeData } from '@brumate/ui/data.brm.ts';
+  import type { TreeDataNode } from '@brumate/ui/data.ts';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
   import Calendar from '@brumate/ui/Calendar.brm';
@@ -125,17 +127,19 @@
     name: string;
     children?: Folder[];
   }
-  const folders: Folder[] = [
-    {
-      id: 'src',
-      name: 'src',
-      children: [
-        { id: 'app', name: 'app.brm' },
-        { id: 'lib', name: 'lib', children: [{ id: 'util', name: 'util.ts' }] },
-      ],
-    },
-    { id: 'readme', name: 'README.md' },
-  ];
+  const { items: folders, append: addFolderItem } = treeData<Folder>({
+    initialItems: [
+      {
+        id: 'src',
+        name: 'src',
+        children: [
+          { id: 'app', name: 'app.brm' },
+          { id: 'lib', name: 'lib', children: [{ id: 'util', name: 'util.ts' }] },
+        ],
+      },
+      { id: 'readme', name: 'README.md' },
+    ],
+  });
   let openFolders = $signal<Key[]>([]);
   let pickedFolder = $signal<Key[]>([]);
   let petSent = $signal('');
@@ -546,6 +550,7 @@
   <h2 id="tree">Tree</h2>
   <Tree class="folder-tree" aria-label="Folders" items=folders item=folderRow selectionMode="single" selectedKeys=$bind(pickedFolder) expandedKeys=$bind(openFolders) />
   <p class="folder-state">{openFolders.join(',') || 'None'} / {pickedFolder.join(',') || 'None'}</p>
+  <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
 </section>
 
 <section aria-labelledby="numberfield">
@@ -679,12 +684,12 @@
 
 <ToastRegion class="toasts" toast=notice transition />
 
-#template folderRow(folder: Folder) {
-  <TreeItem class=(`folder-row folder-${folder.id}`) textValue=(folder.name)>
+#template folderRow(folder: TreeDataNode<Folder>) {
+  <TreeItem class=(`folder-row folder-${folder.id}`) textValue=(folder.value.name)>
     #if (folder.children) {
       <Button slot="chevron" class="folder-chevron">▸</Button>
     }
-    {folder.name}
+    {folder.value.name}
   </TreeItem>
 }
 
