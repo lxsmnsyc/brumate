@@ -9,6 +9,7 @@
   let volume = $signal(40);
   let range = $signal([20, 80]);
   let ended = $signal<unknown>(null);
+  let levels = $signal([10, 50, 90]);
 </script>
 
 <main class="page">
@@ -27,5 +28,16 @@
       <SliderThumb class="high" index=(1) aria-label="Maximum" />
     </SliderTrack>
   </Slider>
-  <p class="state">{JSON.stringify([volume, range, ended])}</p>
+  <form class="form">
+    <Slider class="levels" value=$bind(levels) step=(10)>
+      <Label>Levels</Label>
+      <SliderOutput class="levels-output" />
+      <SliderTrack class="levels-track">
+        <SliderThumb class="l0" index=(0) name="l0" aria-label="Low" />
+        <SliderThumb class="l1" index=(1) aria-label="Middle" isDisabled />
+        <SliderThumb class="l2" index=(2) aria-label="High" />
+      </SliderTrack>
+    </Slider>
+  </form>
+  <p class="state">{JSON.stringify([volume, range, ended, levels])}</p>
 </main>
