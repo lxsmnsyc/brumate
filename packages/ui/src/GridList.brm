@@ -9,6 +9,7 @@
     ListBoxContext,
     enabledItems,
     focusItem,
+    itemsOf,
     isTyping,
     keyOf,
     keysBetween,
