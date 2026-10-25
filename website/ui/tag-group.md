@@ -25,7 +25,7 @@ A group of tags, which the user can select and remove.
 
 With `onRemove`, the group can remove tags. It gets the keys, and the caller removes them from its list.
 
-- Delete and Backspace remove the tag that has focus, or all the selected tags when it is one of them.
+- Delete and Backspace remove the tag that has focus, or all the selected tags when it is one of them. Focus moves to the next tag, or to the list when no tag that can take focus stays.
 - A `Button` with `slot="remove"` in a tag removes that tag. It is out of the order of Tab, and its label names the tag.
 - Focus moves to the next tag, or to the one before when it was the last.
 
