@@ -80,7 +80,7 @@ export function u6($$s) {
 A component that a parent renders inside a block that changes needs its render function on the client. The compiler writes it into a third module, the render module, which a bundler loads as `App.brm?brumate-render`.
 
 - It is the server render function without `async`. The component's script runs, and the result is an HTML string with the same markers.
-- The component's root scope gets its component ID, so the child's client module loads on its first event, as it does for a child that the server rendered.
+- The component's root scope gets its component ID, so the child's client module loads when its scope is made, as it does for a child that the server rendered.
 - A function passed as a prop calls the parent's exported handler, so it writes the parent's slots.
 - A parent's client module imports a child's render module only when one of its changing blocks renders the child. Other parents never load it.
 - `#template`s that a changing block calls are copied into its render function.
@@ -101,19 +101,19 @@ The [Vite plugin](../website/docs/reference-plugin.md) runs the analysis when th
 
 The compiler splits each component's client code itself. It does not depend on another splitter or on the bundler.
 
-| Part             | Holds                                                                      | Loads                                         |
-| ---------------- | -------------------------------------------------------------------------- | --------------------------------------------- |
-| Entry, `App.brm` | The component ID, the props map, the update table `g`, and `load(part)`    | On the first use of the component             |
-| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback | On its event or trigger                       |
-| `update`         | Memos, bindings, block updates, effects, list helpers and render functions | On the first write that reaches the component |
-| `shared`         | Functions that more than one part calls, and the module script             | With the parts that import it                 |
+| Part             | Holds                                                                               | Loads                         |
+| ---------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Entry, `App.brm` | The component ID, the props map, the update table `g`, and the exports of each part | With the page                 |
+| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback          | With the page                 |
+| `update`         | Memos, bindings, block updates, effects, list helpers and render functions          | With the page                 |
+| `shared`         | Functions that more than one part calls, and the module script                      | With the parts that import it |
 
 - A local function that only one part calls goes into that part.
 - Each part imports only what its code reads. Server function stubs are copied into each part that calls them.
-- When the parts of a component are smaller than the `merge` option in all, the entry holds their code and has no `load`. The first event then loads one module instead of several. The size is an estimate of the minified size: without comments, extra whitespace and long generated names. Components with a `shared` part keep their parts. `compile` does not merge by default, and the Vite plugin merges below `DEFAULT_MERGE`, 4096 bytes. At that size one module costs less than the entry and the parts that a first event loads, each with its own request, imports and gzip header. The parts also wait for the entry, so a split component takes 2 round trips on a cold first event.
-- The loader of a handler part that can write a slot that an update reads also starts loading `update`, so the write does not wait for another request.
+- When the parts of a component are smaller than the `merge` option in all, the entry holds their code. The page then loads one module for it instead of several. The size is an estimate of the minified size: without comments, extra whitespace and long generated names. Components with a `shared` part keep their parts. `compile` does not merge by default, and the Vite plugin merges below `DEFAULT_MERGE`, 4096 bytes. At that size one module costs less than the entry and its parts, each with its own imports and gzip header.
 - A component with no client code, such as a page of static markup, has no parts. A build leaves it out of the client: it has no entry and no place in the loader's registry, and the core treats it as a component with nothing to update.
-- The core finds an export by its name: `h<n>` and `c<n>` are in the part of the same name, and everything else is in `update`.
+- The entry exports the exports of every part, with `export * from`, so the core finds an export by its name on the entry.
+- A build groups the client code into one bundle per root component: a route, a layout or a page. The bundle holds the entries and parts of every component that the root can render.
 
 A bundler loads a part as `App.brm?brumate-client&part=<name>`.
 
@@ -125,13 +125,11 @@ The runtime has two parts.
 
 The loader, `brumate/loader`:
 
-- Is the only code that runs before the first interaction.
 - Listens to the events in `b-on` attributes on `document`, and walks from the target outwards.
-- Applies event modifiers before anything loads.
+- Applies event modifiers while the event dispatches, before the code of the page has loaded.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
-- Preloads a component's module and the handler's part when the pointer is over one of its handlers.
-- After `load`, when the browser is idle, preloads the core and the code of the handlers of elements in or near the viewport, so a later first event needs no request. It skips `prefetch="none"`, a browser that asks to save data, and 2G connections. The `preload` option turns it off.
-- Imports the core and the component's module at the same time on the first event, and calls the handler.
+- Imports the core at once, and starts the bundles of the components in the page state with it.
+- Holds an event that comes before the code has loaded, and hands it to the core when it has.
 - Leaves out the code of client navigation when the Vite plugin has `navigate: false`. The plugin then starts the loader with `startWithoutNavigation` from `brumate/static-loader`, a module without the imports of the navigation code.
 
 ```ts
@@ -140,9 +138,11 @@ import { start } from 'brumate/loader';
 start({ load: (id) => import(`/assets/${id}.js`) });
 ```
 
-The core, `brumate/client`, loads on the first event:
+The core, `brumate/client`, loads when the page starts:
 
 - Reads the state records that the page's scripts handed over, and links scope instances to their parents. It does not include seroval.
+- Loads the client entry and the parts of each component that has a scope on the page.
+- Calls functions of other components, such as function props, context functions and templates, at once. A call returns its result, and calls run in the order that they are made.
 - Writes slots and calls the updates in `g`.
 - Finds elements by `b-b`, and text, blocks and list items by their comment markers. A text that is the whole content of an element, and a list item that is one element, are found by the element's `b-b`. A handler on an element without `b-b` runs with the scope of the nearest element around it that has one.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
@@ -164,7 +164,7 @@ These modules read the core with `import()`, not a static import. A static impor
 
 Handlers run after the event has finished dispatching, so the core passes them an event whose `currentTarget` is still the element.
 
-Parts load in parallel, but handlers start in the order of their events. Typing and then submitting runs the input handler before the submit handler, even when the submit handler's part loads first.
+Events that come before the code has loaded run in their order once it has. Typing and then submitting runs the input handler before the submit handler.
 
 ## Size
 
@@ -184,7 +184,7 @@ Minified, from the production build of `examples/todos`, with `gzip -9`:
 | `Counter.brm`: one module                              | 324 B   | 268 B  |
 | `_layout.brm`: one module                              | 313 B   | 266 B  |
 
-The loader is the only code that loads before an interaction. The core loads once, on the first event. The page state is code that the page's scripts run, so the core needs no reader for it. seroval loads with the server function code, on the first call, which reads and writes seroval JSON.
+The loader imports the core at once, with the bundles of the page. The page state is code that the page's scripts run, so the core needs no reader for it. seroval loads with the server function code, on the first call, which reads and writes seroval JSON.
 
 Before the state was code, it was seroval JSON, and the core held seroval: 46339 B, 14971 B gzip.
 
@@ -204,11 +204,11 @@ Before the core was split by feature, it was 20646 B, 7838 B gzip, in every buil
 
 The rest is HTML helpers, effects and the title. The bytes come from a source map of the old core's chunk. The core of a build that calls a helper keeps it: the core of `examples/todos` keeps `#if`, server calls and `leavePage` for client navigation.
 
-The idle preload adds 192 B, 97 B gzip, to the loader. Splitting the core moved its imports and the code that loads `client-routes.ts` into the loader: 10 B gzip without client navigation, and about 55 B gzip with it.
+Splitting the core moved its imports and the code that loads `client-routes.ts` into the loader: 10 B gzip without client navigation, and about 55 B gzip with it.
 
 Vite wraps every dynamic import of a client build in its preload helper, which lands in the loader's chunk. The plugin keeps the list of chunks to preload out of the loader, because the loader imports the core itself.
 
-After the page is idle, the first click on a todo needs no request: the loader preloaded the core and `App.brm`'s module. A click right at `load` loads them at the same time, in one round trip. Before the entry held the code of small components, it loaded the entry (744 B), then the handler's part (185 B), then, after the handler wrote a slot, `update` (924 B): three requests after one another. The pages without client code no longer ship an entry each.
+The page loads the core and `App.brm`'s module when it starts, so the first click on a todo needs no request. The pages without client code ship no entry.
 
 ## Dependencies
 

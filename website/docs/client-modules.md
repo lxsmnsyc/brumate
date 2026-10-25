@@ -62,15 +62,10 @@ The compiler splits the client code of each component into parts. The bundler lo
 
 ### `merge`
 
-When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The page then loads one module for it instead of several. Components with a `shared` part keep their parts. The plugin merges below 4096 bytes by default. `compile` does not merge unless asked.
+When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code itself. Otherwise the entry exports them from modules of their own. Components with a `shared` part keep their parts. The plugin merges below 4096 bytes by default. `compile` does not merge unless asked.
 
-The default comes from measuring the dashboard benchmark, whose widgets have about 2 kB of parts each:
-
-- One merged widget is about 1 kB after gzip. Its 4 separate files are about 1.4 kB, because each file has its own imports and gzip header.
-- A first click on a split widget loads the entry, then the handler and the updates. That is 3 requests and 2 round trips, against 1 of each when merged.
-- Below 4096 bytes, one module costs less than the extra requests of its parts.
-
-Set `merge` higher to merge larger components, or to `0` to keep every part apart.
+- A build puts the entry and the parts in the chunk of a bundle either way, so `merge` does not change how many requests a page makes.
+- On the dev server, each part is a request of its own, so merging small components makes fewer requests.
 
 A component with no client code has no parts, and a build leaves it out of the client.
 
@@ -98,31 +93,6 @@ const increment$ = ($$s, ...$$a) => $$m0.s218($$s, [1], ...$$a);
 - Each export is a function of the body, a function that it returns, a memo, or an effect, named by its offset in the module.
 - `$$k` holds a ref for each name that the code reads or writes: a slot of the scope, `[scope, slot]` for a slot of another scope, or `[value]` for a literal argument or a value that does not change. `cells` turns the refs into getters and setters.
 - Code that needs the component to compile it, such as `$isPending`, is copied instead. So is the code of a module function that another module function calls.
-
-## Prefetch
-
-The code of the page loads when it starts, so `prefetch` and the idle preload below load nothing more. They stay until a later version removes them.
-
-| `prefetch`             | Loads the core and the parts of an element's handlers      |
-| ---------------------- | ---------------------------------------------------------- |
-| `"hover"`, the default | When the pointer moves over the element, or it gets focus. |
-| `"visible"`            | When the element enters the viewport.                      |
-| `"idle"`               | When the browser is idle after the page loads.             |
-| `"none"`               | Never. The event loads them.                               |
-
-### Idle preload
-
-After the `load` event, when the browser is idle, the loader preloads the core and the code of the handlers of elements in or near the viewport, and of elements that come near it later. A click after that needs no request. It does not load anything before `load`, and it does not block the page.
-
-For a component with parts, it loads the entry and the `h<n>` part of each handler. A handler part loads `update` with it only when the handler writes a slot that an update reads. `$client` parts wait for their own trigger. A handler that renders new markup, such as an `#if` body with buttons, loads the parts of those buttons when they come near the viewport or on their first event. A merged component loads as one module.
-
-It skips:
-
-- Elements with `prefetch="none"`.
-- Browsers that ask to save data, with `navigator.connection.saveData`.
-- Connections whose `effectiveType` is `2g` or `slow-2g`.
-
-The plugin's [`preload`](./reference-plugin.md#options) option, or the loader's `preload` option, turns it off.
 
 ## Navigation and server calls
 

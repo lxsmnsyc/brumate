@@ -25,7 +25,6 @@ const props: Record<string, unknown> = {
   styled: {},
   portal: {},
   produce: {},
-  prefetch: {},
   retry: {},
   search: {},
   doubler: {},

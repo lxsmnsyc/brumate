@@ -896,7 +896,6 @@ class ClientGenerator {
       !attribute ||
       attribute.kind === 'static' ||
       attribute.kind === 'ref' ||
-      attribute.kind === 'prefetch' ||
       attribute.kind === 'computed'
     ) {
       this.error('This attribute cannot change on the client yet', site.range);

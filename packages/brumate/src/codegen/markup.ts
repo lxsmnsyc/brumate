@@ -1116,7 +1116,6 @@ export class Emitter {
     }
     const variables = this.emitVariables(node);
     const events: string[] = [];
-    let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
@@ -1199,9 +1198,6 @@ export class Emitter {
             this.emitRef(attribute.target, attribute, anchor);
           }
           break;
-        case 'prefetch':
-          prefetch = attribute.strategy;
-          break;
       }
     }
     if (merged) {
@@ -1222,9 +1218,6 @@ export class Emitter {
       this.code(`$$b.onAttribute(${spreadHandlers}, ${JSON.stringify(events.join(' '))})`);
     } else if (events.length > 0) {
       this.html(` b-on="${events.join(' ')}"`);
-    }
-    if (events.length > 0 && prefetch) {
-      this.html(` data-prefetch="${prefetch}"`);
     }
     this.html('>');
     if (VOID_ELEMENTS.has(node.tag)) {

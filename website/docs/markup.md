@@ -132,11 +132,11 @@ Insert only HTML that you trust. HTML from a user can run scripts in your page.
 <button onClick=(once(() => (message = 'Only the first click counts')))>Click once</button>
 ```
 
-The handler is a name of a function, an arrow function in parentheses, or a call that returns a function. It loads in the browser when its event first fires.
+The handler is a name of a function, an arrow function in parentheses, or a call that returns a function. Its code loads with the page. An event that comes before the code has loaded waits for it.
 
 ### Before the handler loads
 
-A handler runs once its code has loaded, which is after the browser has acted on the event. `brumate/events` wraps a handler with what has to happen at once:
+A handler runs after the event has finished dispatching, so the browser has acted on the event by then. `brumate/events` wraps a handler with what has to happen at once:
 
 | Wrapper                     | Effect                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -159,7 +159,7 @@ Handlers run as if each element had its own listener. Those wrapped by `capture`
 <button onClick=(stop(prevent(save)))>Save</button>
 ```
 
-- The compiler reads the wrappers in the markup and writes them into the page, so the loader applies them on the first event, before any code loads. Calling `event.preventDefault()` in the handler is too late.
+- The compiler reads the wrappers in the markup and writes them into the page, so the loader applies them while the event dispatches, even before the code of the page has loaded. Calling `event.preventDefault()` in the handler is too late.
 - Wrappers nest, in any order.
 - Keys are strings of their `event.key`: a named key such as `'Enter'`, `'Escape'`, `'ArrowDown'` or `'F1'`, a letter or a digit, and `'Space'` for the space bar. TypeScript completes them, and the compiler reports a key that is not one. Only `prevent` of `onKeyDown`, `onKeyUp` and `onKeyPress` takes keys.
 - Write the wrapper in the attribute, with keys as string literals, so the compiler can read it.
@@ -187,24 +187,11 @@ A modifier after the event name, as in `onSubmit:prevent=send`, does the same, w
 ```
 
 - The transition holds the writes that the handler makes before its first `await`. Writes after it, such as after a server call, change the page without an animation.
-- On the first write to a component, the transition waits while its update code loads. The browser keeps the old page on screen until then.
+- When the code of the page has not loaded yet, the transition waits for it. The browser keeps the old page on screen until then.
 - `transition(handler, ...types)` gives the transition types, which CSS matches with `:active-view-transition-type(type)`.
 - Without view transitions, or with `prefers-reduced-motion`, the handler runs as it is.
 - It nests with the other wrappers, in any order: `transition(prevent(save))`.
 - The browser runs one view transition at a time, and blocks clicks while it runs. Keep them short, and use CSS transitions for changes that repeat fast, such as typing.
-
-### Loading handlers early
-
-The code of a handler loads when the pointer moves over its element, or when the element gets focus, so it is often ready before the click. Once the page has loaded and the browser is idle, it also loads for elements in or near the viewport. See [Idle preload](./client-modules.md#idle-preload). `prefetch` on the element changes when:
-
-- `prefetch="hover"`, the default: on pointer over or focus, and near the viewport once the page is idle.
-- `prefetch="visible"`: when the element enters the viewport.
-- `prefetch="idle"`: when the browser is idle after the page loads.
-- `prefetch="none"`: only when the event fires. Idle preload skips it too.
-
-```brm
-<button prefetch="visible" onClick=checkout>Buy</button>
-```
 
 ## Window and document events
 

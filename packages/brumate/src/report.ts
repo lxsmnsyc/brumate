@@ -1,6 +1,6 @@
-// A report of what the client build ships: what every page loads before its
-// first event, the code that each event loads, and the most that each route
-// can load. A budget fails the build when a size goes over it.
+// A report of what the client build ships: what every page loads, the code of
+// each component, and what each route loads. A budget fails the build when a
+// size goes over it.
 
 import { builtin } from './node.ts';
 import { parse } from './parser.ts';
@@ -20,24 +20,12 @@ export interface ReportChunk {
   modules?: Record<string, number>;
 }
 
-/** A handler or `$client` callback of a component, and the parts that it loads. */
-export interface ReportEvent {
-  /** The `.brm` file, as an absolute path. */
-  file: string;
-  /** Such as `event button.click (12:5)`. */
-  label: string;
-  /** The parts that the entry loads for it, its own first. None when the entry holds the code. */
-  parts: string[];
-}
-
 /** Sizes in bytes, after gzip. */
 export interface Budget {
-  /** What every page loads before its first event. */
+  /** The loader, which every page loads. */
   loader?: number;
-  /** The most that a route can load after its first event, with the core. */
+  /** What a route loads, with the core. */
   route?: number;
-  /** What the first run of one handler loads: the component's entry, its part and the updates it runs, with what they import. */
-  event?: number;
   /** The client code of one component. */
   component?: number;
 }
@@ -45,14 +33,15 @@ export interface Budget {
 export interface BuildReport {
   /** The entry and its imports, which every page loads. */
   loader: number;
-  /** The runtime that the first event loads. */
+  /** The runtime, which every page loads when it starts. */
   core: number;
-  /** Each component, with the size of its client code, largest first. */
+  /**
+   * Each component, with the size of its client code, largest first. A chunk that holds several
+   * components, such as the bundle of a page, counts for each by the size of its modules.
+   */
   components: { file: string; bytes: number }[];
-  /** Each route path, with the most it can load after its first event, largest first. */
+  /** Each route path, with what it loads besides the loader, largest first. */
   routes: { path: string; bytes: number; components: number }[];
-  /** Each handler, with what its first run loads besides the loader and the core, largest first. */
-  events: { file: string; label: string; bytes: number }[];
   /** The sizes that go over the budget, as sentences. */
   overBudget: string[];
 }
@@ -129,11 +118,6 @@ export interface ReportInput {
   sources: Map<string, string>;
   /** The route files, and the absolute path of a file in them. */
   routes?: { tree: RouteFiles; resolve: (file: string) => string };
-  /**
-   * The handlers of each component. Without them, each part of the build
-   * counts as a handler, named after the part.
-   */
-  events?: ReportEvent[];
   budget?: Budget;
   /** A file as the messages show it. Defaults to the path. */
   relative?: (file: string) => string;
@@ -144,7 +128,6 @@ export function buildReport({
   chunks: list,
   sources,
   routes,
-  events: handlers,
   budget,
   relative = (file) => file,
 }: ReportInput): BuildReport {
@@ -172,20 +155,28 @@ export function buildReport({
     coreChunks.delete(name);
   }
 
-  // The chunks of each component: its entry and its parts, with what they import.
+  // The chunks of each component: those that hold its entry and its parts, with what they
+  // import. Its size is its share of each chunk that holds its modules.
   const byFile = new Map<string, Set<string>>();
-  // The chunk of each client module, such as `/app/Counter.brm?brumate-client&part=h0`.
-  const byModule = new Map<string, string>();
+  const shares = new Map<string, number>();
   const everyPage = new Set([...loaderChunks, ...coreChunks]);
   for (const chunk of list) {
+    const owned = new Map<string, number>();
     for (const id of chunk.moduleIds) {
       const file = /^(.*\.brm)\?brumate-client/.exec(id)?.[1];
       if (file) {
         const set = byFile.get(file) ?? new Set<string>();
         withImports(chunk.fileName, chunks, set);
         byFile.set(file, set);
-        byModule.set(id, chunk.fileName);
+        owned.set(file, (owned.get(file) ?? 0) + (chunk.modules?.[id] ?? 1));
       }
+    }
+    const total = chunk.modules
+      ? Object.values(chunk.modules).reduce((sum, bytes) => sum + bytes, 0)
+      : chunk.moduleIds.length;
+    for (const [file, bytes] of owned) {
+      const share = total > 0 ? ((sizes.get(chunk.fileName) ?? 0) * bytes) / total : 0;
+      shares.set(file, (shares.get(file) ?? 0) + share);
     }
   }
   for (const set of byFile.values()) {
@@ -193,35 +184,10 @@ export function buildReport({
       set.delete(name);
     }
   }
-  const components = [...byFile]
-    .map(([file, names]) => ({ file, bytes: sum(names) }))
+  const components = [...shares]
+    .map(([file, bytes]) => ({ file, bytes: Math.round(bytes) }))
     .toSorted((a, b) => b.bytes - a.bytes);
 
-  // A handler loads the entry of its component and its parts, with what they import.
-  const eventChunks = (event: ReportEvent): Set<string> => {
-    const names = new Set<string>();
-    const entry = byModule.get(`${event.file}?brumate-client`);
-    if (entry) {
-      withImports(entry, chunks, names);
-    }
-    for (const part of event.parts) {
-      const chunk = byModule.get(`${event.file}?brumate-client&part=${part}`);
-      if (chunk) {
-        withImports(chunk, chunks, names);
-      }
-    }
-    for (const name of everyPage) {
-      names.delete(name);
-    }
-    return names;
-  };
-  const measured = (handlers ?? partEvents(byModule.keys())).map((event) => {
-    const names = eventChunks(event);
-    return { event, names, bytes: sum(names) };
-  });
-  const events = measured
-    .map(({ event, bytes }) => ({ file: event.file, label: event.label, bytes }))
-    .toSorted((a, b) => b.bytes - a.bytes);
   // A route can load the code of its page, its layouts, and the components that they render.
   const reachable = (files: string[]): Set<string> => {
     const seen = new Set<string>();
@@ -270,45 +236,7 @@ export function buildReport({
       );
     }
   }
-  for (const { event, names, bytes } of measured.toSorted((a, b) => b.bytes - a.bytes)) {
-    if (budget?.event !== undefined && bytes > budget.event) {
-      const imports = largestImports(names, chunks);
-      overBudget.push(
-        `The handler ${event.label} of ${relative(event.file)} loads ${formatBytes(bytes)}, over the budget of ${formatBytes(budget.event)}.${
-          imports.length > 0 ? ` Its largest imports are ${imports.map(relative).join(', ')}.` : ''
-        }`,
-      );
-    }
-  }
-  return { loader, core: sum(coreChunks), components, routes: routeSizes, events, overBudget };
-}
-
-/** Each part of a client module as a handler of its own, when the build does not name them. */
-function partEvents(ids: Iterable<string>): ReportEvent[] {
-  const result: ReportEvent[] = [];
-  for (const id of ids) {
-    const match = /^(.*\.brm)\?brumate-client&part=(.+)$/.exec(id);
-    if (match && match[2] !== 'update' && match[2] !== 'shared') {
-      result.push({ file: match[1]!, label: `part ${match[2]}`, parts: [match[2]!] });
-    }
-  }
-  return result;
-}
-
-/** The three largest modules in the chunks that are not client modules of components. */
-function largestImports(names: Set<string>, chunks: Map<string, ReportChunk>): string[] {
-  const sizes: [string, number][] = [];
-  for (const name of names) {
-    for (const [id, bytes] of Object.entries(chunks.get(name)?.modules ?? {})) {
-      if (!id.includes('?brumate-client')) {
-        sizes.push([id.replace(/^\0/, ''), bytes]);
-      }
-    }
-  }
-  return sizes
-    .toSorted((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id]) => id);
+  return { loader, core: sum(coreChunks), components, routes: routeSizes, overBudget };
 }
 
 function formatBytes(bytes: number): string {
@@ -319,11 +247,11 @@ function formatBytes(bytes: number): string {
 export function formatBuildReport(report: BuildReport, relative: (file: string) => string): string {
   const lines = [
     'brumate client report (gzip)',
-    `  Every page, before its first event: ${formatBytes(report.loader)}`,
-    `  The core, on the first event: ${formatBytes(report.core)}`,
+    `  The loader, on every page: ${formatBytes(report.loader)}`,
+    `  The core, when the page starts: ${formatBytes(report.core)}`,
   ];
   if (report.routes.length > 0) {
-    lines.push('  The most each route loads after its first event, with the core');
+    lines.push('  What each route loads when it starts, with the core');
     for (const route of report.routes) {
       lines.push(`    ${route.path}: ${formatBytes(route.bytes)} (${route.components} components)`);
     }
@@ -332,12 +260,6 @@ export function formatBuildReport(report: BuildReport, relative: (file: string) 
     lines.push('  Components, largest first');
     for (const component of report.components) {
       lines.push(`    ${relative(component.file)}: ${formatBytes(component.bytes)}`);
-    }
-  }
-  if (report.events.length > 0) {
-    lines.push('  What the first run of a handler loads, largest first');
-    for (const event of report.events.slice(0, 10)) {
-      lines.push(`    ${relative(event.file)} ${event.label}: ${formatBytes(event.bytes)}`);
     }
   }
   return lines.join('\n');

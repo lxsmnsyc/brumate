@@ -62,7 +62,7 @@ import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
-import type { Budget, ReportChunk, ReportEvent } from './report.ts';
+import type { Budget, ReportChunk } from './report.ts';
 import type { PrerenderOptions } from './prerender.ts';
 import { routeFiles, routeModule, routeTypes } from './routes.ts';
 import type { RouteFiles } from './routes.ts';
@@ -112,14 +112,6 @@ export interface BrumateOptions {
    * view transition.
    */
   navigate?: boolean | NavigateOptions;
-  /**
-   * After the page loads, while the browser is idle, the loader loads the
-   * core and the code of the handlers of elements in or near the viewport,
-   * so the first event needs no request. It skips elements with
-   * `prefetch="none"`, and loads nothing when the browser asks to save data
-   * or the connection is 2G. Defaults to true.
-   */
-  preload?: boolean;
   /**
    * Client parts of a component smaller than this many bytes in all, after
    * minifying, become one module, so its first event loads one file. 0
@@ -1532,24 +1524,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       const list = [...files.values()];
       const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
-      // Each handler of a component, by the label that `brumate inspect` shows.
-      const events: ReportEvent[] = [];
-      for (const [file, { source, result }] of compiled) {
-        for (const [site, symbol] of result.plan.symbols) {
-          const loads = result.loaders[symbol];
-          if (loads) {
-            const { line, column } = getLocation(source, site.range.start);
-            events.push({ file, label: `${site.label} (${line}:${column})`, parts: loads });
-          }
-        }
-      }
       const measured = buildReport({
         chunks,
         sources: new Map(list.map((file, index) => [file, contents[index]!])),
         routes: existsSync(routesDirectory())
           ? { tree: currentRoutes(), resolve: (file) => `${routesDirectory()}/${file}` }
           : undefined,
-        events,
         budget: options.budget,
         relative: nameOf,
       });
@@ -1729,7 +1709,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           `import { load${isServe ? '' : ', loadBundle'} } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ', loadBundle'}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${options.preload === false ? ', preload: false' : ''}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ', loadBundle'}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [

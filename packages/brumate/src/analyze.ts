@@ -1274,7 +1274,6 @@ class Analyzer {
       }
       switch (attribute.kind) {
         case 'static':
-        case 'prefetch':
           break;
         case 'value':
           this.createExpressionSite(

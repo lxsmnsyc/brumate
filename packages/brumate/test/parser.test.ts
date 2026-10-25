@@ -55,8 +55,8 @@ describe('syntax errors', () => {
     ],
     ['<p ref=(a)>x</p>', 'Expected the name of a signal after "ref=" (Test.brm:1:8)'],
     [
-      '<p prefetch="soon">x</p>',
-      'prefetch must be "hover", "visible", "idle" or "none" (Test.brm:1:4)',
+      '<p prefetch="idle">x</p>',
+      'prefetch is removed. The code of the page loads when it starts (Test.brm:1:4)',
     ],
     ['<window onKeyDown=close>', '<window> must end with "/>" (Test.brm:1:24)'],
     ['<window class="a" />', 'Only event handlers are allowed here (Test.brm:1:9)'],

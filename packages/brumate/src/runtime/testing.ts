@@ -150,7 +150,7 @@ export function createMount(options: TestingOptions): Mount {
     container.querySelectorAll('script[b-state]').forEach(run);
     // One loader for the document, as a page has, however many mounts are in it.
     loader ??= {
-      stop: start({ load: options.load, rpc: options.rpc, navigate: false, preload: false }),
+      stop: start({ load: options.load, rpc: options.rpc, navigate: false }),
       users: 0,
     };
     loader.users++;
@@ -466,7 +466,7 @@ export function createVisit(options: VisitorOptions): Visit {
     document.querySelectorAll('script').forEach(runOnce);
     scripts.observe(document, { childList: true, subtree: true });
 
-    const stop = start({ load: options.load, rpc: prefix, navigate: true, preload: false });
+    const stop = start({ load: options.load, rpc: prefix, navigate: true });
     let rest = html.slice(cut);
     let open = true;
     void (async () => {

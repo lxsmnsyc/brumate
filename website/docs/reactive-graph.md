@@ -87,25 +87,21 @@ The slots go into the page as a script:
 
 ### 5. The browser waits
 
-The page works without any component code. The only script that runs is the loader. It listens on `document` for the events that `b-on` names. See [Client modules](./client-modules.md).
+The page shows before any component code runs. The loader listens on `document` for the events that `b-on` names, and imports the core and the client entry of `Counter_24o7ge` at once. See [Client modules](./client-modules.md).
 
-### 6. A click loads the handler
+### 6. A click runs the handler
 
-On the click, the loader walks from the target to the element with `b-on`, and reads `b-b="0:0"`. It imports the core and the client entry of `Counter_24o7ge`, which loads the part of the handler:
+The client entry exports the exports of each part:
 
 ```ts
+export * from "./Counter.brm?brumate-client&part=h4";
+export * from "./Counter.brm?brumate-client&part=update";
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
-const update = () => import("./Counter.brm?brumate-client&part=update");
-const parts = {
-  "h4": () => (update().catch(() => {}), import("./Counter.brm?brumate-client&part=h4")),
-  "update": update,
-};
 ```
 
 - `g` is the graph of step 1, kept for the browser. For scopes of kind 1, a write to slot 0 runs `m2` and then `u5`, and a write to slot 1 runs `u6`.
-- Loading the handler also starts loading the update code, since the handler writes a slot.
 
-The core reads the state script and makes scope 0, with its slots `[0, 0]`. Then it calls the handler with that scope:
+The core reads the state script and makes scope 0, with its slots `[0, 0]`. On the click, the loader walks from the target to the element with `b-on`, and reads `b-b="0:0"`. The core calls the handler with that scope:
 
 ```ts
 export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
@@ -223,7 +219,7 @@ A scope also has a kind: its number in the compiled component, which selects the
 A component that a parent renders inside a block that changes needs its render function in the browser. The compiler writes it into a third module, `App.brm?brumate-render`.
 
 - It is the server render function without `async`. The result is an HTML string with the same markers.
-- The component's root scope gets its component ID, so its client module loads on its first event, as it does for a component that the server rendered.
+- The component's root scope gets its component ID, so its client module loads when its scope is made, as it does for a component that the server rendered.
 - A function passed as a prop calls the parent's handler, so it writes the parent's slots.
 - A parent imports a child's render module only when one of its changing blocks renders the child.
 - `#template`s that a changing block calls are copied into its render function.

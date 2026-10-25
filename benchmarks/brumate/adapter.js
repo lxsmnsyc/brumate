@@ -24,18 +24,14 @@ export async function load() {
   };
 }
 
-// The loader skips its idle preload when the browser asks to save data, the same check as the
-// plugin's `preload: false`. Setting it in the page turns the preload off without a second build.
-const SAVE_DATA =
-  "<script>Object.defineProperty(navigator, 'connection', { value: { saveData: true } });</script>";
-
 export async function loadDashboard() {
   const server = await import(`${dir}dashboard/dist/server/server.js`);
   const scripts = await entry(`${dir}dashboard`);
   return {
     staticDir: `${dir}dashboard/dist/client`,
-    preloadOption: true,
-    render: ({ preload = true } = {}) => server.page(preload ? scripts : SAVE_DATA + scripts),
+    // The code of the page loads when it starts. There is no preload to turn off.
+    preloadOption: false,
+    render: () => server.page(scripts),
   };
 }
 

@@ -152,7 +152,7 @@ createServer(async (incoming, outgoing) => {
 
 The client build writes the URLs of the loader and the core, which every page loads, to `dist/client/.brumate/hints.json`. The routes of the server build read it, so a page gets them three ways:
 
-- A `<link rel="modulepreload">` for each at the start of its head, so the browser loads the core with the page instead of on the first event.
+- A `<link rel="modulepreload">` for each at the start of its head, so the browser loads the core with the HTML.
 - `Link` headers with the same URLs. Hosts such as Cloudflare turn them into `103 Early Hints` for the next visits.
 - `earlyHints`, a callback that receives the `Link` values before the page renders. Node's `writeEarlyHints` sends them as a `103` response at once, so the browser loads the modules while the server renders.
 
@@ -276,7 +276,7 @@ const html = (await readFile(file, 'utf8')).replaceAll('<script', `<script nonce
 
 ## Skew protection
 
-A resumable page lives long and loads its code late. A page that was open before a deploy loads the parts of its handlers after it, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
+A resumable page lives long. A page that was open before a deploy can load code after it, such as the code of a component that a block renders, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
 
 - Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
 - The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.

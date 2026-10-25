@@ -198,8 +198,6 @@ export interface DevtoolsHooks {
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
-  /** A part of a component's client code loaded. */
-  part?(component: string, name: string): void;
   /**
    * A handler ran: when its event came, when its code was ready and the
    * handlers before it had started, when the call returned, and what it
@@ -216,11 +214,6 @@ export interface DevtoolsHooks {
   }): void;
   /** The updates of a write ran: how many, and how long they took with their effects. */
   updated?(count: number, start: number, end: number): void;
-  /**
-   * Code of a component starts to load: its entry, or a part, and why.
-   * `done` settles when it has loaded.
-   */
-  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
   /** The loader asks the server for the body of a `#defer` block. */
   defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
@@ -339,7 +332,7 @@ function refresh(added: Scope[], memosOnly = false): void {
     }
   }
   for (const [id, list] of byModule) {
-    void loadModule(id, 'state').then(async (module) => {
+    void loadModule(id).then(async (module) => {
       // The names of the updates of each kind of scope, memos first, so the other updates read
       // their new values.
       const byKind = new Map<number, string[]>();
@@ -355,7 +348,7 @@ function refresh(added: Scope[], memosOnly = false): void {
       if (!any) {
         return;
       }
-      const updates = await loadPart(module, 'update', 'state');
+      const updates = await loadPart(module, 'update');
       // The updates can render templates and call functions of other components.
       await codeReady();
       refreshing = true;
@@ -806,22 +799,7 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-/**
- * Why the core loads code, for the Loading tab of the devtools: an event,
- * a call of a function prop, a template, the scopes of a state record, a
- * write, an error, a reset of `#try`, or a prop of a child.
- */
-export type LoadReason =
-  | 'event'
-  | 'call'
-  | 'template'
-  | 'state'
-  | 'write'
-  | 'error'
-  | 'reset'
-  | 'prop';
-
-export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
+export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -831,18 +809,11 @@ export function loadModule(id: string, reason: LoadReason = 'write'): Promise<Cl
       return module;
     });
     loading.set(id, promise);
-    if (DEV) {
-      devtools()?.load?.(id, 'entry', reason, promise);
-    }
   }
   return promise;
 }
 
-export function loadPart(
-  module: ClientModule,
-  name: string,
-  reason: LoadReason = 'write',
-): Promise<Part> {
+export function loadPart(module: ClientModule, name: string): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -854,15 +825,9 @@ export function loadPart(
     }
     promise = loaded.then((part) => {
       loadedParts.set(key, part);
-      if (DEV) {
-        devtools()?.part?.(module.id, name);
-      }
       return part;
     });
     parts.set(key, promise);
-    if (DEV) {
-      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
-    }
   }
   return promise;
 }
@@ -872,11 +837,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
+async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id, reason);
-    const part = await loadPart(module, partOf(name), reason);
+    const module = await loadModule(id);
+    const part = await loadPart(module, partOf(name));
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -926,9 +891,7 @@ let lastCall: Promise<unknown> = Promise.resolve();
  */
 function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
   const code = codeReady();
-  const loaded = code
-    ? Promise.all([resolve(ref, 'call'), code]).then(([fn]) => fn)
-    : resolve(ref, 'call');
+  const loaded = code ? Promise.all([resolve(ref), code]).then(([fn]) => fn) : resolve(ref);
   const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);
@@ -957,7 +920,7 @@ function loadComponent(id: string): void {
   pageComponents.add(id);
   // The entry of a component holds all of its code. A load that fails is reported when a
   // handler or an update needs it.
-  const code: Promise<unknown> = loadModule(id, 'state')
+  const code: Promise<unknown> = loadModule(id)
     .catch(() => {})
     .finally(() => loadingCode.delete(code));
   loadingCode.add(code);
@@ -1070,8 +1033,8 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   const code = codeReady();
   const loaded =
     children || code
-      ? Promise.all([resolve(ref, 'event'), children, code]).then(([handler]) => handler)
-      : resolve(ref, 'event');
+      ? Promise.all([resolve(ref), children, code]).then(([handler]) => handler)
+      : resolve(ref);
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1117,7 +1080,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id, 'error');
+      const module = await loadModule(id);
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -1145,7 +1108,7 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update', 'error');
+  const updates = await loadPart(module, 'update');
   const start = findComment(`b${owner.id}:${anchor}`);
   if (!start) {
     return;
@@ -2289,7 +2252,7 @@ export function attrs(
         element,
         new Set(
           (written === null ? element.getAttributeNames() : written.split(' ')).filter(
-            (name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name),
+            (name) => !own.includes(name) && !name.startsWith('b-'),
           ),
         ),
       );
@@ -2397,7 +2360,7 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
+  const updates = await loadPart(await loadModule(id), 'update');
   const start = findComment(`b${scope.id}:${anchor}`);
   if (!start) {
     return;
@@ -3067,7 +3030,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m, 'prop').then(apply);
+    void loadModule(child.m).then(apply);
   }
 }
 
@@ -3219,7 +3182,7 @@ class RenderedChildren extends Children {
   }
 
   load(): Promise<void> {
-    this.loading ??= resolve(this.ref, 'template').then((handler) => {
+    this.loading ??= resolve(this.ref).then((handler) => {
       this.code = handler;
     });
     return this.loading;

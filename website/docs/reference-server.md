@@ -186,12 +186,11 @@ const stop = start({ load, rpc: '/_brumate', navigate: true });
 
 `virtual:brumate/start` does this for you. Use `start` to add to `load`, or to start the loader of a page that another tool renders.
 
-| Option     | Type                                    | Meaning                                                                                                                                                        |
-| ---------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load`     | `(id: string) => Promise<ClientModule>` | Imports the client module of a component, by component ID.                                                                                                     |
-| `rpc`      | `string`                                | The URL prefix of server function calls. Defaults to `/_brumate`.                                                                                              |
-| `navigate` | `boolean \| { transition?: boolean }`   | Client navigation, and view transitions. Defaults to `true`.                                                                                                   |
-| `preload`  | `boolean`                               | Loads the code of handlers near the viewport while the browser is idle after `load`. Defaults to `true`. See [Idle preload](./client-modules.md#idle-preload). |
+| Option     | Type                                    | Meaning                                                           |
+| ---------- | --------------------------------------- | ----------------------------------------------------------------- |
+| `load`     | `(id: string) => Promise<ClientModule>` | Imports the client module of a component, by component ID.        |
+| `rpc`      | `string`                                | The URL prefix of server function calls. Defaults to `/_brumate`. |
+| `navigate` | `boolean \| { transition?: boolean }`   | Client navigation, and view transitions. Defaults to `true`.      |
 
 `start` returns a function that stops the loader and removes its listeners.
 
