@@ -802,6 +802,60 @@
     outline-offset: 2px;
   }
 
+  /* A calendar: the heading between its buttons, and a grid of round days. */
+  :global(.ui-calendar) {
+    width: 16rem;
+  }
+
+  :global(.ui-calendar header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  :global(.ui-calendar table) {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  :global(.ui-calendar th) {
+    padding-bottom: 0.25rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  :global(.ui-calendar [data-date]) {
+    width: 2rem;
+    height: 2rem;
+    margin: auto;
+    border-radius: 50%;
+    line-height: 2rem;
+    cursor: default;
+  }
+
+  :global(.ui-calendar [data-today]) {
+    font-weight: 700;
+  }
+
+  :global(.ui-calendar [data-unavailable]),
+  :global(.ui-calendar [data-disabled]) {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  :global(.ui-calendar [data-selected]) {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  :global(.ui-calendar [data-focus-visible]) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
   :global(.ui-menu) {
     display: grid;

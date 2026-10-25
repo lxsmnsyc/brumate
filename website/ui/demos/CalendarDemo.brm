@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+
+  let date = $signal<string | null>(null);
+
+  function weekend(value: string) {
+    return [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
+  }
+</script>
+
+<Calendar class="ui-calendar" aria-label="Delivery date" value=$bind(date) isDateUnavailable=weekend>
+  <header>
+    <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+    <CalendarHeading />
+    <Button slot="next" class="ui-button ui-icon-button">›</Button>
+  </header>
+  <CalendarGrid />
+</Calendar>
+<p>Delivery on {date ?? 'no date yet'}.</p>

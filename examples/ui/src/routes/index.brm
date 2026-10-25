@@ -49,6 +49,9 @@
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -97,6 +100,7 @@
   let city = $signal<Key | null>(null);
   let quantity = $signal(1);
   let span = $signal([20, 60]);
+  let delivery = $signal<string | null>('2026-10-15');
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
@@ -113,6 +117,11 @@
   }
 
   const { attrs, fields, result } = createForm(order, Order, { defaultValue: { email: '' } });
+
+  // The shop is closed on Sundays.
+  function closed(date: string) {
+    return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  }
 </script>
 
 #head {
@@ -519,6 +528,17 @@
     </SliderTrack>
   </Slider>
   <p class="span-state">{span.join(' ')}</p>
+</section>
+
+<section aria-labelledby="calendar">
+  <h2 id="calendar">Calendar</h2>
+  <Calendar class="delivery" aria-label="Delivery" value=$bind(delivery) minValue="2026-10-05" isDateUnavailable=closed>
+    <Button slot="previous" class="press delivery-previous">‹</Button>
+    <CalendarHeading class="delivery-heading" />
+    <Button slot="next" class="press delivery-next">›</Button>
+    <CalendarGrid class="delivery-grid" />
+  </Calendar>
+  <p class="delivery-state">{delivery ?? 'none'}</p>
 </section>
 
 <section aria-labelledby="tooltip">

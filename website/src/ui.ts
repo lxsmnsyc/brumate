@@ -42,6 +42,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'form',
     ],
   },
+  { title: 'Dates', pages: ['calendar'] },
   {
     title: 'Overlays',
     pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
@@ -199,6 +200,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A value, or a range of values, on a track.',
     href: 'slider',
     demo: 'SliderDemo',
+  },
+  {
+    title: 'Calendar',
+    summary: 'The days of a month, to pick a date.',
+    href: 'calendar',
+    demo: 'CalendarDemo',
   },
   {
     title: 'ListBox',

@@ -20,6 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.4",
     "@internationalized/number": "^3.6.9"
   },
   "devDependencies": {

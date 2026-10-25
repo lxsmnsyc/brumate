@@ -1,0 +1,124 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import {
+    CalendarContext,
+    CalendarGridContext,
+    cellLabel,
+    dayNumber,
+    outOfRange,
+    toDate,
+  } from './calendar.ts';
+  import type { DateString } from './calendar.ts';
+
+  /**
+   * A date in a CalendarGrid, as CalendarCell of React Aria Components. It renders a `<td>` with
+   * a button inside, which holds the number of the day, or `children`.
+   *
+   * - A press selects the date. Only the focused date is in the order of Tab.
+   * - The button shows `data-selected`, `data-focused`, `data-focus-visible`, `data-today`,
+   *   `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`,
+   *   `data-invalid` and `data-pressed`.
+   * - A date outside the month of its grid is disabled, and its button is hidden, as React Aria
+   *   hides it.
+   */
+  const { date, children, ...rest } = $props<{
+    date: DateString;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const calendar = $getContext(CalendarContext);
+  const grid = $getContext(CalendarGridContext);
+  // A date is in the month of its grid when they share the year and the month, `YYYY-MM`.
+  const outsideMonth = $memo(grid ? date.slice(0, 7) !== grid.start.slice(0, 7) : false);
+  const outsideRange = $memo(
+    calendar ? date < calendar.start || date > calendar.end : false,
+  );
+  const disabled = $memo(
+    !calendar ||
+      calendar.isDisabled ||
+      outsideMonth ||
+      outOfRange(toDate(date), calendar.minValue, calendar.maxValue),
+  );
+  const unavailable = $memo(
+    !disabled && (calendar?.isDateUnavailable?.(date) ?? false),
+  );
+  const selectable = $memo(!disabled && !unavailable);
+  const invalidValue = $memo(Boolean(calendar?.isInvalid && calendar.value === date));
+  const selected = $memo(
+    (selectable && calendar?.value === date) || (invalidValue && !disabled),
+  );
+  const focused = $memo(!outsideMonth && calendar?.focusedDate === date);
+  const label = $memo(calendar ? cellLabel(calendar, date, selected) : date);
+  const number = $memo(calendar ? dayNumber(date, calendar.locale) : String(Number(date.slice(8))));
+
+  function pressed(event: MouseEvent) {
+    if (!calendar || !selectable) {
+      return;
+    }
+    if (calendar.isReadOnly) {
+      calendar.focusDate(date);
+      return;
+    }
+    calendar.selectDate(date);
+    (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+  }
+
+  function focusIn(event: FocusEvent) {
+    const target = event.currentTarget as HTMLElement;
+    // The handler can run after its code loads, when a key has moved focus on. Only the cell that
+    // still has focus moves the focused date.
+    if (target !== document.activeElement) {
+      return;
+    }
+    target.toggleAttribute('data-focus-visible', target.matches(':focus-visible'));
+    if (calendar && !disabled) {
+      calendar.cellFocused(date);
+    }
+  }
+
+  function focusOut(event: FocusEvent) {
+    (event.currentTarget as HTMLElement).removeAttribute('data-focus-visible');
+  }
+
+  function pointerDown(event: PointerEvent) {
+    (event.currentTarget as HTMLElement).setAttribute('data-pressed', '');
+  }
+
+  function pointerUp(event: PointerEvent) {
+    (event.currentTarget as HTMLElement).removeAttribute('data-pressed');
+  }
+</script>
+
+<td
+  role="gridcell"
+  aria-disabled=(!selectable || undefined)
+  aria-selected=(selected || undefined)
+  aria-invalid=(invalidValue || undefined)
+>
+  <div
+    role="button"
+    tabindex=(disabled ? undefined : focused ? '0' : '-1')
+    aria-label=label
+    aria-disabled=(!selectable || undefined)
+    aria-invalid=(invalidValue || undefined)
+    hidden=(outsideMonth || undefined)
+    data-calendar=(calendar?.id)
+    data-date=date
+    data-selected=(selected || undefined)
+    data-focused=(focused || undefined)
+    data-today=(calendar?.today === date || undefined)
+    data-disabled=(disabled || undefined)
+    data-unavailable=(unavailable || undefined)
+    data-outside-month=(outsideMonth || undefined)
+    data-outside-visible-range=(outsideRange || undefined)
+    data-invalid=(invalidValue || undefined)
+    onClick=pressed
+    onFocusIn=focusIn
+    onFocusOut=focusOut
+    onPointerDown=pointerDown
+    onPointerUp=pointerUp
+    onPointerLeave=pointerUp
+    {...rest}
+  >{children ?? number}</div>
+</td>
