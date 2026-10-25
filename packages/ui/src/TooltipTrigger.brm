@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import type { ButtonContextProps } from './contexts.ts';
@@ -68,6 +68,10 @@
     tooltips.keep(tooltipId);
   }
 
+  // A trigger that leaves the page, such as in an #if or on a route change, stops its timers, so
+  // they open nothing later and the next tooltip still waits for its delay.
+  $client(() => () => tooltips.forget(tooltipId), 'load');
+
   function hoverStarted(event: HoverEvent) {
     plain()?.onHoverStart?.(event);
     if (trigger !== 'focus') {
@@ -77,7 +81,10 @@
 
   function hoverEnded(event: HoverEvent) {
     plain()?.onHoverEnd?.(event);
-    close(false);
+    // A tooltip that only focus shows stays while the trigger has focus, as in React Aria.
+    if (trigger !== 'focus') {
+      close(false);
+    }
   }
 
   function focusChanged(focused: boolean) {
