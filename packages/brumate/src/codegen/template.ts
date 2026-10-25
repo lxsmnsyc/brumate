@@ -191,3 +191,54 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   }
   return { html: reader.html, writes };
 }
+
+/**
+ * The path of each marked element, by its `b-x`, from static HTML as written. The parser can
+ * change markup, so this holds only for markup that it keeps, such as the rows of a table.
+ */
+export function staticPaths(html: string, count: number): number[][] | undefined {
+  const result: number[][] = Array.from({ length: count });
+  const stack: { path: number[]; count: number }[] = [{ path: [], count: 0 }];
+  let at = 0;
+  let text = false;
+  const VOIDS = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
+  while (at < html.length) {
+    const top = stack.at(-1)!;
+    if (html.startsWith('</', at)) {
+      at = html.indexOf('>', at) + 1;
+      stack.pop();
+      text = false;
+      continue;
+    }
+    if (html[at] === '<' && /[a-zA-Z]/.test(html[at + 1] ?? '')) {
+      // The end of the start tag, past quoted values.
+      let end = at;
+      let quote = '';
+      for (end = at + 1; end < html.length; end++) {
+        const char = html[end]!;
+        if (quote) {
+          if (char === quote) quote = '';
+        } else if (char === '"' || char === "'") {
+          quote = char;
+        } else if (char === '>') {
+          break;
+        }
+      }
+      const tag = html.slice(at, end);
+      const name = /^<([a-zA-Z][\w-]*)/.exec(tag)![1]!;
+      const path = [...top.path, top.count++];
+      const mark = /\bb-x="(\d+)"/.exec(tag);
+      if (mark) result[Number(mark[1])] = path;
+      text = false;
+      if (!VOIDS.test(name)) stack.push({ path, count: 0 });
+      at = end + 1;
+      continue;
+    }
+    if (!text) {
+      top.count++;
+      text = true;
+    }
+    at++;
+  }
+  return result.every(Boolean) ? result : undefined;
+}

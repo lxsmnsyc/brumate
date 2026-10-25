@@ -3438,6 +3438,12 @@ function parseTemplate(source: Template): number[][] {
   return paths;
 }
 
+/** Clones a template, for a render that walks to its elements with a fixed walk. */
+export function cloneNodes(source: Template): DocumentFragment {
+  source.paths ??= parseTemplate(source);
+  return source.t!.content.cloneNode(true) as DocumentFragment;
+}
+
 /** Clones a template. Returns the fragment, and the elements that the template marks. */
 export function clone(source: Template): [DocumentFragment, Element[]] {
   const paths = (source.paths ??= parseTemplate(source));

@@ -17,7 +17,7 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
-import { clonedTemplate } from './template.ts';
+import { clonedTemplate, staticPaths } from './template.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
@@ -1226,7 +1226,42 @@ class ClientGenerator {
     }
     const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
     const name = this.hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
-    const lines = [`${indent}const [$$f, $$e] = $$b.clone(${name});`];
+    const lines: string[] = [];
+    let fixedNames: string[] | undefined;
+    const fixed = staticPaths(found.html, found.writes.length);
+    if (fixed) {
+      // A fixed walk, as Solid emits: each element into a variable, from the fragment.
+      lines.push(`${indent}const $$f = $$b.cloneNodes(${name});`);
+      const known = new Map<string, string>([['', '$$f']]);
+      let counter = 0;
+      const nodeOf = (path: number[]): string => {
+        const key = path.join('.');
+        const found = known.get(key);
+        if (found) {
+          return found;
+        }
+        const parent = nodeOf(path.slice(0, -1));
+        const last = path.at(-1)!;
+        // The nearest earlier sibling that a variable holds, or the first child.
+        let base = `${parent}.firstChild`;
+        let steps = last;
+        for (let index = last - 1; index >= 0; index--) {
+          const sibling = known.get([...path.slice(0, -1), index].join('.'));
+          if (sibling) {
+            base = sibling;
+            steps = last - index;
+            break;
+          }
+        }
+        const name = `$$n${counter++}`;
+        lines.push(`${indent}const ${name} = ${base}${'.nextSibling'.repeat(base.endsWith('.firstChild') ? steps : steps)};`);
+        known.set(key, name);
+        return name;
+      };
+      fixedNames = fixed.map((path) => nodeOf(path));
+    } else {
+      lines.push(`${indent}const [$$f, $$e] = $$b.clone(${name});`);
+    }
     found.writes.forEach((writes, index) => {
       // The scope of the anchor of the element, where its content finds its contexts.
       const anchored = writes.find((write) => write.kind === 'anchor');
@@ -1241,7 +1276,10 @@ class ClientGenerator {
         }
       }
     });
-    emitter.lines.splice(flush!.line, 1, ...lines);
+    const written = fixedNames
+      ? lines.map((line) => line.replace(/\$\$e\[(\d+)\]/g, (_, index) => fixedNames![Number(index)]!))
+      : lines;
+    emitter.lines.splice(flush!.line, 1, ...written);
     return true;
   }
 
