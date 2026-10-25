@@ -39,7 +39,7 @@
 
   function keyDown(event: KeyboardEvent) {
     ringKeyDown(event);
-    given().onKeyDown?.(event.key);
+    given().onKeyDown?.(event.key, event);
   }
 
   function blur(event: FocusEvent) {
