@@ -87,6 +87,37 @@ it('moves Tab into the preview and on past it, and Escape gives focus back', asy
   expect(document.activeElement).toBe(author);
 });
 
+it('stays open while focus is inside, when the pointer moves over the page', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  find('.follow')!.focus();
+  pointer('pointerover', page.get('.before'));
+  await wait(150);
+  expect(find('.card')).not.toBeNull();
+});
+
+it('closes on Escape when focus is elsewhere, and leaves focus there', async () => {
+  const page = await previews();
+  page.get('.before').focus();
+  await hoverOpen(page);
+  press('Escape', page.get('.before'));
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  expect(document.activeElement).toBe(page.get('.before'));
+});
+
+it('opens on the next focus of the trigger after a press outside closed it', async () => {
+  const page = await previews();
+  page.get('.before').focus();
+  await hoverOpen(page);
+  pointer('pointerleave', page.get('.author'));
+  pointer('pointerdown', document.body);
+  pointer('pointerup', document.body);
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  await wait(600);
+  page.get('.author').focus();
+  await page.waitFor(() => expect(find('.card')).not.toBeNull());
+});
+
 it('shows the next one at once, one at a time', async () => {
   const page = await previews();
   await hoverOpen(page);
@@ -110,9 +141,19 @@ it('shows on a long press of a touch, and the release follows no link', async ()
     expect(find('.card')).toBeNull();
     await page.waitFor(() => expect(find('.card')).not.toBeNull(), 2000);
     pointer('pointerup', author, { pointerType: 'touch' });
-    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    // The click of a touch has a detail of 1.
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 });
     author.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
+    // The long press cancelled the press of the link, so the release pressed nothing.
+    await wait(50);
+    expect(page.text('.presses')).toBe('0');
+    // The browser shows no menu for the held link.
+    pointer('pointerdown', author, { pointerType: 'touch' });
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    author.dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(true);
+    pointer('pointerup', author, { pointerType: 'touch' });
   } finally {
     Element.prototype.matches = matches;
   }
