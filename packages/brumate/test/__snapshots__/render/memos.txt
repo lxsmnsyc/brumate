@@ -178,7 +178,7 @@ export default function Memos($$props: Record<string, never>): string | Document
   let typed = ('');
   const same = (copy);
   const late = (items.length + double);
-    const $$s2 = $$b.createScope(2, $$s1);
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
   const $$e = $$b.clone($$t0), $$f = $$e[15];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);

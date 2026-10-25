@@ -149,7 +149,7 @@ export function r3($$p, $$item, $$index) {
   }
   const count = $$item;
   const i = $$index;
-  const $$s3 = $$b.createScope(3, $$p);
+  const $$s3 = $$b.createScope(3, $$p, undefined, 2);
   const $$e = $$b.clone($$k4), $$f = $$e[3];
   $$b.keep($$s3, 0, $$e[0]);
   $$b.keepText($$s3, 1, $$e[1], (row(i)));

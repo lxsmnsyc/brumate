@@ -678,7 +678,7 @@ export function layoutGraph(
 /** The scopes of a component instance, without the components inside it. */
 function countScopes(scope: Scope): number {
   let count = 1;
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.m === undefined) {
       count += countScopes(child);
     }
@@ -1572,7 +1572,7 @@ export function togglePanel(
       button.addEventListener('mouseenter', () => outline(scope.id));
       button.addEventListener('mouseleave', () => outline());
       tree.append(button);
-      for (const child of scope.children) {
+      for (const child of scope.children ?? []) {
         if (child.m === undefined) {
           visit(child, info, depth + 1);
         }
@@ -1800,7 +1800,7 @@ export function togglePanel(
       if (!scopeOfNode.has(scope.k)) {
         scopeOfNode.set(scope.k, scope);
       }
-      for (const child of scope.children) {
+      for (const child of scope.children ?? []) {
         if (child.m === undefined) {
           visit(child);
         }

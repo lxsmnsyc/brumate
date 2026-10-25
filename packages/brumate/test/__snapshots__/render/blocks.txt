@@ -172,7 +172,7 @@ export function r5($$p, $$item, $$index) {
   let $$html = '';
   const item = $$item;
   const i = $$index;
-  const $$s5 = $$b.createScope(5, $$p);
+  const $$s5 = $$b.createScope(5, $$p, undefined, 3);
   const $$e = $$b.clone($$k4), $$f = $$e[2];
   $$b.keep($$s5, 0, $$e[0]);
   $$b.appendText($$s5, 2, $$e[0], (item));
@@ -246,7 +246,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     let $$html = '';
     const item = $$item2;
     const i = $$index3;
-    const $$s5 = $$b.createScope(5, $$s1);
+    const $$s5 = $$b.createScope(5, $$s1, undefined, 3);
     const $$e = $$b.clone($$t2), $$f = $$e[2];
     $$b.keep($$s5, 0, $$e[0]);
     $$b.appendText($$s5, 2, $$e[0], (item));

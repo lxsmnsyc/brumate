@@ -244,7 +244,7 @@ export function r2($$p) {
   $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
   const $$body0 = () => {
     let $$html = '';
-    const $$s4 = $$b.createScope(4, $$s2);
+    const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
     const $$e = $$b.clone($$k4), $$f = $$e[1];
     $$b.appendText($$s4, 0, $$e[0], (count));
     return $$f;
@@ -252,7 +252,7 @@ export function r2($$p) {
   $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
   const $$portal1 = (() => {
     let $$html = '';
-    const $$s5 = $$b.createScope(5, $$s2);
+    const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
     const $$e = $$b.clone($$k5), $$f = $$e[2];
     $$b.nameComment($$e[0], "P" + $$s5);
     $$b.appendText($$s5, 0, $$e[1], (count));
@@ -273,7 +273,7 @@ export function r3($$p) {
 export function r4($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
-  const $$s4 = $$b.createScope(4, $$p);
+  const $$s4 = $$b.createScope(4, $$p, undefined, 1);
   const $$e = $$b.clone($$k4), $$f = $$e[1];
   $$b.appendText($$s4, 0, $$e[0], (count));
   return $$f;
@@ -348,7 +348,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
     $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
     const $$body0 = () => {
       let $$html = '';
-      const $$s4 = $$b.createScope(4, $$s2);
+      const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
       const $$e = $$b.clone($$t0), $$f = $$e[1];
       $$b.appendText($$s4, 0, $$e[0], (count));
       return $$f;
@@ -356,7 +356,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
     $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
     const $$portal1 = (() => {
       let $$html = '';
-      const $$s5 = $$b.createScope(5, $$s2);
+      const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
       const $$e = $$b.clone($$t1), $$f = $$e[2];
       $$b.nameComment($$e[0], "P" + $$s5);
       $$b.appendText($$s5, 0, $$e[1], (count));

@@ -593,6 +593,23 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   if (missing) {
     return false;
   }
+  // The scopes that the render makes keep their nodes in arrays of the right size from the start.
+  const sizes = new Map<string, number>();
+  for (const write of found.writes.flat()) {
+    if ('anchor' in write && write.kind !== 'block' && /^\$\$s\d+$/.test(write.scope)) {
+      sizes.set(write.scope, Math.max(sizes.get(write.scope) ?? 0, write.anchor + 1));
+    }
+  }
+  for (const [scope, size] of sizes) {
+    const at = source.findIndex((line) =>
+      line.trim().startsWith(`const ${scope} = $$b.createScope(`),
+    );
+    const made =
+      at === -1 ? undefined : /^(.*\$\$b\.createScope\()(\d+), ([^,)]+)\);$/.exec(source[at]!);
+    if (made) {
+      source[at] = `${made[1]}${made[2]}, ${made[3]}, undefined, ${size});`;
+    }
+  }
   // The clone and its writes go where the last `$$html +=` was, after the values they read.
   const result: string[] = [];
   const resultLevels: Level[] = [];

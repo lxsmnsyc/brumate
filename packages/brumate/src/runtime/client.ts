@@ -127,7 +127,8 @@ export interface Scope {
    * or the setter of `$bind(name, fn)`, as a function or a reference.
    */
   b?: Record<number, unknown>;
-  children: Set<Scope>;
+  /** The scopes inside it, made with the first one. */
+  children?: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
   cleanups?: Map<string, () => void>;
@@ -471,7 +472,6 @@ function addScopes(state: PageState, root: string): Scope[] {
       v: record.v,
       x: record.x,
       b: record.b,
-      children: new Set(),
       r: root,
     };
     scopes.set(id, scope);
@@ -481,7 +481,9 @@ function addScopes(state: PageState, root: string): Scope[] {
     const record = state[scope.id]!;
     if (record.p !== undefined) {
       scope.p = scopes.get(record.p);
-      scope.p?.children.add(scope);
+      if (scope.p) {
+        (scope.p.children ??= new Set()).add(scope);
+      }
       treeChanges++;
     }
     if (record.o !== undefined) {
@@ -1698,7 +1700,7 @@ function flushEffects(): void {
 }
 
 export function descendants(scope: Scope, kind: number, result: Scope[] = []): Scope[] {
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       result.push(child);
     }
@@ -1712,8 +1714,8 @@ function destroy(scope: Scope): void {
   if (scopes.get(scope.id) !== scope) {
     return;
   }
-  if (scope.children.size > 0) {
-    for (const child of Array.from(scope.children)) {
+  if (scope.children?.size) {
+    for (const child of Array.from(scope.children ?? [])) {
       destroy(child);
     }
   }
@@ -1764,7 +1766,7 @@ export function removeScope(scope: Scope): void {
     hiding?.bodies.delete(scope.h);
   }
   scopes.delete(scope.id);
-  scope.p?.children.delete(scope);
+  scope.p?.children?.delete(scope);
   scope.o?.owned?.delete(scope);
   treeChanges++;
 }
@@ -1821,7 +1823,7 @@ function destroyRange(scope: Scope, start: Node, end: Node): void {
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
-  for (const child of Array.from(scope.children)) {
+  for (const child of Array.from(scope.children ?? [])) {
     if (kinds.includes(child.k)) {
       destroy(child);
     }
@@ -2583,7 +2585,7 @@ export function offscreen(
     return;
   }
   let body: Scope | undefined;
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       body = child;
     }
@@ -4065,10 +4067,19 @@ let owner: Scope | undefined;
 // renders. Each is an export of its own, so a build keeps only those that its components call.
 
 /** Creates a scope for markup that the client renders, and returns its ID. */
-export function createScope(kind: number, parent?: Scope | ScopeId, module?: string): number {
+export function createScope(
+  kind: number,
+  parent?: Scope | ScopeId,
+  module?: string,
+  nodes?: number,
+): number {
   const id = nextId--;
   const parentScope = resolveScope(parent);
-  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [] };
+  // A clone keeps this many nodes on the scope, so the array does not grow.
+  if (nodes) {
+    created.n = new Array(nodes);
+  }
   rendered.push(created);
   // A component that the browser renders loads its code, as the components of the page do.
   if (module !== undefined) {
@@ -4087,7 +4098,9 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
       break;
     }
   }
-  parentScope?.children.add(created);
+  if (parentScope) {
+    (parentScope.children ??= new Set()).add(created);
+  }
   treeChanges++;
   scopes.set(id, created);
   return id;

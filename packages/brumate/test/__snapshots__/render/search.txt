@@ -98,7 +98,7 @@ const $$k5 = $$b.template("<li b-x=\"0\"></li>", 1);
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   const result = $$item;
-  const $$s3 = $$b.createScope(3, $$p);
+  const $$s3 = $$b.createScope(3, $$p, undefined, 1);
   const $$e = $$b.clone($$k5), $$f = $$e[1];
   $$b.keep($$s3, 0, $$e[0]);
   $$b.setContent($$e[0], (result), $$s3);

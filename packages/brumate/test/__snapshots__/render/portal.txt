@@ -67,7 +67,7 @@ export function r2($$p) {
   let $$html = '';
   const $$portal0 = (() => {
     let $$html = '';
-    const $$s3 = $$b.createScope(3, $$p);
+    const $$s3 = $$b.createScope(3, $$p, undefined, 1);
     const $$e = $$b.clone($$k2), $$f = $$e[2];
     $$b.nameComment($$e[0], "P" + $$s3);
     $$b.keep($$s3, 0, $$e[1]);
@@ -100,7 +100,7 @@ export default function Portal($$props: Record<string, never>): string | Documen
     let $$html = '';
     const $$portal1 = (() => {
       let $$html = '';
-      const $$s3 = $$b.createScope(3, $$s1);
+      const $$s3 = $$b.createScope(3, $$s1, undefined, 1);
       const $$e = $$b.clone($$t0), $$f = $$e[2];
       $$b.nameComment($$e[0], "P" + $$s3);
       $$b.keep($$s3, 0, $$e[1]);

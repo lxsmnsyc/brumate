@@ -124,7 +124,7 @@ const $$k2 = $$b.template("<li b-x=\"0\" b-on=\"click=Todos_t3g9lr#h12\"><!--x1-
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
-  const $$s2 = $$b.createScope(2, $$p);
+  const $$s2 = $$b.createScope(2, $$p, undefined, 3);
   const $$e = $$b.clone($$k2), $$f = $$e[3];
   (todo.done) && $$e[0].setAttribute("class", "done");
   $$b.keep($$s2, 0, $$e[0]);
