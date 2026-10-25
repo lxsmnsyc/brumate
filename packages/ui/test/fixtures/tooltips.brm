@@ -9,6 +9,7 @@
   import TooltipTrigger from '../../src/TooltipTrigger.brm';
 
   let saveOpen = $signal(false);
+  let hoverShown = $signal(true);
 </script>
 
 <main class="page">
@@ -28,6 +29,24 @@
     <Button class="disabled">Off</Button>
     <Tooltip class="disabled-tip">Never</Tooltip>
   </TooltipTrigger>
+  <button class="drop" type="button" onClick=(() => (hoverShown = false))>Drop</button>
+  #if (hoverShown) {
+    <TooltipTrigger delay=(100) closeDelay=(0)>
+      <Button class="gone">Gone</Button>
+      <Tooltip class="gone-tip">Gone soon</Tooltip>
+    </TooltipTrigger>
+  }
+  <DialogTrigger>
+    <Button class="menu-trigger">Menu</Button>
+    <Popover class="tip-popover">
+      <Dialog class="tip-dialog" aria-label="Menu">
+        <TooltipTrigger delay=(0) closeDelay=(0)>
+          <Button class="inside">Inside</Button>
+          <Tooltip class="inside-tip">In the popover</Tooltip>
+        </TooltipTrigger>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
   <DialogTrigger>
     <TooltipTrigger delay=(0) closeDelay=(0)>
       <Button class="settings">Settings</Button>

@@ -9,7 +9,8 @@
    * aria-expanded and aria-controls. The element shows `data-expanded` and `data-disabled`.
    *
    * `isExpanded` alone starts it open, and `isExpanded=$bind(signal)` writes the caller's. In a
-   * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it.
+   * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it. Without
+   * `id`, it takes an ID of its own, as in React Aria, so it still joins the group.
    */
   const { id, isDisabled = false, onExpandedChange, children, ...rest } = $props<{
     /** The key of the disclosure in a DisclosureGroup. */
@@ -24,15 +25,17 @@
   const group = $getContext(DisclosureGroupContext);
   const triggerId = $id();
   const panelId = $id();
-  const expanded = $memo(group && id !== undefined ? group.expandedKeys.includes(id) : isExpanded);
+  const ownKey = $id();
+  const key = $memo(id ?? ownKey);
+  const expanded = $memo(group ? group.expandedKeys.includes(key) : isExpanded);
   const disabled = $memo(isDisabled || Boolean(group?.isDisabled));
 
   function setExpanded(next: boolean) {
     if (next === expanded) {
       return;
     }
-    if (group && id !== undefined) {
-      group.toggle(id);
+    if (group) {
+      group.toggle(key);
     } else {
       isExpanded = next;
     }
@@ -43,9 +46,11 @@
     setExpanded(!expanded);
   }
 
-  // Find in page opens a collapsed panel that holds what it found.
+  // Find in page opens a collapsed panel that holds what it found, unless it is disabled.
   function expand() {
-    setExpanded(true);
+    if (!disabled) {
+      setExpanded(true);
+    }
   }
 
   // A Button without a slot, such as one in the panel, gets nothing from the disclosure.
@@ -61,7 +66,13 @@
       },
     },
   });
-  $setContext(DisclosurePanelContext, { id: panelId, triggerId, isExpanded: expanded, expand });
+  $setContext(DisclosurePanelContext, {
+    id: panelId,
+    triggerId,
+    isExpanded: expanded,
+    isDisabled: disabled,
+    expand,
+  });
 </script>
 
 <div data-expanded=(expanded || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</div>
