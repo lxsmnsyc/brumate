@@ -85,8 +85,12 @@ export const ToggleButtonContext: Context<ContextValue<ToggleButtonContextProps>
 export interface InputContextProps extends AttributeProps {
   onChange?: (value: string) => void;
   onInvalid?: (message: string, first: boolean) => void;
-  onKeyDown?: (key: string) => void;
+  onKeyDown?: (key: string, event: KeyboardEvent) => void;
   onBlur?: () => void;
+  /** Enter keeps no default, so it sends no form, as in a search field. */
+  isEnterPrevented?: boolean;
+  /** Escape keeps no default, so it closes no dialog, as in a search field with text. */
+  isEscapePrevented?: boolean;
 }
 
 export const InputContext: Context<ContextValue<InputContextProps> | null> =

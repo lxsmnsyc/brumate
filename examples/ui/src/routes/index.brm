@@ -140,6 +140,7 @@
       <TextArea class="field" rows="3" />
     </TextField>
     <Button class="press" type="submit">Sign up</Button>
+    <Button class="press" type="reset">Start again</Button>
   </Form>
 </section>
 

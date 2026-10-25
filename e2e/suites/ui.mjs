@@ -156,6 +156,12 @@ export async function run({ browser, url, runner }) {
       assert(described?.includes(errorId), `aria-describedby is ${described}`);
       await name.fill('Ada');
       await page.waitForFunction(() => !document.querySelector('.name-field .error'));
+      // A reset gives the field its first value, and the browser checks it again.
+      await page.locator('.signup button[type=reset]').click();
+      await page.waitForTimeout(100);
+      assert((await name.inputValue()) === '', `the field holds ${await name.inputValue()}`);
+      await page.locator('.signup button[type=submit]').click();
+      await page.waitForFunction(() => document.querySelector('.name-field .error')?.textContent);
     },
   );
 
