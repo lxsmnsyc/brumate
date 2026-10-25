@@ -1,14 +1,13 @@
 /**
  * `virtual:search-index` exports the sections of every documentation page:
- * the page, the heading, its anchor and its text. The search box imports it
- * the first time someone types, so pages do not load it before.
+ * the page, the heading, its anchor and its text. `virtual:ui-search-index`
+ * does the same for the pages of @brumate/ui. The search box imports one the
+ * first time someone types, so pages do not load it before.
  */
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { slug } from './markdown.ts';
-
-const ID = 'virtual:search-index';
 
 export interface Entry {
   /** The path after `/docs/`. */
@@ -63,11 +62,16 @@ async function entries(directories: string[], pages?: Set<string>): Promise<Entr
 }
 
 /**
- * `pages` limits the index to the documents of the site, by file name.
+ * `pages` limits the index to the documents of the site, by file name. `ID` is the module of
+ * the index: `virtual:search-index` for the docs, `virtual:ui-search-index` for @brumate/ui.
  */
-export default function search(directories: string[], pages?: Set<string>): Plugin {
+export default function search(
+  directories: string[],
+  pages?: Set<string>,
+  ID = 'virtual:search-index',
+): Plugin {
   return {
-    name: 'website:search',
+    name: `website:search:${ID}`,
     resolveId(id) {
       // A request from the browser asks for the resolved ID itself.
       return id === ID || id === `\0${ID}` ? `\0${ID}` : null;

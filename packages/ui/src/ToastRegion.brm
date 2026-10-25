@@ -1,0 +1,153 @@
+<script>
+  import { $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    ToastRegionContext,
+    leavingToasts,
+    listenForF6,
+    rememberFocus,
+    restoreFocus,
+    toastQueue,
+  } from './toast.ts';
+  import type { QueuedToast } from './toast.ts';
+  import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+
+  /**
+   * The toasts of a queue, as ToastRegion of React Aria Components. It renders at the end of the
+   * page, and `toast`, a `#template`, renders each toast of the queue, newest first.
+   *
+   * - It is a landmark, a `region` named "Notifications", while it has toasts. F6 moves focus to
+   *   the newest toast, and F6 again gives focus back.
+   * - The timeouts of the toasts stop while the pointer or focus is in it.
+   * - When the toast with focus closes, focus moves to the next toast, or back to where it was.
+   * - Its code loads with the first toast of its queue.
+   * - `transition` lets CSS animate each toast as it comes and goes, with `data-closed`,
+   *   `data-enter` and `data-leave` on the element with `data-toast-key`. A toast that leaves
+   *   stays until its animations end.
+   */
+  const {
+    queue = 'default',
+    toast,
+    transition = false,
+    'aria-label': label = 'Notifications',
+    ...rest
+  } = $props<{
+    queue?: string;
+    toast: (item: QueuedToast<any>) => unknown;
+    transition?: boolean;
+    'aria-label'?: string;
+    [attribute: string]: unknown;
+  }>();
+
+  let shown = $signal<QueuedToast<unknown>[]>([]);
+  let region = $signal<HTMLElement>();
+
+  $setContext(ToastRegionContext, { queue });
+
+  /** The element of a toast, by its key. */
+  function toastElement(key: string) {
+    return region?.querySelector<HTMLElement>(`[data-toast-key="${CSS.escape(key)}"]`) ?? null;
+  }
+
+  async function sync() {
+    listenForF6();
+    const next = toastQueue(queue).visibleToasts;
+    const keys = new Set(next.map((item) => item.key));
+    const old = shown;
+    const added = next.filter((item) => !old.some((previous) => previous.key === item.key));
+    const removed = old.filter((item) => !keys.has(item.key) && !leavingToasts.has(item.key));
+    // The toast with focus, when it closes.
+    const focused = document.activeElement?.closest<HTMLElement>('[data-toast-key]');
+    const closing = focused && region?.contains(focused) && !keys.has(focused.dataset.toastKey!)
+      ? old.findIndex((item) => item.key === focused.dataset.toastKey)
+      : -1;
+    if (transition) {
+      // A toast that leaves keeps its place until its leave ends.
+      const kept = [...next];
+      old.forEach((item, index) => {
+        if (!keys.has(item.key)) {
+          kept.splice(Math.min(index, kept.length), 0, item);
+        }
+      });
+      shown = kept;
+    } else {
+      shown = next;
+    }
+    await nextFrame();
+    if (closing !== -1) {
+      const toFocus = next[Math.min(closing, next.length - 1)];
+      if (toFocus) {
+        toastElement(toFocus.key)?.focus();
+      } else {
+        restoreFocus(queue);
+      }
+    }
+    if (!transition) {
+      return;
+    }
+    for (const item of added) {
+      const element = toastElement(item.key);
+      if (element) {
+        void enterSteps(element, stepClasses(), { current: () => !leavingToasts.has(item.key) });
+      }
+    }
+    for (const item of removed) {
+      const element = toastElement(item.key);
+      leavingToasts.add(item.key);
+      if (element) {
+        element.inert = true;
+        await leaveSteps(element, stepClasses(), { current: () => true });
+      }
+      leavingToasts.delete(item.key);
+      shown = shown.filter((other) => other.key !== item.key);
+    }
+  }
+
+  function pause() {
+    toastQueue(queue).pauseAll();
+  }
+
+  function resume() {
+    const element = region;
+    if (element && !element.matches(':hover') && !element.contains(document.activeElement)) {
+      toastQueue(queue).resumeAll();
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    const from = event.relatedTarget as Element | null;
+    if (!region?.contains(from)) {
+      rememberFocus(queue, from);
+    }
+    pause();
+  }
+
+  function focusOut(event: FocusEvent) {
+    if (!region?.contains(event.relatedTarget as Node | null)) {
+      resume();
+    }
+  }
+</script>
+
+#portal {
+  <!-- The queue sends `toastchange` here, so the code of the region loads with its first toast. -->
+  <div data-toast-region=queue style="display: contents" onToastchange=sync>
+    #if (shown.length > 0) {
+      <div
+        ref=region
+        role="region"
+        aria-label=label
+        data-queue=queue
+        tabindex="-1"
+        onPointerEnter=pause
+        onPointerLeave=resume
+        onFocusIn=focusIn
+        onFocusOut=focusOut
+        {...rest}
+      >
+        #for (item of shown by item.key) {
+          {toast(item)}
+        }
+      </div>
+    }
+  </div>
+}

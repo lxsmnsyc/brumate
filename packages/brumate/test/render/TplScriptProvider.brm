@@ -1,0 +1,16 @@
+<script>
+  import { $props, $setContext, $signal } from 'brumate/signals';
+  import TplReader from './TplReader.brm';
+  import { Level } from './tplContext.ts';
+
+  // Provides from the component script, to a reader in place and to children.
+  const { children } = $props<{ children?: unknown }>();
+  let count = $signal(1);
+  $setContext(Level, count);
+</script>
+
+<button class="script-bump" onClick=(() => count++)>Bump</button>
+<div class="in-script">
+  <TplReader label="script-direct" />
+  {children}
+</div>

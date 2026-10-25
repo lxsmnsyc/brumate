@@ -309,6 +309,411 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step(
+    'Disclosure and Transition: Enter expands, a link into a collapsed panel opens it, a note fades out',
+    async () => {
+      await page.goto(`${url}/`);
+      const shipping = page.locator('.faq-trigger', { hasText: 'Shipping' });
+      await shipping.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('.faq-trigger')?.getAttribute('aria-expanded') === 'true',
+      );
+      const returns = page.locator('.faq-panel', { hasText: 'thirty days' });
+      assert(
+        (await returns.getAttribute('hidden')) === 'until-found',
+        'the panel is not until-found',
+      );
+      // A link to an ID in the collapsed panel opens it, as find in page does.
+      await page.evaluate(() => {
+        location.hash = 'return-window';
+      });
+      await page.waitForFunction(
+        () => !document.querySelectorAll('.faq-panel')[1]?.hasAttribute('hidden'),
+      );
+      // The shipping panel has transition: it slides shut through its height, then hides.
+      const shippingPanel = page.locator('.faq-panel', { hasText: 'two days' });
+      // The link opened the other panel of the group, which closed this one, so it opens again.
+      await shipping.click();
+      await page.waitForFunction(() => {
+        const panel = document.querySelector('.faq-panel');
+        return panel && !panel.hasAttribute('hidden') && !panel.hasAttribute('data-transition');
+      });
+      await shipping.click();
+      await page.waitForFunction(() =>
+        document.querySelector('.faq-panel')?.hasAttribute('data-leave'),
+      );
+      const heights = await shippingPanel.evaluate(async (panel) => {
+        const seen = new Set();
+        for (let frame = 0; frame < 30 && !panel.hasAttribute('hidden'); frame++) {
+          seen.add(Math.round(panel.getBoundingClientRect().height));
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return [...seen];
+      });
+      assert(heights.length > 2, `the panel did not slide, with heights ${heights.join(', ')}`);
+      await page.waitForFunction(
+        () => document.querySelector('.faq-panel')?.getAttribute('hidden') === 'until-found',
+      );
+      await page.locator('.note-toggle').click();
+      await page.waitForFunction(() => document.querySelector('.note')?.hasAttribute('data-leave'));
+      // It stays for its transition, then leaves the page.
+      assert((await page.locator('.note').count()) === 1, 'the note left before its transition');
+      await page.waitForFunction(() => !document.querySelector('.note'));
+    },
+  );
+
+  await step(
+    'Popover: beside its trigger, focus inside, the page inert, nested, then closed',
+    async () => {
+      await page.goto(`${url}/`);
+      const trigger = page.locator('.settings-trigger');
+      await trigger.focus();
+      await page.keyboard.press('Enter');
+      const popover = page.locator('.popover').first();
+      await page.waitForFunction(() => document.activeElement?.classList.contains('settings'));
+      const placed = await page.evaluate(() => {
+        const trigger = document.querySelector('.settings-trigger').getBoundingClientRect();
+        const panel = document.querySelector('.popover').getBoundingClientRect();
+        const arrow = document.querySelector('.arrow');
+        return {
+          // On the side that it took: below, or above when the trigger is low in the window.
+          beside:
+            document.querySelector('.popover').dataset.placement === 'top'
+              ? panel.bottom <= trigger.top
+              : panel.top >= trigger.bottom,
+          start: Math.round(panel.left) === Math.round(trigger.left),
+          side: document.querySelector('.popover').dataset.placement,
+          arrow: arrow.dataset.placement,
+          inert: document.querySelector('main').closest('[inert]') !== null,
+          layer:
+            document.querySelector('.popover').closest('[data-layer]').parentElement ===
+            document.body,
+        };
+      });
+      assert(placed.beside && placed.start, 'the popover is not beside the start of its trigger');
+      assert(placed.side === placed.arrow, 'the arrow does not point at the trigger');
+      assert(placed.inert, 'the page behind the popover is not inert');
+      assert(placed.layer, 'the layer of the popover is not at the end of <body>');
+      // Tab stays inside the dialog.
+      for (let index = 0; index < 5; index++) {
+        await page.keyboard.press('Tab');
+      }
+      assert(
+        await page.evaluate(() => Boolean(document.activeElement?.closest('.settings'))),
+        'Tab left the dialog',
+      );
+      // Focus that lands on <body> comes back to the last element that had it in the dialog.
+      const last = await page.evaluate(() => document.activeElement?.className);
+      await page.evaluate(() => document.activeElement?.blur());
+      await page.waitForFunction((name) => document.activeElement?.className === name, last);
+      // A popover inside opens in its layer, and Escape closes only it.
+      await page.locator('.more-trigger').click();
+      await page.waitForFunction(() => document.activeElement?.classList.contains('more-dialog'));
+      const nested = await page.evaluate(
+        () =>
+          document
+            .querySelector('.more')
+            .closest('[data-layer]')
+            .parentElement.closest('[data-layer]') ===
+          document.querySelector('.popover').closest('[data-layer]'),
+      );
+      assert(nested, 'the inner popover is not in the layer of the outer one');
+      await page.locator('.deep').click();
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('.more'));
+      assert((await popover.count()) === 1, 'Escape in the inner popover closed the outer one');
+      // A press outside closes it, after its leave, and focus goes back to the trigger.
+      await page.mouse.click(5, 5);
+      await page.waitForFunction(() =>
+        document.querySelector('.popover')?.hasAttribute('data-leave'),
+      );
+      await page.waitForFunction(() => !document.querySelector('.popover'));
+      assert(
+        await trigger.evaluate((element) => element === document.activeElement),
+        'focus did not go back to the trigger',
+      );
+      assert(
+        await page.evaluate(() => document.querySelector('main').closest('[inert]') === null),
+        'the page stayed inert',
+      );
+    },
+  );
+
+  await step(
+    'Modal: the page is inert and does not scroll, focus stays inside, then comes back',
+    async () => {
+      await page.goto(`${url}/`);
+      const trigger = page.locator('.delete-trigger');
+      await trigger.scrollIntoViewIfNeeded();
+      const before = await page.evaluate(() => ({
+        y: window.scrollY,
+        width: document.body.getBoundingClientRect().width,
+      }));
+      await trigger.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('confirm'));
+      const open = await page.evaluate(() => ({
+        overflow: document.documentElement.style.overflow,
+        width: document.body.getBoundingClientRect().width,
+        inert: Boolean(document.querySelector('main')?.closest('[inert]')),
+        atEnd:
+          document.querySelector('.backdrop')?.closest('[data-layer]')?.parentElement ===
+          document.body,
+        covers: (() => {
+          const box = document.querySelector('.backdrop').getBoundingClientRect();
+          return box.top === 0 && box.left === 0 && box.width === window.innerWidth;
+        })(),
+      }));
+      assert(open.overflow === 'hidden', 'the root does not scroll');
+      assert(
+        open.width === before.width,
+        `the page moved sideways: ${before.width} to ${open.width}`,
+      );
+      assert(open.inert && open.atEnd && open.covers, JSON.stringify(open));
+      // The wheel does not scroll the page behind it.
+      await page.mouse.move(10, 10);
+      await page.mouse.wheel(0, 600);
+      await page.waitForTimeout(100);
+      assert((await page.evaluate(() => window.scrollY)) === before.y, 'the page scrolled');
+      // Tab stays in the dialog.
+      for (let index = 0; index < 4; index++) {
+        await page.keyboard.press('Tab');
+        assert(
+          await page.evaluate(() => Boolean(document.activeElement?.closest('.confirm'))),
+          'Tab left the dialog',
+        );
+      }
+      // A press on the overlay does not close it, and Escape does.
+      await page.mouse.click(5, 5);
+      await page.waitForTimeout(100);
+      assert(await page.locator('.confirm').isVisible(), 'a press outside closed it');
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('.backdrop'));
+      assert(
+        await page.evaluate(() => document.activeElement?.classList.contains('delete-trigger')),
+        'focus did not go back to the trigger',
+      );
+      assert(
+        (await page.evaluate(() => document.documentElement.style.overflow)) === '',
+        'the root still does not scroll',
+      );
+    },
+  );
+
+  await step('Sheet: along the start edge, closed by a press outside', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.menu-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('menu'));
+    const sheet = page.locator('.sheet');
+    assert((await sheet.getAttribute('data-side')) === 'left', 'not on the left');
+    await page.waitForFunction(() => !document.querySelector('.sheet')?.closest('[data-enter]'));
+    const box = await sheet.boundingBox();
+    assert(box && Math.round(box.x) === 0, `not at the edge: ${box?.x}`);
+    const size = page.viewportSize();
+    await page.mouse.click(size.width - 10, size.height / 2);
+    await page.waitForFunction(() => !document.querySelector('.sheet'));
+    assert(
+      await page.evaluate(() => document.activeElement?.classList.contains('menu-trigger')),
+      'focus did not go back to the trigger',
+    );
+  });
+
+  await step(
+    'Tooltip: after a delay on hover, at once on keyboard focus, then the next at once',
+    async () => {
+      await page.goto(`${url}/`);
+      const copy = page.locator('.tip-trigger');
+      await copy.scrollIntoViewIfNeeded();
+      await copy.hover();
+      await page.waitForTimeout(600);
+      assert((await page.locator('[role=tooltip]').count()) === 0, 'it showed before its delay');
+      await page.waitForSelector('[role=tooltip]', { timeout: 3000 });
+      const tip = page.locator('[role=tooltip]');
+      assert(
+        (await copy.getAttribute('aria-describedby')) === (await tip.getAttribute('id')),
+        'not described',
+      );
+      const [tipBox, triggerBox] = [await tip.boundingBox(), await copy.boundingBox()];
+      assert(tipBox.y + tipBox.height <= triggerBox.y, 'not above its trigger');
+      // Once one has shown, the next shows at once.
+      await page.locator('.tip-other').hover();
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent === 'Paste the link',
+        null,
+        { timeout: 400 },
+      );
+      // Escape hides it.
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('[role=tooltip]'));
+      // Focus from the keyboard shows it at once.
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(700);
+      await copy.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent === 'Copy the link',
+        null,
+        { timeout: 400 },
+      );
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(
+        () => document.querySelector('[role=tooltip]')?.textContent !== 'Copy the link',
+      );
+    },
+  );
+
+  await step(
+    'Toast: comes in a landmark, F6 moves focus to it, and its close button gives focus back',
+    async () => {
+      await page.goto(`${url}/`);
+      const notify = page.locator('.toast-trigger');
+      await notify.scrollIntoViewIfNeeded();
+      await notify.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('[role=region][aria-label=Notifications] .toast');
+      await page.waitForFunction(
+        () => !document.querySelector('.toast')?.hasAttribute('data-enter'),
+      );
+      assert(
+        (await page.locator('.toast [role=alert]').textContent()) === 'Link copied',
+        'the content is not an alert',
+      );
+      await page.keyboard.press('F6');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('toast'));
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => !document.querySelector('.toast'));
+      await page.waitForFunction(() => document.activeElement?.classList.contains('toast-trigger'));
+    },
+  );
+
+  await step(
+    'Toast: closes after its timeout, which stops while the pointer is over it',
+    async () => {
+      await page.goto(`${url}/`);
+      await page.locator('.toast-trigger').click();
+      await page.waitForSelector('.toast');
+      await page.locator('.toast').hover();
+      await page.waitForTimeout(5500);
+      assert(await page.locator('.toast').isVisible(), 'it closed while the pointer was over it');
+      await page.mouse.move(0, 0);
+      await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 7000 });
+    },
+  );
+
+  await step(
+    'PreviewTrigger: hover and keyboard focus show it, Tab moves in and past it, Escape gives focus back',
+    async () => {
+      await page.goto(`${url}/`);
+      const author = page.locator('.author');
+      await author.scrollIntoViewIfNeeded();
+      await author.hover();
+      await page.waitForTimeout(300);
+      assert((await page.locator('.author-card').count()) === 0, 'it showed before its delay');
+      await page.waitForSelector('.author-card', { timeout: 3000 });
+      assert(
+        await page.evaluate(() => !document.querySelector('main')?.closest('[inert]')),
+        'the page is inert',
+      );
+      // The pointer moves onto the preview, which stays.
+      await page.locator('.follow').hover();
+      await page.waitForTimeout(400);
+      assert(await page.locator('.author-card').isVisible(), 'it closed under the pointer');
+      // The pointer goes elsewhere, and it hides.
+      await page.mouse.move(1, 1);
+      await page.waitForFunction(() => !document.querySelector('.author-card'));
+      await page.waitForTimeout(700);
+      // Keyboard focus shows it, Tab moves into it, and Tab past it moves on to the next link.
+      await page.locator('.toast-trigger').focus();
+      await author.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await page.waitForSelector('.author-card', { timeout: 3000 });
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('follow'));
+      // Tab past its end moves on to the link after the trigger, and it hides.
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('reviewer'));
+      await page.waitForFunction(() => !document.querySelector('.author-card'));
+      await page.waitForTimeout(700);
+      await page.keyboard.press('Shift+Tab');
+      await page.waitForSelector('.author-card', { timeout: 3000 });
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.activeElement?.classList.contains('follow'));
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('.author-card'));
+      await page.waitForFunction(() => document.activeElement?.classList.contains('author'));
+    },
+  );
+
+  await step(
+    'PreviewTrigger: a long press of a touch shows it, and the link does not navigate',
+    async () => {
+      await page.goto(`${url}/`);
+      const author = page.locator('.author');
+      await author.scrollIntoViewIfNeeded();
+      const box = await author.boundingBox();
+      const session = await page.context().newCDPSession(page);
+      const point = [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }];
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point });
+      await page.waitForSelector('.author-card', { timeout: 3000 });
+      await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(300);
+      assert((await page.evaluate(() => location.hash)) !== '#author', 'the link navigated');
+      await session.detach();
+    },
+  );
+
+  await step('axe-core: a tooltip, a toast and a preview have no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.toast-trigger').click();
+    await page.waitForSelector('.toast');
+    await page.locator('.author').hover();
+    await page.waitForSelector('.author-card', { timeout: 3000 });
+    await page.locator('.tip-trigger').hover();
+    await page.waitForSelector('[role=tooltip]', { timeout: 3000 });
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      // A tooltip renders at the end of <body>, outside the landmarks, as in React Aria. The
+      // best-practice rule "region" asks for all text in landmarks, so it is off here alone.
+      const result = await window.axe.run(document, { rules: { region: { enabled: false } } });
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
+  await step('axe-core: an open modal has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.delete-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('confirm'));
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      const result = await window.axe.run(document);
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
+  await step('axe-core: an open popover has no violations', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('.settings-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('settings'));
+    await page.addScriptTag({ path: axe });
+    const violations = await page.evaluate(async () => {
+      const result = await window.axe.run(document);
+      return result.violations.map(
+        (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      );
+    });
+    assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+  });
+
   await step('axe-core: the page has no violations', async () => {
     await page.goto(`${url}/`);
     // axe runs as a script of the page, which Playwright adds.

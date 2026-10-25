@@ -1,0 +1,24 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="ui-button">Delete the draft</Button>
+  <ModalOverlay class="ui-backdrop" transition>
+    <Modal class="ui-modal">
+      <Dialog role="alertdialog" class="ui-dialog">
+        <Heading slot="title" level=(4)>Delete the draft?</Heading>
+        <p>It cannot come back.</p>
+        <div class="ui-actions">
+          <Button slot="close" class="ui-button">Cancel</Button>
+          <Button slot="close" class="ui-button">Delete</Button>
+        </div>
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+</DialogTrigger>

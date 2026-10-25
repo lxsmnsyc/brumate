@@ -1,0 +1,12 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  /**
+   * An arrow from a Popover to its trigger, as OverlayArrow of React Aria Components. The Popover
+   * places it along its side, with `left` or `top`, and gives it `data-placement`, the side of
+   * the trigger that the popover is on, so CSS can point it.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+</script>
+
+<div data-overlay-arrow aria-hidden="true" style="position: absolute" {...rest}>{children}</div>

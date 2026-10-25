@@ -1,0 +1,26 @@
+<script>
+  import { $effect, $props, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  // Writes its bound prop from a listener that an effect adds.
+  let { on = false } = $props<{ on?: Bindable<boolean> }>();
+
+  function set(next: boolean) {
+    on = next;
+  }
+
+  $effect(() => {
+    if (!on) {
+      return undefined;
+    }
+    return $untrack(listen(() => set(false)));
+  });
+
+  function listen(off: () => void) {
+    const handler = () => off();
+    document.addEventListener('effect-off', handler);
+    return () => document.removeEventListener('effect-off', handler);
+  }
+</script>
+
+<button class="effect-on" onClick=(() => set(true))>On</button>

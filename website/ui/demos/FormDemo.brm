@@ -1,0 +1,17 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Form class="ui-form" validationErrors=({ email: 'This email has an account' })>
+  <TextField class="ui-field" name="email" type="email" value="ada@example.com">
+    <Label>Email</Label>
+    <Input class="ui-input" />
+    <FieldError class="ui-error" />
+  </TextField>
+  <Button type="submit" class="ui-button">Sign up</Button>
+</Form>

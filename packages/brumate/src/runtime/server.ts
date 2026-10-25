@@ -596,9 +596,9 @@ export class Context {
   }
 
   /**
-   * Reads a context from the nearest scope that provides it, starting at
-   * `scope`. With `slot`, records which slot holds it, so the client can
-   * update it when the provided value changes.
+   * Reads a context from the nearest scope above `scope` that provides it.
+   * With `slot`, records which slot holds it, so the client can update it
+   * when the provided value changes.
    */
   consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
     if (slot !== undefined) {
@@ -606,7 +606,9 @@ export class Context {
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    for (let id: ScopeId | undefined = scope; id !== undefined;) {
+    // A scope reads the contexts of the scopes above it, not its own, so a component can read a
+    // context and provide it again to the scopes inside it.
+    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
       const node = this.find(id);
       if (node?.values?.has(context.key)) {
         return node.values.get(context.key) as T;
@@ -787,6 +789,18 @@ export class Context {
   fn<T>(value: T, ref: string, scope: ScopeId, args?: unknown[]): T {
     if (typeof value !== 'function') {
       return value;
+    }
+    if (args === undefined && /#t\d/.test(ref)) {
+      // A `#template` renders where the component that gets it inserts it, so it reads the
+      // contexts there, as children do.
+      const render = value as unknown as (...rest: unknown[]) => Promise<unknown>;
+      const template = (...rest: unknown[]): Lazy =>
+        new Children(scope, async () => {
+          const html = await render(...rest);
+          return isRaw(html) ? rawHTML(html) : insertValue(html);
+        });
+      functionReferences.set(template, new FunctionReference(ref, scope));
+      return template as T;
     }
     if (args === undefined) {
       functionReferences.set(value, new FunctionReference(ref, scope));

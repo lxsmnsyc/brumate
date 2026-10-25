@@ -65,6 +65,14 @@ export interface LinkContextProps extends AttributeProps {
   isDisabled?: boolean;
   isCurrent?: boolean;
   onPress?: (event: PressEvent) => void;
+  onPressStart?: (event: PressEvent) => void;
+  onPressEnd?: (event: PressEvent) => void;
+  onPressUp?: (event: PressEvent) => void;
+  onPressChange?: (pressed: boolean) => void;
+  onHoverStart?: (event: HoverEvent) => void;
+  onHoverEnd?: (event: HoverEvent) => void;
+  onHoverChange?: (hovered: boolean) => void;
+  onFocusChange?: (focused: boolean) => void;
 }
 
 export const LinkContext: Context<ContextValue<LinkContextProps> | null> =
@@ -169,3 +177,59 @@ export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-
 
 export const ToggleGroupContext: Context<ToggleGroupState | null> =
   createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);
+
+/** What a Disclosure gives its DisclosurePanel. */
+export interface DisclosurePanelState {
+  id: string;
+  triggerId: string;
+  isExpanded: boolean;
+  expand: () => void;
+}
+
+export const DisclosurePanelContext: Context<DisclosurePanelState | null> =
+  createContext<DisclosurePanelState | null>('brumate-ui:disclosure-panel', null);
+
+/** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
+export interface DisclosureGroupState {
+  expandedKeys: string[];
+  isDisabled: boolean;
+  toggle: (id: string) => void;
+}
+
+export const DisclosureGroupContext: Context<DisclosureGroupState | null> =
+  createContext<DisclosureGroupState | null>('brumate-ui:disclosure-group', null);
+
+/** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
+export interface OverlayTriggerState {
+  isOpen: boolean;
+  triggerId: string;
+  overlayId: string;
+  open: () => void;
+  close: () => void;
+  /**
+   * A preview, such as of a PreviewTrigger: the overlay is not modal, and focus stays where it
+   * is when it opens.
+   */
+  isPreview?: boolean;
+}
+
+export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
+  createContext<OverlayTriggerState | null>('brumate-ui:overlay-trigger', null);
+
+/** What an overlay gives the Dialog inside it: the function that closes the overlay. */
+export interface DialogState {
+  close: () => void;
+}
+
+export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(
+  'brumate-ui:dialog',
+  null,
+);
+
+/** Set inside a ModalOverlay, so the Modal inside renders only its box. */
+export interface ModalOverlayState {
+  close: () => void;
+}
+
+export const ModalOverlayContext: Context<ModalOverlayState | null> =
+  createContext<ModalOverlayState | null>('brumate-ui:modal-overlay', null);

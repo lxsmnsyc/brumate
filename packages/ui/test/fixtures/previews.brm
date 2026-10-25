@@ -1,0 +1,27 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Link from '../../src/Link.brm';
+  import Popover from '../../src/Popover.brm';
+  import PreviewTrigger from '../../src/PreviewTrigger.brm';
+
+  let open = $signal(false);
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <PreviewTrigger delay=(60) closeDelay=(60) isOpen=$bind(open)>
+    <Link class="author" href="#ada">Ada</Link>
+    <Popover class="card" placement="bottom start">
+      <p>Ada writes about engines.</p>
+      <Button class="follow">Follow</Button>
+      <Link class="profile" href="#profile">Profile</Link>
+    </Popover>
+  </PreviewTrigger>
+  <button class="after" type="button">After</button>
+  <PreviewTrigger delay=(60) closeDelay=(60)>
+    <Button class="other">Grace</Button>
+    <Popover class="other-card"><p>Grace writes compilers.</p></Popover>
+  </PreviewTrigger>
+  <p class="state">{String(open)}</p>
+</main>

@@ -1,0 +1,6 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+</script>
+
+<Meter class="ui-bar" value=(72)><Label>Disk space used</Label></Meter>

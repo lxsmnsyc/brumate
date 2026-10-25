@@ -13,4 +13,8 @@ function colors(css: string): string {
 // The dark colors apply with the dark theme, chosen or from the system.
 const darkColors = colors(dark);
 
-export const STYLES = `<style>${light}:root[data-theme='dark']${darkColors}@media (prefers-color-scheme: dark){:root:not([data-theme='light'])${darkColors}}${site}</style>`;
+// The comments of the light theme are darker than GitHub's, so they reach a contrast of 4.5:1 on
+// the background of a code block of this site.
+const lightTheme = light.replace(/--twp-comment:\s*#6e7781/, '--twp-comment: #59636e');
+
+export const STYLES = `<style>${lightTheme}:root[data-theme='dark']${darkColors}@media (prefers-color-scheme: dark){:root:not([data-theme='light'])${darkColors}}${site}</style>`;

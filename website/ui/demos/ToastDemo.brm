@@ -1,0 +1,38 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import Icon from '../../src/components/Icon.brm';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+
+  interface Notice {
+    title: string;
+    description: string;
+  }
+
+  let count = 0;
+
+  function save() {
+    count += 1;
+    toastQueue<Notice>('demo').add(
+      { title: 'Draft saved', description: `Version ${count} is safe.` },
+      { timeout: 5000 },
+    );
+  }
+</script>
+
+<Button class="ui-button" onPress=save>Save the draft</Button>
+<ToastRegion queue="demo" class="ui-toasts" toast=notice transition />
+
+#template notice(toast: QueuedToast<Notice>) {
+  <Toast toast=toast class="ui-toast">
+    <ToastContent class="ui-toast-content">
+      <Text slot="title" class="ui-toast-title">{toast.content.title}</Text>
+      <Text slot="description">{toast.content.description}</Text>
+    </ToastContent>
+    <Button slot="close" class="ui-icon-button"><Icon name="close" size=(14) /></Button>
+  </Toast>
+}

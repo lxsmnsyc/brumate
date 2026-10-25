@@ -1,0 +1,19 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="ui-button">Open the menu</Button>
+  <Sheet class="ui-sheet" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Menu</Heading>
+      <Button class="ui-button">Home</Button>
+      <Button class="ui-button">Settings</Button>
+      <Button slot="close" class="ui-button">Close</Button>
+    </Dialog>
+  </Sheet>
+</DialogTrigger>

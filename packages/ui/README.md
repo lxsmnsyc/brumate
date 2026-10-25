@@ -14,6 +14,8 @@ The package is private while its first phase is built.
 - `Button`: presses with a pointer, Enter, Space or a screen reader. Its state is in `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
 - `Checkbox`: a label around a native checkbox, with `data-selected`, `data-indeterminate`, `data-pressed` and the focus and hover of its label.
 - `CheckboxGroup`: checkboxes with one value, a list. With `isRequired`, the browser asks for a box on a submit.
+- `Dialog` and `DialogTrigger`: a dialog in an overlay, named by a Heading with `slot="title"`, and closed by a Button with `slot="close"`.
+- `Disclosure`, `DisclosurePanel` and `DisclosureGroup`: content that expands and collapses. A collapsed panel is `hidden="until-found"`. `transition` on the panel lets CSS animate it, with `--disclosure-panel-height`, and `unmount` decides what happens to its content while it is collapsed.
 - `FieldError`: the errors of a field, while it is invalid.
 - `FileTrigger`: opens the file picker from a Button inside, and calls `onSelect` with the files.
 - `Form`: a form that tells its fields how to validate, and gives them the errors of the server by name.
@@ -25,13 +27,21 @@ The package is private while its first phase is built.
 - `Label`: the label of a field, with the `id` and `for` that the field gives.
 - `Link`: a link that presses as a button does, with `data-current`. A disabled link has no address.
 - `Meter` and `ProgressBar`: a value in a range, with its text in the locale and `--percentage` for CSS.
+- `ModalOverlay` and `Modal`: a dialog over the page. The page is inert and does not scroll while it is open. Escape closes it, and a press outside does with `isDismissable`.
+- `OverlayArrow`: an arrow from a Popover to its trigger.
+- `Popover`: an overlay beside its trigger, in a layer of its own. It is modal unless `isNonModal`, closes on Escape and a press outside, and takes `transition`.
+- `PreviewTrigger`: a Popover of a Link or a Button, on hover, on keyboard focus and on a long press. It is not modal, and Tab moves into it.
 - `RadioGroup` and `Radio`: native radios with one name, so the arrow keys move the choice.
 - `SearchField`: a search input with a button that clears it. Escape clears it, and Enter calls `onSubmit`.
 - `Separator`: an `<hr>`, or a vertical separator.
+- `Sheet`: a Modal along an edge of the window, with `data-side`.
 - `Switch`: a native checkbox with `role="switch"`.
 - `Text`: the text of a field, such as its description, with the `id` that the field gives.
 - `TextField`: a field of a Label, an Input or a TextArea, a description and a FieldError. The browser checks it on a submit, and `field` takes a field of `createForm`.
+- `Transition` and `TransitionChild`: animate content in and out, with `data-closed`, `data-enter` and `data-leave`, and keep it until its leave ends. Each step waits for the animations of the element, and a child moves with its parent.
+- `TooltipTrigger` and `Tooltip`: a description of a Button, on hover after a delay and on focus from the keyboard.
 - `Toolbar`: the arrow keys move focus between its items, and Tab stops at one of them.
+- `Toast`, `ToastContent` and `ToastRegion`: notices from a queue, `toastQueue()` of `@brumate/ui/toast.ts`, in a landmark that F6 reaches. A timeout stops while the pointer or focus is in it.
 - `ToggleButtonGroup`: ToggleButtons with one selection, as radios, or several, as a toolbar.
 - `ToggleButton`: a button that stays pressed, with `aria-pressed` and `data-selected`.
 - `VisuallyHidden`: hides its content from sight and keeps it for screen readers.
@@ -51,7 +61,7 @@ A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `tes
 
 Give each state one `let` prop, typed `Bindable`, such as `let { pressed = false } = $props<{ pressed?: Bindable<boolean> }>()`. Write it, and call `onChange`:
 
-- `pressed=(true)` starts the part's own copy.
+- `pressed` alone starts the part's own copy as on.
 - `pressed=$bind(signal)` writes the caller's signal.
 - `pressed=$bind(signal, setter)` lets the caller refuse the value.
 

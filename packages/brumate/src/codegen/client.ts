@@ -1,5 +1,6 @@
 import { isMacroImport } from '../macros.ts';
 import type {
+  Attribute,
   Block,
   Body,
   DynamicTagNode,
@@ -370,11 +371,11 @@ class ClientGenerator {
   }
 
   /** The import statements for the names that some code reads. */
-  private importsFor(names: Set<string>, components: boolean): string[] {
-    if (components) {
-      for (const scope of this.renderedScopes()) {
-        componentNames(scope.body?.children ?? [], names);
-      }
+  private importsFor(names: Set<string>, components: boolean | Scope[]): string[] {
+    // `true` for the scopes that render functions render, or the scopes of a template part.
+    const rendered = components === true ? this.renderedScopes() : components || [];
+    for (const scope of rendered) {
+      componentNames(scope.body?.children ?? [], names);
     }
     const result: string[] = [];
     for (const program of this.programs()) {
@@ -423,7 +424,7 @@ class ClientGenerator {
       .map((item) => (item.kind === 'function' ? `${item.name}$` : item.name));
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(names, name === 'update'),
+      ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
     ];
     if (shared.length > 0) {
       lines.push(
@@ -446,7 +447,10 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(imports, true),
+      ...this.importsFor(imports, [
+        ...this.renderedScopes(),
+        ...names.flatMap((name) => this.templateScopes(name)),
+      ]),
       '',
       ...this.serverStubs(names),
     ];
@@ -544,6 +548,31 @@ class ClientGenerator {
 
   private usesModuleScript(): boolean {
     return [...this.clientReads()].some((declaration) => declaration.kind === 'module');
+  }
+
+  /**
+   * The scopes of the templates that a template part renders, such as a template that is passed
+   * to a component as a prop, which can render components of its own.
+   */
+  private templateScopes(part: string): Scope[] {
+    const result: Scope[] = [];
+    for (const [site, symbol] of this.plan.symbols) {
+      if (symbol !== part || !symbol.startsWith('t')) {
+        continue;
+      }
+      for (const callee of site.calls) {
+        const template =
+          callee.kind === 'template'
+            ? this.model.scopes.find(
+                (item) => item.template?.name === callee.name && item.parent === callee.scope,
+              )
+            : undefined;
+        if (template) {
+          result.push(...this.inside(template));
+        }
+      }
+    }
+    return result;
   }
 
   /** Every scope that a render function of this module renders, including templates. */
@@ -938,30 +967,7 @@ class ClientGenerator {
       }
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
-      const spreads = new Map<oxc.Node, string>();
-      for (const item of owner.attributes) {
-        if (item.kind !== 'spread' || item === attribute) {
-          continue;
-        }
-        // A spread that cannot change has code in the browser when each value that it reads has
-        // a slot, such as a rest prop that markup of the browser reads.
-        const other = this.plan.graph.nodes.find(
-          (candidate) =>
-            candidate.kind !== 'source' &&
-            candidate.site.node === item.value.ast &&
-            (this.plan.graph.live.has(candidate) ||
-              candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
-        );
-        if (other && other.kind !== 'source') {
-          spreads.set(
-            item.value.ast,
-            this.withTemplates(
-              other.site,
-              this.rewriter.rewrite(other.site, '$$s', instanceScope(this.plan, other.site.scope)),
-            ),
-          );
-        }
-      }
+      const spreads = this.spreadCode(owner, attribute);
       // The element's static attributes merge with the spreads in their order, as on the server.
       const parts = owner.attributes.flatMap((item) => {
         if (item === attribute) {
@@ -982,13 +988,55 @@ class ClientGenerator {
         `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
-      const value =
+      let value =
         (attribute.name === 'class' ? classes(attribute.value.ast) : undefined) ?? expression();
+      // A class adds to the classes of the spreads of the element, as on the server, so an update
+      // of the element's own class keeps theirs.
+      if (attribute.name === 'class') {
+        const spreads = [...this.spreadCode(owner).values()];
+        if (spreads.length > 0) {
+          value = `[${[value, ...spreads.map((code) => `(${code})?.class`)].join(', ')}]`;
+        }
+      }
       this.emit(
         `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value});\n}`,
       );
     }
     void node;
+  }
+
+  /**
+   * The code of the spreads of an element, by their node, without `except`. A spread that
+   * cannot change has code in the browser when each value that it reads has a slot, such as a
+   * rest prop that markup of the browser reads.
+   */
+  private spreadCode(
+    owner: { attributes: Attribute[] },
+    except?: Attribute,
+  ): Map<oxc.Node, string> {
+    const spreads = new Map<oxc.Node, string>();
+    for (const item of owner.attributes) {
+      if (item.kind !== 'spread' || item === except) {
+        continue;
+      }
+      const other = this.plan.graph.nodes.find(
+        (candidate) =>
+          candidate.kind !== 'source' &&
+          candidate.site.node === item.value.ast &&
+          (this.plan.graph.live.has(candidate) ||
+            candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
+      );
+      if (other && other.kind !== 'source') {
+        spreads.set(
+          item.value.ast,
+          this.withTemplates(
+            other.site,
+            this.rewriter.rewrite(other.site, '$$s', instanceScope(this.plan, other.site.scope)),
+          ),
+        );
+      }
+    }
+    return spreads;
   }
 
   private findInsert(site: Site): Markup | undefined {

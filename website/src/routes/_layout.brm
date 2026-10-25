@@ -1,11 +1,16 @@
 <script>
-  import { $props } from 'brumate/signals';
+  import { $memo, $props, $route } from 'brumate/signals';
   import { raw } from 'brumate/html';
   import Header from '../components/Header.brm';
   import { NETWORK_SCRIPT, THEME_SCRIPT } from '../scripts.ts';
   import { STYLES } from '../theme.ts';
 
   const { children } = $props();
+  const route = $route();
+  // The pages of @brumate/ui are a section of their own, with their own header.
+  const section = $memo(
+    route.url.pathname.startsWith(`${import.meta.env.BASE_URL}ui`) ? 'ui' : 'docs',
+  );
   const base = import.meta.env.BASE_URL;
 </script>
 
@@ -20,7 +25,7 @@
     {raw(STYLES)}
   </head>
   <body>
-    <Header />
+    <Header section=section />
     {children}
     <footer class="footer">
       <p>MIT licensed. Built with brumate: this page loaded no component code until you used it.</p>

@@ -1,0 +1,21 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<div class="ui-accordion">
+<Disclosure class="ui-disclosure">
+  <Heading level=(2)>
+    <Button slot="trigger" class="ui-disclosure-trigger">
+      Shipping
+      <Icon name="chevron" />
+    </Button>
+  </Heading>
+  <DisclosurePanel transition class="ui-disclosure-panel">
+    <p>Orders leave the shop in two days.</p>
+  </DisclosurePanel>
+</Disclosure>
+</div>

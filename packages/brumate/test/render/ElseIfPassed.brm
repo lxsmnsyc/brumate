@@ -1,0 +1,17 @@
+<script>
+  import { $isPassed, $props, $signal } from 'brumate/signals';
+
+  // An #else if with a condition that never changes, after one that does.
+  let { open } = $props<{ open?: boolean }>();
+  const passed = $isPassed(open);
+  let first = $signal(true);
+</script>
+
+<button class="else-if-toggle" onClick=(() => (first = !first))>Toggle</button>
+#if (first) {
+  <p class="else-if">first</p>
+} #else if (passed) {
+  <p class="else-if">passed</p>
+} #else {
+  <p class="else-if">neither</p>
+}

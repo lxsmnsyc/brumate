@@ -99,7 +99,7 @@ export interface Declaration {
   /** For `const name = $isPassed(prop)`, the key of the prop. */
   passedKey?: string;
   /** Elements whose `ref` targets this declaration. */
-  refs: { attribute: RefAttribute; element: ElementNode; scope: Scope }[];
+  refs: { attribute: RefAttribute; element: ElementNode | DynamicTagNode; scope: Scope }[];
 }
 
 export interface Reference {

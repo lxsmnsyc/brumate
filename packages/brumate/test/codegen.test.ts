@@ -235,6 +235,24 @@ describe('client entries and handlers', () => {
     expect(client).not.toContain('export function load');
   });
 
+  it('imports the components of a template that a prop passes, in parts and in one module', () => {
+    const source = [
+      '<script>',
+      "  import Item from './Item.brm';",
+      "  import List from './List.brm';",
+      '</script>',
+      '<List item=row />',
+      '#template row(label: string) {',
+      '  <Item label=label />',
+      '}',
+    ].join('\n');
+    const split = compile(source, { filename: 'T.brm' });
+    const part = Object.entries(split.parts).find(([name]) => name.startsWith('t'))![1];
+    expect(part).toContain('import Item from "./Item.brm?brumate-render";');
+    const merged = compile(source, { filename: 'T.brm', merge: 2048 });
+    expect(merged.client).toContain('import Item from "./Item.brm?brumate-render";');
+  });
+
   it('merges a component of a few kB with the default of the Vite plugin', () => {
     // Two handlers and the updates: as large as a dashboard widget, so one module.
     expect(partsSize(widgetSource(2))).toBeGreaterThan(2048);

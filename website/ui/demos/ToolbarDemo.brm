@@ -1,0 +1,17 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+</script>
+
+<Toolbar class="ui-group" aria-label="Text">
+  <ToggleButtonGroup class="ui-group" aria-label="Style" selectionMode="multiple">
+    <ToggleButton id="bold" class="ui-button">B</ToggleButton>
+    <ToggleButton id="italic" class="ui-button">I</ToggleButton>
+  </ToggleButtonGroup>
+  <Separator orientation="vertical" class="ui-separator" />
+  <Button class="ui-button">Copy</Button>
+  <Button class="ui-button">Paste</Button>
+</Toolbar>

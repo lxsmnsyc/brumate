@@ -35,3 +35,13 @@ declare module 'virtual:search-index' {
     text: string;
   }[];
 }
+
+declare module 'virtual:ui-search-index' {
+  export const index: {
+    page: string;
+    pageTitle: string;
+    heading: string;
+    id: string;
+    text: string;
+  }[];
+}

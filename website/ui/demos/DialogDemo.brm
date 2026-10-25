@@ -1,0 +1,18 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="ui-button">About</Button>
+  <Popover class="ui-popover" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>About this page</Heading>
+      <p>A dialog takes focus, and its title names it.</p>
+      <Button slot="close" class="ui-button">Close</Button>
+    </Dialog>
+  </Popover>
+</DialogTrigger>

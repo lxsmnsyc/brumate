@@ -243,6 +243,34 @@ export function clientState(graph: Graph): {
       addClientSite(site);
     }
   }
+  // The update of a block reads all of its header, such as each condition of `#if` and
+  // `#else if`, when one of them changes. So a condition that never changes, such as one of
+  // `$isPassed`, is read in the browser too.
+  const liveBlocks = new Set<Block>();
+  for (const site of clientSites) {
+    if (site.block) {
+      liveBlocks.add(site.block);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.block && liveBlocks.has(site.block)) {
+      addClientSite(site);
+    }
+  }
+  // The spreads of an element update together, so a spread that never changes, such as a rest
+  // prop, is read in the browser when another spread of the same element changes. Without it,
+  // the update would remove the attributes that it gives, such as a class.
+  const liveSpreads = new Set<Site['owner']>();
+  for (const site of clientSites) {
+    if (site.kind === 'spread' && site.owner) {
+      liveSpreads.add(site.owner);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.kind === 'spread' && site.owner && liveSpreads.has(site.owner)) {
+      addClientSite(site);
+    }
+  }
 
   const slots = new Map<Scope, Declaration[]>();
   for (const scope of model.scopes) {
@@ -379,12 +407,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       case 'element':
       case 'dynamic': {
         const sites = sitesByNode.get(node) ?? [];
-        const hasRef =
-          node.kind === 'element' &&
-          node.attributes.some((attribute) => {
-            const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
-            return target !== undefined && slotted.has(target);
-          });
+        const hasRef = node.attributes.some((attribute) => {
+          const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
+          return target !== undefined && slotted.has(target);
+        });
         const content = node.kind === 'element' ? liveContent(node) : undefined;
         const events = sites.some((site) => site.kind === 'event');
         // `value=$bind(name)`: the core finds the scope of the name from the anchor of the element.

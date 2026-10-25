@@ -1,0 +1,55 @@
+<script>
+  import { $bind, $getContext, $isPassed, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ModalOverlayContext } from './contexts.ts';
+  import ModalOverlay from './ModalOverlay.brm';
+
+  /**
+   * The box of a modal, which holds a Dialog, as Modal of React Aria Components. Inside a
+   * ModalOverlay, it renders only its box. On its own, it renders a ModalOverlay around itself,
+   * with the props of the overlay: `isOpen`, `isDismissable`, `isKeyboardDismissDisabled`,
+   * `transition` and `onOpenChange`.
+   */
+  const {
+    isDismissable = false,
+    isKeyboardDismissDisabled = false,
+    transition = false,
+    onOpenChange,
+    children,
+    ...rest
+  } = $props<{
+    isDismissable?: boolean;
+    isKeyboardDismissDisabled?: boolean;
+    transition?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isOpen } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const overlay = $getContext(ModalOverlayContext);
+  const passed = $isPassed(isOpen);
+</script>
+
+#template box() {
+  <div data-modal tabindex="-1" {...rest}>{children}</div>
+}
+
+#if (overlay) {
+  {box()}
+} #else if (passed) {
+  <ModalOverlay
+    isOpen=$bind(isOpen)
+    isDismissable=isDismissable
+    isKeyboardDismissDisabled=isKeyboardDismissDisabled
+    transition=transition
+    onOpenChange=onOpenChange
+  >{box()}</ModalOverlay>
+} #else {
+  <ModalOverlay
+    isDismissable=isDismissable
+    isKeyboardDismissDisabled=isKeyboardDismissDisabled
+    transition=transition
+    onOpenChange=onOpenChange
+  >{box()}</ModalOverlay>
+}

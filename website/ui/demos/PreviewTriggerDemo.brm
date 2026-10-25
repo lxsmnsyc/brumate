@@ -1,0 +1,21 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+</script>
+
+<p>
+  Written by
+  <PreviewTrigger>
+    <Link class="ui-link" href="#preview-trigger">Ada Lovelace</Link>
+    <Popover class="ui-popover" placement="bottom start" transition>
+      <div class="ui-dialog">
+        <strong>Ada Lovelace</strong>
+        <p>Writes about engines and the numbers of Bernoulli.</p>
+        <Button class="ui-button">Follow</Button>
+      </div>
+    </Popover>
+  </PreviewTrigger>
+  in 1843.
+</p>

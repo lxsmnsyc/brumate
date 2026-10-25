@@ -1,0 +1,116 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ButtonContext } from './contexts.ts';
+  import type { ButtonContextProps } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { isFocusVisible } from './interactions.ts';
+  import type { ContextValue } from './slots.ts';
+  import { TooltipTriggerContext, tooltips } from './tooltip.ts';
+
+  /**
+   * Shows a Tooltip for the Button inside it, as TooltipTrigger of React Aria Components.
+   *
+   * - Hover shows it after `delay`, 1500 milliseconds by default. Once a tooltip has shown, the
+   *   others show at once, until none has shown for half a second.
+   * - Focus from the keyboard shows it at once. A touch never shows it.
+   * - Leaving hides it after `closeDelay`, 500 milliseconds, unless the pointer moves onto the
+   *   tooltip. Blur, a press of the button and Escape hide it at once.
+   * - `trigger="focus"` shows it only on focus. `isDisabled` never shows it.
+   * - The Button gets `aria-describedby` while it shows. Inside a DialogTrigger, it keeps what
+   *   the DialogTrigger gives it.
+   */
+  const {
+    delay = 1500,
+    closeDelay = 500,
+    trigger,
+    isDisabled = false,
+    onOpenChange,
+    children,
+  } = $props<{
+    delay?: number;
+    closeDelay?: number;
+    trigger?: 'focus';
+    isDisabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+  }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const parent = $getContext(ButtonContext);
+  const ownId = $id();
+  const tooltipId = $id();
+  // A DialogTrigger around it names the button already, and finds its popover by that ID.
+  const triggerId = $memo(idOf(parent) ?? ownId);
+
+  function idOf(value: ContextValue<ButtonContextProps> | null) {
+    return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
+  }
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+  }
+
+  function open(immediate: boolean) {
+    if (!isDisabled) {
+      tooltips.show(tooltipId, delay, immediate, () => setOpen(true), () => setOpen(false));
+    }
+  }
+
+  function close(immediate: boolean) {
+    tooltips.hide(tooltipId, closeDelay, immediate, () => setOpen(false));
+  }
+
+  function keep() {
+    tooltips.keep(tooltipId);
+  }
+
+  function hoverStarted(event: HoverEvent) {
+    plain()?.onHoverStart?.(event);
+    if (trigger !== 'focus') {
+      open(false);
+    }
+  }
+
+  function hoverEnded(event: HoverEvent) {
+    plain()?.onHoverEnd?.(event);
+    close(false);
+  }
+
+  function focusChanged(focused: boolean) {
+    plain()?.onFocusChange?.(focused);
+    const active = document.activeElement;
+    if (focused && active && isFocusVisible(active)) {
+      open(true);
+    } else if (!focused) {
+      close(true);
+    }
+  }
+
+  function pressStarted(event: PressEvent) {
+    plain()?.onPressStart?.(event);
+    close(true);
+  }
+
+  /** The props of the context around it, when it gives one Button its props. */
+  function plain() {
+    return parent && !('slots' in parent) ? parent : undefined;
+  }
+
+  // The props of the DialogTrigger around it come first, and the handlers of both run.
+  $setContext(ButtonContext, {
+    ...(parent && !('slots' in parent) ? parent : {}),
+    id: triggerId,
+    'aria-describedby': isOpen ? tooltipId : undefined,
+    onHoverStart: hoverStarted,
+    onHoverEnd: hoverEnded,
+    onFocusChange: focusChanged,
+    onPressStart: pressStarted,
+  });
+  $setContext(TooltipTriggerContext, { isOpen, triggerId, tooltipId, keep, close });
+</script>
+
+{children}

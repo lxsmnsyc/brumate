@@ -14,7 +14,7 @@
    * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    * Draw the box in the children, from these attributes.
    *
-   * `isSelected=(true)` starts its own state, and `isSelected=$bind(signal)` writes the caller's.
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
    * In a CheckboxGroup, the group keeps the state, and `value` names the box in it.
    */
   const {

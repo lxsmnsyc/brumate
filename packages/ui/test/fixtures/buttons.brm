@@ -20,8 +20,8 @@
   onHoverStart=((event) => log(event))
   onHoverEnd=((event) => log(event))
 >Press</Button>
-<Button class="disabled" isDisabled=(true) onPress=((event) => log(event))>Disabled</Button>
-<Button class="pending" isPending=(true) onPress=((event) => log(event))>Pending</Button>
+<Button class="disabled" isDisabled onPress=((event) => log(event))>Disabled</Button>
+<Button class="pending" isPending onPress=((event) => log(event))>Pending</Button>
 <Button class="link" as="a" href="#top" onPress=((event) => log(event))>Link</Button>
 <Button class="submit" type="submit">Send</Button>
 <Button class="hidden-link" as="a" href="#top" isDisabled=(true)>Gone</Button>

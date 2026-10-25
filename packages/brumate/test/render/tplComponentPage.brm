@@ -1,0 +1,12 @@
+<script>
+  import TplDynamic from './TplDynamic.brm';
+  import TplItem from './TplItem.brm';
+  import TplList from './TplList.brm';
+</script>
+
+<TplList item=row />
+
+#template row(label: string) {
+  <TplItem label=label />
+  <TplDynamic class="tpl-dynamic" data-label=label>{label}</TplDynamic>
+}

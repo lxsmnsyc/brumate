@@ -5,6 +5,11 @@
   import { $bind, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import FileTrigger from '@brumate/ui/FileTrigger.brm';
   import Form from '@brumate/ui/Form.brm';
@@ -25,10 +30,24 @@
   import Label from '@brumate/ui/Label.brm';
   import Link from '@brumate/ui/Link.brm';
   import Meter from '@brumate/ui/Meter.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
   import ProgressBar from '@brumate/ui/ProgressBar.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import Text from '@brumate/ui/Text.brm';
   import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import Transition from '@brumate/ui/Transition.brm';
   import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
   import Toolbar from '@brumate/ui/Toolbar.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
@@ -44,6 +63,7 @@
   let dark = $signal(false);
   let align = $signal(['left']);
   let files = $signal('No files picked.');
+  let noteShown = $signal(true);
 
   async function order(form: FormData) {
     'use server';
@@ -83,8 +103,8 @@
       last = event.pointerType;
     })
   >Press me</Button>
-  <Button class="press" isDisabled=(true)>Disabled</Button>
-  <Button class="press" isPending=(true)>Saving</Button>
+  <Button class="press" isDisabled>Disabled</Button>
+  <Button class="press" isPending>Saving</Button>
   <p class="pressed" aria-live="polite">Pressed {presses} times, last with {last}.</p>
   <form class="send" onSubmit=(prevent(() => sent++))>
     <Button class="press" type="submit">Send</Button>
@@ -108,8 +128,8 @@
   <h2 id="link">Link</h2>
   <p>
     <Link class="link" href="#link">This section</Link>,
-    <Link class="link" href="#main" isCurrent=(true)>the current page</Link> and
-    <Link class="link" href="#main" isDisabled=(true)>a disabled link</Link>.
+    <Link class="link" href="#main" isCurrent>the current page</Link> and
+    <Link class="link" href="#main" isDisabled>a disabled link</Link>.
   </p>
 </section>
 
@@ -129,7 +149,7 @@
 <section aria-labelledby="text-field">
   <h2 id="text-field">TextField, TextArea and FieldError</h2>
   <Form class="signup">
-    <TextField class="name-field" name="name" isRequired=(true)>
+    <TextField class="name-field" name="name" isRequired>
       <Label>Name</Label>
       <Input class="field" />
       <Text slot="description" class="help">As it is on your card.</Text>
@@ -172,7 +192,7 @@
 <section aria-labelledby="boxes">
   <h2 id="boxes">Checkbox, CheckboxGroup, RadioGroup and Switch</h2>
   <Form class="pizza">
-    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired=(true)>
+    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired>
       <Label>Toppings</Label>
       <Checkbox class="box" value="cheese"><span class="mark" aria-hidden="true"></span>Cheese</Checkbox>
       <Checkbox class="box" value="olives"><span class="mark" aria-hidden="true"></span>Olives</Checkbox>
@@ -186,12 +206,12 @@
     <Button class="press" type="submit">Order the pizza</Button>
   </Form>
   <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
-  <RadioGroup class="crust" name="crust" value="thin" isReadOnly=(true) orientation="horizontal">
+  <RadioGroup class="crust" name="crust" value="thin" isReadOnly orientation="horizontal">
     <Label>Crust, set by the shop</Label>
     <Radio class="box" value="thin"><span class="mark round" aria-hidden="true"></span>Thin</Radio>
     <Radio class="box" value="thick"><span class="mark round" aria-hidden="true"></span>Thick</Radio>
   </RadioGroup>
-  <Checkbox class="box sauce" isSelected=(true) isReadOnly=(true)><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
+  <Checkbox class="box sauce" isSelected isReadOnly><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
   <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
   <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
 </section>
@@ -202,7 +222,7 @@
     <Button class="press">Cut</Button>
     <Button class="press">Copy</Button>
     <Separator orientation="vertical" class="divider" />
-    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection=(true)>
+    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
       <ToggleButton id="left" class="press">Left</ToggleButton>
       <ToggleButton id="center" class="press">Center</ToggleButton>
     </ToggleButtonGroup>
@@ -216,7 +236,7 @@
     <Breadcrumbs class="trail">
       <Breadcrumb><Link class="link" href="#main">Home</Link></Breadcrumb>
       <Breadcrumb><Link class="link" href="#breadcrumbs">Parts</Link></Breadcrumb>
-      <Breadcrumb isCurrent=(true)><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+      <Breadcrumb isCurrent><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
     </Breadcrumbs>
   </nav>
 </section>
@@ -229,11 +249,110 @@
 
 <section aria-labelledby="file-trigger">
   <h2 id="file-trigger">FileTrigger</h2>
-  <FileTrigger allowsMultiple=(true) onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
+  <FileTrigger allowsMultiple onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
     <Button class="press">Pick files</Button>
   </FileTrigger>
   <p class="files">{files}</p>
 </section>
+
+<section aria-labelledby="disclosure">
+  <h2 id="disclosure">Disclosure and Transition</h2>
+  <DisclosureGroup class="faq">
+    <Disclosure id="shipping" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Shipping</Button></Heading>
+      <DisclosurePanel transition class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
+    </Disclosure>
+    <Disclosure id="returns" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Returns</Button></Heading>
+      <DisclosurePanel class="faq-panel"><span id="return-window">Send it back within thirty days.</span></DisclosurePanel>
+    </Disclosure>
+  </DisclosureGroup>
+  <Button class="press note-toggle" onPress=(() => (noteShown = !noteShown))>Toggle the note</Button>
+  <Transition show=noteShown class="note">A note that fades out.</Transition>
+</section>
+
+<section aria-labelledby="popover">
+  <h2 id="popover">Popover and Dialog</h2>
+  <DialogTrigger>
+    <Button class="press settings-trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start" transition>
+      <OverlayArrow class="arrow" />
+      <Dialog class="settings">
+        <Heading slot="title" level=(3)>Settings</Heading>
+        <TextField class="name-setting"><Label>Display name</Label><Input class="field" /></TextField>
+        <DialogTrigger>
+          <Button class="press more-trigger">More</Button>
+          <Popover class="popover more" placement="end">
+            <Dialog class="more-dialog" aria-label="More settings">
+              <Button class="press deep">A setting inside</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="press done">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</section>
+
+<section aria-labelledby="modal">
+  <h2 id="modal">Modal and Sheet</h2>
+  <DialogTrigger>
+    <Button class="press delete-trigger">Delete the draft</Button>
+    <ModalOverlay class="backdrop" transition>
+      <Modal class="modal">
+        <Dialog role="alertdialog" class="confirm">
+          <Heading slot="title" level=(3)>Delete the draft?</Heading>
+          <p>It cannot come back.</p>
+          <Button slot="close" class="press cancel">Cancel</Button>
+          <Button slot="close" class="press confirm-delete">Delete</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="press menu-trigger">Menu</Button>
+    <Sheet class="sheet" transition>
+      <Dialog class="menu" aria-label="Menu">
+        <Button class="press menu-item">Home</Button>
+        <Button class="press menu-item">Settings</Button>
+        <Button slot="close" class="press menu-close">Close</Button>
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+</section>
+
+<section aria-labelledby="tooltip">
+  <h2 id="tooltip">Tooltip and Toast</h2>
+  <TooltipTrigger>
+    <Button class="press tip-trigger">Copy</Button>
+    <Tooltip class="tip" offset=(6)>Copy the link</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger>
+    <Button class="press tip-other">Paste</Button>
+    <Tooltip class="tip" offset=(6)>Paste the link</Tooltip>
+  </TooltipTrigger>
+  <p>
+    Written by
+    <PreviewTrigger>
+      <Link class="link author" href="#author">Ada</Link>
+      <Popover class="popover author-card" placement="bottom start">
+        <p>Ada writes about engines.</p>
+        <Button class="press follow">Follow</Button>
+      </Popover>
+    </PreviewTrigger>
+    and reviewed by <a href="#reviewer" class="link reviewer">Grace</a>.
+  </p>
+  <Button class="press toast-trigger" onPress=(() => toastQueue<{ title: string }>().add({ title: 'Link copied' }, { timeout: 5000 }))>Notify</Button>
+</section>
+
+<ToastRegion class="toasts" toast=notice transition />
+
+#template notice(toast: QueuedToast<{ title: string }>) {
+  <Toast toast=toast class="toast">
+    <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
+    <Button slot="close" class="press toast-close">×</Button>
+  </Toast>
+}
 
 <style>
   /* The page's own look for the parts, from their data attributes. */
@@ -383,6 +502,143 @@
     height: 0.5rem;
     border: 1px solid #555;
     background: linear-gradient(to right, #2457d6 var(--percentage), transparent 0);
+  }
+
+  :global(.popover) {
+    padding: 1rem;
+    border: 1px solid #555;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 15%);
+    transition: opacity 0.2s;
+  }
+
+  :global(.popover[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.settings) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.settings h3) {
+    margin: 0;
+  }
+
+  :global(.tip) {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #111;
+    color: #fff;
+    font-size: 0.875rem;
+  }
+
+  :global(.toasts) {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  :global(.toast) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: #111;
+    color: #fff;
+    transition: opacity 0.2s, translate 0.2s;
+  }
+
+  :global(.toast[data-closed]) {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+
+  :global([data-modal-overlay]) {
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 40%);
+    transition: opacity 0.15s;
+  }
+
+  :global([data-modal-overlay][data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.modal) {
+    max-width: 24rem;
+    max-height: calc(var(--visual-viewport-height) * 0.9);
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    background: #fff;
+    transition: scale 0.15s;
+  }
+
+  :global([data-closed] > .modal) {
+    scale: 0.96;
+  }
+
+  :global(.confirm),
+  :global(.menu) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.sheet) {
+    position: fixed;
+    inset-block: 0;
+    width: min(18rem, 80vw);
+    padding: 1.25rem;
+    background: #fff;
+    transition: translate 0.2s;
+  }
+
+  :global(.sheet[data-side='left']) {
+    left: 0;
+  }
+
+  :global(.sheet[data-side='right']) {
+    right: 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='left']) {
+    translate: -100% 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='right']) {
+    translate: 100% 0;
+  }
+
+  :global(.arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: #fff;
+    border-top: 1px solid #555;
+    border-left: 1px solid #555;
+    rotate: 45deg;
+  }
+
+  :global(.arrow[data-placement='bottom']) {
+    top: -7px;
+  }
+
+  :global(.note) {
+    transition: opacity 0.3s;
+  }
+
+  :global(.faq-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    transition: height 0.3s;
+  }
+
+  :global(.note[data-closed]) {
+    opacity: 0;
   }
 
   :global(.help) {

@@ -1,0 +1,34 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="ui-button">Share</Button>
+  <Popover class="ui-popover" transition>
+    <OverlayArrow class="ui-arrow" />
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Share the page</Heading>
+      <TextField class="ui-field" value="https://brumate.dev/ui">
+        <Label>Address</Label>
+        <Input class="ui-input" readonly />
+      </TextField>
+      <DialogTrigger>
+        <Button class="ui-button">Who can see it</Button>
+        <Popover class="ui-popover" placement="end" transition>
+          <Dialog class="ui-dialog" aria-label="Who can see it">
+            <p>Anyone with the address.</p>
+          </Dialog>
+        </Popover>
+      </DialogTrigger>
+      <Button slot="close" class="ui-button">Done</Button>
+    </Dialog>
+  </Popover>
+</DialogTrigger>

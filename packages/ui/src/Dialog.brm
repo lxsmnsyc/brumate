@@ -1,0 +1,33 @@
+<script>
+  import { $getContext, $id, $props, $setContext } from 'brumate/signals';
+  import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
+
+  /**
+   * A dialog, as Dialog of React Aria Components, inside a Popover or a Modal. A Heading with
+   * `slot="title"` names it, and a Button with `slot="close"` closes it. The overlay around it
+   * moves focus into it when it opens.
+   */
+  const { role = 'dialog', children, ...rest } = $props<{
+    role?: 'dialog' | 'alertdialog';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const overlay = $getContext(DialogContext);
+  const trigger = $getContext(OverlayTriggerContext);
+  const titleId = $id();
+
+  function close() {
+    if (overlay) {
+      overlay.close();
+    } else {
+      trigger?.close();
+    }
+  }
+
+  // A Heading or a Button without a slot gets nothing of the dialog.
+  $setContext(HeadingContext, { slots: { default: {}, title: { id: titleId } } });
+  $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
+</script>
+
+<section role=role tabindex="-1" aria-labelledby=titleId {...rest}>{children}</section>

@@ -29,7 +29,7 @@
     <Button class="second">B</Button>
   </Toolbar>
 </I18nProvider>
-<ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection=(true)>
+<ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
   <ToggleButton id="left" class="left">Left</ToggleButton>
   <ToggleButton id="center" class="center">Center</ToggleButton>
 </ToggleButtonGroup>
@@ -41,13 +41,13 @@
 <nav aria-label="Trail">
   <Breadcrumbs class="trail">
     <Breadcrumb><Link class="home" href="/">Home</Link></Breadcrumb>
-    <Breadcrumb isCurrent=(true)><Link class="here" href="/docs">Docs</Link></Breadcrumb>
+    <Breadcrumb isCurrent><Link class="here" href="/docs">Docs</Link></Breadcrumb>
   </Breadcrumbs>
 </nav>
 <Meter class="disk" value=(40)><Label>Disk</Label></Meter>
 <ProgressBar class="upload" value=(3) maxValue=(4) formatOptions=({ style: 'decimal' })><Label>Upload</Label></ProgressBar>
-<ProgressBar class="waiting" isIndeterminate=(true)><Label>Waiting</Label></ProgressBar>
-<FileTrigger allowsMultiple=(true) acceptedFileTypes=(['image/png']) onSelect=((files) => (picked = String(files?.length ?? 0)))>
+<ProgressBar class="waiting" isIndeterminate><Label>Waiting</Label></ProgressBar>
+<FileTrigger allowsMultiple acceptedFileTypes=(['image/png']) onSelect=((files) => (picked = String(files?.length ?? 0)))>
   <Button class="pick">Pick</Button>
 </FileTrigger>
 <p class="picked">{picked}</p>
