@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
@@ -17,6 +17,7 @@
     slot,
     isDisabled,
     isPending,
+    href,
     onPress,
     onPressStart,
     onPressEnd,
@@ -37,6 +38,8 @@
     isDisabled?: boolean;
     /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
     isPending?: boolean;
+    /** The link of a button that renders as `a`. A disabled button drops it, as in React Aria. */
+    href?: string;
     onPress?: (event: PressEvent) => void;
     onPressStart?: (event: PressEvent) => void;
     onPressEnd?: (event: PressEvent) => void;
@@ -110,6 +113,7 @@
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onLostPointerCapture,
     onPointerEnter,
     onPointerLeave,
     onKeyDown,
@@ -118,7 +122,7 @@
     onFocus,
     onBlur,
   } = interact(
-    disabled,
+    inert,
     inert,
     pressed,
     pressStarted,
@@ -130,6 +134,18 @@
     hoverChanged,
     focusChanged,
   );
+
+  // A submit or reset button keeps Space, so the browser clicks it and sends its form, as in
+  // React Aria. Other buttons prevent it, so the browser does not scroll the page or click them.
+  // A pending button is a plain button, so it sends nothing again.
+  function keys() {
+    return native && !pending && (type === 'submit' || type === 'reset')
+      ? { onKeyDown: $handler(onKeyDown), onKeyUp: $handler(onKeyUp) }
+      : {
+          onKeyDown: $handler(prevent(onKeyDown, 'Space')),
+          onKeyUp: $handler(prevent(onKeyUp, 'Space')),
+        };
+  }
 </script>
 
 <!--
@@ -137,7 +153,8 @@
   button. A pending button stays focusable, with aria-disabled.
 -->
 <{as ?? 'button'}
-  type=(native ? type : undefined)
+  type=(native ? (pending ? 'button' : type) : undefined)
+  href=(disabled ? undefined : href)
   role=(native ? undefined : 'button')
   tabindex=(native || disabled ? undefined : 0)
   disabled=(native && disabled ? true : undefined)
@@ -152,10 +169,10 @@
   {onPointerMove}
   {onPointerUp}
   {onPointerCancel}
+  {onLostPointerCapture}
   {onPointerEnter}
   {onPointerLeave}
-  onKeyDown=(prevent(onKeyDown, 'Space'))
-  onKeyUp=(prevent(onKeyUp, 'Space'))
+  {...keys()}
   {onClick}
   {onFocus}
   {onBlur}
