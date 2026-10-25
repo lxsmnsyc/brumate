@@ -15,7 +15,7 @@ import {
   startOfYear,
   today,
 } from '@internationalized/date';
-import type { CalendarDate, DateDuration } from '@internationalized/date';
+import type { CalendarDate, DateDuration, DayOfWeek } from '@internationalized/date';
 
 /** A date as `YYYY-MM-DD`. */
 export type DateString = string;
@@ -42,6 +42,22 @@ export interface CalendarState {
   highlight: (date: DateString) => void;
   /** In a RangeCalendar, drops the first date of a range that is not done. */
   cancel: () => void;
+  /** In a RangeCalendar, a press of the pointer on a date starts a range, which a release on another date ends. */
+  pressStart: (date: DateString, event: PointerEvent) => void;
+  pressEnd: (date: DateString) => void;
+  /** True for a click that ends the press that started a range, which selects nothing more. */
+  startedBy: (date: DateString) => boolean;
+  /** True while focus is in the grid, so the focused date shows `data-focused`. */
+  isFocused: boolean;
+  /** The day that starts a week, or that of the locale. */
+  firstDayOfWeek?: DayOfWeek;
+  /** The ID of the Text with `slot="errorMessage"`, which invalid dates name. */
+  errorId: string;
+  /**
+   * In a RangeCalendar, after the first date: the dates that the range can reach, up to the
+   * nearest dates that cannot be picked.
+   */
+  available: [DateString | undefined, DateString | undefined] | null;
   /** In a DatePicker, the focused date takes focus when the popover opens. */
   autoFocus: boolean;
   /** The date that has focus, or that gets it when the grid gets focus. */
@@ -84,7 +100,7 @@ export interface DatePickerState {
   select: (value: DateString | DateRange) => void;
   minValue?: DateString;
   maxValue?: DateString;
-  isDateUnavailable?: (date: DateString) => boolean;
+  isDateUnavailable?: (date: DateString, anchor?: DateString | null) => boolean;
 }
 
 export const DatePickerContext: Context<DatePickerState | null> =
@@ -242,17 +258,21 @@ export function endOf(start: CalendarDate, duration: DateDuration): CalendarDate
  * The weeks of the month that starts at `start`, each a list of seven dates, in the order of the
  * days of the week of the locale.
  */
-export function weeksOf(start: CalendarDate, locale: string): DateString[][] {
-  const first = startOfWeek(start, locale);
-  const count = getWeeksInMonth(start, locale);
+export function weeksOf(
+  start: CalendarDate,
+  locale: string,
+  firstDayOfWeek?: DayOfWeek,
+): DateString[][] {
+  const first = startOfWeek(start, locale, firstDayOfWeek);
+  const count = getWeeksInMonth(start, locale, firstDayOfWeek);
   return Array.from({ length: count }, (_, week) =>
     Array.from({ length: 7 }, (_, day) => first.add({ weeks: week, days: day }).toString()),
   );
 }
 
 /** The days of the week of the locale, as a full name and as one or two letters. */
-export function weekDays(locale: string): { name: string; short: string }[] {
-  const first = startOfWeek(today(getLocalTimeZone()), locale);
+export function weekDays(locale: string, firstDayOfWeek?: DayOfWeek): { name: string; short: string }[] {
+  const first = startOfWeek(today(getLocalTimeZone()), locale, firstDayOfWeek);
   const long = new DateFormatter(locale, { weekday: 'long', timeZone: 'UTC' });
   const narrow = new DateFormatter(locale, { weekday: 'narrow', timeZone: 'UTC' });
   return Array.from({ length: 7 }, (_, index) => {

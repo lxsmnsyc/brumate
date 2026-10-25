@@ -4,6 +4,7 @@
   import CalendarGrid from '../../src/CalendarGrid.brm';
   import CalendarHeading from '../../src/CalendarHeading.brm';
   import RangeCalendar from '../../src/RangeCalendar.brm';
+  import Text from '../../src/Text.brm';
 
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
   let trip = $signal<{ start: string; end: string } | null>(null);
@@ -28,6 +29,13 @@
   </RangeCalendar>
   <RangeCalendar class="loose" aria-label="Loose" value=$bind(loose) focusedValue="2026-10-20" isDateUnavailable=weekend allowsNonContiguousRanges>
     <CalendarGrid class="loose-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="week" aria-label="Week" focusedValue="2026-10-20" firstDayOfWeek="mon">
+    <CalendarGrid class="week-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="bad" aria-label="Bad" isInvalid value=({ start: '2026-10-05', end: '2026-10-06' })>
+    <CalendarGrid class="bad-grid" />
+    <Text slot="errorMessage" class="bad-error">Pick again.</Text>
   </RangeCalendar>
   <p class="state">{JSON.stringify([stay, trip, loose])}</p>
 </main>
