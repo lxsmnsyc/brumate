@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; margin: 0; }
+      body {
+        width: 1280px;
+        height: 400px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 56px;
+        padding: 0 88px;
+        background:
+          radial-gradient(700px 420px at 92% 0%, rgb(240 138 82 / 30%), transparent 70%),
+          radial-gradient(520px 360px at 0% 100%, rgb(120 70 40 / 30%), transparent 70%),
+          #141210;
+        color: #efe9e2;
+        font-family: 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mark { flex: none; width: 168px; height: 168px; }
+      .mark svg { width: 100%; height: 100%; }
+      .name { font-size: 30px; font-weight: 600; color: #b8ada2; letter-spacing: 0.01em; }
+      h1 { margin-top: 6px; font-size: 62px; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+      h1 span {
+        background: linear-gradient(90deg, #ffc38a, #ee7a3e 55%, #e0445a);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      p { margin-top: 14px; color: #b8ada2; font-size: 24px; }
+      code {
+        display: inline-block;
+        margin-top: 22px;
+        padding: 10px 18px;
+        border: 1px solid #3a332d;
+        border-radius: 12px;
+        background: #221e1a;
+        font: 22px Menlo, monospace;
+      }
+      code b { color: #f08a52; font-weight: 400; }
+    </style>
+  </head>
+  <body>
+    <div class="mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="logo-fill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffc38a" />
+            <stop offset=".5" stop-color="#ee7a3e" />
+            <stop offset="1" stop-color="#e0445a" />
+          </linearGradient>
+          <clipPath id="logo-pole"><rect x="7.5" y="2.5" width="8" height="27" rx="4" /></clipPath>
+        </defs>
+        <circle cx="18" cy="19.5" r="10" fill="url(#logo-fill)" clip-path="url(#logo-pole)" />
+        <g fill="none" stroke="#ece8e4" stroke-width="2.2">
+          <rect x="7.5" y="2.5" width="8" height="27" rx="4" />
+          <circle cx="18" cy="19.5" r="10" />
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="name">brumate</div>
+      <h1>Web apps that <span>resume</span>,<br />not hydrate.</h1>
+      <p>A component language and compiler for the web.</p>
+      <code><b>$</b> pnpm add brumate</code>
+    </div>
+  </body>
+</html>

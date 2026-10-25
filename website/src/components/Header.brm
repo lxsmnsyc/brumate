@@ -1,5 +1,6 @@
 <script>
   import { $props } from 'brumate/signals';
+  import BrandMark from './BrandMark.brm';
   import Icon from './Icon.brm';
   import Search from './Search.brm';
 
@@ -26,12 +27,12 @@
   <div class="header-inner">
     #if (section === 'ui') {
       <a class="brand" href=(`${base}ui`)>
-        <span class="brand-mark" aria-hidden="true"></span>
+        <BrandMark />
         <span>brumate<span class="brand-section">/ui</span></span>
       </a>
     } #else {
       <a class="brand" href=base>
-        <span class="brand-mark" aria-hidden="true"></span>
+        <BrandMark />
         brumate
       </a>
     }
@@ -95,10 +96,8 @@
   }
 
   .brand-mark {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--cool), var(--accent));
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .header-nav {

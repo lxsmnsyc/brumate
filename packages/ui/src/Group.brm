@@ -4,32 +4,56 @@
   import { hover } from './hover.brm.ts';
   import { isFocusVisible } from './interactions.ts';
   import { contextAttributes, slotProps } from './slots.ts';
+  import type { HoverEvent } from './events.ts';
 
   /**
    * Parts that belong together, such as an input and its buttons, as Group of React Aria
    * Components. It shows `data-hovered`, `data-focus-within`, `data-focus-visible`,
    * `data-disabled` and `data-invalid`.
    */
-  const { as = 'div', role = 'group', slot, isDisabled, isInvalid, children, ...rest } = $props<{
+  const {
+    as = 'div',
+    role = 'group',
+    slot,
+    isDisabled,
+    isInvalid,
+    onHoverStart,
+    onHoverEnd,
+    onHoverChange,
+    children,
+    ...rest
+  } = $props<{
     as?: string;
     role?: 'group' | 'region' | 'presentation';
     slot?: string | null;
     isDisabled?: boolean;
     isInvalid?: boolean;
+    onHoverStart?: (event: HoverEvent) => void;
+    onHoverEnd?: (event: HoverEvent) => void;
+    onHoverChange?: (hovered: boolean) => void;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
 
   const context = $getContext(GroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
-  const invalid = $memo(Boolean(isInvalid ?? slotProps(context, slot).isInvalid));
+  // As in React Aria, aria-disabled and aria-invalid of the caller give the state too.
+  const disabled = $memo(
+    Boolean(isDisabled ?? slotProps(context, slot).isDisabled ?? ariaTrue(rest['aria-disabled'])),
+  );
+  const invalid = $memo(
+    Boolean(isInvalid ?? slotProps(context, slot).isInvalid ?? ariaTrue(rest['aria-invalid'])),
+  );
+
+  function ariaTrue(value: unknown): boolean | undefined {
+    return value === undefined ? undefined : value !== false && value !== 'false';
+  }
 
   const {
     hovered,
     onPointerEnter: hoverEnter,
     onPointerLeave: hoverLeave,
-  } = hover(disabled, undefined, undefined, undefined);
+  } = hover(disabled, onHoverStart, onHoverEnd, onHoverChange);
 
   // Focus inside the group, from focusin and focusout, which bubble.
   let focusWithin = $signal(false);
