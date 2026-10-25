@@ -92,8 +92,41 @@ it('closes on a press on the overlay only with isDismissable', async () => {
   pointer('pointerdown', find('.light-dialog')!);
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(find('.light')).not.toBeNull();
+  // A right click on the overlay closes nothing. A press of the first button does.
+  pointer('pointerdown', lightOverlay, { button: 2 });
+  pointer('pointerup', lightOverlay, { button: 2 });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.light')).not.toBeNull();
   pointer('pointerdown', lightOverlay);
+  pointer('pointerup', lightOverlay);
   await page.waitFor(() => expect(find('.light')).toBeNull());
+});
+
+it('opens a Modal inside a Modal as an overlay of its own, which Escape closes alone', async () => {
+  const page = await modals();
+  await open(page);
+  // The inner Modal renders nothing until its trigger opens it.
+  expect(find('.deep')).toBeNull();
+  pressWith(find('.deep-trigger')!);
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.deep-dialog')));
+  expect(find('.deep')!.parentElement!.hasAttribute('data-modal-overlay')).toBe(true);
+  // The outer Modal is inert behind it.
+  expect(find('.modal')!.closest('[inert]')).not.toBeNull();
+  press('Escape', find('.deep-dialog')!);
+  await page.waitFor(() => expect(find('.deep')).toBeNull());
+  expect(find('.modal')).not.toBeNull();
+  expect(find('.modal')!.closest('[inert]')).toBeNull();
+});
+
+it('gives the page back when an open Modal leaves the page', async () => {
+  const page = await modals();
+  await open(page);
+  await page.waitFor(() => expect(page.get('.page').closest('[inert]')).not.toBeNull());
+  // The page renders the DialogTrigger no longer, as on a route change.
+  page.get('.remove').click();
+  await page.waitFor(() => expect(find('.overlay')).toBeNull());
+  await page.waitFor(() => expect(page.get('.page').closest('[inert]')).toBeNull());
+  expect(document.documentElement.style.overflow).toBe('');
 });
 
 it('keeps Tab inside', async () => {
@@ -155,6 +188,7 @@ it('opens a Sheet from its own state, on the start side, and closes it on a pres
   expect(sheet.getAttribute('data-side')).toBe('left');
   await page.waitFor(() => expect(page.text('.state')).toBe('false true'));
   pointer('pointerdown', sheet.parentElement!);
+  pointer('pointerup', sheet.parentElement!);
   await page.waitFor(() => expect(find('.sheet')).toBeNull());
   await page.waitFor(() => expect(page.text('.state')).toBe('false false'));
 });
@@ -185,4 +219,30 @@ it('pads the root by the width of the scrollbar that the lock hides', () => {
   } finally {
     delete (root as unknown as Record<string, unknown>).clientWidth;
   }
+});
+
+it('keeps the page inert until the last of two overlays gives it back, in any order', async () => {
+  const { inertOutside } = await import('../src/overlay.ts');
+  const main = document.createElement('main');
+  const first = document.createElement('div');
+  const second = document.createElement('div');
+  document.body.append(main, first, second);
+  const giveFirst = inertOutside(first);
+  const giveSecond = inertOutside(second);
+  // The first overlay gives the page back while the second is still open.
+  giveFirst();
+  expect(main.hasAttribute('inert')).toBe(true);
+  expect(first.hasAttribute('inert')).toBe(true);
+  // An element that comes into the page while an overlay is open is inert too.
+  const late = document.createElement('aside');
+  document.body.append(late);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(late.hasAttribute('inert')).toBe(true);
+  giveSecond();
+  expect(main.hasAttribute('inert')).toBe(false);
+  expect(late.hasAttribute('inert')).toBe(false);
+  main.remove();
+  first.remove();
+  second.remove();
+  late.remove();
 });
