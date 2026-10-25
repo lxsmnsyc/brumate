@@ -7,6 +7,7 @@ import {
   insertValue,
   bindEntry,
   handlerEntry,
+  onValue,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -717,6 +718,15 @@ const MODIFIERS = Symbol.for('brumate.modifiers');
  */
 export function spread(attributes: Record<string, unknown>, on?: string[]): string {
   if (on) {
+    on.push(...spreadEntries(attributes));
+  }
+  return spreadText(attributes);
+}
+
+/** The `b-on` entries of the handlers and bindings of an object of attributes. */
+function spreadEntries(attributes: Record<string, unknown>): string[] {
+  const on: string[] = [];
+  {
     for (const [name, value] of Object.entries(attributes)) {
       const reference =
         /^on[A-Z]/.test(name) && typeof value === 'function'
@@ -733,7 +743,7 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
       }
     }
   }
-  return spreadText(attributes);
+  return on;
 }
 
 /** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
@@ -2128,7 +2138,31 @@ export function attrs(
       }
     }
     spreadNames.set(element, names);
+    updateSpreadEntries(element, values);
   }
+}
+
+/**
+ * Writes the handlers and bindings of a spread into `b-on` again, as they are now. The entries of
+ * a spread name their scope after `@`, and the element's own entries do not, so those stay.
+ */
+function updateSpreadEntries(element: Element, values: Record<string, unknown>): void {
+  const before = element.getAttribute('b-on') ?? '';
+  const own = before
+    .split(' ')
+    .filter((entry) => entry && !entry.includes('@'))
+    .join(' ');
+  const after = onValue(spreadEntries(values), own);
+  if (after === before) {
+    return;
+  }
+  if (after) {
+    element.setAttribute('b-on', after);
+  } else {
+    element.removeAttribute('b-on');
+  }
+  // The loader listens to the events of the new entries, and prevents what their wrappers name.
+  options.listen(element);
 }
 
 type Render = (parent: Scope, item?: unknown, index?: number) => string;

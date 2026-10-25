@@ -3,7 +3,7 @@
 // pointer moved focus. CSS can use :focus-visible directly. The data attributes are for parts
 // whose ring is on another element.
 import { $signal } from 'brumate/signals';
-import { MODIFIERS, isFocusVisible } from './interactions.ts';
+import { MODIFIERS, isFocusVisible, shortcut } from './interactions.ts';
 
 /**
  * Focus handling for an element. Returns whether it has focus, whether the focus shows, and a
@@ -40,7 +40,7 @@ export function focusRing(
   }
 
   function keyDown(event: KeyboardEvent) {
-    if (focused && !MODIFIERS.has(event.key) && !event.metaKey) {
+    if (focused && !MODIFIERS.has(event.key) && !shortcut(event)) {
       focusVisible = true;
     }
   }
