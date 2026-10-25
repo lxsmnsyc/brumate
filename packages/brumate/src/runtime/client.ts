@@ -951,7 +951,7 @@ function templateReference(ref: string, scope: Scope | undefined): (...args: unk
   // The markup renders where the component inserts it, so it reads the contexts there, as
   // children do.
   return (...args) =>
-    new Children(scope, () => {
+    new TemplateCall(ref, scope, args, () => {
       const render = loadedFunction(ref);
       return render ? insertValue(render(scope, ...args)) : '';
     });
@@ -2093,7 +2093,7 @@ export function portalTo(
 export function text(scope: Scope, anchor: number, value: unknown): void {
   const start = findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
   }
 }
 
@@ -2101,7 +2101,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value, scope);
+    write(element, element.firstChild, null, value, scope, element);
   }
 }
 
@@ -2134,7 +2134,24 @@ function write(
   end: Node | null,
   value: unknown,
   at?: Scope,
+  key?: Node,
 ): void {
+  // The same template again at an insert updates in place, with its new arguments, as a snippet
+  // of Svelte does. Its elements and their focus stay.
+  if (key && value instanceof TemplateCall) {
+    const known = templateInserts.get(key) ?? renderedTemplate(value, at);
+    // The template's `a` export gives the slots of its arguments, also of destructured ones.
+    const slotsOf = loadedFunction(`${value.ref}a`) as
+      | ((...args: unknown[]) => [number, unknown][])
+      | undefined;
+    if (known && slotsOf && known.ref === value.ref && scopes.has(known.scope.id)) {
+      templateInserts.set(key, known);
+      for (const [slot, next] of slotsOf(...value.args)) {
+        set(known.scope, slot, next);
+      }
+      return;
+    }
+  }
   if (
     (typeof value === 'string' || typeof value === 'number') &&
     first?.nodeType === 3 &&
@@ -2156,8 +2173,42 @@ function write(
     first.remove();
     first = next;
   }
-  // Children and templates render here, at the scope of the insert, for its contexts.
+  // Children and templates render here, at the scope of the insert, for its contexts. The first
+  // scope that a template makes is its own, which holds its arguments.
+  const made = nextId;
   insertHTML(end ?? { parent }, value instanceof Children ? value.render(at) : insertValue(value));
+  if (key) {
+    const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
+    if (scope) {
+      templateInserts.set(key, { ref: (value as TemplateCall).ref, scope });
+    } else {
+      templateInserts.delete(key);
+    }
+  }
+}
+
+/** The scope of the template that each insert shows, by the node that marks the insert. */
+const templateInserts = new WeakMap<Node, { ref: string; scope: Scope }>();
+
+/**
+ * The scope of a template that the server rendered at an insert: the scope that the template's
+ * component made, and that finds its contexts from the insert.
+ */
+function renderedTemplate(
+  call: TemplateCall,
+  at: Scope | undefined,
+): { ref: string; scope: Scope } | undefined {
+  let found: Scope | undefined;
+  for (const scope of scopes.values()) {
+    if (call.owner && scope.p === call.owner && scope.t === at) {
+      // Two templates of the same component at one insert cannot be told apart.
+      if (found) {
+        return undefined;
+      }
+      found = scope;
+    }
+  }
+  return found && { ref: call.ref, scope: found };
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */
@@ -3140,6 +3191,21 @@ class Children {
     } finally {
       insertedChildren.splice(insertedChildren.indexOf(entry), 1);
     }
+  }
+}
+
+/** A call of a `#template` of another component, which an insert can update in place. */
+class TemplateCall extends Children {
+  readonly ref: string;
+  /** The scope of the component that wrote the template. */
+  readonly owner: Scope | undefined;
+  readonly args: unknown[];
+
+  constructor(ref: string, owner: Scope | undefined, args: unknown[], html: () => string) {
+    super(owner, html);
+    this.ref = ref;
+    this.owner = owner;
+    this.args = args;
   }
 }
 

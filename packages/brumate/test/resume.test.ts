@@ -2264,6 +2264,30 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('templates called again', () => {
+  it('update in place with their new arguments, and keep their elements', async () => {
+    await resume('templateInPlace', {});
+    const lines = () => [...document.querySelectorAll<HTMLElement>('.line')];
+    const first = lines()[0]!;
+    expect(lines().map((item) => item.textContent)).toEqual(['a', 'b']);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(lines().map((item) => item.textContent)).toEqual(['a!', 'b!']));
+    // The server rendered the element, and it stays.
+    expect(lines()[0]).toBe(first);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(lines()).toHaveLength(3));
+    const added = lines()[2]!;
+    expect(added.dataset.index).toBe('2');
+    click(document.querySelector('.rename')!);
+    await waitFor(() =>
+      expect(lines().map((item) => item.textContent)).toEqual(['a!!', 'b!!', 'new!']),
+    );
+    // The browser rendered this one, and it stays too.
+    expect(lines()[2]).toBe(added);
+    expect(lines()[0]).toBe(first);
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];

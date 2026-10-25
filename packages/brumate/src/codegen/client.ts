@@ -739,6 +739,9 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
+      if (symbol.startsWith('t')) {
+        this.emitTemplateArgs(site, symbol);
+      }
       if (site.kind === 'client') {
         this.emit(
           `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,
@@ -1355,6 +1358,37 @@ class ClientGenerator {
    * updates. The render module defines templates inside the component's
    * render function, so an update defines the ones that it calls itself.
    */
+  /**
+   * The slots of the arguments of a template that a prop passes, as `[slot, value]` pairs, so an
+   * insert that calls it again writes its new arguments into the scope that it rendered.
+   */
+  private emitTemplateArgs(site: Site, symbol: string): void {
+    const callee = site.reads
+      .map((read) => read.declaration)
+      .find((item) => item.kind === 'template');
+    const scope =
+      callee &&
+      this.model.scopes.find(
+        (item) => item.template?.name === callee.name && item.parent === callee.scope,
+      );
+    const template = scope?.template;
+    if (!scope || !template) {
+      return;
+    }
+    const first = template.params[0];
+    const last = template.params.at(-1);
+    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
+    const slots = [...scope.declarations.values()]
+      .filter((declaration) => declaration.kind === 'template-param')
+      .map((declaration) => [slotIndex(this.plan, declaration), declaration.name] as const);
+    // An argument without a slot is not in the scope, so the template renders again instead.
+    if (slots.some(([slot]) => slot === -1)) {
+      return;
+    }
+    const pairs = slots.map(([slot, name]) => `[${slot}, ${name}]`);
+    this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+  }
+
   private withTemplates(site: Site, code: string): string {
     const templates: Scope[] = [];
     // The templates that the code calls, and those that it passes on, such as a prop `item=option`.

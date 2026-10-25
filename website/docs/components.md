@@ -334,7 +334,8 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 </ul>
 ```
 
-- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The browser renders the template again with the new arguments, with the code of the component that wrote it.
+- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The template renders with the code of the component that wrote it.
+- A call again at the same place, with new arguments, updates the markup in place, as a snippet of Svelte does. Its elements stay, and so does focus in them.
 - The template reads the values of the component that wrote it, and its markup updates when they change.
 - Its code loads in the browser with the page state, before an update needs it.
 
