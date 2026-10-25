@@ -11,10 +11,13 @@
 
   let open = $signal(false);
   let sheet = $signal(false);
+  let shown = $signal(true);
 </script>
 
 <main class="page">
   <button class="outside" type="button">Outside</button>
+  <button class="remove" type="button" onClick=(() => (shown = false))>Remove</button>
+  #if (shown) {
   <DialogTrigger isOpen=$bind(open)>
     <Button class="trigger">Delete</Button>
     <ModalOverlay class="overlay">
@@ -30,11 +33,18 @@
               </Dialog>
             </Popover>
           </DialogTrigger>
+          <DialogTrigger>
+            <Button class="deep-trigger">Deep</Button>
+            <Modal class="deep">
+              <Dialog class="deep-dialog" aria-label="Deep">Deep</Dialog>
+            </Modal>
+          </DialogTrigger>
           <Button slot="close" class="close">Cancel</Button>
         </Dialog>
       </Modal>
     </ModalOverlay>
   </DialogTrigger>
+  }
   <DialogTrigger>
     <Button class="alert-trigger">Alert</Button>
     <Modal class="alert" isKeyboardDismissDisabled transition>
@@ -46,7 +56,9 @@
   <DialogTrigger>
     <Button class="light-trigger">Light</Button>
     <Modal class="light" isDismissable>
-      <Dialog class="light-dialog" aria-label="Light">Light</Dialog>
+      <Dialog class="light-dialog" aria-label="Light">
+        Light
+      </Dialog>
     </Modal>
   </DialogTrigger>
   <button class="sheet-trigger" type="button" onClick=(() => (sheet = true))>Menu</button>
