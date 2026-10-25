@@ -2,14 +2,22 @@
 // or Space, or a click without a pointer, such as from a screen reader, and calls the same
 // handlers for each. A part calls the returned functions from the handlers of its element, and
 // shows `pressed` as `data-pressed`. Space must be prevented on keydown and keyup, with
-// `prevent(handler, 'Space')`, so the browser does not scroll the page or click the element.
+// `prevent(handler, 'Space')`, so the browser does not scroll the page or click the element. A
+// submit or reset button keeps Space, so the browser sends its form.
 //
 // The handlers load on the first event, after the browser has moved on. So a press keeps its
 // pointer with pointer capture, and its pointerup reaches the element even when it ends outside.
 // A listener on the document, as React Aria adds, would start too late to see it.
 import { $signal } from 'brumate/signals';
 import type { PointerKind, PressEvent } from './events.ts';
-import { clicksOnEnter, isLink, isOver, isPressKey, pressEvent } from './interactions.ts';
+import {
+  clicksOnEnter,
+  isAnchor,
+  isNativeButton,
+  isOver,
+  isPressKey,
+  pressEvent,
+} from './interactions.ts';
 
 /**
  * Press handling for an element. Returns whether it is pressed, and a function for each event of
@@ -61,6 +69,7 @@ export function press(
       return;
     }
     pointer = event.pointerId;
+    ignoreClick = false;
     try {
       target.setPointerCapture?.(event.pointerId);
     } catch {
@@ -98,6 +107,8 @@ export function press(
     }
     pointer = undefined;
     over = false;
+    // The browser sends the click to the element that holds the capture, even when the pointer
+    // is up outside it.
     ignoreClick = true;
     end(target, event, inside);
   }
@@ -111,9 +122,21 @@ export function press(
     end(event.currentTarget as Element, event, false);
   }
 
+  // The element lost the pointer during a press, such as when it left the page.
+  function lostCapture(event: PointerEvent) {
+    pointerCancel(event);
+  }
+
   function keyDown(event: KeyboardEvent) {
     const target = event.currentTarget as Element;
-    if (disabled || event.repeat || key !== undefined || !isPressKey(event, target)) {
+    if (event.repeat) {
+      // The browser clicks a button again for each repeat of Enter, which must not press again.
+      if (event.key === key && event.key === 'Enter' && clicksOnEnter(target)) {
+        ignoreClick = true;
+      }
+      return;
+    }
+    if (disabled || key !== undefined || !isPressKey(event, target)) {
       return;
     }
     key = event.key;
@@ -132,11 +155,23 @@ export function press(
     key = undefined;
     onPressUp?.(pressEvent('pressup', 'keyboard', target, event));
     end(target, event, true);
-    // Space follows a link, as Enter does.
-    if (event.key === ' ' && isLink(target)) {
+    if (event.key === ' ' && isAnchor(target)) {
+      // Space follows an `<a href>` with the role of a button, as Enter does.
       ignoreClick = true;
       target.click();
+    } else if (event.key === ' ' && !event.defaultPrevented && isNativeButton(target)) {
+      // The browser clicks a button whose Space is not prevented, such as a submit button.
+      ignoreClick = true;
     }
+  }
+
+  // Focus left during a press by a key, so its keyup goes to another element.
+  function blur(event: FocusEvent) {
+    if (key === undefined) {
+      return;
+    }
+    key = undefined;
+    end(event.currentTarget as Element, event, false);
   }
 
   function click(event: MouseEvent) {
@@ -161,8 +196,10 @@ export function press(
     onPointerMove: pointerMove,
     onPointerUp: pointerUp,
     onPointerCancel: pointerCancel,
+    onLostPointerCapture: lostCapture,
     onKeyDown: keyDown,
     onKeyUp: keyUp,
     onClick: click,
+    onBlur: blur,
   };
 }

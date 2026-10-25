@@ -71,7 +71,7 @@ it('ends a press without pressing when the pointer leaves, and starts again when
   pointer('pointermove', button, { clientX: 0, clientY: 0 });
   await page.waitFor(() => expect(button.hasAttribute('data-pressed')).toBe(true));
   pointer('pointermove', button, { clientX: 100, clientY: 100 });
-  // A pointerup outside presses nothing, and its click goes to another element.
+  // A pointerup outside presses nothing.
   pointer('pointerup', button, { clientX: 100, clientY: 100 });
   await page.waitFor(() => expect(seen()).toEqual(['pressstart:mouse', 'pressend:mouse']));
   expect(page.text('.presses')).toBe('0');
@@ -144,6 +144,95 @@ it('ignores a held key that repeats', async () => {
   expect(types(takeEvents()).filter((type) => type.startsWith('pressstart'))).toHaveLength(1);
 });
 
+it('presses once for Enter held down, though the browser clicks for each repeat', async () => {
+  const page = await buttons();
+  const button = page.get('.plain');
+  const key = (type: string, repeat = false) =>
+    button.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', bubbles: true, repeat }));
+  const click = () => button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+  key('keydown');
+  click();
+  key('keydown', true);
+  click();
+  key('keydown', true);
+  click();
+  key('keyup');
+  await page.waitFor(() => expect(page.text('.presses')).toBe('1'));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(page.text('.presses')).toBe('1');
+});
+
+it('keeps Space on a submit button, so the browser sends its form, and presses once', async () => {
+  const page = await buttons();
+  const button = page.get('.send');
+  button.focus();
+  const down = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+  const up = new KeyboardEvent('keyup', { key: ' ', bubbles: true, cancelable: true });
+  button.dispatchEvent(down);
+  button.dispatchEvent(up);
+  expect(down.defaultPrevented).toBe(false);
+  expect(up.defaultPrevented).toBe(false);
+  // The browser clicks the button after the keyup, and the click sends the form.
+  button.click();
+  await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
+  expect(types(takeEvents()).filter((type) => type.startsWith('press:'))).toEqual([
+    'press:keyboard',
+  ]);
+});
+
+it('makes a pending submit button a plain button, which neither sends nor hovers', async () => {
+  const page = await buttons();
+  const button = page.get('.sending');
+  expect(button.getAttribute('type')).toBe('button');
+  button.click();
+  pointer('pointerenter', button);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(page.text('.sent')).toBe('0');
+  expect(button.hasAttribute('data-hovered')).toBe(false);
+  expect(takeEvents()).toEqual([]);
+});
+
+it('presses on the click of a screen reader after a press that ended outside', async () => {
+  const page = await buttons();
+  const button = page.get('.plain');
+  pointer('pointerdown', button, { clientX: 0, clientY: 0 });
+  pointer('pointermove', button, { clientX: 100, clientY: 100 });
+  pointer('pointerup', button, { clientX: 100, clientY: 100 });
+  // The element holds the capture, so the browser sends it the click.
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  await page.waitFor(() => expect(seen()).toEqual(['pressstart:mouse', 'pressend:mouse']));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(page.text('.presses')).toBe('0');
+  takeEvents();
+  button.click();
+  await page.waitFor(() => expect(seen().at(-1)).toBe('press:virtual'));
+});
+
+it('ends a press by a key when focus leaves, and one by a pointer that loses its capture', async () => {
+  const page = await buttons();
+  const button = page.get('.plain');
+  button.focus();
+  button.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  await page.waitFor(() => expect(button.hasAttribute('data-pressed')).toBe(true));
+  button.blur();
+  await page.waitFor(() => expect(button.hasAttribute('data-pressed')).toBe(false));
+  expect(seen()).toEqual(['pressstart:keyboard', 'pressend:keyboard']);
+  takeEvents();
+  // A new key press starts again.
+  button.focus();
+  press('Enter', button);
+  await page.waitFor(() => expect(seen().at(-1)).toBe('press:keyboard'));
+  takeEvents();
+  pointer('pointerdown', button);
+  pointer('lostpointercapture', button);
+  await page.waitFor(() => expect(seen()).toEqual(['pressstart:mouse', 'pressend:mouse']));
+  takeEvents();
+  // A new pointer press starts again.
+  pressWith(button);
+  await page.waitFor(() => expect(seen().at(-1)).toBe('press:mouse'));
+  expect(page.text('.presses')).toBe('2');
+});
+
 it('presses on a click with no pointer, such as from a screen reader, as virtual', async () => {
   const page = await buttons();
   page.get('.plain').click();
@@ -192,6 +281,35 @@ it('renders the element of as with the role and the focus of a button', async ()
   expect(link.hasAttribute('type')).toBe(false);
   pressWith(link);
   await page.waitFor(() => expect(seen()).toEqual(['press:mouse']));
+  takeEvents();
+  // Space presses it, as the role says, and follows the link.
+  let followed = 0;
+  link.addEventListener('click', () => followed++);
+  link.focus();
+  press(' ', link);
+  await page.waitFor(() => expect(seen().at(-1)).toBe('press:keyboard'));
+  expect(followed).toBe(1);
+});
+
+it('drops the address of a disabled button that renders as a link', async () => {
+  const page = await buttons();
+  const link = page.get('.hidden-link');
+  expect(link.hasAttribute('href')).toBe(false);
+  expect(link.hasAttribute('tabindex')).toBe(false);
+  expect(link.getAttribute('aria-disabled')).toBe('true');
+});
+
+it('shows no focus ring for a shortcut with Control', async () => {
+  const page = await buttons();
+  const button = page.get('.plain');
+  button.focus();
+  pointer('pointerdown', button);
+  await page.waitFor(() => expect(button.hasAttribute('data-focused')).toBe(true));
+  press('c', button, { ctrlKey: true });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(button.hasAttribute('data-focus-visible')).toBe(false);
+  press('a', button);
+  await page.waitFor(() => expect(button.hasAttribute('data-focus-visible')).toBe(true));
 });
 
 it('hovers with a mouse and not with touch', async () => {
