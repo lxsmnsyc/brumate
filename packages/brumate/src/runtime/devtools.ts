@@ -626,7 +626,7 @@ export function installDevtools(
     handler(ref, element, event) {
       // The code of a handler runs, so a preload of its part was used.
       const [component, name] = ref.split('@')[0]!.split('#') as [string, string];
-      const part = state.loads.get(`${component}:${/^[hctv]\d/.test(name) ? name : 'update'}`);
+      const part = state.loads.get(`${component}:${/^[hct]\d/.test(name) ? name : 'update'}`);
       if (part) {
         part.used = true;
       }

@@ -45,6 +45,7 @@ const parts = {
   "h9": () => (update().catch(() => {}), import("./fields.brm?brumate-client&part=h9")),
   "update": update,
 };
+export const partNames = ["h9","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

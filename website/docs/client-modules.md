@@ -2,9 +2,9 @@
 
 What the browser loads, and when: the loader, the core, the parts of each component, and the modules for navigation and server calls. [Reactive graph](./reactive-graph.md) describes what goes into the parts.
 
-## Before the first event
+## When the page starts
 
-The page arrives as HTML with its state in scripts. The only module that runs is the loader, `brumate/loader`, from the client entry:
+The page arrives as HTML with its state in scripts. The client entry runs the loader, `brumate/loader`:
 
 ```ts
 // src/client.ts
@@ -16,24 +16,26 @@ The loader:
 - Listens on `document` to the events named in `b-on` attributes, and walks from the target outwards to find a handler.
 - Applies the wrappers of `brumate/events`, such as `prevent`, before anything loads.
 - Adds the `<window>` and `<document>` listeners, and starts `$client` callbacks and `#client` blocks when their trigger fires.
-- Preloads the code of an element's handlers according to its `prefetch` attribute.
-- After the page loads, when the browser is idle, preloads the core and the code of the handlers of elements in or near the viewport. See [Idle preload](#idle-preload).
+- Imports the core, `brumate/client`, at once.
 - Watches the page for added markup, such as `#loading` bodies, and listens to its handlers too.
 
-## The first event
+The core reads the state records that the page's scripts handed over, and links each scope to its parent. It does not render the page again. For each component that has a scope on the page, it loads the client entry and all of its parts. A component that the browser renders later, such as in an `#if` body, loads its code when its scope is made.
 
-On the first event, the loader imports the core, `brumate/client`, and the client entry of the component that handles the event. The core:
+## Events and calls
 
-- Reads the state records that the page's scripts handed over, and links each scope to its parent.
+An event that comes before the code of the page has loaded waits for it. Then the core:
+
 - Calls the handler with the scope of its element.
 - Writes slots, and runs the updates that read them.
 - Finds elements by `b-b`, and text and blocks by their comment markers.
 - Renders block bodies, keeps the elements of list items whose keys stay, and removes the scopes of removed markup.
 - Runs `$effect` and `$client` callbacks and their cleanups.
 
+A function of another component, such as a function prop, a function in a context or a `#template`, is the loaded function. A call runs at once and returns its result, as in Svelte and Solid, and calls run in the order that they are made.
+
 The core holds only the helpers that the build's components call. A build without `#for`, `$produce` or `$optimistic` leaves their code out, and a build with `navigate: false` leaves out the code that reads the pages that navigation adds. That code loads after the first client navigation, as a small module of its own.
 
-Handlers run after the event has finished dispatching. The core passes them an event whose `currentTarget` is still the element. Parts load in parallel, but handlers start in the order of their events, so typing and then submitting runs the input handler before the submit handler.
+Handlers run after the event has finished dispatching. The core passes them an event whose `currentTarget` is still the element.
 
 ## Parts
 
@@ -41,9 +43,9 @@ The compiler splits the client code of each component into parts. The bundler lo
 
 | Part             | Holds                                                                      | Loads                                         |
 | ---------------- | -------------------------------------------------------------------------- | --------------------------------------------- |
-| Entry, `App.brm` | The component ID, the props map, the update table `g`, and `load(part)`    | On the first use of the component             |
-| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback | On its event or trigger                       |
-| `update`         | Memos, bindings, block updates, effects, list helpers and render functions | On the first write that reaches the component |
+| Entry, `App.brm` | The component ID, the props map, the update table `g`, `load(part)` and `partNames` | With the page                 |
+| `h<n>`, `c<n>`   | One client root: an event handler, a function prop or a `$client` callback | With the page                                 |
+| `update`         | Memos, bindings, block updates, effects, list helpers and render functions | With the page                                 |
 | `shared`         | Functions that more than one part calls, and the module script             | With the parts that import it                 |
 
 - A local function that only one part calls goes into that part.
@@ -52,13 +54,13 @@ The compiler splits the client code of each component into parts. The bundler lo
 
 ### `merge`
 
-When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The first event then loads one module instead of several. Components with a `shared` part keep their parts. The plugin merges below 4096 bytes by default. `compile` does not merge unless asked.
+When the parts of a component are smaller than the `merge` option in all, after minifying, the entry holds their code and has no `load`. The page then loads one module for it instead of several. Components with a `shared` part keep their parts. The plugin merges below 4096 bytes by default. `compile` does not merge unless asked.
 
 The default comes from measuring the dashboard benchmark, whose widgets have about 2 kB of parts each:
 
 - One merged widget is about 1 kB after gzip. Its 4 separate files are about 1.4 kB, because each file has its own imports and gzip header.
 - A first click on a split widget loads the entry, then the handler and the updates. That is 3 requests and 2 round trips, against 1 of each when merged.
-- Below 4096 bytes, the code that a merged module loads but an event does not need costs less than those extra requests. Larger components keep their parts, so an event loads only its own.
+- Below 4096 bytes, one module costs less than the extra requests of its parts.
 
 Set `merge` higher to merge larger components, or to `0` to keep every part apart.
 
@@ -90,6 +92,8 @@ const increment$ = ($$s, ...$$a) => $$m0.s218($$s, [1], ...$$a);
 - Code that needs the component to compile it, such as `$isPending`, is copied instead. So is the code of a module function that another module function calls.
 
 ## Prefetch
+
+The code of the page loads when it starts, so `prefetch` and the idle preload below load nothing more. They stay until a later version removes them.
 
 | `prefetch`             | Loads the core and the parts of an element's handlers      |
 | ---------------------- | ---------------------------------------------------------- |

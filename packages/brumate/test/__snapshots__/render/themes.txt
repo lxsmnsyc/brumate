@@ -34,6 +34,7 @@ const parts = {
   "h4": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h4")),
   "update": update,
 };
+export const partNames = ["h3","h4","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

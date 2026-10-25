@@ -478,55 +478,17 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
-  it('preloads handlers when the browser is idle', async () => {
-    await resume('prefetch', {});
-    // Without a click, the idle button's handler part loads, and the other one does not.
-    await waitFor(() => expect(loadedParts).toContain('Prefetch_okfwof:h1'));
-    expect(loadedParts).not.toContain('Prefetch_okfwof:h3');
-  });
-
-  it('preloads only the handlers in view, and loads the others when they are needed', async () => {
-    // Only the toggle is near the viewport. A `$client` callback waits for its own
-    // observer, which never reports.
-    class InView {
-      readonly callback: IntersectionObserverCallback;
-      readonly near: boolean;
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        this.callback = callback;
-        this.near = options?.rootMargin !== undefined;
-      }
-      observe(target: Element): void {
-        if (this.near && target.matches('.toggle')) {
-          queueMicrotask(() =>
-            this.callback(
-              [{ target, isIntersecting: true } as IntersectionObserverEntry],
-              this as unknown as IntersectionObserver,
-            ),
-          );
-        }
-      }
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-    vi.stubGlobal('IntersectionObserver', InView);
+  it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
-    window.dispatchEvent(new Event('load'));
     const id = 'Disclosure_104dejl';
-    // The toggle's part and the updates load while the page is idle. The `$client` part does
-    // not, and the button in the closed #if is not in the page yet.
-    await waitFor(() => expect(loadedParts.toSorted()).toEqual([`${id}:h4`, `${id}:update`]));
-
-    // The #if renders with the updates that the toggle's part loaded with it.
+    // Every part loads without an event, also of the button in the closed #if.
+    await waitFor(() =>
+      expect(loadedParts.toSorted()).toEqual([`${id}:c3`, `${id}:h4`, `${id}:h8`, `${id}:update`]),
+    );
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
-    expect(loadedParts).not.toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
-
-    // The button that the #if rendered loads its part on its first click.
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(text('.count')).toBe('1'));
-    expect(loadedParts).toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
     expect(text('.seen')).toBe('0');
   });
 

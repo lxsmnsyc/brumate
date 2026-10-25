@@ -229,7 +229,7 @@ export function boot(
     if (!ref.startsWith('$')) {
       // A handler that a spread passed on names its scope after `@`.
       const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-      found = [id, /^[hctv]\d/.test(name) ? name : 'update'];
+      found = [id, /^[hct]\d/.test(name) ? name : 'update'];
     }
     parts.set(ref, found);
     return found;
@@ -613,6 +613,9 @@ export function boot(
       }),
     );
   }
+  // The core starts at once and loads the code of the components on the page, so a call of a
+  // function of another component, such as a function prop, runs at once and in order.
+  void loadCore().catch(() => {});
   return () => {
     stopped = true;
     observer.disconnect();

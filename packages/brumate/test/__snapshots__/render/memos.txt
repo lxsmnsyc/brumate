@@ -64,6 +64,7 @@ const parts = {
   "h30": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h30")),
   "update": update,
 };
+export const partNames = ["h15","h24","h30","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();

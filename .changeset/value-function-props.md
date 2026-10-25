@@ -1,5 +1,5 @@
 ---
-'brumate': patch
+'brumate': minor
 ---
 
-A function prop whose name does not start with `on`, such as `filter`, now returns its result in the browser, as it does on the server. Its code loads with the page state. Before, every call returned a promise, so a child that called it in a memo or in markup got a promise instead of the result.
+The browser now loads the code of the components on the page when the page starts, instead of on the first event. A function of another component, such as a function prop, a function in a context or a template, then runs at once and returns its result, as on the server. Before, it returned a promise, so a child that used its result, such as a `filter`, got a promise instead.

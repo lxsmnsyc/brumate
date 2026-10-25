@@ -23,6 +23,7 @@ const parts = {
   "h3": () => (update().catch(() => {}), import("./prefetch.brm?brumate-client&part=h3")),
   "update": update,
 };
+export const partNames = ["h1","h3","update"];
 /** Imports a part of this module. */
 export function load(part) {
   return parts[part]();
