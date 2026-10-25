@@ -210,8 +210,9 @@
     return placementPassed ? placement : (trigger?.placement ?? placement);
   }
 
+  // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !event.defaultPrevented) {
       close();
     }
   }

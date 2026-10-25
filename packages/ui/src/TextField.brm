@@ -1,5 +1,5 @@
 <script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import {
     FieldErrorContext,
@@ -143,19 +143,28 @@
     return isInvalid ? 'Invalid value.' : '';
   }
 
-  // The value blocks the form in the native behavior. A reset of the form gives back the first
-  // value, as it does for a field of the browser.
+  // The value blocks the form in the native behavior, from the first one, as React Aria sets it
+  // on each render. An effect runs only after a change, so the first one is set at load.
   $effect(() => {
+    if (behavior === 'native') {
+      (document.getElementById(id) as HTMLInputElement | null)?.setCustomValidity(
+        customMessage(value),
+      );
+    }
+  });
+
+  // A reset of the form gives back the first value, as it does for a field of the browser.
+  $client(() => {
     const element = document.getElementById(id) as HTMLInputElement | null;
     if (!element) {
-      return;
+      return undefined;
     }
     if (behavior === 'native') {
       element.setCustomValidity(customMessage(value));
     }
     const owner = element.form;
     if (!owner) {
-      return;
+      return undefined;
     }
     function reset() {
       value = initial;
@@ -164,7 +173,7 @@
     }
     owner.addEventListener('reset', reset);
     return () => owner.removeEventListener('reset', reset);
-  });
+  }, 'load');
 
   function invalidated(message: string, first: boolean) {
     committed = true;

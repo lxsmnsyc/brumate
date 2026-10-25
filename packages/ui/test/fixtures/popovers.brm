@@ -4,8 +4,11 @@
   import Dialog from '../../src/Dialog.brm';
   import DialogTrigger from '../../src/DialogTrigger.brm';
   import Heading from '../../src/Heading.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
   import OverlayArrow from '../../src/OverlayArrow.brm';
   import Popover from '../../src/Popover.brm';
+  import SearchField from '../../src/SearchField.brm';
 
   let open = $signal(false);
   let present = $signal(true);
@@ -13,6 +16,17 @@
 </script>
 
 <main class="page">
+  <DialogTrigger>
+    <Button class="find-trigger">Find</Button>
+    <Popover class="find-popover">
+      <Dialog class="find-dialog" aria-label="Find">
+        <SearchField class="find">
+          <Label>Find</Label>
+          <Input class="find-input" />
+        </SearchField>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
   <button class="outside" type="button">Outside</button>
   <DialogTrigger isOpen=$bind(open)>
     <Button class="trigger">Settings</Button>

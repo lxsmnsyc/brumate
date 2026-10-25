@@ -25,6 +25,14 @@ async function toasts() {
 
 const all = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)];
 
+it('leaves out aria-describedby of a toast without a description', async () => {
+  const page = await toasts();
+  pressWith(page.get('.add-quiet'));
+  await page.waitFor(() => expect(document.querySelector('.toast')).not.toBeNull());
+  const toast = document.querySelector('.toast')!;
+  await page.waitFor(() => expect(toast.hasAttribute('aria-describedby')).toBe(false), 3000);
+});
+
 it('renders no landmark until a toast comes, at the end of the page', async () => {
   const page = await toasts();
   expect(document.querySelector('[role=region]')).toBeNull();

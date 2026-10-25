@@ -30,5 +30,9 @@
     <Text slot="description" class="description">Pick some.</Text>
   </TagGroup>
   <button class="after" type="button">After</button>
+  <TagGroup class="plain">
+    <Label>Plain</Label>
+    <TagList class="plain-list"><Tag id="one">One</Tag></TagList>
+  </TagGroup>
   <p class="state">{JSON.stringify([tags, picked])}</p>
 </main>
