@@ -221,6 +221,11 @@ export interface OverlayTriggerState {
   placement?: Placement;
   /** False when focus stays where it is as the overlay opens, such as a submenu opened by hover. */
   autoFocus?: boolean;
+  /**
+   * The content stays in the page while the overlay is closed, out of sight, in an element with
+   * the ID `${overlayId}-closed`. A Select reads its items there, for the keys of its Button.
+   */
+  keepsContent?: boolean;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
