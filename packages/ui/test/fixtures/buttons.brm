@@ -1,9 +1,11 @@
 <script>
   import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import Button from '../../src/Button.brm';
   import { log } from './log.ts';
 
   let presses = $signal(0);
+  let sent = $signal(0);
 </script>
 
 <Button
@@ -22,4 +24,12 @@
 <Button class="pending" isPending=(true) onPress=((event) => log(event))>Pending</Button>
 <Button class="link" as="a" href="#top" onPress=((event) => log(event))>Link</Button>
 <Button class="submit" type="submit">Send</Button>
+<Button class="hidden-link" as="a" href="#top" isDisabled=(true)>Gone</Button>
+<form onSubmit=(prevent(() => sent++))>
+  <Button class="send" type="submit" onPress=((event) => log(event))>Send</Button>
+  <Button class="sending" type="submit" isPending=(true) onHoverStart=((event) => log(event))>
+    Sending
+  </Button>
+</form>
+<p class="sent">{sent}</p>
 <p class="presses">{presses}</p>
