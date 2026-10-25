@@ -166,22 +166,30 @@ export function r2($$p, $$item, $$index) {
   $$b.setItem($$s2, $$item);
   return $$f;
 }
+const $$k5 = $$b.template("<li b-x=\"0\">Nothing</li>", 1);
 export function r3($$p) {
   let $$html = '';
   let picks = $$b.get($$p, 1);
   const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k5);
+  $$b.setAttrText($$e[0], " class=\"empty" + (((picks % 2 === 1) ? " odd" : "")) + "\"");
+  $$b.keep($$s3, 0, $$e[0]);
+  return $$f;
 }
+const $$k6 = $$b.template("<!--x0--><dt b-x=\"1\"></dt><dd b-x=\"2\"></dd><!--/i-->", 3);
 export function r4($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
   const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
   $$b.setSlots($$s4, [row]);
   $$b.setItem($$s4, $$item);
-  $$html += "<!--/i-->";
-  return $$html;
+  const [$$f, $$e] = $$b.clone($$k6);
+  $$e[0].data = "i" + $$s4;
+  $$b.keep($$s4, 0, $$e[1]);
+  $$b.setContent($$e[1], (row.id), $$s4);
+  $$b.keep($$s4, 1, $$e[2]);
+  $$b.setContent($$e[2], (row.label), $$s4);
+  return $$f;
 }
 
 # Render module
@@ -189,7 +197,8 @@ import * as $$b from 'brumate/client';
 import { r4 as $$r4 } from "./compact.brm?brumate-client";
 interface Row { id: string; label: string; note: string | number }
 const $$t0 = $$b.template("<li b-x=\"0\"><span b-x=\"1\" class=\"label\"></span><i b-x=\"2\" class=\"note\"></i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>", 3);
-const $$t1 = $$b.template("<button b-x=\"0\" class=\"reverse\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button b-x=\"1\" class=\"drop\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button b-x=\"2\" class=\"clear\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button b-x=\"3\" class=\"add\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button b-x=\"4\" class=\"pick\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul><!--x5--></ul><ol><!--x6--><!--/b--></ol>", 7);
+const $$t1 = $$b.template("<li b-x=\"0\">Nothing</li>", 1);
+const $$t2 = $$b.template("<button b-x=\"0\" class=\"reverse\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button b-x=\"1\" class=\"drop\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button b-x=\"2\" class=\"clear\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button b-x=\"3\" class=\"add\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button b-x=\"4\" class=\"pick\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul><!--x5--></ul><ol><!--x6--><!--/b--></ol>", 7);
 
 export default function Compact($$props: { initial: Row[] }): string | DocumentFragment {
   let $$html = '';
@@ -220,10 +229,12 @@ export default function Compact($$props: { initial: Row[] }): string | DocumentF
   const $$body3 = () => {
     let $$html = '';
     const $$s3 = $$b.createScope(3, $$s1);
-    $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
-    return $$html;
+    const [$$f, $$e] = $$b.clone($$t1);
+    $$b.setAttrText($$e[0], " class=\"empty" + (((picks % 2 === 1) ? " odd" : "")) + "\"");
+    $$b.keep($$s3, 0, $$e[0]);
+    return $$f;
   };
-  const [$$f, $$e] = $$b.clone($$t1);
+  const [$$f, $$e] = $$b.clone($$t2);
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.keep($$s1, 2, $$e[2]);

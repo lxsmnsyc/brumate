@@ -152,17 +152,27 @@ it('puts an insert with no markers, names comments, and writes attributes that c
   ]);
 });
 
+it('writes the text of a <textarea>, and attributes with static text and code in quotes', () => {
+  const found = clonedTemplate([
+    { static: '<textarea class="field' },
+    { code: '((wide) ? " wide" : "")' },
+    { static: '" b-b="' },
+    { code: '$$s2' },
+    { static: ':0">' },
+    { code: '$$b.insert((text))' },
+    { static: '</textarea><ul><!--i' },
+    { code: '$$s3' },
+    { static: '--><li>a</li><!--/i--></ul>' },
+  ])!;
+  expect(found.html).toBe('<textarea b-x="0"></textarea><ul><!--x1--><li>a</li><!--/i--></ul>');
+  expect(found.writes[0]).toEqual([
+    { kind: 'call', call: '$$b.setAttrText($$m, " class=\\"field" + (((wide) ? " wide" : "")) + "\\"")' },
+    { kind: 'anchor', scope: '$$s2', anchor: 0 },
+    { kind: 'content', value: '(text)', at: undefined },
+  ]);
+});
+
 it('renders HTML for markers, raw text, blocks of the loader, and other code', () => {
-  // The content of a <textarea> is its text.
-  expect(
-    clonedTemplate([
-      { static: '<textarea b-b="' },
-      { code: '$$s2' },
-      { static: ':0">' },
-      { code: '$$b.insert((text))' },
-      { static: '</textarea>' },
-    ]),
-  ).toBeUndefined();
   // The loader starts each <template> of a block once.
   expect(
     clonedTemplate([

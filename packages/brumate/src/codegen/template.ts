@@ -234,7 +234,8 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       continue;
     }
     const insert = INSERT.exec(code);
-    if (insert && reader.justOpened && !reader.raw && nextStatic?.startsWith('</')) {
+    // The only content of an element, which can be the text of a `<textarea>`.
+    if (insert && reader.justOpened && nextStatic?.startsWith('</')) {
       add({ kind: 'content', value: insert[1]!, at: insert[2] });
       continue;
     }
@@ -356,6 +357,36 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       list[index + 1] = { static: nextStatic.slice(1) };
       continue;
     }
+    // A value in quotes with static text and code, such as `class="bar`, a class that a condition
+    // adds, `"`. The code gives HTML, so the whole attribute is parsed.
+    const mixed = / ([^\s"'=<>/]+)="([^"]*)$/.exec(reader.html);
+    if (reader.inQuote && mixed) {
+      const pieces = [JSON.stringify(mixed[0])];
+      let at = index;
+      let closed = false;
+      for (; at < list.length; at++) {
+        const piece = list[at]!;
+        if ('code' in piece) {
+          pieces.push(`(${piece.code})`);
+          continue;
+        }
+        const quote = piece.static.indexOf('"');
+        if (quote === -1) {
+          pieces.push(JSON.stringify(piece.static));
+          continue;
+        }
+        pieces.push(JSON.stringify(piece.static.slice(0, quote + 1)));
+        list[at] = { static: piece.static.slice(quote + 1) };
+        closed = true;
+        break;
+      }
+      if (closed) {
+        reader.takeBack(mixed[0], 'tag');
+        add({ kind: 'call', call: `$$b.setAttrText($$m, ${pieces.join(' + ')})` });
+        index = at - 1;
+        continue;
+      }
+    }
     // Other code in a start tag gives the text of its attributes, such as a class that a
     // condition adds, or the attributes of a form of an action.
     if (reader.inTag && !reader.inQuote && !reader.html.endsWith('=')) {
@@ -381,7 +412,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   // Other comments, such as markers that a write does not name, need the HTML of a render. The
   // loader starts each `<template>` of a block once, such as of a `$client` callback, so a clone
   // of one would start nothing. Markup with no writes clones too, which is faster than a parse.
-  const comments = reader.html.replace(/<!--x\d+-->|<!--\/b-->/g, '');
+  const comments = reader.html.replace(/<!--x\d+-->|<!--\/[bi]-->/g, '');
   if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
@@ -432,7 +463,9 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       declared.add(declaration[1]!);
     }
     if (at > first && at < last && !line.startsWith('const $$') && !line.startsWith('let $$')) {
-      if (line !== '});' && line !== '};' && !line.startsWith('$$b.')) {
+      // A reference to an element finds it when it is read.
+      const reference = /^[\w$]+ = \$\$b\.elementAt\(/.test(line);
+      if (line !== '});' && line !== '};' && !line.startsWith('$$b.') && !reference) {
         return false;
       }
     }
