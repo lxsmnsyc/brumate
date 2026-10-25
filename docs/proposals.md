@@ -28,6 +28,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
 | [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
+| [Ordered updates](#ordered-updates)                                   | Runtime | Medium | Medium |
 
 ## Syntax
 
@@ -101,6 +102,34 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 - The module that loads `#defer` bodies would wait to put a body in until the ones before it are in, in the order of the `#reveal` around them.
 
 Cost: a day or two, when a page needs it.
+
+## Reactivity
+
+### Ordered updates
+
+A write runs the updates that read its slot at once, in the order of the `g` table of the module. Memos run before bindings, but nothing orders one memo before another. Two cases follow from it:
+
+- A memo that reads a signal and a memo of that signal can compute with the old value of the memo, and then compute again once it changes.
+- A binding that reads a signal and a memo of it runs once for each of them.
+
+The DOM ends up right, but a memo can see values that do not match. It can throw, such as on `items[index]` when `index` changed and `items` did not yet, or send a server function call with old inputs. The call is aborted, but it was sent.
+
+The graph is known at compile time, so the order can be too:
+
+- The compiler ranks the memos of a component by a topological sort of the graph. For each slot, `g` lists every memo downstream of it in that order, then the bindings, each once.
+- A write runs those memos in order. A memo computes only when a slot it reads changed in this pass, and its write triggers nothing, because the list already holds its readers.
+- Bindings wait in a queue, keyed by scope and update, as effects do now. The queue runs when the outermost update ends, and effects run after it.
+- Memos stay eager, so a handler that writes `count` and then reads `double` still reads the new value.
+
+To check:
+
+- A `$bind` write from a child into its parent starts a pass of its own.
+- Async memos, values the server streams and `$optimistic` guesses write later, and start passes of their own.
+- The size of the core, and of the `g` tables with the memo lists.
+
+The first step is tests that show each case: how many times a memo computes, how many times a binding writes, and a memo that throws on values that do not match.
+
+Cost: tests first, then a few days. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo` and `writeSlot` of the core.
 
 ## Data
 
@@ -543,3 +572,5 @@ Each step lists what it holds and why it comes there. A step can start before th
 5. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
+
+Ordered updates come before other work on the core, once tests show the cases.
