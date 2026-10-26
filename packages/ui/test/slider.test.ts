@@ -150,10 +150,20 @@ it('drags a thumb from where the pointer took it, and two pointers drag two thum
   // The low thumb is at 40 of 200. The pointer takes it 6 to the right of its center.
   pointer('pointerdown', page.get('.low'), { clientX: 46, clientY: 5, pointerId: 1 });
   await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(true));
-  pointer('pointermove', window as unknown as Element, { clientX: 50, clientY: 5, buttons: 1, pointerId: 1 });
+  pointer('pointermove', window as unknown as Element, {
+    clientX: 50,
+    clientY: 5,
+    buttons: 1,
+    pointerId: 1,
+  });
   // 4 to the right is 2 more, not a jump to the pointer.
   await page.waitFor(() => expect(state(page)[1]).toEqual([22, 80]));
-  pointer('pointerdown', page.get('.high'), { clientX: 160, clientY: 5, pointerId: 2, pointerType: 'touch' });
+  pointer('pointerdown', page.get('.high'), {
+    clientX: 160,
+    clientY: 5,
+    pointerId: 2,
+    pointerType: 'touch',
+  });
   await page.waitFor(() => expect(page.get('.high').hasAttribute('data-dragging')).toBe(true));
   // The first drag goes on.
   expect(page.get('.low').hasAttribute('data-dragging')).toBe(true);
@@ -171,4 +181,40 @@ it('gives back the first values on a reset of the form', async () => {
   (page.get('.form') as HTMLFormElement).reset();
   await page.waitFor(() => expect(state(page)[3]).toEqual([10, 50, 90]));
   expect(range(page, '.l2').value).toBe('90');
+});
+
+it('ends the drag of a touch or a pen that went up before the code loaded', async () => {
+  const page = await sliders();
+  layout(page.get('.price-track'), 200);
+  // A pointer that is up cannot be captured, as in a browser.
+  page.get('.low').setPointerCapture = () => {
+    throw new DOMException('The pointer is not active', 'InvalidStateError');
+  };
+  pointer('pointerdown', page.get('.low'), {
+    clientX: 40,
+    clientY: 5,
+    pointerId: 3,
+    pointerType: 'touch',
+  });
+  await new Promise((done) => setTimeout(done, 100));
+  expect(page.get('.low').hasAttribute('data-dragging')).toBe(false);
+});
+
+it('ends the drag of a pen that moves with no button down and no pressure', async () => {
+  const page = await sliders();
+  layout(page.get('.price-track'), 200);
+  pointer('pointerdown', page.get('.low'), {
+    clientX: 40,
+    clientY: 5,
+    pointerId: 4,
+    pointerType: 'pen',
+  });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(true));
+  pointer('pointermove', window as unknown as Element, {
+    clientX: 100,
+    clientY: 5,
+    pointerId: 4,
+    pointerType: 'pen',
+  });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(false));
 });

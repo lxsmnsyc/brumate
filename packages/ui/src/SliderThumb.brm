@@ -81,6 +81,7 @@
       event.pointerId,
       (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
       () => slider.setDragging(index, false),
+      event.currentTarget as Element,
     );
   }
 
