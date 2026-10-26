@@ -295,7 +295,11 @@ export function secondsOf(value: TimeString): number {
  * The time of parts that are all set, to the granularity, or null. On a 12-hour clock, AM or PM
  * must be set too.
  */
-export function timeOf(parts: DateParts, granularity: TimeGranularity, twelve = false): TimeString | null {
+export function timeOf(
+  parts: DateParts,
+  granularity: TimeGranularity,
+  twelve = false,
+): TimeString | null {
   const { hour, minute, second } = parts;
   if (
     hour === undefined ||
@@ -423,7 +427,7 @@ export function stepTime(
     return { ...parts, [type]: start };
   }
   if (type === 'hour' && twelve) {
-    const within = (((current % 12) + delta) % 12 + 12) % 12;
+    const within = ((((current % 12) + delta) % 12) + 12) % 12;
     return { ...parts, hour: within + (current >= 12 ? 12 : 0) };
   }
   const size = TIME_MAX[type] + 1;
@@ -453,10 +457,15 @@ export function jumpTime(
 
 /** The text of AM and of PM in a locale, such as `AM` and `PM`, or `vorm.` and `nachm.`. */
 export function dayPeriodNames(locale: string): [string, string] {
-  const format = new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true, timeZone: 'UTC' });
+  const format = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    hour12: true,
+    timeZone: 'UTC',
+  });
   const name = (hour: number) =>
-    format.formatToParts(new Date(Date.UTC(2000, 0, 1, hour))).find((part) => part.type === 'dayPeriod')
-      ?.value ?? (hour < 12 ? 'AM' : 'PM');
+    format
+      .formatToParts(new Date(Date.UTC(2000, 0, 1, hour)))
+      .find((part) => part.type === 'dayPeriod')?.value ?? (hour < 12 ? 'AM' : 'PM');
   return [name(0), name(12)];
 }
 
