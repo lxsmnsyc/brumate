@@ -4,6 +4,21 @@
 import Button from '../src/Button.brm';
 import type { ButtonProps } from '../src/Button.brm';
 import Heading from '../src/Heading.brm';
+import GridList from '../src/GridList.brm';
+import GridListItem from '../src/GridListItem.brm';
+import ListBox from '../src/ListBox.brm';
+import ListBoxItem from '../src/ListBoxItem.brm';
+import type { ListBoxProps } from '../src/ListBox.brm';
+import Menu from '../src/Menu.brm';
+import MenuItem from '../src/MenuItem.brm';
+import Tab from '../src/Tab.brm';
+import TabList from '../src/TabList.brm';
+import TabPanel from '../src/TabPanel.brm';
+import Tag from '../src/Tag.brm';
+import TagList from '../src/TagList.brm';
+import Tree from '../src/Tree.brm';
+import TreeItem from '../src/TreeItem.brm';
+import AsTarget from './fixtures/AsTarget.brm';
 import Link from '../src/Link.brm';
 import Switch from '../src/Switch.brm';
 import type { SwitchProps } from '../src/Switch.brm';
@@ -48,3 +63,30 @@ void Link({ href: '/x', as: 'span' });
 
 // A part with no `as` keeps the attributes that it spreads onto its element.
 void Switch({ name: 'a', 'data-x': 1 });
+
+// The collection parts take `as`, an element name or a component, and the props of the target.
+export const list: ListBoxProps<'ul'> = { as: 'ul', selectionMode: 'single', class: 'list' };
+// @ts-expect-error `selectionMode` is one of three strings.
+export const listMode: ListBoxProps = { selectionMode: 'some' };
+// @ts-expect-error A `ul` has no `foo`.
+export const listFoo: ListBoxProps<'ul'> = { as: 'ul', foo: true };
+void ListBox({ as: 'ul', 'aria-label': 'Fruit' });
+void ListBox({ as: AsTarget, 'aria-label': 'Fruit', 'data-x': 1 });
+void ListBoxItem({ id: 'a', as: 'li', title: 'Apple' });
+void ListBoxItem({ id: 'a', as: AsTarget });
+// @ts-expect-error `id` is the key of the item, a string or a number.
+void ListBoxItem({ id: true });
+void Menu({ as: 'ul', 'aria-label': 'Actions' });
+void MenuItem({ id: 'a', as: 'li' });
+void GridList({ as: 'section', 'aria-label': 'Files' });
+void GridListItem({ id: 'a', as: AsTarget });
+void Tree({ as: 'section', items: [], item: () => '' });
+void Tree({ as: AsTarget, items: [], item: () => '' });
+void TreeItem({ as: 'li', textValue: 'a' });
+void TabList({ as: 'nav', 'aria-label': 'Sections' });
+void Tab({ id: 'a', as: 'a', href: '/a' });
+void TabPanel({ id: 'a', as: 'section' });
+void TagList({ as: 'ul', 'aria-label': 'Tags' });
+void Tag({ id: 'a', as: 'li' });
+// @ts-expect-error A `section` has no `foo`.
+void TabPanel({ id: 'a', as: 'section', foo: true });
