@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "types.d.ts",
-    "forms"
+    "forms",
+    "skills"
   ],
   "type": "module",
   "exports": {

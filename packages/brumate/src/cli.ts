@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readFile, stat } from 'node:fs/promises';
+import { cp, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CompileError } from './compile.ts';
 import { defaultExclude, findFiles } from './files.ts';
 import { inspect } from './inspect.ts';
@@ -10,7 +11,12 @@ import { analyzeProjectProps } from './project.ts';
 const USAGE = `Usage: brumate inspect [--json] [files or directories]
 
 Shows what each component ships to the client, and why.
-Without paths, inspects every .brm file under the current directory.`;
+Without paths, inspects every .brm file under the current directory.
+
+       brumate skill [folder]
+
+Copies the skill for .brm files into folder/brumate, for coding agents.
+The folder defaults to .claude/skills.`;
 
 function toPosix(file: string): string {
   return file.split(path.sep).join('/');
@@ -87,8 +93,21 @@ async function inspectCommand(args: string[]): Promise<number> {
   return failed ? 1 : 0;
 }
 
+async function skillCommand(args: string[]): Promise<number> {
+  const folder = path.resolve(args[0] ?? '.claude/skills');
+  const target = path.join(folder, 'brumate');
+  // The skill is in the package, next to dist and src.
+  const source = fileURLToPath(new URL('../skills/brumate', import.meta.url));
+  await cp(source, target, { recursive: true, force: true });
+  console.log(`Copied the skill to ${path.relative(process.cwd(), target) || '.'}`);
+  return 0;
+}
+
 async function main(args: string[]): Promise<number> {
   const [command, ...rest] = args;
+  if (command === 'skill') {
+    return skillCommand(rest);
+  }
   if (command === 'inspect') {
     return inspectCommand(rest);
   }
