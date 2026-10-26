@@ -765,6 +765,20 @@ Another file then imports it with `import type { ButtonProps } from './Button.br
 
 The parts of `@brumate/ui` export their props types the same way, so apps can use them, and the props tables of their pages can come from them.
 
+### `$client` in markup that the browser renders
+
+The docs of `$client` describe the triggers for a page that loads. They do not say when the callback runs for a component that the browser renders, such as in an `#if` that opens. Add a section to `website/docs/effects.md`:
+
+- The callback runs after the markup is in the page, never during the render. The loader finds its template before the insert and starts it after, and the call goes through a promise, so it is not synchronous with the render.
+- `'load'` runs right after the insert, usually before the next paint, or when its code loads if it has not.
+- `'visible'` runs when its element enters the viewport, on the next frame at the soonest.
+- `'idle'` runs when the browser is next idle.
+- An element that it reads through `ref` is in the page when it runs.
+- Each mount runs it again. Closing the block runs its cleanup, and opening it makes a new instance, whose callback runs once.
+- A handler that opens the block cannot see what the callback set up, in the same run.
+
+A test pins the order: the markup is in the page, then the callback runs, for each trigger.
+
 ### The code examples
 
 The examples of the docs and of `@brumate/ui` need another pass:
