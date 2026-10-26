@@ -6,6 +6,6 @@
 **/test/.output/
 coverage/
 dist/
-node_modules/
+node_modules
 *.vsix
 .output/
