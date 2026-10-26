@@ -185,8 +185,8 @@
     }
   }
 
-  // The text of the selected item, once the code loads and when the caller sets another key.
-  $client(() => remember(selectedKey), 'load');
+  // The text of the selected item, once the select is in view and when the caller sets another key.
+  $client(() => remember(selectedKey), 'visible');
   $effect(() => {
     const key = selectedKey;
     if (key !== textKey) {

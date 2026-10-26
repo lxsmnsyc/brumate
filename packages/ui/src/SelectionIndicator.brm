@@ -30,7 +30,7 @@
     if (root) {
       moveIndicator(root);
     }
-  }, 'load');
+  }, 'visible');
   $effect(() => {
     if (selected) {
       $untrack(root && moveIndicator(root));

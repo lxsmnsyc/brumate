@@ -59,10 +59,11 @@ The test runs in a DOM environment, so Vite gives it the browser version of a `.
 | `click(selector)`             | Clicks an element.                                              |
 | `input(selector, value)`      | Types a value into a field and fires `input`.                   |
 | `submit(selector)`            | Submits a form, as its submit button does.                      |
+| `reveal(selector)`            | Brings elements that `offscreen` kept out of view into view.    |
 | `waitFor(assertion, timeout)` | Retries an assertion until it passes, for 2 seconds by default. |
 | `unmount()`                   | Stops the loader and removes the component.                     |
 
-`mount` takes the options of `render` as its third argument, such as a `request` for components that read it with `getEvent()`.
+`mount` takes the options of `render` as its third argument, such as a `request` for components that read it with `getEvent()`, and `offscreen`. See [Triggers](#triggers).
 
 ## Content that streams in
 
@@ -79,6 +80,35 @@ it('shows the quote once it loads', async () => {
 ```
 
 Pass a longer timeout to `waitFor` when the data takes a while.
+
+## Triggers
+
+The triggers of `$client`, `#client` and `#defer` fire in a test:
+
+| Trigger     | When it fires in a test                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| `'load'`    | When the loader starts.                                                                             |
+| `'visible'` | At once, since `mount` and `visit` report each element that the page observes as in the viewport.   |
+| `'idle'`    | A moment after the page starts. happy-dom has no `requestIdleCallback`, so the loader uses a timer. |
+
+- Check the effect with `waitFor`, since each trigger runs after the loader starts.
+- `mount` and `visit` install their own IntersectionObserver, because the one of happy-dom never reports. `unmount()` and `close()` put the observer of the environment back.
+- A test needs no action for `'idle'`. It fires by itself, as it does in a browser.
+
+To test what waits for an element, keep the element out of view with `offscreen`, a selector. The element is reported when the test calls `reveal(selector)`:
+
+```ts
+it('measures the chart when it comes into view', async () => {
+  const page = await mount(Report, {}, { offscreen: '.chart' });
+  expect(page.get('.chart').dataset.drawn).toBeUndefined();
+
+  page.reveal('.chart');
+  await page.waitFor(() => expect(page.get('.chart').dataset.drawn).toBe('true'));
+  page.unmount();
+});
+```
+
+`visit(path, { offscreen })` takes the same option.
 
 ## Server functions
 
@@ -161,7 +191,7 @@ it('signs in and opens a new issue', async () => {
 | `cookies` | The cookies that the browser has now, by name.                     |
 | `close()` | Stops the loader, puts `fetch` back and empties the document.      |
 
-`get`, `text`, `click`, `input`, `submit` and `waitFor` work as they do for `mount`, on the whole document.
+`get`, `text`, `click`, `input`, `submit`, `reveal` and `waitFor` work as they do for `mount`, on the whole document.
 
 Requests to other origins go to the `fetch` from before. Use `visit` or `mount` in a test, not both, since each starts a loader.
 

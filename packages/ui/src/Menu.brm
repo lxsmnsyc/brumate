@@ -131,7 +131,7 @@
       field!.filtered?.(filterItems(element, text, field!.filter, MENU_ITEMS));
     }
   }
-  $client(() => applyFilter(), 'load');
+  $client(() => applyFilter(), 'idle');
   $effect(() => {
     void field?.filterText;
     $untrack(applyFilter());

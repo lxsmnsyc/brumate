@@ -161,8 +161,9 @@
   {children}
   #if (mixed) {
     <script>
-      // A box is indeterminate only from code, so only an indeterminate box loads any. It loads
-      // with the page, so a screen reader soon reads the box as mixed.
+      // A box is indeterminate only from code, so only an indeterminate box loads any. It runs
+      // when the page is idle, not when the box is in view, since a screen reader reads boxes that
+      // are out of view too.
       let marker = $signal<HTMLElement>();
       $client(() => {
         const input = marker?.parentElement?.querySelector('input');
@@ -174,7 +175,7 @@
             input.indeterminate = false;
           }
         };
-      }, 'load');
+      }, 'idle');
     </script>
     <span ref=marker hidden></span>
   }
