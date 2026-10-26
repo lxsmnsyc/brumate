@@ -2118,6 +2118,60 @@ describe('children', () => {
     await waitFor(() => expect(text('.inc')).toBe('1'));
   });
 
+  it('a dynamic tag keeps the handlers of a spread when the browser renders it', async () => {
+    await resume('dynamicKeys', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
+    press('a');
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+  });
+
+  it('keeps the handlers of a spread on dynamic tags of a list that the browser renders', async () => {
+    await resume('dynamicKeysEach', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row').length).toBe(2));
+    for (const row of document.querySelectorAll('.row')) {
+      row.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    }
+    await waitFor(() => expect(text('.presses')).toBe('2'));
+  });
+
+  it('writes the b-on of a dynamic tag escaped, with its own handlers first', async () => {
+    await resume('dynamicKeysArgs', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
+    const on = document.querySelector('.list')!.getAttribute('b-on')!;
+    expect(on).toBe(
+      'click=DynamicKeysArgs_nhpusu#h9 keydown:prevent(Enter,")=DynamicKeysArgs_nhpusu#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
+    click(document.querySelector('.list')!);
+    await waitFor(() => expect(text('.seen')).toBe('own'));
+    expect(press('Enter').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.seen')).toBe('say "hi" & <b>'));
+    expect(press('x').defaultPrevented).toBe(false);
+    expect(press('"').defaultPrevented).toBe(true);
+  });
+
+  it('a dynamic tag that changes its element keeps the handlers of a spread', async () => {
+    await resume('dynamicKeysSwap', {});
+    expect(press('Enter').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('section.list')).not.toBeNull());
+    expect(document.querySelector('div.list')).toBeNull();
+    // The new element writes its own entries and those of the spread, escaped.
+    const on = document.querySelector('section.list')!.getAttribute('b-on')!;
+    expect(on).toBe(
+      'click=DynamicKeysSwap_5gjjdw#h8 keydown:prevent(Enter,")=DynamicKeysSwap_5gjjdw#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
+    click(document.querySelector('.list')!);
+    await waitFor(() => expect(text('.seen')).toBe('own'));
+    expect(press('"').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.seen')).toBe('say "hi" & <b>'));
+    expect(text('.presses')).toBe('2');
+    expect(press('x').defaultPrevented).toBe(false);
+  });
+
   it('updates children that the server rendered before values changed', async () => {
     await resume('cards', {});
     click(document.querySelector('.outside')!);

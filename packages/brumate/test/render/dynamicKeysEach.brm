@@ -1,0 +1,20 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let as = $signal<any>('div');
+  let presses = $signal(0);
+  let items = $signal([1, 2]);
+
+  function keys() {
+    return { onKeyDown: $handler(() => presses += 1) };
+  }
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  #for (item of items by item) {
+    <{as} class="row" tabindex="0" {...keys()}>{item}</>
+  }
+}
+<p class="presses">{presses}</p>
