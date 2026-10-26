@@ -1031,6 +1031,12 @@ class ClientGenerator {
             ]
           : [];
       });
+      // The handlers of a dynamic tag name their scope, as in its first render, so the update
+      // knows them from the entries of the spreads.
+      const events = owner.kind === 'dynamic' ? this.ownEvents(owner) : [];
+      if (events.length > 0) {
+        parts.push(`{ "b-on": $$b.internal(${events.join(' + " " + ')}) }`);
+      }
       const value = parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : expression();
       this.emit(
         `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
@@ -1051,6 +1057,23 @@ class ClientGenerator {
       );
     }
     void node;
+  }
+
+  /** The `b-on` entries of the handlers of a dynamic tag, each as code that adds the scope ID. */
+  private ownEvents(node: DynamicTagNode): string[] {
+    const entries: string[] = [];
+    for (const attribute of node.attributes) {
+      const site =
+        attribute.kind === 'event'
+          ? this.model.sites.find((item) => item.node === attribute.handler.ast)
+          : undefined;
+      if (attribute.kind === 'event' && site) {
+        const all = [...new Set([...attribute.modifiers, ...(site.modifiers ?? [])])];
+        const entry = `${[attribute.event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}@`;
+        entries.push(`${JSON.stringify(entry)} + $$s.id`);
+      }
+    }
+    return entries;
   }
 
   /**

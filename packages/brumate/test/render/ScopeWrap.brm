@@ -1,0 +1,9 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { children, ...rest } = $props();
+  let inner = $signal(0);
+</script>
+
+<section class="wrap" onClick=(() => inner++) {...rest}>{children}</section>
+<span class="inner">{inner}</span>

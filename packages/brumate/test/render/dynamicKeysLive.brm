@@ -1,0 +1,17 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+
+  let as = $signal<any>('div');
+  let extra = $signal('one');
+  let presses = $signal(0);
+  let seen = $signal('');
+
+  function keys() {
+    return { 'data-extra': extra, onKeyDown: $handler(() => presses += 1) };
+  }
+</script>
+
+<button class="next" onClick=(() => (extra = 'two'))>Next</button>
+<{as} class="list" tabindex="0" onClick=(() => (seen = 'own')) {...keys()}>List</>
+<p class="presses">{presses}</p>
+<p class="seen">{seen}</p>
