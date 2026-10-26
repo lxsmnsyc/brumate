@@ -177,7 +177,7 @@
 </script>
 
 <div
-  ref=box
+  ref=$bind(box)
   role=(field.role)
   contenteditable=(editable ? 'true' : 'false')
   tabindex=(disabled ? undefined : '0')
@@ -218,7 +218,7 @@
   }
 </div>
 <!-- The tokens of the value, rendered by the template, which the box copies. -->
-<div ref=stamps hidden aria-hidden="true">
+<div ref=$bind(stamps) hidden aria-hidden="true">
   #for (segment of field.value.filter((one) => one.type === 'token') by index) {
     <span data-stamp>#if (token) {
         {token(segment)}

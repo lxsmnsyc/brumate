@@ -126,7 +126,7 @@
         <form action=remove>
           <input type="hidden" name="id" value=issue.id>
           <button class="danger">Delete</button>
-          <button ref=cancel type="button" onClick=(() => (confirming = false))>Cancel</button>
+          <button ref=$bind(cancel) type="button" onClick=(() => (confirming = false))>Cancel</button>
         </form>
       </div>
     </div>

@@ -190,7 +190,7 @@
 
 #template content() {
   <{as}
-    ref=element
+    ref=$bind(element)
     class=($untrack(startClass()))
     data-closed=($untrack(startClosed()))
     hidden=(!mounted && unmount === false || undefined)

@@ -61,7 +61,7 @@
   $setContext(TableResizeContext, { widths, resizing, start, resize, end });
 </script>
 
-<div ref=box data-resizable-table-container {...rest}>{children}</div>
+<div ref=$bind(box) data-resizable-table-container {...rest}>{children}</div>
 
 <style>
   div {

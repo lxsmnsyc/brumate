@@ -39,5 +39,5 @@
 </script>
 
 #if (selected) {
-  <{as} ref=root data-selection-indicator data-selected aria-hidden="true" {...rest}>{children}</>
+  <{as} ref=$bind(root) data-selection-indicator data-selected aria-hidden="true" {...rest}>{children}</>
 }

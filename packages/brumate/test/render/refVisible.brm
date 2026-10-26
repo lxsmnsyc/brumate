@@ -13,4 +13,4 @@
 
 <h1 class="top">Report</h1>
 <p class="status">{drawn ? 'Drawn' : 'Waiting'}</p>
-<div class="chart" ref=chart></div>
+<div class="chart" ref=$bind(chart)></div>

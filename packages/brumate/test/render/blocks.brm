@@ -17,7 +17,7 @@
 </script>
 
 <window onKeyDown=((event) => (tab = event.key === 'b' ? 'b' : 'a')) />
-<input ref=input value="x" title="a &amp; b">
+<input ref=$bind(input) value="x" title="a &amp; b">
 #switch {
   #case (tab === 'a') {
     <p>A</p>

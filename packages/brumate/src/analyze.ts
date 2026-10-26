@@ -92,7 +92,7 @@ const MISPLACED: Record<string, string> = {
 };
 
 const REMOVED: Record<string, string> = {
-  $ref: '$ref is not supported. Use a $signal with ref=name',
+  $ref: '$ref is not supported. Use a $signal with ref=$bind(name)',
   $watch: '$watch is not supported. Use $effect',
   $settled: '$settled is not supported. Use $client',
   $cleanup: '$cleanup is not supported. Return a cleanup function from $effect or $client',
@@ -1470,10 +1470,26 @@ class Analyzer {
           `"${ref.attribute.target}" is not declared`,
           ref.attribute.targetRange,
         );
-      } else if (declaration.kind !== 'signal') {
+      } else if (
+        declaration.kind !== 'signal' &&
+        !(declaration.kind === 'prop' && declaration.writable)
+      ) {
         this.report(
           'error',
-          `ref must name a $signal, but "${declaration.name}" is a ${declaration.kind}`,
+          `ref takes a $signal, or a prop that the component destructures with let, but "${declaration.name}" is ${declaration.kind === 'prop' ? 'a prop read with const' : `a ${declaration.kind}`}`,
+          ref.attribute,
+        );
+      } else if (
+        declaration.kind === 'prop' &&
+        this.propsTypes.length > 0 &&
+        declaration.propKey !== undefined &&
+        !this.propsTypes.some((type) =>
+          bindableNames(type, this.file).includes(declaration.propKey!),
+        )
+      ) {
+        this.report(
+          'error',
+          `The prop "${declaration.propKey}" is not Bindable. Type it as Bindable<HTMLElement>, so a parent can bind it`,
           ref.attribute,
         );
       } else {

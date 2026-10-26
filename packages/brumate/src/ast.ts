@@ -131,7 +131,7 @@ export interface EventAttribute extends Range {
 
 export interface RefAttribute extends Range {
   kind: 'ref';
-  /** The name of a signal. */
+  /** The name in `ref=$bind(name)`: a signal, or a prop that the component writes. */
   target: string;
   /** The range of the name. */
   targetRange: Range;

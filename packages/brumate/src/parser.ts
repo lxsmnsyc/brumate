@@ -507,19 +507,25 @@ class Parser {
     }
 
     if ((owner === 'element' || owner === 'dynamic') && fullName === 'ref') {
-      this.expect('=', 'Expected the name of a signal after "ref="');
-      const targetStart = this.pos;
-      const target = readIdentifier(this.source, this.pos);
-      this.pos += target.length;
-      if (!target || !(isWhitespace(this.peek()) || this.peek() === '>' || this.peek() === '/')) {
-        this.fail('Expected the name of a signal after "ref="', targetStart);
+      const message = 'ref takes $bind, as in ref=$bind(name)';
+      this.expect('=', message);
+      const valueStart = this.pos;
+      const match = /^\$bind\(\s*([\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*)\s*\)/u.exec(
+        this.source.slice(this.pos),
+      );
+      const next = match ? this.source[this.pos + match[0].length] : undefined;
+      if (!match || !(next === undefined || isWhitespace(next) || next === '>' || next === '/')) {
+        this.fail(message, valueStart);
       }
+      const target = match![1]!;
+      const targetStart = valueStart + match![0].indexOf(target, 5);
+      this.pos = valueStart + match![0].length;
       return {
         kind: 'ref',
         start,
         end: this.pos,
         target,
-        targetRange: { start: targetStart, end: this.pos },
+        targetRange: { start: targetStart, end: targetStart + target.length },
       };
     }
 

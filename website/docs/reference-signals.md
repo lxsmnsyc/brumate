@@ -282,11 +282,11 @@ Memos of `value` that the browser writes after a wait.
 
 These names are reserved, and calling one is a compile error that names the replacement:
 
-| Name           | Use instead                                      |
-| -------------- | ------------------------------------------------ |
-| `$ref`         | A `$signal` with `ref=name` on the element.      |
-| `$watch`       | `$effect`.                                       |
-| `$settled`     | `$client`.                                       |
-| `$cleanup`     | A function returned from `$effect` or `$client`. |
-| `$store`       | A `$signal` with a new value, or `$produce`.     |
-| `$get`, `$set` | Nothing. Signals cannot leave the file.          |
+| Name           | Use instead                                        |
+| -------------- | -------------------------------------------------- |
+| `$ref`         | A `$signal` with `ref=$bind(name)` on the element. |
+| `$watch`       | `$effect`.                                         |
+| `$settled`     | `$client`.                                         |
+| `$cleanup`     | A function returned from `$effect` or `$client`.   |
+| `$store`       | A `$signal` with a new value, or `$produce`.       |
+| `$get`, `$set` | Nothing. Signals cannot leave the file.            |

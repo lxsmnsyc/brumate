@@ -155,7 +155,7 @@
 </script>
 
 <div
-  ref=zone
+  ref=$bind(zone)
   data-drop-target=(target || undefined)
   data-hovered=(hovered || undefined)
   data-focused=(focused || undefined)
@@ -170,7 +170,7 @@
 >
   <VisuallyHidden>
     <button
-      ref=button
+      ref=$bind(button)
       id=buttonId
       type="button"
       aria-label=label

@@ -3518,6 +3518,48 @@ describe('refs of dynamic tags', () => {
   });
 });
 
+describe('refs forwarded through components', () => {
+  it('writes the element of a component into the signal of the caller', async () => {
+    await resume('refForward', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:Relayed:none:undefined'));
+    // A handler of the caller focuses the forwarded element.
+    click(document.querySelector('.focus')!);
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector('.inner')));
+    // A `$client` of the caller reads it.
+    await waitFor(() => expect(text('.loaded')).toBe('BUTTON'));
+  });
+
+  it('writes an element that the browser renders later, and keeps it once it is gone, as a plain ref does', async () => {
+    await resume('refForward', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelectorAll('.inner').length).toBe(3));
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:Relayed:BUTTON:true'));
+    click(document.querySelector('.hide')!);
+    await waitFor(() => expect(document.querySelectorAll('.inner').length).toBe(2));
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:Relayed:BUTTON:false'));
+  });
+
+  it('writes the element of a dynamic tag that names a component, and of one that names an element', async () => {
+    await resume('refForwardDynamic', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('section')).not.toBeNull());
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('SECTION'));
+  });
+
+  it('leaves the element out of the page state', async () => {
+    const server = await import(file('refForward.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('class="inner"');
+    expect(state).not.toMatch(/HTMLElement|\[object /);
+  });
+});
+
 describe('fields in spreads', () => {
   it('keeps what the user typed when the spread updates for another attribute', async () => {
     await resume('spreadField', {});

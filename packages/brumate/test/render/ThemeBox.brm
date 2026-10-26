@@ -7,4 +7,4 @@
   $setContext(Theme, 'boxed');
 </script>
 
-<div class="box" ref=box>{children}</div>
+<div class="box" ref=$bind(box)>{children}</div>

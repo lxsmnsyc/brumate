@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $client, $signal } from 'brumate/signals';
+  import RefButton from './RefButton.brm';
+  import RefRelay from './RefRelay.brm';
+
+  let el = $signal<HTMLElement>();
+  let relayed = $signal<HTMLElement>();
+  let later = $signal<HTMLElement>();
+  let shown = $signal(false);
+  let seen = $signal('');
+  let loaded = $signal('');
+
+  $client(() => {
+    loaded = el?.tagName ?? 'none';
+  }, 'load');
+</script>
+
+<RefButton ref=$bind(el) />
+<RefRelay ref=$bind(relayed) />
+<button class="focus" onClick=(() => el.focus())>Focus</button>
+<button class="read" onClick=(() => (seen = `${el?.tagName}:${relayed?.textContent}:${later?.tagName ?? 'none'}:${later?.isConnected}`))>Read</button>
+<button class="show" onClick=(() => (shown = true))>Show</button>
+<button class="hide" onClick=(() => (shown = false))>Hide</button>
+#if (shown) {
+  <RefButton ref=$bind(later) label="Later" />
+}
+<p class="seen">{seen}</p>
+<p class="loaded">{loaded}</p>

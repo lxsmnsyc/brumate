@@ -208,7 +208,7 @@
 </script>
 
 <div
-  ref=root
+  ref=$bind(root)
   id=(field?.id ?? menuId)
   role="menu"
   tabindex=(trigger || field ? '-1' : '0')

@@ -21,7 +21,7 @@ function printAttribute(item: Attribute): string {
     case 'event':
       return `${item.name}${item.modifiers.map((modifier) => `:${modifier}`).join('')}=(${item.handler.code})`;
     case 'ref':
-      return `ref=${item.target}`;
+      return `ref=$bind(${item.target})`;
     case 'spread':
       return `{...${item.value.code}}`;
     case 'computed':

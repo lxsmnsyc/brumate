@@ -173,6 +173,41 @@ const passed = $isPassed(value);
 const bound = () => $isBound(value);
 ```
 
+### Forwarding a ref
+
+A component that renders an element for its caller can pass the element on. It declares `ref` as a bindable prop, and puts `ref=$bind(ref)` on the element:
+
+```brm live
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import FancyButton from './FancyButton.brm';
+
+  let button = $signal<HTMLButtonElement>();
+</script>
+
+<FancyButton ref=$bind(button)>Save</FancyButton>
+<button onClick=(() => button!.focus())>Focus the button</button>
+```
+
+```brm live FancyButton.brm
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
+  const { children } = $props();
+</script>
+
+<button class="fancy" ref=$bind(ref)>{children}</button>
+```
+
+- `ref` is an ordinary bindable prop of the component. The caller binds it with `$bind`, as it binds any other.
+- The component writes the element through the binding, so the signal of the caller gets it. Without a binding, the element stays in the component.
+- A component can pass the binding on: `<Inner ref=$bind(ref) />`.
+- A dynamic tag that names a component passes `ref` as a prop too: `<{as} ref=$bind(root)>`.
+- The server does not send the element. Handlers and `$client` callbacks of the caller read the element in the browser, as they read the element of a `ref` in their own file.
+- A `$client(…, 'visible')` of the caller does not wait for a forwarded element. It runs when the element that follows it comes into view.
+
 ### Functions as props
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:

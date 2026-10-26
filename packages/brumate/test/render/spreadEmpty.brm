@@ -8,5 +8,5 @@
   $client(() => box?.setAttribute('aria-controls', 'menu'), 'load');
 </script>
 
-<section class="wrap"><div ref=box {...props}>Box</div></section>
+<section class="wrap"><div ref=$bind(box) {...props}>Box</div></section>
 <button class="fill" onClick=(() => (props = { title: 'Full' }))>Fill</button>

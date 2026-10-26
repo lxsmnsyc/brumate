@@ -473,7 +473,7 @@
 </script>
 
 <table
-  ref=root
+  ref=$bind(root)
   id=tableId
   role="grid"
   tabindex="0"

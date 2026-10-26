@@ -9,10 +9,10 @@
   let seen = $signal('');
 </script>
 
-<{tag} ref=first class="first">First</>
+<{tag} ref=$bind(first) class="first">First</>
 <button class="show" onClick=(() => (shown = true))>Show</button>
 <button class="read" onClick=(() => (seen = `${first?.tagName}:${second?.tagName ?? 'none'}`))>Read</button>
 #if (shown) {
-  <{'article'} ref=second class="second">Second</>
+  <{'article'} ref=$bind(second) class="second">Second</>
 }
 <p class="seen">{seen}</p>

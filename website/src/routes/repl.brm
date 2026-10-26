@@ -245,7 +245,7 @@
       {copied ? 'Copied' : 'Copy link'}
     </button>
   </header>
-  <div class={ 'repl-panes': true, dragging } ref=panes>
+  <div class={ 'repl-panes': true, dragging } ref=$bind(panes)>
     <section class="pane repl-source" aria-label="Files">
       <div class="pane-bar repl-files" role="group" aria-label="Files">
         #for (file, index of files by file.name) {
@@ -261,7 +261,7 @@
         #if (adding) {
           <form class="repl-add" onSubmit=(prevent(addFile))>
             <input
-              ref=nameInput
+              ref=$bind(nameInput)
               aria-label="File name"
               placeholder="Name.brm"
               value=draftName
@@ -284,9 +284,9 @@
         <p class="repl-name-error">{nameError}</p>
       }
       <div class="editor">
-        <pre class="gutter" ref=gutter aria-hidden="true">{lines}</pre>
+        <pre class="gutter" ref=$bind(gutter) aria-hidden="true">{lines}</pre>
         <div class="editor-body">
-          <div class="editor-backdrop code" ref=backdrop aria-hidden="true">{sourceHtml}</div>
+          <div class="editor-backdrop code" ref=$bind(backdrop) aria-hidden="true">{sourceHtml}</div>
           <textarea
             aria-label=(`Source of ${files[active]?.name}`)
             spellcheck="false"
@@ -378,7 +378,7 @@
             </div>
           }
           <div class={ device: true, hidden: Boolean(error) } style={ width: width ? `${width}px` : '100%' }>
-            <div class="repl-result" ref=result>
+            <div class="repl-result" ref=$bind(result)>
               <p class="repl-note">The files run once the page loads.</p>
             </div>
           </div>

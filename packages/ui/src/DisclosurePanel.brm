@@ -107,7 +107,7 @@
 
 #template content() {
   <div
-    ref=element
+    ref=$bind(element)
     id=(state?.id)
     {role}
     aria-labelledby=(state?.triggerId)

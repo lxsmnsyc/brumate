@@ -141,7 +141,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 
 ## Element references
 
-`ref=name` on an element writes the element into the signal `name`, so browser code can use it:
+`ref=$bind(name)` on an element writes the element into the signal `name`, so browser code can use it:
 
 ```brm live
 <script>
@@ -152,13 +152,15 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 
 <label>
   Email
-  <input ref=input type="email">
+  <input ref=$bind(input) type="email">
 </label>
 <button onClick=(() => input!.focus())>Focus the field</button>
 ```
 
-- The signal must be a `$signal` declared in the same file.
-- A dynamic tag takes `ref` too, such as `<{as} ref=panel>`. The signal gets the element that the tag renders, or nothing when the tag names a component.
+- `ref` always takes `$bind`. A bare name, as in `ref=input`, is a compile error.
+- The name must be a `$signal` declared in the same file, or a prop that the component destructures with `let` and types as `Bindable`. The prop forwards the element to the caller.
+- A dynamic tag takes `ref` too, such as `<{as} ref=$bind(panel)>`. The signal gets the element that the tag renders. When the tag names a component, the component gets the binding as its `ref` prop, and writes the element if it forwards it.
+- A component forwards `ref` by declaring it as a `Bindable` prop and writing `ref=$bind(ref)` on an element. See [Forwarding a ref](./components.md#forwarding-a-ref).
 - On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
 - An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
 
@@ -260,8 +262,8 @@ export function clickOutside(element: HTMLElement, onOutside: () => void): () =>
   $client(() => autosize(field!));
 </script>
 
-<div class="menu" ref=menu hidden=(!open)>…</div>
-<textarea ref=field></textarea>
+<div class="menu" ref=$bind(menu) hidden=(!open)>…</div>
+<textarea ref=$bind(field)></textarea>
 ```
 
 - Each `$client` is a client root of its own, so each behavior runs when its element comes into view.
@@ -271,14 +273,14 @@ export function clickOutside(element: HTMLElement, onOutside: () => void): () =>
 
 ## Which one to use
 
-| You want to                                              | Use                          |
-| -------------------------------------------------------- | ---------------------------- |
-| Respond to something the user does                       | A handler, such as `onClick` |
-| Run code when a value changes                            | `$effect`                    |
-| Run code when the page loads, or when it comes into view | `$client`                    |
-| Render markup that needs the browser                     | `#client`                    |
-| Reach an element from browser code                       | `ref=name`                   |
-| Add a behavior to an element                             | `ref=name` and `$client`     |
+| You want to                                              | Use                             |
+| -------------------------------------------------------- | ------------------------------- |
+| Respond to something the user does                       | A handler, such as `onClick`    |
+| Run code when a value changes                            | `$effect`                       |
+| Run code when the page loads, or when it comes into view | `$client`                       |
+| Render markup that needs the browser                     | `#client`                       |
+| Reach an element from browser code                       | `ref=$bind(name)`               |
+| Add a behavior to an element                             | `ref=$bind(name)` and `$client` |
 
 Handlers are often enough. A value that a handler writes updates the page by itself, so an effect is only needed for work outside the page, such as saving to `localStorage` or talking to a library.
 

@@ -43,7 +43,7 @@
 #if (selected || shouldForceMount) {
   <div
     id=(tabs ? tabId(tabs, id, 'panel') : undefined)
-    ref=panel
+    ref=$bind(panel)
     role="tabpanel"
     tabindex=(hasTabbable ? undefined : '0')
     aria-labelledby=(tabs ? tabId(tabs, id, 'tab') : undefined)

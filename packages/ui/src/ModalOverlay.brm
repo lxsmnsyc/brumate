@@ -212,11 +212,11 @@
 #if (mounted) {
   #portal (target) {
     <!-- The layer: the overlays that open inside the modal render at its end. -->
-    <div ref=layer id=layerId data-layer style="display: contents">
+    <div ref=$bind(layer) id=layerId data-layer style="display: contents">
       <!-- Tab stays in the modal. The wrapper prevents it, and the handler moves focus. -->
       <div style="display: contents" onKeyDown=(prevent(trap, 'Tab'))>
         <div
-          ref=overlay
+          ref=$bind(overlay)
           id=(trigger?.overlayId ?? ownId)
           data-modal-overlay
           style="position: fixed; inset: 0"

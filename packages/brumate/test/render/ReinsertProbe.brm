@@ -18,4 +18,4 @@
   });
 </script>
 
-<button ref=root class=name onClick=(() => (seen = `${++clicks}:${root?.isConnected}`))>{seen}</button>
+<button ref=$bind(root) class=name onClick=(() => (seen = `${++clicks}:${root?.isConnected}`))>{seen}</button>

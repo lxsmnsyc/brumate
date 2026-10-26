@@ -145,7 +145,7 @@
   #portal (target) {
     <div id=layerId data-layer style="display: contents">
       <div
-        ref=panel
+        ref=$bind(panel)
         id=(trigger?.tooltipId)
         role="tooltip"
         style="position: fixed; top: 0; left: 0"

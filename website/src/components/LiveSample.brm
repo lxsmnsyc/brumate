@@ -82,7 +82,7 @@
     <span class="live-hint">Edit the code to run it again</span>
   </div>
   <div class="live-editor">
-    <div class="live-backdrop code" ref=backdrop aria-hidden="true">{code}</div>
+    <div class="live-backdrop code" ref=$bind(backdrop) aria-hidden="true">{code}</div>
     <textarea
       aria-label=(`Source of ${files[active]!.name}`)
       spellcheck="false"
@@ -107,7 +107,7 @@
   #if (error) {
     <pre class="live-error">{error}</pre>
   }
-  <div class={ 'live-result': true, hidden: view !== 'result' } ref=result>
+  <div class={ 'live-result': true, hidden: view !== 'result' } ref=$bind(result)>
     <p class="live-placeholder">The sample runs when it comes into view.</p>
   </div>
   #if (view === 'output' && output) {

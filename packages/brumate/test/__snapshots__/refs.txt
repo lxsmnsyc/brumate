@@ -1,13 +1,13 @@
 # Syntax tree
 script
-element <input ref=input>
+element <input ref=$bind(input)>
 element <button onClick=(focus)>
   text "Focus"
 element <button onClick=(() => (shown = true))>
   text "Show"
 if
   branch (shown)
-    element <section ref=panel>
+    element <section ref=$bind(panel)>
       insert {panel ? 'ready' : 'waiting'}
 
 # Semantic model
@@ -24,7 +24,7 @@ sites
   event button.click (14:17) reads focus calls focus
   event button.click (15:18) writes shown
   if (16:6) reads shown
-  insert (17:23) reads panel
+  insert (17:30) reads panel
 
 # Graph
 nodes
@@ -32,11 +32,11 @@ nodes
   signal panel live
   signal shown live
   if (16:6) live <- signal shown
-  insert (17:23) live <- signal panel
+  insert (17:30) live <- signal panel
 client
   function focus (8:12)
   event button.click (14:17)
   event button.click (15:18)
-  insert (17:23)
+  insert (17:30)
 created
   2 body (if 16:1)
