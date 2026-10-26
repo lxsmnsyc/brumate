@@ -2141,8 +2141,9 @@ describe('children', () => {
     click(document.querySelector('.open')!);
     await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
     const on = document.querySelector('.list')!.getAttribute('b-on')!;
-    expect(on).toMatch(/^click=\S+ keydown:prevent\(Enter,"\)=\S+@\d+@\S+$/);
-    expect(on).not.toContain(' ' + 'say "');
+    expect(on).toBe(
+      'click=DynamicKeysArgs_nhpusu#h9 keydown:prevent(Enter,")=DynamicKeysArgs_nhpusu#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
     click(document.querySelector('.list')!);
     await waitFor(() => expect(text('.seen')).toBe('own'));
     expect(press('Enter').defaultPrevented).toBe(true);
@@ -2160,7 +2161,9 @@ describe('children', () => {
     expect(document.querySelector('div.list')).toBeNull();
     // The new element writes its own entries and those of the spread, escaped.
     const on = document.querySelector('section.list')!.getAttribute('b-on')!;
-    expect(on).toMatch(/^click=\S+ keydown:prevent\(Enter,"\)=\S+@\d+@\S+$/);
+    expect(on).toBe(
+      'click=DynamicKeysSwap_5gjjdw#h8 keydown:prevent(Enter,")=DynamicKeysSwap_5gjjdw#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
     click(document.querySelector('.list')!);
     await waitFor(() => expect(text('.seen')).toBe('own'));
     expect(press('"').defaultPrevented).toBe(true);

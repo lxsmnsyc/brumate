@@ -21,7 +21,7 @@
 
 ## Gotchas
 
-- A tag that is a component still gets its spreads as props, and the client does not add the scope to its `b-on` entries as the server `dynamic` does. This is not changed here and no test showed a failure.
+- A bug remains on main, not caused by this fix: when the browser renders a dynamic tag whose tag is a component, and that component puts its own handler on the element it spreads onto, the caller's handler is lost. The client `spread` does not keep an incoming `b-on`, and `setOn` overwrites it. The client also does not add the scope to the `b-on` entries of a component tag, as the server `dynamic` does. The roadmap node component-tag-handlers fixes it.
 - `startAttributes` takes `b-on` out of the attributes first. Without that, `spread` would write the own `b-on` and `onAttribute` a second one, and the browser keeps the first.
 
 ## Proposed learnings
