@@ -1108,6 +1108,11 @@
     margin-inline: auto;
   }
 
+  /* A color field beside its swatch, level with the input. */
+  :global(.ui-color-row) {
+    align-items: end;
+  }
+
   /* A date field: segments in a row, each shaded while it has focus. */
   :global(.ui-date-input) {
     display: inline-flex;

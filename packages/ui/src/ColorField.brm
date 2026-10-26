@@ -1,0 +1,443 @@
+<script>
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $handler,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { NumberFormatter, NumberParser } from '@internationalized/number';
+  import {
+    FieldErrorContext,
+    FormContext,
+    GroupContext,
+    InputContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
+  import {
+    channelName,
+    channelRange,
+    channelValue,
+    formatChannelValue,
+    formatColor,
+    formatLike,
+    parseColor,
+    toSpace,
+    tryParseColor,
+    withChannelValue,
+  } from './color.ts';
+  import type { ColorChannel, ColorSpace } from './color.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+  import { LocaleContext } from './locale.ts';
+  import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
+
+  /**
+   * A field for a color, as ColorField of React Aria Components. It holds a Label, an Input, a
+   * Text with `slot="description"` and a FieldError.
+   *
+   * - Without `channel`, it edits the color as hex. Typing commits on blur and on Enter. Text that
+   *   cannot become hex reverts, and an empty field clears the value to `null`. Typing keeps
+   *   only text that can become hex, and `abc` means `#AABBCC`.
+   * - ArrowUp and ArrowDown add or take 1 from the hex number, PageUp and PageDown 16. Home goes
+   *   to `#000000` and End to `#FFFFFF`. An empty field starts at black going up, and at white
+   *   going down. The wheel steps it while the input has focus, unless `isWheelDisabled`.
+   * - With `channel`, and a `colorSpace` for it, the field edits that channel as a number, in
+   *   the range, step and page size of the channel, and in its format, such as `120°` or `50%`.
+   *   A channel cannot be empty, so an empty field reverts.
+   * - `value` is a color as text, or `null`. `value=(x)` starts its own, and `value=$bind(signal)`
+   *   writes the caller's. It keeps the format of the caller's value, and is hex when it started
+   *   empty. A change of one channel keeps the alpha of the color.
+   * - `name` sends the hex, or the channel value, as it reads in the input. A reset of the form
+   *   gives back the first value.
+   * - `isRequired` asks the browser to check it on a submit, and the FieldError shows the message.
+   *   It shows `data-channel`, `data-disabled`, `data-readonly`, `data-required` and
+   *   `data-invalid`.
+   * - `aria-label` and `aria-labelledby` name the input when there is no Label. A channel field
+   *   with neither is named by its channel.
+   */
+  const {
+    as = 'div',
+    name,
+    channel,
+    colorSpace,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid,
+    isWheelDisabled = false,
+    onChange,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    channel?: ColorChannel;
+    colorSpace?: ColorSpace;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    isWheelDisabled?: boolean;
+    onChange?: (value: string | null) => void;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<string | null> }>();
+
+  const locale = $getContext(LocaleContext);
+  const form = $getContext(FormContext);
+  const inputId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const { present: hasLabel } = described(labelId);
+  // The value that a reset of the form gives back.
+  let initialValue = $signal(value);
+  let text = $signal(display(value));
+  let edited = $signal(false);
+  // The message of the browser, once the field was checked on a submit.
+  let committed = $signal(false);
+  let nativeErrors = $signal<string[]>([]);
+  const errors = $memo([
+    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(committed ? nativeErrors : []),
+  ]);
+  const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
+  const locked = $memo(isDisabled || isReadOnly);
+  // What the text says: hex such as `#AABBCC`, or the number of the channel. Empty or wrong text
+  // says nothing.
+  const typed = $memo(read(text));
+  const range = $memo(channel ? channelRange(channel) : undefined);
+
+  // The channel in the number the parser reads: a percent is a fraction.
+  function scale(): number {
+    return channel === 'saturation' || channel === 'lightness' || channel === 'brightness' ? 100 : 1;
+  }
+
+  function options(): Intl.NumberFormatOptions {
+    if (channel === 'hue') {
+      return { style: 'unit', unit: 'degree', unitDisplay: 'narrow', maximumFractionDigits: 0 };
+    }
+    if (channel === 'alpha' || scale() === 100) {
+      return { style: 'percent', maximumFractionDigits: 0 };
+    }
+    return { maximumFractionDigits: 0 };
+  }
+
+  function parser() {
+    return new NumberParser(locale.locale, options());
+  }
+
+  function colorOf(color: string | null) {
+    const parsed = color === null ? undefined : tryParseColor(color);
+    return parsed && channel && colorSpace ? toSpace(parsed, colorSpace) : parsed;
+  }
+
+  function display(color: string | null): string {
+    const parsed = colorOf(color);
+    if (!parsed) {
+      return '';
+    }
+    return channel ? formatChannelValue(parsed, channel, locale.locale) : formatColor(parsed, 'hex');
+  }
+
+  /** The hex of text such as `#abc`, `abcdef`, or undefined. */
+  function hexOf(source: string): string | undefined {
+    const digits = source.trim().replace(/^#/, '');
+    if (/^[0-9a-f]{3}$/i.test(digits)) {
+      return `#${[...digits].map((digit) => digit + digit).join('')}`.toUpperCase();
+    }
+    return /^[0-9a-f]{6}$/i.test(digits) ? `#${digits}`.toUpperCase() : undefined;
+  }
+
+  /** The number of the channel in text, which the parser reads. */
+  function numberOf(source: string): number {
+    if (source.trim() === '') {
+      return Number.NaN;
+    }
+    const parsed = parser().parse(source);
+    // A percent of 0 to 100 reads as a fraction.
+    return Number.isNaN(parsed) ? parsed : Math.round(parsed * scale() * 1e6) / 1e6;
+  }
+
+  function read(source: string): string | number | undefined {
+    if (channel) {
+      const number = numberOf(source);
+      return Number.isNaN(number) ? undefined : number;
+    }
+    return hexOf(source);
+  }
+
+  function input() {
+    return document.getElementById(inputId) as HTMLInputElement | null;
+  }
+
+  function setValue(next: string | null) {
+    if (next !== value) {
+      value = next;
+      edited = true;
+      onChange?.(next);
+    }
+    text = display(next);
+  }
+
+  /** The color with the hex, in the format of the value. */
+  function withHex(hex: string): string {
+    const base = value === null ? undefined : tryParseColor(value);
+    const color = { ...parseColor(hex), alpha: base?.alpha ?? 1 };
+    return formatLike(color, value ?? '#000000');
+  }
+
+  /** The value with the channel at a number, in the format of the value. */
+  function withChannel(number: number): string {
+    const base = colorOf(value) ?? parseColor('#000000');
+    const color = withChannelValue(colorSpace ? toSpace(base, colorSpace) : base, channel!, number);
+    return formatLike(color, value ?? '#000000');
+  }
+
+  // A value that the caller sets shows in the input.
+  $effect(() => {
+    const next = value;
+    if ($untrack(read(text)) !== $untrack(read(display(next)))) {
+      $untrack((text = display(next)));
+    }
+  });
+
+  function changed(next: string) {
+    // Only text that can become a color stays, such as `#12` or `-`, as React Aria keeps it.
+    if (channel ? next === '' || parser().isValidPartialNumber(next) : /^#?[0-9a-f]{0,6}$/i.test(next)) {
+      text = next;
+      return;
+    }
+    const element = input();
+    if (element) {
+      element.value = text;
+    }
+  }
+
+  /** Reads the text, and gives the value it says, or reverts. */
+  function commit() {
+    if (!channel && text.trim() === '') {
+      setValue(null);
+      return;
+    }
+    const parsed = typed;
+    if (parsed === undefined) {
+      text = display(value);
+      return;
+    }
+    if (channel) {
+      const { minValue, maxValue, step } = range!;
+      setValue(withChannel(snapToStep(parsed as number, minValue, maxValue, step)));
+    } else {
+      setValue(withHex(parsed as string));
+    }
+  }
+
+  const HEX_MAX = 0xffffff;
+
+  /** Moves the hex number, or the channel, by a step, or by a page. */
+  function stepBy(sign: 1 | -1, page: boolean): boolean {
+    if (locked) {
+      return false;
+    }
+    if (channel) {
+      const { minValue, maxValue, step, pageSize } = range!;
+      const current = typed === undefined ? Number.NaN : (typed as number);
+      const size = page ? pageSize : step;
+      const next = Number.isNaN(current)
+        ? sign === 1
+          ? minValue
+          : maxValue
+        : snapToStep(clamp(addStep(current, size, sign), minValue, maxValue), minValue, maxValue, step);
+      setValue(withChannel(next));
+      return true;
+    }
+    const hex = typed ?? (value === null ? undefined : formatColor(parseColor(value), 'hex'));
+    const next =
+      hex === undefined
+        ? sign === 1
+          ? 0
+          : HEX_MAX
+        : clamp(Number.parseInt((hex as string).slice(1), 16) + sign * (page ? 16 : 1), 0, HEX_MAX);
+    setValue(withHex(`#${next.toString(16).padStart(6, '0')}`));
+    return true;
+  }
+
+  function jumpTo(end: 'min' | 'max') {
+    if (locked) {
+      return;
+    }
+    if (channel) {
+      setValue(withChannel(end === 'min' ? range!.minValue : range!.maxValue));
+    } else {
+      setValue(withHex(end === 'min' ? '#000000' : '#FFFFFF'));
+    }
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if ((event.target as Element).id !== inputId || locked) {
+      return;
+    }
+    // A key with a modifier, such as Shift with an arrow to select text, is not a step.
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) {
+      return;
+    }
+    switch (event.key) {
+      case 'ArrowUp':
+        stepBy(1, false);
+        return;
+      case 'ArrowDown':
+        stepBy(-1, false);
+        return;
+      case 'PageUp':
+        stepBy(1, true);
+        return;
+      case 'PageDown':
+        stepBy(-1, true);
+        return;
+      case 'Home':
+        jumpTo('min');
+        return;
+      case 'End':
+        jumpTo('max');
+        return;
+      case 'Enter':
+        commit();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function wheel(event: WheelEvent) {
+    // A scroll that is mostly sideways, as on a trackpad, is not a step.
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      return;
+    }
+    event.preventDefault();
+    stepBy(event.deltaY > 0 ? 1 : -1, false);
+  }
+
+  // The wheel steps the field only while the input has focus, so it listens from then on.
+  function focused() {
+    const element = input();
+    if (element && !isWheelDisabled) {
+      listenToWheel(element, (event) => wheel(event));
+    }
+  }
+
+  function blurred() {
+    const element = input();
+    if (element) {
+      stopWheel(element);
+    }
+    commit();
+  }
+
+  // The loader prevents the keys before the code loads, so the wrapper names them. A field that
+  // cannot change keeps every key.
+  function keys(isLocked: boolean) {
+    if (isLocked) {
+      return { onKeyDown: $handler(keyDown) };
+    }
+    return {
+      onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End')),
+    };
+  }
+
+  function invalidated(message: string, first: boolean) {
+    committed = true;
+    nativeErrors = message ? [message] : [];
+    if (first) {
+      input()?.focus();
+    }
+  }
+
+  // A reset of the form gives back the first value, as it does for a field of the browser.
+  $client(() => {
+    const owner = input()?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      setValue(initialValue);
+      edited = false;
+      committed = false;
+      nativeErrors = [];
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  // The channel field has a name when the caller gives none.
+  const inputLabel = $memo(
+    ariaLabel ?? (channel && !hasLabel && !ariaLabelledBy ? channelName(channel) : undefined),
+  );
+
+  $setContext(LabelContext, { id: labelId, for: inputId });
+  $setContext(GroupContext, {
+    role: 'presentation',
+    isDisabled,
+    isInvalid: invalid,
+    'aria-disabled': isDisabled ? 'true' : undefined,
+  });
+  $setContext(InputContext, {
+    id: inputId,
+    type: 'text',
+    value: text,
+    inputmode: channel ? (range!.step < 1 || channel === 'alpha' ? 'decimal' : 'numeric') : 'text',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
+    'aria-roledescription': channel ? 'Number field' : undefined,
+    disabled: isDisabled || undefined,
+    readonly: isReadOnly || undefined,
+    required: isRequired || undefined,
+    'aria-label': inputLabel,
+    'aria-labelledby': ariaLabelledBy && hasLabel ? `${labelId} ${ariaLabelledBy}` : ariaLabelledBy,
+    'aria-invalid': invalid ? 'true' : undefined,
+    'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+    onChange: changed,
+    onInvalid: invalidated,
+    onFocus: focused,
+    onBlur: blurred,
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+</script>
+
+<{as}
+  data-channel=(channel ?? 'hex')
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  <div
+    style="display: contents"
+    {...keys(locked)}
+  >{children}</div>
+  <!-- The value for the form, which posts without scripts. -->
+  <input
+    type="hidden"
+    {name}
+    value=(typed === undefined ? '' : String(typed))
+    disabled=(isDisabled || undefined)
+  >
+</>

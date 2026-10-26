@@ -83,6 +83,7 @@
   import DatePicker from '@brumate/ui/DatePicker.brm';
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
   import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
   import ColorArea from '@brumate/ui/ColorArea.brm';
   import ColorWheel from '@brumate/ui/ColorWheel.brm';
   import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
@@ -152,6 +153,8 @@
   let pickedFiles = $signal<Key[]>([]);
   let gridFiles = $signal(['notes', 'photos', 'music']);
   let fileOpened = $signal('none');
+  let accent = $signal<string | null>('#e2445a');
+  let shade = $signal<string | null>('hsl(120, 50%, 50%)');
   // A file tree: folders with children, opened and selected.
   interface Folder {
     id: string;
@@ -715,6 +718,20 @@
   <h2 id="color-swatch">ColorSwatch</h2>
   <ColorSwatch class="swatch-red" color="#e2445a" style="width: 2rem; height: 2rem" />
   <ColorSwatch class="swatch-ocean" color="hsl(210, 50%, 40%)" colorName="Ocean" style="width: 2rem; height: 2rem" />
+</section>
+
+<section aria-labelledby="color-field">
+  <h2 id="color-field">ColorField</h2>
+  <ColorField class="accent" name="accent" value=$bind(accent)>
+    <Label>Accent</Label>
+    <Input class="accent-input" />
+  </ColorField>
+  <p class="accent-state">{accent ?? 'None'}</p>
+  <ColorField class="shade" channel="hue" colorSpace="hsl" value=$bind(shade)>
+    <Label>Hue</Label>
+    <Input class="shade-input" />
+  </ColorField>
+  <p class="shade-state">{shade ?? 'None'}</p>
 </section>
 
 <section aria-labelledby="color-slider">

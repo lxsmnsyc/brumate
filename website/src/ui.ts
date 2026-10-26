@@ -45,7 +45,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Colors',
-    pages: ['color-swatch', 'color-slider', 'color-area', 'color-wheel'],
+    pages: ['color-swatch', 'color-slider', 'color-area', 'color-wheel', 'color-field'],
   },
   {
     title: 'Dates',
@@ -239,6 +239,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A circular track for the hue of a color.',
     href: 'color-wheel',
     demo: 'ColorWheelDemo',
+  },
+  {
+    title: 'ColorField',
+    summary: 'A field for a color, as hex or as one channel.',
+    href: 'color-field',
+    demo: 'ColorFieldDemo',
   },
   {
     title: 'Calendar',
