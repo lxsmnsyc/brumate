@@ -29,6 +29,9 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Offline pages](#offline-pages)                                                   | Runtime  | Medium | Medium |
 | [Observability](#observability)                                                   | Runtime  | Medium | Medium |
 | [Ordered updates](#ordered-updates)                                               | Runtime  | Medium | Medium |
+| [External scripts](#external-scripts)                                             | Syntax   | Medium | Small  |
+| [What ships, in the editor](#what-ships-in-the-editor)                            | Tooling  | Medium | Medium |
+| [Accessibility checks in tests](#accessibility-checks-in-tests)                   | Tooling  | Medium | Small  |
 | [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids) | Runtime  | High   | Small  |
 | [Fields typed before the code loads](#fields-typed-before-the-code-loads)         | Runtime  | High   | Medium |
 | [Triggers in tests](#triggers-in-tests)                                           | Tooling  | Medium | Small  |
@@ -147,6 +150,36 @@ The compile:
 A style in an `#if` matches only the elements of its branch, which exist only while the branch shows. So the CSS needs no condition of its own.
 
 Cost: about a week: the attribute of scope and its selectors, variables for each instance of a block, and the docs, as "A style in a block" next to "A script in a block".
+
+### External scripts
+
+A `.brm` file cannot hold a script of another site, such as analytics or a chat widget. `<script>` is for the script of a component or of a block, so each form is an error:
+
+- `<script src="…">` in markup: "Unknown `<script>` attribute "src"".
+- The same in `#head`: "The script of a block takes no attributes".
+- Lower in a block: "`<script>` must be at the top level or at the start of a block".
+
+The script of a component or of a block never has `src`, so `src` can mark a script of another site:
+
+```brm
+#head {
+  <script src="https://plausible.io/js/script.js" defer data-domain="example.com"></script>
+  <script src="https://widget.example.com/chat.js" trigger="interaction"></script>
+}
+```
+
+- Without `trigger`, it renders as it is written, with the nonce of the page. `async`, `defer`, `type="module"`, `integrity`, `crossorigin` and `data-*` pass on.
+- With `trigger`, the server writes it so it does not run, and the loader adds it when the trigger fires:
+  - `idle`: when the browser is idle after the page loads.
+  - `visible`: when the element after it comes into view, for an embed in the page.
+  - `interaction`: on the first pointer, key or scroll event of the page.
+- These are the triggers of `$client`, with the same code in the loader. Scripts of other sites are often the heaviest code of a page, so they should not undo what resuming saves.
+- It works in `#head` and in markup. In a block, it is added when the block renders and its trigger fires. A `src` runs once a page, also when several blocks hold it.
+- `trigger` is not an attribute of `<script>` in HTML, so a later attribute of HTML does not clash with it.
+
+To decide: a script of another site written inline, with no `src`, such as the loader of Google Tag Manager. It needs a mark, such as `<script inline>`, so it is not read as the script of a component.
+
+Cost: a day or two.
 
 ### Reveal order of `#defer` blocks
 
@@ -596,6 +629,21 @@ The tests of `@brumate/ui` and of the website compile components with `brumate` 
 
 Cost: a few hours.
 
+### What ships, in the editor
+
+The compiler knows what each handler, update and `$client` callback ships to the browser, and `brumate inspect` reports it. The report is apart from the code, so a change that pulls a large library into a handler shows only when someone reads it.
+
+The language server can show it where the code is:
+
+- An inlay hint or a hover on a handler, an update and a `$client` callback: its size after gzip, and when it loads, such as "1.2 kB, loads on click".
+- Markup that ships no code says so on hover.
+- A warning when an import in code that ships is larger than a limit, such as a date library in a handler, with the size that it adds.
+- The numbers come from the same analysis as `brumate inspect`, so the editor and the report agree. Sizes come from a quick estimate as the file is edited, and from the last build when there is one.
+
+No other framework splits code this finely, so this shows in the editor what brumate is for.
+
+Cost: about a week, in the language server, with the analysis of `brumate inspect`.
+
 ### Devtools
 
 The panel has four tabs today: the scopes and their values, the graph of a component, a log of handlers, loads, writes and calls, and the report of a component. It shows the browser after the page resumed, and little of what makes a brumate page what it is: what the server sent, why code loaded, and the blocks that render later.
@@ -731,6 +779,17 @@ Values are cut at a length, and the devtools copy nothing from cookies or header
 5. The tasks that check the skill, run by hand.
 
 Each step is its own pull request.
+
+### Accessibility checks in tests
+
+The e2e suite of `@brumate/ui` runs axe-core on each part in Chrome. Tests of components with `brumate/testing` have no such check, so an app finds the same problems only in its own e2e tests, if it has them.
+
+- `mount` and `visit` return `checkAccessibility(options)`, which runs axe-core on what they rendered, and throws with each violation, its element and its fix.
+- The rules that need a whole page, such as `landmark-one-main` and `region`, are off for a mounted component, and on for a visited page. An open modal or menu makes the page inert, so these rules are off then too, as the ui e2e learned.
+- axe-core is an optional peer dependency, so apps that do not check do not install it.
+- happy-dom has no layout, so rules that need it, such as color contrast, are off there. They run in browser mode.
+
+Cost: a day or two.
 
 ### Embedding in other sites
 
