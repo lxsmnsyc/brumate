@@ -1,0 +1,22 @@
+<script>
+  const groups = Array.from({ length: 20 }, (_, index) => ({
+    id: index,
+    rows: Array.from({ length: 60 }, (_, row) => ({ id: row, name: `Row ${row}` })),
+  }));
+</script>
+
+<div class="scroll" style="height: 120px; overflow: auto">
+  <div class="groups">
+    #for (group of groups by group.id) window(30, 6) {
+      <section class=(`group group-${group.id}`)>
+        <div class=(`inner inner-${group.id}`) style="height: 120px; overflow: auto">
+          <ul>
+            #for (row of group.rows by row.id) window(30, 6) {
+              <li class=(`irow irow-${group.id}-${row.id}`)>{row.name}</li>
+            }
+          </ul>
+        </div>
+      </section>
+    }
+  </div>
+</div>

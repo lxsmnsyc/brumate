@@ -2959,7 +2959,8 @@ export function list(
       if (data !== undefined) {
         last = rangeEnd(node as Comment);
       }
-      previous.set(key(item.i, position), {
+      // An item of a windowed list has the index that it had in the whole list in its key.
+      previous.set(key(item.i, position + (park?.was ?? 0)), {
         scope: item,
         first: node,
         last,
@@ -2993,7 +2994,8 @@ export function list(
       node = next;
     }
   };
-  if (count === 0) {
+  // A windowed list with no item in view is not empty, so it does not show its fallback.
+  if (count === 0 && !(park && park.total > 0)) {
     if (previous.size === 0 && others) {
       return;
     }
@@ -3019,7 +3021,7 @@ export function list(
   const keys: unknown[] = Array.from({ length: count });
   const kept: Item[] = [];
   for (let index = 0; index < count; index++) {
-    const id = (keys[index] = key(items[index], index));
+    const id = (keys[index] = key(items[index], index + (park?.from ?? 0)));
     const item = previous.get(id);
     if (item && !item.kept) {
       item.kept = true;
@@ -3099,7 +3101,22 @@ export function list(
   }
   // The updates of an item that was out of the page did not reach its nodes, so it catches up.
   if (park?.back) {
-    refresh(park.back.splice(0));
+    const back = park.back.splice(0);
+    refresh(back);
+    // The windows inside an item that came back draw for the box as it is now.
+    for (const item of back) {
+      redraw(item);
+    }
+  }
+}
+
+/** Draws the windowed lists of a scope and of the scopes inside it. */
+function redraw(scope: Scope): void {
+  for (const state of windows.get(scope)?.values() ?? []) {
+    state.draw?.();
+  }
+  for (const child of scope.children ?? []) {
+    redraw(child);
   }
 }
 
@@ -3110,16 +3127,27 @@ interface WindowState {
   measured?: number;
   /** Draws the window with the latest items, for a scroll. */
   draw?: () => void;
+  /** The index in the whole list of the first item that is in the page. */
+  from: number;
   frame?: number;
 }
 
 const windows = new WeakMap<Scope, Map<number, WindowState>>();
 
-/** The element that scrolls a windowed list, or none for the page. */
+/**
+ * The element that scrolls a windowed list, or none for the page. An element scrolls the list
+ * when it can scroll vertically: its overflow allows it, and its content is taller than it.
+ * A wrapper without a height, such as one that scrolls sideways, grows with the list and has
+ * nothing to scroll, so the list looks further up. The server renders enough items to fill
+ * the box, so its content is taller from the first draw on.
+ */
 function scrollerOf(node: Node): HTMLElement | undefined {
   for (let element = node.parentElement; element; element = element.parentElement) {
     const style = getComputedStyle(element);
-    if (/^(auto|scroll|overlay)$/.test(style.overflowY || style.overflow)) {
+    if (
+      /^(auto|scroll|overlay)$/.test(style.overflowY || style.overflow) &&
+      element.scrollHeight > element.clientHeight
+    ) {
       return element;
     }
   }
@@ -3148,7 +3176,7 @@ export function windowList(
   windows.set(scope, byAnchor);
   let state = byAnchor.get(anchor);
   if (!state) {
-    state = { parked: new Map() };
+    state = { parked: new Map(), from: 0 };
     byAnchor.set(anchor, state);
   }
   const window = state;
@@ -3175,18 +3203,20 @@ export function windowList(
     const from = Math.min(count, Math.max(0, Math.floor((view.top - top) / size) - extra));
     const to = Math.min(count, Math.max(from, Math.ceil((view.bottom - top) / size) + extra));
     const keys = new Set(items.map((item, index) => key(item, index)));
+    const was = window.from;
+    window.from = from;
     list(
       scope,
       anchor,
       items.slice(from, to),
-      (item, index) => key(item, index + from),
+      key,
       (parent, item, index) => render(parent, item, index === undefined ? index : index + from),
       (item, value, index) => assign(item, value, index + from),
       fallback,
       fallbackKinds,
       holderKind,
       holderAnchor,
-      { items: window.parked, stays: (id) => keys.has(id) },
+      { items: window.parked, stays: (id) => keys.has(id), was, from, total: count },
     );
     // Items that left the list for good go.
     for (const [id, parked] of window.parked) {
@@ -3221,10 +3251,17 @@ export function windowStart(scope: Scope, anchor: number, draw: () => void): voi
   }
   const scroller = scrollerOf(start);
   const target: EventTarget = scroller ?? globalThis;
+  let observer: ResizeObserver | undefined;
   const schedule = (): void => {
-    if (!start.isConnected) {
+    // A scope that is gone stops listening for good.
+    if (!scopes.has(scope.id)) {
       target.removeEventListener('scroll', schedule);
       globalThis.removeEventListener('resize', schedule);
+      observer?.disconnect();
+      return;
+    }
+    // An item that is out of the page for a while draws when it comes back.
+    if (!start.isConnected) {
       return;
     }
     if (window.frame === undefined) {
@@ -3236,6 +3273,11 @@ export function windowStart(scope: Scope, anchor: number, draw: () => void): voi
   };
   target.addEventListener('scroll', schedule, { passive: true });
   globalThis.addEventListener('resize', schedule, { passive: true });
+  // The box can change its size without the window, such as when a panel around it opens.
+  if (scroller && typeof ResizeObserver !== 'undefined') {
+    observer = new ResizeObserver(schedule);
+    observer.observe(scroller);
+  }
 }
 
 /** The items of a windowed list that are out of view, which keep their scopes and nodes. */
@@ -3243,6 +3285,12 @@ interface Parking {
   items: Map<unknown, { scope: Scope; nodes: DocumentFragment }>;
   /** Whether a key is still in the list, so its item keeps its scope when it leaves the view. */
   stays: (key: unknown) => boolean;
+  /** The index in the whole list of the first item that was in the page before. */
+  was: number;
+  /** The index in the whole list of the first item that is in the page now. */
+  from: number;
+  /** The number of items in the whole list, also when none is in view. */
+  total: number;
   /** The scopes of items that came back, which refresh. */
   back?: Scope[];
 }
