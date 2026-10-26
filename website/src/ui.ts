@@ -44,6 +44,10 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     ],
   },
   {
+    title: 'Colors',
+    pages: ['color-swatch'],
+  },
+  {
     title: 'Dates',
     pages: ['calendar', 'range-calendar', 'date-field', 'time-field', 'date-picker'],
   },
@@ -211,6 +215,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A value, or a range of values, on a track.',
     href: 'slider',
     demo: 'SliderDemo',
+  },
+  {
+    title: 'ColorSwatch',
+    summary: 'A sample of a color, named for screen readers.',
+    href: 'color-swatch',
+    demo: 'ColorSwatchDemo',
   },
   {
     title: 'Calendar',

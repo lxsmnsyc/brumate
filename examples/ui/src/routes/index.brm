@@ -82,6 +82,7 @@
   import TimeField from '@brumate/ui/TimeField.brm';
   import DatePicker from '@brumate/ui/DatePicker.brm';
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -700,6 +701,12 @@
     </SliderTrack>
   </Slider>
   <p class="span-state">{span.join(' ')}</p>
+</section>
+
+<section aria-labelledby="color-swatch">
+  <h2 id="color-swatch">ColorSwatch</h2>
+  <ColorSwatch class="swatch-red" color="#e2445a" style="width: 2rem; height: 2rem" />
+  <ColorSwatch class="swatch-ocean" color="hsl(210, 50%, 40%)" colorName="Ocean" style="width: 2rem; height: 2rem" />
 </section>
 
 <section aria-labelledby="calendar">

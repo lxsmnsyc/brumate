@@ -1,0 +1,39 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { colorName, formatColor, swatchBackground, tryParseColor } from './color.ts';
+
+  /**
+   * A sample of a color, as ColorSwatch of React Aria Components: role="img", named by the color.
+   *
+   * - `color` is a color of CSS, such as `#e2445a` or `hsl(355, 74%, 58%)`.
+   * - `colorName` names it for screen readers. Without it, a short name in English names it, such
+   *   as `dark blue`, with how transparent it is.
+   * - The background shows the color over a checkerboard, so its alpha shows. The element has
+   *   `--color` for CSS.
+   */
+  const { color = '#000000', colorName: name, ...rest } = $props<{
+    color?: string;
+    colorName?: string;
+    [attribute: string]: unknown;
+  }>();
+
+  const parsed = $memo(tryParseColor(color));
+  const css = $memo(parsed ? formatColor(parsed) : 'transparent');
+  const label = $memo(name ?? (parsed ? colorName(parsed) : color));
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  role="img"
+  aria-roledescription="color swatch"
+  aria-label=label
+  class="swatch"
+  {...rest}
+></div>
+
+<style>
+  .swatch {
+    --color: ${css};
+    background: ${swatchBackground(css)};
+  }
+</style>
