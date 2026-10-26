@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Cell from '../../src/Cell.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import Column from '../../src/Column.brm';
+  import Row from '../../src/Row.brm';
+  import Table from '../../src/Table.brm';
+  import TableBody from '../../src/TableBody.brm';
+  import TableHeader from '../../src/TableHeader.brm';
+  import Virtualizer from '../../src/Virtualizer.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  const files = Array.from({ length: 300 }, (_, index) => ({
+    id: `r${index}`,
+    name: index === 120 ? 'Zebra' : `File ${index}`,
+  }));
+  let picked = $signal<Key[]>([]);
+</script>
+
+<Virtualizer class="box" rowHeight=(24) style="height: 120px">
+  <Table class="list" aria-label="Files" items=files getTextValue=((file) => file.name) selectionMode="multiple" selectedKeys=$bind(picked)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="select-all" aria-label="Select all" /></Column>
+      <Column id="name" isRowHeader>Name</Column>
+    </TableHeader>
+    <TableBody item=file />
+  </Table>
+</Virtualizer>
+<p class="state">{JSON.stringify(picked)}</p>
+
+#template file(file: { id: string; name: string }) {
+  <Row id=(file.id) class=(`row row-${file.id}`)>
+    <Cell>{file.name}</Cell>
+    <Cell>{file.id}</Cell>
+  </Row>
+}

@@ -19,6 +19,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 ```
 
 - A `GridList` holds `GridListItem` elements, each with an `id`, its key. It needs `aria-label` or `aria-labelledby`.
+- A GridList can take `items`, each with an `id`, and an `item` template that renders a `GridListItem` for each, as a [Tree](./tree.md) does. With `rowHeight`, or in a [Virtualizer](./virtualizer.md), it renders only the rows in view, and its keys read the data of all the items. `getTextValue` returns the text of an item for the letters that move to a row, for the rows out of view.
 - Selection is as in a [ListBox](./list-box.md): `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
 - A `Checkbox` with `slot="selection"` and no `value` in a row shows whether the row is selected, and toggles it.
 - `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable. `onAction` on a row runs too.
@@ -30,6 +31,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 - Left and Right move through the controls in a row, and back to the row. Right to left, they turn around.
 - Space selects the row that has focus, and Shift extends a range from it. Ctrl+A or Cmd+A selects all but the disabled rows, and Escape clears the selection, also from a control in a row.
 - PageUp and PageDown move by the height of the list.
+- With `items` in a windowed list, Home, End, the page keys, Ctrl+A, ranges with Shift and letters reach rows that are out of view. A move to one scrolls it into view, then focuses it.
 - A text field in a row keeps its own keys, other than Up, Down and Tab.
 
 ## Rows

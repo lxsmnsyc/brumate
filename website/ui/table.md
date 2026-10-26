@@ -27,6 +27,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 
 - A `Table` holds a `TableHeader` of `Column` elements and a `TableBody` of `Row` elements. Each Row has a `Cell` for each Column, in the same order. It needs `aria-label` or `aria-labelledby`.
 - A Column with `isRowHeader` makes its cells name their rows. A Table needs one.
+- A Table can take `items`, each with an `id`, and its `TableBody` an `item` template that renders a `Row` for each, as a [Tree](./tree.md) does. With `rowHeight`, or in a [Virtualizer](./virtualizer.md), it renders only the rows in view, and its keys read the data of all the items. `getTextValue` returns the text of an item for the letters that move to a row, for the rows out of view.
 - A `Row` has an `id`, its key. Selection is as in a [GridList](./grid-list.md), on the rows: `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
 - A `Checkbox` with `slot="selection"` in a Cell shows whether its row is selected, and toggles it. One in a Column selects every row, or none, and shows a mixed state while some are selected. The browser counts the rows that can be selected when the page loads, so the box is right from then on, and as rows come and go.
 - `onRowAction` gets the key of a row that Enter acts on, or a press when nothing is selectable.
@@ -54,7 +55,8 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 - A cell with a control, such as a Checkbox or a Button, gives the focus to the control.
 - Page Up and Page Down move up and down a page of rows, keeping the column of a cell.
 - Home and End go to the first and the last row, or to the first and the last cell of the row. With Ctrl or Cmd on a cell, they go to the first cell of the first row, or the last cell of the last row.
-- Space selects the row, Shift extends a range, Ctrl+A or Cmd+A selects all the rows that are not disabled, and Escape clears the selection. A table with `disallowEmptySelection` keeps its selection against Escape and the box in the header. Letters move to the row whose text starts with them.
+- With `items` in a windowed table, Home, End, the page keys, Ctrl+A, the box in the header, ranges with Shift and letters reach rows that are out of view. A move to one scrolls it into view, then focuses it.
+- Space selects the row, Shift extends a range, also with the arrow keys from the row that has focus, Ctrl+A or Cmd+A selects all the rows that are not disabled, and Escape clears the selection. A table with `disallowEmptySelection` keeps its selection against Escape and the box in the header. Letters move to the row whose text starts with them.
 
 ## Column resizing
 

@@ -105,6 +105,13 @@ it('selects rows with Space, a press and a Checkbox, and all of them from the he
   await page.waitFor(() => expect(state(page)[0]).toEqual([]));
 });
 
+it('extends a range with Shift from the row that has focus', async () => {
+  const page = await tables();
+  page.get('.row-notes').focus();
+  press('ArrowDown', page.get('.row-notes'), { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toEqual(['notes', 'photo']));
+});
+
 it('sorts by a column with a press or Enter, ascending then descending', async () => {
   const page = await tables();
   pressWith(page.get('.col-size'));
