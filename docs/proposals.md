@@ -107,12 +107,13 @@ Cost: a day or two, when a page needs it.
 
 ### Ordered updates
 
-A write runs the updates that read its slot at once, in the order of the `g` table of the module. Memos run before bindings, but nothing orders one memo before another. Two cases follow from it:
+A write runs the updates that read its slot at once, in the order of the `g` table of the module. Memos run before bindings, and a memo comes after the memos it reads, because it is declared after them. Three cases follow, which the tests under "updates of a signal and a memo of it" in `test/resume.test.ts` show:
 
-- A memo that reads a signal and a memo of that signal can compute with the old value of the memo, and then compute again once it changes.
-- A binding that reads a signal and a memo of it runs once for each of them.
+- A memo that reads a signal and a memo of that signal computes twice, once for each.
+- A binding that reads a signal and a memo of it runs twice.
+- A child that gets both as props gets one before the other. The memo of the parent runs first, so its prop reaches the child first, and a memo of the child computes with the new value of one prop and the old value of the other.
 
-The DOM ends up right, but a memo can see values that do not match. It can throw, such as on `items[index]` when `index` changed and `items` did not yet, or send a server function call with old inputs. The call is aborted, but it was sent.
+The first two only waste work. The third is a real error. A child that reads `letters[last]` reads past the end of the old list when the list grows, throws, and the update stops, so the page keeps the old text. A memo that calls a server function would also send a call with old inputs.
 
 The graph is known at compile time, so the order can be too:
 
@@ -120,6 +121,7 @@ The graph is known at compile time, so the order can be too:
 - A write runs those memos in order. A memo computes only when a slot it reads changed in this pass, and its write triggers nothing, because the list already holds its readers.
 - Bindings wait in a queue, keyed by scope and update, as effects do now. The queue runs when the outermost update ends, and effects run after it.
 - Memos stay eager, so a handler that writes `count` and then reads `double` still reads the new value.
+- A prop update writes the slot of the child and waits to trigger it until the pass of the parent ends, so the child computes once, with every new prop.
 
 To check:
 
@@ -127,9 +129,9 @@ To check:
 - Async memos, values the server streams and `$optimistic` guesses write later, and start passes of their own.
 - The size of the core, and of the `g` tables with the memo lists.
 
-The first step is tests that show each case: how many times a memo computes, how many times a binding writes, and a memo that throws on values that do not match.
+The tests mark each case with `it.fails`. The fix turns them into `it`.
 
-Cost: tests first, then a few days. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo` and `writeSlot` of the core.
+Cost: a few days. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo` and `writeSlot` of the core.
 
 ## Data
 
@@ -573,4 +575,4 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
 
-Ordered updates come before other work on the core, once tests show the cases.
+Ordered updates come before other work on the core. The tests show the cases.
