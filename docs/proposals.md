@@ -19,7 +19,9 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
+| [Styles in blocks](#styles-in-blocks)                                 | Syntax   | Medium | Medium |
 | [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
+| [Server components](#server-components)                               | Syntax   | High   | Large  |
 | [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
 | [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
@@ -33,6 +35,9 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
 | [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
+| [Internationalization](#internationalization)                         | Library  | High   | Large  |
+| [Images](#images)                                                     | Build    | Medium | Medium |
+| [State in the URL](#state-in-the-url)                                 | Routing  | High   | Small  |
 | [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
 
 ## Syntax
@@ -100,6 +105,47 @@ Cost: about 2 weeks, most of it for scrolling, focus and the items of different 
 
 Cost: about 1 to 2 weeks for the server part, when a page needs a stream that starts with it. Handing the stream from the server to the browser without reading it twice is most of it.
 
+### Styles in blocks
+
+A block body can start with a `<script>`, which declares values for each instance of the body. A `<style>` could live in a block body too, scoped as the `let` of a block script is:
+
+```brm
+#for (tag of tags by tag.id) {
+  <script>
+    let hovered = $signal(false);
+  </script>
+  <span class="tag" onPointerEnter=(() => (hovered = true))>{tag.name}</span>
+  <style>
+    .tag {
+      background: ${tag.color};
+      outline: ${hovered ? '2px solid' : 'none'};
+    }
+  </style>
+}
+```
+
+Today `${}` in a `<style>` reads only values of the component, and its custom properties are set on the top-level elements of the component. Values for each item of a `#for` need inline `style` attributes, or a component of their own.
+
+Scope, as for `let`:
+
+- A style in a block matches the elements of the block and of the blocks inside it. It reaches nothing outside the block: not the other markup of the component, and not a block next to it.
+- The `<style>` of the component is the outer scope, and its rules match the elements of every block, as now.
+- When an outer and an inner style both match an element, both apply, as CSS does. The compiler writes the rules of an inner block after those of the outer ones, so the inner rule wins at the same specificity.
+- `${}` reads what is in scope where the style is: the values of the block script, of the blocks around it, and of the component.
+- Children that the block inserts belong to the component that wrote them, so a style in the block does not reach them. The markup of a `#template` is a block of its own.
+
+The compile:
+
+- Each block with a style gets an attribute of scope, such as `s-<hash>-2`, on its elements and on the elements of the blocks inside it. Its selectors get that attribute, as the selectors of the component get `s-<hash>`.
+- The custom properties of `${}` go on the top-level elements of each instance of the block, as they go on the top-level elements of a component now. A change sets them on the elements of that instance.
+- The styles of the blocks join the stylesheet of the component, so it still loads once per page.
+- A style in a block cannot hold `:global(…)`. A global rule reads as if it applied while the block shows, and it would not. Global rules stay in the `<style>` of the component.
+- A `<style>` in markup is an error today, so nothing that works now changes.
+
+A style in an `#if` matches only the elements of its branch, which exist only while the branch shows. So the CSS needs no condition of its own.
+
+Cost: about a week: the attribute of scope and its selectors, variables for each instance of a block, and the docs, as "A style in a block" next to "A script in a block".
+
 ### External scripts
 
 A `.brm` file cannot hold a script of another site, such as analytics or a chat widget. `<script>` is for the script of a component or of a block, so each form is an error:
@@ -138,15 +184,107 @@ Cost: a day or two.
 
 Cost: a day or two, when a page needs it.
 
-### Server-only markup
+### Server components
 
-Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+A server component renders on the server, also when the browser needs it again. The browser sends its inputs and gets new HTML, so it has no render code and no data for it. React Server Components work this way.
 
-- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
-- Markup that reads values the page state should not carry, so they are not serialized.
-- Whether a block that never updates can drop its markers and scope IDs.
+Brumate already has much of what React gets from them:
 
-To study before any design.
+- An instance script runs only on the server, and markup that never changes ships no code.
+- `#defer` bodies, server functions and memos read the database on the server.
+- `#defer` asks the server for its body, and the answer holds HTML and state records.
+
+What is missing is a render on the server when inputs change in the browser. Today, markup that the browser renders again needs its render code and its data in the browser. A server component would add:
+
+- Code that stays on the server, such as a Markdown renderer, a syntax highlighter, translation catalogs, or a module with secrets.
+- A smaller page state, since the values that the component reads on the server are not serialized.
+- A plain `await` anywhere in its script, since the browser never renders it.
+
+#### A server component
+
+A file marks the component as one that renders on the server. `<script server>` stands for the mark here, which is to choose:
+
+```brm
+<!-- Profile.brm -->
+<script server>
+  import { $props } from 'brumate/signals';
+  import { getUser } from '../db.ts';
+
+  const { userId, children } = $props<{ userId: string; children?: unknown }>();
+  const user = await getUser(userId);
+</script>
+
+<section class="profile">
+  <h2>{user.name}</h2>
+  {children}
+</section>
+```
+
+```brm
+<!-- A component that renders it -->
+<Profile userId=selected>
+  <Counter />
+  <input value=$bind(note)>
+</Profile>
+```
+
+- Its props are its inputs. When a prop changes in the browser, the browser asks the server for a new render.
+- Props must be values that brumate can send, as the arguments of server functions are. A function prop must be a server function.
+- `getUser` and the modules that only server components import never reach the browser.
+- Markup in it can be interactive, with handlers and state, as a `#defer` body can.
+
+#### `#server`
+
+`#server` is a server component written inline, without children:
+
+```brm
+#server {
+  <script>
+    const data = await getUser(userId);
+  </script>
+  <UserProfile {data} />
+}
+```
+
+- It is a block like the others: no element of its own, and markers around its range.
+- Its inputs are the values from outside the block that the body reads, such as `userId`. The compiler finds them as it finds what an insert reads, so the header lists none. A value that the body computes, such as `data`, is not an input.
+- A body that reads nothing from outside renders once, as markup without the block does.
+- The header can hold a trigger, as `#defer ('visible')` does, or a debounce for inputs that change on each key.
+
+#### A render again
+
+1. On the first render, the server renders everything, as it does now, and the page resumes as usual.
+2. When an input changes, the browser sends the inputs, as a call of a server function sends its arguments. That reuses the serialization, the check of the origin and rate limits.
+3. The server renders the component alone, with the inputs and the values of the contexts that it reads. It does not render the route up to it, as `#defer` does, so the data of the page does not load again.
+4. The answer has the HTML and the state records of the new render.
+5. The browser replaces the range, disposes the scopes of the old render, and indexes the new markup, as for `#defer` and navigation.
+
+`refresh(fn)` in a server function loads the memos that read `fn` again. It can also ask again for each server component whose last render called `fn`, so a form that changes the user updates `Profile` with no code in the browser.
+
+#### Children
+
+A component in the browser passes children to a server component, and the server component puts them in place. The children stay interactive, and keep their state, when the server component renders again.
+
+Children already belong to the component that writes them: their scope has that component as its parent (`from`), and an export of their own renders them. So the server never renders them again, and only says where they go:
+
+- On a render again, the browser sends a token for each children value that it holds.
+- Where the server component inserts `children`, the server writes a hole, such as `<!--k1-->`, in place of their markup.
+- The browser takes the range of each child out of the page by its markers, puts the new HTML in, and moves each range into its hole. `Element.moveBefore()` keeps focus and the state of iframes, where the browser has it.
+- Disposing the old render skips the scopes of the children, so `Counter` keeps its count and the input keeps its text.
+- Children that the new render does not insert are disposed, as when an `#if` closes. Children that it inserts twice render again for the second place, with their export, as children do now.
+- A server component inside the children of another one belongs to the caller. The outer render keeps it, and it renders again on its own.
+
+Children read the contexts where they are inserted, which is inside the server component. When a render provides a context with another value, such as the user that it loaded, the children must update without rendering again. The answer carries the new values that the server component provides, and the browser writes them, so the readers of the children update as for any change of a context. The state record lists the contexts that each scope reads, in `x`, so the server knows what to send.
+
+#### To decide in a spike
+
+- The state inside the server component, other than children, starts over on each render: focus, the text of fields and what is open. Brumate could morph the DOM, or keep keyed parts, as children are kept.
+- Each change is a request, so it suits changes of single events, such as a search, a filter or a preview, more than each key of an input.
+- Server functions, memos and `refresh` cover the data already. The spike measures what a server component saves in code and in size against them, for two cases of the website: a preview of Markdown or code, which needs the highlighter in the browser today, and a list with a filter.
+- The children work leans on `from`, `t`, `f` and the exports of children. The spike covers nested children and children that a component passes on.
+- Whether a static block of the server can drop its markers and scope IDs, when it never renders again.
+
+Cost: a spike of about a week, then the design.
 
 ## Reactivity
 
@@ -174,30 +312,72 @@ To check:
 - Async memos, values the server streams and `$optimistic` guesses write later, and start passes of their own.
 - The size of the core, and of the `g` tables with the memo lists.
 
+#### Batching
+
+Today each write is a pass of its own. `run` runs the updates of the write at once, and effects wait only until that write ends, since `running` goes back to 0 after it. A handler that writes `first = 'Ada'; last = 'Lovelace'` makes two passes:
+
+- A binding such as `{first} {last}` writes the DOM twice, once with the new first name and the old last name.
+- An effect that reads both runs twice.
+- A state between the writes can throw. `{total / count}` can divide by zero, and the body of `#if (items.length)` that reads `items[index]` can read past the end.
+
+A pass would be the outermost unit of code that runs at once, not a single write:
+
+- A handler, a `$client` callback, a run of effects, or a value that settles, such as an async memo, a value that the server streams, or an `$optimistic` guess. The core already starts each of them, as `handle()` starts a handler.
+- In a pass, writes mark their slots. Memos stay eager, so a handler that writes `count` and then reads `double` reads the new value.
+- Bindings wait in the queue of ordered updates, once each, and run in the order of the graph when the pass ends. Effects run after them.
+- A handler that awaits is a pass up to its first `await`, and each part after an `await` is a pass of its own. So nothing depends on when microtasks run.
+- A `$bind` write from a child, in the same handler, joins the pass of the parent.
+- `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that opens an `#if` and must focus or measure what it rendered.
+
+Batching on microtasks, as Vue and Svelte 5 do, would batch across `await` too. But every handler that writes and then reads the DOM would need `await tick()`, and the parts of `@brumate/ui` focus and measure right after they open things. A pass for each unit of code keeps the DOM written when the handler returns.
+
+To check:
+
+- The handlers of `@brumate/ui` that write and then read the DOM before they return. Each one needs `flush()`, or does that work in a `$client` callback or an effect already.
+- A test for each case above: one DOM write for two writes in a handler, one run of an effect that reads both, no throw from a state between writes, and `flush()`.
+
 The tests mark each case with `it.fails`. The fix turns them into `it`.
 
-Cost: a few days. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo` and `writeSlot` of the core.
+Cost: a few days for the order, and a day or two more for batching, since it uses the queue of bindings that the order adds. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo`, `writeSlot` and `handle` of the core.
 
 ## Data
 
 ### Worker functions
 
-Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler.
+Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler. A worker function runs in a Web Worker, and returns a channel, as a socket function does:
 
 ```ts
 // search.worker.ts
-export function buildIndex(documents: Document[]) {
+import { createChannel } from 'brumate/channel';
+import type { Channel } from 'brumate/channel';
+
+export function search(documents: Document[], client: Channel<{ progress(done: number): void }>) {
   'use worker';
-  return createIndex(documents);
+  const index = createIndex(documents, (done) => client.run('progress', done));
+  return createChannel({
+    query(text: string) {
+      return index.query(text);
+    },
+    add(document: Document) {
+      index.add(document);
+    },
+  });
 }
 ```
 
-- A worker function runs in a Web Worker. The browser calls it like a server function, and gets a promise of its result.
-- It uses the calls and the serializer of server functions, and the stubs of [two-way realtime](#two-way-realtime): functions in its arguments and its result become stubs, so a worker can report its progress or return an object with methods that stay in the worker.
+```ts
+const worker = await search(documents, createChannel({ progress: (done) => (loaded = done) }));
+const results = await worker.run('query', 'resume');
+worker.close();
+```
+
+- The browser calls a worker function as a server function, and gets a promise of its channel. The index stays in the worker between calls, and `run` calls into it.
+- Closing the channel that it returned, from either end, ends the worker. The worker can close it to stop itself, such as when its work is done. A worker function that returns a plain value, not a channel, ends its worker when it returns.
 - The worker loads on the first call, with only the code of its functions.
+- The channel is the one of [two-way realtime](#two-way-realtime), over `postMessage` in place of a connection, with the same serializer, so the worker can report its progress through a channel of the browser.
 - On the server, a worker function runs in place, or in a worker thread with an option.
 
-Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a few days for calls with values only.
+Cost: about 1 to 2 weeks, after the channels of two-way realtime. Without them, a few days for calls with values only.
 
 ### Offline pages
 
@@ -224,6 +404,36 @@ Cost: about 1 week.
 
 ## Routing
 
+### State in the URL
+
+A filter, a tab or a page of results belongs in the URL, so it survives a reload and can be shared. `$route().search` reads the query string, but it cannot write it, and a change of the query string asks the server for the page again (`navigation.md`). Each change of a filter costs a request.
+
+`$searchParam(name, options)` from `brumate/signals` gives a signal bound to one parameter of the query string:
+
+```brm
+<script>
+  import { $searchParam } from 'brumate/signals';
+
+  let query = $searchParam('q', { default: '' });
+  let page = $searchParam('page', { default: 1, parse: Number });
+</script>
+
+<input type="search" value=$bind(query)>
+<p>Page {page}</p>
+```
+
+- On the server it reads the URL of the request, so the first render shows the right state, with no flash.
+- In the browser a write updates the URL with `history.replaceState`, or `pushState` with `{ history: 'push' }`, and does not ask the server. The updates run in the browser, as for any signal.
+- Back and forward write the signal from the URL.
+- `parse` and `serialize` convert other types than strings. A value equal to `default` leaves the parameter out of the URL.
+- `{ server: true }` keeps the request: a write navigates, so the server renders the page with the new value, as a change of the query string does now. It suits a parameter that the server needs, such as a page of results that a `#defer` body reads.
+- Two writes in one handler make one change of the URL, with the batching of ordered updates.
+- `$route().search` reads the parameters that `$searchParam` writes.
+
+It is like `nuqs` in React or the shallow routing of SvelteKit, with no hydration to read the URL first.
+
+Cost: a few days.
+
 ## Server
 
 ### Idempotent calls
@@ -238,33 +448,39 @@ Cost: a day, with the first feature that sends calls again.
 
 Server functions can stream values to the browser, which covers updates that only go one way, such as an activity feed. Chat, presence and shared editing need calls both ways, on one connection.
 
-A socket function is a server function that keeps a connection open. Functions in what it returns, and functions in its arguments, are not serialized. Each one becomes a stub on the other side: a function that calls its counterpart over the connection, as a small server function would.
+A socket function is a server function that keeps a connection open. What it returns is a channel: an object of functions that stay on the server, which the browser calls by name.
 
 ```ts
 // chat.server.ts
+import { createChannel } from 'brumate/channel';
+import type { Channel } from 'brumate/channel';
 import { getSocket } from 'brumate/server';
 
-export async function room(name: string, client: { message(message: Message): void }) {
+export async function room(name: string, client: Channel<{ message(message: Message): void }>) {
   'use socket';
   const user = currentUser();
-  // `client.message` is a stub: calling it calls the function that the browser passed.
-  const leave = rooms.join(name, (message) => client.message(message));
-  getSocket().onClose(leave);
-  // These functions stay on the server. The browser gets a stub of each one.
-  return {
-    send(text: string) {
-      rooms.post(name, { user, text });
+  // A call of the browser's channel, over the connection.
+  const leave = rooms.join(name, (message) => client.run('message', message));
+  return createChannel(
+    {
+      send(text: string) {
+        rooms.post(name, { user, text });
+      },
+      history(): Promise<Message[]> {
+        return rooms.history(name);
+      },
     },
-    history(): Promise<Message[]> {
-      return rooms.history(name);
-    },
-  };
+    // The channel ends from either side, or with the connection.
+    { onClose: leave },
+  );
 }
 ```
 
-```html
+```brm
 <script>
   import { $client, $signal } from 'brumate/signals';
+  import { createChannel } from 'brumate/channel';
+  import { prevent } from 'brumate/events';
   import { room } from './chat.server';
 
   let messages = $signal<Message[]>([]);
@@ -272,44 +488,82 @@ export async function room(name: string, client: { message(message: Message): vo
   let chat = $signal<Awaited<ReturnType<typeof room>>>();
 
   $client(() => {
-    const open = room('general', { message: (message) => (messages = [...messages, message]) });
-    void open.then(async (stubs) => {
-      chat = stubs;
-      messages = await stubs.history();
+    const open = room(
+      'general',
+      createChannel({ message: (message: Message) => (messages = [...messages, message]) }),
+    );
+    void open.then(async (channel) => {
+      chat = channel;
+      messages = await channel.run('history');
     });
-    return () => void open.then((stubs) => stubs.close());
-  }, 'visible');
+    return () => void open.then((channel) => channel.close());
+  });
 </script>
 
 #for (message of messages by message.id) {
   <p><b>{message.user}</b> {message.text}</p>
 }
-<form onSubmit:prevent=(() => { void chat?.send(draft); draft = ''; })>
-  <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
+<form onSubmit=(prevent(() => {
+  void chat?.run('send', draft);
+  draft = '';
+}))>
+  <input value=$bind(draft)>
 </form>
 ```
 
-Stubs:
+#### Channels
 
-- A call of a stub sends its arguments over the connection, runs the counterpart, and settles with its result. Every stub returns a promise, and the types say so: a function that returns `T` becomes a stub that returns `Promise<Awaited<T>>`.
-- Arguments and results go through the same serializer as server functions: values, promises, async iterables that stream, and functions again, which become stubs in turn. A stub can return a stub, so a socket can hand out more functions as the conversation goes on.
-- It works both ways. The server calls the browser's functions through their stubs, such as to push a message, and the browser calls the server's.
-- A stub belongs to its connection. Its ID means nothing on another connection, and a side can only call the functions that the other side gave it, so there is no route to guess, as there is for a server function.
-- A call that throws rejects the caller's promise with the error's name and message, as a server function call does.
-- Calls on one connection arrive in the order they were made. A caller can await a call, or not.
+`createChannel(functions)` from `brumate/channel` makes a channel of an object of functions, on the server, in the browser and in a worker. The side that makes it keeps the functions. The other side gets a `Channel` that calls them by name:
 
-The connection:
+```ts
+interface Channel<T extends Record<string, (...args: never[]) => unknown>> {
+  /** Calls a function of the other side, and settles with its result. */
+  run<K extends keyof T & string>(
+    name: K,
+    ...args: Parameters<T[K]>
+  ): Promise<Awaited<ReturnType<T[K]>>>;
+  /** Ends the channel for both of its ends. Calls in flight and later calls reject. */
+  close(): void;
+  /** Settles when the channel ends, from either side, or from the connection. */
+  readonly closed: Promise<void>;
+}
+```
 
-- The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close`.
+- The types come from the object that the other side passed to `createChannel`. A wrong name, a wrong argument or a missing one is a type error, and the result has the type of the function's result, in a promise.
+- `run` and `close` are the methods of the channel, not of the object, so a function can be called `close` or `run` without a clash.
+- A call sends its arguments over the connection, runs the function, and settles with its result. A call that throws rejects with the error's name and message, as a call of a server function does.
+- Arguments and results go through the serializer of server functions: values, promises, and async iterables that stream. A channel in an argument or a result is a channel on the other side too, so a function can hand out another channel, such as one for each document that a user opens.
+- A side can call only the functions of a channel that the other side gave it. A channel has an ID on its connection, which means nothing on another one, so there is no route to guess.
+- Calls on one channel arrive in the order they were made.
+- `createChannel` returns a `Channel` too, whose `run` calls the functions in place. Sent to the other side, it is a channel that calls them over the connection.
+
+#### Ending a channel
+
+A channel has two ends: the owner, which made it with `createChannel` and keeps the functions, and the holder, which calls them. Either end can close it:
+
+- The holder closes it with `close()` when it is done, such as a browser that leaves a chat, or a server that stops sending to a browser.
+- The owner closes it with `close()` of the channel that `createChannel` returned, to revoke it, such as a server that removes a user from a room.
+- `createChannel(functions, { onClose })` tells the owner when the channel ends, from either end or with the connection. That is where it cleans up, such as leaving the room.
+- On both ends, `closed` settles, and calls in flight and later calls reject.
+- A channel that its holder drops, such as one that is garbage collected, closes as if the holder had closed it.
+
+The channel that a socket or worker function returns is the root of its connection. Closing it, from either end, closes the connection, and with it every other channel on it. Closing another channel ends only that channel.
+
+Both sides use the same `Channel`: the browser calls the server's with `chat.run('send', text)`, and the server calls the browser's with `client.run('message', message)`.
+
+#### The connection
+
+- The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close` of the connection.
 - The browser opens the connection when client code calls the socket function, not with the page, so a page that never calls it loads nothing.
-- `stubs.close()`, or the end of the connection, rejects the calls that are in flight and every later call. A stub that the other side drops, such as when it is garbage collected, is released on both sides.
-- When the connection drops, the browser does not open it again by itself: the stubs of the old connection are gone. A `reconnect` option can call the socket function again with the same arguments, and give the new stubs.
-- On the server, while a page renders, calling a socket function calls it directly, with the functions as they are. A component can render its first value without a connection.
+- The arguments of a call can have a schema, as the arguments of a server function can, and rate limits apply to each call.
+- Closing the root channel, from either end, ends the connection, as does `getSocket().close()` on the server.
+- When the connection drops, a `reconnect` option calls the socket function again with the same arguments, and the channels that the browser holds go on with the new connection. Calls go by name, so a channel needs nothing of the old connection, and a component keeps the channel it has. Calls in flight when it dropped reject.
+- On the server, while a page renders, a call of a socket function calls it directly, with channels that call the functions in place. A component can render its first value without a connection.
 - The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. With Nitro, the WebSocket side uses its crossws support, which runs on Node, Bun, Deno and Cloudflare. A server of the app's own passes the upgrade to a handler that brumate exports.
 
-Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. Cap'n Proto calls them capabilities.
+Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. A channel calls by name instead, so it keeps its types without a proxy, and it survives a reconnection.
 
-Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the stubs on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
+Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the channels on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
 
 ## Tooling
 
@@ -754,6 +1008,136 @@ Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 month
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
 
+### Internationalization
+
+Brumate has nothing to translate the text of a page. `I18nProvider` of `@brumate/ui` sets the locale and the direction of the parts, not their text. Resuming makes a design possible that ships almost no messages: markup that the browser never renders again stays on the server with its text.
+
+#### Messages
+
+Messages live in a catalog for each locale, such as `messages/en.json` and `messages/fr.json`, with ICU message syntax:
+
+```json
+{
+  "greeting": "Hello, {name}!",
+  "cart": "{count, plural, =0 {Your cart is empty} one {# item} other {# items}}",
+  "docs": "Read the <link>docs</link>."
+}
+```
+
+The Vite plugin compiles each catalog into functions, as Paraglide does, and a component imports them:
+
+```brm
+<script>
+  import { m } from 'brumate/messages';
+  import { $props } from 'brumate/signals';
+
+  const { name, count } = $props<{ name: string; count: number }>();
+</script>
+
+<h1>{m.greeting({ name })}</h1>
+<p>{m.cart({ count })}</p>
+```
+
+- `m.greeting` is a function with the types of its parameters, from a declaration file that the plugin writes. A missing message or a missing parameter is a type error.
+- Plurals and selects use `Intl.PluralRules`, with the same code on the server and in the browser.
+- A message missing in a locale falls back along a chain, such as `fr-CA`, `fr`, `en`. The dev server warns about it.
+
+#### What ships
+
+- Markup that the browser never renders again calls its messages on the server. Its text is in the HTML, and neither the message nor the catalog reaches the browser.
+- Markup that the browser renders or updates, a handler or a `$client` callback, calls `m.greeting` in the browser. Only those messages ship, since each is an export of its own, and the bundler leaves the others out.
+- A message that ships holds the text of each locale, as in Paraglide 2, or a module for each locale loads with the code of the page, as the locale of `<html lang>` says. The choice is for the spike: one module for all is simpler, one for each locale is smaller when there are many.
+- A translated string that a memo holds is in the page state like any value. The catalog is not.
+
+#### The locale
+
+- The middleware picks the locale for each request: from a segment of the route, such as `/fr/docs`, from a cookie, or from `Accept-Language`, with a strategy that the app sets.
+- `$locale()` from `brumate/signals` reads it, as `$route()` reads the route, on the server and in the browser.
+- The server writes `<html lang dir>`, and `I18nProvider` of `@brumate/ui` reads the same locale.
+- A change of locale is a navigation, such as to `/fr/...` or after a cookie changes, so the server renders the page with its text. Text is on the server, so nothing else is needed.
+- With routes by locale, `#head` gets the `hreflang` links, and prerendering writes each page for each locale.
+
+#### Formatting
+
+`brumate/i18n` gives functions over `Intl`: numbers, currency, dates, relative times and lists, which read the locale. The number parsing of NumberField in `@brumate/ui` moves into it.
+
+#### To decide
+
+- Markup in messages, such as `<link>` above. A message could take a `#template` for each tag, which gets the text inside the tag. Or the message returns its parts, and markup renders them.
+- How a `.brm.ts` module function reads messages and the locale.
+- Whether the catalogs follow the format of inlang, so its editors and machine translation work with them.
+
+Cost: about two weeks: the catalogs and their compile, the locale in middleware and in the core, formatting, and the docs. Then a spike for the open questions.
+
+### Images
+
+Brumate leaves images to the app. A Vite plugin and an `Image` part, after `@solidjs/image`, can make them responsive at build time. Resuming means that most of it needs no code in the browser.
+
+#### Importing an image
+
+```brm
+<script>
+  import { Image } from 'brumate/image';
+  import hero from './hero.jpg?image';
+</script>
+
+<Image {...hero} alt="The harbor at dawn" sizes="(max-width: 800px) 100vw, 800px" />
+```
+
+The plugin handles imports that end in `?image`:
+
+- It reads the file with sharp and writes a file for each output format and each width, such as `webp` and `jpeg` at 480, 800 and 1200 pixels. Widths larger than the source are dropped, so an image is never enlarged.
+- Formats are offered smallest first: AVIF, WebP, then JPEG, or PNG for an image with transparency. The last format is the fallback of the `<img>`.
+- The import gives the `src` with the intrinsic width and height, the variants, and a preview.
+- Photos are turned upright with their EXIF orientation. Animated GIFs stay animated as WebP.
+- Each file is named by a hash of the content of the source, the format, the width and the quality. A build reuses a file from the cache when nothing changed, also on a fresh checkout in CI.
+- In a build the files are assets of the bundle, so `base` and the manifest apply. The dev server writes them to a cache directory and serves them from there.
+- `?image-url`, with `width` and `format`, gives the URL of one file, for an `og:image`, a CSS background or a canvas.
+- `image:` followed by any string goes through `transformURL` of the options, which returns the source and variants of a CDN.
+
+#### The `Image` part
+
+It renders a `<picture>` with a `<source>` for each format and an `<img>`, inside a box with the aspect ratio of the image, so the page does not shift while it loads.
+
+- A lazy image uses the browser: `loading="lazy"` and `decoding="async"`. `@solidjs/image` needs an IntersectionObserver and JavaScript for this. Here the image needs no code, and works without scripts with no `<noscript>` copy.
+- `eager` loads the image at once, with `fetchpriority="high"`, and the server adds a `<link rel="preload">` to `#head` with `imagesrcset` and `imagesizes`. One image of a page, the largest one above the fold, should be eager.
+- `sizes` passes on to each `<source>`. It defaults to `100vw`, which is right only for a full-width image, so the docs say to set it.
+- `crossOrigin`, `fetchPriority`, `decoding` and the other attributes of `<img>` pass on.
+- Each element has `data-image` with its role (`box`, `picture`, `img`, `preview`), and `data-loaded` once the image loads, for styles, as the parts of `@brumate/ui` do.
+
+#### Previews
+
+The default preview is an image about 20 pixels wide, inlined as a data URL, and the main color of the image. The box paints them behind the image, scaled up, which blurs them. That needs no code: the image covers the preview once it loads.
+
+- A fade-in on load is an `onLoad` handler. The loader listens to `load` in the capture phase, since it does not bubble, so its code loads only when an image loads, and a page without the fade loads none.
+- BlurHash and ThumbHash previews need code to decode in the browser. A `$client(…, 'visible')` callback decodes one when the box comes into view, and the server paints the average color until then. Only an app that turns them on ships the decoder.
+- With `prefers-reduced-motion`, there is no fade.
+
+#### Errors
+
+- `onError` runs when the image fails.
+- An `error` prop, a `#template`, renders in place of the image, over the preview, in the browser.
+
+#### Options
+
+| Option        | Default                        | What it does                                     |
+| ------------- | ------------------------------ | ------------------------------------------------ |
+| `sizes`       | required                       | The widths to write                              |
+| `input`       | `png`, `jpeg`, `webp`, `gif`   | The formats of files that the plugin handles     |
+| `output`      | `webp`, `jpeg`                 | The formats to write                             |
+| `quality`     | 50 for AVIF, 80 for the others | The quality of sharp, for all or for each format |
+| `placeholder` | an image of 20 pixels          | `false`, a size, `blurhash` or `thumbhash`       |
+| `remote`      | none                           | `transformURL` for `image:` imports              |
+| `concurrency` | the number of cores            | The most images that sharp handles at once       |
+
+#### To decide
+
+- Whether the plugin is part of `brumate/vite` or a package of its own, since sharp is a large dependency. A package of its own, `@brumate/image`, keeps it out of apps that do not use it.
+- Whether `Image` is a part of `@brumate/ui` or of the image package.
+- Art direction, with a `<source media>` for each crop.
+
+Cost: about a week, with most of the plugin taken from `@solidjs/image`.
+
 ### Markdown with components
 
 Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
@@ -865,7 +1249,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
 4. **The website**: the fixes of the home link, the shop demo, the highlighting and the error section first, since they are small. Then the guide to props types, the docs and examples of `@brumate/ui`, and a landing page for it, before the parts are published.
 5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
-6. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
+6. **Server components**: a spike that measures them against server functions, memos and `refresh`, with two cases of the website. Then the design of server components, `#server`, the render again, and children that keep their state.
 7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
