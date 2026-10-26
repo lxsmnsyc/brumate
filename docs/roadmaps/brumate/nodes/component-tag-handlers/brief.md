@@ -1,7 +1,7 @@
 ---
 id: component-tag-handlers
 title: A component in a dynamic tag keeps the handlers of its caller in the browser
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "keeps the handlers of its caller"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#262"
 gate: false
 added: 2026-10-26
 owns:
@@ -21,6 +21,8 @@ owns:
   - packages/brumate/src/codegen/markup.ts
   - packages/brumate/src/runtime/server.ts
   - packages/brumate/test/__snapshots__/render/**
+  - packages/brumate/src/codegen/client.ts
+  - packages/brumate/test/render/dynamicKeysLive.brm
 shared:
   - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
@@ -55,10 +57,10 @@ When the browser renders a dynamic tag whose tag is a component, and that compon
 
 ## Acceptance
 
-- [ ] The repro is a test, and it fails on main.
-- [ ] With the fix, both handlers run, each in its own scope, when the browser renders the block.
-- [ ] The gzip size of the eager core grows by at most 0.05 kB. The client chunk is close to its budget after #256.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The repro is a test, and it fails on main.
+- [x] With the fix, both handlers run, each in its own scope, when the browser renders the block.
+- [x] The gzip size of the eager core grows by at most 0.05 kB. The client chunk is close to its budget after #256.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
@@ -67,3 +69,4 @@ S: two small changes in the client runtime, as the server already does them.
 ## Log
 
 - 2026-10-27: the review of #262 found a cheaper design in the compiler, within budget: the codegen writes the scoped b-on entries of a dynamic tag, and the server drops its own scope code. So markup.ts, server.ts and the render snapshots are part of the node.
+- 2026-10-27: the compiler design puts a scope on own entries, so updateSpreadEntries needed ownEvents in codegen/client.ts, with a regression test in dynamicKeysLive.brm.
