@@ -36,6 +36,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: component-tag-handlers
+    kind: hard
+    why: a component in `as` needs this fix of the core
   - on: dynamic-spread-anchor
     kind: hard
     why: a component in `as` needs this fix of the core

@@ -1,0 +1,61 @@
+---
+id: component-tag-handlers
+title: A component in a dynamic tag keeps the handlers of its caller in the browser
+status: todo
+priority: must
+type: fix
+outline: false
+milestone: core-correct
+target:
+from:
+size: S
+spike: false
+verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "keeps the handlers of its caller"
+exclusive: []
+fulfilled_by:
+gate: false
+added: 2026-10-26
+owns:
+  - packages/brumate/test/render/ScopeWrap.brm
+  - packages/brumate/test/render/componentTagHandlers.brm
+shared:
+  - packages/brumate/src/runtime/client.ts
+  - packages/brumate/test/resume.test.ts
+reserves: []
+provides: []
+depends_on:
+  - on: dynamic-spread-handlers
+    kind: hard
+    why: both change dynamic and dynamicNodes of the client runtime
+---
+
+# A component in a dynamic tag keeps the handlers of its caller in the browser
+
+## Goal
+
+When the browser renders a dynamic tag whose tag is a component, and that component puts its own handler on the element it spreads its props onto, the caller's handler is lost. The client `spread` does not keep a `b-on` that arrives in the attributes, and the component's `setOn` overwrites it. The client `dynamic` also leaves out the `@scope` that the server `dynamic` adds. Keep both entries, with their scopes, as the server does.
+
+## Context
+
+- Found in the review of #256 (dynamic-spread-handlers). It is on main, and #256 does not cause it.
+- Cause, from the review:
+  - The client `setSpread` and `spread` (client.ts, near 772 and 4206) do not put an incoming `b-on` first, as the server `spread` does (server.ts, near 3755).
+  - The component's compiled `setOn(el, on, own)` then sets `b-on` from its own entries only.
+  - The server `dynamic` (server.ts, near 1478-1486) adds `@scope` to the entries for a component tag, and the client does not.
+- Repro:
+  - The parts: `AsButton.brm` renders `<{as ?? 'button'} onClick=(() => own++) {...rest}>`. `ScopeWrap.brm` renders `<section class="wrap" onClick=(() => inner++) {...rest}>{children}</section>`.
+  - The page: `#if (open) { <AsButton as=ScopeWrap>x</AsButton> }`. Open the block in the browser, and click `.wrap`.
+  - On main and on #256, only `click=ScopeWrap#h1` is written, so AsButton's handler never runs.
+  - The same page rendered by the server writes `click=ScopeWrap#h1 click=AsButton#h4@0.1`.
+- Without a handler of its own on the target, the unscoped entry only works because `closest('[b-b]')` finds the right scope.
+
+## Acceptance
+
+- [ ] The repro is a test, and it fails on main.
+- [ ] With the fix, both handlers run, each in its own scope, when the browser renders the block.
+- [ ] The gzip size of the eager core grows by at most 0.05 kB. The client chunk is close to its budget after #256.
+- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+
+## Sizing
+
+S: two small changes in the client runtime, as the server already does them.
