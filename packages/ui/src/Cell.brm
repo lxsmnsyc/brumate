@@ -1,0 +1,27 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { TableContext, TableRowContext } from './table.ts';
+
+  /**
+   * A cell of a Row, as Cell of React Aria Components. A cell in a column with `isRowHeader`
+   * names its row: it is a `th` with `role="rowheader"`. Others are `td` elements with
+   * `role="gridcell"`. It takes focus, or its first control does.
+   */
+  const { textValue, children, ...rest } = $props<{
+    textValue?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const table = $getContext(TableContext);
+  const row = $getContext(TableRowContext);
+  // The place of the cell in its row, which is the column that it is in.
+  const index = row ? row.cells.count++ : 0;
+  const header = Boolean(table?.columns[index]?.isRowHeader);
+</script>
+
+#if (header) {
+  <th role="rowheader" scope="row" tabindex="-1" data-text-value=textValue {...rest}>{children}</th>
+} #else {
+  <td role="gridcell" tabindex="-1" data-text-value=textValue {...rest}>{children}</td>
+}

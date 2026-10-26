@@ -333,6 +333,14 @@ export interface ListBoxState {
   activeKey?: Key | null;
   /** With focus in a field around the list, makes an item the active one. */
   setActive?: (key: Key) => void;
+  /** True when the rows can be dragged, in a GridList with `onReorder` or `getItems`. */
+  isDraggable?: boolean;
+  /** The keys of the rows that a drag moves. */
+  dragging?: Key[];
+  /** Where the rows that a drag moves would go. */
+  dropTarget?: { key: Key; dropPosition: 'before' | 'after' } | null;
+  /** Starts a drag of a row with the keys, from its drag button. */
+  startDrag?: (key: Key) => void;
 }
 
 export const ListBoxContext: Context<ListBoxState | null> = createContext<ListBoxState | null>(

@@ -1,0 +1,204 @@
+<script>
+  import { $client, $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Token from './Token.brm';
+  import {
+    EDGE,
+    TokenContext,
+    TokenFieldContext,
+    caretOffset,
+    placeCaret,
+    readSegments,
+    sameSegments,
+    tokenize,
+  } from './token-field.ts';
+  import type { TokenSegment } from './token-field.ts';
+
+  /**
+   * The box of a TokenField that the user types in, as TokenInput of React Aria Components: an
+   * element with `contenteditable`. `token`, a `#template`, renders a Token for each token. Without
+   * it, each token is a Token with its text.
+   *
+   * - The browser edits the text. The box reads it back into the value, and makes the text that
+   *   the `pattern` of the field matches into tokens.
+   * - A token is one piece: the caret goes past it, and Backspace removes it whole.
+   * - Enter adds a new line only with `allowsNewlines`. A paste adds plain text.
+   * - It shows `data-focused`, `data-focus-visible`, `data-disabled`, `data-readonly` and
+   *   `data-empty`, with the placeholder in `data-placeholder` for CSS.
+   */
+  const { token, ...rest } = $props<{
+    token?: (segment: TokenSegment) => unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const field = $getContext(TokenFieldContext);
+  if (!field) {
+    throw new Error('A TokenInput goes in a TokenField.');
+  }
+  // The markup of the box renders once. After that, the box is the browser's, and this code
+  // writes it from the value, so the browser and the render do not both change it.
+  const initial = $untrack(field.value);
+  let box = $signal<HTMLElement>();
+  let stamps = $signal<HTMLElement>();
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  let composing = $signal(false);
+  // Where the caret was in the value, to put it back after the box is written again.
+  let caret = $signal<number | undefined>(undefined);
+  $setContext(TokenContext, { isDisabled: field.isDisabled });
+
+  const editable = !field.isDisabled && !field.isReadOnly;
+
+  /** Writes the box from the value, with each token copied from its stamp. */
+  function write(value: TokenSegment[]) {
+    const element = box;
+    const marks = stamps?.querySelectorAll<HTMLElement>(':scope > [data-stamp]') ?? [];
+    if (!element) {
+      return;
+    }
+    const nodes: Node[] = [];
+    let index = 0;
+    for (const segment of value) {
+      if (segment.type === 'text') {
+        nodes.push(document.createTextNode(segment.text));
+        continue;
+      }
+      const span = document.createElement('span');
+      span.setAttribute('data-token', segment.text);
+      span.contentEditable = 'false';
+      const stamp = marks[index++];
+      if (stamp) {
+        span.append(...[...stamp.childNodes].map((node) => node.cloneNode(true)));
+      } else {
+        span.textContent = segment.text;
+      }
+      nodes.push(document.createTextNode(EDGE), span, document.createTextNode(EDGE));
+    }
+    element.replaceChildren(...nodes);
+  }
+
+  // The value from the field, or a change from outside: the box shows it, and keeps the caret.
+  $effect(() => {
+    const value = field.value;
+    const element = box;
+    if (!element || composing || sameSegments(readSegments(element), value)) {
+      return;
+    }
+    write(value);
+    if (caret !== undefined && document.activeElement === element) {
+      placeCaret(element, caret);
+    }
+  });
+
+  function input() {
+    const element = box;
+    if (!element || composing) {
+      return;
+    }
+    const read = readSegments(element);
+    const next = tokenize(read, field!.pattern);
+    caret = caretOffset(element);
+    // Text that the browser wrote is in the box already. A new token needs the box written.
+    field!.setValue(next);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && field!.allowsNewlines && !event.isComposing) {
+      document.execCommand('insertText', false, '\n');
+    }
+  }
+
+  function paste(event: ClipboardEvent) {
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    const lines = field!.allowsNewlines ? text : text.replaceAll(/\r?\n/g, ' ');
+    document.execCommand('insertText', false, lines);
+  }
+
+  function focus(event: FocusEvent) {
+    focused = true;
+    focusVisible = (event.currentTarget as Element).matches?.(':focus-visible') ?? false;
+  }
+
+  function blur() {
+    focused = false;
+    focusVisible = false;
+  }
+
+  // A token shows `data-selected` while the selection covers it.
+  $client(() => {
+    const selected = () => {
+      const element = box;
+      const selection = document.getSelection();
+      for (const span of element?.querySelectorAll('[data-token]') ?? []) {
+        const part = span.querySelector('[data-token-part]');
+        const covered = Boolean(selection && !selection.isCollapsed && selection.containsNode(span, true));
+        part?.toggleAttribute('data-selected', covered);
+      }
+    };
+    document.addEventListener('selectionchange', selected);
+    return () => document.removeEventListener('selectionchange', selected);
+  }, 'visible');
+</script>
+
+<div
+  ref=box
+  role=(field.role)
+  contenteditable=(editable ? 'true' : 'false')
+  tabindex=(field.isDisabled ? undefined : '0')
+  aria-multiline=(field.allowsNewlines ? 'true' : undefined)
+  aria-labelledby=(field.labelId)
+  aria-describedby=(field.descriptionId)
+  aria-disabled=(field.isDisabled ? 'true' : undefined)
+  aria-readonly=(field.isReadOnly ? 'true' : undefined)
+  aria-placeholder=(field.placeholder)
+  data-placeholder=(field.placeholder)
+  data-empty=(field.value.length === 0 || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(field.isDisabled || undefined)
+  data-readonly=(field.isReadOnly || undefined)
+  onInput=input
+  onKeyDown=(prevent(keyDown, 'Enter'))
+  onPaste=(prevent(paste))
+  onCompositionStart=(() => (composing = true))
+  onCompositionEnd=(() => {
+    composing = false;
+    input();
+  })
+  onFocus=focus
+  onBlur=blur
+  {...rest}
+>
+  #for (segment of initial by index) {
+    #if (segment.type === 'token') {
+      {EDGE}<span data-token=(segment.text) contenteditable="false">#if (token) {
+          {token(segment)}
+        } #else {
+          <Token>{segment.text}</Token>
+        }</span>{EDGE}
+    } #else {
+      {segment.text}
+    }
+  }
+</div>
+<!-- The tokens of the value, rendered by the template, which the box copies. -->
+<div ref=stamps hidden aria-hidden="true">
+  #for (segment of field.value.filter((one) => one.type === 'token') by index) {
+    <span data-stamp>#if (token) {
+        {token(segment)}
+      } #else {
+        <Token>{segment.text}</Token>
+      }</span>
+  }
+</div>
+
+<style>
+  div[contenteditable] {
+    white-space: pre-wrap;
+  }
+
+  div[data-empty]::before {
+    content: attr(data-placeholder);
+    pointer-events: none;
+  }
+</style>

@@ -1,0 +1,59 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Cell from '@brumate/ui/Cell.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  const files = [
+    { id: 'notes', name: 'Notes.txt', kind: 'Text', size: 3 },
+    { id: 'photo', name: 'Beach.jpg', kind: 'Image', size: 2400 },
+    { id: 'budget', name: 'Budget.xlsx', kind: 'Sheet', size: 48 },
+    { id: 'song', name: 'Song.mp3', kind: 'Audio', size: 5100 },
+  ];
+  let picked = $signal<Key[]>([]);
+  let sort = $signal<SortDescriptor | null>({ column: 'name', direction: 'ascending' });
+  const rows = $memo(
+    sort
+      ? [...files].sort((a, b) => {
+          const order =
+            sort!.column === 'size' ? a.size - b.size : a.name.localeCompare(b.name);
+          return sort!.direction === 'ascending' ? order : -order;
+        })
+      : files,
+  );
+</script>
+
+<Table class="ui-table" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked) sortDescriptor=$bind(sort)>
+  <TableHeader>
+    <Column class="ui-column ui-select-column">
+      <Checkbox slot="selection" class="ui-box" aria-label="Select all">
+        <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+      </Checkbox>
+    </Column>
+    <Column id="name" class="ui-column" isRowHeader allowsSorting>Name</Column>
+    <Column class="ui-column">Kind</Column>
+    <Column id="size" class="ui-column" allowsSorting>Size (kB)</Column>
+  </TableHeader>
+  <TableBody>
+    #for (file of rows by file.id) {
+      <Row id=(file.id) class="ui-tablerow">
+        <Cell class="ui-cell">
+          <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file.name}`)>
+            <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+          </Checkbox>
+        </Cell>
+        <Cell class="ui-cell">{file.name}</Cell>
+        <Cell class="ui-cell">{file.kind}</Cell>
+        <Cell class="ui-cell ui-number">{file.size}</Cell>
+      </Row>
+    }
+  </TableBody>
+</Table>
+<p>Selected: {picked.join(', ') || 'none'}.</p>

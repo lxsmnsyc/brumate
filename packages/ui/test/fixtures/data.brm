@@ -1,0 +1,86 @@
+<script>
+  import { $bind } from 'brumate/signals';
+  import GridList from '../../src/GridList.brm';
+  import GridListItem from '../../src/GridListItem.brm';
+  import Tree from '../../src/Tree.brm';
+  import TreeItem from '../../src/TreeItem.brm';
+  import { listData, treeData } from '../../src/data.brm.ts';
+  import type { TreeDataNode } from '../../src/data.ts';
+
+  interface Pet {
+    name: string;
+    kind: string;
+  }
+  interface File {
+    id: string;
+    name: string;
+    children?: File[];
+  }
+
+  const {
+    items: pets,
+    selectedKeys: pickedPets,
+    filterText,
+    append,
+    remove,
+    removeSelectedItems,
+    moveAfter,
+    update,
+    setFilterText,
+  } = listData<Pet>(
+    {
+      initialItems: [
+        { name: 'Rex', kind: 'dog' },
+        { name: 'Tom', kind: 'cat' },
+        { name: 'Bob', kind: 'fish' },
+      ],
+    },
+    (pet) => pet.name,
+    matches,
+  );
+
+  function matches(pet: Pet, text: string) {
+    return pet.name.toLowerCase().includes(text.toLowerCase());
+  }
+
+  const {
+    items: files,
+    selectedKeys: pickedFiles,
+    append: appendFile,
+    remove: removeFile,
+    move: moveFile,
+    update: updateFile,
+  } = treeData<File>({
+    initialItems: [
+      { id: 'docs', name: 'Documents', children: [{ id: 'cv', name: 'cv.pdf' }] },
+      { id: 'notes', name: 'notes.txt' },
+    ],
+  });
+</script>
+
+<main class="page">
+  <GridList class="pets" aria-label="Pets" selectionMode="multiple" selectedKeys=$bind(pickedPets)>
+    #for (pet of pets by pet.name) {
+      <GridListItem id=(pet.name) class=(`pet pet-${pet.name}`)>{pet.name} the {pet.kind}</GridListItem>
+    }
+  </GridList>
+  <button class="add" type="button" onClick=(() => append({ name: 'Kit', kind: 'cat' }))>Add</button>
+  <button class="remove-tom" type="button" onClick=(() => remove('Tom'))>Remove Tom</button>
+  <button class="remove-picked" type="button" onClick=removeSelectedItems>Remove selected</button>
+  <button class="move-rex" type="button" onClick=(() => moveAfter('Bob', ['Rex']))>Move Rex</button>
+  <button class="rename-bob" type="button" onClick=(() => update('Bob', { name: 'Bob', kind: 'shark' }))>Rename</button>
+  <button class="filter" type="button" onClick=(() => setFilterText('o'))>Filter</button>
+  <p class="pets-state">{JSON.stringify([pets.map((pet) => pet.name), pickedPets, filterText])}</p>
+
+  <Tree class="files" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(pickedFiles) expandedKeys=(['docs', 'new']) />
+  <button class="add-file" type="button" onClick=(() => appendFile('docs', { id: 'plan', name: 'plan.md' }))>Add file</button>
+  <button class="add-folder" type="button" onClick=(() => appendFile(null, { id: 'new', name: 'New', children: [] }))>Add folder</button>
+  <button class="move-notes" type="button" onClick=(() => moveFile('notes', 'docs', 0))>Move notes</button>
+  <button class="remove-docs" type="button" onClick=(() => removeFile('docs'))>Remove docs</button>
+  <button class="rename-notes" type="button" onClick=(() => updateFile('notes', { id: 'notes', name: 'todo.txt' }))>Rename notes</button>
+  <p class="files-state">{JSON.stringify(pickedFiles)}</p>
+</main>
+
+#template file(node: TreeDataNode<File>) {
+  <TreeItem class=(`file file-${node.id}`)>{node.value.name}</TreeItem>
+}

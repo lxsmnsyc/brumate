@@ -1,0 +1,15 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { TokenContext } from './token-field.ts';
+
+  /**
+   * A token of a TokenInput, as Token of React Aria Components. The `token` template of a
+   * TokenInput renders one for each token. It shows `data-selected` while the selection covers it,
+   * and `data-disabled`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const token = $getContext(TokenContext);
+</script>
+
+<span data-token-part data-disabled=(token?.isDisabled || undefined) {...rest}>{children}</span>

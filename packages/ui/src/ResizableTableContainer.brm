@@ -1,0 +1,70 @@
+<script>
+  import { $props, $setContext, $signal } from 'brumate/signals';
+  import { TableResizeContext, clampWidth } from './table.ts';
+
+  /**
+   * A box around a Table whose columns resize, as ResizableTableContainer of React Aria
+   * Components. It scrolls the Table when it is wider than the box.
+   *
+   * - A Column takes `width`, `defaultWidth`, `minWidth` and `maxWidth`: pixels, a percentage
+   *   or `'1fr'`, which shares the width that is left.
+   * - When a resize starts, every column keeps its width in pixels, as in React Aria.
+   * - `onResize` hears of the widths as a ColumnResizer moves, and `onResizeEnd` when it stops,
+   *   as a map from the key of a column to its width.
+   */
+  const { onResize, onResizeEnd, children, ...rest } = $props<{
+    onResize?: (widths: Map<string, number>) => void;
+    onResizeEnd?: (widths: Map<string, number>) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  let widths = $signal<Record<string, number>>({});
+  let resizing = $signal<string | null>(null);
+  let box = $signal<HTMLElement>();
+
+  /** The keys of the columns as the page writes them, and their widths, as a map. */
+  function asMap(): Map<string, number> {
+    return new Map(Object.entries(widths).map(([key, width]) => [JSON.parse(key) as string, width]));
+  }
+
+  function start(key: string) {
+    // Every column keeps the width that it has now, so only the one that resizes changes.
+    const headers = box?.querySelectorAll<HTMLElement>('thead [role=columnheader][data-key]') ?? [];
+    const next: Record<string, number> = {};
+    for (const header of headers) {
+      // The width that the browser laid out, or else the width that the column asks for.
+      next[header.getAttribute('data-key')!] =
+        header.getBoundingClientRect().width || Number(header.getAttribute('data-width') ?? 0);
+    }
+    widths = next;
+    resizing = key;
+  }
+
+  function resize(key: string, width: number) {
+    const header = [
+      ...(box?.querySelectorAll<HTMLElement>('thead [role=columnheader][data-key]') ?? []),
+    ].find((one) => one.getAttribute('data-key') === key);
+    const min = Number(header?.getAttribute('data-min-width') ?? 0);
+    const max = Number(header?.getAttribute('data-max-width') ?? Infinity);
+    widths = { ...widths, [key]: Math.round(clampWidth(width, min, max)) };
+    onResize?.(asMap());
+  }
+
+  function end() {
+    if (resizing !== null) {
+      resizing = null;
+      onResizeEnd?.(asMap());
+    }
+  }
+
+  $setContext(TableResizeContext, { widths, resizing, start, resize, end });
+</script>
+
+<div ref=box data-resizable-table-container {...rest}>{children}</div>
+
+<style>
+  div {
+    overflow: auto;
+  }
+</style>

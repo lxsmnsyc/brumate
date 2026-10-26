@@ -1,0 +1,27 @@
+<script>
+  import { $getContext, $props, $setContext } from 'brumate/signals';
+  import { CheckboxGroupContext } from './contexts.ts';
+  import { TableContext } from './table.ts';
+
+  /**
+   * The header of a Table, as TableHeader of React Aria Components: a row of Column elements.
+   * A Checkbox with `slot="selection"` in a Column selects every row, or none. It shows a mixed
+   * state while some rows are selected.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const table = $getContext(TableContext);
+
+  $setContext(CheckboxGroupContext, {
+    value: table?.selectAll.all ? [''] : [],
+    isIndeterminate: Boolean(table && !table.selectAll.all && table.selectAll.some),
+    isDisabled: !table,
+    isReadOnly: false,
+    isInvalid: false,
+    isRequired: false,
+    toggle: () => table?.toggleAll(),
+    onInvalid: () => {},
+  });
+</script>
+
+<thead role="rowgroup" {...rest}><tr role="row">{children}</tr></thead>

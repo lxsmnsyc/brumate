@@ -928,6 +928,8 @@ export async function run({ browser, url, runner }) {
       await page.waitForFunction(
         () => document.querySelector('.file-state')?.textContent === 'photos / none',
       );
+      // The grip, the box, then the button.
+      await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await page.waitForFunction(() => document.activeElement?.classList.contains('file-open'));
@@ -940,6 +942,238 @@ export async function run({ browser, url, runner }) {
       await page.waitForFunction(() => !document.activeElement?.closest('.file-grid'));
     },
   );
+
+  await step('GridList: rows move with a drag of the pointer, and from the keys', async () => {
+    await page.goto(`${url}/`);
+    await page.waitForLoadState('load');
+    await page.locator('.file-music').scrollIntoViewIfNeeded();
+    // The pointer drags the last row to the top half of the first.
+    await page.locator('.file-music').dragTo(page.locator('.file-notes'), {
+      targetPosition: { x: 10, y: 2 },
+    });
+    await page.waitForFunction(
+      () => document.querySelector('.file-order')?.textContent === 'music,notes,photos',
+    );
+    // The grip of a row starts a drag from the keys. Down chooses the place after the last row.
+    await page.locator('.drag-music').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.file-music[data-dragging]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForSelector(".file-photos[data-drop-target='after']");
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      () => document.querySelector('.file-order')?.textContent === 'notes,photos,music',
+    );
+  });
+
+  await step(
+    'DropZone: a drop of text reaches onDrop, and a click focuses its button',
+    async () => {
+      await page.goto(`${url}/`);
+      const zone = page.locator('.drop-zone');
+      await zone.scrollIntoViewIfNeeded();
+      // The listeners start once the page loads.
+      await page.waitForLoadState('load');
+      const data = await page.evaluateHandle(() => {
+        const transfer = new DataTransfer();
+        transfer.setData('text/plain', 'hello');
+        return transfer;
+      });
+      await zone.dispatchEvent('dragenter', { dataTransfer: data });
+      await page.waitForSelector('.drop-zone[data-drop-target]');
+      await zone.dispatchEvent('dragover', { dataTransfer: data });
+      await zone.dispatchEvent('drop', { dataTransfer: data });
+      await page.waitForFunction(
+        () => document.querySelector('.drop-state')?.textContent === '1 items dropped.',
+      );
+      assert(
+        (await page.locator('.drop-zone[data-drop-target]').count()) === 0,
+        'The zone still shows a drag over it',
+      );
+      // A click on the area focuses its hidden button.
+      await zone.click({ position: { x: 4, y: 4 } });
+      const focused = await page.evaluate(
+        () => document.activeElement?.closest('.drop-zone') !== null,
+      );
+      assert(focused, 'The button of the zone does not have the focus');
+    },
+  );
+
+  await step('Virtualizer: a long Tree renders the rows in view as it scrolls', async () => {
+    await page.goto(`${url}/`);
+    const box = page.locator('.many-box');
+    await box.scrollIntoViewIfNeeded();
+    // Only the rows in view render, of the 1000.
+    await page.waitForFunction(() => document.querySelectorAll('.many-row').length < 30);
+    await box.evaluate((element) => {
+      element.scrollTop = 24 * 500;
+    });
+    await page.waitForFunction(() => document.querySelector('.many-many-500') !== null);
+    assert((await page.locator('.many-many-0').count()) === 0, 'The first row still renders');
+    const rows = await page.locator('.many-row').count();
+    assert(rows < 30, `${rows} rows render`);
+    // The spacers keep the height of the whole list.
+    const height = await box.evaluate((element) => element.scrollHeight);
+    assert(height >= 24 * 1000 - 24, `The list is ${height} pixels tall`);
+  });
+
+  await step(
+    'TokenField: a typed tag becomes a token, and Backspace removes it whole',
+    async () => {
+      await page.goto(`${url}/`);
+      const input = page.locator('.note-input');
+      await input.click();
+      await page.keyboard.press('End');
+      await page.keyboard.type('#news and ');
+      await page.waitForFunction(
+        () => document.querySelector('.note-state')?.textContent === 'Hi [#news] and ',
+      );
+      await page.waitForFunction(
+        () => document.querySelectorAll('.note-input .note-token').length === 1,
+      );
+      // The caret stays at the end, so typing goes on there.
+      await page.keyboard.type('more');
+      await page.waitForFunction(
+        () => document.querySelector('.note-state')?.textContent === 'Hi [#news] and more',
+      );
+      // Backspace past the text after the token, then once more, removes the token whole.
+      for (let step = 0; step < ' and more'.length; step++) {
+        await page.keyboard.press('Backspace');
+      }
+      await page.keyboard.press('Backspace');
+      await page.waitForFunction(
+        () => document.querySelector('.note-state')?.textContent === 'Hi ',
+      );
+    },
+  );
+
+  await step(
+    'NavigationTree: Tab through the links, Right opens, and the current page',
+    async () => {
+      await page.goto(`${url}/`);
+      await page
+        .locator('#navigation-tree')
+        .evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+      await page.locator('#navigation-tree').focus();
+      // The closed row that holds the current page is marked.
+      assert(
+        (await page.locator('.section-collections').getAttribute('data-current-ancestor')) !== null,
+        'The row that holds the current page is not marked',
+      );
+      // The row without a link is no stop of Tab: Tab goes to the first link.
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() =>
+        document.activeElement?.classList.contains('section-link-slider-link'),
+      );
+      await page.keyboard.press('ArrowUp');
+      await page.waitForFunction(() =>
+        document.activeElement?.classList.contains('section-collections'),
+      );
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => document.querySelector('.section-link-table-link') !== null);
+      assert(
+        (await page.locator('.section-link-table-link').getAttribute('aria-current')) === 'page',
+        'The link of the current page has no aria-current',
+      );
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() =>
+        document.activeElement?.classList.contains('section-link-tree-link'),
+      );
+    },
+  );
+
+  await step('Table: rows, cells and headers with the keys, sorting and selection', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('#table').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+    await page.locator('#table').focus();
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('planet-mercury'));
+    await page.keyboard.press('Space');
+    await page.waitForFunction(
+      () => document.querySelector('.planet-state')?.textContent === 'mercury / unsorted',
+    );
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains('planet-moons-earth'),
+    );
+    // Up from the first row goes to the column of the cell, which Enter sorts by.
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains('planet-moons-column'),
+    );
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      () => document.querySelector('.planet-state')?.textContent === 'mercury / moons descending',
+    );
+    const order = await page.locator('.planet-name').allTextContents();
+    assert(order.join(',') === 'Mars,Earth,Mercury', `The rows are in the order ${order}`);
+    // A drag of the resizer widens the column.
+    const before = await page.locator('.planet-name-column').evaluate((th) => th.offsetWidth);
+    // The hover scrolls the resizer into view, so its box is where the pointer goes.
+    await page.locator('.planet-resizer').hover();
+    const bar = await page.locator('.planet-resizer').boundingBox();
+    await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bar.x + bar.width / 2 + 60, bar.y + bar.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      (width) => document.querySelector('.planet-name-column').offsetWidth >= width + 50,
+      before,
+    );
+    // The box in the header selects every row, in the order of the table.
+    await page.locator('.planet-all').click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.planet-state')?.textContent ===
+        'mars,earth,mercury / moons descending',
+    );
+  });
+
+  await step('Tree: Right opens, Left closes and moves up, and the chevron toggles', async () => {
+    await page.goto(`${url}/`);
+    await page.locator('#tree').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
+    await page.locator('#tree').focus();
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('folder-src'));
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(
+      () => document.querySelector('.folder-state')?.textContent === 'src / None',
+    );
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('folder-lib'));
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.querySelector('.folder-util') !== null);
+    assert(
+      (await page.locator('.folder-util').getAttribute('aria-level')) === '3',
+      'The child of a child is not at level 3',
+    );
+    // Left closes the open row, then moves to the row that holds it.
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('.folder-util') === null);
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('folder-src'));
+    await page.keyboard.press('Space');
+    await page.waitForFunction(
+      () => document.querySelector('.folder-state')?.textContent === 'src / src',
+    );
+    // The chevron closes the row, and focus stays on the row.
+    await page.locator('.folder-src .folder-chevron').click();
+    await page.waitForFunction(() => document.querySelector('.folder-app') === null);
+    await page.waitForFunction(() => document.activeElement?.classList.contains('folder-src'));
+    // The tree data adds a file, which shows once its folder opens.
+    await page.locator('.folder-add').click();
+    await page.locator('.folder-src .folder-chevron').click();
+    await page.waitForFunction(() => document.querySelector('.folder-main') !== null);
+    assert(
+      (await page.locator('.folder-main').getAttribute('aria-posinset')) === '3',
+      'The added file is not the third in its folder',
+    );
+  });
 
   await step(
     'NumberField: the arrow keys, the wheel while focused, and a held Button',

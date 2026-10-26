@@ -183,6 +183,7 @@ class ClientGenerator {
     this.emitRoots();
     this.part = 'update';
     this.emitUpdates();
+    this.emitWindowStarts();
     this.emitRenders();
     this.emitChildrenRenders();
 
@@ -1074,8 +1075,72 @@ class ClientGenerator {
     return result;
   }
 
+  /** The windowed lists whose `w` export is emitted. */
+  private readonly windowStarts = new Set<Block>();
+
+  /**
+   * The `w` export of each windowed list whose header does not change, which has no update. It
+   * starts the window, which renders the items in view.
+   */
+  private emitWindowStarts(): void {
+    for (const block of this.windowedBlocks()) {
+      if (this.windowStarts.has(block)) {
+        continue;
+      }
+      const site = this.headerSites(block)[0];
+      if (!site) {
+        continue;
+      }
+      this.emitBlockUpdate(
+        block,
+        `b${this.counterOfWindows++}w`,
+        instanceScope(this.plan, site.scope),
+      );
+    }
+  }
+
+  private counterOfWindows = 0;
+
+  private windowedBlocks(): Block[] {
+    const found: Block[] = [];
+    const visit = (nodes: readonly unknown[]): void => {
+      for (const node of nodes as { kind?: string }[]) {
+        if (!node || typeof node !== 'object') {
+          continue;
+        }
+        const block = node as Block;
+        if (block.kind === 'for' && block.window) {
+          found.push(block);
+        }
+        for (const value of Object.values(node)) {
+          if (Array.isArray(value)) {
+            visit(value);
+          } else if (value && typeof value === 'object' && 'children' in (value as object)) {
+            visit((value as { children: unknown[] }).children);
+          }
+        }
+      }
+    };
+    visit(this.file.children);
+    for (const template of this.file.templates) {
+      visit(template.body.children);
+    }
+    return found;
+  }
+
   private renderName(body: Body): string {
     return `r${this.plan.bodyScopes.get(body)!.id}`;
+  }
+
+  /**
+   * For a block in the children of a component of this file: the kind of the scope of the
+   * component and its anchor, with which the core finds the component, so the new bodies of the
+   * block read its contexts.
+   */
+  private holderArgument(block: Block): string {
+    const holder = this.plan.blockHolders.get(block);
+    const anchor = holder && this.plan.anchors.get(holder.node);
+    return holder && anchor !== undefined ? `, ${holder.scope.id}, ${anchor}` : '';
   }
 
   private emitBlockUpdate(block: Block, fn: string, base: Scope): void {
@@ -1083,6 +1148,7 @@ class ClientGenerator {
     if (anchor === undefined) {
       return;
     }
+    const held = this.holderArgument(block);
     const headers = this.headerSites(block);
     const header = (index: number): string => this.rewriter.rewrite(headers[index]!, '$$s', base);
     switch (block.kind) {
@@ -1098,7 +1164,7 @@ class ClientGenerator {
           this.renderName(body),
         );
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)});\n}`,
+          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)}${held});\n}`,
         );
         return;
       }
@@ -1113,13 +1179,21 @@ class ClientGenerator {
         const keyName = key.includes('$$s') ? key : this.hoist(key);
         const fallback = block.fallback ? this.renderName(block.fallback) : 'undefined';
         const fallbackKinds = block.fallback ? this.kinds([block.fallback]) : [];
-        this.emit(
-          [
-            `export function ${fn}($$s) {`,
-            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)});`,
-            '}',
-          ].join('\n'),
-        );
+        const kinds = this.hoist(`[${fallbackKinds.join(', ')}]`);
+        const render = this.renderName(block.body);
+        const assign = `a${this.plan.bodyScopes.get(block.body)!.id}`;
+        // A windowed list renders the items in view, and its `w` export starts its window.
+        const call =
+          block.kind === 'for' && block.window
+            ? `$$b.windowList($$s, ${anchor}, ${items}, ${keyName}, ${render}, ${assign}, ${fallback}, ${kinds}, ${header(1)}${held})`
+            : `$$b.list($$s, ${anchor}, ${items}, ${keyName}, ${render}, ${assign}, ${fallback}, ${kinds}${held})`;
+        this.emit([`export function ${fn}($$s) {`, `  ${call};`, '}'].join('\n'));
+        if (block.kind === 'for' && block.window) {
+          this.emit(
+            `export function w${anchor}($$s) {\n  $$b.windowStart($$s, ${anchor}, () => ${call});\n}`,
+          );
+          this.windowStarts.add(block);
+        }
         this.emitAssign(block);
         return;
       }
@@ -1144,7 +1218,7 @@ class ClientGenerator {
         const [inner] = block.body.children;
         const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)});\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)}${held});\n}`,
         );
         return;
       }
@@ -1217,6 +1291,8 @@ class ClientGenerator {
       const clientOnly =
         (block?.kind === 'client' && scope.body === block.body) ||
         (block?.kind === 'portal' && block.target !== undefined) ||
+        // The browser renders the items of a windowed list that come into view.
+        (block?.kind === 'for' && block.window !== undefined) ||
         (block?.kind === 'try' && this.plan.anchors.has(block));
       if (scope.kind === 'body' && block && clientOnly && scope.body) {
         this.renders.set(scope, { body: scope.body, block });

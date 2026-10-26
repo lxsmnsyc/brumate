@@ -153,6 +153,8 @@ export interface CheckboxGroupState {
   isRequired: boolean;
   /** The ID of the error of the group, which each box names in aria-describedby. */
   describedBy?: string;
+  /** True while a box shows a mixed state, such as the box that selects all rows of a Table. */
+  isIndeterminate?: boolean;
   toggle: (value: string, checked: boolean) => void;
   onInvalid: (message: string) => void;
 }

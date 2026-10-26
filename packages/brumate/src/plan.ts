@@ -74,6 +74,11 @@ export interface Plan {
    * component inserts them: the export of their render, such as `n0`, and their scope.
    */
   childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
+  /**
+   * The component whose children hold a block, for the blocks in children. The browser renders
+   * the new bodies of such a block with the contexts of that component, as the server does.
+   */
+  blockHolders: Map<Block, { node: ComponentNode; scope: Scope }>;
   /** Sites whose code runs on the client, including update code for live nodes. */
   clientSites: Set<Site>;
   /** The compiled `<style>` blocks. */
@@ -360,6 +365,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   }
 
   const { isLiveSite, clientSites, slots: slotLists } = clientState(graph, file);
+  const blockHolders = new Map<Block, { node: ComponentNode; scope: Scope }>();
+  // The components whose children are being visited, innermost last.
+  const holders: ComponentNode[] = [];
+  const holderScopes = new Map<ComponentNode, Scope>();
   const childrenRenders = new Map<
     ComponentNode | DynamicTagNode,
     { symbol: string; scope: Scope }
@@ -526,7 +535,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
           childrenRenders.set(node, { symbol: `n${childrenRenders.size}`, scope });
         }
         // Children render inside the component's elements.
+        holders.push(node);
+        holderScopes.set(node, scope);
         visitNodes(node.children, scope);
+        holders.pop();
         return;
       }
       case 'fragment':
@@ -572,6 +584,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
       block.kind === 'client' ||
+      // The browser renders the items of a windowed list as they come into view.
+      (block.kind === 'for' && block.window !== undefined) ||
       // The browser asks for the body of a `#defer` block by its anchor.
       block.kind === 'defer' ||
       portalTarget ||
@@ -580,6 +594,15 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);
+      // The component around it finds its scope by its anchor, for the contexts of its bodies.
+      const holder = holders.at(-1);
+      if (holder) {
+        const holderScope = holderScopes.get(holder)!;
+        blockHolders.set(block, { node: holder, scope: holderScope });
+        if (!anchors.has(holder)) {
+          anchor(holderScope, holder);
+        }
+      }
     }
     if (live && block.kind === 'offscreen') {
       // The client hides and shows the body's instance, and pauses the effects inside it.
@@ -697,6 +720,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     elementItems,
     symbols,
     childrenRenders,
+    blockHolders,
     clientSites,
     diagnostics,
   };

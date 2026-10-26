@@ -2302,6 +2302,105 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('windowed lists', () => {
+  /** Lays out the scroll box and the spacers, as a browser would, with rows 30 pixels tall. */
+  function layout(scroll: { top: number }) {
+    const original = Element.prototype.getBoundingClientRect;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      const box = (top: number, height: number) =>
+        ({
+          top,
+          bottom: top + height,
+          height,
+          left: 0,
+          right: 0,
+          width: 0,
+          x: 0,
+          y: top,
+        }) as DOMRect;
+      if (this.classList.contains('scroll')) {
+        return box(0, 120);
+      }
+      const place = this.getAttribute('data-window');
+      if (place) {
+        const before = this.parentElement!.querySelector<HTMLElement>('[data-window=before]')!;
+        const rows = this.parentElement!.querySelectorAll('.row').length;
+        const start = -scroll.top;
+        const beforeHeight = parseFloat(before.style.height) || 0;
+        return place === 'before'
+          ? box(start, beforeHeight)
+          : box(
+              start + beforeHeight + rows * 30,
+              parseFloat((this as HTMLElement).style.height) || 0,
+            );
+      }
+      return original.call(this);
+    });
+  }
+
+  it('render the first items on the server, and the items in view in the browser', async () => {
+    const scroll = { top: 0 };
+    layout(scroll);
+    await resume('windowed', {});
+    // The server rendered the first 6, and spacers for the height of the rest.
+    const after = document.querySelector<HTMLElement>('[data-window=after]')!;
+    expect(after.tagName).toBe('LI');
+    expect(after.getAttribute('aria-hidden')).toBe('true');
+    // The window draws: the 4 in view, and 3 more after.
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(7));
+    expect(after.style.height).toBe(`${(100 - 7) * 30}px`);
+    // A scroll renders the items that come into view, and the spacer before takes the rest.
+    scroll.top = 30 * 50;
+    document.querySelector('.scroll')!.dispatchEvent(new Event('scroll'));
+    await waitFor(() => expect(document.querySelector('.row-50')).not.toBeNull());
+    expect(document.querySelector('.row-0')).toBeNull();
+    expect(document.querySelector<HTMLElement>('[data-window=before]')!.style.height).toBe(
+      `${47 * 30}px`,
+    );
+  });
+
+  it('take the tag of their spacers from the element where a component inserts them', async () => {
+    await resume('windowedChildren', {});
+    const before = document.querySelector('[data-window=before]')!;
+    expect(before.tagName).toBe('TR');
+    expect(before.parentElement!.classList.contains('win-body')).toBe(true);
+    expect(document.querySelector('[data-window=after]')!.tagName).toBe('TR');
+  });
+
+  it('keep the state of an item that leaves the view, while it is in the list', async () => {
+    const scroll = { top: 0 };
+    layout(scroll);
+    await resume('windowed', {});
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(7));
+    click(document.querySelector('.pick-1')!);
+    await waitFor(() => expect(text('.pick-1')).toBe('Row 1 1'));
+    scroll.top = 30 * 50;
+    document.querySelector('.scroll')!.dispatchEvent(new Event('scroll'));
+    await waitFor(() => expect(document.querySelector('.row-1')).toBeNull());
+    scroll.top = 0;
+    document.querySelector('.scroll')!.dispatchEvent(new Event('scroll'));
+    await waitFor(() => expect(document.querySelector('.row-1')).not.toBeNull());
+    expect(text('.pick-1')).toBe('Row 1 1');
+    // An item that the list drops goes, and the window shows the next ones.
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(document.querySelector('.row-0')).toBeNull());
+    expect(document.querySelector('.row-1')).not.toBeNull();
+  });
+});
+
+describe('blocks in children', () => {
+  it('render the bodies that the browser adds with the contexts where the children are', async () => {
+    await resume('blockInChildren', {});
+    expect(text('.item-a')).toBe('boxed');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.item-b')).toBe('boxed'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.later')).toBe('boxed'));
+  });
+});
+
 describe('cloned markup', () => {
   it('builds the blocks that never update inside a clone, and its handlers run', async () => {
     await resume('clonedStatic', {});

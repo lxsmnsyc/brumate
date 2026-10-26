@@ -1,0 +1,24 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { NavigationLinkContext } from './navigation-tree.ts';
+
+  /**
+   * The link of a NavigationTreeItem, as NavigationTreeItemLink of React Aria Components. It
+   * links to the `href` of its item, and has `aria-current="page"` and `data-current` when that
+   * is the route of the tree. An item without an `href` shows its text, with no link.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const link = $getContext(NavigationLinkContext);
+</script>
+
+#if (link?.href) {
+  <a
+    href=(link.href)
+    aria-current=(link.isCurrent ? 'page' : undefined)
+    data-current=(link.isCurrent || undefined)
+    {...rest}
+  >{children}</a>
+} #else {
+  <span {...rest}>{children}</span>
+}

@@ -294,6 +294,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         ((block.kind === 'client' && scope.body === block.body) ||
           // A portal into a target renders on the client, where the target is.
           (block.kind === 'portal' && block.target !== undefined) ||
+          // The browser renders the items of a windowed list as they come into view.
+          (block.kind === 'for' && block.window !== undefined && scope.body === block.body) ||
           // Client code can call `reset` to render a `#try` body again, and an error in the
           // client code of the body renders the `#catch` body.
           (block.kind === 'try' &&
@@ -312,6 +314,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         site.kind === 'event' ||
         site.kind === 'client' ||
         (site.kind === 'prop' && isFunctionValue(site)) ||
+        // The window of a windowed list reads its list, its key and its height in the browser.
+        (site.kind === 'block' && site.block?.kind === 'for' && site.block.window !== undefined) ||
         (site.kind === 'effect' && live.has(siteNodes.get(site)!)) ||
         created.has(site.scope);
       if (isRoot) {

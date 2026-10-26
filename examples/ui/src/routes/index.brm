@@ -12,6 +12,7 @@
   import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
   import Form from '@brumate/ui/Form.brm';
   import Input from '@brumate/ui/Input.brm';
   import Radio from '@brumate/ui/Radio.brm';
@@ -47,6 +48,29 @@
   import TagList from '@brumate/ui/TagList.brm';
   import GridList from '@brumate/ui/GridList.brm';
   import GridListItem from '@brumate/ui/GridListItem.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+  import Table from '@brumate/ui/Table.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Cell from '@brumate/ui/Cell.brm';
+  import ColumnResizer from '@brumate/ui/ColumnResizer.brm';
+  import ResizableTableContainer from '@brumate/ui/ResizableTableContainer.brm';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import { treeData } from '@brumate/ui/data.brm.ts';
+  import type { TreeDataNode } from '@brumate/ui/data.ts';
+  import { moveKeys } from '@brumate/ui/data.ts';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
   import Calendar from '@brumate/ui/Calendar.brm';
@@ -100,6 +124,7 @@
   let dark = $signal(false);
   let align = $signal(['left']);
   let files = $signal('No files picked.');
+  let dropCount = $signal(0);
   let noteShown = $signal(true);
   let animals = $signal<Key[]>([]);
   let menuAction = $signal<Key>('none');
@@ -116,7 +141,65 @@
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
+  let gridFiles = $signal(['notes', 'photos', 'music']);
   let fileOpened = $signal('none');
+  // A file tree: folders with children, opened and selected.
+  interface Folder {
+    id: string;
+    name: string;
+    children?: Folder[];
+  }
+  const { items: folders, append: addFolderItem } = treeData<Folder>({
+    initialItems: [
+      {
+        id: 'src',
+        name: 'src',
+        children: [
+          { id: 'app', name: 'app.brm' },
+          { id: 'lib', name: 'lib', children: [{ id: 'util', name: 'util.ts' }] },
+        ],
+      },
+      { id: 'readme', name: 'README.md' },
+    ],
+  });
+  let openFolders = $signal<Key[]>([]);
+  // A long list of files, which renders only the rows in view.
+  const manyFiles = Array.from({ length: 1000 }, (_, index) => ({ id: `many-${index}`, name: `File ${index}` }));
+  let note = $signal<TokenSegment[]>([{ type: 'text', text: 'Hi ' }]);
+  // A tree of links to the sections of this page.
+  interface Section extends NavigationNode {
+    title: string;
+    children?: Section[];
+  }
+  const sections: Section[] = [
+    {
+      id: 'collections',
+      title: 'Collections',
+      children: [
+        { id: 'tree-link', title: 'Tree', href: '#tree' },
+        { id: 'table-link', title: 'Table', href: '#table' },
+      ],
+    },
+    { id: 'slider-link', title: 'Slider', href: '#slider' },
+  ];
+  // A table of planets, sorted by the column that the user picks.
+  const planets = [
+    { id: 'mercury', name: 'Mercury', moons: 0 },
+    { id: 'earth', name: 'Earth', moons: 1 },
+    { id: 'mars', name: 'Mars', moons: 2 },
+  ];
+  let planetSort = $signal<SortDescriptor | null>(null);
+  let pickedPlanets = $signal<Key[]>([]);
+  const planetRows = $memo(
+    planetSort
+      ? [...planets].sort((a, b) => {
+          const order =
+            planetSort!.column === 'moons' ? a.moons - b.moons : a.name.localeCompare(b.name);
+          return planetSort!.direction === 'ascending' ? order : -order;
+        })
+      : planets,
+  );
+  let pickedFolder = $signal<Key[]>([]);
   let petSent = $signal('');
 
   async function order(form: FormData) {
@@ -312,6 +395,14 @@
     <Button class="press">Pick files</Button>
   </FileTrigger>
   <p class="files">{files}</p>
+</section>
+
+<section aria-labelledby="drop-zone">
+  <h2 id="drop-zone">DropZone</h2>
+  <DropZone class="drop-zone" onDrop=((event) => { dropCount = event.items.length; })>
+    <Text slot="label">Drop here</Text>
+  </DropZone>
+  <p class="drop-state">{dropCount} items dropped.</p>
 </section>
 
 <section aria-labelledby="disclosure">
@@ -510,15 +601,79 @@
 
 <section aria-labelledby="gridlist">
   <h2 id="gridlist">GridList</h2>
-  <GridList class="file-grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(pickedFiles)>
-    #for (file of ['notes', 'photos', 'music'] by file) {
-      <GridListItem id=file class="file-row" textValue=file>
+  <GridList
+    class="file-grid"
+    aria-label="Files"
+    selectionMode="multiple"
+    selectedKeys=$bind(pickedFiles)
+    onReorder=((event) => (gridFiles = moveKeys(gridFiles, event.target.key, event.keys, event.target.dropPosition === 'after', (file) => file)))
+  >
+    #for (file of gridFiles by file) {
+      <GridListItem id=file class=(`file-row file-${file}`) textValue=file>
+        <Button slot="drag" class=(`file-drag drag-${file}`)>≡</Button>
         <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
         <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
       </GridListItem>
     }
   </GridList>
   <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+  <p class="file-order">{gridFiles.join(',')}</p>
+</section>
+
+<section aria-labelledby="tree">
+  <h2 id="tree">Tree</h2>
+  <Tree class="folder-tree" aria-label="Folders" items=folders item=folderRow selectionMode="single" selectedKeys=$bind(pickedFolder) expandedKeys=$bind(openFolders) />
+  <p class="folder-state">{openFolders.join(',') || 'None'} / {pickedFolder.join(',') || 'None'}</p>
+  <Button class="press folder-add" onPress=(() => addFolderItem('src', { id: 'main', name: 'main.ts' }))>Add main.ts</Button>
+</section>
+
+<section aria-labelledby="virtualizer">
+  <h2 id="virtualizer">Virtualizer</h2>
+  <Virtualizer class="many-box" rowHeight=(24) style="height: 120px">
+    <Tree class="many-tree" aria-label="Many files" items=manyFiles item=manyRow />
+  </Virtualizer>
+</section>
+
+<section aria-labelledby="token-field">
+  <h2 id="token-field">TokenField</h2>
+  <TokenField class="note-field" pattern="[#@]\S+" value=$bind(note)>
+    <Label>Note</Label>
+    <TokenInput class="note-input" token=noteToken style="border: 1px solid #555; padding: 0.5rem; min-width: 16rem" />
+  </TokenField>
+  <p class="note-state">{note.map((segment) => (segment.type === 'token' ? `[${segment.text}]` : segment.text)).join('')}</p>
+</section>
+
+<section aria-labelledby="navigation-tree">
+  <h2 id="navigation-tree">NavigationTree</h2>
+  <nav aria-label="Sections">
+    <NavigationTree class="section-tree" aria-label="Sections" items=sections item=sectionRow selectedRoute="#table" />
+  </nav>
+</section>
+
+<section aria-labelledby="table">
+  <h2 id="table">Table</h2>
+  <ResizableTableContainer class="planet-box">
+  <Table class="planet-table" aria-label="Planets" selectionMode="multiple" selectedKeys=$bind(pickedPlanets) sortDescriptor=$bind(planetSort)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="planet-all" aria-label="Select all">All</Checkbox></Column>
+      <Column id="name" class="planet-name-column" style="position: relative" isRowHeader allowsSorting defaultWidth=(150) minWidth=(100)>
+        <span tabindex="-1">Name</span>
+        <ColumnResizer class="planet-resizer" style="position: absolute; inset-block: 0; inset-inline-end: 0; width: 8px; cursor: col-resize; background: #ccc" />
+      </Column>
+      <Column id="moons" class="planet-moons-column" allowsSorting>Moons</Column>
+    </TableHeader>
+    <TableBody>
+      #for (planet of planetRows by planet.id) {
+        <Row id=(planet.id) class=(`planet-row planet-${planet.id}`)>
+          <Cell><Checkbox slot="selection" aria-label=(`Select ${planet.name}`) /></Cell>
+          <Cell class="planet-name">{planet.name}</Cell>
+          <Cell class=(`planet-moons planet-moons-${planet.id}`)>{planet.moons}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+  </ResizableTableContainer>
+  <p class="planet-state">{pickedPlanets.join(',') || 'None'} / {planetSort ? `${planetSort.column} ${planetSort.direction}` : 'unsorted'}</p>
 </section>
 
 <section aria-labelledby="numberfield">
@@ -651,6 +806,32 @@
 </section>
 
 <ToastRegion class="toasts" toast=notice transition />
+
+#template manyRow(file: { id: string; name: string }) {
+  <TreeItem class=(`many-row many-${file.id}`) style="height: 24px">{file.name}</TreeItem>
+}
+
+#template noteToken(segment: TokenSegment) {
+  <Token class="note-token" style="background: #ddd; padding: 0 0.3rem">{segment.text}</Token>
+}
+
+#template sectionRow(section: Section) {
+  <NavigationTreeItem class=(`section-row section-${section.id}`) textValue=(section.title) href=(section.href)>
+    #if (section.children) {
+      <Button slot="chevron" class="section-chevron">▸</Button>
+    }
+    <NavigationTreeItemLink class=(`section-link section-link-${section.id}`)>{section.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}
+
+#template folderRow(folder: TreeDataNode<Folder>) {
+  <TreeItem class=(`folder-row folder-${folder.id}`) textValue=(folder.value.name)>
+    #if (folder.children) {
+      <Button slot="chevron" class="folder-chevron">▸</Button>
+    }
+    {folder.value.name}
+  </TreeItem>
+}
 
 #template notice(toast: QueuedToast<{ title: string }>) {
   <Toast {toast} class="toast">

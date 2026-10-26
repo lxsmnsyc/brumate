@@ -1,0 +1,26 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DropZone from '../../src/DropZone.brm';
+  import Text from '../../src/Text.brm';
+  import type { DropEvent, DropOperation } from '../../src/drop.ts';
+
+  let dropped = $signal<string[]>([]);
+  let entered = $signal(0);
+
+  async function received(event: DropEvent) {
+    const texts: string[] = [];
+    for (const item of event.items) {
+      texts.push(item.kind === 'text' ? await item.getText('text/plain') : `file:${item.name}`);
+    }
+    dropped = [...dropped, ...texts];
+  }
+
+  function onlyText(types: Set<string>): DropOperation {
+    return types.has('text/plain') ? 'copy' : 'cancel';
+  }
+</script>
+
+<DropZone class="zone" onDrop=received onDropEnter=(() => entered++) getDropOperation=onlyText>
+  <Text slot="label" class="label">Drop text here</Text>
+</DropZone>
+<p class="state">{JSON.stringify([dropped, entered])}</p>

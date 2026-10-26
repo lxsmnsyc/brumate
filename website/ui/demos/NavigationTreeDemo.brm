@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Page extends NavigationNode {
+    title: string;
+    children?: Page[];
+  }
+
+  const pages: Page[] = [
+    { id: 'start', title: 'Getting started', href: '#start' },
+    {
+      id: 'guides',
+      title: 'Guides',
+      children: [
+        { id: 'forms', title: 'Forms', href: '#forms' },
+        {
+          id: 'data',
+          title: 'Data',
+          children: [
+            { id: 'tables', title: 'Tables', href: '#tables' },
+            { id: 'trees', title: 'Trees', href: '#trees' },
+          ],
+        },
+      ],
+    },
+    { id: 'api', title: 'API', href: '#api' },
+  ];
+  let open = $signal<Key[]>([]);
+</script>
+
+<nav aria-label="Guide">
+  <NavigationTree class="ui-tree" aria-label="Guide" items=pages item=page selectedRoute="#tables" expandedKeys=$bind(open) />
+</nav>
+
+#template page(page: Page) {
+  <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href)>
+    #if (page.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    <NavigationTreeItemLink class="ui-navlink">{page.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

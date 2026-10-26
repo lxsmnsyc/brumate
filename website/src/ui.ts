@@ -26,13 +26,14 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   { title: 'Start', pages: ['', 'styling', 'state', 'resuming', 'layers', 'influences'] },
   {
     title: 'Buttons',
-    pages: ['button', 'toggle-button', 'toggle-button-group', 'link', 'file-trigger'],
+    pages: ['button', 'toggle-button', 'toggle-button-group', 'link', 'file-trigger', 'drop-zone'],
   },
   {
     title: 'Forms',
     pages: [
       'text-field',
       'search-field',
+      'token-field',
       'number-field',
       'slider',
       'checkbox',
@@ -64,6 +65,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'selection-indicator',
     ],
   },
+  { title: 'Data', pages: ['table', 'tree', 'navigation-tree', 'virtualizer', 'data'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
@@ -107,6 +109,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Opens the file picker from a button.',
     href: 'file-trigger',
     demo: 'FileTriggerDemo',
+  },
+  {
+    title: 'DropZone',
+    summary: 'An area that takes drops and pastes of text and files.',
+    href: 'drop-zone',
+    demo: 'DropZoneDemo',
   },
   {
     title: 'TextField',
@@ -287,6 +295,42 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Rows with buttons and checkboxes, to select and act on.',
     href: 'grid-list',
     demo: 'GridListDemo',
+  },
+  {
+    title: 'Table',
+    summary: 'Rows and columns that the user can select and sort.',
+    href: 'table',
+    demo: 'TableDemo',
+  },
+  {
+    title: 'Tree',
+    summary: 'Rows that nest and open and close, such as files in folders.',
+    href: 'tree',
+    demo: 'TreeDemo',
+  },
+  {
+    title: 'NavigationTree',
+    summary: 'A tree of links that shows the page that the user is on.',
+    href: 'navigation-tree',
+    demo: 'NavigationTreeDemo',
+  },
+  {
+    title: 'TokenField',
+    summary: 'Text with mentions and tags that the user types.',
+    href: 'token-field',
+    demo: 'TokenFieldDemo',
+  },
+  {
+    title: 'Virtualizer',
+    summary: 'Thousands of rows that render as they come into view.',
+    href: 'virtualizer',
+    demo: 'VirtualizerDemo',
+  },
+  {
+    title: 'List and tree data',
+    summary: 'Items that an app adds, moves and removes, with their selection.',
+    href: 'data',
+    demo: 'DataDemo',
   },
   {
     title: 'SelectionIndicator',

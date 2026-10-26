@@ -698,9 +698,261 @@
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
+  :global(.ui-gridrow[data-dragging]) {
+    opacity: 0.5;
+  }
+
+  :global(.ui-gridrow[data-drop-target='before']) {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+
+  :global(.ui-gridrow[data-drop-target='after']) {
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  :global(.ui-grip) {
+    display: grid;
+    place-items: center;
+    padding: 0.15rem;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    cursor: grab;
+  }
+
+  :global(.ui-grip:focus-visible) {
+    outline: 2px solid var(--accent);
+  }
+
   :global(.ui-gridrow .ui-button) {
     margin-inline-start: auto;
     padding: 0.2rem 0.6rem;
+  }
+
+  /* A table: its sorted column shows an arrow, and selected rows take the accent. */
+  :global(.ui-table) {
+    width: min(32rem, 100%);
+    border-collapse: collapse;
+    border: 1px solid var(--border);
+    outline: none;
+  }
+
+  :global(.ui-table:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-column) {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    text-align: start;
+    outline: none;
+  }
+
+  :global(.ui-column[data-allows-sorting]) {
+    cursor: pointer;
+  }
+
+  :global(.ui-column[data-sort-direction='ascending'])::after {
+    content: ' ▲';
+  }
+
+  :global(.ui-column[data-sort-direction='descending'])::after {
+    content: ' ▼';
+  }
+
+  :global(.ui-resizable) {
+    max-width: 100%;
+  }
+
+  :global(.ui-resizable-column) {
+    position: relative;
+  }
+
+  /* A resizer: a bar at the end of the header, which shows while it is used. */
+  :global(.ui-resizer) {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 6px;
+    cursor: col-resize;
+    border-inline-end: 2px solid var(--border);
+  }
+
+  :global(.ui-resizer[data-resizing]),
+  :global(.ui-resizer[data-focus-visible]) {
+    border-color: var(--accent);
+  }
+
+  :global(.ui-select-column) {
+    width: 2rem;
+  }
+
+  :global(.ui-tablerow) {
+    outline: none;
+  }
+
+  :global(.ui-tablerow[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-tablerow[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-tablerow[data-focus-visible]),
+  :global(.ui-column:focus-visible),
+  :global(.ui-cell:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-cell) {
+    padding: 0.35rem 0.6rem;
+    font-weight: normal;
+    text-align: start;
+    outline: none;
+  }
+
+  :global(.ui-number) {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A tree: rows indented by their level, with a chevron that turns while the row is open. */
+  :global(.ui-tree) {
+    display: grid;
+    width: min(22rem, 100%);
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+  }
+
+  :global(.ui-tree:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-treerow) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.3rem 0.5rem;
+    padding-inline-start: calc(0.5rem + (var(--tree-item-level) - 1) * 1.25rem);
+    border-radius: 6px;
+    outline: none;
+  }
+
+  :global(.ui-treerow[data-hovered]) {
+    background: var(--surface);
+  }
+
+  :global(.ui-treerow[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-treerow[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  :global(.ui-row-action) {
+    margin-inline-start: auto;
+    padding: 0 0.5rem;
+  }
+
+  /* A field of text with tokens: each token is a chip in the line of text. */
+  :global(.ui-token-input) {
+    min-height: 2.5rem;
+    line-height: 1.8;
+  }
+
+  :global(.ui-token) {
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  :global(.ui-mention) {
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  :global(.ui-token[data-selected]) {
+    background: var(--accent-soft);
+  }
+
+  :global(.ui-dropzone) {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: center;
+    padding: 1.5rem;
+    width: min(22rem, 100%);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  :global(.ui-dropzone[data-drop-target]),
+  :global(.ui-dropzone[data-focus-visible]) {
+    border-style: solid;
+    border-color: currentColor;
+  }
+
+  :global(.ui-virtualizer) {
+    height: 16rem;
+    width: min(22rem, 100%);
+  }
+
+  :global(.ui-virtualizer .ui-tree) {
+    width: 100%;
+  }
+
+  :global(.ui-navlink) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :global(.ui-navlink[aria-current='page']) {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  :global(.ui-navrow[data-current-ancestor])::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin-inline-start: auto;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  :global(.ui-chevron) {
+    display: inline-grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    transform: rotate(-90deg);
+    transition: transform 0.15s;
+  }
+
+  :global(.ui-treerow[data-expanded] .ui-chevron) {
+    transform: none;
+  }
+
+  :global(.ui-treerow:dir(rtl) .ui-chevron) {
+    transform: rotate(90deg);
+  }
+
+  :global(.ui-treerow[data-expanded]:dir(rtl) .ui-chevron) {
+    transform: none;
   }
 
   /* A bar under the selected tab, which slides to the next one. */

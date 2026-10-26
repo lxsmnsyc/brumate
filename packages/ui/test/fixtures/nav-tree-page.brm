@@ -1,0 +1,42 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import NavigationTree from '../../src/NavigationTree.brm';
+  import NavigationTreeItem from '../../src/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '../../src/NavigationTreeItemLink.brm';
+  import type { Key } from '../../src/collection.ts';
+  import type { NavigationNode } from '../../src/navigation-tree.ts';
+
+  interface Page extends NavigationNode {
+    title: string;
+    children?: Page[];
+  }
+
+  const pages: Page[] = [
+    { id: 'start', title: 'Start', href: '#start' },
+    {
+      id: 'guides',
+      title: 'Guides',
+      children: [
+        { id: 'forms', title: 'Forms', href: '#forms' },
+        { id: 'data', title: 'Data', children: [{ id: 'tables', title: 'Tables', href: '#tables' }] },
+      ],
+    },
+    { id: 'api', title: 'API', href: '#api' },
+  ];
+  let open = $signal<Key[]>([]);
+</script>
+
+<nav aria-label="Pages">
+  <NavigationTree class="nav" aria-label="Pages" items=pages item=page selectedRoute="#tables" expandedKeys=$bind(open) />
+</nav>
+<p class="state">{JSON.stringify(open)}</p>
+
+#template page(page: Page) {
+  <NavigationTreeItem class=(`item item-${page.id}`) href=(page.href) textValue=(page.title)>
+    #if (page.children) {
+      <Button slot="chevron" class=(`chevron chevron-${page.id}`)>▸</Button>
+    }
+    <NavigationTreeItemLink class=(`link link-${page.id}`)>{page.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

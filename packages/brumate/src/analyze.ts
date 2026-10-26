@@ -1351,6 +1351,12 @@ class Analyzer {
         break;
       case 'for':
         this.header(block, scope, block.list, 'for');
+        if (block.window) {
+          this.header(block, scope, block.window.height, 'for window');
+          if (block.window.count) {
+            this.header(block, scope, block.window.count, 'for window');
+          }
+        }
         if (block.key && block.key !== 'index') {
           // The key reads the item, so it resolves in the body scope.
           const key = block.key;

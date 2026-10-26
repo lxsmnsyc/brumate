@@ -1,0 +1,32 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Cell from '../../src/Cell.brm';
+  import Column from '../../src/Column.brm';
+  import ColumnResizer from '../../src/ColumnResizer.brm';
+  import ResizableTableContainer from '../../src/ResizableTableContainer.brm';
+  import Row from '../../src/Row.brm';
+  import Table from '../../src/Table.brm';
+  import TableBody from '../../src/TableBody.brm';
+  import TableHeader from '../../src/TableHeader.brm';
+  import type { SortDescriptor } from '../../src/table.ts';
+
+  let widths = $signal<[string, number][]>([]);
+  let ended = $signal(0);
+  let sort = $signal<SortDescriptor | null>(null);
+</script>
+
+<ResizableTableContainer class="box" onResize=((map) => (widths = [...map])) onResizeEnd=(() => ended++)>
+  <Table class="table" aria-label="Files" sortDescriptor=$bind(sort)>
+    <TableHeader>
+      <Column id="name" class="col-name" isRowHeader allowsSorting defaultWidth=(200) minWidth=(100) maxWidth=(300)>
+        <span tabindex="-1" class="label-name">Name</span>
+        <ColumnResizer class="resizer-name" />
+      </Column>
+      <Column id="size" class="col-size" defaultWidth=(80)>Size</Column>
+    </TableHeader>
+    <TableBody>
+      <Row id="a" class="row-a"><Cell>a.txt</Cell><Cell>1</Cell></Row>
+    </TableBody>
+  </Table>
+</ResizableTableContainer>
+<p class="state">{JSON.stringify([widths, ended, sort])}</p>

@@ -11,11 +11,7 @@
   "exports": {
     "./*.brm": "./src/*.brm",
     "./*.brm.ts": "./src/*.brm.ts",
-    "./toast.ts": "./src/toast.ts",
-    "./collection.ts": "./src/collection.ts",
-    "./menu.ts": "./src/menu.ts",
-    "./calendar.ts": "./src/calendar.ts",
-    "./segments.ts": "./src/segments.ts"
+    "./*.ts": "./src/*.ts"
   },
   "scripts": {
     "typecheck": "brumate-tsc --noEmit",

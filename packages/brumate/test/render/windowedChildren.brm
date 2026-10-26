@@ -1,0 +1,12 @@
+<script>
+  import WinBody from './WinBody.brm';
+  const rows = Array.from({ length: 50 }, (_, index) => ({ id: index, name: `Row ${index}` }));
+</script>
+
+<table>
+  <WinBody>
+    #for (row of rows by row.id) window(30, 4) {
+      <tr class="win-row"><td>{row.name}</td></tr>
+    }
+  </WinBody>
+</table>

@@ -1,11 +1,15 @@
 <script>
-  import { $getContext, $id, $isPassed, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
+  import { ROWS_TYPE, setDragData } from './drop.ts';
+  import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
+  import VisuallyHidden from './VisuallyHidden.brm';
   import {
     ListBoxContext,
     enabledItems,
     focusItem,
+    itemsOf,
     isTyping,
     keyOf,
     keysBetween,
@@ -16,6 +20,7 @@
     sameKeys,
     setLastFocused,
     setRange,
+    textOfItem,
     typeahead,
   } from './collection.ts';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
@@ -33,6 +38,10 @@
    * - Selection is as in ListBox: `selectionMode`, `selectionBehavior`, `selectedKeys`, Space,
    *   Shift, Ctrl+A and Escape. A Checkbox with `slot="selection"` in a row shows and toggles it.
    * - Enter acts on a row with `onAction`, and a press does when nothing is selectable.
+   * - With `onReorder`, rows drag to new places in the list. With `getItems`, they drag out, such
+   *   as to a DropZone, with the data that it gives. A drag takes the selected rows when the
+   *   dragged row is selected, else that row. A Button with `slot="drag"` in a row starts a drag
+   *   from the keys: Up and Down choose where, Enter drops and Escape cancels.
    */
   const {
     selectionMode = 'none',
@@ -42,6 +51,8 @@
     escapeKeyBehavior = 'clearSelection',
     onAction,
     onSelectionChange,
+    onReorder,
+    getItems,
     children,
     ...rest
   } = $props<{
@@ -52,6 +63,8 @@
     escapeKeyBehavior?: 'clearSelection' | 'none';
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
+    onReorder?: (event: ReorderEvent) => void;
+    getItems?: (keys: Key[]) => DragItem[];
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -59,6 +72,14 @@
 
   const locale = $getContext(LocaleContext);
   const hasAction = $isPassed(onAction);
+  const hasReorder = $isPassed(onReorder);
+  const hasItems = $isPassed(getItems);
+  const isDraggable = hasReorder || hasItems;
+  // The rows that a drag moves, where they would go, and whether the keys drag them.
+  let dragging = $signal<Key[]>([]);
+  let dropTarget = $signal<DropTarget | null>(null);
+  let byKeys = $signal(false);
+  let announcement = $signal('');
   const gridId = $id();
   let root = $signal<HTMLElement>();
 
@@ -94,6 +115,141 @@
     onAction?.(key);
   }
 
+  /** The rows that a drag of the row moves: the selection when the row is in it, else the row. */
+  function draggedKeys(key: Key): Key[] {
+    return selectedKeys.includes(key) ? [...selectedKeys] : [key];
+  }
+
+  function rowWith(key: Key): HTMLElement | undefined {
+    const element = root;
+    return element ? itemsOf(element, 'row').find((item) => keyOf(item) === key) : undefined;
+  }
+
+  /** Where a drop can go from the keys: before each row that does not move, and after the last. */
+  function dropTargets(): DropTarget[] {
+    const element = root;
+    if (!element) {
+      return [];
+    }
+    const keys = itemsOf(element, 'row').map((item) => keyOf(item)!);
+    const targets: DropTarget[] = keys
+      .filter((key) => !dragging.includes(key))
+      .map((key) => ({ key, dropPosition: 'before' }));
+    const last = keys.at(-1);
+    if (last !== undefined && !dragging.includes(last)) {
+      targets.push({ key: last, dropPosition: 'after' });
+    }
+    return targets;
+  }
+
+  function aim(target: DropTarget | undefined) {
+    if (!target) {
+      return;
+    }
+    dropTarget = target;
+    const row = rowWith(target.key);
+    focusItem(row);
+    announcement = `Drop ${target.dropPosition} ${row ? textOfItem(row) : ''}`.trim();
+  }
+
+  function startDrag(key: Key) {
+    if (!onReorder) {
+      return;
+    }
+    dragging = draggedKeys(key);
+    byKeys = true;
+    const targets = dropTargets();
+    // The first place after the dragged rows, or else the last.
+    const row = rowWith(key);
+    const after = targets.find((target) => {
+      const other = rowWith(target.key);
+      return Boolean(row && other && row.compareDocumentPosition(other) & 4 && target.dropPosition === 'before');
+    });
+    aim(after ?? targets.at(-1));
+    announcement = `Dragging ${dragging.length === 1 ? 'a row' : `${dragging.length} rows`}. Up and Down choose where, Enter drops, Escape cancels. ${announcement}`;
+  }
+
+  function endDrag(message: string) {
+    dragging = [];
+    dropTarget = null;
+    byKeys = false;
+    announcement = message;
+  }
+
+  function drop() {
+    const target = dropTarget;
+    const keys = dragging;
+    endDrag('Dropped.');
+    if (target && keys.length > 0) {
+      onReorder?.({ keys, target });
+    }
+  }
+
+  // A drag reads and writes its DataTransfer only while its events run, so native listeners,
+  // which run at once, take the drags. The markup prevents the default of a drag over the rows.
+  $client(() => {
+    const element = root;
+    if (!element || !isDraggable) {
+      return undefined;
+    }
+    const dragStart = (event: DragEvent) => {
+      const row = rowOf(event.target);
+      const key = row ? keyOf(row) : undefined;
+      if (!row || key === undefined || !event.dataTransfer || disabledKeys.includes(key)) {
+        return;
+      }
+      const keys = draggedKeys(key);
+      setDragData(event.dataTransfer, getItems ? getItems(keys) : keys.map((item) => ({ 'text/plain': String(item) })));
+      event.dataTransfer.setData(ROWS_TYPE, gridId);
+      event.dataTransfer.effectAllowed = onReorder ? 'copyMove' : 'copy';
+      dragging = keys;
+    };
+    const dragOver = (event: DragEvent) => {
+      const row = rowOf(event.target);
+      const key = row ? keyOf(row) : undefined;
+      if (!onReorder || dragging.length === 0 || !row || key === undefined) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+      const box = row.getBoundingClientRect();
+      const dropPosition = event.clientY < box.top + box.height / 2 ? 'before' : 'after';
+      if (dropTarget?.key !== key || dropTarget.dropPosition !== dropPosition) {
+        dropTarget = { key, dropPosition };
+      }
+    };
+    const dragLeave = (event: DragEvent) => {
+      if (!element.contains(event.relatedTarget as Node | null)) {
+        dropTarget = null;
+      }
+    };
+    const dropped = (event: DragEvent) => {
+      if (dragging.length > 0 && dropTarget) {
+        event.preventDefault();
+        drop();
+      }
+    };
+    const dragEnd = () => {
+      if (dragging.length > 0) {
+        endDrag('');
+      }
+    };
+    element.addEventListener('dragstart', dragStart);
+    element.addEventListener('dragover', dragOver);
+    element.addEventListener('dragleave', dragLeave);
+    element.addEventListener('drop', dropped);
+    element.addEventListener('dragend', dragEnd);
+    return () => {
+      element.removeEventListener('dragstart', dragStart);
+      element.removeEventListener('dragover', dragOver);
+      element.removeEventListener('dragleave', dragLeave);
+      element.removeEventListener('drop', dropped);
+      element.removeEventListener('dragend', dragEnd);
+    };
+  }, 'load');
+
   // The rows read the selection from the state of a ListBox, which they share with its options.
   $setContext(ListBoxContext, {
     selectionMode,
@@ -103,6 +259,10 @@
     select,
     action,
     hasAction,
+    isDraggable,
+    dragging,
+    dropTarget,
+    startDrag,
   });
 
   function rowOf(target: EventTarget | null) {
@@ -169,6 +329,25 @@
     const rtl = locale.direction === 'rtl';
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
+    // A drag from the keys takes the keys until it drops or cancels.
+    if (byKeys) {
+      const targets = dropTargets();
+      const at = targets.findIndex(
+        (target) => target.key === dropTarget?.key && target.dropPosition === dropTarget.dropPosition,
+      );
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        aim(targets[Math.min(Math.max(at + (event.key === 'ArrowDown' ? 1 : -1), 0), targets.length - 1)]);
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        drop();
+      } else if (event.key === 'Escape' || event.key === 'Tab') {
+        event.preventDefault();
+        const first = dragging[0];
+        endDrag('Drag canceled.');
+        focusItem(first === undefined ? undefined : rowWith(first));
+      }
+      return;
+    }
     if (event.key === 'Tab') {
       // Tab leaves the list: the browser moves on from its last control, or back from the list.
       const all = tabbables(element);
@@ -283,5 +462,8 @@
   onFocusIn=focusIn
   onFocusOut=focusOut
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
+  data-dragging=(dragging.length > 0 || undefined)
+  onDragOver=(prevent(() => {}))
   {...rest}
 >{children}</div>
+<VisuallyHidden><span aria-live="assertive">{announcement}</span></VisuallyHidden>

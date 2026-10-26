@@ -1,0 +1,24 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import GridList from '../../src/GridList.brm';
+  import GridListItem from '../../src/GridListItem.brm';
+  import { moveKeys } from '../../src/data.ts';
+  import type { ReorderEvent } from '../../src/drop.ts';
+
+  let files = $signal(['a', 'b', 'c', 'd']);
+
+  function reorder(event: ReorderEvent) {
+    files = moveKeys(files, event.target.key, event.keys, event.target.dropPosition === 'after', (file) => file);
+  }
+</script>
+
+<GridList class="list" aria-label="Files" selectionMode="multiple" onReorder=reorder getItems=((keys) => keys.map((key) => ({ 'text/plain': `file ${key}` })))>
+  #for (file of files by file) {
+    <GridListItem id=file textValue=(`File ${file}`) class=(`row row-${file}`)>
+      <Button slot="drag" class=(`drag drag-${file}`)>≡</Button>
+      File {file}
+    </GridListItem>
+  }
+</GridList>
+<p class="state">{JSON.stringify(files)}</p>

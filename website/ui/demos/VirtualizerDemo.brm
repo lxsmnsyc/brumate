@@ -1,0 +1,22 @@
+<script>
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+
+  interface File {
+    id: string;
+    name: string;
+  }
+  const files: File[] = Array.from({ length: 5000 }, (_, index) => ({
+    id: `file-${index}`,
+    name: `Photo ${String(index + 1).padStart(4, '0')}.jpg`,
+  }));
+</script>
+
+<Virtualizer class="ui-virtualizer" rowHeight=(32)>
+  <Tree class="ui-tree" aria-label="5000 photos" items=files item=file />
+</Virtualizer>
+
+#template file(file: File) {
+  <TreeItem class="ui-treerow" textValue=(file.name)>{file.name}</TreeItem>
+}

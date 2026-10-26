@@ -35,3 +35,30 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 ## Rows
 
 The GridList is a grid, and each GridListItem is a row with one cell, as in React Aria. A press on a control in a row, such as a Button, is the control's own, and does not select the row. A row shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
+
+## Drag and drop
+
+Rows drag to new places with `onReorder`, and out of the list, such as to a [DropZone](./drop-zone.md), with `getItems`.
+
+```html
+<GridList aria-label="Files" onReorder=reorder getItems=((keys) => keys.map((key) => ({ 'text/plain': key })))>
+  #for (file of files by file) {
+    <GridListItem id=file textValue=file>
+      <Button slot="drag">≡</Button>
+      {file}
+    </GridListItem>
+  }
+</GridList>
+```
+
+- `onReorder` gets `keys`, the rows that move, and `target`, with the `key` of a row and a `dropPosition` of `before` or `after`. `moveKeys` of the [data helpers](./data.md), or `moveBefore` and `moveAfter` of `listData`, move them.
+- `getItems` gets the keys of the rows that a drag moves, and returns the data of each row, as a string for each type, such as `text/plain`. With no `getItems`, the data is the keys as text.
+- A drag takes the selected rows when the dragged row is selected, and else that row.
+- A row shows `data-dragging` while a drag moves it, and `data-drop-target`, `before` or `after`, while a drag would drop by it.
+
+From the keys:
+
+- A `Button` with `slot="drag"` in a row starts a drag. Its label is "Drag" and the `textValue` of the row.
+- Up and Down choose where the rows go. The row by that place takes the focus.
+- Enter drops. Escape and Tab cancel.
+- A live region says what happens, for screen readers.

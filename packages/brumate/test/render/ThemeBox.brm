@@ -1,0 +1,10 @@
+<script>
+  import { $props, $setContext, $signal } from 'brumate/signals';
+  import { Theme } from './theme';
+
+  const { children } = $props<{ children?: unknown }>();
+  let box = $signal<HTMLElement>();
+  $setContext(Theme, 'boxed');
+</script>
+
+<div class="box" ref=box>{children}</div>

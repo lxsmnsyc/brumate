@@ -1,0 +1,164 @@
+<script>
+  import { $getContext, $id, $memo, $props, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { startDrag } from './drag.ts';
+  import { focusRing } from './focus.brm.ts';
+  import { ColumnContext, TableResizeContext } from './table.ts';
+
+  /**
+   * The handle that resizes a Column, as ColumnResizer of React Aria Components. It goes in a
+   * Column of a Table in a ResizableTableContainer.
+   *
+   * - A drag resizes the column. Right to left, it turns around.
+   * - It holds a hidden range input, which a screen reader reads as the width in pixels. When
+   *   the input has focus, Enter starts a resize, the arrow keys change the width by 10 pixels,
+   *   and Escape, Enter, Space, Tab or a blur end it.
+   * - It shows `data-resizing`, `data-resizable-direction` (`both`, `left` or `right`, as the
+   *   width can grow or shrink), `data-hovered`, `data-focused` and `data-focus-visible`.
+   */
+  const { 'aria-label': label = 'Resizer', ...rest } = $props<{
+    'aria-label'?: string;
+    [attribute: string]: unknown;
+  }>();
+
+  const column = $getContext(ColumnContext);
+  const sizes = $getContext(TableResizeContext);
+  const locale = $getContext(LocaleContext);
+  if (!column || !sizes) {
+    throw new Error('A ColumnResizer goes in a Column of a Table in a ResizableTableContainer.');
+  }
+  const inputId = $id();
+  const key = column.key;
+  const resizing = $memo(sizes.resizing === key);
+  const width = $memo(sizes.widths[key]);
+  let hovered = $signal(false);
+
+  const { focused, focusVisible, onFocus, onBlur: blurRing, onKeyDown: keyRing } = focusRing(
+    undefined,
+    undefined,
+    undefined,
+  );
+
+  function header(target: EventTarget | null): HTMLElement | null {
+    return (target as Element | null)?.closest<HTMLElement>('[role=columnheader]') ?? null;
+  }
+
+  function current(target: EventTarget | null): number {
+    return sizes!.widths[key] !== undefined
+      ? sizes!.widths[key]!
+      : (header(target)?.getBoundingClientRect().width ?? 0);
+  }
+
+  function pointerDown(event: PointerEvent) {
+    if (event.button !== 0) {
+      return;
+    }
+    const x = event.clientX;
+    const startWidth = current(event.currentTarget);
+    const turn = locale.direction === 'rtl' ? -1 : 1;
+    sizes!.start(key);
+    // The window follows the pointer, which leaves the resizer as it moves.
+    startDrag(
+      event.pointerId,
+      (move) => sizes!.resize(key, startWidth + (move.clientX - x) * turn),
+      () => sizes!.end(),
+    );
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    keyRing(event);
+    if (!resizing) {
+      if (event.key === 'Enter') {
+        sizes!.start(key);
+      }
+      return;
+    }
+    if (/^(Escape|Enter| |Tab)$/.test(event.key)) {
+      sizes!.end();
+      return;
+    }
+    // Up and Down change the width as Right and Left do, as in React Aria.
+    const step = { ArrowRight: 10, ArrowLeft: -10, ArrowUp: -10, ArrowDown: 10 }[event.key];
+    if (step !== undefined) {
+      const turn = locale.direction === 'rtl' && /Left|Right/.test(event.key) ? -1 : 1;
+      sizes!.resize(key, current(event.currentTarget) + step * turn);
+    }
+  }
+
+  function blurred(event: FocusEvent) {
+    blurRing(event);
+    if (resizing) {
+      sizes!.end();
+    }
+  }
+
+  // A range input changes by its own keys too, such as those of a screen reader.
+  function changed(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const before = current(input);
+    sizes!.resize(key, Number(input.value) > before ? before + 10 : before - 10);
+  }
+
+  // At its least width it can only grow, and at its most only shrink, as React Aria names them.
+  const direction = $memo(
+    width !== undefined && width <= column.minWidth
+      ? locale.direction === 'rtl'
+        ? 'right'
+        : 'left'
+      : width !== undefined && width >= column.maxWidth
+        ? locale.direction === 'rtl'
+          ? 'left'
+          : 'right'
+        : 'both',
+  );
+</script>
+
+<div
+  role="presentation"
+  data-resizing=(resizing || undefined)
+  data-resizable-direction=direction
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  onPointerDown=(prevent(pointerDown))
+  onPointerEnter=(() => (hovered = true))
+  onPointerLeave=(() => (hovered = false))
+  {...rest}
+>
+  <input
+    id=inputId
+    type="range"
+    class="input"
+    tabindex="-1"
+    aria-label=label
+    aria-labelledby=(`${inputId} ${column.headerId}`)
+    aria-orientation="horizontal"
+    aria-valuetext=(width === undefined ? undefined : `${Math.floor(width)} pixels`)
+    min=(column.minWidth)
+    max=(column.maxWidth)
+    value=(width === undefined ? undefined : Math.floor(width))
+    onFocus=onFocus
+    onBlur=blurred
+    onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Space'))
+    onInput=changed
+  />
+</div>
+
+<style>
+  div {
+    touch-action: none;
+  }
+
+  .input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
