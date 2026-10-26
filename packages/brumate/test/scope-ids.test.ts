@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 import { shiftState } from '../src/runtime/client-routes.ts';
 import {
+  Binding,
   ChildrenReference,
   ElementReference,
   FunctionReference,
@@ -33,6 +35,11 @@ function fullRecord(): Required<ScopeState> {
   };
 }
 
+/** A binding of a rest prop, whose slot and setter hold IDs. */
+function binding(): Binding {
+  return new Binding(1, new SlotReference(2, 3), new FunctionReference('X#h', 2));
+}
+
 /** Every scope ID that a reference holds in a value, found by walking it. */
 async function idsOf(value: unknown, found: ScopeId[] = []): Promise<ScopeId[]> {
   if (value instanceof Promise) {
@@ -58,14 +65,50 @@ describe('the table of scope IDs', () => {
     expect(Object.keys(SCOPE_IDS.fields).sort()).toEqual(Object.keys(fullRecord()).sort());
   });
 
-  it('names every reference class that holds a scope ID', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/runtime/shared.ts'), 'utf8');
-    const holders = [...source.matchAll(/export class (\w+)\b[^{]*\{([^}]*?)constructor/gs)]
-      .filter((match) => /readonly scope: ScopeId/.test(match[2]!))
-      .map((match) => match[1]);
-    const named = SCOPE_IDS.references.map((type) => type.name);
-    expect(holders.length).toBeGreaterThan(0);
-    expect(named.sort()).toEqual(holders.sort());
+  it('lists every class of shared.ts as a reference, a holder or a class without IDs', () => {
+    // The rule: a class may hold a reference with an ID in any field, typed or `unknown`, in a
+    // declared field or a constructor parameter. So each class of the file, found in its syntax
+    // tree, must be in `references` (its ID is its `scope`), in `holders` (its fields are
+    // walked), or in `withoutIds` below, which a person adds to after checking that it holds none.
+    const file = resolve(process.cwd(), 'src/runtime/shared.ts');
+    const { program } = parseSync(file, readFileSync(file, 'utf8'));
+    const classes: string[] = [];
+    const visit = (node: unknown): void => {
+      if (typeof node !== 'object' || node === null) {
+        return;
+      }
+      const { type, id } = node as { type?: string; id?: { name: string } | null };
+      if (type === 'ClassDeclaration' || type === 'ClassExpression') {
+        classes.push(id ? id.name : '(anonymous)');
+      }
+      for (const [key, child] of Object.entries(node)) {
+        if (key !== 'parent') {
+          visit(child);
+        }
+      }
+    };
+    visit(program);
+    const withoutIds: string[] = [];
+    const listed = [
+      ...SCOPE_IDS.references.map((type) => type.name),
+      ...SCOPE_IDS.holders.map((type) => type.name),
+      ...withoutIds,
+    ];
+    expect(classes).toContain('Binding');
+    expect(classes.filter((name) => !listed.includes(name))).toEqual([]);
+    expect(listed.filter((name) => !classes.includes(name))).toEqual([]);
+  });
+
+  it('moves the IDs of a binding', () => {
+    const state: PageState = { 1: { s: [binding()], b: { 0: binding() } } };
+    const record = shiftState(SCOPE_IDS, state, by)[101]!;
+    for (const item of [record.s![0], record.b![0]] as Binding[]) {
+      expect(item).toBeInstanceOf(Binding);
+      expect((item.ref as SlotReference).scope).toBe(102);
+      expect((item.set as FunctionReference).scope).toBe(102);
+      expect(item.ref.slot).toBe(3);
+      expect(item.value).toBe(1);
+    }
   });
 
   it('moves every ID of a record', async () => {
