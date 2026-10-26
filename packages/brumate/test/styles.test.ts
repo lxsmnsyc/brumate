@@ -23,8 +23,8 @@ describe('style languages', () => {
     }
   }
 </style>`);
-    expect(result).toMatch(/\.card\[s-\w+\] \{\n\s+padding: 8px;\n\}/);
-    expect(result).toMatch(/\.card\[s-\w+\] p\[s-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
+    expect(result).toMatch(/\.card\[b-c-\w+\] \{\n\s+padding: 8px;\n\}/);
+    expect(result).toMatch(/\.card\[b-c-\w+\] p\[b-c-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
   });
 
   it('compiles Less, then scopes it', () => {
@@ -37,8 +37,8 @@ describe('style languages', () => {
     }
   }
 </style>`);
-    expect(result).toMatch(/\.card\[s-\w+\] \{\n\s+padding: 8px;\n\}/);
-    expect(result).toMatch(/\.card\[s-\w+\] p\[s-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
+    expect(result).toMatch(/\.card\[b-c-\w+\] \{\n\s+padding: 8px;\n\}/);
+    expect(result).toMatch(/\.card\[b-c-\w+\] p\[b-c-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
   });
 
   it('reports errors of the preprocessor', () => {
@@ -97,7 +97,7 @@ function tags(markup: string, style: string, hideNames = true): string[] {
     hideNames,
   });
   const attribute = plan.styles.attribute;
-  return [...server.matchAll(/(?<=[">])<(\w+)( s-\w+)?/g)].map(
+  return [...server.matchAll(/(?<=[">])<(\w+)( b-c-\w+)?/g)].map(
     ([, tag, scoped]) => `${tag}${scoped === ` ${attribute}` ? '+' : ''}`,
   );
 }
@@ -161,7 +161,7 @@ describe('minified styles', () => {
     const { server, render } = compile(source(style), { filename: 'Card.brm', hideNames: true });
     for (const code of [server, render]) {
       expect(code).toMatch(
-        /const \$\$css = "\.card\[s-\w+\], p\[s-\w+\]\{color:red;margin:0 auto!important\}";/,
+        /const \$\$css = "\.card\[b-c-\w+\], p\[b-c-\w+\]\{color:red;margin:0 auto!important\}";/,
       );
     }
   });

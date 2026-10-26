@@ -9,3 +9,5 @@
 <button class="ten" onClick=(() => counter!.add(10))>Ten</button>
 <button class="reset" onClick=(() => counter!.reset())>Reset</button>
 <button class="double" onClick=(() => counter!.steps.double.run())>Double</button>
+<button class="hundred" onClick=(() => counter!.actions[0]!.run())>Hundred</button>
+<button class="less" onClick=(() => counter!.actions[1]!.run())>Less</button>

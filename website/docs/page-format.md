@@ -2,7 +2,7 @@
 
 The server writes markers into the HTML and the state into scripts. The core reads both to resume the page. This page describes that contract, for contributors and for tools that read brumate pages.
 
-The attributes that brumate writes start with `b-`, like the `s-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`.
+The attributes that brumate writes start with `b-`, also the `b-c-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`, and a spread writes one only when brumate made it.
 
 ## Scope IDs
 
