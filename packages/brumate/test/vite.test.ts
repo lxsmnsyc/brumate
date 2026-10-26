@@ -8,6 +8,9 @@ import { build, createServer } from 'vite';
 import type { InlineConfig, Rolldown, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from '../src/runtime/server.ts';
+
+// Each test runs a Vite server or build, which can take more than the default 5s on a CI runner.
+vi.setConfig({ testTimeout: 30_000 });
 import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
 import { serverModule, serverStubs } from '../src/server-files.ts';
