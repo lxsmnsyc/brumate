@@ -20,6 +20,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
 | [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
+| [Server components](#server-components)                               | Syntax   | High   | Large  |
 | [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
 | [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
@@ -105,15 +106,107 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 
 Cost: a day or two, when a page needs it.
 
-### Server-only markup
+### Server components
 
-Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+A server component renders on the server, also when the browser needs it again. The browser sends its inputs and gets new HTML, so it has no render code and no data for it. React Server Components work this way.
 
-- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
-- Markup that reads values the page state should not carry, so they are not serialized.
-- Whether a block that never updates can drop its markers and scope IDs.
+Brumate already has much of what React gets from them:
 
-To study before any design.
+- An instance script runs only on the server, and markup that never changes ships no code.
+- `#defer` bodies, server functions and memos read the database on the server.
+- `#defer` asks the server for its body, and the answer holds HTML and state records.
+
+What is missing is a render on the server when inputs change in the browser. Today, markup that the browser renders again needs its render code and its data in the browser. A server component would add:
+
+- Code that stays on the server, such as a Markdown renderer, a syntax highlighter, translation catalogs, or a module with secrets.
+- A smaller page state, since the values that the component reads on the server are not serialized.
+- A plain `await` anywhere in its script, since the browser never renders it.
+
+#### A server component
+
+A file marks the component as one that renders on the server. `<script server>` stands for the mark here, which is to choose:
+
+```brm
+<!-- Profile.brm -->
+<script server>
+  import { $props } from 'brumate/signals';
+  import { getUser } from '../db.ts';
+
+  const { userId, children } = $props<{ userId: string; children?: unknown }>();
+  const user = await getUser(userId);
+</script>
+
+<section class="profile">
+  <h2>{user.name}</h2>
+  {children}
+</section>
+```
+
+```brm
+<!-- A component that renders it -->
+<Profile userId=selected>
+  <Counter />
+  <input value=$bind(note)>
+</Profile>
+```
+
+- Its props are its inputs. When a prop changes in the browser, the browser asks the server for a new render.
+- Props must be values that brumate can send, as the arguments of server functions are. A function prop must be a server function.
+- `getUser` and the modules that only server components import never reach the browser.
+- Markup in it can be interactive, with handlers and state, as a `#defer` body can.
+
+#### `#server`
+
+`#server` is a server component written inline, without children:
+
+```brm
+#server {
+  <script>
+    const data = await getUser(userId);
+  </script>
+  <UserProfile {data} />
+}
+```
+
+- It is a block like the others: no element of its own, and markers around its range.
+- Its inputs are the values from outside the block that the body reads, such as `userId`. The compiler finds them as it finds what an insert reads, so the header lists none. A value that the body computes, such as `data`, is not an input.
+- A body that reads nothing from outside renders once, as markup without the block does.
+- The header can hold a trigger, as `#defer ('visible')` does, or a debounce for inputs that change on each key.
+
+#### A render again
+
+1. On the first render, the server renders everything, as it does now, and the page resumes as usual.
+2. When an input changes, the browser sends the inputs, as a call of a server function sends its arguments. That reuses the serialization, the check of the origin and rate limits.
+3. The server renders the component alone, with the inputs and the values of the contexts that it reads. It does not render the route up to it, as `#defer` does, so the data of the page does not load again.
+4. The answer has the HTML and the state records of the new render.
+5. The browser replaces the range, disposes the scopes of the old render, and indexes the new markup, as for `#defer` and navigation.
+
+`refresh(fn)` in a server function loads the memos that read `fn` again. It can also ask again for each server component whose last render called `fn`, so a form that changes the user updates `Profile` with no code in the browser.
+
+#### Children
+
+A component in the browser passes children to a server component, and the server component puts them in place. The children stay interactive, and keep their state, when the server component renders again.
+
+Children already belong to the component that writes them: their scope has that component as its parent (`from`), and an export of their own renders them. So the server never renders them again, and only says where they go:
+
+- On a render again, the browser sends a token for each children value that it holds.
+- Where the server component inserts `children`, the server writes a hole, such as `<!--k1-->`, in place of their markup.
+- The browser takes the range of each child out of the page by its markers, puts the new HTML in, and moves each range into its hole. `Element.moveBefore()` keeps focus and the state of iframes, where the browser has it.
+- Disposing the old render skips the scopes of the children, so `Counter` keeps its count and the input keeps its text.
+- Children that the new render does not insert are disposed, as when an `#if` closes. Children that it inserts twice render again for the second place, with their export, as children do now.
+- A server component inside the children of another one belongs to the caller. The outer render keeps it, and it renders again on its own.
+
+Children read the contexts where they are inserted, which is inside the server component. When a render provides a context with another value, such as the user that it loaded, the children must update without rendering again. The answer carries the new values that the server component provides, and the browser writes them, so the readers of the children update as for any change of a context. The state record lists the contexts that each scope reads, in `x`, so the server knows what to send.
+
+#### To decide in a spike
+
+- The state inside the server component, other than children, starts over on each render: focus, the text of fields and what is open. Brumate could morph the DOM, or keep keyed parts, as children are kept.
+- Each change is a request, so it suits changes of single events, such as a search, a filter or a preview, more than each key of an input.
+- Server functions, memos and `refresh` cover the data already. The spike measures what a server component saves in code and in size against them, for two cases of the website: a preview of Markdown or code, which needs the highlighter in the browser today, and a list with a filter.
+- The children work leans on `from`, `t`, `f` and the exports of children. The spike covers nested children and children that a component passes on.
+- Whether a static block of the server can drop its markers and scope IDs, when it never renders again.
+
+Cost: a spike of about a week, then the design.
 
 ## Reactivity
 
@@ -892,7 +985,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
 4. **The website**: the fixes of the home link, the shop demo, the highlighting and the error section first, since they are small. Then the guide to props types, the docs and examples of `@brumate/ui`, and a landing page for it, before the parts are published.
 5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
-6. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
+6. **Server components**: a spike that measures them against server functions, memos and `refresh`, with two cases of the website. Then the design of server components, `#server`, the render again, and children that keep their state.
 7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
