@@ -1,7 +1,7 @@
 ---
 id: component-prop-render
 title: A component in a prop renders in markup that the browser renders
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "renders in a block that the browser renders later"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#257"
 gate: false
 added: 2026-10-26
 owns:
@@ -25,6 +25,15 @@ owns:
   - packages/brumate/test/render/LateEach.brm
   - packages/brumate/test/render/lateEachPage.brm
   - packages/brumate/test/__snapshots__/render/**
+  - packages/brumate/test/render/PassAs.brm
+  - packages/brumate/test/render/twoLevelAsPage.brm
+  - packages/brumate/test/render/lateAsContext.ts
+  - packages/brumate/test/render/ContextAs.brm
+  - packages/brumate/test/render/contextAsPage.brm
+  - packages/brumate/test/render/HydratedEach.brm
+  - packages/brumate/test/render/hydratedEachPage.brm
+  - packages/brumate/test/render/AsItalic.brm
+  - packages/brumate/test/render/swapAsPage.brm
 shared:
   - .changeset/*.md
   - packages/brumate/test/resume.test.ts
@@ -47,9 +56,9 @@ In the browser a component value is a stub that renders nothing, so a component 
 
 ## Acceptance
 
-- [ ] The test of reviews/core-gaps.md section 2 fails on main and passes with the fix.
-- [ ] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The test of reviews/core-gaps.md section 2 fails on main and passes with the fix.
+- [x] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
@@ -58,3 +67,4 @@ M: the compiler and the core both change, and the choice of how the render modul
 ## Log
 
 - 2026-10-26: owned paths corrected at review: the new #for test of the brief, and the render snapshots that gain a brumateId line. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.
+- 2026-10-27: the orchestrator asked for the fixtures of the review probes (two levels, context, hydration, handler), so they are owned too.
