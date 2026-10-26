@@ -56,7 +56,8 @@ owns:
   - website/ui/demos/VisuallyHidden*.brm
   - website/ui/demos/Keyboard*.brm
   - website/ui/demos/I18NProvider*.brm
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

@@ -1,7 +1,7 @@
 ---
 id: scope-id-table
 title: One table of the fields with scope IDs
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/scope-ids.test.ts
 exclusive: []
-fulfilled_by: 
+fulfilled_by: "#249"
 gate: false
 added: 
 owns:
@@ -43,7 +43,7 @@ Put the record fields and reference classes that hold a scope ID in one table in
 
 ## Acceptance
 
-- [ ] A test builds a record with every field and reference, moves it, and fails when one keeps its old ID, or when a new field with an ID is not in the table.
+- [x] A test builds a record with every field and reference, moves it, and fails when one keeps its old ID, or when a new field with an ID is not in the table.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing

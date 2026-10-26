@@ -20,6 +20,7 @@ owns:
   - packages/brumate/src/runtime/boot.ts
   - packages/brumate/src/codegen/markup.ts
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
 reserves: []
 provides: []

@@ -1,6 +1,6 @@
 ---
 id: defer-reveal
-title: Reveal order of #defer blocks
+title: "Reveal order of #defer blocks"
 status: todo
 priority: later
 type: feature

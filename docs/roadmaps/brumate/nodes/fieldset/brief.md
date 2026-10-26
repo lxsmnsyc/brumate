@@ -45,6 +45,7 @@ owns:
   - packages/ui/src/Button.brm
   - packages/ui/src/ToggleButton.brm
 shared:
+  - .changeset/*.md
   - packages/ui/src/contexts.ts
   - website/src/ui.ts
   - website/src/routes/ui/_layout.brm

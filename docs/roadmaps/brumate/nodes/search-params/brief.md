@@ -20,6 +20,7 @@ owns:
   - packages/brumate/test/search-params.test.ts
   - website/docs/navigation.md
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/signals.ts
   - packages/brumate/src/analyze.ts
   - packages/brumate/src/macros.ts

@@ -1,7 +1,7 @@
 ---
 id: as-collections
 title: as and ref on the collection parts
-status: active
+status: todo
 priority: should
 type: feature
 outline: false
@@ -31,11 +31,30 @@ owns:
   - packages/ui/src/Tag.brm
   - packages/ui/test/as-collections.test.ts
 shared:
+  - .changeset/*.md
   - packages/ui/test/props-types.ts
   - packages/ui/test/fixtures/AsTarget.brm
 reserves: []
 provides: []
 depends_on:
+  - on: component-tag-live-props
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: component-tag-handlers
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: dynamic-spread-anchor
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: component-prop-render
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: nested-template-imports
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: dynamic-spread-handlers
+    kind: hard
+    why: a component in `as` needs this fix of the core
   - on: props-types-main
     kind: hard
     why: as.ts and the exported props types are on main only after #245 merges
@@ -66,3 +85,7 @@ Give the collection parts an `as` prop that takes an element name or a component
 ## Sizing
 
 M: one pattern on 13 parts. The keyboard code reads elements, so each part needs its tests run with a component target.
+
+## Log
+
+- 2026-10-26: PR #252 found four gaps in the core (see contracts/part-props.change-request.md). The change request was rejected. The node waits for the core fixes, then #252 is reworked without the ID lookups, with component targets tested in the browser. #252 also failed format:check and broke tree.test.ts "opens and closes with the chevron".
