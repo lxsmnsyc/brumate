@@ -26,7 +26,8 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function hoverOpen(page: Awaited<ReturnType<typeof previews>>) {
   pointer('pointerenter', page.get('.author'));
-  await page.waitFor(() => expect(find('.card')).not.toBeNull());
+  // The preview places itself and starts to listen for a press outside a frame after it shows.
+  await page.waitFor(() => expect(find('.card')?.closest('[data-placement]')).toBeTruthy());
 }
 
 it('shows after its delay on hover, without moving focus or the page', async () => {
