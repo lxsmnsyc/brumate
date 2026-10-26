@@ -15,7 +15,9 @@ import {
   insertValue,
   bindEntry,
   handlerEntry,
+  onAttribute,
   onValue,
+  ownValue,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -4383,6 +4385,13 @@ export function componentNodes<P>(
   return Child(props);
 }
 
+/** The attributes of a dynamic element, with one `b-on` for its own handlers and those of its props. */
+function startAttributes(attributes: Record<string, unknown>): string {
+  const { 'b-on': own, ...rest } = attributes;
+  const on: string[] = [];
+  return spread(rest, on) + onAttribute(on, (ownValue('b-on', own) as string | undefined) ?? '');
+}
+
 /**
  * Renders a dynamic tag for a clone: the element, with its attributes and content, or what a
  * component renders.
@@ -4409,7 +4418,7 @@ export function dynamicNodes(
   }
   const name = String(tag);
   // The start tag as HTML, so the attributes are written as `dynamic` writes them.
-  const element = parseHTML(`<${name}${spreadText(attributes)}>`, undefined, foreign)
+  const element = parseHTML(`<${name}${startAttributes(attributes)}>`, undefined, foreign)
     .firstChild as Element;
   const bound = element.getAttribute('b-b');
   if (bound) {
@@ -4462,7 +4471,7 @@ export function dynamic(
     );
   }
   const name = String(tag);
-  const open = `<${name}${spreadText(attributes)}>`;
+  const open = `<${name}${startAttributes(attributes)}>`;
   return VOID_ELEMENTS.has(name)
     ? open
     : `${open}${inner ? insert(inner, undefined, scope) : ''}</${name}>`;
