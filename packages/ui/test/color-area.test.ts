@@ -346,21 +346,21 @@ it('skips a press with Alt, Ctrl or Meta', async () => {
   expect(page.get('.hsb-thumb').hasAttribute('data-dragging')).toBe(false);
 });
 
-// The loader blocks a key that has a modifier before the handler sees it. Until the loader
-// matches the modifiers, Cmd+Left is prevented, which a browser would use to go back.
-it.fails('leaves Cmd+Left, Alt+Left and Ctrl+Home to the browser', async () => {
+// A key that prevent names alone is prevented only while Ctrl, Meta and Alt are up, so the
+// shortcuts of the browser keep their default.
+it('leaves Cmd+Left, Alt+Left and Ctrl+Home to the browser', async () => {
   const page = await areas();
   const { x } = inputs(page, '.hsb');
   x.focus();
-  const event = new KeyboardEvent('keydown', {
-    key: 'ArrowLeft',
-    metaKey: true,
-    bubbles: true,
-    cancelable: true,
-  });
-  x.dispatchEvent(event);
-  await new Promise((done) => setTimeout(done, 50));
-  expect(event.defaultPrevented).toBe(false);
+  for (const init of [
+    { key: 'ArrowLeft', metaKey: true },
+    { key: 'ArrowLeft', altKey: true },
+    { key: 'Home', ctrlKey: true },
+  ]) {
+    const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true });
+    x.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  }
 });
 
 it('does not move with Cmd+Left, Alt+Left or Ctrl+Home', async () => {

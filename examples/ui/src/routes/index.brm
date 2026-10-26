@@ -2,7 +2,7 @@
   import { prevent } from 'brumate/events';
   import { createForm } from 'brumate/forms';
   import { parseSubmission } from 'brumate/server';
-  import { $bind, $signal } from 'brumate/signals';
+  import { $bind, $memo, $signal } from 'brumate/signals';
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
   import Dialog from '@brumate/ui/Dialog.brm';

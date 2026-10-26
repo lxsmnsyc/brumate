@@ -1130,9 +1130,11 @@ export function fail(scope: Scope | undefined, error: unknown): void {
       if (!id) {
         continue;
       }
+      // A component whose code fails to load, which can be the error itself, cannot render its
+      // `#catch`, so a `#try` further out catches the error.
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id);
-      const entry = module.t?.[current.k];
+      const module = await loadModule(id).catch(() => undefined);
+      const entry = module?.t?.[current.k];
       if (!entry) {
         continue;
       }
@@ -1143,7 +1145,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
       }
       if (owner) {
         // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
-        await catchInto(owner, module, entry, error);
+        await catchInto(owner, module!, entry, error);
         return;
       }
     }
