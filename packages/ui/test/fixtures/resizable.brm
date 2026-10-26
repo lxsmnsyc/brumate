@@ -22,7 +22,10 @@
         <span tabindex="-1" class="label-name">Name</span>
         <ColumnResizer class="resizer-name" />
       </Column>
-      <Column id="size" class="col-size" defaultWidth=(80)>Size</Column>
+      <Column id="size" class="col-size" defaultWidth=(80)>
+        Size
+        <ColumnResizer class="resizer-size" />
+      </Column>
     </TableHeader>
     <TableBody>
       <Row id="a" class="row-a"><Cell>a.txt</Cell><Cell>1</Cell></Row>

@@ -16,7 +16,8 @@
    * - In a ResizableTableContainer, `width` or `defaultWidth` sets its width, and `minWidth`
    *   and `maxWidth` its bounds, in pixels. A ColumnResizer in it resizes it, and it shows
    *   `data-resizing` while it does.
-   * - A control in it, such as a ColumnResizer, takes the focus that the Table gives it.
+   * - With `allowsSorting` or a ColumnResizer, the header takes focus first, and Enter or Space
+   *   sorts. A ColumnResizer and other controls in it take the focus after it.
    * - It shows `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
    */
   const {
@@ -59,6 +60,7 @@
     headerId,
     minWidth: minWidth ?? 0,
     maxWidth: maxWidth ?? Number.MAX_SAFE_INTEGER,
+    width: typeof (width ?? defaultWidth) === 'number' ? (width ?? defaultWidth) as number : undefined,
   });
   // The Table learns its columns from them, in order, before its rows render.
   table?.columns.push({ id, isRowHeader });

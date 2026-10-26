@@ -83,3 +83,59 @@ it('reaches the resizer from the label of its column, and a press on it does not
   await new Promise((done) => setTimeout(done, 50));
   expect(state(page)[2]).toEqual({ column: 'name', direction: 'ascending' });
 });
+
+it('focuses the column header, which Enter sorts, and reaches the resizer after it', async () => {
+  const page = await resizable();
+  page.get('.table').focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-a')));
+  press('ArrowUp');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.col-name')));
+  press('Enter');
+  await page.waitFor(() =>
+    expect(state(page)[2]).toEqual({ column: 'name', direction: 'ascending' }),
+  );
+  expect(page.get('.col-name').hasAttribute('data-resizing')).toBe(false);
+  press(' ');
+  await page.waitFor(() =>
+    expect(state(page)[2]).toEqual({ column: 'name', direction: 'descending' }),
+  );
+  press('ArrowRight');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.label-name')));
+  press('ArrowRight');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.resizer-name input')));
+  press('ArrowLeft');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.label-name')));
+  press('ArrowLeft');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.col-name')));
+});
+
+it('gives the range input the width of its column, in pixels, with bounds that make sense', async () => {
+  const page = await resizable();
+  const name = page.get('.resizer-name input');
+  expect(name.getAttribute('value')).toBe('200');
+  expect(name.getAttribute('aria-valuetext')).toBe('200 pixels');
+  const size = page.get('.resizer-size input');
+  expect(size.getAttribute('value')).toBe('80');
+  expect(size.getAttribute('aria-valuetext')).toBe('80 pixels');
+  expect(size.getAttribute('min')).toBe('0');
+  expect(Number(size.getAttribute('max'))).toBeLessThan(Number.MAX_SAFE_INTEGER);
+  expect(Number(size.getAttribute('max'))).toBeGreaterThanOrEqual(80);
+});
+
+it('sets the width from a change of the range input, with the other widths measured', async () => {
+  const page = await resizable();
+  const input = page.get('.resizer-size input') as HTMLInputElement;
+  input.value = '120';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.waitFor(() =>
+    expect(state(page)[0]).toEqual([
+      ['name', 200],
+      ['size', 120],
+    ]),
+  );
+  expect(state(page)[1]).toBe(1);
+  await page.waitFor(() => expect(input.getAttribute('value')).toBe('120'));
+  input.value = '95';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.waitFor(() => expect(state(page)[0][1]).toEqual(['size', 95]));
+});
