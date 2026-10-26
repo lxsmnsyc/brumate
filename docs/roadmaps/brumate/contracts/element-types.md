@@ -21,7 +21,11 @@ export interface Markup {
   readonly [MARKUP]: true;
 }
 /** A component of a .brm file with props P. It renders on the server, so it answers a promise. */
-export type Component<P = any> = (props: P, ...rest: any[]) => Promise<Markup>;
+export type Component<P = never> = ((props: P, ...rest: any[]) => Promise<Markup>) & {
+  readonly brumateId: string;
+};
+/** A `#template`: markup as a value, with the arguments A. */
+export type Template<A extends unknown[] = []> = (...args: A) => Markup | Promise<Markup>;
 /** The props of a component. */
 export type PropsOf<C> = C extends (props: infer P, ...rest: any[]) => unknown ? P : never;
 
@@ -37,26 +41,43 @@ export type ElementProps<T extends keyof Elements> = Elements[T];
 export type ElementOf<T extends keyof Elements> = ...;
 
 /** The attributes of every element: `class`, `style`, handlers, `ref`, `data-*`, `aria-*` and the global HTML ones. */
-export type GlobalAttributes<E> = Handlers<E> & { ...; ref?: BindableMark<E | null> };
+export type GlobalAttributes<E> = Handlers<E> & { ...; ref?: BindableMark<unknown> & WritableMark<E> };
 /** `onClick` for `click`, and one for each event of ElementEvents. */
 export type Handlers<E> = ...;
 /** The events of an element by the name of the event. An app merges custom events in. */
 export interface ElementEvents extends HTMLElementEventMap {}
 ```
 
+`brumate/signals` also exports `WritableMark<W>`, and `$bind` returns `BindableMark<T> & WritableMark<T>`.
+
 ## Behavior
 
 - An attribute is in `Elements` only when HTML or SVG has it as an attribute, not every field of the DOM interface. `tabIndex` is an error, `tabindex` takes a number.
 - Names are as the markup writes them, such as `tabindex`, `for`, `viewBox` and `stroke-width`.
-- A handler is `on` plus the event. The markup writes it in camel case (`onKeyDown`, `onFocusIn`) or as the event name (`onKeydown`), as the compiler lower-cases it. The event is the event of the name with `currentTarget` typed as the element. An event that the DOM does not have is added by merging into `ElementEvents`.
-- `ref` takes `$bind(name)` of the element: `BindableMark<E | null>`.
+- A handler is `on` plus the event. The markup writes it in camel case (`onKeyDown`, `onFocusIn`, `onContextLost`, `onPointerRawUpdate`) or as the event name (`onKeydown`), as the compiler lower-cases it. The event is the event of the name with `currentTarget` typed as the element. An event that the DOM does not have is added by merging into `ElementEvents`.
 - Attributes with a closed set of values (`type` of `input` and `button`, `method`, `loading`) take a union. `target` takes the known names or any string. `data-*` takes any value. `aria-*` takes a string, number, boolean, `null` or `undefined`.
 - Every attribute also takes `null` and `undefined`, which leave it out.
-- SVG elements share one list of attributes, since most apply to most elements. `a`, `script`, `style` and `title` are the HTML elements.
+- SVG elements share one list of attributes, since most apply to most elements. `a`, `script`, `style` and `title` are the HTML elements, so the SVG `a` has the type of the HTML `a`.
 - `Markup` is not a string, and a string is not `Markup`. The brand exists only in the type.
-- `Component<P>` answers `Promise<Markup>`, because a component renders on the server. Its default `P` is `any`, so a component of any props is assignable to `Component`. A generic `Record<string, unknown>` default would reject them.
-- `Component<P>` is the type of a default import of a .brm file, once the nodes after this one switch `types.d.ts` and `check.ts` to it. This node does not change them: a .brm import is still `(props: any, ctx) => Promise<string>`.
-- The `ref` type imports `BindableMark` from `brumate/signals`, so a typecheck of the package needs `dist`, as `types.d.ts` already needs it.
+
+### `ref`
+
+- `ref` takes `$bind(name)`, as `ref=$bind(name)` in markup. Its type is `BindableMark<unknown> & WritableMark<E>`. A binding is accepted when the element `E` is assignable to the type of the signal, because the binding writes the element into the signal.
+- So `$signal<HTMLElement>()` (a signal of `HTMLElement | undefined`), `$signal<Element>()`, `$signal<HTMLDivElement | null>(null)` and `any` bind the ref of a `div`. `$signal<HTMLButtonElement>()` does not: a div is not a button. A part with a generic `as` binds `HTMLElement` or `Element`.
+- `BindableMark<T>` alone is covariant and cannot say this, so `$bind` also returns `WritableMark<T>`, a property that is a function of `T`. It is contravariant. A `Bindable<T>` prop still takes `$bind(x)` as before.
+- check.ts does not check `ref` yet: it writes `$$use(name)` for it (check.ts, `elementAttributes`). element-checks must emit `{ ref: $bind(name) }` against `ElementProps<tag>` to check it.
+
+### Components and templates
+
+- `Component<P>` answers `Promise<Markup>`, because a component renders on the server, and has `brumateId`, which `$$Sendable` needs to send a component to the client. A function without `brumateId` is not a `Component`.
+- The default `P` is `never`. A component of any props is assignable to `Component`, so use it for a constraint, a parameter or `AsTarget` (as-sound). A call through it, or `PropsOf` of it, gives `never`: `Component({ nonsense: 1 })` is an error. Where code must call a component of unknown props, write `Component<any>`. A `.brm` import is `Component<any>` in types.d.ts, and the plugin gives it its real props.
+- `Template<A>` takes a sync or an async function, since a template can await a memo. check.ts types each `#template` as an `async function` that answers `Promise<Markup>`, and a prop `item: Template<[V]>` takes it. A generic `V` is inferred from the other props, such as `items`, and reaches the template, so `(item) => item.nam` is an error.
+- check.ts and types.d.ts now give `Promise<Markup>` for the generated component, and types.d.ts types a `.brm` import as `Component<any>`. The generated `brumateId` stays. The server `Component` type of the runtime (`brumate/server`) takes `Promise<string | object>`, so `mount` and `render` take both a compiled component and a hand-written one that answers a string.
+
+### Checks of the file itself
+
+- skipLibCheck hides an error inside `elements.d.ts`. The `typecheck` script of packages/brumate also runs `tsc --noEmit -p tsconfig.elements.json` (`types: []`, `skipLibCheck: false`, `files: [elements.d.ts]`). A typo such as `Attr<Referrr>` fails it, and passes the main config.
+- The `ref` type imports `BindableMark` and `WritableMark` from `brumate/signals`, so a typecheck of the package needs `dist`, as `types.d.ts` already needs it.
 
 ## Stub
 
@@ -64,8 +85,9 @@ None. The nodes after it start from the names above.
 
 ## Contract tests
 
-packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packages/brumate. It has 14 `@ts-expect-error` lines, and each one fails when its comment is removed.
+packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packages/brumate. It has 19 `@ts-expect-error` lines, and each one fails when its comment is removed. It covers `ref` (a supertype binds, a wrong subtype does not), templates (sync, async, inferred argument), `brumateId`, and the `never` default.
 
 ## Changes
 
-- v1: frozen by element-types. From the proposal it changes: `Component<P>` answers `Promise<Markup>` and defaults to `any`; `Elements` has the SVG tags; added `ElementOf`, `ElementEvents`, `Handlers` and `GlobalAttributes`; `Markup` and `Component` names are kept.
+- v1, review fixes: `ref` is `BindableMark<unknown> & WritableMark<E>`; added `Template`; `Component` has `brumateId` and defaults to `never`; check.ts, types.d.ts and the typecheck script changed as above; added the camel events `onContextLost`, `onContextRestored` and `onPointerRawUpdate`.
+- v1: frozen by element-types. From the proposal it changes: `Component<P>` answers `Promise<Markup>` and defaults to `never`; `Elements` has the SVG tags; added `ElementOf`, `ElementEvents`, `Handlers` and `GlobalAttributes`; `Markup` and `Component` names are kept.

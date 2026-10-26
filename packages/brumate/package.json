@@ -121,7 +121,7 @@
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.elements.json"
   },
   "dependencies": {
     "@twinkleplop/core": "0.3.1",

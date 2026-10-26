@@ -5,3 +5,4 @@
 - skipLibCheck hides errors in a .d.ts. Checked elements.d.ts once with `--skipLibCheck false`: no error of its own.
 - The tag coverage test bites: with `wbr` removed it failed. The DOM lib of this TypeScript has no obsolete tags, so no exclusions.
 - Proof of the 14 `@ts-expect-error` lines: a copy of the test with the comments blanked gave 14 errors, one on each line.
+- Review fixes: WritableMark (contravariant write) makes ref take a supertype signal; Template; brumateId; Component default never; check.ts/types.d.ts return Promise<Markup>; tsconfig.elements.json.

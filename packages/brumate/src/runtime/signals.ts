@@ -10,10 +10,19 @@ function compileTimeOnly(name: string): never {
 }
 
 declare const BINDABLE: unique symbol;
+declare const WRITES: unique symbol;
 
 /** The mark of a prop that a parent can bind. It has no value at runtime. */
 export interface BindableMark<T> {
   readonly [BINDABLE]: T;
+}
+
+/**
+ * What a binding writes. A binding of a signal of `T` takes a prop that writes `W` when `W` is
+ * assignable to `T`, as a signal of `HTMLElement | undefined` takes the ref of a `div`.
+ */
+export interface WritableMark<W> {
+  readonly [WRITES]?: (value: W) => void;
 }
 
 /**
@@ -178,7 +187,7 @@ export function $action<F extends (...args: never[]) => unknown>(
  * - Only a prop of type `Bindable<T>` takes it.
  * - With `set`, a write calls `set(next)` in place of writing the signal.
  */
-export function $bind<T>(signal: T, set?: (next: T) => unknown): BindableMark<T>;
+export function $bind<T>(signal: T, set?: (next: T) => unknown): BindableMark<T> & WritableMark<T>;
 export function $bind(): never {
   return compileTimeOnly('$bind');
 }

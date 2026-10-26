@@ -115,6 +115,6 @@ describe('await', () => {
     expect(code).toContain("const user = await $memo(Promise.resolve({ name: 'Ada', id }));");
     expect(code).toContain('$$use((user.name));');
     expect(code).toContain('$$use(((await tags).length));');
-    expect(code).toContain('async function row(n: number) {');
+    expect(code).toContain('async function row(n: number): Promise<$$Markup> {');
   });
 });

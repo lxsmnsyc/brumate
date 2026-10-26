@@ -1,5 +1,5 @@
 // Type-checked with the package. It fails to compile if the declarations of brumate/elements are wrong.
-import { $bind } from 'brumate/signals';
+import { $bind, $signal } from 'brumate/signals';
 import type {
   Component,
   ElementEvents,
@@ -8,6 +8,7 @@ import type {
   Elements,
   Markup,
   PropsOf,
+  Template,
 } from '../elements';
 
 // Attributes, as the markup writes them.
@@ -40,6 +41,13 @@ export const keys: ElementProps<'div'> = {
 export function bound(button: HTMLButtonElement | null): ElementProps<'button'> {
   return { ref: $bind(button) };
 }
+
+// A part binds a supertype of its element, and the signal can be unset.
+export const supertype: ElementProps<'div'> = { ref: $bind($signal<HTMLElement>()) };
+export const nullable: ElementProps<'div'> = { ref: $bind($signal<HTMLDivElement | null>(null)) };
+export const anyElement: ElementProps<'div'> = { ref: $bind($signal<Element>()) };
+// @ts-expect-error A signal of a button does not take the ref of a div.
+export const subtype: ElementProps<'div'> = { ref: $bind($signal<HTMLButtonElement>()) };
 
 // An app adds an event or a custom element by merging into the interfaces.
 declare module '../elements' {
@@ -83,6 +91,35 @@ export const props: PropsOf<typeof Card> = { title: 'A' };
 export const components: Component[] = [Card, Any];
 export const fromMarkup: Promise<Markup> = Card({ title: 'A', children: markup });
 
+// A template takes a sync and an async function, and a generic component infers its argument.
+interface Item {
+  name: string;
+}
+declare function List<V>(props: { items: V[]; item: Template<[V]> }): Promise<Markup>;
+declare const syncTemplate: (item: Item) => Markup;
+declare const asyncTemplate: (item: Item) => Promise<Markup>;
+declare const none: Template;
+export const listSync: Promise<Markup> = List({ items: [{ name: 'a' }], item: syncTemplate });
+export const listAsync: Promise<Markup> = List({ items: [{ name: 'a' }], item: asyncTemplate });
+export const listInferred: Promise<Markup> = List({
+  items: [{ name: 'a' }],
+  item: async (item) => {
+    void item.name;
+    return markup;
+  },
+});
+export const noArguments: Template = none;
+export const listTypo: Promise<Markup> = List({
+  items: [{ name: 'a' }],
+  item: async (item) => {
+    // @ts-expect-error The template reads the item that `items` gives, and it has no `nam`.
+    void item.nam;
+    return markup;
+  },
+});
+// @ts-expect-error A template answers markup, not a string.
+export const stringTemplate: Template = () => 'text';
+
 // What the types forbid.
 
 // @ts-expect-error `a` has no `src`.
@@ -109,6 +146,10 @@ render(text);
 export const upper: unknown = markup.toUpperCase();
 // @ts-expect-error A component takes the props of its type.
 export const wrongProps: PropsOf<typeof Card> = { title: 1 };
+// @ts-expect-error A component without a `brumateId` is not a component.
+export const noId: Component = async () => markup;
+// @ts-expect-error A call through the default `Component` takes no props.
+export const anyCall: Promise<Markup> = Any({ nonsense: 1 });
 // @ts-expect-error A component answers `Markup`, not a string.
 export const stringComponent: Component = async () => 'text';
 // @ts-expect-error A tag that is not an element.

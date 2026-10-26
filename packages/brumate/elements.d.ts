@@ -2,7 +2,7 @@
 // `JSX.Element` and the component types are in JSX. The names are as the markup writes them:
 // `tabindex`, `for` and `viewBox`, not the fields of the DOM interfaces.
 
-import type { BindableMark } from 'brumate/signals';
+import type { BindableMark, WritableMark } from 'brumate/signals';
 
 declare const MARKUP: unique symbol;
 
@@ -16,10 +16,23 @@ export interface Markup {
 
 /**
  * A component of a `.brm` file with the props `P`. It renders on the server, so it answers a
- * promise. The default `any` takes a component of any props, as a parameter or a constraint.
+ * promise, and it has the `brumateId` that sends it to the client.
+ *
+ * The default `P` is `never`. A component of any props is assignable to `Component`, as a
+ * parameter or a constraint, but a call through it, or `PropsOf` of it, gives no props. Write
+ * `Component<any>` where the code must call a component of unknown props.
  */
-// oxlint-disable-next-line typescript/no-explicit-any -- Any props, so a component of props P is assignable.
-export type Component<P = any> = (props: P, ...rest: any[]) => Promise<Markup>;
+// oxlint-disable-next-line typescript/no-explicit-any -- The rest parameters are the context.
+export type Component<P = never> = ((props: P, ...rest: any[]) => Promise<Markup>) & {
+  readonly brumateId: string;
+};
+
+/**
+ * A `#template`: markup as a value, with the arguments `A`. A template can await a memo, so it
+ * answers markup or a promise of it. `check.ts` types each `#template` as an async function
+ * that answers `Promise<Markup>`, which a `Template` takes.
+ */
+export type Template<A extends unknown[] = []> = (...args: A) => Markup | Promise<Markup>;
 
 /** The props of a component. */
 export type PropsOf<C> = C extends (props: infer P, ...rest: any[]) => unknown ? P : never;
@@ -52,7 +65,9 @@ type CamelEvent =
   | 'CompositionEnd'
   | 'CompositionStart'
   | 'CompositionUpdate'
+  | 'ContextLost'
   | 'ContextMenu'
+  | 'ContextRestored'
   | 'CueChange'
   | 'DblClick'
   | 'DragEnd'
@@ -87,6 +102,7 @@ type CamelEvent =
   | 'PointerMove'
   | 'PointerOut'
   | 'PointerOver'
+  | 'PointerRawUpdate'
   | 'PointerUp'
   | 'RateChange'
   | 'ScrollEnd'
@@ -120,8 +136,11 @@ export type Handlers<E> = {
  * `aria-*`. `E` is the element, for the handlers and `ref`.
  */
 export type GlobalAttributes<E> = Handlers<E> & {
-  /** Binds the element to a name: `ref=$bind(name)`. */
-  ref?: BindableMark<E | null>;
+  /**
+   * Binds the element to a name: `ref=$bind(name)`. The signal can hold the element, a supertype
+   * of it such as `HTMLElement | undefined`, or `null`. A signal of another element is an error.
+   */
+  ref?: BindableMark<unknown> & WritableMark<E>;
   class?: Attr<string>;
   style?: Attr<string>;
   id?: Attr<string>;
