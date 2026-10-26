@@ -141,7 +141,14 @@ export function setDragData(data: DataTransfer, items: readonly DragItem[]): voi
 /** The operations that the `effectAllowed` of a drag allows. A drag with none set allows all. */
 export function allowedOperations(effectAllowed: string | undefined): DropOperation[] {
   const all: DropOperation[] = ['copy', 'move', 'link'];
-  if (effectAllowed === undefined || effectAllowed === 'all' || effectAllowed === 'uninitialized') {
+  // A `DataTransfer` that code makes has `none`, and a real drag that allows nothing is refused
+  // by the browser anyway, so `none` names no limit either.
+  if (
+    effectAllowed === undefined ||
+    effectAllowed === 'all' ||
+    effectAllowed === 'uninitialized' ||
+    effectAllowed === 'none'
+  ) {
     return all;
   }
   return all.filter((operation) => effectAllowed.toLowerCase().includes(operation));
