@@ -22,6 +22,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 - `item` is a `#template` that renders a `TreeItem` for an item. The Tree renders it for each item that shows, and gives the TreeItem its key and its place in the tree.
 - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes. The children of a closed item do not render.
 - Selection is as in a [GridList](./grid-list.md): `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
+- `rowHeight` renders only the rows in view, as in a [Virtualizer](./virtualizer.md), which gives it too. `getTextValue` returns the text of an item for the letters that move to a row, for the rows out of view.
 - `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable. Without it, and with nothing selectable, Enter and a press open and close a row with children.
 
 ## Rows
