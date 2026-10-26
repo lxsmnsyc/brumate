@@ -1,7 +1,7 @@
 ---
 id: element-types
 title: Types for elements, markup and components
-status: todo
+status: active
 priority: should
 type: contract
 outline: false

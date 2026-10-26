@@ -1,7 +1,7 @@
 ---
 id: component-tag-live-props
 title: A dynamic tag that names a component updates its live props
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
