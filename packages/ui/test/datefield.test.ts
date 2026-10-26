@@ -171,10 +171,14 @@ it('goes to the ends with Home and End, steps a page with PageUp, and a press on
   day.focus();
   press('PageUp', day);
   await page.waitFor(() => expect(state(page)[3]).toBe('2026-01-17'));
-  page.get('.sent-input').dispatchEvent(
-    new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }),
+  page
+    .get('.sent-input')
+    .dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }),
+    );
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(segment(page, '.sent-input', 'year')),
   );
-  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.sent-input', 'year')));
 });
 
 it('checks isRequired on a submit, and gives back the first date on a reset', async () => {

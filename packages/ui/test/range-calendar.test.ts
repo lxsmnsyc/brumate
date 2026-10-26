@@ -148,7 +148,9 @@ it('keeps a range that is not done within reach, and does not show it as invalid
   cell(page, '.trip-grid', '2026-10-22').focus();
   press('ArrowDown', page.get('.trip-grid'));
   // Focus stops at the last date in reach.
-  await page.waitFor(() => expect(document.activeElement).toBe(cell(page, '.trip-grid', '2026-10-23')));
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(cell(page, '.trip-grid', '2026-10-23')),
+  );
 });
 
 it('shows data-focused only while focus is in the grid, and starts the week on firstDayOfWeek', async () => {
