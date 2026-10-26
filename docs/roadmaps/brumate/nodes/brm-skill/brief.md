@@ -1,7 +1,7 @@
 ---
 id: brm-skill
 title: A skill for .brm files, with a test of its code blocks
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify: pnpm --filter brumate exec vitest run test/skill.test.ts
 exclusive: []
-fulfilled_by: 
+fulfilled_by: "#250"
 gate: false
 added: 
 owns:
@@ -32,7 +32,7 @@ depends_on: []
 
 ## Goal
 
-Ship a skill in the Agent Skills format in the brumate package: SKILL.md with the rules that agents get wrong, and references for syntax, state, events, the ui parts and errors. `npx brumate skill` copies it. A test compiles every `brm` block of the skill, and a block marked wrong must fail with the error the skill names.
+Ship a skill in the Agent Skills format in the brumate package: SKILL.md with the rules that agents get wrong, and references for syntax, state, events and errors. `npx brumate skill` copies it. A test compiles every `brm` block of the skill, and a block marked wrong must fail with the error the skill names.
 
 ## Context
 

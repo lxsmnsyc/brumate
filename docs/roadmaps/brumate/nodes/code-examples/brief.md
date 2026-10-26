@@ -17,7 +17,8 @@ gate: false
 added: 
 owns:
   - website/docs/**
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

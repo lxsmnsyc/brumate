@@ -1,0 +1,20 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsLink from './AsLink.brm';
+  import TplDynamic from './TplDynamic.brm';
+
+  let open = $signal(false);
+</script>
+
+<TplDynamic class="plain">Plain</TplDynamic>
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  #template inner(label: string) {
+    <TplDynamic as=AsLink class="inner">{label}</TplDynamic>
+  }
+  #template outer(label: string) {
+    <b class="outer">{inner(label)}</b>
+  }
+  {outer('one')}
+  {outer('two')}
+}

@@ -18,7 +18,8 @@ added:
 owns:
   - packages/brumate/skills/tasks/**
   - packages/brumate/skills/run-tasks.mjs
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

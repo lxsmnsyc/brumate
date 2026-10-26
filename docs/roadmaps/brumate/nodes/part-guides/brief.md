@@ -22,6 +22,7 @@ owns:
   - website/ui/demos/OwnPartDemo.brm
   - packages/ui/test/async-overlay.test.ts
 shared:
+  - .changeset/*.md
   - website/src/ui.ts
 reserves: []
 provides: []

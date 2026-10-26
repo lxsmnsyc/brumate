@@ -1,0 +1,12 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import RefSpread from './RefSpread.brm';
+
+  let as = $signal<any>(RefSpread);
+  let root = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<{as} ref=$bind(root) />
+<button class="read" onClick=(() => (seen = root?.tagName ?? 'none'))>Read</button>
+<p class="seen">{seen}</p>

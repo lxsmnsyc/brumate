@@ -21,6 +21,7 @@ owns:
   - packages/brumate/test/elements-types.ts
   - docs/roadmaps/brumate/contracts/element-types.md
 shared:
+  - .changeset/*.md
   - packages/brumate/types.d.ts
   - packages/brumate/src/runtime/signals.ts
 reserves: []

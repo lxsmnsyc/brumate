@@ -19,7 +19,8 @@ owns:
   - packages/brumate/src/runtime/devtools-panel.ts
   - packages/brumate/src/runtime/devtools-copy.ts
   - packages/brumate/test/devtools-copy.test.ts
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []
