@@ -94,6 +94,10 @@ async function inspectCommand(args: string[]): Promise<number> {
 }
 
 async function skillCommand(args: string[]): Promise<number> {
+  if (args.length > 1) {
+    console.error(`brumate skill takes one folder, not ${args.length} arguments\n\n${USAGE}`);
+    return 1;
+  }
   const folder = path.resolve(args[0] ?? '.claude/skills');
   const target = path.join(folder, 'brumate');
   // The skill is in the package, next to dist and src.

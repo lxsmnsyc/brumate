@@ -55,7 +55,7 @@ A handler runs after the event has finished dispatching, so the browser has acte
 - There are no modifiers such as `onSubmit:prevent`, and none on components. A component puts the wrapper on the element that it renders.
 - A handler that the caller passes to a component goes through `{...rest}` to the element, with its wrappers. Both run, the element's own first.
 
-```brm wrong="Only prevent of a keyboard event takes keys"
+```brm wrong: Only prevent of a keyboard event takes keys, such as onKeyDown
 <script>
   import { prevent } from 'brumate/events';
 
@@ -65,7 +65,7 @@ A handler runs after the event has finished dispatching, so the browser has acte
 <button onClick=(prevent(save, 'Enter'))>Save</button>
 ```
 
-```brm wrong="Name each key of prevent as a string"
+```brm wrong: Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a', with a modifier to hold if it needs one, such as 'Mod+ArrowDown'
 <script>
   import { prevent } from 'brumate/events';
 

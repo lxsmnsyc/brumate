@@ -46,12 +46,12 @@
 <p style={ color: on ? 'crimson' : undefined }>{name.toUpperCase()}</p>
 ```
 
-- Quoted values are strings. A name, a property path, a call, a number, an object or a template string can stand without quotes. Anything else, such as an operator, goes in parentheses.
+- Quoted values are strings. A name, a property path, a call, a number, an object, an array, a template string and a prefix such as `!closed` or `-1` can stand without quotes. A value with an operator between parts, such as `a ? b : c`, `a + b`, `a > b` or `a && b`, and an arrow function, goes in parentheses: `(count > 3)`.
 - `null` and `undefined` leave the attribute out. `false` leaves out a plain attribute such as `disabled`, and says `"false"` for `aria-*` and `data-*`.
 - `class` takes a string, an array or an object of class names. `style` takes a string or an object in camel case.
 - `<{tag}>` renders the element or component that `tag` names. Close it with `</>`.
 
-```brm wrong="Wrap this attribute value in parentheses"
+```brm wrong: Wrap this attribute value in parentheses
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -182,10 +182,12 @@ A file uses another component by importing it, and renders it with a capitalized
 ```
 
 - The body of a block can start with a `<script>` of its own, which runs for each instance, such as each item of a `#for`. It can declare signals and functions.
+- `#for (item of list) { … }` has no `by` for a list that needs no key: each item is its own key. Use `by item.id` when items are objects that change.
+- Write `} #else if (…) {` and `} #else {` on the line of the closing brace, as the style. The compiler accepts `#else` on the next line too.
 - `#for (item of list) window(32) { … }` renders only the items in view, for a long list. `32` is the height of an item.
 - `#loading { … } #else { … }` and `#defer { … }` are for async data. See state.md.
 
-```brm wrong="#else must follow its block"
+```brm wrong: #else must follow its block
 <p>One</p>
 #else {
   <p>Two</p>
@@ -221,8 +223,7 @@ A file uses another component by importing it, and renders it with a capitalized
 
 A file that ends in `.brm.ts` holds functions that use `$signal` and `$memo` for several components. The compiler copies the body into the component that calls it.
 
-```ts
-// counter.brm.ts
+```ts module="counter.brm.ts"
 import { $memo, $signal } from 'brumate/signals';
 
 export function counter(start: number) {
@@ -235,7 +236,7 @@ export function counter(start: number) {
 }
 ```
 
-```brm fragment
+```brm uses
 <script>
   import { counter } from './counter.brm.ts';
 

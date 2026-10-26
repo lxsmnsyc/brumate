@@ -24,11 +24,12 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Compile-time functions come from `brumate/signals`: `$signal`, `$memo`, `$props`, `$effect`, `$client`, `$id`, `$bind` and the others. Import each one that the file calls.
 - A signal is `let name = $signal(value)`. A memo is `const name = $memo(expression)`. Read and write them as plain variables: `count++`, `name = 'Ada'`. There is no `.value`.
 - Never write a signal in the setup code of the script. Only handlers, effects, `$client` callbacks and functions that they call write. Give the start value in the call: `$signal(5)`.
+- Keep only data in signals and memos: strings, numbers, booleans, `null`, plain objects and arrays, `Date`, `Map`, `Set`, `URL`, typed arrays and the like. Never put a function, a class instance or a regular expression in one, because the server cannot send it to the browser. Use a plain function in the script, or a function prop, and send a regular expression as its source. A class that the app sends needs a plugin in the serial entry (`src/serial.ts`). See `website/docs/reference-serialization.md`.
 - Never change a value in place. `todos.push(todo)` updates nothing. Assign a new value, or use `$produce(todos, (draft) => { … })`.
-- An attribute value is a quoted string, a plain name or call, or an expression in parentheses: `disabled=(count > 3)`. An operator without parentheses is an error.
+- An attribute value is a quoted string, a plain name, a property path or a call, or an expression in parentheses. A value with an operator, such as `?:`, `+`, `>` or `&&`, or an arrow function, needs parentheses: `disabled=(count > 3)`. A bare `title=!closed` and `data-a=-1` work.
 - Use the shorthands: `<a {href}>`, `<button {onClick}>`, `<input {...rest}>`.
-- Branches follow on the same line as the closing brace: `} #else if (…) {` and `} #else {`.
-- A `#for` has a key: `#for (item, index of items by item.id) { … }`. A list of strings or numbers can leave `by` out.
+- Write a branch on the line of the closing brace, as the style: `} #else if (…) {` and `} #else {`. The compiler also accepts `#else` on the next line.
+- A `#for` has a key: `#for (item, index of items by item.id) { … }`. Without `by`, each item is its own key.
 - `$effect` never runs on mount. Its first run is after the first change of a value it reads. Code that must run when the page loads or comes into view is `$client(callback, trigger)`. The default trigger is `'visible'`.
 - An element that browser code needs is `ref=$bind(name)`, where `name` is a signal. A bare `ref=name` is an error.
 - To let a child write a value, destructure its prop with `let` and type it `Bindable<T>`. The parent passes `$bind(signal)`.
@@ -43,6 +44,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 Read the file for the part of the work that you do.
 
 - [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates and control flow.
+- [references/signals.md](references/signals.md): every function of `brumate/signals`, with what it returns and where it goes.
 - [references/state.md](references/state.md): signals, memos, async data, effects, `$client` and refs.
 - [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, and `$handler`.
 - [references/ui.md](references/ui.md): the parts of `@brumate/ui`, and how to compose them.

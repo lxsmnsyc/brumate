@@ -37,9 +37,10 @@
 - Without an argument, `$signal<number>()` starts as `undefined`.
 - `$produce(signal, (draft) => …)` changes a draft in place and writes the result as a new value. Without it, assign a new array or object: `todos = todos.map(…)`.
 - `$untrack(expression)` reads without depending on the values in it.
+- A signal or a memo holds data that the server can send: strings, numbers, booleans, `null`, `undefined`, `bigint`, plain objects and arrays, `Date`, `Map`, `Set`, `URL`, typed arrays and promises. It never holds a function, a class instance or a regular expression. Keep a function as a plain function in the script, or pass it as a function prop. Send the source and the flags of a regular expression, and make it where you use it. An app that sends a class registers a plugin in `src/serial.ts`.
 - Declare signals and memos at the top level of a script, or of the script of a block. A signal never leaves its file: pass its value, or a function that writes it.
 
-```brm wrong="Cannot assign to memo"
+```brm wrong: Cannot assign to memo "double"
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -54,7 +55,7 @@
 <button onClick=reset>{double}</button>
 ```
 
-```brm wrong="can only be written in event handlers"
+```brm wrong: Signal "count" can only be written in event handlers, effects, $client callbacks and functions
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -65,7 +66,7 @@
 <p>{count}</p>
 ```
 
-```brm wrong="Declare $signal with let"
+```brm wrong: Declare $signal with let
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -121,7 +122,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 - `#defer { … }` renders its body on the server later, in a request of its own. It cannot be in a `#client` body or in markup that the browser renders.
 - `const result = $action(save)` gives the result of a form that posts to the server function `save` of the same file.
 
-```brm wrong="must be async"
+```brm wrong: Server function "save" must be async
 <script>
   function save(list: string[]) {
     'use server';
@@ -132,7 +133,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>Saving</p>
 ```
 
-```brm wrong="captures"
+```brm wrong: Server function "save" captures "user". Pass it as an argument
 <script>
   let user = 'Ada';
 
@@ -193,7 +194,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 - `ref=$bind(name)` writes the element into the signal `name`. On the server it is `undefined`, so read it in handlers, effects and `$client` callbacks.
 - A handler that only writes signals needs no effect: the page updates by itself.
 
-```brm wrong="The trigger of $client must be"
+```brm wrong: The trigger of $client must be "visible", "idle" or "load"
 <script>
   import { $client } from 'brumate/signals';
 
@@ -205,7 +206,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>Ready</p>
 ```
 
-```brm wrong="is not declared"
+```brm wrong: "field" is not declared
 <script>
   import { $signal } from 'brumate/signals';
 

@@ -20,17 +20,24 @@ const FILES = [
 interface Block {
   file: string;
   line: number;
-  /** The words after `brm` in the fence. */
+  /**
+   * The words after `brm` in the fence: nothing for a file that compiles, `uses` for one that
+   * calls a module of the same page, `fragment` for a piece of a file, and `wrong: message`
+   * for a file that fails with exactly that message.
+   */
   info: string;
   source: string;
+  /** The modules of reactive logic that the page shows, as ```ts module="name" blocks. */
+  modules: Map<string, string>;
 }
 
 /** The `brm` blocks of a markdown file. */
 function blocks(file: string): Block[] {
   const lines = readFileSync(SKILL + file, 'utf8').split('\n');
   const found: Block[] = [];
+  const modules = new Map<string, string>();
   for (let index = 0; index < lines.length; index++) {
-    const fence = /^```brm(?:\s+(.*))?$/.exec(lines[index]!);
+    const fence = /^```(brm|ts)(?:\s+(.*))?$/.exec(lines[index]!);
     if (!fence) {
       continue;
     }
@@ -39,12 +46,13 @@ function blocks(file: string): Block[] {
     while (lines[end] !== '```') {
       end++;
     }
-    found.push({
-      file,
-      line: start,
-      info: fence[1] ?? '',
-      source: lines.slice(start, end).join('\n') + '\n',
-    });
+    const source = lines.slice(start, end).join('\n') + '\n';
+    const module = fence[1] === 'ts' ? /^module="(.*)"$/.exec(fence[2] ?? '') : undefined;
+    if (module) {
+      modules.set(module[1]!, source);
+    } else if (fence[1] === 'brm') {
+      found.push({ file, line: start, info: fence[2] ?? '', source, modules });
+    }
     index = end;
   }
   return found;
@@ -78,22 +86,58 @@ describe('the skill', () => {
   });
 });
 
-const right = all.filter((block) => block.info === '');
+const right = all.filter((block) => block.info === '' || block.info === 'uses');
 const wrong = all.flatMap((block) => {
-  const found = /^wrong="(.*)"$/.exec(block.info);
+  const found = /^wrong: (.*)$/.exec(block.info);
   return found ? [{ block, text: found[1]! }] : [];
 });
 
+/** Compiles a block as a file, with the modules that its page shows. */
+function compileBlock(block: Block): ReturnType<typeof compile> {
+  return compile(block.source, {
+    filename: 'Example.brm',
+    resolveModule: (specifier) => {
+      const source = block.modules.get(specifier.replace(/^\.\//, ''));
+      return source === undefined ? undefined : { path: `/skill/${specifier}`, source };
+    },
+  });
+}
+
+/** The first error that a file reports, without its place. */
+function firstMessage(error: unknown): string {
+  if (error instanceof CompileError) {
+    return error.diagnostics[0]!.message;
+  }
+  return (error as Error).message.replace(/(?:\s\([^()]*:\d+:\d+\))+$/, '');
+}
+
 describe('the code blocks', () => {
   it('all have a known mark', () => {
-    const marks = all.filter((block) => block.info !== '' && block.info !== 'fragment');
+    // Pieces of a file are only in errors.md, which is generated from the catalog.
+    // A piece cannot compile on its own. Every block of the pages that people write is a file.
+    const marks = all.filter((block) => !['', 'uses'].includes(block.info));
     expect(marks.length).toBe(wrong.length);
   });
 
   it.each(right.map((block) => [`${block.file}:${block.line}`, block] as const))(
     '%s compiles',
     (_name, block) => {
-      expect(() => compile(block.source, { filename: 'Example.brm' })).not.toThrow();
+      expect(() => compileBlock(block)).not.toThrow();
+    },
+  );
+
+  // The compiler cannot tell a wrong rule that it accepts, such as `count.value++`, so look for it.
+  it.each(right.map((block) => [`${block.file}:${block.line}`, block] as const))(
+    '%s does not read .value of a signal',
+    (_name, block) => {
+      const names = [
+        ...block.source.matchAll(
+          /(?:let|const)\s+(\w+)[^=\n]*=\s*\$(?:signal|memo|debounced|throttled|optimistic)\b/g,
+        ),
+      ].map((match) => match[1]!);
+      for (const name of names) {
+        expect(block.source).not.toMatch(new RegExp(`\\b${name}\\.value\\b`));
+      }
     },
   );
 
@@ -102,17 +146,15 @@ describe('the code blocks', () => {
     (_name, { block, text }) => {
       let error: unknown;
       try {
-        compile(block.source, { filename: 'Example.brm' });
+        compileBlock(block);
       } catch (thrown) {
         error = thrown;
       }
-      // The block must fail, with the message that the skill names.
+      // The block must fail, and its first error is the one that the skill names.
       expect(error).toBeInstanceOf(Error);
-      const message = (error as Error).message;
-      expect(message).toContain(text);
-      // The error is in the catalog, so errors.md explains it.
-      const first = error instanceof CompileError ? error.diagnostics[0]!.message : message;
-      expect(findError(first)).toBeDefined();
+      expect(firstMessage(error)).toBe(text);
+      // The error has an entry, so errors.md explains it.
+      expect(findError(text)).toBeDefined();
     },
   );
 });
@@ -128,6 +170,23 @@ describe('brumate skill', () => {
           readFileSync(SKILL + file, 'utf8'),
         );
       }
+    } finally {
+      rmSync(folder, { recursive: true });
+    }
+  });
+});
+
+describe('brumate skill with extra arguments', () => {
+  it('fails and copies nothing', () => {
+    const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+    const folder = mkdtempSync(join(tmpdir(), 'brumate-skill-'));
+    try {
+      expect(() =>
+        execFileSync('node', [cli, 'skill', join(folder, 'a'), join(folder, 'b')], {
+          stdio: 'pipe',
+        }),
+      ).toThrow(/Command failed/);
+      expect(readdirSync(folder)).toEqual([]);
     } finally {
       rmSync(folder, { recursive: true });
     }
@@ -228,7 +287,7 @@ function reported(file: string): string[] {
   walk(program, (node) => {
     if (node.type === 'CallExpression' || node.type === 'NewExpression') {
       const name = callee(node);
-      if (name === 'fail') {
+      if (name === 'fail' || (name === 'error' && node.callee.object?.type === 'ThisExpression')) {
         add(node.arguments[0]);
       } else if (name === 'report' && node.arguments[0]?.value === 'error') {
         add(node.arguments[1]);
@@ -257,7 +316,13 @@ function reported(file: string): string[] {
 
 describe('the catalog', () => {
   const messages = new Set<string>();
-  for (const file of readdirSync(SRC).filter((name) => name.endsWith('.ts'))) {
+  for (const file of readdirSync(SRC, { recursive: true, encoding: 'utf8' }).filter((name) =>
+    name.endsWith('.ts'),
+  )) {
+    // The build (vite.ts) and the runtime report their own errors, not those of a .brm file.
+    if (file === 'vite.ts' || file.startsWith('runtime/')) {
+      continue;
+    }
     for (const message of reported(file)) {
       // A message that passes on another one, such as the error of a parser, has no form of its own.
       if (message.replace(/\{\}|[\s()]/g, '') !== '') {
@@ -277,6 +342,13 @@ describe('the catalog', () => {
       return !forms.has(shape(text));
     });
     expect(missing).toEqual([]);
+  });
+
+  it('finds each entry by its own message', () => {
+    // An entry that a more general one hides would never be found for its error.
+    for (const error of ERRORS) {
+      expect(findError(error.message.replace(/\{\w+\}/g, 'x'))).toBe(error);
+    }
   });
 
   it('has no entry twice', () => {

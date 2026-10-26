@@ -758,6 +758,36 @@ const OUTPUT: ErrorEntry[] = [
     '#head {\n  <title>{`${count} left`}</title>\n}',
   ),
   entry(
+    'A dynamic tag that changes on the client is not supported yet',
+    'The tag of a dynamic tag changes in the browser, in a case that the compiler cannot update.',
+    '#if (level === 2) {\n  <h2>Title</h2>\n} #else {\n  <h3>Title</h3>\n}',
+  ),
+  entry(
+    'Code that the browser updates can await only a memo. Load the promise in a memo instead',
+    'Code that runs again in the browser awaits something other than a memo.',
+    'const user = $memo(await load(id));',
+  ),
+  entry(
+    'Markup that the browser renders can await only a memo. Load the promise in a memo instead',
+    'Markup that the browser renders awaits something other than a memo.',
+    'const user = $memo(await load(id));',
+  ),
+  entry(
+    'This attribute cannot change on the client yet',
+    'An attribute whose name is computed, as in `[name]=value`, has a value that changes in the browser.',
+    '<div class=(open ? "open" : "closed")></div>',
+  ),
+  entry(
+    'Destructuring assignment to a signal is not supported in client code yet',
+    'Code that runs in the browser writes a signal in a destructuring assignment.',
+    '[first, second] = pair;\n// Write each signal on its own:\nfirst = pair[0];\nsecond = pair[1];',
+  ),
+  entry(
+    'Assign to "{name}" with = instead of {op}',
+    'An optimistic value is changed with `++` or `--`.',
+    'shown = shown + 1;',
+  ),
+  entry(
     'Invalid CSS: {message}',
     'A `<style>` has CSS that does not parse.',
     '<style>\n  p {\n    color: red;\n  }\n</style>',
@@ -870,7 +900,15 @@ export function matchesError(error: ErrorEntry, message: string): boolean {
  */
 export function findError(message: string): ErrorEntry | undefined {
   const bare = message.replace(/(?:\s\([^()]*:\d+:\d+\))+$/, '');
-  return ERRORS.find((error) => matchesError(error, bare));
+  // Of the entries that match, the one with the most fixed text is the most specific.
+  const fixed = (error: ErrorEntry): number => error.message.replace(/\{\w+\}/g, '').length;
+  let found: ErrorEntry | undefined;
+  for (const error of ERRORS) {
+    if (matchesError(error, bare) && (!found || fixed(error) > fixed(found))) {
+      found = error;
+    }
+  }
+  return found;
 }
 
 /** The text of references/errors.md. */

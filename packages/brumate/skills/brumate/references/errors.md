@@ -1393,6 +1393,61 @@ A `<title>` is outside `#head`.
 }
 ```
 
+## A dynamic tag that changes on the client is not supported yet
+
+The tag of a dynamic tag changes in the browser, in a case that the compiler cannot update.
+
+```brm fragment
+#if (level === 2) {
+  <h2>Title</h2>
+} #else {
+  <h3>Title</h3>
+}
+```
+
+## Code that the browser updates can await only a memo. Load the promise in a memo instead
+
+Code that runs again in the browser awaits something other than a memo.
+
+```brm fragment
+const user = $memo(await load(id));
+```
+
+## Markup that the browser renders can await only a memo. Load the promise in a memo instead
+
+Markup that the browser renders awaits something other than a memo.
+
+```brm fragment
+const user = $memo(await load(id));
+```
+
+## This attribute cannot change on the client yet
+
+An attribute whose name is computed, as in `[name]=value`, has a value that changes in the browser.
+
+```brm fragment
+<div class=(open ? "open" : "closed")></div>
+```
+
+## Destructuring assignment to a signal is not supported in client code yet
+
+Code that runs in the browser writes a signal in a destructuring assignment.
+
+```brm fragment
+[first, second] = pair;
+// Write each signal on its own:
+first = pair[0];
+second = pair[1];
+```
+
+## Assign to "{name}" with = instead of {op}
+
+An optimistic value is changed with `++` or `--`.
+
+```brm fragment
+shown = shown + 1;
+```
+
 ## Invalid CSS: {message}
 
 A `<style>` has CSS that does not parse.
