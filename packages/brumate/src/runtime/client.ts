@@ -784,6 +784,8 @@ export function spread(
 ): string {
   if (on) {
     on.push(...spreadEntries(attributes));
+    // The `b-on` of a dynamic tag that names a component is in `on`, not written as an attribute.
+    return spreadText({ ...attributes, 'b-on': undefined }, names);
   }
   return spreadText(attributes, names);
 }
@@ -792,6 +794,9 @@ export function spread(
 function spreadEntries(attributes: Record<string, unknown>): string[] {
   const on: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
+    if (name === 'b-on' && ownValue(name, value)) {
+      on.unshift(ownValue(name, value) as string);
+    }
     const reference =
       /^on[A-Z]/.test(name) && typeof value === 'function'
         ? handlerReferences.get(value)
@@ -4401,9 +4406,8 @@ export function componentNodes<P>(
 
 /** The attributes of a dynamic element, with one `b-on` for its own handlers and those of its props. */
 function startAttributes(attributes: Record<string, unknown>): string {
-  const { 'b-on': own, ...rest } = attributes;
   const on: string[] = [];
-  return spread(rest, on) + onAttribute(on, (ownValue('b-on', own) as string | undefined) ?? '');
+  return spread(attributes, on) + onAttribute(on, '');
 }
 
 /**

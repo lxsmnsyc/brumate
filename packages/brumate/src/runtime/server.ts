@@ -12,7 +12,6 @@ import {
   isRaw,
   onAttribute,
   rawHTML,
-  internal,
   ownValue,
   spread as spreadAttributes,
   styleElement,
@@ -1471,23 +1470,8 @@ export function dynamic(
     if (ref !== undefined) {
       attributes = { ...attributes, ref };
     }
-    // The handlers of the tag belong to this component, so they name its scope for the
-    // component that renders the element.
-    const entries = ownValue('b-on', attributes['b-on']);
-    const props =
-      typeof entries === 'string' && scope !== undefined
-        ? {
-            ...attributes,
-            'b-on': internal(
-              entries
-                .split(' ')
-                .map((entry) => (entry.includes('@') ? entry : `${entry}@${scope}`))
-                .join(' '),
-            ),
-          }
-        : attributes;
     // The anchor links the component to the tag, so updates reach its props. It is no prop.
-    const { 'b-b': bound, ...passed } = props;
+    const { 'b-b': bound, ...passed } = attributes;
     return component(
       tag,
       content ? { ...passed, children: content } : passed,

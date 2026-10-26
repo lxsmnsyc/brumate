@@ -4,8 +4,7 @@
 
 - A live prop of a dynamic tag that names a component, such as `<{as} label=(label) />` with `as` set to a component, reaches the component when it changes. The tag is rendered by the server, or in a block that the browser opens.
 - Runtime, `packages/brumate/src/runtime/client.ts`: `dynamicNodes` reads the anchor from the tag's `b-b` and passes it to `componentNodes`, which records the child scope in `scope.c[anchor]`. `attr` calls `prop` when that anchor holds a child scope. `dynamic` calls `dynamicNodes` for a component tag, where it repeated that code.
-- Runtime, `packages/brumate/src/runtime/server.ts`: `dynamic` passes the same anchor to `component`, so the page state holds the link (`c`) of a tag that the server rendered. It takes `b-b` out of the props, so a component that spreads `...rest` does not hold an `Internal` in a live rest slot.
-- Runtime, `packages/brumate/src/runtime/serial.ts`: `InternalPlugin` writes an `Internal` (a `b-on` that a spread passes on) as `void 0` in the page state, because the browser writes its own. It matches by constructor name, as a page can render with another copy of html.ts. The core does not import serial.ts.
+- Runtime, `packages/brumate/src/runtime/server.ts`: `dynamic` passes the same anchor to `component`, so the page state holds the link (`c`) of a tag that the server rendered. It takes `b-b` out of the props, so a component that spreads `...rest` does not hold an `Internal` in a live rest slot. The compiler writes the scoped `b-on` since #262, so no `Internal` plugin is needed in serial.ts.
 - Project analysis, `packages/brumate/src/project.ts`: `summarize` marks a dynamic tag's usages with `dynamic`. `analyzeProjectProps` gives a live value prop of such a tag only to the `.brm` imports that the file reads as a value and whose props declare that name (a named prop, the rest, or the props object).
 - Tests: `packages/brumate/test/resume.test.ts`, describe "a dynamic tag that names a component", two tests. Fixtures `componentTagLiveProps.brm` and `componentTagLivePropsLate.brm` in `test/render/`, with the existing `Tag.brm`. Review fixes: `restTagLiveProps.brm`, `restTagLivePropsLate.brm` and `RestLink.brm` (a copy of AsLink, which spreads its rest) with a live `title` and a `class` object, on the server and in a block, and a project test that `Other` (no `label` prop) gets no live props.
 
@@ -42,5 +41,5 @@
 
 ## Size
 
-- Gzip of `client-*.js` from `npx tsdown`: 30856 B on origin/main, 30898 B with the fix, +42 B (0.04 kB), within 0.05 kB. `produce-*.js`: 4013 B before and after.
+- Gzip of `client-*.js` from `npx tsdown`: 30890 B on origin/main (with #262), 30935 B with the fix, +45 B (0.04 kB), within 0.05 kB. `produce-*.js`: 4013 B before and after.
 - Estimated S, actual S.
