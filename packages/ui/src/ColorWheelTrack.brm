@@ -1,0 +1,73 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { ColorWheelContext } from './color-wheel.ts';
+
+  /**
+   * The track of a ColorWheel, as ColorWheelTrack of React Aria Components. It draws the ring of
+   * the hues.
+   *
+   * - The ring is a circle with twice the outer radius as its size, and a conic gradient of the hue
+   *   that starts at 3 o'clock, masked to the ring between the radii. This is CSS of the part, not
+   *   an inline style, so the class of the caller can change it.
+   * - A press on the ring moves the hue to that angle, and a drag follows the angle. A press off
+   *   the ring, inside the inner radius or outside the outer, does nothing.
+   * - It shows `data-disabled`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const wheel = $getContext(ColorWheelContext);
+
+  const size = $memo((wheel?.outerRadius ?? 0) * 2);
+
+  // The ring as a path: a circle of the outer radius and one of the inner, cut out with `evenodd`.
+  function circle(radius: number): string {
+    const center = wheel?.outerRadius ?? 0;
+    return `M ${center}, ${center} m ${-radius}, 0 a ${radius}, ${radius}, 0, 1, 0, ${radius * 2}, 0 a ${radius}, ${radius}, 0, 1, 0 ${-radius * 2}, 0`;
+  }
+  const ring = $memo(
+    `path(evenodd, "${circle(wheel?.outerRadius ?? 0)} ${circle(wheel?.innerRadius ?? 0)}")`,
+  );
+
+  function pressed(event: PointerEvent) {
+    if (wheel && !wheel.isDisabled) {
+      wheel.onTrackPress(event);
+    }
+  }
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  class="track"
+  data-color-wheel-track
+  data-disabled=(wheel?.isDisabled || undefined)
+  onPointerDown=(prevent(pressed))
+  {...rest}
+>{children}</div>
+
+<style>
+  .track {
+    position: relative;
+    touch-action: none;
+    width: ${size}px;
+    height: ${size}px;
+    background: conic-gradient(
+      from 90deg,
+      hsl(0, 100%, 50%),
+      hsl(30, 100%, 50%),
+      hsl(60, 100%, 50%),
+      hsl(90, 100%, 50%),
+      hsl(120, 100%, 50%),
+      hsl(150, 100%, 50%),
+      hsl(180, 100%, 50%),
+      hsl(210, 100%, 50%),
+      hsl(240, 100%, 50%),
+      hsl(270, 100%, 50%),
+      hsl(300, 100%, 50%),
+      hsl(330, 100%, 50%),
+      hsl(360, 100%, 50%)
+    );
+    clip-path: ${ring};
+    forced-color-adjust: none;
+  }
+</style>

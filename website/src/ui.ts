@@ -44,6 +44,18 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     ],
   },
   {
+    title: 'Colors',
+    pages: [
+      'color-picker',
+      'color-swatch',
+      'color-slider',
+      'color-area',
+      'color-wheel',
+      'color-field',
+      'color-swatch-picker',
+    ],
+  },
+  {
     title: 'Dates',
     pages: ['calendar', 'range-calendar', 'date-field', 'time-field', 'date-picker'],
   },
@@ -211,6 +223,48 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A value, or a range of values, on a track.',
     href: 'slider',
     demo: 'SliderDemo',
+  },
+  {
+    title: 'ColorPicker',
+    summary: 'One color, shared by the color parts inside it.',
+    href: 'color-picker',
+    demo: 'ColorPickerDemo',
+  },
+  {
+    title: 'ColorSwatch',
+    summary: 'A sample of a color, named for screen readers.',
+    href: 'color-swatch',
+    demo: 'ColorSwatchDemo',
+  },
+  {
+    title: 'ColorSlider',
+    summary: 'A slider for one channel of a color.',
+    href: 'color-slider',
+    demo: 'ColorSliderDemo',
+  },
+  {
+    title: 'ColorArea',
+    summary: 'Two channels of a color on a plane.',
+    href: 'color-area',
+    demo: 'ColorAreaDemo',
+  },
+  {
+    title: 'ColorWheel',
+    summary: 'A circular track for the hue of a color.',
+    href: 'color-wheel',
+    demo: 'ColorWheelDemo',
+  },
+  {
+    title: 'ColorField',
+    summary: 'A field for a color, as hex or as one channel.',
+    href: 'color-field',
+    demo: 'ColorFieldDemo',
+  },
+  {
+    title: 'ColorSwatchPicker',
+    summary: 'A list of color swatches, to pick one.',
+    href: 'color-swatch-picker',
+    demo: 'ColorSwatchPickerDemo',
   },
   {
     title: 'Calendar',

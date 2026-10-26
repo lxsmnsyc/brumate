@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ColorSwatch from '../../src/ColorSwatch.brm';
+
+  let color = $signal('#e2445a');
+</script>
+
+<main class="page">
+  <ColorSwatch class="plain" {color} />
+  <ColorSwatch class="named" color="hsl(210, 50%, 40%)" colorName="Ocean" />
+  <ColorSwatch class="clear" color="rgba(0, 200, 0, 0.25)" />
+  <ColorSwatch class="labelled" color="#e2445a" aria-label="Brand" />
+  <ColorSwatch class="both" color="hsl(210, 50%, 40%)" colorName="Ocean" aria-label="Brand" />
+  <button class="shift" onClick=(() => (color = '#336699'))>Shift</button>
+</main>

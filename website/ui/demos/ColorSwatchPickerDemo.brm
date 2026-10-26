@@ -1,0 +1,20 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+
+  let color = $signal('#e2445a');
+  const colors = ['#e2445a', '#f59e0b', '#2ea043', '#2563eb', '#8b5cf6', '#6b7280'];
+</script>
+
+<div class="ui-stack">
+  <ColorSwatchPicker class="ui-swatch-picker" aria-label="Color" value=$bind(color)>
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="ui-swatch-option" color=item>
+        <ColorSwatch class="ui-swatch" />
+      </ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <p>{color}</p>
+</div>

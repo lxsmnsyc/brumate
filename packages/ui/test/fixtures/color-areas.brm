@@ -1,0 +1,58 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '../../src/ColorArea.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+
+  let hsb = $signal('hsb(210, 50%, 80%)');
+  let rgb = $signal('#336699');
+  let rtl = $signal('hsb(0, 20%, 50%)');
+  let locked = $signal('hsl(120, 50%, 50%)');
+  let form = $signal('hsb(0, 100%, 100%)');
+  let defaults = $signal('hsb(210, 50%, 80%)');
+  let hex = $signal('#336699');
+  let translucent = $signal('rgba(51, 102, 153, 0.5)');
+  let ended = $signal<unknown>(null);
+</script>
+
+<main class="page">
+  <ColorArea class="hsb" xChannel="saturation" yChannel="brightness" value=$bind(hsb) onChangeEnd=((next: unknown) => (ended = next))>
+    <ColorThumb class="hsb-thumb" />
+  </ColorArea>
+  <ColorArea class="rgb" xChannel="red" yChannel="green" colorSpace="rgb" value=$bind(rgb)>
+    <ColorThumb class="rgb-thumb" />
+  </ColorArea>
+  <I18nProvider locale="ar-EG">
+    <ColorArea class="rtl" xChannel="saturation" yChannel="brightness" value=$bind(rtl)>
+      <ColorThumb class="rtl-thumb" />
+    </ColorArea>
+  </I18nProvider>
+  <ColorArea class="locked" xChannel="saturation" yChannel="lightness" colorSpace="hsl" value=$bind(locked) isDisabled>
+    <ColorThumb class="locked-thumb" />
+  </ColorArea>
+  <form class="form">
+    <ColorArea class="posted" xChannel="saturation" yChannel="brightness" value=$bind(form) xName="s" yName="b">
+      <ColorThumb class="posted-thumb" />
+    </ColorArea>
+  </form>
+  <ColorArea class="defaults" value=$bind(defaults)>
+    <ColorThumb class="defaults-thumb" />
+  </ColorArea>
+  <ColorArea class="hex" value=$bind(hex)>
+    <ColorThumb class="hex-thumb" />
+  </ColorArea>
+  <ColorArea class="empty">
+    <ColorThumb class="empty-thumb" />
+  </ColorArea>
+  <ColorArea class="translucent" xChannel="saturation" yChannel="brightness" value=$bind(translucent)>
+    <ColorThumb class="translucent-thumb" />
+  </ColorArea>
+  <ColorArea class="named" aria-label="Fill" xChannel="saturation" yChannel="brightness" value=$bind(hsb)>
+    <ColorThumb class="named-thumb" />
+  </ColorArea>
+  <span id="outside">Outside</span>
+  <ColorArea class="linked" aria-labelledby="outside" aria-label="Fill" xChannel="saturation" yChannel="brightness" value=$bind(hsb)>
+    <ColorThumb class="linked-thumb" />
+  </ColorArea>
+  <p class="state">{JSON.stringify([hsb, rgb, rtl, locked, form, ended, defaults, hex, translucent])}</p>
+</main>

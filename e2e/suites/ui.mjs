@@ -1495,6 +1495,289 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step('ColorSlider: the keys, a press on the track, and a drag from the thumb', async () => {
+    await page.goto(`${url}/`);
+    const state = () => page.locator('.tint-state').textContent();
+    const waitState = async (text) => {
+      try {
+        await page.waitForFunction(
+          (t) => document.querySelector('.tint-state')?.textContent === t,
+          text,
+          { timeout: 5000 },
+        );
+      } catch {
+        throw new Error(`expected ${text}, got ${await state()}`);
+      }
+    };
+    assert((await page.locator('.tint-output').textContent()) === '210°', 'the output');
+    assert(
+      (
+        await page
+          .locator('.tint')
+          .evaluate((slider) => getComputedStyle(slider).getPropertyValue('--track-background'))
+      ).includes('linear-gradient'),
+      'the gradient of the track',
+    );
+    await page.locator('.tint-thumb input').focus();
+    await page.keyboard.press('ArrowRight');
+    await waitState('hsl(211, 100%, 50%)');
+    await page.keyboard.press('PageDown');
+    await waitState('hsl(196, 100%, 50%)');
+    // Shift with an arrow moves a page, as in React Aria.
+    await page.keyboard.press('Shift+ArrowLeft');
+    await waitState('hsl(181, 100%, 50%)');
+    await page.keyboard.press('End');
+    await waitState('hsl(360, 100%, 50%)');
+    // A press at half of the track is 180 degrees.
+    const track = await page.locator('.tint-track').boundingBox();
+    await page.mouse.click(track.x + track.width * 0.5, track.y + track.height / 2);
+    await waitState('hsl(180, 100%, 50%)');
+    // A drag from the center of the thumb to three quarters is 270 degrees.
+    const thumb = await page.locator('.tint-thumb').boundingBox();
+    await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2);
+    await page.mouse.down();
+    await page.waitForSelector('.tint-thumb[data-dragging]');
+    await page.mouse.move(track.x + track.width * 0.75, track.y + track.height / 2, { steps: 5 });
+    await waitState('hsl(270, 100%, 50%)');
+    await page.mouse.up();
+    assert((await page.locator('.tint-output').textContent()) === '270°', await state());
+  });
+
+  await step('ColorArea: the keys, a press on the area, and a drag from the thumb', async () => {
+    await page.goto(`${url}/`);
+    const state = () => page.locator('.plane-state').textContent();
+    const waitState = async (text) => {
+      try {
+        await page.waitForFunction(
+          (t) => document.querySelector('.plane-state')?.textContent === t,
+          text,
+          { timeout: 5000 },
+        );
+      } catch {
+        throw new Error(`expected ${text}, got ${await state()}`);
+      }
+    };
+    assert(
+      (await page.locator('.plane').getAttribute('style')).includes('linear-gradient'),
+      'the gradient of the area',
+    );
+    const inputs = page.locator('.plane-thumb input');
+    assert((await inputs.count()) === 2, 'an input for each axis');
+    // One tab stop: the input of y is out of the tab order and hidden from screen readers.
+    assert((await inputs.nth(1).getAttribute('tabindex')) === '-1', 'y is out of the tab order');
+    assert((await inputs.nth(1).getAttribute('aria-hidden')) === 'true', 'y is hidden');
+    assert((await inputs.first().getAttribute('aria-hidden')) === null, 'x is not hidden');
+    await inputs.first().focus();
+    await page.keyboard.press('ArrowRight');
+    await waitState('hsb(210, 51%, 80%)');
+    // Up on the input of x moves y, and the focus follows it.
+    await page.keyboard.press('ArrowUp');
+    await waitState('hsb(210, 51%, 81%)');
+    assert(
+      await inputs.nth(1).evaluate((input) => document.activeElement === input),
+      'the focus follows y',
+    );
+    await page.keyboard.press('PageDown');
+    await waitState('hsb(210, 51%, 71%)');
+    await page.keyboard.press('Shift+ArrowRight');
+    await waitState('hsb(210, 61%, 71%)');
+    await page.keyboard.press('Home');
+    await waitState('hsb(210, 51%, 71%)');
+    // A press at the middle is half of each channel.
+    const area = await page.locator('.plane').boundingBox();
+    await page.mouse.click(area.x + area.width * 0.5, area.y + area.height * 0.5);
+    await waitState('hsb(210, 50%, 50%)');
+    // A drag from the center of the thumb to the top right corner is the ends of both.
+    const thumb = await page.locator('.plane-thumb').boundingBox();
+    await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2);
+    await page.mouse.down();
+    await page.waitForSelector('.plane-thumb[data-dragging]');
+    await page.mouse.move(area.x + area.width + 20, area.y - 20, { steps: 5 });
+    await waitState('hsb(210, 100%, 100%)');
+    await page.mouse.up();
+    assert((await state()) === 'hsb(210, 100%, 100%)', await state());
+  });
+
+  await step('ColorWheel: the keys, a press on the ring, and a drag from the thumb', async () => {
+    await page.goto(`${url}/`);
+    const state = () => page.locator('.dial-state').textContent();
+    const waitState = async (text) => {
+      try {
+        await page.waitForFunction(
+          (t) => document.querySelector('.dial-state')?.textContent === t,
+          text,
+          { timeout: 5000 },
+        );
+      } catch {
+        throw new Error(`expected ${text}, got ${await state()}`);
+      }
+    };
+    assert((await page.locator('.dial-thumb input').inputValue()) === '210', 'the input');
+    await page.locator('.dial-thumb input').focus();
+    await page.keyboard.press('ArrowRight');
+    await waitState('hsl(211, 100%, 50%)');
+    // A page is to a multiple of 15.
+    await page.keyboard.press('PageDown');
+    await waitState('hsl(195, 100%, 50%)');
+    await page.keyboard.press('Home');
+    await waitState('hsl(0, 100%, 50%)');
+    // The range input stops at 0, so the wheel wraps to 359.
+    await page.keyboard.press('ArrowLeft');
+    await waitState('hsl(359, 100%, 50%)');
+    // A press on the ring below the center is 90 degrees. The middle of the ring is at 85.
+    const track = await page.locator('.dial-track').boundingBox();
+    const cx = track.x + track.width / 2;
+    const cy = track.y + track.height / 2;
+    await page.mouse.click(cx, cy + 85);
+    await waitState('hsl(90, 100%, 50%)');
+    // A press inside the ring does nothing, at another angle than the one before.
+    await page.mouse.click(cx + 10, cy);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert((await state()) === 'hsl(90, 100%, 50%)', `a press inside the ring: ${await state()}`);
+    // A drag from the thumb to the left of the center is 180 degrees.
+    await page.mouse.move(cx, cy + 85);
+    await page.mouse.down();
+    await page.waitForSelector('.dial-thumb[data-dragging]');
+    await page.mouse.move(cx - 85, cy, { steps: 8 });
+    await waitState('hsl(180, 100%, 50%)');
+    await page.mouse.up();
+    assert((await state()) === 'hsl(180, 100%, 50%)', await state());
+  });
+
+  await step(
+    'ColorField: hex steps, a typed color commits on blur, and a channel steps in its format',
+    async () => {
+      await page.goto(`${url}/`);
+      const waitText = async (selector, text) => {
+        try {
+          await page.waitForFunction(
+            ([s, t]) => document.querySelector(s)?.textContent === t,
+            [selector, text],
+            { timeout: 5000 },
+          );
+        } catch {
+          throw new Error(`expected ${text}, got ${await page.locator(selector).textContent()}`);
+        }
+      };
+      const hex = page.locator('.accent-input');
+      await hex.focus();
+      const y = await page.evaluate(() => window.scrollY);
+      await page.keyboard.press('ArrowUp');
+      await waitText('.accent-state', '#E2445B');
+      assert((await page.evaluate(() => window.scrollY)) === y, 'ArrowUp scrolled the page');
+      await page.keyboard.press('PageDown');
+      await waitText('.accent-state', '#E2444B');
+      // Typed text commits when focus leaves, and text that is not a color reverts.
+      await hex.fill('369');
+      await page.keyboard.press('Tab');
+      await waitText('.accent-state', '#336699');
+      assert((await hex.inputValue()) === '#336699', 'the hex is not formatted');
+      await hex.focus();
+      await hex.fill('#12');
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => document.querySelector('.accent-input').value === '#336699');
+      await hex.focus();
+      await hex.fill('');
+      await page.keyboard.press('Tab');
+      await waitText('.accent-state', 'None');
+      // A channel field steps in the format of the channel.
+      const shade = page.locator('.shade-input');
+      assert((await shade.inputValue()) === '120°', await shade.inputValue());
+      await shade.focus();
+      await page.keyboard.press('PageUp');
+      await waitText('.shade-state', 'hsl(135, 50%, 50%)');
+      await page.waitForFunction(() => document.querySelector('.shade-input').value === '135°');
+    },
+  );
+
+  await step(
+    'ColorSwatchPicker: the keys select, Up and Down move by rows, and a disabled item is skipped',
+    async () => {
+      await page.goto(`${url}/`);
+      const waitPaint = async (text) => {
+        try {
+          await page.waitForFunction(
+            (t) => document.querySelector('.paint-state')?.textContent === t,
+            text,
+            { timeout: 5000 },
+          );
+        } catch {
+          throw new Error(
+            `expected ${text}, got ${await page.locator('.paint-state').textContent()}`,
+          );
+        }
+      };
+      // Focus goes to the selected item, and the arrow keys select the next.
+      await page.locator('.paint').focus();
+      await page.waitForFunction(() => document.activeElement?.classList.contains('paint-red'));
+      await page.keyboard.press('ArrowRight');
+      await waitPaint('rgb(46, 160, 67)');
+      await page.keyboard.press('End');
+      await waitPaint('hsl(217, 91%, 53%)');
+      // The items wrap in two rows. Up goes to the item above, and Down back, in a real layout.
+      await page.keyboard.press('ArrowUp');
+      await waitPaint('#e2445a');
+      await page.keyboard.press('ArrowDown');
+      await waitPaint('hsl(217, 91%, 53%)');
+      // The last item is disabled, so End skipped it, and Down from the blue one stays.
+      await page.keyboard.press('ArrowDown');
+      assert(
+        (await page.evaluate(() => document.activeElement?.className)).includes('paint-blue'),
+        'Down left the item',
+      );
+      // The keys and a click on a disabled item select nothing.
+      await page.locator('.paint-gray').evaluate((element) => element.focus());
+      await page.keyboard.press('Space');
+      await page.keyboard.press('Enter');
+      // Playwright does not press an element that is aria-disabled, so the press is forced.
+      await page.locator('.paint-gray').click({ force: true });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      assert(
+        (await page.locator('.paint-state').textContent()) === 'hsl(217, 91%, 53%)',
+        'disabled',
+      );
+      assert(
+        (await page.locator('.paint-gray').getAttribute('aria-selected')) === 'false',
+        'the disabled item is selected',
+      );
+      // A press selects the item with its own format.
+      await page.locator('.paint-red').click();
+      await waitPaint('#e2445a');
+      assert(
+        (await page.locator('.paint-red').getAttribute('aria-selected')) === 'true',
+        'the pressed item is not selected',
+      );
+    },
+  );
+
+  await step('ColorPicker: a change in the area shows in the field and the swatch', async () => {
+    await page.goto(`${url}/`);
+    const field = page.locator('.mix-input');
+    const swatch = () =>
+      page
+        .locator('.mix-swatch')
+        .evaluate((element) => getComputedStyle(element).getPropertyValue('--color').trim());
+    const before = await swatch();
+    const text = await field.inputValue();
+    assert(/^#[0-9A-F]{6}$/.test(text), `the field shows hex, got ${text}`);
+    await page.locator('.mix-area input').first().focus();
+    // End moves x a page, as in React Aria.
+    await page.keyboard.press('End');
+    try {
+      await page.waitForFunction(
+        () => document.querySelector('.mix-state')?.textContent === 'hsb(210, 60%, 80%)',
+        undefined,
+        { timeout: 5000 },
+      );
+    } catch {
+      throw new Error(`got ${await page.locator('.mix-state').textContent()}`);
+    }
+    await page.waitForFunction((old) => document.querySelector('.mix-input').value !== old, text, {
+      timeout: 5000,
+    });
+    assert((await swatch()) !== before, 'the swatch did not change');
+  });
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();

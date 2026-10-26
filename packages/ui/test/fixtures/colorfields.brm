@@ -1,0 +1,48 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorField from '../../src/ColorField.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import Text from '../../src/Text.brm';
+
+  let hex = $signal<string | null>('#e2445a');
+  let hue = $signal<string | null>('hsl(120, 50%, 50%)');
+  let empty = $signal<string | null>(null);
+</script>
+
+<main class="page">
+  <ColorField class="hex" name="hex" value=$bind(hex)>
+    <Label class="label">Color</Label>
+    <Input class="hex-input" />
+    <Text slot="description" class="description">A hex color.</Text>
+    <FieldError class="error" />
+  </ColorField>
+  <ColorField class="hue" channel="hue" colorSpace="hsl" name="hue" value=$bind(hue)>
+    <Label>Hue</Label>
+    <Input class="hue-input" />
+  </ColorField>
+  <ColorField class="alpha" channel="alpha" value=('#00ff0080')>
+    <Input class="alpha-input" />
+  </ColorField>
+  <ColorField class="empty" value=$bind(empty)>
+    <Label>Empty</Label>
+    <Input class="empty-input" />
+  </ColorField>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <ColorField class="req" name="req" isRequired value=('#112233')>
+      <Label>Req</Label>
+      <Input class="req-input" />
+    </ColorField>
+    <ColorField class="locked" isReadOnly value=('#445566')>
+      <Label>Locked</Label>
+      <Input class="locked-input" />
+    </ColorField>
+    <ColorField class="off" isDisabled value=('#445566')>
+      <Label>Off</Label>
+      <Input class="off-input" />
+    </ColorField>
+  </form>
+  <button class="shift" onClick=(() => (hex = '#336699'))>Shift</button>
+  <p class="state">{JSON.stringify([hex, hue, empty])}</p>
+</main>

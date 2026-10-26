@@ -1,0 +1,228 @@
+<script>
+  import {
+    $client,
+    $getContext,
+    $isPassed,
+    $handler,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+  } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    ListBoxContext,
+    enabledItems,
+    focusItem,
+    focusedItem,
+    isTyping,
+    keyOf,
+    movementOf,
+    moveFrom,
+    passFocus,
+    trackFocusIn,
+    trackFocusOut,
+    typeahead,
+  } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import { formatColor, parseColor, tryParseColor } from './color.ts';
+  import { ColorPickerContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+
+  /**
+   * A list of color swatches that the user picks one from, as ColorSwatchPicker of React Aria
+   * Components. Its items are ColorSwatchPickerItem elements.
+   *
+   * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
+   * - `value` is a color of CSS. The item whose color equals it is selected: the colors are
+   *   compared as colors, so `#f00` is `rgb(255, 0, 0)`. `onChange` gets the color of the item
+   *   that the user picks, in the format that the item has.
+   * - `layout` is `grid`, the default, or `stack`. In a grid, the arrow keys move in two
+   *   dimensions, by the boxes of the items. In a stack, Up and Down move.
+   * - The selection follows focus. Home and End move to the first and the last item, and PageUp
+   *   and PageDown move by the height of the list. Letters move to the item whose color name
+   *   starts with them. Space and Enter select, and the selection cannot be empty. A disabled
+   *   item is never selected.
+   * - Tab stops once: at the item that had focus last, or else at the selected item, or the first
+   *   item.
+   * - It shows `data-layout`. Its items show `data-selected`, `data-focused`,
+   *   `data-focus-visible` and `data-disabled`.
+   */
+  const {
+    layout = 'grid',
+    onChange,
+    children,
+    ...rest
+  } = $props<{
+    layout?: 'grid' | 'stack';
+    onChange?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = '' } = $props<{ value?: Bindable<string> }>();
+
+  // Inside a ColorPicker, a list without a `value` shows the color of the picker and writes it.
+  const picker = $getContext(ColorPickerContext);
+  const passed = $isPassed(value);
+  const held = $memo(picker && !passed ? picker.value : value);
+
+  const locale = $getContext(LocaleContext);
+  let root = $signal<HTMLElement>();
+  const listId = $id();
+
+  // The key of an item is its color as hexa, so equal colors are the same key.
+  const chosen = $memo(selectedKeys(held));
+
+  function selectedKeys(text: string): Key[] {
+    const color = tryParseColor(text);
+    return color ? [formatColor(color, 'hexa')] : [];
+  }
+
+  function select(key: Key) {
+    const element = root;
+    if (!element || chosen.includes(key)) {
+      return;
+    }
+    const item = [...element.querySelectorAll<HTMLElement>('[role=option][data-key]')].find(
+      (option) => keyOf(option) === key,
+    );
+    // The item gives its color as it wrote it, so the value has its format.
+    const text = item?.getAttribute('data-color');
+    // A disabled item is never selected.
+    if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
+      if (picker && !passed) {
+        picker.setValue(parseColor(text), text);
+      } else {
+        value = text;
+      }
+      onChange?.(text);
+    }
+  }
+
+  $setContext(ListBoxContext, {
+    selectionMode: 'single',
+    selectionBehavior: 'replace',
+    selectedKeys: chosen,
+    disabledKeys: [],
+    select,
+    action: () => {},
+    hasAction: false,
+  });
+
+  function focused(event: FocusEvent) {
+    passFocus(root, event, 'option');
+  }
+
+  function focusIn(event: FocusEvent) {
+    trackFocusIn(root, event, 'option');
+  }
+
+  function focusOut(event: FocusEvent) {
+    trackFocusOut(root, event);
+  }
+
+  /** The item in the next row above or below, whose middle is the nearest to the current one. */
+  function rowMove(items: HTMLElement[], current: HTMLElement | undefined, down: boolean) {
+    if (!current) {
+      return down ? items[0] : items.at(-1);
+    }
+    const from = current.getBoundingClientRect();
+    const middle = from.left + from.width / 2;
+    const beyond = items.filter((item) => {
+      const top = item.getBoundingClientRect().top;
+      return down ? top > from.top + 1 : top < from.top - 1;
+    });
+    if (beyond.length === 0) {
+      return current;
+    }
+    const tops = beyond.map((item) => item.getBoundingClientRect().top);
+    const row = down ? Math.min(...tops) : Math.max(...tops);
+    let best: HTMLElement | undefined;
+    let distance = Infinity;
+    for (const item of beyond) {
+      const box = item.getBoundingClientRect();
+      if (Math.abs(box.top - row) <= 1) {
+        const apart = Math.abs(box.left + box.width / 2 - middle);
+        if (apart < distance) {
+          best = item;
+          distance = apart;
+        }
+      }
+    }
+    return best;
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const element = root;
+    if (!element) {
+      return;
+    }
+    const items = enabledItems(element, 'option');
+    const current = focusedItem(element, 'option');
+    const key = current ? keyOf(current) : undefined;
+    let target: HTMLElement | undefined;
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const down = event.key === 'ArrowDown';
+      target =
+        layout === 'grid'
+          ? rowMove(items, current, down)
+          : moveFrom(element, items, current, down ? 'next' : 'previous', false);
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (layout === 'stack') {
+        return;
+      }
+      const movement = movementOf(event.key, 'horizontal', locale.direction);
+      target = moveFrom(element, items, current, movement!, false);
+    } else if (event.key === 'Home' || event.key === 'End') {
+      target = event.key === 'Home' ? items[0] : items.at(-1);
+    } else if (event.key === 'PageUp' || event.key === 'PageDown') {
+      target = moveFrom(
+        element,
+        items,
+        current,
+        event.key === 'PageDown' ? 'pageDown' : 'pageUp',
+        false,
+      );
+    } else if ((event.key === ' ' && !isTyping(element)) || event.key === 'Enter') {
+      if (key !== undefined) {
+        select(key);
+      }
+      return;
+    } else {
+      // Letters move to the item whose name starts with them.
+      target = typeahead(element, items, current, event);
+      if (!target) {
+        return;
+      }
+    }
+    const targetKey = target ? keyOf(target) : undefined;
+    focusItem(target);
+    if (targetKey !== undefined) {
+      select(targetKey);
+    }
+  }
+
+  const keys = {
+    onKeyDown: $handler(
+      prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter'),
+    ),
+  };
+</script>
+
+<div
+  ref=root
+  id=listId
+  role="listbox"
+  tabindex="0"
+  aria-label=((rest['aria-label'] ?? rest['aria-labelledby']) ? undefined : 'Color swatch picker')
+  data-collection
+  data-layout=layout
+  aria-orientation=(layout === 'stack' ? 'vertical' : undefined)
+  onFocus=focused
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...keys}
+  {...rest}
+>{children}</div>

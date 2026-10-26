@@ -1,0 +1,9 @@
+<script>
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+</script>
+
+<div class="ui-row">
+  <ColorSwatch class="ui-swatch" color="#e2445a" />
+  <ColorSwatch class="ui-swatch" color="hsl(210, 50%, 40%)" colorName="Ocean" />
+  <ColorSwatch class="ui-swatch" color="rgba(46, 160, 67, 0.5)" />
+</div>

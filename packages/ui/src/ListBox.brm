@@ -25,14 +25,15 @@
     isTyping,
     keyOf,
     keysBetween,
-    lastFocusedOf,
     movementOf,
     moveFrom,
     nextSelection,
+    passFocus,
     rangeOf,
     sameKeys,
     setRange,
-    setLastFocused,
+    trackFocusIn,
+    trackFocusOut,
     typeahead,
   } from './collection.ts';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
@@ -158,43 +159,21 @@
     $untrack(applyFilter());
   });
 
-  /** The item that focus goes to when the list gets it. */
-  function entry(element: HTMLElement) {
-    const items = enabledItems(element, 'option');
-    const last = lastFocusedOf(element);
-    return (
-      items.find((item) => last !== undefined && keyOf(item) === last) ??
-      items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-      (given?.focusStrategy === 'last' ? items.at(-1) : items[0])
-    );
-  }
-
   function focused(event: FocusEvent) {
-    const element = root;
-    if (field) {
-      return;
-    }
-    // The list passes its focus on to an item.
-    if (element && event.target === element && document.activeElement === element) {
-      focusItem(entry(element));
+    // A field around the list keeps the focus.
+    if (!field) {
+      passFocus(root, event, 'option', (items) =>
+        given?.focusStrategy === 'last' ? items.at(-1) : items[0],
+      );
     }
   }
 
   function focusIn(event: FocusEvent) {
-    const element = root;
-    const item = (event.target as Element).closest?.('[role=option][data-key]');
-    if (element && item && element.contains(item)) {
-      // While an item has focus, Tab leaves the list rather than stopping at it.
-      element.tabIndex = -1;
-      setLastFocused(element, keyOf(item)!);
-    }
+    trackFocusIn(root, event, 'option');
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
-    if (element && !element.contains(event.relatedTarget as Node | null)) {
-      element.tabIndex = 0;
-    }
+    trackFocusOut(root, event);
   }
 
   function keyDown(event: KeyboardEvent) {

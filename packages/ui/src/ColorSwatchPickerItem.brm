@@ -1,0 +1,36 @@
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { ColorSwatchContext } from './contexts.ts';
+  import ListBoxItem from './ListBoxItem.brm';
+  import { colorName, formatColor, tryParseColor } from './color.ts';
+
+  /**
+   * An option of a ColorSwatchPicker, as ColorSwatchPickerItem of React Aria Components.
+   *
+   * - `color` is its color of CSS. A ColorSwatch inside shows it.
+   * - A press selects it. Its `textValue`, for typeahead and for the name, is the name of the
+   *   color.
+   * - It shows `data-selected`, `data-focused`, `data-focus-visible`, `data-disabled`,
+   *   `data-pressed` and `data-hovered`.
+   */
+  const {
+    color = '#00000000',
+    isDisabled = false,
+    children,
+    ...rest
+  } = $props<{
+    color?: string;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const parsed = $memo(tryParseColor(color));
+  // Equal colors have the same key.
+  const key = $memo(parsed ? formatColor(parsed, 'hexa') : color);
+  const name = $memo(parsed ? colorName(parsed) : color);
+
+  $setContext(ColorSwatchContext, { color });
+</script>
+
+<ListBoxItem id=key textValue=name {isDisabled} data-color=color {...rest}>{children}</ListBoxItem>

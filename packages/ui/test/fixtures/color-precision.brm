@@ -1,0 +1,66 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '../../src/ColorArea.brm';
+  import ColorField from '../../src/ColorField.brm';
+  import ColorPicker from '../../src/ColorPicker.brm';
+  import ColorSlider from '../../src/ColorSlider.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import ColorWheel from '../../src/ColorWheel.brm';
+  import ColorWheelTrack from '../../src/ColorWheelTrack.brm';
+  import Input from '../../src/Input.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+
+  let gray = $signal('#808080');
+  let near = $signal('#887f7f');
+  let wheel = $signal('#808080');
+  let area = $signal('#336699');
+  let hslArea = $signal('hsl(200, 50%, 50%)');
+  let hexa = $signal('#AABBCCDD');
+  let faint = $signal('#00000001');
+  let picked = $signal('#808080');
+  let hex = $signal<string | null>('#e2445a');
+  let hue = $signal<string | null>('hsl(200, 33%, 47%)');
+  let changes = $signal<string[]>([]);
+</script>
+
+<main class="page">
+  <ColorSlider class="gray" channel="hue" value=$bind(gray) onChange=((next: unknown) => (changes = [...changes, 'gray:' + next]))>
+    <SliderTrack><ColorThumb /></SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="near" channel="hue" value=$bind(near) onChange=((next: unknown) => (changes = [...changes, 'near:' + next]))>
+    <SliderTrack><ColorThumb /></SliderTrack>
+  </ColorSlider>
+  <ColorWheel class="wheel" value=$bind(wheel) outerRadius=(100) innerRadius=(60) onChange=((next: unknown) => (changes = [...changes, 'wheel:' + next]))>
+    <ColorWheelTrack />
+    <ColorThumb />
+  </ColorWheel>
+  <ColorArea class="area" xChannel="saturation" yChannel="brightness" value=$bind(area) onChange=((next: unknown) => (changes = [...changes, 'area:' + next]))>
+    <ColorThumb />
+  </ColorArea>
+  <ColorArea class="hsl-area" xChannel="saturation" yChannel="brightness" value=$bind(hslArea)>
+    <ColorThumb />
+  </ColorArea>
+  <ColorSlider class="hexa" channel="red" value=$bind(hexa) onChange=((next: unknown) => (changes = [...changes, 'hexa:' + next]))>
+    <SliderTrack><ColorThumb /></SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="faint" channel="red" value=$bind(faint)>
+    <SliderTrack><ColorThumb /></SliderTrack>
+  </ColorSlider>
+  <ColorPicker value=$bind(picked) onChange=((next: unknown) => (changes = [...changes, 'picker:' + next]))>
+    <ColorSlider class="p-hue" channel="hue">
+      <SliderTrack><ColorThumb /></SliderTrack>
+    </ColorSlider>
+    <ColorArea class="p-area" xChannel="saturation" yChannel="brightness"><ColorThumb /></ColorArea>
+    <ColorField class="p-field"><Input class="p-input" /></ColorField>
+  </ColorPicker>
+  <ColorField class="hex" value=$bind(hex) onChange=((next: unknown) => (changes = [...changes, 'hex:' + next]))>
+    <Input class="hex-input" />
+  </ColorField>
+  <ColorField class="hue" channel="hue" colorSpace="hsl" value=$bind(hue) onChange=((next: unknown) => (changes = [...changes, 'hue:' + next]))>
+    <Input class="hue-input" />
+  </ColorField>
+  <button class="red" onClick=(() => (gray = '#ff0000'))>Red</button>
+  <button class="gray-again" onClick=(() => (gray = '#808080'))>Gray</button>
+  <p class="state">{JSON.stringify([gray, near, wheel, area, hslArea, hexa, faint, picked, hex, hue])}</p>
+  <p class="changes">{JSON.stringify(changes)}</p>
+</main>

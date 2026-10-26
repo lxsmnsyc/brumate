@@ -82,6 +82,16 @@
   import TimeField from '@brumate/ui/TimeField.brm';
   import DatePicker from '@brumate/ui/DatePicker.brm';
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -132,6 +142,9 @@
   let city = $signal<Key | null>(null);
   let quantity = $signal(1);
   let span = $signal([20, 60]);
+  let tint = $signal('hsl(210, 100%, 50%)');
+  let plane = $signal('hsb(210, 50%, 80%)');
+  let dial = $signal('hsl(210, 100%, 50%)');
   let delivery = $signal<string | null>('2026-10-15');
   let birthday = $signal<string | null>('2026-10-15');
   let pickup = $signal<string | null>('14:30');
@@ -143,6 +156,10 @@
   let pickedFiles = $signal<Key[]>([]);
   let gridFiles = $signal(['notes', 'photos', 'music']);
   let fileOpened = $signal('none');
+  let accent = $signal<string | null>('#e2445a');
+  let shade = $signal<string | null>('hsl(120, 50%, 50%)');
+  let paint = $signal('#e2445a');
+  let mix = $signal('hsb(210, 50%, 80%)');
   // A file tree: folders with children, opened and selected.
   interface Folder {
     id: string;
@@ -700,6 +717,81 @@
     </SliderTrack>
   </Slider>
   <p class="span-state">{span.join(' ')}</p>
+</section>
+
+<section aria-labelledby="color-picker">
+  <h2 id="color-picker">ColorPicker</h2>
+  <ColorPicker value=$bind(mix)>
+    <ColorArea class="mix-area" xChannel="saturation" yChannel="brightness" style="width: 200px; height: 100px; background: var(--area-background)">
+      <ColorThumb style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </ColorArea>
+    <ColorField class="mix-field">
+      <Label>Mix</Label>
+      <Input class="mix-input" />
+    </ColorField>
+    <ColorSwatch class="mix-swatch" style="width: 2rem; height: 2rem" />
+  </ColorPicker>
+  <p class="mix-state">{mix}</p>
+</section>
+
+<section aria-labelledby="color-swatch">
+  <h2 id="color-swatch">ColorSwatch</h2>
+  <ColorSwatch class="swatch-red" color="#e2445a" style="width: 2rem; height: 2rem" />
+  <ColorSwatch class="swatch-ocean" color="hsl(210, 50%, 40%)" colorName="Ocean" style="width: 2rem; height: 2rem" />
+</section>
+
+<section aria-labelledby="color-swatch-picker">
+  <h2 id="color-swatch-picker">ColorSwatchPicker</h2>
+  <ColorSwatchPicker class="paint" aria-label="Paint" value=$bind(paint) style="display: flex; flex-wrap: wrap; gap: 4px; width: 80px">
+    <ColorSwatchPickerItem class="paint-red" color="#e2445a" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="paint-green" color="rgb(46, 160, 67)" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="paint-blue" color="hsl(217, 91%, 53%)" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="paint-gray" color="#888888" isDisabled style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
+  </ColorSwatchPicker>
+  <p class="paint-state">{paint}</p>
+</section>
+
+<section aria-labelledby="color-field">
+  <h2 id="color-field">ColorField</h2>
+  <ColorField class="accent" name="accent" value=$bind(accent)>
+    <Label>Accent</Label>
+    <Input class="accent-input" />
+  </ColorField>
+  <p class="accent-state">{accent ?? 'None'}</p>
+  <ColorField class="shade" channel="hue" colorSpace="hsl" value=$bind(shade)>
+    <Label>Hue</Label>
+    <Input class="shade-input" />
+  </ColorField>
+  <p class="shade-state">{shade ?? 'None'}</p>
+</section>
+
+<section aria-labelledby="color-slider">
+  <h2 id="color-slider">ColorSlider</h2>
+  <ColorSlider class="tint" channel="hue" value=$bind(tint)>
+    <Label>Hue</Label>
+    <SliderOutput class="tint-output" />
+    <SliderTrack class="tint-track" style="width: 200px; height: 20px; background: var(--track-background)">
+      <ColorThumb class="tint-thumb" style="top: 50%; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </SliderTrack>
+  </ColorSlider>
+  <p class="tint-state">{tint}</p>
+</section>
+
+<section aria-labelledby="color-area">
+  <h2 id="color-area">ColorArea</h2>
+  <ColorArea class="plane" xChannel="saturation" yChannel="brightness" value=$bind(plane) style="width: 200px; height: 100px; background: var(--area-background)">
+    <ColorThumb class="plane-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+  </ColorArea>
+  <p class="plane-state">{plane}</p>
+</section>
+
+<section aria-labelledby="color-wheel">
+  <h2 id="color-wheel">ColorWheel</h2>
+  <ColorWheel class="dial" value=$bind(dial) outerRadius=(100) innerRadius=(70)>
+    <ColorWheelTrack class="dial-track" />
+    <ColorThumb class="dial-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+  </ColorWheel>
+  <p class="dial-state">{dial}</p>
 </section>
 
 <section aria-labelledby="calendar">

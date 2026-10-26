@@ -1,0 +1,469 @@
+<script>
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import type { Bindable } from 'brumate/signals';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
+  import {
+    areaChannels,
+    areaGradient,
+    SPACE_CHANNELS,
+    channelName,
+    channelRange,
+    channelValue,
+    colorName,
+    displayColor,
+    formatChannelValue,
+    formatColor,
+    formatLike,
+    parseColor,
+    sameColor,
+    toSpace,
+    tryParseColor,
+    withChannelValue,
+  } from './color.ts';
+  import { ColorPickerContext } from './contexts.ts';
+  import { ColorThumbContext } from './color-thumb.ts';
+  import { LocaleContext } from './locale.ts';
+  import { clamp, snapToStep } from './numbers.ts';
+  import { startDrag, thumbId } from './slider.ts';
+
+  /**
+   * An area for two channels of a color, as ColorArea of React Aria Components. It holds a
+   * ColorThumb, which gets a hidden range input for each axis.
+   *
+   * - `xChannel` and `yChannel` are the channels of the axes, and `colorSpace` is the space that
+   *   it reads them in. Without them they are the first two channels of the space, which is the
+   *   space of the value: hue and saturation for hsb, red and green for rgb. A color of another
+   *   space moves to it. Without a `value` it is `#ffffff`.
+   * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
+   * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
+   *   the color once a drag or a key ends. The color keeps the format that it was given.
+   * - It edits a color at full precision, and gives back the format of `value`. Hex cannot hold
+   *   the hue of a gray, nor hsl the saturation of black, so the thumb keeps the hue and the
+   *   saturation that the color had when the other channel moves to an end and back. `value` and
+   *   `onChange` are left alone while an edit makes no other color. When `value` changes from
+   *   outside, such as from a reset of the form, the color follows it.
+   * - Left and Right move x by a step, and Up and Down move y, on either input, by a page with
+   *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page, as
+   *   React Aria does. The focus goes to the input of the axis that moved. The inputs have the role
+   *   description `2D slider`.
+   * - It has one tab stop: the input of y has `tabindex="-1"` and `aria-hidden`, unless it has the
+   *   focus or a key just changed the value. A screen reader hears the value, the other axis, the
+   *   third channel and the name of the color without its alpha, and after a key only the value
+   *   and the color.
+   * - The group and both inputs are named as in React Aria: the `aria-label` of the caller and
+   *   `Color picker`, which alone names the inputs. An `aria-labelledby` reaches the group and
+   *   both inputs, each with its own ID first, when there is a label.
+   * - A press with Alt, Ctrl or Meta does nothing.
+   * - A press on the area moves the thumb there, and a drag follows. A press on the thumb keeps
+   *   the distance from the pointer to its center, so the thumb does not jump.
+   * - The element has `--area-background`, the gradient of the two channels, for the style of the
+   *   caller: `background: var(--area-background)`. It has `--area-background-blend-mode` too,
+   *   which is `screen` for rgb: `background-blend-mode: var(--area-background-blend-mode)`. The
+   *   element is `position: relative`, and the ColorThumb has `--color`.
+   * - Right to left, x grows toward the left.
+   * - `xName` and `yName` send the values with a form, also before the code loads. A reset of the
+   *   form gives back the first color. `isDisabled` keeps it still and shows `data-disabled`.
+   */
+  const {
+    xChannel,
+    yChannel,
+    colorSpace,
+    isDisabled = false,
+    xName,
+    yName,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
+    onChange,
+    onChangeEnd,
+    children,
+    ...rest
+  } = $props<{
+    xChannel?: ColorChannel;
+    yChannel?: ColorChannel;
+    colorSpace?: ColorSpace;
+    isDisabled?: boolean;
+    xName?: string;
+    yName?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = '#ffffff' } = $props<{ value?: Bindable<string> }>();
+
+  // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
+  const picker = $getContext(ColorPickerContext);
+  const passed = $isPassed(value);
+  const held = $memo(picker && !passed ? picker.value : value);
+
+  function write(next: Color, text: string) {
+    if (picker && !passed) {
+      picker.setValue(next, text);
+    } else {
+      working = next;
+      value = text;
+    }
+  }
+
+  const locale = $getContext(LocaleContext);
+  // The color that a reset of the form gives back.
+  let initialValue = $signal(held);
+  let dragging = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  const id = $id();
+  const groupId = $id();
+  const rtl = $memo(locale.direction === 'rtl');
+  // The space of the value, which the axes default to.
+  const valueSpace = $memo(
+    picker && !passed ? picker.color.space : (tryParseColor(held)?.space ?? 'rgb'),
+  );
+  const axes = $memo(areaChannels(xChannel, yChannel, colorSpace, valueSpace));
+  const third = $memo(
+    SPACE_CHANNELS[axes.space].find((channel) => channel !== axes.x && channel !== axes.y)!,
+  );
+  // Which input has the focus or had it last, and what changed the value since the focus came.
+  // The input that is not in use leaves the tab order and the screen readers, as in React Aria.
+  let focusedInput = $signal<number>(-1);
+  let changedByKey = $signal(false);
+  let changedByInput = $signal(false);
+
+  // The color to edit for a value, in the space of the area. A value that is no color reads as
+  // black.
+  function fresh(text: string) {
+    return toSpace(tryParseColor(text) ?? parseColor('#000000'), axes.space);
+  }
+
+  // The color at full precision. A value that changes from outside gives a new one, and the writes
+  // of the part do not, since they make the same color.
+  let working = $signal(fresh(held));
+  $effect(() => {
+    const next = held;
+    if (!$untrack(sameColor(working, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
+  const xRange = $memo(channelRange(axes.x));
+  const yRange = $memo(channelRange(axes.y));
+  // The color in the space of the area. A value that is no color reads as black.
+  const color = $memo(
+    picker && !passed ? toSpace(picker.color, axes.space) : working,
+  );
+  const xValue = $memo(
+    snapToStep(
+      clamp(channelValue(color, axes.x), xRange.minValue, xRange.maxValue),
+      xRange.minValue,
+      xRange.maxValue,
+      xRange.step,
+    ),
+  );
+  const yValue = $memo(
+    snapToStep(
+      clamp(channelValue(color, axes.y), yRange.minValue, yRange.maxValue),
+      yRange.minValue,
+      yRange.maxValue,
+      yRange.step,
+    ),
+  );
+  // Screen readers get the value of the input, then the other axis and the third channel, and
+  // what color they make. After a change the text is short, as in React Aria. The color is named
+  // without its alpha.
+  const colorText = $memo(colorName(displayColor(color, 'red')));
+  function channelText(channel: ColorChannel) {
+    return `${channelName(channel)} ${formatChannelValue(color, channel, locale.locale)}`;
+  }
+  function valueTextOf(axis: ColorChannel, other: ColorChannel) {
+    const names =
+      changedByKey || changedByInput
+        ? [axis]
+        : [axis, other, third];
+    return `${names.map(channelText).join(', ')}, ${colorText}`;
+  }
+  const xText = $memo(valueTextOf(axes.x, axes.y));
+  const yText = $memo(valueTextOf(axes.y, axes.x));
+
+  // The names, as in React Aria: the group says the label of the caller and what it is, and so do
+  // the inputs, which are the color picker without a label. A `aria-labelledby` has the element
+  // itself too, when it has a label.
+  const labelText = $memo(ariaLabel ? `${ariaLabel}, Color picker` : undefined);
+  const inputLabel = $memo(labelText ?? 'Color picker');
+  const areaId = $memo(typeof rest.id === 'string' ? rest.id : groupId);
+  function labelledBy(own: string, withOwn: boolean) {
+    const ids = (ariaLabelledby ?? '').trim().split(/\s+/).filter(Boolean);
+    if (ids.length === 0) {
+      return undefined;
+    }
+    return [...new Set(withOwn ? [own, ...ids] : ids)].join(' ');
+  }
+  const xPercent = $memo(
+    ((xValue - xRange.minValue) / (xRange.maxValue - xRange.minValue)) * 100,
+  );
+  const yPercent = $memo(
+    ((yValue - yRange.minValue) / (yRange.maxValue - yRange.minValue)) * 100,
+  );
+  const gradient = $memo(areaGradient(color, axes.x, axes.y, rtl ? 'left' : 'right'));
+
+  // Moves the thumb to a value for each axis, on a step and in the range. An axis that is left out
+  // keeps its value at full precision.
+  function setAxes(x: number | undefined, y: number | undefined) {
+    if (isDisabled) {
+      return;
+    }
+    let next = color;
+    if (x !== undefined) {
+      next = withChannelValue(
+        next,
+        axes.x,
+        snapToStep(x, xRange.minValue, xRange.maxValue, xRange.step),
+      );
+    }
+    if (y !== undefined) {
+      next = withChannelValue(
+        next,
+        axes.y,
+        snapToStep(y, yRange.minValue, yRange.maxValue, yRange.step),
+      );
+    }
+    const text = formatLike(next, held);
+    // The same color keeps the string of the caller.
+    if (sameColor(text, held)) {
+      write(next, held);
+      return;
+    }
+    write(next, text);
+    onChange?.(text);
+  }
+
+  function setDragging(next: boolean) {
+    dragging = next;
+    if (!next) {
+      onChangeEnd?.(held);
+    }
+  }
+
+  // Where a point is on the area, from 0 to 1 for each axis, or past the ends. Y grows upward.
+  function pointAt(area: Element, clientX: number, clientY: number): [number, number] {
+    const box = area.getBoundingClientRect();
+    const x = box.width > 0 ? (clientX - box.left) / box.width : 0;
+    const y = box.height > 0 ? (clientY - box.top) / box.height : 0;
+    return [rtl ? 1 - x : x, 1 - y];
+  }
+
+  function moveTo(
+    area: Element,
+    move: { clientX: number; clientY: number },
+    offsetX: number,
+    offsetY: number,
+  ) {
+    const [x, y] = pointAt(area, move.clientX, move.clientY);
+    setAxes(
+      xRange.minValue + clamp(x - offsetX, 0, 1) * (xRange.maxValue - xRange.minValue),
+      yRange.minValue + clamp(y - offsetY, 0, 1) * (yRange.maxValue - yRange.minValue),
+    );
+  }
+
+  function focusAxis(index: number) {
+    document.getElementById(thumbId({ id }, index))?.focus({ preventScroll: true });
+  }
+
+  // Focuses the thumb and follows the pointer until it goes up.
+  function begin(area: Element, event: PointerEvent, offsetX: number, offsetY: number) {
+    changedByKey = false;
+    focusAxis(0);
+    setDragging(true);
+    startDrag(
+      event.pointerId,
+      (move) => moveTo(area, move, offsetX, offsetY),
+      () => {
+        changedByKey = false;
+        setDragging(false);
+        focusAxis(0);
+      },
+      event.currentTarget as Element,
+    );
+  }
+
+  // A press on the thumb keeps the distance to the pointer, as in React Aria.
+  function press(event: PointerEvent) {
+    const area = (event.currentTarget as Element).closest('[data-color-area]');
+    if (!area) {
+      return;
+    }
+    const [x, y] = pointAt(area, event.clientX, event.clientY);
+    begin(
+      area,
+      event,
+      x - (xValue - xRange.minValue) / (xRange.maxValue - xRange.minValue),
+      y - (yValue - yRange.minValue) / (yRange.maxValue - yRange.minValue),
+    );
+  }
+
+  // A press on the area moves the thumb to the pointer.
+  function pressArea(event: PointerEvent) {
+    if (
+      isDisabled ||
+      event.button !== 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      dragging ||
+      (event.target as Element).closest?.('[data-color-thumb]')
+    ) {
+      return;
+    }
+    const area = event.currentTarget as Element;
+    moveTo(area, event, 0, 0);
+    begin(area, event, 0, 0);
+  }
+
+  function inputChange(index: number, next: number) {
+    changedByInput = true;
+    if (index === 0) {
+      setAxes(next, undefined);
+    } else {
+      setAxes(undefined, next);
+    }
+  }
+
+  // The arrows move a step, or a page with Shift. The pages move y, and Home and End move x.
+  function inputKey(_index: number, key: string, shiftKey: boolean) {
+    // The focus goes to the input of the axis that moved, as in React Aria.
+    const index = key === 'ArrowUp' || key === 'ArrowDown' || key === 'PageUp' || key === 'PageDown' ? 1 : 0;
+    changedByKey = true;
+    focusedInput = index;
+    focusAxis(index);
+    const sign = rtl ? -1 : 1;
+    const xStep = shiftKey ? xRange.pageSize : xRange.step;
+    const yStep = shiftKey ? yRange.pageSize : yRange.step;
+    switch (key) {
+      case 'ArrowRight':
+        setAxes(xValue + sign * xStep, undefined);
+        break;
+      case 'ArrowLeft':
+        setAxes(xValue - sign * xStep, undefined);
+        break;
+      case 'ArrowUp':
+        setAxes(undefined, yValue + yStep);
+        break;
+      case 'ArrowDown':
+        setAxes(undefined, yValue - yStep);
+        break;
+      case 'PageUp':
+        setAxes(undefined, yValue + yRange.pageSize);
+        break;
+      case 'PageDown':
+        setAxes(undefined, yValue - yRange.pageSize);
+        break;
+      case 'End':
+        setAxes(xValue + sign * xRange.pageSize, undefined);
+        break;
+      case 'Home':
+        setAxes(xValue - sign * xRange.pageSize, undefined);
+        break;
+    }
+  }
+
+  function focusChange(isFocused: boolean, isFocusVisible: boolean, index: number) {
+    focused = isFocused;
+    focusVisible = isFocusVisible;
+    if (isFocused) {
+      focusedInput = index;
+    } else {
+      // The focus left the area, so the next value is read in full again.
+      changedByKey = false;
+      changedByInput = false;
+    }
+  }
+
+  function end() {
+    setDragging(false);
+  }
+
+  // A reset of the form gives back the first color, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      write(fresh(initialValue), initialValue);
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  $setContext(ColorThumbContext, {
+    color: formatColor(displayColor(color, 'red')),
+    left: rtl ? 100 - xPercent : xPercent,
+    top: 100 - yPercent,
+    inputs: [
+      {
+        id: thumbId({ id }, 0),
+        name: xName,
+        min: xRange.minValue,
+        max: xRange.maxValue,
+        step: xRange.step,
+        value: xValue,
+        valueText: xText,
+        label: inputLabel,
+        labelledBy: labelledBy(thumbId({ id }, 0), true),
+        tabIndex: focusedInput > 0 ? -1 : undefined,
+        hidden: focusedInput > 0 && !changedByKey,
+        orientation: 'horizontal',
+        roleDescription: '2D slider',
+      },
+      {
+        id: thumbId({ id }, 1),
+        name: yName,
+        min: yRange.minValue,
+        max: yRange.maxValue,
+        step: yRange.step,
+        value: yValue,
+        valueText: yText,
+        label: inputLabel,
+        labelledBy: labelledBy(thumbId({ id }, 1), true),
+        tabIndex: focusedInput === 1 ? undefined : -1,
+        hidden: focusedInput !== 1 && !changedByKey,
+        orientation: 'vertical',
+        roleDescription: '2D slider',
+      },
+    ],
+    isDragging: dragging,
+    isFocused: focused,
+    isFocusVisible: focusVisible,
+    isDisabled,
+    onInputChange: inputChange,
+    onInputKey: inputKey,
+    onPress: press,
+    onFocusChange: focusChange,
+    onChangeEnd: end,
+    direction: locale.direction,
+  });
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  role="group"
+  id=(areaId)
+  aria-label=(labelText)
+  aria-labelledby=(labelledBy(areaId, Boolean(ariaLabel)))
+  class="area"
+  data-color-area
+  data-disabled=(isDisabled || undefined)
+  onPointerDown=(prevent(pressArea))
+  {...rest}
+>{children}</div>
+
+<style>
+  /* The thumb is placed in the area, and a drag on it does not scroll the page. */
+  .area {
+    --area-background: ${gradient.background};
+    --area-background-blend-mode: ${gradient.blendMode};
+    position: relative;
+    touch-action: none;
+  }
+</style>

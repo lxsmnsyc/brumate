@@ -1,0 +1,301 @@
+<script>
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import {
+    channelName,
+    channelRange,
+    channelValue,
+    colorName,
+    displayColor,
+    editSpace,
+    formatChannelValue,
+    formatColor,
+    formatLike,
+    parseColor,
+    sameColor,
+    toSpace,
+    tryParseColor,
+    withChannelValue,
+  } from './color.ts';
+  import type { Color } from './color.ts';
+  import { ColorPickerContext } from './contexts.ts';
+  import { ColorThumbContext } from './color-thumb.ts';
+  import { ColorWheelContext, hueDown, hueToPoint, hueUp, pointToHue, wrapHue } from './color-wheel.ts';
+  import { LocaleContext } from './locale.ts';
+  import { startDrag } from './drag.ts';
+  import { thumbId } from './slider.ts';
+
+  /**
+   * A circular track for the hue of a color, as ColorWheel of React Aria Components. It holds a
+   * ColorWheelTrack and a ColorThumb, which it gives the state of its thumb.
+   *
+   * - `outerRadius` and `innerRadius` are the radii of the ring in pixels. The element is a square
+   *   of twice the outer radius, and the thumb sits on the middle of the ring, at the angle of the
+   *   hue. 0 degrees is at 3 o'clock and the hue grows clockwise.
+   * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
+   * - `value` is a color of CSS, such as `hsl(120, 50%, 40%)`. `value=(color)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd` the
+   *   color once a drag or a key ends. The color keeps its format and its saturation and
+   *   lightness or brightness. A color of the rgb space, such as hex, is read as hsb.
+   * - It edits a color at full precision, and gives back the format of `value`. Hex cannot hold
+   *   the hue of a gray, so the thumb of a gray keeps where the user put it, and `value` and
+   *   `onChange` are left alone while the edit makes no other color. When `value` changes from
+   *   outside, such as from a reset of the form, the color follows it.
+   * - The thumb has one hidden range input, from 0 to 360, named by `name`. The wheel takes its
+   *   keys, as React Aria does: Right and Up raise the hue by 1, and Left and Down lower it, by 15
+   *   with Shift. A hue past either end starts over, so Left at 0 goes to 359. PageUp and PageDown
+   *   move to a multiple of 15. Home goes to 0, and End to 360, which is 0.
+   * - A press on the ring moves the thumb to that angle, and a drag follows it. A press on the
+   *   thumb takes it where it is, so it does not jump to the pointer. A press off the ring does
+   *   nothing.
+   * - It sets `aria-label` of the input to `Hue`, unless `aria-label` or `aria-labelledby` is given.
+   * - It shows `data-disabled`. A reset of the form gives back the first color.
+   */
+  const {
+    outerRadius,
+    innerRadius,
+    isDisabled = false,
+    name,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
+    onChange,
+    onChangeEnd,
+    children,
+    ...rest
+  } = $props<{
+    outerRadius: number;
+    innerRadius: number;
+    isDisabled?: boolean;
+    name?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = 'hsl(0, 100%, 50%)' } = $props<{ value?: Bindable<string> }>();
+
+  // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
+  const picker = $getContext(ColorPickerContext);
+  const passed = $isPassed(value);
+  const held = $memo(picker && !passed ? picker.value : value);
+
+  function write(next: Color, text: string) {
+    if (picker && !passed) {
+      picker.setValue(next, text);
+    } else {
+      working = next;
+      value = text;
+    }
+  }
+
+  const locale = $getContext(LocaleContext);
+  // The color that a reset of the form gives back.
+  let initialValue = $signal(held);
+  let dragging = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  const id = $id();
+  const range = channelRange('hue');
+  // The color to edit for a value, as hue and saturation with lightness or brightness: in its own
+  // space, or in hsb for rgb. A value that is no color reads as red.
+  function fresh(text: string) {
+    const parsed = tryParseColor(text) ?? parseColor('hsl(0, 100%, 50%)');
+    return toSpace(parsed, editSpace(parsed, 'hue'));
+  }
+
+  // The color at full precision. A value that changes from outside gives a new one, and the writes
+  // of the part do not, since they make the same color.
+  let working = $signal(fresh(held));
+  $effect(() => {
+    const next = held;
+    if (!$untrack(sameColor(working, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
+
+  const color = $memo(
+    picker && !passed ? toSpace(picker.color, editSpace(picker.color, 'hue')) : working,
+  );
+  const hue = $memo(channelValue(color, 'hue'));
+  const shown = $memo(displayColor(color, 'hue'));
+  const label = $memo(formatChannelValue(color, 'hue', locale.locale));
+  const valueText = $memo(`${label}, ${colorName(shown)}`);
+  // The thumb sits at the middle of the ring, as percents of the square of the wheel.
+  const point = $memo(hueToPoint(hue, (innerRadius + outerRadius) / 2));
+  const left = $memo(Math.round((50 + (point.x / (outerRadius * 2)) * 100) * 1000) / 1000);
+  const top = $memo(Math.round((50 + (point.y / (outerRadius * 2)) * 100) * 1000) / 1000);
+
+  function setHue(next: number) {
+    if (isDisabled) {
+      return;
+    }
+    const hued = wrapHue(next, range.step);
+    if (hued === hue) {
+      return;
+    }
+    const edited = withChannelValue(color, 'hue', hued);
+    const text = formatLike(edited, held);
+    // The same color keeps the string of the caller.
+    if (sameColor(text, held)) {
+      write(edited, held);
+      return;
+    }
+    write(edited, text);
+    onChange?.(text);
+  }
+
+  function setDragging(next: boolean) {
+    const was = dragging;
+    dragging = next;
+    if (was && !next) {
+      onChangeEnd?.(held);
+    }
+  }
+
+  // The wheel takes the keys of its input, as React Aria moves the hue: Right and Up raise it,
+  // Left and Down lower it, by a page with Shift, and a hue past either end starts over. PageUp
+  // and PageDown move to a multiple of a page. Home goes to 0, and End to 360, which is 0.
+  function inputKey(_index: number, key: string, shiftKey: boolean) {
+    const size = shiftKey ? range.pageSize : range.step;
+    if (key === 'ArrowRight' || key === 'ArrowUp') {
+      setHue(hueUp(hue, size, range.step));
+    } else if (key === 'ArrowLeft' || key === 'ArrowDown') {
+      setHue(hueDown(hue, size, range.step));
+    } else if (key === 'PageUp') {
+      setHue(hueUp(hue, range.pageSize, range.step));
+    } else if (key === 'PageDown') {
+      setHue(hueDown(hue, range.pageSize, range.step));
+    } else if (key === 'Home') {
+      setHue(range.minValue);
+    } else if (key === 'End') {
+      setHue(range.maxValue);
+    }
+  }
+
+  function inputChange(_index: number, next: number) {
+    setHue(next);
+  }
+
+  function focusInput() {
+    document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
+  }
+
+  // A press on the thumb keeps the distance to the pointer, as in React Aria: the pointer moves
+  // the thumb by its own distance.
+  function press(event: PointerEvent) {
+    focusInput();
+    const start = hueToPoint(hue, (innerRadius + outerRadius) / 2);
+    const from = { x: event.clientX, y: event.clientY };
+    setDragging(true);
+    startDrag(
+      event.pointerId,
+      (move) =>
+        setHue(pointToHue(start.x + move.clientX - from.x, start.y + move.clientY - from.y)),
+      () => setDragging(false),
+      event.currentTarget as Element,
+    );
+  }
+
+  function pressTrack(event: PointerEvent) {
+    if (
+      dragging ||
+      (event.pointerType === 'mouse' &&
+        (event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey))
+    ) {
+      return;
+    }
+    const track = event.currentTarget as Element;
+    const box = track.getBoundingClientRect();
+    const x = event.clientX - box.x - box.width / 2;
+    const y = event.clientY - box.y - box.height / 2;
+    const radius = Math.sqrt(x * x + y * y);
+    // The ring is between the radii, and a press elsewhere is not the wheel's.
+    if (radius <= innerRadius || radius >= outerRadius) {
+      return;
+    }
+    setHue(pointToHue(x, y));
+    focusInput();
+    setDragging(true);
+    startDrag(
+      event.pointerId,
+      (move) => {
+        const at = track.getBoundingClientRect();
+        setHue(
+          pointToHue(move.clientX - at.x - at.width / 2, move.clientY - at.y - at.height / 2),
+        );
+      },
+      () => setDragging(false),
+      track,
+    );
+  }
+
+  function focusChange(isFocused: boolean, isFocusVisible: boolean) {
+    focused = isFocused;
+    focusVisible = isFocusVisible;
+  }
+
+  function end() {
+    onChangeEnd?.(held);
+  }
+
+  // A reset of the form gives back the first color, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      write(fresh(initialValue), initialValue);
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  $setContext(ColorWheelContext, {
+    outerRadius,
+    innerRadius,
+    isDisabled,
+    onTrackPress: pressTrack,
+  });
+  $setContext(ColorThumbContext, {
+    color: formatColor(shown),
+    left,
+    top,
+    inputs: [
+      {
+        id: thumbId({ id }, 0),
+        name,
+        min: range.minValue,
+        max: range.maxValue,
+        step: range.step,
+        value: hue,
+        valueText,
+        label: ariaLabel ?? (ariaLabelledby ? undefined : channelName('hue')),
+        labelledBy: ariaLabelledby,
+      },
+    ],
+    isDragging: dragging,
+    isFocused: focused,
+    isFocusVisible: focusVisible,
+    isDisabled,
+    onInputChange: inputChange,
+    onInputKey: inputKey,
+    onPress: press,
+    onFocusChange: focusChange,
+    onChangeEnd: end,
+    direction: 'ltr',
+  });
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div class="wheel" data-disabled=(isDisabled || undefined) {...rest}>{children}</div>
+
+<style>
+  .wheel {
+    position: relative;
+    width: ${outerRadius * 2}px;
+    height: ${outerRadius * 2}px;
+  }
+</style>
