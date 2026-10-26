@@ -1225,8 +1225,9 @@ export class Emitter {
       this.html(` ${this.plan.styles.attribute}`);
     }
     const anchor = this.anchor(scope, node);
-    // With a spread, the anchor comes first: a spread can bring the anchor of a dynamic tag, and
-    // the browser keeps the first `b-b`, so the element's own must win.
+    // With a spread, the element writes its own `b-b` before it. `spread` in html.ts still writes
+    // the inherited `b-b` on purpose, for a component with no anchor of its own. The parser keeps
+    // the first, so the element's own wins.
     if (anchor && spreadHandlers) {
       this.html(' b-b="');
       this.code(anchor.scope);
@@ -1322,6 +1323,7 @@ export class Emitter {
         `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
       );
     }
+    // With a spread, the own `b-b` is already written, before it.
     if (anchor && !spreadHandlers) {
       this.html(' b-b="');
       this.code(anchor.scope);
