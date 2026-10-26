@@ -1,3 +1,13 @@
+<script module>
+  import type { DateString } from './calendar.ts';
+
+  export interface CalendarCellProps {
+    date: DateString;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import {
@@ -8,7 +18,6 @@
     outOfRange,
     toDate,
   } from './calendar.ts';
-  import type { DateString } from './calendar.ts';
 
   /**
    * A date in a CalendarGrid, as CalendarCell of React Aria Components. It renders a `<td>` with
@@ -22,11 +31,7 @@
    * - A date outside the month of its grid is disabled, and its button is hidden, as React Aria
    *   hides it.
    */
-  const { date, children, ...rest } = $props<{
-    date: DateString;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { date, children, ...rest } = $props<CalendarCellProps>();
 
   const calendar = $getContext(CalendarContext);
   const grid = $getContext(CalendarGridContext);

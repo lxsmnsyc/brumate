@@ -1,3 +1,38 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+
+  export interface ListBoxProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    shouldFocusWrap?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    orientation?: 'vertical' | 'horizontal';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    /**
+     * The height of an option in pixels, which renders only the options in view, as in a
+     * Virtualizer. A Virtualizer around the list gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the options out of view of a windowed list.
+     * The options in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the options, each with an `id`. The `item` template renders each one. */
+    items?: readonly { id: Key }[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
+    item?: (item: any) => unknown;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $client,
@@ -12,7 +47,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -37,7 +71,6 @@
     trackFocusOut,
     typeahead,
   } from './collection.ts';
-  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { VirtualizerContext } from './virtualizer.ts';
@@ -79,35 +112,8 @@
     item,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    shouldFocusWrap?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    orientation?: 'vertical' | 'horizontal';
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    /**
-     * The height of an option in pixels, which renders only the options in view, as in a
-     * Virtualizer. A Virtualizer around the list gives it too. It needs `items`.
-     */
-    rowHeight?: number;
-    /**
-     * The text that typeahead matches for an item, for the options out of view of a windowed list.
-     * The options in view use their own `textValue` or text.
-     */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
-    getTextValue?: (item: any) => string;
-    /** The data of the options, each with an `id`. The `item` template renders each one. */
-    items?: readonly { id: Key }[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
-    item?: (item: any) => unknown;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<ListBoxProps>();
+  let { selectedKeys = [] } = $props<ListBoxProps>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.

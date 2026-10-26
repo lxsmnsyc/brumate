@@ -1,4 +1,19 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface VisuallyHiddenOwnProps {
+    focusable?: boolean;
+    children?: unknown;
+  }
+
+  /**
+   * The props of VisuallyHidden. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type VisuallyHiddenProps<T extends AsTarget = 'span'> = AsProps<T, VisuallyHiddenOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'span'">
   import { $props } from 'brumate/signals';
 
   /**
@@ -6,12 +21,7 @@
    * Aria does. With `focusable`, the content shows while it or an element in it has focus, such
    * as a link to skip to the content.
    */
-  const { as = 'span', focusable = false, children, ...rest } = $props<{
-    as?: string;
-    focusable?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { as = 'span', focusable = false, children, ...rest } = $props<VisuallyHiddenProps<T>>();
 </script>
 
 <!-- The attributes of the caller come last, so its class adds to the part's, as mergeProps of React Aria does. -->

@@ -1,8 +1,37 @@
-<script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import type { DateRange, DateString } from './calendar.ts';
+
+  export interface DateRangePickerOwnProps {
+    startName?: string;
+    endName?: string;
+    minValue?: DateString;
+    maxValue?: DateString;
+    placeholderValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onChange?: (value: DateRange | null) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    children?: unknown;
+    value?: Bindable<DateRange | null>;
+    isOpen?: Bindable<boolean>;
+  }
+
+  /**
+   * The props of DateRangePicker. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DateRangePickerProps<T extends AsTarget = 'div'> = AsProps<T, DateRangePickerOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import {
     ButtonContext,
     FieldErrorContext,
@@ -52,26 +81,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    startName?: string;
-    endName?: string;
-    minValue?: DateString;
-    maxValue?: DateString;
-    placeholderValue?: DateString;
-    isDateUnavailable?: (date: DateString) => boolean;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    shouldCloseOnSelect?: boolean;
-    onChange?: (value: DateRange | null) => void;
-    onOpenChange?: (isOpen: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<DateRange | null> }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<DateRangePickerProps<T>>();
+  let { value = null } = $props<DateRangePickerProps<T>>();
+  let { isOpen = false } = $props<DateRangePickerProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);

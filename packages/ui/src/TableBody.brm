@@ -1,3 +1,12 @@
+<script module>
+  export interface TableBodyProps {
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
+    item?: (item: any) => unknown;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { TableContext } from './table.ts';
@@ -7,12 +16,7 @@
    * a `#for`. Or, when the Table has `items`, the `item` template renders a Row for each one, and
    * only the rows in view when the Table is windowed.
    */
-  const { item, children, ...rest } = $props<{
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
-    item?: (item: any) => unknown;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { item, children, ...rest } = $props<TableBodyProps>();
 
   const table = $getContext(TableContext);
 </script>

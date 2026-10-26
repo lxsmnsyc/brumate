@@ -57,6 +57,111 @@ In another editor, add the plugin to `tsconfig.json`, and use the TypeScript ver
 
 Values that only the server reads are not checked, because they are not sent.
 
+## Props types
+
+Other files need the props type of a component, such as a wrapper that passes props on, a story or a test. A component exports it from `<script module>`, and its instance script uses it:
+
+```brm
+<script module>
+  export interface BadgeProps {
+    label: string;
+    isDisabled?: boolean;
+  }
+</script>
+
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { label, isDisabled } = $props<BadgeProps>();
+</script>
+```
+
+Any other file imports it by name, as a type:
+
+```ts
+import type { BadgeProps } from './Badge.brm';
+
+const props: BadgeProps = { label: 'New', isDisabled: 'yes' };
+// error: Type 'string' is not assignable to type 'boolean | undefined'
+```
+
+- A `.brm` file imports it the same way, and a test does too. The type is the real one, so a wrong prop is an error in each of them.
+- It works where the TypeScript plugin of brumate runs: in the editor, and in `brumate-tsc`. Plain `tsc` reads `.brm` imports through `declare module '*.brm'` and sees `any`.
+- A component with more than one `$props<T>()` call, such as one for its bindable props, takes the props of all of them together. Export one type that holds every prop, and use it in each call.
+- Export a type, not a value, from `<script module>`, since only the type is needed.
+
+### Extending the props of another component
+
+A wrapper that adds props to a component uses an intersection, since an interface cannot extend a type that depends on a parameter:
+
+```brm
+<script module>
+  import type { ButtonProps } from '@brumate/ui/Button.brm';
+
+  export type FancyProps = ButtonProps<'button'> & { tone?: 'red' | 'blue' };
+</script>
+
+<script>
+  import { $props } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+
+  const { tone, children, ...rest } = $props<FancyProps>();
+</script>
+
+<Button data-tone=(tone) {...rest}>{children}</Button>
+```
+
+`<Fancy tone="green" />` is an error, and so is a prop that a Button does not take.
+
+### Generic components
+
+`generics` on the instance script declares the type parameter, and the props type takes it:
+
+```brm
+<script module>
+  export interface ListProps<T> {
+    items: T[];
+    label: (item: T) => string;
+  }
+</script>
+
+<script generics="T">
+  import { $props } from 'brumate/signals';
+
+  const { items, label } = $props<ListProps<T>>();
+</script>
+```
+
+A caller infers `T` from its props. In `<List items=([1, 2]) label=((n) => n.length) />`, `n` is a number, so `length` is an error.
+
+### The `as` of `@brumate/ui`
+
+A part that renders one element takes `as`, the name of an element or a component. Its other props are those of the target, so `<Button as="a" href="/docs">` is valid, and `<Button as="a" foo>` is an error. With `as=(Link)`, the props are those of `Link`.
+
+The props type takes the target, `ButtonProps<'a'>` or `ButtonProps<typeof Link>`, and `ButtonProps` alone is a button. `ButtonOwnProps` has the props of the part without the target. To write a part like this, use `AsProps` of `@brumate/ui/as.ts`:
+
+```brm
+<script module>
+  import type { AsProps, AsTarget } from '@brumate/ui/as.ts';
+
+  export interface CardOwnProps {
+    isFeatured?: boolean;
+    children?: unknown;
+  }
+  export type CardProps<T extends AsTarget = 'div'> = AsProps<T, CardOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $props } from 'brumate/signals';
+
+  const { as = 'div', isFeatured, children, ...rest } = $props<CardProps<T>>();
+</script>
+
+<{as} data-featured=(isFeatured || undefined) {...rest}>{children}</>
+```
+
+Inside the part, a prop that depends on the target has a type that TypeScript cannot resolve. A value of it that goes to `$memo` needs a cast, such as `$memo(as as AsTarget)`. If the part reads many props with exact types, read them from a call of `$props<CardOwnProps>()`, and `as` from another call of `$props<CardProps<T>>()`.
+
 ## Not checked yet
 
 - `children` passed to a component has the type `any`.

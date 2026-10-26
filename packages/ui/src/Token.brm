@@ -1,3 +1,10 @@
+<script module>
+  export interface TokenProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { TokenContext } from './token-field.ts';
@@ -7,7 +14,7 @@
    * TokenInput renders one for each token. It shows `data-selected` while the selection covers it,
    * and `data-disabled`.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<TokenProps>();
 
   const token = $getContext(TokenContext);
 </script>

@@ -1,11 +1,25 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface HeaderOwnProps {
+    children?: unknown;
+  }
+
+  /**
+   * The props of Header. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type HeaderProps<T extends AsTarget = 'header'> = AsProps<T, HeaderOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'header'">
   import { $getContext, $props } from 'brumate/signals';
   import { SectionContext } from './collection.ts';
 
   /** The header of a section of a collection, as Header of React Aria Components. It names it. */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { as = 'header', children, ...rest } = $props<HeaderProps<T>>();
 
   const section = $getContext(SectionContext);
 </script>
 
-<header id=(section?.headerId) {...rest}>{children}</header>
+<{as} id=(section?.headerId) {...rest}>{children}</>

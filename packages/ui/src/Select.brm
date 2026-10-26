@@ -1,4 +1,30 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+  import type { PressEvent } from './events.ts';
+
+  export interface SelectOwnProps {
+    name?: string;
+    placeholder?: string;
+    isDisabled?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onSelectionChange?: (key: Key | null) => void;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    selectedKey?: Bindable<Key | null>;
+    isOpen?: Bindable<boolean>;
+  }
+
+  /**
+   * The props of Select. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type SelectProps<T extends AsTarget = 'div'> = AsProps<T, SelectOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -9,7 +35,6 @@
     $setContext,
     $signal,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxGivenContext,
@@ -20,7 +45,6 @@
     textOfItem,
     typeahead,
   } from './collection.ts';
-  import type { Key } from './collection.ts';
   import {
     ButtonContext,
     FieldErrorContext,
@@ -30,7 +54,6 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import type { PressEvent } from './events.ts';
   import { describedBy, isFirstInvalid, messagesOf } from './fields.ts';
 
   /**
@@ -60,20 +83,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    placeholder?: string;
-    isDisabled?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onSelectionChange?: (key: Key | null) => void;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKey = null } = $props<{ selectedKey?: Bindable<Key | null> }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<SelectProps<T>>();
+  let { selectedKey = null } = $props<SelectProps<T>>();
+  let { isOpen = false } = $props<SelectProps<T>>();
 
   const form = $getContext(FormContext);
   const triggerId = $id();

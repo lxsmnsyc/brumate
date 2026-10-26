@@ -1,12 +1,24 @@
-<script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+<script module>
   import type { Bindable } from 'brumate/signals';
-  import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import type { ButtonContextProps, LinkContextProps } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
+  import type { ContextValue } from './slots.ts';
+
+  export interface PreviewTriggerProps {
+    delay?: number;
+    closeDelay?: number;
+    isDisabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean>;
+  }
+</script>
+
+<script>
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { cancelLongPress, dismissed, followPreview, startLongPress } from './preview.ts';
-  import type { ContextValue } from './slots.ts';
   import { previews } from './tooltip.ts';
 
   /**
@@ -29,14 +41,8 @@
     isDisabled = false,
     onOpenChange,
     children,
-  } = $props<{
-    delay?: number;
-    closeDelay?: number;
-    isDisabled?: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-  }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<PreviewTriggerProps>();
+  let { isOpen = false } = $props<PreviewTriggerProps>();
 
   const button = $getContext(ButtonContext);
   const link = $getContext(LinkContext);

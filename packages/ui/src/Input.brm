@@ -1,3 +1,10 @@
+<script module>
+  export interface InputProps {
+    slot?: string | null;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -12,7 +19,7 @@
    * It shows `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and
    * `data-invalid`.
    */
-  const { slot, ...rest } = $props<{ slot?: string | null; [attribute: string]: unknown }>();
+  const { slot, ...rest } = $props<InputProps>();
 
   const context = $getContext(InputContext);
   // The attributes of a part around the field, such as an Autocomplete.

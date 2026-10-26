@@ -1,6 +1,19 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface ModalProps {
+    isDismissable?: boolean;
+    isKeyboardDismissDisabled?: boolean;
+    transition?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean | undefined>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $bind, $getContext, $isPassed, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { ModalOverlayContext } from './contexts.ts';
   import ModalContent from './ModalContent.brm';
   import ModalOverlay from './ModalOverlay.brm';
@@ -18,16 +31,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    isDismissable?: boolean;
-    isKeyboardDismissDisabled?: boolean;
-    transition?: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ModalProps>();
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
-  let { isOpen } = $props<{ isOpen?: Bindable<boolean | undefined> }>();
+  let { isOpen } = $props<ModalProps>();
 
   const overlay = $getContext(ModalOverlayContext);
   const passed = $isPassed(isOpen);

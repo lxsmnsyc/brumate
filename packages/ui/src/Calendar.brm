@@ -1,7 +1,32 @@
-<script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+<script module>
   import type { Bindable } from 'brumate/signals';
   import type { DateDuration, DayOfWeek } from '@internationalized/date';
+  import type { DateRange, DateString } from './calendar.ts';
+
+  export interface CalendarProps {
+    minValue?: DateString;
+    maxValue?: DateString;
+    isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
+    visibleDuration?: DateDuration;
+    pageBehavior?: 'visible' | 'single';
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isInvalid?: boolean;
+    'aria-label'?: string;
+    onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
+    range?: boolean;
+    allowsNonContiguousRanges?: boolean;
+    firstDayOfWeek?: DayOfWeek;
+    onFocusChange?: (date: DateString) => void;
+    children?: unknown;
+    value?: Bindable<DateString | DateRange | null>;
+    focusedValue?: Bindable<DateString>;
+    [attribute: string]: unknown;
+  }
+</script>
+
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import {
     CalendarContext,
     DatePickerContext,
@@ -17,7 +42,6 @@
     todayString,
     unitDuration,
   } from './calendar.ts';
-  import type { DateRange, DateString } from './calendar.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -59,25 +83,8 @@
     firstDayOfWeek,
     children,
     ...rest
-  } = $props<{
-    minValue?: DateString;
-    maxValue?: DateString;
-    isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
-    visibleDuration?: DateDuration;
-    pageBehavior?: 'visible' | 'single';
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isInvalid?: boolean;
-    'aria-label'?: string;
-    onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
-    range?: boolean;
-    allowsNonContiguousRanges?: boolean;
-    firstDayOfWeek?: DayOfWeek;
-    onFocusChange?: (date: DateString) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<DateString | DateRange | null> }>();
+  } = $props<CalendarProps>();
+  let { value = null } = $props<CalendarProps>();
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
   const picker = $getContext(DatePickerContext);
@@ -91,7 +98,7 @@
       minValue,
       maxValue,
     ).toString(),
-  } = $props<{ focusedValue?: Bindable<DateString> }>();
+  } = $props<CalendarProps>();
   // In a range: the first date of a range that is not done, and the date that it shows the range to.
   let anchor = $signal<DateString | null>(null);
   let hovered = $signal<DateString | null>(null);

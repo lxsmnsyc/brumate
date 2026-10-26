@@ -1,8 +1,27 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { DateRange, DateString } from './calendar.ts';
+
+  export interface DatePickerProps {
+    minValue?: DateString;
+    maxValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    placeholderValue?: DateString;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onChange?: (value: DateString | null) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    children?: unknown;
+    value?: Bindable<DateString | null>;
+    isOpen?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $bind, $id, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
-  import type { DateRange, DateString } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
   import DateField from './DateField.brm';
 
@@ -34,21 +53,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    minValue?: DateString;
-    maxValue?: DateString;
-    isDateUnavailable?: (date: DateString) => boolean;
-    placeholderValue?: DateString;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    shouldCloseOnSelect?: boolean;
-    onChange?: (value: DateString | null) => void;
-    onOpenChange?: (isOpen: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<DateString | null> }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<DatePickerProps>();
+  let { value = null } = $props<DatePickerProps>();
+  let { isOpen = false } = $props<DatePickerProps>();
 
   const triggerId = $id();
   const overlayId = $id();

@@ -1,6 +1,18 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DisclosureGroupProps {
+    allowsMultipleExpanded?: boolean;
+    isDisabled?: boolean;
+    onExpandedChange?: (keys: string[]) => void;
+    children?: unknown;
+    expandedKeys?: Bindable<string[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { DisclosureGroupContext } from './contexts.ts';
 
   /**
@@ -11,14 +23,8 @@
    * caller's.
    */
   const { allowsMultipleExpanded = false, isDisabled = false, onExpandedChange, children, ...rest } =
-    $props<{
-      allowsMultipleExpanded?: boolean;
-      isDisabled?: boolean;
-      onExpandedChange?: (keys: string[]) => void;
-      children?: unknown;
-      [attribute: string]: unknown;
-    }>();
-  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<string[]> }>();
+    $props<DisclosureGroupProps>();
+  let { expandedKeys = [] } = $props<DisclosureGroupProps>();
 
   function toggle(id: string) {
     let next: string[];

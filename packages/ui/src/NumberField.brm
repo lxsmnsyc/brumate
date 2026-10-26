@@ -1,4 +1,34 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+  import type { PressEvent } from './events.ts';
+
+  export interface NumberFieldOwnProps {
+    name?: string;
+    minValue?: number;
+    maxValue?: number;
+    step?: number;
+    formatOptions?: Intl.NumberFormatOptions;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    isWheelDisabled?: boolean;
+    onChange?: (value: number) => void;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    children?: unknown;
+    value?: Bindable<number>;
+  }
+
+  /**
+   * The props of NumberField. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type NumberFieldProps<T extends AsTarget = 'div'> = AsProps<T, NumberFieldOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -11,7 +41,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
@@ -24,7 +53,6 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import type { PressEvent } from './events.ts';
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
@@ -59,7 +87,6 @@
    *   say what they increase and decrease.
    */
   const {
-    as = 'div',
     name,
     minValue,
     maxValue,
@@ -75,25 +102,10 @@
     'aria-labelledby': ariaLabelledBy,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    minValue?: number;
-    maxValue?: number;
-    step?: number;
-    formatOptions?: Intl.NumberFormatOptions;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    isWheelDisabled?: boolean;
-    onChange?: (value: number) => void;
-    'aria-label'?: string;
-    'aria-labelledby'?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = Number.NaN } = $props<{ value?: Bindable<number> }>();
+  } = $props<NumberFieldOwnProps>();
+  // The props of the target of `as`, for the type of the component.
+  const { as = 'div' } = $props<NumberFieldProps<T>>();
+  let { value = Number.NaN } = $props<NumberFieldProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);

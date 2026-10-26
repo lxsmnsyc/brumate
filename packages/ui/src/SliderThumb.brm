@@ -1,3 +1,14 @@
+<script module>
+  export interface SliderThumbProps {
+    index?: number;
+    name?: string;
+    isDisabled?: boolean;
+    'aria-label'?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -23,14 +34,7 @@
     'aria-label': label,
     children,
     ...rest
-  } = $props<{
-    index?: number;
-    name?: string;
-    isDisabled?: boolean;
-    'aria-label'?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<SliderThumbProps>();
 
   const slider = $getContext(SliderContext);
   const locale = $getContext(LocaleContext);

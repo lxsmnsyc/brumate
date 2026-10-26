@@ -1,8 +1,16 @@
+<script module>
+  import type { Segment, SegmentType } from './segments.ts';
+
+  export interface DateSegmentProps {
+    segment: Segment;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
-  import type { Segment, SegmentType } from './segments.ts';
 
   /**
    * One part of the date of a DateField, or the text between two parts, as DateSegment of React
@@ -19,7 +27,7 @@
    * - It shows `data-type`, `data-placeholder`, `data-focused`, `data-readonly`, `data-disabled`
    *   and `data-invalid`.
    */
-  const { segment, ...rest } = $props<{ segment: Segment; [attribute: string]: unknown }>();
+  const { segment, ...rest } = $props<DateSegmentProps>();
 
   const field = $getContext(DateFieldContext);
   const id = $id();

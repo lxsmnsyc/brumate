@@ -1,9 +1,18 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Color } from './color.ts';
+
+  export interface ColorPickerProps {
+    onChange?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string>;
+  }
+</script>
+
 <script>
   import { $effect, $props, $setContext, $signal, $untrack } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { ColorPickerContext } from './contexts.ts';
   import { formatLike, parseColor, sameColor, toSpace, tryParseColor } from './color.ts';
-  import type { Color } from './color.ts';
 
   /**
    * Holds a color for the color parts inside it, as ColorPicker of React Aria Components. It has
@@ -21,11 +30,8 @@
    * - The color keeps the format that it started in: each part writes in that format. A
    *   ColorField that is cleared keeps the color.
    */
-  const { onChange, children } = $props<{
-    onChange?: (value: string) => void;
-    children?: unknown;
-  }>();
-  let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
+  const { onChange, children } = $props<ColorPickerProps>();
+  let { value = '#000000' } = $props<ColorPickerProps>();
 
   // The color that the parts edit, in hsb as React Aria keeps it. A value that is no color is black.
   function fresh(text: string): Color {

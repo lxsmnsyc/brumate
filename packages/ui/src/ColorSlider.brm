@@ -1,7 +1,23 @@
-<script>
-  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+<script module>
   import type { Bindable } from 'brumate/signals';
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
+
+  export interface ColorSliderProps {
+    channel: ColorChannel;
+    colorSpace?: ColorSpace;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    name?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string>;
+    [attribute: string]: unknown;
+  }
+</script>
+
+<script>
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import {
     channelGradient,
     channelName,
@@ -62,18 +78,8 @@
     onChangeEnd,
     children,
     ...rest
-  } = $props<{
-    channel: ColorChannel;
-    colorSpace?: ColorSpace;
-    orientation?: 'horizontal' | 'vertical';
-    isDisabled?: boolean;
-    name?: string;
-    onChange?: (value: string) => void;
-    onChangeEnd?: (value: string) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
+  } = $props<ColorSliderProps>();
+  let { value = '#000000' } = $props<ColorSliderProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
   const picker = $getContext(ColorPickerContext);

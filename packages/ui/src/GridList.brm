@@ -1,9 +1,43 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
+  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+
+  export interface GridListProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onReorder?: (event: ReorderEvent) => void;
+    getItems?: (keys: Key[]) => DragItem[];
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the list gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed list.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the rows, each with an `id`. The `item` template renders each one. */
+    items?: readonly { id: Key }[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
+    item?: (item: any) => unknown;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
-  import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
   import {
     ListBoxContext,
@@ -24,7 +58,6 @@
     textOfItem,
     typeahead,
   } from './collection.ts';
-  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
@@ -69,35 +102,8 @@
     item,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onReorder?: (event: ReorderEvent) => void;
-    getItems?: (keys: Key[]) => DragItem[];
-    /**
-     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
-     * A Virtualizer around the list gives it too. It needs `items`.
-     */
-    rowHeight?: number;
-    /**
-     * The text that typeahead matches for an item, for the rows out of view of a windowed list.
-     * The rows in view use their own `textValue` or text.
-     */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
-    getTextValue?: (item: any) => string;
-    /** The data of the rows, each with an `id`. The `item` template renders each one. */
-    items?: readonly { id: Key }[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
-    item?: (item: any) => unknown;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<GridListProps>();
+  let { selectedKeys = [] } = $props<GridListProps>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);

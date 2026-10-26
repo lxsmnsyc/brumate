@@ -1,8 +1,39 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+
+  export interface ButtonOwnProps {
+    type?: 'button' | 'submit' | 'reset';
+    /** The slot of the context of a part that holds this button, such as "increment". */
+    slot?: string | null;
+    isDisabled?: boolean;
+    /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
+    isPending?: boolean;
+    /** The link of a button that renders as `a`. A disabled button drops it, as in React Aria. */
+    href?: string;
+    onPress?: (event: PressEvent) => void;
+    onPressStart?: (event: PressEvent) => void;
+    onPressEnd?: (event: PressEvent) => void;
+    onPressUp?: (event: PressEvent) => void;
+    onPressChange?: (pressed: boolean) => void;
+    onHoverStart?: (event: HoverEvent) => void;
+    onHoverEnd?: (event: HoverEvent) => void;
+    onHoverChange?: (hovered: boolean) => void;
+    onFocusChange?: (focused: boolean) => void;
+    children?: unknown;
+  }
+
+  /**
+   * The props of Button. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ButtonProps<T extends AsTarget = 'button'> = AsProps<T, ButtonOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'button'">
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
-  import type { HoverEvent, PressEvent } from './events.ts';
   import { interact } from './interact.brm.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -29,29 +60,7 @@
     onFocusChange,
     children,
     ...rest
-  } = $props<{
-    /** The element or component to render. A button by default. */
-    as?: string;
-    type?: 'button' | 'submit' | 'reset';
-    /** The slot of the context of a part that holds this button, such as "increment". */
-    slot?: string | null;
-    isDisabled?: boolean;
-    /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
-    isPending?: boolean;
-    /** The link of a button that renders as `a`. A disabled button drops it, as in React Aria. */
-    href?: string;
-    onPress?: (event: PressEvent) => void;
-    onPressStart?: (event: PressEvent) => void;
-    onPressEnd?: (event: PressEvent) => void;
-    onPressUp?: (event: PressEvent) => void;
-    onPressChange?: (pressed: boolean) => void;
-    onHoverStart?: (event: HoverEvent) => void;
-    onHoverEnd?: (event: HoverEvent) => void;
-    onHoverChange?: (hovered: boolean) => void;
-    onFocusChange?: (focused: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ButtonProps<T>>();
 
   const context = $getContext(ButtonContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

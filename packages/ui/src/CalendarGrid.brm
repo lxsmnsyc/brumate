@@ -1,7 +1,17 @@
+<script module>
+  import type { DateDuration } from '@internationalized/date';
+  import type { DateString } from './calendar.ts';
+
+  export interface CalendarGridProps {
+    offset?: DateDuration;
+    cell?: (date: DateString) => unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import type { DateDuration } from '@internationalized/date';
   import {
     CalendarContext,
     CalendarGridContext,
@@ -13,7 +23,6 @@
     weekDays,
     weeksOf,
   } from './calendar.ts';
-  import type { DateString } from './calendar.ts';
   import CalendarCell from './CalendarCell.brm';
 
   /**
@@ -27,11 +36,7 @@
    *   with Shift, and Home and End to the start and the end of the month. Enter and Space select
    *   the date. Escape drops the first date of a range that is not done.
    */
-  const { offset, cell, ...rest } = $props<{
-    offset?: DateDuration;
-    cell?: (date: DateString) => unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { offset, cell, ...rest } = $props<CalendarGridProps>();
 
   const calendar = $getContext(CalendarContext);
   const start = $memo(

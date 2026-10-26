@@ -1,3 +1,10 @@
+<script module>
+  export interface ToastContentProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props, $setContext } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
@@ -8,7 +15,7 @@
    * reader reads it when the toast shows. A Text with `slot="title"` names the toast, and one
    * with `slot="description"` describes it.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<ToastContentProps>();
 
   const toast = $getContext(ToastContext);
 

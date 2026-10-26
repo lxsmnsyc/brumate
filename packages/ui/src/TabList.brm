@@ -1,3 +1,10 @@
+<script module>
+  export interface TabListProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -15,7 +22,7 @@
    *   four.
    * - With automatic activation, the tab that the keys move to is selected.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<TabListProps>();
 
   const tabs = $getContext(TabsContext);
   const locale = $getContext(LocaleContext);

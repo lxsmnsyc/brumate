@@ -1,10 +1,26 @@
+<script module>
+  import type { Key } from './collection.ts';
+  import type { ColumnSize } from './table.ts';
+
+  export interface ColumnProps {
+    id?: Key;
+    isRowHeader?: boolean;
+    allowsSorting?: boolean;
+    textValue?: string;
+    width?: ColumnSize | null;
+    defaultWidth?: ColumnSize | null;
+    minWidth?: number | null;
+    maxWidth?: number | null;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
-  import type { Key } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { ColumnContext, TableContext, TableResizeContext, cssWidth } from './table.ts';
-  import type { ColumnSize } from './table.ts';
 
   /**
    * A column of a Table, as Column of React Aria Components: its header cell. `id` is its key.
@@ -31,18 +47,7 @@
     maxWidth,
     children,
     ...rest
-  } = $props<{
-    id?: Key;
-    isRowHeader?: boolean;
-    allowsSorting?: boolean;
-    textValue?: string;
-    width?: ColumnSize | null;
-    defaultWidth?: ColumnSize | null;
-    minWidth?: number | null;
-    maxWidth?: number | null;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ColumnProps>();
 
   const table = $getContext(TableContext);
   const sizes = $getContext(TableResizeContext);

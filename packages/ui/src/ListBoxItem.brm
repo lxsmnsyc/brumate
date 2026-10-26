@@ -1,11 +1,27 @@
+<script module>
+  import type { PressEvent } from './events.ts';
+  import type { Key } from './collection.ts';
+
+  export interface ListBoxItemProps {
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    /** It has a Text with `slot="label"`, which names it. */
+    hasLabel?: boolean;
+    /** It has a Text with `slot="description"`, which describes it. */
+    hasDescription?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
-  import type { PressEvent } from './events.ts';
   import { interact } from './interact.brm.ts';
   import { ListBoxContext, keyAttribute } from './collection.ts';
-  import type { Key } from './collection.ts';
 
   /**
    * An option of a ListBox, as ListBoxItem of React Aria Components. `id` is its key.
@@ -26,18 +42,7 @@
     onAction,
     children,
     ...rest
-  } = $props<{
-    id: Key;
-    textValue?: string;
-    isDisabled?: boolean;
-    /** It has a Text with `slot="label"`, which names it. */
-    hasLabel?: boolean;
-    /** It has a Text with `slot="description"`, which describes it. */
-    hasDescription?: boolean;
-    onAction?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ListBoxItemProps>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.

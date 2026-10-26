@@ -1,9 +1,22 @@
-<script>
-  import { $memo, $props, $setContext } from 'brumate/signals';
+<script module>
   import type { Bindable } from 'brumate/signals';
   import type { Key } from './collection.ts';
-  import { NavigationTreeContext, ancestorsOf } from './navigation-tree.ts';
   import type { NavigationNode } from './navigation-tree.ts';
+
+  export interface NavigationTreeProps {
+    selectedRoute?: string | null;
+    items: readonly NavigationNode[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items are the caller's.
+    item: (node: any) => unknown;
+    onExpandedChange?: (keys: Key[]) => void;
+    expandedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { NavigationTreeContext, ancestorsOf } from './navigation-tree.ts';
   import Tree from './Tree.brm';
 
   /**
@@ -18,15 +31,8 @@
    * - `expandedKeys` holds the keys of the open items, as in a Tree.
    * - It is no landmark. Put it in a `nav` with a label, as React Aria says.
    */
-  const { selectedRoute = null, items, item, onExpandedChange, ...rest } = $props<{
-    selectedRoute?: string | null;
-    items: readonly NavigationNode[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items are the caller's.
-    item: (node: any) => unknown;
-    onExpandedChange?: (keys: Key[]) => void;
-    [attribute: string]: unknown;
-  }>();
-  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<Key[]> }>();
+  const { selectedRoute = null, items, item, onExpandedChange, ...rest } = $props<NavigationTreeProps>();
+  let { expandedKeys = [] } = $props<NavigationTreeProps>();
 
   const ancestors = $memo(ancestorsOf(items, selectedRoute));
   $setContext(NavigationTreeContext, { selectedRoute, ancestors });

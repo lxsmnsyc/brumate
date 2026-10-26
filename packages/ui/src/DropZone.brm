@@ -1,9 +1,23 @@
+<script module>
+  import type { DropEvent, DropOperation } from './drop.ts';
+
+  export interface DropZoneProps {
+    onDrop?: (event: DropEvent) => void;
+    onDropEnter?: () => void;
+    onDropExit?: () => void;
+    getDropOperation?: (types: Set<string>, allowed: DropOperation[]) => DropOperation;
+    isDisabled?: boolean;
+    'aria-label'?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { TextContext } from './contexts.ts';
   import { allowedOperations, dragTypes, dropItems } from './drop.ts';
-  import type { DropEvent, DropOperation } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
 
   /**
@@ -28,16 +42,7 @@
     'aria-label': label = 'DropZone',
     children,
     ...rest
-  } = $props<{
-    onDrop?: (event: DropEvent) => void;
-    onDropEnter?: () => void;
-    onDropExit?: () => void;
-    getDropOperation?: (types: Set<string>, allowed: DropOperation[]) => DropOperation;
-    isDisabled?: boolean;
-    'aria-label'?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<DropZoneProps>();
 
   const textId = $id();
   const buttonId = $id();

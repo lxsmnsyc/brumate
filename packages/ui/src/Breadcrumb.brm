@@ -1,3 +1,11 @@
+<script module>
+  export interface BreadcrumbProps {
+    isCurrent?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { LinkContext } from './contexts.ts';
@@ -10,11 +18,7 @@
    * `data-current` and `data-disabled`. The current step is disabled, as in React Aria, so its
    * link does not load the page that is open.
    */
-  const { isCurrent = false, children, ...rest } = $props<{
-    isCurrent?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { isCurrent = false, children, ...rest } = $props<BreadcrumbProps>();
 
   const trail = $getContext(LinkContext);
   const disabled = $memo(Boolean(slotProps(trail, undefined).isDisabled || isCurrent));

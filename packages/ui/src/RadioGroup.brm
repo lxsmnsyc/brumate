@@ -1,6 +1,22 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface RadioGroupProps {
+    name?: string;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string | null>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy } from './fields.ts';
@@ -24,18 +40,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    name?: string;
-    orientation?: 'horizontal' | 'vertical';
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onChange?: (value: string) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<string | null> }>();
+  } = $props<RadioGroupProps>();
+  let { value = null } = $props<RadioGroupProps>();
 
   // The radios of a group share a name, which makes them one group for the browser.
   const ownName = $id();

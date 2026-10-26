@@ -1,11 +1,25 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface KeyboardOwnProps {
+    children?: unknown;
+  }
+
+  /**
+   * The props of Keyboard. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type KeyboardProps<T extends AsTarget = 'kbd'> = AsProps<T, KeyboardOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'kbd'">
   import { $props } from 'brumate/signals';
 
   /**
    * A keyboard shortcut, such as ⌘V, as Keyboard of React Aria renders it. A shortcut reads left
    * to right in every language, so it has `dir="ltr"`.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { as = 'kbd', children, ...rest } = $props<KeyboardProps<T>>();
 </script>
 
-<kbd dir="ltr" {...rest}>{children}</kbd>
+<{as} dir="ltr" {...rest}>{children}</>

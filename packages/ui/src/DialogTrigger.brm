@@ -1,6 +1,15 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DialogTriggerProps {
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean>;
+  }
+</script>
+
 <script>
   import { $id, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
 
   /**
@@ -10,11 +19,8 @@
    *
    * `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
    */
-  const { onOpenChange, children } = $props<{
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-  }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  const { onOpenChange, children } = $props<DialogTriggerProps>();
+  let { isOpen = false } = $props<DialogTriggerProps>();
 
   const triggerId = $id();
   const overlayId = $id();

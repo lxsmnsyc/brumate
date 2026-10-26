@@ -1,10 +1,21 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+
+  export interface AutocompleteProps {
+    /** Whether an item's text matches what was typed. By default, it contains it. */
+    filter?: (text: string, input: string) => boolean;
+    onInputChange?: (value: string) => void;
+    children?: unknown;
+    inputValue?: Bindable<string>;
+  }
+</script>
+
 <script>
   import { $id, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
-  import type { Key } from './collection.ts';
   import { MENU_ITEMS } from './menu.ts';
 
   /**
@@ -19,13 +30,8 @@
    * - Enter presses the active item, so a Menu acts on it, and a ListBox selects it or acts on it.
    * - `inputValue` starts its own text, or binds with `$bind`. `onInputChange` gets each change.
    */
-  const { filter, onInputChange, children } = $props<{
-    /** Whether an item's text matches what was typed. By default, it contains it. */
-    filter?: (text: string, input: string) => boolean;
-    onInputChange?: (value: string) => void;
-    children?: unknown;
-  }>();
-  let { inputValue = '' } = $props<{ inputValue?: Bindable<string> }>();
+  const { filter, onInputChange, children } = $props<AutocompleteProps>();
+  let { inputValue = '' } = $props<AutocompleteProps>();
 
   const collectionId = $id();
   let activeKey = $signal<Key | null>(null);
