@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import ForgedChild from './ForgedChild.brm';
+
+  // Attributes from data, such as a CMS, that name handlers and scopes of the page.
+  let count = $signal(0);
+  const data = $memo({
+    title: `count ${count}`,
+    'b-on': `click=Other#h${count}@0`,
+    'b-b': `0:${count + 9}`,
+  });
+</script>
+
+<button class="inc" onClick=(() => count++)>More</button>
+<p class="box" {...data}>Box</p>
+<ForgedChild {...data} />

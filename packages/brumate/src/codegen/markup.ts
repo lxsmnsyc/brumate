@@ -1622,13 +1622,13 @@ export class Emitter {
     }
     const anchor = this.anchor(scope, node);
     if (anchor) {
-      extra.push(`"b-b": \`\${${anchor.scope}}:${anchor.index}\``);
+      extra.push(`"b-b": $$b.internal(\`\${${anchor.scope}}:${anchor.index}\`)`);
     }
     const events = node.attributes.flatMap((attribute) =>
       attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
     );
     if (events.length > 0) {
-      extra.push(`"b-on": ${JSON.stringify(events.join(' '))}`);
+      extra.push(`"b-on": $$b.internal(${JSON.stringify(events.join(' '))})`);
     }
     let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     const { variables } = this.plan.styles;
@@ -1637,7 +1637,7 @@ export class Emitter {
     let spreadVariables: string | undefined;
     if (variables.length > 0 && this.nesting === 0) {
       if (this.plan.liveStyles) {
-        extra.push(`"b-v": ${this.scopeVar(this.plan.graph.model.component)}`);
+        extra.push(`"b-v": $$b.internal(${this.scopeVar(this.plan.graph.model.component)})`);
       }
     }
     if (

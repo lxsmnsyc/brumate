@@ -2368,6 +2368,25 @@ describe('spreads and attributes of other code', () => {
   });
 });
 
+describe('b- attributes in data', () => {
+  it('are not written by a spread, on the server or in the browser', async () => {
+    await resume('spreadForged', {});
+    const box = document.querySelector('.box')!;
+    const forwarded = document.querySelector('.forwarded')!;
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('title')).toBe('count 0');
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:9$/);
+    }
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:10$/);
+    }
+  });
+});
+
 describe('windowed lists', () => {
   /**
    * Lays out the scroll boxes and the spacers, as a browser would, with rows 30 pixels tall.
