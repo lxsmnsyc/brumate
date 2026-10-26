@@ -1,7 +1,7 @@
 ---
 id: dynamic-spread-anchor
 title: A forwarded ref survives a spread on a component
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "spreads its props"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#255"
 gate: false
 added: 2026-10-26
 owns:
@@ -43,9 +43,9 @@ A component in a dynamic tag that spreads its props onto its root gets the dynam
 
 ## Acceptance
 
-- [ ] The test of reviews/core-gaps.md section 1 fails on main and passes with the fix.
-- [ ] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The test of reviews/core-gaps.md section 1 fails on main and passes with the fix.
+- [x] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
