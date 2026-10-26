@@ -199,6 +199,21 @@ function click(element: Element): void {
   element.dispatchEvent(new Event('click', { bubbles: true }));
 }
 
+/** What `render/runs.ts` recorded, as `<name> <value>`. */
+function runs(): string[] {
+  return ((globalThis as { runs?: string[] }).runs ??= []);
+}
+
+/** What `render/runs.ts` recorded with a name. */
+function runsOf(name: string): string[] {
+  return runs().filter((entry) => entry.startsWith(`${name} `));
+}
+
+/** Forgets the runs so far, such as those of the server render. */
+function clearRuns(): void {
+  runs().length = 0;
+}
+
 /**
  * Shows `boom.brm` of build `b1`, with a server of `server`, and starts the
  * loader with handler parts that fail to load. Returns the calls to
@@ -465,6 +480,57 @@ describe('resume', () => {
     expect(document.querySelectorAll('li')[0]).toBe(first);
     expect(document.querySelectorAll('li')[1]).toBe(second);
     expect(text('li:last-child')).toBe('New');
+  });
+
+  // A write runs the readers of each slot that it changes, one slot after another. An
+  // update that reads two of those slots runs once for each, and a child can get one
+  // new prop before the other. `it.fails` marks what ordered updates in
+  // docs/proposals.md would fix.
+  describe('updates of a signal and a memo of it', () => {
+    it.fails('computes a memo that reads both once', async () => {
+      await resume('diamond', {});
+      clearRuns();
+      click(document.querySelector('.add')!);
+      await waitFor(() => expect(text('.label')).toBe('2 + 4 of 4'));
+      expect(runsOf('sum')).toEqual(['sum 2 + 4']);
+    });
+
+    it.fails('computes a memo of that memo once', async () => {
+      await resume('diamond', {});
+      clearRuns();
+      click(document.querySelector('.add')!);
+      await waitFor(() => expect(text('.label')).toBe('2 + 4 of 4'));
+      expect(runsOf('label')).toEqual(['label 2 + 4 of 4']);
+    });
+
+    it.fails('runs a binding that reads both once', async () => {
+      await resume('diamond', {});
+      clearRuns();
+      click(document.querySelector('.add')!);
+      await waitFor(() => expect(text('.both')).toBe('2 4'));
+      expect(runsOf('both')).toEqual(['both 2 4']);
+    });
+
+    it.fails('computes a memo of a child that gets both as props once', async () => {
+      await resume('diamond', {});
+      clearRuns();
+      click(document.querySelector('.grow')!);
+      await waitFor(() => expect(text('.shout')).toBe('C'));
+      expect(runsOf('shout')).toEqual(['shout 3 2']);
+    });
+
+    it.fails('gives a child the new list with the new index', async () => {
+      await resume('diamond', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      click(document.querySelector('.grow')!);
+      await waitFor(() => expect(text('.shout')).toBe('C'));
+      // The update code has loaded, so the write runs its updates at once. The index
+      // reaches the child first, and its memo reads past the end of the old list.
+      click(document.querySelector('.grow')!);
+      await vi.waitFor(() => expect(text('.shout')).toBe('D'), { timeout: 500 });
+      expect(errors).not.toHaveBeenCalled();
+    });
   });
 
   it('loads the code of the components on the page when it starts', async () => {

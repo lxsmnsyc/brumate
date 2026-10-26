@@ -1,0 +1,10 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  const { letters, last } = $props<{ letters: string[]; last: number }>();
+  // It throws when it reads an index past the end of the list.
+  const shout = $memo(ran('shout', `${letters.length} ${last}`) && letters[last]!.toUpperCase());
+</script>
+
+<p class="shout">{shout}</p>
