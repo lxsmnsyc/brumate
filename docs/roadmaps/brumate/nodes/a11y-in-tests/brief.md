@@ -19,7 +19,8 @@ owns:
   - packages/brumate/src/runtime/testing.ts
   - packages/brumate/test/testing-a11y.test.ts
   - website/docs/testing.md
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

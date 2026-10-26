@@ -17,7 +17,8 @@ gate: false
 added: 
 owns:
   - packages/language-server/src/**
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

@@ -18,7 +18,8 @@ added:
 owns:
   - website/docs/effects.md
   - packages/brumate/test/client-order.test.ts
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

@@ -20,6 +20,7 @@ owns:
   - packages/brumate/src/runtime/client/handlers.ts
   - docs/roadmaps/brumate/contracts/update-pass.md
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/src/runtime/client/updates.ts
   - packages/brumate/src/runtime/server.ts
