@@ -1,4 +1,5 @@
 // The items of a drop, after the DropItem of React Aria: text or a file, from a drag or a paste.
+import type { Key } from './collection.ts';
 
 /** Text that a drop gives, in each of its types, such as `text/plain` and `text/html`. */
 export interface TextDropItem {
@@ -100,13 +101,13 @@ export function dragTypes(data: DataTransfer): Set<string> {
 
 /** Where a drop between the rows of a collection goes: before or after the row of `key`. */
 export interface DropTarget {
-  key: import('./collection.ts').Key;
+  key: Key;
   dropPosition: 'before' | 'after';
 }
 
 /** The rows that a drag in a collection moves, and where they go, as onReorder of React Aria. */
 export interface ReorderEvent {
-  keys: import('./collection.ts').Key[];
+  keys: Key[];
   target: DropTarget;
 }
 
