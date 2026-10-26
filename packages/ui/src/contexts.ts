@@ -272,3 +272,15 @@ export interface ColorSwatchState {
 
 export const ColorSwatchContext: Context<ColorSwatchState | null> =
   createContext<ColorSwatchState | null>('brumate-ui:color-swatch', null);
+
+/**
+ * What a ColorPicker gives the color parts inside it: its color, and how to change it. A part
+ * that the caller gave a `value` keeps its own.
+ */
+export interface ColorPickerState {
+  value: string;
+  setValue: (value: string) => void;
+}
+
+export const ColorPickerContext: Context<ColorPickerState | null> =
+  createContext<ColorPickerState | null>('brumate-ui:color-picker', null);

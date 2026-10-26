@@ -46,6 +46,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   {
     title: 'Colors',
     pages: [
+      'color-picker',
       'color-swatch',
       'color-slider',
       'color-area',
@@ -222,6 +223,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A value, or a range of values, on a track.',
     href: 'slider',
     demo: 'SliderDemo',
+  },
+  {
+    title: 'ColorPicker',
+    summary: 'One color, shared by the color parts inside it.',
+    href: 'color-picker',
+    demo: 'ColorPickerDemo',
   },
   {
     title: 'ColorSwatch',

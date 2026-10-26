@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let color = $signal('hsb(210, 80%, 90%)');
+</script>
+
+<ColorPicker value=$bind(color)>
+  <div class="ui-stack">
+    <ColorArea class="ui-color-area" aria-label="Saturation and brightness">
+      <ColorThumb class="ui-color-thumb" />
+    </ColorArea>
+    <ColorSlider class="ui-color-slider" channel="hue">
+      <Label>Hue</Label>
+      <SliderTrack class="ui-color-track">
+        <ColorThumb class="ui-color-thumb" />
+      </SliderTrack>
+    </ColorSlider>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field">
+        <Label>Hex</Label>
+        <Input class="ui-input" />
+      </ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </div>
+</ColorPicker>
+<p>The color is {color}.</p>

@@ -3,6 +3,7 @@
     $client,
     $effect,
     $getContext,
+    $isPassed,
     $handler,
     $id,
     $memo,
@@ -15,6 +16,7 @@
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
+    ColorPickerContext,
     FieldErrorContext,
     FormContext,
     GroupContext,
@@ -53,6 +55,7 @@
    * - With `channel`, and a `colorSpace` for it, the field edits that channel as a number, in
    *   the range, step and page size of the channel, and in its format, such as `120°` or `50%`.
    *   A channel cannot be empty, so an empty field reverts.
+   * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
    * - `value` is a color as text, or `null`. `value=(x)` starts its own, and `value=$bind(signal)`
    *   writes the caller's. It keeps the format of the caller's value, and is hex when it started
    *   empty. A change of one channel keeps the alpha of the color.
@@ -97,6 +100,11 @@
   }>();
   let { value = null } = $props<{ value?: Bindable<string | null> }>();
 
+  // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.
+  const picker = $getContext(ColorPickerContext);
+  const passed = $isPassed(value);
+  const held = $memo(picker && !passed ? picker.value : value);
+
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);
   const inputId = $id();
@@ -106,8 +114,8 @@
   const { present: hasDescription } = described(descriptionId);
   const { present: hasLabel } = described(labelId);
   // The value that a reset of the form gives back.
-  let initialValue = $signal(value);
-  let text = $signal(display(value));
+  let initialValue = $signal(held);
+  let text = $signal(display(held));
   let edited = $signal(false);
   // The message of the browser, once the field was checked on a submit.
   let committed = $signal(false);
@@ -187,8 +195,17 @@
   }
 
   function setValue(next: string | null) {
-    if (next !== value) {
-      value = next;
+    // A picker keeps its color when the field clears.
+    if (picker && !passed && next === null) {
+      text = display(held);
+      return;
+    }
+    if (next !== held) {
+      if (picker && !passed) {
+        picker.setValue(next!);
+      } else {
+        value = next;
+      }
       edited = true;
       onChange?.(next);
     }
@@ -197,21 +214,21 @@
 
   /** The color with the hex, in the format of the value. */
   function withHex(hex: string): string {
-    const base = value === null ? undefined : tryParseColor(value);
+    const base = held === null ? undefined : tryParseColor(held);
     const color = { ...parseColor(hex), alpha: base?.alpha ?? 1 };
-    return formatLike(color, value ?? '#000000');
+    return formatLike(color, held ?? '#000000');
   }
 
   /** The value with the channel at a number, in the format of the value. */
   function withChannel(number: number): string {
-    const base = colorOf(value) ?? parseColor('#000000');
+    const base = colorOf(held) ?? parseColor('#000000');
     const color = withChannelValue(colorSpace ? toSpace(base, colorSpace) : base, channel!, number);
-    return formatLike(color, value ?? '#000000');
+    return formatLike(color, held ?? '#000000');
   }
 
   // A value that the caller sets shows in the input.
   $effect(() => {
-    const next = value;
+    const next = held;
     if ($untrack(read(text)) !== $untrack(read(display(next)))) {
       $untrack((text = display(next)));
     }
@@ -237,7 +254,7 @@
     }
     const parsed = typed;
     if (parsed === undefined) {
-      text = display(value);
+      text = display(held);
       return;
     }
     if (channel) {
@@ -267,7 +284,7 @@
       setValue(withChannel(next));
       return true;
     }
-    const hex = typed ?? (value === null ? undefined : formatColor(parseColor(value), 'hex'));
+    const hex = typed ?? (held === null ? undefined : formatColor(parseColor(held), 'hex'));
     const next =
       hex === undefined
         ? sign === 1

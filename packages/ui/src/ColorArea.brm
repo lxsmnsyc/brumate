@@ -1,5 +1,5 @@
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import type { Bindable } from 'brumate/signals';
   import type { ColorChannel, ColorSpace } from './color.ts';
@@ -19,6 +19,7 @@
     tryParseColor,
     withChannelValue,
   } from './color.ts';
+  import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import { LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
@@ -31,6 +32,7 @@
    * - `xChannel` and `yChannel` are the channels of the axes, and `colorSpace` is the space that
    *   it reads them in. Without them it is saturation and brightness in hsb. A color of another
    *   space moves to it.
+   * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
    *   the color once a drag or a key ends. The color keeps the format that it was given.
@@ -73,9 +75,22 @@
   }>();
   let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
 
+  // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
+  const picker = $getContext(ColorPickerContext);
+  const passed = $isPassed(value);
+  const held = $memo(picker && !passed ? picker.value : value);
+
+  function write(next: string) {
+    if (picker && !passed) {
+      picker.setValue(next);
+    } else {
+      value = next;
+    }
+  }
+
   const locale = $getContext(LocaleContext);
   // The color that a reset of the form gives back.
-  let initialValue = $signal(value);
+  let initialValue = $signal(held);
   let dragging = $signal(false);
   let focused = $signal(false);
   let focusVisible = $signal(false);
@@ -85,7 +100,7 @@
   const xRange = $memo(channelRange(axes.x));
   const yRange = $memo(channelRange(axes.y));
   // The color in the space of the area. A value that is no color reads as black.
-  const color = $memo(toSpace(tryParseColor(value) ?? parseColor('#000000'), axes.space));
+  const color = $memo(toSpace(tryParseColor(held) ?? parseColor('#000000'), axes.space));
   const xValue = $memo(
     snapToStep(
       clamp(channelValue(color, axes.x), xRange.minValue, xRange.maxValue),
@@ -130,18 +145,18 @@
       axes.y,
       snapToStep(y, yRange.minValue, yRange.maxValue, yRange.step),
     );
-    const text = formatLike(next, value);
-    if (text === value) {
+    const text = formatLike(next, held);
+    if (text === held) {
       return;
     }
-    value = text;
-    onChange?.(value);
+    write(text);
+    onChange?.(text);
   }
 
   function setDragging(next: boolean) {
     dragging = next;
     if (!next) {
-      onChangeEnd?.(value);
+      onChangeEnd?.(held);
     }
   }
 
@@ -271,7 +286,7 @@
       return undefined;
     }
     function reset() {
-      value = initialValue;
+      write(initialValue);
     }
     owner.addEventListener('reset', reset);
     return () => owner.removeEventListener('reset', reset);

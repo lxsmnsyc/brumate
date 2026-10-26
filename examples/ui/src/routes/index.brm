@@ -82,6 +82,7 @@
   import TimeField from '@brumate/ui/TimeField.brm';
   import DatePicker from '@brumate/ui/DatePicker.brm';
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
   import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
   import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
   import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
@@ -158,6 +159,7 @@
   let accent = $signal<string | null>('#e2445a');
   let shade = $signal<string | null>('hsl(120, 50%, 50%)');
   let paint = $signal('#e2445a');
+  let mix = $signal('hsb(210, 50%, 80%)');
   // A file tree: folders with children, opened and selected.
   interface Folder {
     id: string;
@@ -715,6 +717,21 @@
     </SliderTrack>
   </Slider>
   <p class="span-state">{span.join(' ')}</p>
+</section>
+
+<section aria-labelledby="color-picker">
+  <h2 id="color-picker">ColorPicker</h2>
+  <ColorPicker value=$bind(mix)>
+    <ColorArea class="mix-area" style="width: 200px; height: 100px; background: var(--area-background)">
+      <ColorThumb style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </ColorArea>
+    <ColorField class="mix-field">
+      <Label>Mix</Label>
+      <Input class="mix-input" />
+    </ColorField>
+    <ColorSwatch class="mix-swatch" style="width: 2rem; height: 2rem" />
+  </ColorPicker>
+  <p class="mix-state">{mix}</p>
 </section>
 
 <section aria-labelledby="color-swatch">

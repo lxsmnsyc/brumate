@@ -1,13 +1,14 @@
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
-  import { ColorSwatchContext } from './contexts.ts';
+  import { ColorPickerContext, ColorSwatchContext } from './contexts.ts';
   import { colorName, formatColor, swatchBackground, tryParseColor } from './color.ts';
 
   /**
    * A sample of a color, as ColorSwatch of React Aria Components: role="img", named by the color.
    *
    * - `color` is a color of CSS, such as `#e2445a` or `hsl(355, 74%, 58%)`.
-   * - Without `color`, inside a ColorSwatchPickerItem, it shows the color of the item.
+   * - Without `color`, inside a ColorSwatchPickerItem, it shows the color of the item, and inside a
+   *   ColorPicker the color of the picker.
    * - `colorName` names it for screen readers. Without it, a short name in English names it, such
    *   as `dark blue`, with how transparent it is.
    * - The background shows the color over a checkerboard, so its alpha shows. The element has
@@ -20,7 +21,8 @@
   }>();
 
   const item = $getContext(ColorSwatchContext);
-  const color = $memo(given ?? item?.color ?? '#000000');
+  const picker = $getContext(ColorPickerContext);
+  const color = $memo(given ?? item?.color ?? picker?.value ?? '#000000');
   const parsed = $memo(tryParseColor(color));
   const css = $memo(parsed ? formatColor(parsed) : 'transparent');
   const label = $memo(name ?? (parsed ? colorName(parsed) : color));

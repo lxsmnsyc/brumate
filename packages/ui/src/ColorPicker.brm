@@ -1,0 +1,35 @@
+<script>
+  import { $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ColorPickerContext } from './contexts.ts';
+  import { tryParseColor } from './color.ts';
+
+  /**
+   * Holds a color for the color parts inside it, as ColorPicker of React Aria Components. It has
+   * no element of its own.
+   *
+   * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change from any part.
+   * - ColorArea, ColorSlider, ColorWheel, ColorField and ColorSwatchPicker inside it show the
+   *   color and write it. ColorSwatch shows it.
+   * - A part that has its own `value` keeps it, and a part outside a picker is unchanged.
+   * - The color keeps the format that it started in: each part writes in that format. A
+   *   ColorField that is cleared keeps the color.
+   */
+  const { onChange, children } = $props<{
+    onChange?: (value: string) => void;
+    children?: unknown;
+  }>();
+  let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
+
+  function setValue(next: string) {
+    if (next !== value && tryParseColor(next)) {
+      value = next;
+      onChange?.(next);
+    }
+  }
+
+  $setContext(ColorPickerContext, { value, setValue });
+</script>
+
+{children}

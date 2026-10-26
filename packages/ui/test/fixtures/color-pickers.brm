@@ -1,0 +1,43 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '../../src/ColorArea.brm';
+  import ColorField from '../../src/ColorField.brm';
+  import ColorPicker from '../../src/ColorPicker.brm';
+  import ColorSlider from '../../src/ColorSlider.brm';
+  import ColorSwatch from '../../src/ColorSwatch.brm';
+  import ColorSwatchPicker from '../../src/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '../../src/ColorSwatchPickerItem.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+
+  let color = $signal('hsb(210, 50%, 80%)');
+  let changes = $signal<string[]>([]);
+  let own = $signal('#00ff00');
+</script>
+
+<main class="page">
+  <ColorPicker value=$bind(color) onChange=((next) => (changes = [...changes, next]))>
+    <ColorArea class="area"><ColorThumb class="area-thumb" /></ColorArea>
+    <ColorSlider class="slider" channel="hue">
+      <Label>Hue</Label>
+      <SliderTrack class="slider-track"><ColorThumb class="slider-thumb" /></SliderTrack>
+    </ColorSlider>
+    <ColorField class="field"><Label>Hex</Label><Input class="field-input" /></ColorField>
+    <ColorSwatch class="swatch" />
+    <ColorSwatchPicker class="swatches" aria-label="Palette">
+      <ColorSwatchPickerItem class="red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
+      <ColorSwatchPickerItem class="green" color="#00ff00"><ColorSwatch /></ColorSwatchPickerItem>
+    </ColorSwatchPicker>
+    <ColorSlider class="own-slider" channel="blue" colorSpace="rgb" value=$bind(own)>
+      <Label>Blue</Label>
+      <SliderTrack><ColorThumb /></SliderTrack>
+    </ColorSlider>
+    <ColorSwatch class="own-swatch" color="#123456" />
+  </ColorPicker>
+  <ColorPicker value=("#0000ff")>
+    <ColorSwatch class="solo" />
+  </ColorPicker>
+  <output class="state">{JSON.stringify([color, changes, own])}</output>
+</main>

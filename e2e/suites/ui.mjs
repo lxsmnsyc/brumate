@@ -1708,6 +1708,34 @@ export async function run({ browser, url, runner }) {
     );
   });
 
+  await step('ColorPicker: a change in the area shows in the field and the swatch', async () => {
+    await page.goto(`${url}/`);
+    const field = page.locator('.mix-input');
+    const swatch = () =>
+      page
+        .locator('.mix-swatch')
+        .evaluate((element) => getComputedStyle(element).getPropertyValue('--color').trim());
+    const before = await swatch();
+    const text = await field.inputValue();
+    assert(/^#[0-9A-F]{6}$/.test(text), `the field shows hex, got ${text}`);
+    await page.locator('.mix-area input').first().focus();
+    // End moves x a page, as in React Aria.
+    await page.keyboard.press('End');
+    try {
+      await page.waitForFunction(
+        () => document.querySelector('.mix-state')?.textContent === 'hsb(210, 60%, 80%)',
+        undefined,
+        { timeout: 5000 },
+      );
+    } catch {
+      throw new Error(`got ${await page.locator('.mix-state').textContent()}`);
+    }
+    await page.waitForFunction((old) => document.querySelector('.mix-input').value !== old, text, {
+      timeout: 5000,
+    });
+    assert((await swatch()) !== before, 'the swatch did not change');
+  });
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();
