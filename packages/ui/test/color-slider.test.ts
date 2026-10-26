@@ -179,3 +179,81 @@ it('gives back the first color on a reset of the form', async () => {
   await page.waitFor(() => expect(state(page)[4]).toBe('#00ff00'));
   expect(range(page, '.green-thumb').value).toBe('255');
 });
+
+it('moves a step with the arrows, a page with Shift, and to the ends with Home and End', async () => {
+  const page = await sliders();
+  const input = range(page, '.red-thumb');
+  input.focus();
+  // Red is 51, with a step of 1 and a page of 17.
+  press('ArrowRight', input);
+  await page.waitFor(() => expect(state(page)[1]).toBe('#346699'));
+  press('ArrowUp', input);
+  await page.waitFor(() => expect(state(page)[1]).toBe('#356699'));
+  press('ArrowLeft', input);
+  press('ArrowDown', input);
+  press('ArrowDown', input);
+  await page.waitFor(() => expect(state(page)[1]).toBe('#336699'));
+  // Shift moves a page, as in React Aria.
+  press('ArrowRight', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[1]).toBe('#446699'));
+  press('ArrowLeft', input, { shiftKey: true });
+  press('ArrowDown', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[1]).toBe('#226699'));
+  press('End', input);
+  await page.waitFor(() => expect(state(page)[1]).toBe('#FF6699'));
+  press('Home', input);
+  await page.waitFor(() => expect(state(page)[1]).toBe('#006699'));
+});
+
+it('ends the change after a key', async () => {
+  const page = await sliders();
+  const input = range(page, '.hue-thumb');
+  input.focus();
+  press('ArrowRight', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[3]).toBe('hsl(195, 100%, 50%)'));
+});
+
+it('mirrors the horizontal arrows right to left, and keeps Up and Down', async () => {
+  const page = await sliders();
+  const input = range(page, '.mirrored-thumb');
+  input.focus();
+  press('ArrowRight', input);
+  await page.waitFor(() => expect(state(page)[6]).toBe('#326699'));
+  press('ArrowLeft', input);
+  press('ArrowLeft', input);
+  await page.waitFor(() => expect(state(page)[6]).toBe('#346699'));
+  press('ArrowUp', input);
+  await page.waitFor(() => expect(state(page)[6]).toBe('#356699'));
+  press('ArrowRight', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[6]).toBe('#246699'));
+});
+
+it('moves a vertical slider with Up and Down', async () => {
+  const page = await sliders();
+  const input = range(page, '.alpha-thumb');
+  input.focus();
+  press('ArrowUp', input);
+  await page.waitFor(() => expect(state(page)[2]).toBe('rgba(10, 20, 30, 0.51)'));
+  press('ArrowDown', input);
+  press('ArrowDown', input);
+  await page.waitFor(() => expect(state(page)[2]).toBe('rgba(10, 20, 30, 0.49)'));
+  press('ArrowUp', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[2]).toBe('rgba(10, 20, 30, 0.59)'));
+});
+
+it('does not move with Cmd+Left, Alt+Left or Ctrl+Home, and leaves them to the loader fix', async () => {
+  const page = await sliders();
+  const input = range(page, '.red-thumb');
+  input.focus();
+  press('ArrowLeft', input, { metaKey: true });
+  press('ArrowLeft', input, { altKey: true });
+  press('Home', input, { ctrlKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[1]).toBe('#336699');
+});
+
+it('names the color without its alpha', async () => {
+  const page = await sliders();
+  // Saturation of rgba(51, 102, 153, 0.5) is 50%.
+  expect(range(page, '.faded-thumb').getAttribute('aria-valuetext')).toBe('50%, blue');
+});

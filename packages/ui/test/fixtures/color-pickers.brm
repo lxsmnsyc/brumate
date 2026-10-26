@@ -19,7 +19,7 @@
 
 <main class="page">
   <ColorPicker value=$bind(color) onChange=((next) => (changes = [...changes, next]))>
-    <ColorArea class="area"><ColorThumb class="area-thumb" /></ColorArea>
+    <ColorArea class="area" xChannel="saturation" yChannel="brightness"><ColorThumb class="area-thumb" /></ColorArea>
     <ColorSlider class="slider" channel="hue">
       <Label>Hue</Label>
       <SliderTrack class="slider-track"><ColorThumb class="slider-thumb" /></SliderTrack>

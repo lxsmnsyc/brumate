@@ -2,7 +2,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ColorAreas from './fixtures/color-areas.brm?brumate-server';
-import { pointer, press } from './interact.ts';
+import { pointer, press, tabbables } from './interact.ts';
 
 let unmount: (() => void) | undefined;
 afterEach(() => {
@@ -52,14 +52,15 @@ it('is a group with an input for each axis, saturation and brightness by default
   expect(x.max).toBe('100');
   expect(x.value).toBe('50');
   expect(y.value).toBe('80');
-  expect(x.getAttribute('aria-label')).toBe('Saturation');
-  expect(y.getAttribute('aria-label')).toBe('Brightness');
   expect(x.getAttribute('aria-orientation')).toBe('horizontal');
   expect(y.getAttribute('aria-orientation')).toBe('vertical');
-  // Both values and the name of the color, on both inputs.
-  const text = 'Saturation 50%, Brightness 80%, blue';
-  expect(x.getAttribute('aria-valuetext')).toBe(text);
-  expect(y.getAttribute('aria-valuetext')).toBe(text);
+  // The value, the other axis, the third channel and the name of the color, as in React Aria.
+  expect(x.getAttribute('aria-valuetext')).toBe(
+    'Saturation 50%, Brightness 80%, Hue 210°, blue',
+  );
+  expect(y.getAttribute('aria-valuetext')).toBe(
+    'Brightness 80%, Saturation 50%, Hue 210°, blue',
+  );
 });
 
 it('reads the channels it is given, and the hue at 360 degrees', async () => {
@@ -70,7 +71,7 @@ it('reads the channels it is given, and the hue at 360 degrees', async () => {
   expect(y.value).toBe('102');
   expect(x.getAttribute('aria-label')).toBe('Red');
   expect(y.getAttribute('aria-label')).toBe('Green');
-  expect(x.getAttribute('aria-valuetext')).toBe('Red 51, Green 102, blue');
+  expect(x.getAttribute('aria-valuetext')).toBe('Red 51, Green 102, Blue 153, blue');
 });
 
 it('draws the gradient of the two channels and the thumb, for the styles of the caller', async () => {
@@ -242,4 +243,130 @@ it('posts both values with a form, and gives back the first color on a reset', a
   (page.get('.form') as HTMLFormElement).reset();
   await page.waitFor(() => expect(state(page)[4]).toBe('hsb(0, 100%, 100%)'));
   expect(x.value).toBe('100');
+});
+
+it('takes the first two channels of the space by default, and white without a value', async () => {
+  const page = await areas();
+  // A color of hsb, with no channels given, is hue on x and saturation on y.
+  const hsb = inputs(page, '.defaults');
+  expect(hsb.x.max).toBe('360');
+  expect(hsb.x.value).toBe('210');
+  expect(hsb.y.value).toBe('50');
+  expect(hsb.x.getAttribute('aria-valuetext')).toBe('Hue 210°, Saturation 50%, Brightness 80%, blue');
+  // A hex color is rgb: red on x and green on y.
+  const hex = inputs(page, '.hex');
+  expect(hex.x.max).toBe('255');
+  expect(hex.x.value).toBe('51');
+  expect(hex.y.value).toBe('102');
+  // The default value is white.
+  const empty = inputs(page, '.empty');
+  expect(empty.x.value).toBe('255');
+  expect(empty.y.value).toBe('255');
+  expect(empty.x.getAttribute('aria-valuetext')).toContain('white');
+  hsb.x.focus();
+  press('ArrowRight', hsb.x);
+  await page.waitFor(() => expect(state(page)[6]).toBe('hsb(211, 50%, 80%)'));
+  press('End', hex.x);
+  await page.waitFor(() => expect(state(page)[7]).toMatch(/^#(FF|ff)6699$/i));
+});
+
+it('names the color without its alpha', async () => {
+  const page = await areas();
+  const { x } = inputs(page, '.translucent');
+  expect(x.getAttribute('aria-valuetext')).toBe('Saturation 50%, Brightness 60%, Hue 210°, blue');
+});
+
+it('has one tab stop, and hides the input of y from screen readers until it has focus', async () => {
+  const page = await areas();
+  const { x, y } = inputs(page, '.hsb');
+  expect(x.hasAttribute('tabindex')).toBe(false);
+  expect(x.hasAttribute('aria-hidden')).toBe(false);
+  expect(y.getAttribute('tabindex')).toBe('-1');
+  expect(y.getAttribute('aria-hidden')).toBe('true');
+  expect(tabbables(page.get('.hsb'))).toEqual([x]);
+  // Up on x moves y, and the focus follows it. Both inputs are then named, until the focus leaves.
+  x.focus();
+  await page.waitFor(() => expect(y.getAttribute('aria-hidden')).toBe('true'));
+  press('ArrowUp', x);
+  await page.waitFor(() => expect(document.activeElement).toBe(y));
+  await page.waitFor(() => expect(y.hasAttribute('aria-hidden')).toBe(false));
+  expect(y.hasAttribute('tabindex')).toBe(false);
+  expect(x.getAttribute('tabindex')).toBe('-1');
+  expect(x.hasAttribute('aria-hidden')).toBe(false);
+  y.blur();
+  await page.waitFor(() => expect(y.getAttribute('aria-hidden')).toBe('true'));
+  expect(x.hasAttribute('tabindex')).toBe(false);
+});
+
+it('says less after a change from the keys', async () => {
+  const page = await areas();
+  const { x, y } = inputs(page, '.hsb');
+  x.focus();
+  press('ArrowRight', x);
+  await page.waitFor(() =>
+    expect(x.getAttribute('aria-valuetext')).toBe('Saturation 51%, blue'),
+  );
+  expect(y.getAttribute('aria-valuetext')).toBe('Brightness 80%, blue');
+  x.blur();
+  await page.waitFor(() =>
+    expect(x.getAttribute('aria-valuetext')).toBe('Saturation 51%, Brightness 80%, Hue 210°, blue'),
+  );
+});
+
+it('names the inputs as React Aria does, from the label of the caller', async () => {
+  const page = await areas();
+  // Without a label, the inputs are the color picker, and the group has no name.
+  const plain = inputs(page, '.hsb');
+  expect(plain.x.getAttribute('aria-label')).toBe('Color picker');
+  expect(plain.y.getAttribute('aria-label')).toBe('Color picker');
+  expect(page.get('.hsb').hasAttribute('aria-label')).toBe(false);
+  expect(page.get('.hsb').hasAttribute('aria-labelledby')).toBe(false);
+  // With an aria-label, the group and both inputs say it, and `Color picker`.
+  const named = inputs(page, '.named');
+  expect(page.get('.named').getAttribute('aria-label')).toBe('Fill, Color picker');
+  expect(named.x.getAttribute('aria-label')).toBe('Fill, Color picker');
+  expect(named.y.getAttribute('aria-label')).toBe('Fill, Color picker');
+  // With an aria-labelledby, the group and the inputs add themselves to the names.
+  const linked = inputs(page, '.linked');
+  const group = page.get('.linked');
+  expect(group.getAttribute('aria-labelledby')).toBe(`${group.id} outside`);
+  expect(linked.x.getAttribute('aria-labelledby')).toBe(`${linked.x.id} outside`);
+  expect(linked.y.getAttribute('aria-labelledby')).toBe(`${linked.y.id} outside`);
+});
+
+it('skips a press with Alt, Ctrl or Meta', async () => {
+  const page = await areas();
+  layout(page.get('.hsb'));
+  for (const modifier of ['altKey', 'ctrlKey', 'metaKey']) {
+    pointer('pointerdown', page.get('.hsb'), { clientX: 150, clientY: 25, [modifier]: true });
+  }
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[0]).toBe('hsb(210, 50%, 80%)');
+  expect(page.get('.hsb-thumb').hasAttribute('data-dragging')).toBe(false);
+  pointer('pointerdown', page.get('.hsb-thumb'), { clientX: 110, clientY: 30, altKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(page.get('.hsb-thumb').hasAttribute('data-dragging')).toBe(false);
+});
+
+// The loader blocks a key that has a modifier before the handler sees it. Until the loader
+// matches the modifiers, Cmd+Left is prevented, which a browser would use to go back.
+it.fails('leaves Cmd+Left, Alt+Left and Ctrl+Home to the browser', async () => {
+  const page = await areas();
+  const { x } = inputs(page, '.hsb');
+  x.focus();
+  const event = new KeyboardEvent('keydown', { key: 'ArrowLeft', metaKey: true, bubbles: true, cancelable: true });
+  x.dispatchEvent(event);
+  await new Promise((done) => setTimeout(done, 50));
+  expect(event.defaultPrevented).toBe(false);
+});
+
+it('does not move with Cmd+Left, Alt+Left or Ctrl+Home', async () => {
+  const page = await areas();
+  const { x } = inputs(page, '.hsb');
+  x.focus();
+  press('ArrowLeft', x, { metaKey: true });
+  press('ArrowLeft', x, { altKey: true });
+  press('Home', x, { ctrlKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(state(page)[0]).toBe('hsb(210, 50%, 80%)');
 });

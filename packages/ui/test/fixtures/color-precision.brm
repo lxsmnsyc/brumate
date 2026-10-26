@@ -34,10 +34,10 @@
     <ColorWheelTrack />
     <ColorThumb />
   </ColorWheel>
-  <ColorArea class="area" value=$bind(area) onChange=((next: unknown) => (changes = [...changes, 'area:' + next]))>
+  <ColorArea class="area" xChannel="saturation" yChannel="brightness" value=$bind(area) onChange=((next: unknown) => (changes = [...changes, 'area:' + next]))>
     <ColorThumb />
   </ColorArea>
-  <ColorArea class="hsl-area" value=$bind(hslArea)>
+  <ColorArea class="hsl-area" xChannel="saturation" yChannel="brightness" value=$bind(hslArea)>
     <ColorThumb />
   </ColorArea>
   <ColorSlider class="hexa" channel="red" value=$bind(hexa) onChange=((next: unknown) => (changes = [...changes, 'hexa:' + next]))>
@@ -50,7 +50,7 @@
     <ColorSlider class="p-hue" channel="hue">
       <SliderTrack><ColorThumb /></SliderTrack>
     </ColorSlider>
-    <ColorArea class="p-area"><ColorThumb /></ColorArea>
+    <ColorArea class="p-area" xChannel="saturation" yChannel="brightness"><ColorThumb /></ColorArea>
     <ColorField class="p-field"><Input class="p-input" /></ColorField>
   </ColorPicker>
   <ColorField class="hex" value=$bind(hex) onChange=((next: unknown) => (changes = [...changes, 'hex:' + next]))>

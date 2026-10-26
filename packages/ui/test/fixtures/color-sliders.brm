@@ -5,11 +5,14 @@
   import Label from '../../src/Label.brm';
   import SliderOutput from '../../src/SliderOutput.brm';
   import SliderTrack from '../../src/SliderTrack.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
 
   let hue = $signal('hsl(180, 100%, 50%)');
   let red = $signal('#336699');
   let alpha = $signal('rgba(10, 20, 30, 0.5)');
   let green = $signal('#00ff00');
+  let faded = $signal('rgba(51, 102, 153, 0.5)');
+  let mirrored = $signal('#336699');
   let ended = $signal<unknown>(null);
 </script>
 
@@ -45,5 +48,17 @@
       </SliderTrack>
     </ColorSlider>
   </form>
-  <p class="state">{JSON.stringify([hue, red, alpha, ended, green])}</p>
+  <ColorSlider class="faded" channel="saturation" colorSpace="hsl" value=$bind(faded)>
+    <SliderTrack class="faded-track">
+      <ColorThumb class="faded-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <I18nProvider locale="ar-EG">
+    <ColorSlider class="mirrored" channel="red" value=$bind(mirrored)>
+      <SliderTrack class="mirrored-track">
+        <ColorThumb class="mirrored-thumb" />
+      </SliderTrack>
+    </ColorSlider>
+  </I18nProvider>
+  <p class="state">{JSON.stringify([hue, red, alpha, ended, green, faded, mirrored])}</p>
 </main>
