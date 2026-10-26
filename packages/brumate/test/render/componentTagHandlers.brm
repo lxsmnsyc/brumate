@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsButton from './AsButton.brm';
+  import ScopeWrap from './ScopeWrap.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <AsButton as=ScopeWrap>x</AsButton>
+}

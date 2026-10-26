@@ -13,6 +13,7 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
+  internal,
   bindEntry,
   handlerEntry,
   onAttribute,
@@ -784,6 +785,8 @@ export function spread(
 ): string {
   if (on) {
     on.push(...spreadEntries(attributes));
+    // A component in a dynamic tag gets the handlers of the tag as `b-on`, first as the own ones.
+    return spreadText(attributes, names).replace(/ b-on="[^"]*"/, '');
   }
   return spreadText(attributes, names);
 }
@@ -792,6 +795,9 @@ export function spread(
 function spreadEntries(attributes: Record<string, unknown>): string[] {
   const on: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
+    if (name === 'b-on' && ownValue(name, value)) {
+      on.unshift(ownValue(name, value) as string);
+    }
     const reference =
       /^on[A-Z]/.test(name) && typeof value === 'function'
         ? handlerReferences.get(value)
@@ -4396,9 +4402,26 @@ export function componentNodes<P>(
 
 /** The attributes of a dynamic element, with one `b-on` for its own handlers and those of its props. */
 function startAttributes(attributes: Record<string, unknown>): string {
-  const { 'b-on': own, ...rest } = attributes;
   const on: string[] = [];
-  return spread(rest, on) + onAttribute(on, (ownValue('b-on', own) as string | undefined) ?? '');
+  return spread(attributes, on) + onAttribute(on, '');
+}
+
+/** The props of a component in a dynamic tag, with its handlers in the scope of the tag. */
+function tagProps(
+  attributes: Record<string, unknown>,
+  scope: Scope | number | undefined,
+  inner: Raw | Children | undefined,
+  ref: unknown,
+): Record<string, unknown> {
+  const on = ownValue('b-on', attributes['b-on']) as string | undefined;
+  return {
+    ...attributes,
+    ...(ref !== undefined && { ref }),
+    ...(inner && { children: inner }),
+    ...(on && {
+      'b-on': internal(on.replace(/(^| )[^ @]+(?= |$)/g, `$&@${(scope as Scope).id ?? scope}`)),
+    }),
+  };
 }
 
 /**
@@ -4415,12 +4438,9 @@ export function dynamicNodes(
   foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
-    }
     return componentNodes(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
+      tagProps(attributes, scope, inner, ref),
       undefined,
       scope,
     );
@@ -4469,12 +4489,9 @@ export function dynamic(
   ref?: unknown,
 ): string {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
-    }
     return component(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
+      tagProps(attributes, scope, inner, ref),
       undefined,
       scope,
     );

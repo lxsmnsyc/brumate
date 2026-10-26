@@ -2172,6 +2172,17 @@ describe('children', () => {
     expect(press('x').defaultPrevented).toBe(false);
   });
 
+  it('a component in a dynamic tag keeps the handlers of its caller', async () => {
+    await resume('componentTagHandlers', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.wrap')).not.toBeNull());
+    const on = document.querySelector('.wrap')!.getAttribute('b-on')!;
+    expect(on).toMatch(/click=ScopeWrap\S*#h\d+ click=AsButton\S*#h\d+@\S+/);
+    click(document.querySelector('.wrap')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    await waitFor(() => expect(text('.own')).toBe('1'));
+  });
+
   it('updates children that the server rendered before values changed', async () => {
     await resume('cards', {});
     click(document.querySelector('.outside')!);
