@@ -29,6 +29,11 @@ it('is a grid of rows that its label names and its description describes', async
   expect(list.getAttribute('role')).toBe('grid');
   expect(list.getAttribute('aria-labelledby')).toBe(page.get('.label').id);
   expect(list.getAttribute('aria-describedby')).toBe(page.get('.description').id);
+  // A group without a description leaves its ID out once the browser is idle.
+  await page.waitFor(
+    () => expect(page.get('.plain-list').hasAttribute('aria-describedby')).toBe(false),
+    3000,
+  );
   expect(list.getAttribute('aria-multiselectable')).toBe('true');
   const tag = page.get('.tag-news');
   expect(tag.getAttribute('role')).toBe('row');

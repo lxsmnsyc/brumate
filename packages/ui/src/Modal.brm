@@ -2,6 +2,7 @@
   import { $bind, $getContext, $isPassed, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ModalOverlayContext } from './contexts.ts';
+  import ModalContent from './ModalContent.brm';
   import ModalOverlay from './ModalOverlay.brm';
 
   /**
@@ -34,7 +35,7 @@
 </script>
 
 #template box() {
-  <div data-modal tabindex="-1" {...rest}>{children}</div>
+  <div data-modal tabindex="-1" {...rest}><ModalContent>{children}</ModalContent></div>
 }
 
 #if (overlay) {

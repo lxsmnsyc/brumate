@@ -1,6 +1,7 @@
 <script>
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { ToastContext, ToastRegionContext, toastQueue } from './toast.ts';
   import type { QueuedToast } from './toast.ts';
 
@@ -21,6 +22,8 @@
   const region = $getContext(ToastRegionContext);
   const titleId = $id();
   const descriptionId = $id();
+  // A toast without a description leaves out aria-describedby once the browser is idle.
+  const { present: hasDescription } = described(descriptionId);
 
   function close() {
     toastQueue(region?.queue).close(toast.key);
@@ -36,7 +39,7 @@
   role="alertdialog"
   aria-modal="false"
   aria-labelledby=titleId
-  aria-describedby=descriptionId
+  aria-describedby=(hasDescription ? descriptionId : undefined)
   tabindex="0"
   data-toast-key=(toast.key)
   {...rest}

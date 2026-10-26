@@ -4,6 +4,7 @@
   import { nextSelection, sameKeys } from './collection.ts';
   import type { Key, SelectionMode } from './collection.ts';
   import { LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { TagGroupContext } from './tags.ts';
 
   /**
@@ -38,6 +39,8 @@
 
   const labelId = $id();
   const descriptionId = $id();
+  // The list names the description only while there is one.
+  const { present: hasDescription } = described(descriptionId);
   const removable = $isPassed(onRemove);
 
   function select(key: Key) {
@@ -68,7 +71,7 @@
     canRemove: removable,
     remove,
     labelId,
-    descriptionId,
+    descriptionId: hasDescription ? descriptionId : undefined,
   });
 </script>
 

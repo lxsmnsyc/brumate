@@ -15,7 +15,8 @@ export interface TagGroupState {
   remove: (keys: Key[]) => void;
   /** The ID of the Label, which names the list. */
   labelId: string;
-  descriptionId: string;
+  /** The ID of the description, while there is one. */
+  descriptionId?: string;
 }
 
 export const TagGroupContext: Context<TagGroupState | null> = createContext<TagGroupState | null>(

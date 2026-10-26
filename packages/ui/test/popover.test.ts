@@ -78,6 +78,23 @@ it('closes on Escape and gives focus back to its trigger', async () => {
   expect(page.text('.state')).toBe('false');
 });
 
+it('stays open on an Escape that a search field inside used to clear its text', async () => {
+  const page = await popovers();
+  pressWith(page.get('.find-trigger'));
+  await page.waitFor(() => expect(find('.find-input')).not.toBeNull());
+  const input = find('.find-input') as HTMLInputElement;
+  input.value = 'dogs';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.waitFor(() => expect(input.getAttribute('b-on')).toContain('Escape'));
+  press('Escape', input);
+  await page.waitFor(() => expect(input.value).toBe(''));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.find-popover')).not.toBeNull();
+  // The field is empty, so the next Escape closes the popover.
+  press('Escape', input);
+  await page.waitFor(() => expect(find('.find-popover')).toBeNull());
+});
+
 it('closes with a Button of the close slot', async () => {
   const page = await popovers();
   await open(page);
