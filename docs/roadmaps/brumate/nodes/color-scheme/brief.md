@@ -22,6 +22,7 @@ owns:
   - website/ui/color-scheme.md
   - website/ui/demos/ColorSchemeDemo.brm
 shared:
+  - .changeset/*.md
   - website/src/ui.ts
   - examples/ui/src/**
   - e2e/suites/ui/**

@@ -601,13 +601,23 @@ class ClientGenerator {
           const template = this.model.scopes.find(
             (item) => item.template?.name === callee.name && item.parent === callee.scope,
           );
-          if (template && !result.some((item) => isWithin(template, item))) {
+          if (template && !result.includes(template)) {
             result.push(template);
           }
         }
       }
     }
     return result;
+  }
+
+  /**
+   * The scopes of a list that nothing else in it declares. A template that sits within a
+   * scope of the list is emitted where its `#template` is, so a render emits only the others.
+   */
+  private declared(list: Scope[]): Scope[] {
+    return list.filter(
+      (item, index) => !list.slice(0, index).some((other) => isWithin(item, other)),
+    );
   }
 
   private propsMap(): string {
@@ -1331,7 +1341,7 @@ class ClientGenerator {
     for (const line of this.prologue(inside, base)) {
       emitter.line(line);
     }
-    for (const template of inside.slice(1)) {
+    for (const template of this.declared(inside).slice(1)) {
       emitter.emitTemplate(template.template!);
     }
     if (isItem) {
@@ -1479,7 +1489,7 @@ class ClientGenerator {
           emitter.line(`let ${declaration.name} = ${value};`);
         }
       }
-      for (const template of inside.filter((item) => item.kind === 'template')) {
+      for (const template of this.declared(inside).filter((item) => item.kind === 'template')) {
         emitter.emitTemplate(template.template!);
       }
       emitter.emitChildrenBody(node, scope);
@@ -1560,7 +1570,7 @@ class ClientGenerator {
     for (const line of this.prologue(templates, base)) {
       emitter.line(line);
     }
-    for (const template of templates) {
+    for (const template of this.declared(templates)) {
       emitter.emitTemplate(template.template!);
     }
     emitter.flush();

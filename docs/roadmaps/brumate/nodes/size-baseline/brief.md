@@ -18,7 +18,8 @@ added:
 owns:
   - docs/performance.md
   - benchmarks/results/**
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

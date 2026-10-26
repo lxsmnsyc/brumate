@@ -44,7 +44,8 @@ owns:
   - website/ui/demos/NavigationTree*.brm
   - website/ui/demos/Virtualizer*.brm
   - website/ui/demos/Data*.brm
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

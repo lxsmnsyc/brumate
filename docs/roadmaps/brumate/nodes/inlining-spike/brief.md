@@ -17,7 +17,8 @@ gate: false
 added: 
 owns:
   - docs/roadmaps/brumate/nodes/inlining-spike/**
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

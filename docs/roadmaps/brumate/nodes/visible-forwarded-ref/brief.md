@@ -21,6 +21,7 @@ owns:
   - packages/brumate/src/runtime/boot.ts
   - packages/brumate/test/render/refVisibleForward.brm
 shared:
+  - .changeset/*.md
   - packages/brumate/test/resume.test.ts
 reserves: []
 provides: []

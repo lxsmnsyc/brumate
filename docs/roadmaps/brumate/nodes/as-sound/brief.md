@@ -19,7 +19,8 @@ owns:
   - packages/ui/src/as.ts
   - packages/ui/test/props-types.ts
   - docs/roadmaps/brumate/contracts/part-props.md
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

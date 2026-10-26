@@ -40,7 +40,8 @@ owns:
   - website/ui/demos/DateField*.brm
   - website/ui/demos/TimeField*.brm
   - website/ui/demos/DatePicker*.brm
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

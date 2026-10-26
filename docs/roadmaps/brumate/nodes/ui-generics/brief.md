@@ -32,7 +32,8 @@ owns:
   - packages/ui/src/collection.ts
   - packages/ui/src/toast.ts
   - packages/ui/test/generics-types.ts
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

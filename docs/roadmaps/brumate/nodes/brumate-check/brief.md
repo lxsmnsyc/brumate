@@ -19,6 +19,7 @@ owns:
   - packages/brumate/src/check-command.ts
   - packages/brumate/test/check-command.test.ts
 shared:
+  - .changeset/*.md
   - packages/brumate/src/cli.ts
   - packages/brumate/src/error-catalog.ts
   - packages/brumate/src/analyze.ts

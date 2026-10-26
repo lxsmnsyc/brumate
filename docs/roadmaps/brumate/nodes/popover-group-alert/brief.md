@@ -24,6 +24,7 @@ owns:
   - website/ui/demos/AlertDemo.brm
   - website/ui/demos/PopoverGroupDemo.brm
 shared:
+  - .changeset/*.md
   - packages/ui/src/overlay.ts
   - packages/ui/src/Popover.brm
   - website/src/ui.ts

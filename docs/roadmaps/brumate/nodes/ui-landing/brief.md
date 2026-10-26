@@ -20,6 +20,7 @@ owns:
   - website/src/routes/ui/index.brm
   - website/ui/demos/Landing*.brm
 shared:
+  - .changeset/*.md
   - website/src/routes/ui/_layout.brm
 reserves: []
 provides: []

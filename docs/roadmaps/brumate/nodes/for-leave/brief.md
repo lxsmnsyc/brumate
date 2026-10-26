@@ -1,6 +1,6 @@
 ---
 id: for-leave
-title: Leave animations for #for items
+title: "Leave animations for #for items"
 status: todo
 priority: later
 type: feature

@@ -23,7 +23,8 @@ owns:
   - website/src/routes/_layout.brm
   - packages/brumate/src/highlight.ts
   - packages/brumate/test/highlight.test.ts
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []
