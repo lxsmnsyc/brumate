@@ -5,9 +5,7 @@
   "license": "MIT",
   "files": [
     "src",
-    "LICENSE",
-    "LICENSE-APACHE",
-    "NOTICE"
+    "LICENSE"
   ],
   "type": "module",
   "exports": {

@@ -10,8 +10,6 @@ pnpm add @brumate/ui brumate
 
 The brumate Vite plugin finds the parts in the package, so a page imports them as `import Button from '@brumate/ui/Button.brm'`.
 
-Parts of the code are ported from React Aria Components, under the Apache License 2.0. See NOTICE.
-
 - The parts render markup, ARIA attributes and `data-*` state, and no CSS of their own, except what a part needs to work, such as the styles that hide the content of `VisuallyHidden`.
 - A part uses a feature of the platform only when at least 95% of global usage supports it.
 - Each part has a `.stories.ts` file for the workbench of the dev server, at `/__brumate/workbench`.
