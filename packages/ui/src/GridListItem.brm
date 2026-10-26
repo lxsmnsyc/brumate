@@ -15,7 +15,7 @@
    * - A Checkbox with `slot="selection"` and no `value` shows its selection and toggles it.
    * - `textValue` is the text that typeahead matches, when its content is more than text. It
    *   names the drag button too.
-   * - In a GridList whose rows drag, a Button with `slot="drag"` starts a drag from the keys. The
+   * - In a GridList with `onReorder`, a Button with `slot="drag"` starts a drag from the keys. The
    *   row shows `data-dragging` while a drag moves it, and `data-drop-target` with `before` or
    *   `after` while a drag would drop by it.
    * - It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused`
@@ -121,13 +121,14 @@
   const isDragging = $memo(Boolean(list?.dragging?.includes(id)));
   const dropPosition = $memo(list?.dropTarget?.key === id ? list.dropTarget.dropPosition : undefined);
 
-  // A Button with `slot="drag"` starts a drag from the keys. Other buttons get nothing.
+  // A Button with `slot="drag"` starts a drag from the keys, in a list with `onReorder`. Other
+  // buttons get nothing.
   $setContext(ButtonContext, {
     slots: {
       [DEFAULT_SLOT]: {},
       drag: {
         'aria-label': textValue ? `Drag ${textValue}` : 'Drag',
-        isDisabled: disabled || !list?.isDraggable,
+        isDisabled: disabled || !list?.isReorderable,
         onPress: () => list?.startDrag?.(id),
       },
     },

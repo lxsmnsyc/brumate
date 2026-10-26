@@ -29,11 +29,38 @@ export interface DropEvent {
   dropOperation: DropOperation;
 }
 
-/** The items of a DataTransfer of a drag or a paste: one text item with its types, and the files. */
+/** The types that a drag adds for itself: they are not data, so a drop does not see them. */
+function isInternal(type: string): boolean {
+  return type === 'Files' || type === ROWS_TYPE || type === ITEMS_TYPE;
+}
+
+/** The items that a drag of `setDragData` put in its DataTransfer, or undefined for another drag. */
+function dragItems(data: DataTransfer): DragItem[] | undefined {
+  try {
+    const parsed: unknown = JSON.parse(data.getData(ITEMS_TYPE));
+    return Array.isArray(parsed) ? (parsed as DragItem[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The items of a DataTransfer of a drag or a paste: a text item with its types for each item of a
+ * drag of `setDragData`, else one for all the text, and the files.
+ */
 export function dropItems(data: DataTransfer): DropItem[] {
   const items: DropItem[] = [];
-  const types = new Set([...data.types].filter((type) => type !== 'Files'));
-  if (types.size > 0) {
+  const dragged = dragItems(data);
+  const types = new Set([...data.types].filter((type) => !isInternal(type)));
+  if (dragged) {
+    for (const item of dragged) {
+      items.push({
+        kind: 'text',
+        types: new Set(Object.keys(item)),
+        getText: (type) => Promise.resolve(item[type] ?? ''),
+      });
+    }
+  } else if (types.size > 0) {
     // The text is read now, while the DataTransfer can still be read.
     const texts = new Map([...types].map((type) => [type, data.getData(type)]));
     items.push({
@@ -61,8 +88,11 @@ export function dragTypes(data: DataTransfer): Set<string> {
     types.add(item.kind === 'file' ? item.type || 'application/octet-stream' : item.type);
   }
   for (const type of data.types) {
-    if (type !== 'Files') {
-      types.add(type);
+    types.add(type);
+  }
+  for (const type of types) {
+    if (isInternal(type)) {
+      types.delete(type);
     }
   }
   return types;
@@ -86,9 +116,13 @@ export type DragItem = Record<string, string>;
 /** The type that marks a drag of rows, whose value is the ID of the collection. */
 export const ROWS_TYPE = 'application/x-brumate-rows';
 
+/** The type that holds the items of a drag as JSON, one for each row, which a drop reads back. */
+export const ITEMS_TYPE = 'application/x-brumate-items';
+
 /**
  * Puts the items of a drag in its DataTransfer. A DataTransfer holds one value of each type, so
- * the values of the items of a type are joined with new lines.
+ * the values of the items of a type are joined with new lines, for drops that are not ours. A
+ * drop of ours gets one item for each, from the JSON of `ITEMS_TYPE`.
  */
 export function setDragData(data: DataTransfer, items: readonly DragItem[]): void {
   const types = new Map<string, string[]>();
@@ -100,4 +134,14 @@ export function setDragData(data: DataTransfer, items: readonly DragItem[]): voi
   for (const [type, values] of types) {
     data.setData(type, values.join('\n'));
   }
+  data.setData(ITEMS_TYPE, JSON.stringify(items));
+}
+
+/** The operations that the `effectAllowed` of a drag allows. A drag with none set allows all. */
+export function allowedOperations(effectAllowed: string | undefined): DropOperation[] {
+  const all: DropOperation[] = ['copy', 'move', 'link'];
+  if (effectAllowed === undefined || effectAllowed === 'all' || effectAllowed === 'uninitialized') {
+    return all;
+  }
+  return all.filter((operation) => effectAllowed.toLowerCase().includes(operation));
 }

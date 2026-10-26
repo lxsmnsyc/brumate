@@ -1,0 +1,35 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import DropZone from '../../src/DropZone.brm';
+  import GridList from '../../src/GridList.brm';
+  import GridListItem from '../../src/GridListItem.brm';
+  import type { DropEvent, DropOperation } from '../../src/drop.ts';
+
+  let dropped = $signal<string[]>([]);
+  let seen = $signal<string[]>([]);
+
+  async function received(event: DropEvent) {
+    const texts: string[] = [];
+    for (const item of event.items) {
+      texts.push(item.kind === 'text' ? await item.getText('text/plain') : `file:${item.name}`);
+    }
+    dropped = texts;
+  }
+
+  function accept(types: Set<string>): DropOperation {
+    seen = [...types];
+    return 'copy';
+  }
+</script>
+
+<GridList class="out" aria-label="Files" selectionMode="multiple" getItems=((keys) => keys.map((key) => ({ 'text/plain': `file ${key}` })))>
+  #for (file of ['a', 'b', 'c']) {
+    <GridListItem id=file textValue=(`File ${file}`) class=(`row row-${file}`)>
+      <Button slot="drag" class=(`drag drag-${file}`)>≡</Button>
+      File {file}
+    </GridListItem>
+  }
+</GridList>
+<DropZone class="zone" aria-label="Zone" onDrop=received getDropOperation=accept />
+<p class="state">{JSON.stringify([dropped, seen])}</p>

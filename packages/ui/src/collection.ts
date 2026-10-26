@@ -369,6 +369,8 @@ export interface ListBoxState {
   setActive?: (key: Key) => void;
   /** True when the rows can be dragged, in a GridList with `onReorder` or `getItems`. */
   isDraggable?: boolean;
+  /** True when a drag can drop in the list, in a GridList with `onReorder`. Its drag buttons work. */
+  isReorderable?: boolean;
   /** The keys of the rows that a drag moves. */
   dragging?: Key[];
   /** Where the rows that a drag moves would go. */

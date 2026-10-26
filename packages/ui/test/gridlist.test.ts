@@ -101,3 +101,43 @@ it('extends a range with Shift from the row that has focus', async () => {
   press('ArrowDown', page.get('.row-notes'), { shiftKey: true });
   await page.waitFor(() => expect(state(page)[0]).toEqual(['notes', 'photos']));
 });
+
+/** Sends a key to an element and says whether the page keeps its default, such as a scroll. */
+function prevented(target: Element, key: string) {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  target.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+it('prevents Space, Enter, Home and End on a row, at once', async () => {
+  const page = await gridlists();
+  // The listeners start with the page.
+  await new Promise((done) => setTimeout(done, 50));
+  const row = page.get('.row-notes');
+  expect(prevented(row, ' ')).toBe(true);
+  expect(prevented(row, 'Enter')).toBe(true);
+  expect(prevented(row, 'Home')).toBe(true);
+  expect(prevented(row, 'End')).toBe(true);
+  // The keys of a control in a row are its own, such as Enter on a Button.
+  expect(prevented(page.get('.edit-notes'), 'Enter')).toBe(false);
+});
+
+it('leaves the keys of a text field in a row to the field', async () => {
+  const page = await gridlists();
+  await new Promise((done) => setTimeout(done, 50));
+  const field = page.get('.field');
+  expect(prevented(field, ' ')).toBe(false);
+  expect(prevented(field, 'Enter')).toBe(false);
+  expect(prevented(field, 'Home')).toBe(false);
+  expect(prevented(field, 'End')).toBe(false);
+});
+
+it('is a tab stop again when the row that had focus is removed', async () => {
+  const page = await gridlists();
+  const grid = page.get('.fields');
+  await new Promise((done) => setTimeout(done, 50));
+  page.get('.field').focus();
+  await page.waitFor(() => expect(grid.tabIndex).toBe(-1));
+  page.get('.name').remove();
+  await page.waitFor(() => expect(grid.tabIndex).toBe(0));
+});

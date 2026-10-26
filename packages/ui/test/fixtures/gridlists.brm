@@ -27,6 +27,9 @@
     <GridListItem id="inbox" class="inbox">Inbox</GridListItem>
     <GridListItem id="sent" class="sent">Sent</GridListItem>
   </GridList>
+  <GridList class="fields" aria-label="Fields">
+    <GridListItem id="name" class="name"><input class="field" type="text" aria-label="Name" /></GridListItem>
+  </GridList>
   <button class="after" type="button">After</button>
   <p class="state">{JSON.stringify([picked, opened, edits])}</p>
 </main>
