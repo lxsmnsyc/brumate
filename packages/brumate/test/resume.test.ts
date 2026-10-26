@@ -2142,7 +2142,7 @@ describe('children', () => {
     await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
     const on = document.querySelector('.list')!.getAttribute('b-on')!;
     expect(on).toBe(
-      'click=DynamicKeysArgs_nhpusu#h9 keydown:prevent(Enter,")=DynamicKeysArgs_nhpusu#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+      'click=DynamicKeysArgs_nhpusu#h9@-1 keydown:prevent(Enter,")=DynamicKeysArgs_nhpusu#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
     );
     click(document.querySelector('.list')!);
     await waitFor(() => expect(text('.seen')).toBe('own'));
@@ -2162,7 +2162,7 @@ describe('children', () => {
     // The new element writes its own entries and those of the spread, escaped.
     const on = document.querySelector('section.list')!.getAttribute('b-on')!;
     expect(on).toBe(
-      'click=DynamicKeysSwap_5gjjdw#h8 keydown:prevent(Enter,")=DynamicKeysSwap_5gjjdw#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+      'click=DynamicKeysSwap_5gjjdw#h8@-1 keydown:prevent(Enter,")=DynamicKeysSwap_5gjjdw#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
     );
     click(document.querySelector('.list')!);
     await waitFor(() => expect(text('.seen')).toBe('own'));
@@ -2170,6 +2170,29 @@ describe('children', () => {
     await waitFor(() => expect(text('.seen')).toBe('say "hi" & <b>'));
     expect(text('.presses')).toBe('2');
     expect(press('x').defaultPrevented).toBe(false);
+  });
+
+  it('a component in a dynamic tag keeps the handlers of its caller', async () => {
+    await resume('componentTagHandlers', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.wrap')).not.toBeNull());
+    const on = document.querySelector('.wrap')!.getAttribute('b-on')!;
+    expect(on).toMatch(/click=ScopeWrap\S*#h\d+ click=AsButton\S*#h\d+@\S+/);
+    click(document.querySelector('.wrap')!);
+    await waitFor(() => expect(text('.inner')).toBe('1'));
+    await waitFor(() => expect(text('.own')).toBe('1'));
+  });
+
+  it('a dynamic tag keeps its own handlers when its spread updates', async () => {
+    await resume('dynamicKeysLive', {});
+    click(document.querySelector('.next')!);
+    await waitFor(() =>
+      expect(document.querySelector('.list')!.getAttribute('data-extra')).toBe('two'),
+    );
+    click(document.querySelector('.list')!);
+    await waitFor(() => expect(text('.seen')).toBe('own'));
+    press('a');
+    await waitFor(() => expect(text('.presses')).toBe('1'));
   });
 
   it('updates children that the server rendered before values changed', async () => {
@@ -4415,6 +4438,54 @@ describe('compact markup', () => {
     await startLoader();
     // A bound child writes the signal of its parent, whose scope moved by 5.
     click(document.querySelector('.child.bound')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+  }, 20_000);
+
+  it('moves the binding of a rest prop that a child builds after navigation', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindLateParent.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // The binding in the state moved by 5 too, so the child that the click builds writes the parent.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.child.later')).not.toBeNull());
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+  }, 20_000);
+
+  it('moves the binding and the setter of a rest prop after navigation', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindLateSetter.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // The binding in the state moved by 5 too, so the child that the click builds writes the parent.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.child.later')).not.toBeNull());
+    click(document.querySelector('.child.later')!);
     await waitFor(() => expect(text('.parent')).toBe('open'));
   }, 20_000);
 
