@@ -601,7 +601,7 @@ class ClientGenerator {
           const template = this.model.scopes.find(
             (item) => item.template?.name === callee.name && item.parent === callee.scope,
           );
-          if (template && !result.some((item) => isWithin(template, item))) {
+          if (template && !result.includes(template)) {
             result.push(template);
           }
         }

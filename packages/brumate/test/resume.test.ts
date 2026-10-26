@@ -2194,6 +2194,21 @@ describe('templates with components', () => {
   });
 });
 
+describe('templates inside blocks', () => {
+  it('a component used in a template that sits inside a block is imported', async () => {
+    await resume('templateNested', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.tpl')).not.toBeNull());
+  });
+
+  it('a component used in a template that sits two blocks deep is imported', async () => {
+    await resume('templateNestedDeep', {});
+    click(document.querySelector('.outer')!);
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(document.querySelector('a.deep')).not.toBeNull());
+  });
+});
+
 describe('conditions that never change', () => {
   it('reads a condition of #else if that never changes, after one that does', async () => {
     await resume('elseIfPage', {});
