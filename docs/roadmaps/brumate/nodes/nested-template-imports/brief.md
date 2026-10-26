@@ -1,7 +1,7 @@
 ---
 id: nested-template-imports
 title: A component in a template inside a block is imported
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "template that sits inside a block"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#254"
 gate: false
 added: 2026-10-26
 owns:
@@ -41,9 +41,9 @@ A component used as a tag in a `#template` declared inside a block is not import
 
 ## Acceptance
 
-- [ ] The test of reviews/core-gaps.md section 3 fails on main and passes with the fix.
-- [ ] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The test of reviews/core-gaps.md section 3 fails on main and passes with the fix.
+- [x] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
