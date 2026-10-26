@@ -120,7 +120,35 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
   };
 
   const usages: ComponentUsage[] = [];
+  // The components that the file reads as values. A dynamic tag can name any of them.
+  const valueSources: string[] = [];
+  for (const declaration of graph.model.declarations) {
+    if (
+      declaration.kind === 'import' &&
+      declaration.imported?.source.endsWith('.brm') &&
+      declaration.reads.length > 0
+    ) {
+      valueSources.push(declaration.imported.source);
+    }
+  }
   const visit = (node: Markup): void => {
+    if (node.kind === 'dynamic') {
+      // The props of a dynamic tag reach the component that it names, so each component that the
+      // file reads as a value gets the props that can change.
+      const liveProps = new Set<string>();
+      for (const attribute of node.attributes) {
+        const name = attribute.kind === 'value' ? liveProp(attribute) : undefined;
+        if (name) {
+          liveProps.add(name);
+        }
+      }
+      if (liveProps.size > 0) {
+        for (const source of valueSources) {
+          usages.push({ source, liveProps });
+        }
+      }
+      return;
+    }
     if (node.kind !== 'component') {
       return;
     }

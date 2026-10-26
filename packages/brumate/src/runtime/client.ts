@@ -2427,6 +2427,11 @@ function withVariables(element: HTMLElement, style: string | undefined): string 
 }
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
+  // A dynamic tag that names a component passes the value on as a prop.
+  if (scope.c?.[anchor] !== undefined) {
+    prop(scope, anchor, name, value);
+    return;
+  }
   const element = findElement(scope.id, anchor);
   if (element) {
     setAttribute(element, name, value);
@@ -4423,6 +4428,8 @@ export function dynamicNodes(
       inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,
+      // The anchor of the tag, so that updates reach the props of the component.
+      (ownValue('b-b', attributes['b-b']) as string | undefined)?.split(':')[1] as never,
     );
   }
   const name = String(tag);
@@ -4469,14 +4476,8 @@ export function dynamic(
   ref?: unknown,
 ): string {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
-    }
-    return component(
-      valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
-      undefined,
-      scope,
+    return holdPlace(
+      dynamicNodes(tag, attributes, inner, _ctx, scope, ref) as string | DocumentFragment,
     );
   }
   const name = String(tag);

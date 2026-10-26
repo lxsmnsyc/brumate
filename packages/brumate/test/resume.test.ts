@@ -5066,3 +5066,20 @@ describe('#offscreen', () => {
     );
   });
 });
+
+describe('a dynamic tag that names a component', () => {
+  it('updates its live props', async () => {
+    await resume('componentTagLiveProps', {});
+    expect(text('em.tag')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+
+  it('updates its live props in a block that the browser opens', async () => {
+    await resume('componentTagLivePropsLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('em.tag')).toBe('a'));
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+});

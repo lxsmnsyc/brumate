@@ -1486,7 +1486,15 @@ export function dynamic(
             ),
           }
         : attributes;
-    return component(tag, content ? { ...props, children: content } : props, ctx, scope);
+    // The anchor of the tag, so that updates reach the props of the component.
+    const bound = ownValue('b-b', attributes['b-b']) as string | undefined;
+    return component(
+      tag,
+      content ? { ...props, children: content } : props,
+      ctx,
+      scope,
+      bound === undefined ? undefined : Number(bound.split(':')[1]),
+    );
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
   const on: string[] = [];

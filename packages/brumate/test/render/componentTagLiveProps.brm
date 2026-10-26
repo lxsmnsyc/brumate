@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Tag from './Tag.brm';
+
+  // A dynamic tag that names a component, with a live prop that the component reads by name.
+  let as = $signal<any>(Tag);
+  let label = $signal('a');
+</script>
+
+<button class="set" onClick=(() => (label = 'b'))>Set</button>
+<{as} label=(label) />
