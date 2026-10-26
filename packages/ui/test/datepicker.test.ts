@@ -51,7 +51,7 @@ it('names its Button by the Label, and shows the date in the segments', async ()
   expect(trigger.getAttribute('aria-expanded')).toBe('false');
   expect(page.get('.trip-input').getAttribute('aria-labelledby')).toBe(page.get('.trip-label').id);
   expect(segments(page)).toEqual(['10', '/', '15', '/', '2026']);
-  expect((page.get('.trip input[type="hidden"]') as HTMLInputElement).value).toBe('2026-10-15');
+  expect((page.get('.trip input[aria-hidden="true"]') as HTMLInputElement).value).toBe('2026-10-15');
 });
 
 it('opens a Calendar on the selected date, and a pick sets the date and closes it', async () => {

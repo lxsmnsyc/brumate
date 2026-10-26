@@ -12,8 +12,11 @@ import { toDate } from './calendar.ts';
 /** A part of a date or a time that a segment edits. */
 export type SegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'dayPeriod';
 
-/** The parts that are set. A part that is not set shows its placeholder. The hour is 0 to 23. */
-export type DateParts = Partial<Record<Exclude<SegmentType, 'dayPeriod'>, number>>;
+/**
+ * The parts that are set. A part that is not set shows its placeholder. The hour is 0 to 23, and
+ * on a 12-hour clock `dayPeriod` is a part of its own, 0 for AM and 1 for PM, as in React Aria.
+ */
+export type DateParts = Partial<Record<SegmentType, number>>;
 
 /** A time of day, as `HH:MM`, or `HH:MM:SS` for a field with seconds. */
 export type TimeString = string;
@@ -50,6 +53,8 @@ export interface DateFieldState {
   direction: 'ltr' | 'rtl';
   /** Steps a part by `delta`, around its range. A part that is not set starts at the placeholder. */
   step: (type: SegmentType, delta: number) => void;
+  /** Sets a part to the lowest or the highest number of its range, as Home and End do. */
+  jump: (type: SegmentType, to: 'min' | 'max') => void;
   /**
    * Types a character into a part: a digit, or `a` or `p` for AM or PM. True when the part is
    * full, so focus moves to the next one.
@@ -183,6 +188,28 @@ export function isDatePart(type: SegmentType): type is DateSegmentType {
   return type === 'year' || type === 'month' || type === 'day';
 }
 
+/** How far PageUp and PageDown step each part, as in React Aria. */
+export const PAGE_STEP: Record<SegmentType, number> = {
+  year: 5,
+  month: 2,
+  day: 7,
+  hour: 2,
+  minute: 15,
+  second: 15,
+  dayPeriod: 1,
+};
+
+/** A part of a date set to the lowest or the highest number of its range. */
+export function jumpPart(
+  parts: DateParts,
+  type: DateSegmentType,
+  to: 'min' | 'max',
+  placeholder: DateString,
+): DateParts {
+  const [min, max] = rangeOf(type, parts, toDate(placeholder));
+  return { ...parts, [type]: to === 'min' ? min : max };
+}
+
 /** A part stepped by `delta`, around its range. A part that is not set takes the placeholder. */
 export function stepPart(
   parts: DateParts,
@@ -255,14 +282,24 @@ export function timePartsOf(value: TimeString | null): DateParts {
     return {};
   }
   const [hour = 0, minute = 0, second = 0] = value.split(':').map(Number);
-  return { hour, minute, second };
+  return { hour, minute, second, dayPeriod: hour >= 12 ? 1 : 0 };
 }
 
-/** The time of parts that are all set, to the granularity, or null. */
-export function timeOf(parts: DateParts, granularity: TimeGranularity): TimeString | null {
+/** A time as seconds since midnight, so times of other lengths compare, such as `09:30` and `09:30:00`. */
+export function secondsOf(value: TimeString): number {
+  const [hour = 0, minute = 0, second = 0] = value.split(':').map(Number);
+  return hour * 3600 + minute * 60 + second;
+}
+
+/**
+ * The time of parts that are all set, to the granularity, or null. On a 12-hour clock, AM or PM
+ * must be set too.
+ */
+export function timeOf(parts: DateParts, granularity: TimeGranularity, twelve = false): TimeString | null {
   const { hour, minute, second } = parts;
   if (
     hour === undefined ||
+    (twelve && parts.dayPeriod === undefined) ||
     (granularity !== 'hour' && minute === undefined) ||
     (granularity === 'second' && second === undefined)
   ) {
@@ -291,7 +328,9 @@ export function timeSegmentsOf(
 ): Segment[] {
   const twelve = usesDayPeriod(locale, hourCycle);
   const base = timePartsOf(placeholder);
-  const hour = parts.hour ?? base.hour!;
+  const period = periodOf(parts, base);
+  // An hour that is not set shows the placeholder's, in the period that is set.
+  const hour = parts.hour ?? (base.hour! % 12) + period * 12;
   const formatter = new DateFormatter(locale, {
     hour: 'numeric',
     minute: granularity === 'hour' ? undefined : '2-digit',
@@ -315,14 +354,14 @@ export function timeSegmentsOf(
       index,
     };
     if (part.type === 'dayPeriod') {
-      // A period shows from the placeholder until the hour is set.
+      // AM or PM is a part of its own, which shows the placeholder's until it is set.
       return {
         type: 'dayPeriod',
         text: part.value,
-        value: hour >= 12 ? 1 : 0,
+        value: period,
         min: 0,
         max: 1,
-        isPlaceholder: parts.hour === undefined,
+        isPlaceholder: parts.dayPeriod === undefined,
         index,
       };
     }
@@ -344,23 +383,81 @@ export function timeSegmentsOf(
   });
 }
 
-/** A part of a time stepped by `delta`, around its range. AM and PM step the hour by 12. */
+/** AM, 0, or PM, 1: the part that is set, or that of the hour, or that of the placeholder. */
+function periodOf(parts: DateParts, base: DateParts): number {
+  if (parts.dayPeriod !== undefined) {
+    return parts.dayPeriod;
+  }
+  return (parts.hour ?? base.hour!) >= 12 ? 1 : 0;
+}
+
+/** Parts with AM or PM set, and the hour that is set moved into it. */
+function withPeriod(parts: DateParts, period: number): DateParts {
+  const next = { ...parts, dayPeriod: period };
+  if (parts.hour !== undefined) {
+    next.hour = (parts.hour % 12) + period * 12;
+  }
+  return next;
+}
+
+/**
+ * A part of a time stepped by `delta`, around its range. On a 12-hour clock the hour goes around
+ * within AM or PM, and AM and PM are a part of their own, as cycle of React Aria does.
+ */
 export function stepTime(
   parts: DateParts,
   type: TimeSegmentType | 'dayPeriod',
   delta: number,
   placeholder: TimeString,
+  twelve = false,
 ): DateParts {
   const base = timePartsOf(placeholder);
+  const period = periodOf(parts, base);
   if (type === 'dayPeriod') {
-    return { ...parts, hour: ((parts.hour ?? base.hour!) + 12) % 24 };
+    // A period that is not set takes the placeholder's first.
+    return withPeriod(parts, parts.dayPeriod === undefined ? period : 1 - period);
   }
   const current = parts[type];
   if (current === undefined) {
-    return { ...parts, [type]: base[type] };
+    const start = type === 'hour' && twelve ? (base.hour! % 12) + period * 12 : base[type];
+    return { ...parts, [type]: start };
+  }
+  if (type === 'hour' && twelve) {
+    const within = (((current % 12) + delta) % 12 + 12) % 12;
+    return { ...parts, hour: within + (current >= 12 ? 12 : 0) };
   }
   const size = TIME_MAX[type] + 1;
   return { ...parts, [type]: (((current + delta) % size) + size) % size };
+}
+
+/**
+ * A part of a time set to the lowest or the highest number of its range. On a 12-hour clock the
+ * hour goes to 12 or 11 of its period, as React Aria does.
+ */
+export function jumpTime(
+  parts: DateParts,
+  type: TimeSegmentType | 'dayPeriod',
+  to: 'min' | 'max',
+  placeholder: TimeString,
+  twelve = false,
+): DateParts {
+  const base = timePartsOf(placeholder);
+  if (type === 'dayPeriod') {
+    return withPeriod(parts, to === 'min' ? 0 : 1);
+  }
+  if (type === 'hour' && twelve) {
+    return { ...parts, hour: (to === 'min' ? 0 : 11) + periodOf(parts, base) * 12 };
+  }
+  return { ...parts, [type]: to === 'min' ? 0 : TIME_MAX[type] };
+}
+
+/** The text of AM and of PM in a locale, such as `AM` and `PM`, or `vorm.` and `nachm.`. */
+export function dayPeriodNames(locale: string): [string, string] {
+  const format = new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true, timeZone: 'UTC' });
+  const name = (hour: number) =>
+    format.formatToParts(new Date(Date.UTC(2000, 0, 1, hour))).find((part) => part.type === 'dayPeriod')
+      ?.value ?? (hour < 12 ? 'AM' : 'PM');
+  return [name(0), name(12)];
 }
 
 /**
@@ -374,16 +471,21 @@ export function typeTime(
   char: string,
   placeholder: TimeString,
   twelve: boolean,
+  locale = 'en-US',
 ): { parts: DateParts; typed: string; full: boolean } {
   const base = timePartsOf(placeholder);
-  const hour = parts.hour ?? base.hour!;
+  const period = periodOf(parts, base);
   if (type === 'dayPeriod') {
-    const letter = char.toLowerCase();
-    if (letter !== 'a' && letter !== 'p') {
-      return { parts, typed, full: false };
+    // A letter picks AM or PM by the start of its text in the locale, as in React Aria.
+    const letter = char.toLocaleLowerCase(locale);
+    const [am, pm] = dayPeriodNames(locale).map((name) => name.toLocaleLowerCase(locale));
+    if (am!.startsWith(letter)) {
+      return { parts: withPeriod(parts, 0), typed: '', full: true };
     }
-    const pm = letter === 'p';
-    return { parts: { ...parts, hour: (hour % 12) + (pm ? 12 : 0) }, typed: '', full: true };
+    if (pm!.startsWith(letter)) {
+      return { parts: withPeriod(parts, 1), typed: '', full: true };
+    }
+    return { parts, typed, full: false };
   }
   if (char < '0' || char > '9') {
     return { parts, typed, full: false };
@@ -397,7 +499,7 @@ export function typeTime(
   }
   const full = number * 10 > max || text.length >= 2;
   // On a 12-hour clock, 12 is the first hour of its period.
-  const value = type === 'hour' && twelve ? (number % 12) + (hour >= 12 ? 12 : 0) : number;
+  const value = type === 'hour' && twelve ? (number % 12) + period * 12 : number;
   return { parts: { ...parts, [type]: value }, typed: full ? '' : text, full };
 }
 

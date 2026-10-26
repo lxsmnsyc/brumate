@@ -12,6 +12,8 @@
    * - `segment` is a `#template` that gets each segment, to render your own DateSegment.
    * - In a DateRangePicker, `slot="start"` and `slot="end"` pick the date that it edits.
    * - ArrowLeft and ArrowRight move focus between the segments, the other way right to left.
+   * - A press of the pointer on the group, or on the text between two segments, focuses the last
+   *   segment, as useDatePickerGroup of React Aria does.
    * - It shows `data-disabled` and `data-invalid`.
    */
   const { segment, slot, ...rest } = $props<{
@@ -41,6 +43,16 @@
     const forward = (event.key === 'ArrowRight') !== (field.direction === 'rtl');
     focusSegment(editable[at + (forward ? 1 : -1)]);
   }
+
+  function pointerDown(event: PointerEvent) {
+    const group = event.currentTarget as HTMLElement;
+    const target = event.target as HTMLElement;
+    if (event.button !== 0 || target.closest('[role="spinbutton"]')) {
+      return;
+    }
+    const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
+    focusSegment(editable.at(-1));
+  }
 </script>
 
 <div
@@ -50,6 +62,7 @@
   data-disabled=(picked()?.isDisabled || undefined)
   data-invalid=(picked()?.isInvalid || undefined)
   onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight'))
+  onPointerDown=pointerDown
   {...rest}
 >
   #for (item of picked()?.segments ?? [] by item.index) {
