@@ -27,6 +27,8 @@ export type Write =
   | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
 export interface ClonedTemplate {
+  /** `svg` or `math` when the markup starts with an element of SVG or MathML outside one. */
+  foreign?: string;
   /**
    * The static HTML of the template. Each element that the render writes has `b-x` with its
    * index, which the browser reads, and removes, when it parses the template. A text insert is
@@ -92,6 +94,18 @@ const BLOCK_END = /^:(\d+)(?::-1)?--><!--\/b-->/;
 
 const VOID = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
 
+/** Elements of SVG and of MathML that HTML has no element of its own for. */
+const SVG_ONLY = new Set(
+  'animate animatemotion animatetransform circle clippath defs desc ellipse feblend fecolormatrix fecomponenttransfer fecomposite feconvolvematrix fediffuselighting fedisplacementmap fedistantlight fedropshadow feflood fefunca fefuncb fefuncg fefuncr fegaussianblur feimage femerge femergenode femorphology feoffset fepointlight fespecularlighting fespotlight fetile feturbulence filter foreignobject g image line lineargradient marker mask metadata mpath path pattern polygon polyline radialgradient rect stop switch symbol text textpath tspan use view'.split(
+    ' ',
+  ),
+);
+const MATH_ONLY = new Set(
+  'annotation maction menclose merror mfenced mfrac mi mmultiscripts mn mo mover mpadded mphantom mroot mrow ms mspace msqrt mstyle msub msubsup msup mtable mtd mtext mtr munder munderover semantics'.split(
+    ' ',
+  ),
+);
+
 /** Elements whose content is text that the parser keeps as it is, or that hold no markup. */
 const RAW_TEXT = /^(?:script|style|textarea|title|template|noscript|xmp|iframe|noembed|noframes)$/;
 
@@ -119,6 +133,25 @@ class Reader {
   readonly handled = new Set<number>();
   /** The name of the attribute that the start tag is in. */
   private attribute = '';
+  /** The tag names of the elements, by their numbers. */
+  private readonly names = new Map<number, string>();
+  /** `svg` or `math` when the first element at the top is of SVG or MathML only. */
+  foreign: string | undefined;
+  private top = true;
+
+  /** `svg` or `math` when the open elements put what comes next in SVG or MathML. */
+  foreignHere(): string | undefined {
+    for (let at = this.open.length - 1; at >= 0; at--) {
+      const name = this.names.get(this.open[at]!);
+      if (name === 'foreignobject') {
+        return undefined;
+      }
+      if (name === 'svg' || name === 'math') {
+        return name;
+      }
+    }
+    return this.foreign;
+  }
   /** Where the start tag of each element can take another attribute, by its number. */
   private readonly ends = new Map<number, number>();
   private state: 'text' | 'open' | 'name' | 'tag' | 'quote' | 'close' | 'comment' = 'text';
@@ -170,6 +203,7 @@ class Reader {
             break;
           }
           this.state = 'tag';
+          this.named();
           this.tag(char);
           break;
         case 'tag':
@@ -191,6 +225,20 @@ class Reader {
             this.state = 'text';
           }
           break;
+      }
+    }
+  }
+
+  /** The name of the element that started last is read. */
+  private named(): void {
+    const name = this.name.toLowerCase();
+    this.names.set(this.element, name);
+    if (this.top && this.open.length === 0) {
+      this.top = false;
+      if (SVG_ONLY.has(name)) {
+        this.foreign = 'svg';
+      } else if (MATH_ONLY.has(name)) {
+        this.foreign = 'math';
       }
     }
   }
@@ -285,7 +333,9 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     const insert = INSERT.exec(code);
     // The only content of an element, which can be the text of a `<textarea>`.
-    if (insert && reader.justOpened && nextStatic?.startsWith('</')) {
+    // A void element, such as an `<input>`, ends with its start tag, so the insert is after it.
+    const holder = reader.open.at(-1);
+    if (insert && reader.justOpened && holder === reader.element && nextStatic?.startsWith('</')) {
       add({ kind: 'content', value: insert[1]!, at: insert[2] });
       continue;
     }
@@ -358,7 +408,11 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // A dynamic tag, which builds its element where it is.
     if (DYNAMIC.test(code) && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'component', call: code.replace(DYNAMIC, '$$$$b.dynamicNodes(') }]);
+      const foreign = reader.foreignHere();
+      const call = foreign
+        ? code.replace(DYNAMIC, `$$$$b.foreignNodes(${JSON.stringify(foreign)}, `)
+        : code.replace(DYNAMIC, '$$$$b.dynamicNodes(');
+      writes.push([{ kind: 'component', call }]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -491,7 +545,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     if (anchorOf(element)) {
       continue;
     }
-    for (let around = reader.parents.get(element); around !== undefined; ) {
+    for (let around = reader.parents.get(element); around !== undefined;) {
       const anchor = anchorOf(around);
       if (anchor?.kind === 'anchor') {
         // An element at the top of the clone gets its `b-b` anyway.
@@ -501,7 +555,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       around = reader.parents.get(around);
     }
   }
-  return { html: reader.html, writes };
+  return { html: reader.html, writes, foreign: reader.foreign };
 }
 
 /**
@@ -571,7 +625,10 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   }
   const flush = tops[0];
   const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
-  const name = hoist(`$$b.template(${JSON.stringify(found.html)}, ${found.writes.length})`);
+  const foreign = found.foreign ? `, ${JSON.stringify(found.foreign)}` : '';
+  const name = hoist(
+    `$$b.template(${JSON.stringify(found.html)}, ${found.writes.length}${foreign})`,
+  );
   // The clone gives its marked nodes, then its fragment.
   const lines = [`${indent}const $$e = $$b.clone(${name}), $$f = $$e[${found.writes.length}];`];
   // The calls that fill the nested blocks, after the slots of the body are set, which the

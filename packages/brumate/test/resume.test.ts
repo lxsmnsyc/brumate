@@ -2370,6 +2370,32 @@ describe('cloned handlers', () => {
   });
 });
 
+describe('cloned SVG', () => {
+  it('parses children, components and dynamic tags inside SVG as SVG', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    // Children that a component puts inside its <svg>.
+    expect(document.querySelector('.child')!.namespaceURI).toBe(svg);
+    // A component whose top element is an SVG element, inside an <svg>.
+    expect(document.querySelector('.dot')!.namespaceURI).toBe(svg);
+    // A dynamic tag inside an <svg>.
+    expect(document.querySelector('.shape')!.namespaceURI).toBe(svg);
+    // A spread on an SVG element keeps the case of its names.
+    expect(document.querySelector('.icon')!.getAttribute('viewBox')).toBe('0 0 10 10');
+    expect(document.querySelector('.icon')!.hasAttribute('viewbox')).toBe(false);
+  });
+
+  it('puts an insert after a void element, not inside it', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.check')).not.toBeNull());
+    expect(text('.check')).toBe('Remember me');
+    expect(document.querySelector('.check input')!.childNodes).toHaveLength(0);
+  });
+});
+
 describe('templates called again', () => {
   it('update in place with their new arguments, and keep their elements', async () => {
     await resume('templateInPlace', {});

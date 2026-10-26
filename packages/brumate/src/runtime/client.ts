@@ -2066,7 +2066,12 @@ function insertHTML(
   // A fragment that the browser cloned from a template keeps its elements on their scopes, so
   // it is not parsed or indexed. The clones of a list go in one by one, so each node moves once.
   const cloned = typeof html !== 'string';
-  const fragments = cloned ? (Array.isArray(html) ? html : [html]) : [parseHTML(html)];
+  let fragments: DocumentFragment[];
+  if (typeof html === 'string') {
+    fragments = [parseHTML(html, 'parent' in before ? before.parent : before)];
+  } else {
+    fragments = Array.isArray(html) ? html : [html];
+  }
   // Markers that others inserted first, so the new markers win over them.
   if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
@@ -3265,11 +3270,11 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
-  return (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
-    ? HAS_CLIENT_HTML
-      ? holdPlace(value.render(resolveScope(scope)))
-      : (value.render(resolveScope(scope)) as string)
-    : insertValue(value);
+  if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
+    return insertValue(value);
+  }
+  const out = value.render(resolveScope(scope));
+  return HAS_CLIENT_HTML ? holdPlace(out) : (out as string);
 }
 
 /** Children that render where they are inserted, and the scopes that they find contexts from. */
@@ -3442,14 +3447,16 @@ interface Template {
   html: string;
   /** How many elements the render writes, which have `b-x` in `html`. */
   count: number;
+  /** `svg` or `math`, for markup whose elements are of SVG or MathML, which parses inside one. */
+  foreign?: string;
   t?: HTMLTemplateElement;
   /** The moves that reach the marked nodes of a clone. See `walkOf`. */
   walk?: number[];
 }
 
 /** A template of the markup of a render, which `clone` parses once. */
-export function template(html: string, count: number): Template {
-  return { html, count };
+export function template(html: string, count: number, foreign?: string): Template {
+  return { html, count, foreign };
 }
 
 /**
@@ -3458,8 +3465,13 @@ export function template(html: string, count: number): Template {
  */
 function parseTemplate(source: Template): number[][] {
   const element = document.createElement('template');
-  element.innerHTML = trustedHTML(source.html);
+  element.innerHTML = trustedHTML(
+    source.foreign ? `<${source.foreign}>${source.html}</${source.foreign}>` : source.html,
+  );
   const root = element.content;
+  if (source.foreign) {
+    root.replaceChildren(...root.firstChild!.childNodes);
+  }
   const paths: number[][] = Array.from({ length: source.count });
   const pathOf = (marked: Node): number[] => {
     const path: number[] = [];
@@ -3560,6 +3572,7 @@ type ClonedNode = Element & Comment & DocumentFragment;
 export function clone(source: Template): ClonedNode[] {
   const walk = (source.walk ??= walkOf(parseTemplate(source)));
   const fragment = source.t!.content.cloneNode(true);
+  // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
   const nodes: Node[] = new Array(source.count + 1);
   nodes[source.count] = fragment;
   let node: Node = fragment;
@@ -3658,7 +3671,7 @@ function keepMarkers(
   }
   if (value !== null && value !== undefined && typeof value !== 'boolean') {
     // Children, a template or raw HTML.
-    place.after(insertNodes(value, at));
+    place.after(insertNodes(value, at, place));
   }
 }
 
@@ -3681,7 +3694,7 @@ function keepBlock(
 function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
   if (html) {
     // Markup that a render gave as HTML, which the insert of the clone indexes.
-    place.after(parseHTML(html));
+    place.after(parseHTML(html, place));
     clonedMarkup = true;
   } else if (nodes) {
     place.after(nodes);
@@ -3827,9 +3840,17 @@ export function listNodes(
 /** Writes attributes that code of a start tag gave as their text, as HTML has them. */
 export function setAttrText(element: Element, text: string): void {
   if (text) {
-    const parsed = parseHTML(`<b${text}>`).firstChild as Element;
+    // On an element of SVG or MathML, the parser gives the names their case, such as `viewBox`,
+    // and their namespace, such as of `xlink:href`.
+    const foreign = foreignOf(element);
+    const tag = foreign === 'math' ? 'mi' : 'g';
+    const parsed = parseHTML(foreign ? `<${tag}${text}/>` : `<b${text}>`, undefined, foreign)
+      .firstChild as Element;
+    // The parsed attribute moves, so a name that `setAttribute` would reject, such as `@click`,
+    // is written as the parser read it.
     for (const attribute of Array.from(parsed.attributes)) {
-      element.setAttribute(attribute.name, attribute.value);
+      parsed.removeAttributeNode(attribute);
+      element.setAttributeNode(attribute);
     }
   }
 }
@@ -3839,7 +3860,7 @@ export function putText(place: Comment, value: unknown, at?: ScopeId | Scope): v
   place.replaceWith(
     typeof value === 'string' || typeof value === 'number'
       ? document.createTextNode(String(value))
-      : insertNodes(value, at),
+      : insertNodes(value, at, place),
   );
 }
 
@@ -3871,14 +3892,18 @@ export function setContent(element: Element, value: unknown, at?: ScopeId | Scop
     return;
   }
   // Children, a template or raw HTML render here. Their work after the insert waits for it.
-  element.replaceChildren(insertNodes(value, at));
+  element.replaceChildren(insertNodes(value, at, element));
 }
 
 /**
  * The nodes of children, a template or raw HTML in cloned markup: the clone of children whose
  * markup clones, or the markup, which the insert of the clone indexes, as it would in HTML.
  */
-function insertNodes(value: unknown, at: ScopeId | Scope | undefined): DocumentFragment {
+function insertNodes(
+  value: unknown,
+  at: ScopeId | Scope | undefined,
+  near: Node,
+): DocumentFragment {
   const out =
     HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
       ? value.render(resolveScope(at))
@@ -3887,7 +3912,7 @@ function insertNodes(value: unknown, at: ScopeId | Scope | undefined): DocumentF
     return out;
   }
   clonedMarkup = true;
-  return parseHTML(out);
+  return parseHTML(out, near);
 }
 
 /** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
@@ -3904,11 +3929,33 @@ export type Component<P = any> = (props: P) => string | DocumentFragment;
 const placed = new Map<number, DocumentFragment>();
 let placedCount = 0;
 
-/** Parses HTML that the browser renders, with the clones that it holds places for. */
-function parseHTML(html: string): DocumentFragment {
+/**
+ * `svg` or `math` when markup in an element, or next to a node, is SVG or MathML. HTML that the
+ * browser parses there needs one around it, as the parser of a page would have one.
+ */
+function foreignOf(near: Node | null | undefined): string | undefined {
+  const element = near?.nodeType === 1 ? (near as Element) : near?.parentNode;
+  if (element?.nodeType !== 1 || (element as Element).localName === 'foreignObject') {
+    return undefined;
+  }
+  const space = (element as Element).namespaceURI;
+  if (space === 'http://www.w3.org/2000/svg') {
+    return 'svg';
+  }
+  return space === 'http://www.w3.org/1998/Math/MathML' ? 'math' : undefined;
+}
+
+/**
+ * Parses HTML that the browser renders, with the clones that it holds places for. `near` is
+ * the element that it goes in, or a node next to where it goes.
+ */
+function parseHTML(html: string, near?: Node | null, foreign = foreignOf(near)): DocumentFragment {
   const template = document.createElement('template');
-  template.innerHTML = trustedHTML(html);
+  template.innerHTML = trustedHTML(foreign ? `<${foreign}>${html}</${foreign}>` : html);
   const fragment = template.content;
+  if (foreign) {
+    fragment.replaceChildren(...fragment.firstChild!.childNodes);
+  }
   if (HAS_CLIENT_HTML && placed.size > 0 && html.includes('<!--f')) {
     const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
     const places: Comment[] = [];
@@ -3933,7 +3980,7 @@ function parseHTML(html: string): DocumentFragment {
 export function place(at: Comment, out: string | Node): void {
   if (typeof out === 'string') {
     // A component that renders HTML: its markup, which the insert of the clone indexes.
-    at.replaceWith(parseHTML(out));
+    at.replaceWith(parseHTML(out, at));
     clonedMarkup = true;
   } else {
     at.replaceWith(out);
@@ -4008,6 +4055,7 @@ export function dynamicNodes(
   inner: Raw | Children | undefined,
   _ctx?: unknown,
   scope?: Scope | number,
+  foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
     return componentNodes(
@@ -4019,7 +4067,8 @@ export function dynamicNodes(
   }
   const name = String(tag);
   // The start tag as HTML, so the attributes are written as `dynamic` writes them.
-  const element = parseHTML(`<${name}${spreadText(attributes)}>`).firstChild as Element;
+  const element = parseHTML(`<${name}${spreadText(attributes)}>`, undefined, foreign)
+    .firstChild as Element;
   const bound = element.getAttribute('b-b');
   if (bound) {
     const [id, anchor] = bound.split(':');
@@ -4036,6 +4085,18 @@ export function dynamicNodes(
     setContent(element, inner, scope);
   }
   return element;
+}
+
+/** `dynamicNodes` for a dynamic tag inside SVG or MathML, `svg` or `math`. */
+export function foreignNodes(
+  foreign: string,
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  ctx?: unknown,
+  scope?: Scope | number,
+): string | Node {
+  return dynamicNodes(tag, attributes, inner, ctx, scope, foreign);
 }
 
 export function dynamic(
@@ -4081,6 +4142,7 @@ export function createScope(
   const created: Scope = { id, k: kind, p: parentScope, m: module, s: [] };
   // A clone keeps this many nodes on the scope, so the array does not grow.
   if (nodes) {
+    // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
     created.n = new Array(nodes);
   }
   rendered.push(created);
