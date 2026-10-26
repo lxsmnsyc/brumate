@@ -4418,6 +4418,54 @@ describe('compact markup', () => {
     await waitFor(() => expect(text('.parent')).toBe('open'));
   }, 20_000);
 
+  it('moves the binding of a rest prop that a child builds after navigation', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindLateParent.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // The binding in the state moved by 5 too, so the child that the click builds writes the parent.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.child.later')).not.toBeNull());
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+  }, 20_000);
+
+  it('moves the binding and the setter of a rest prop after navigation', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindLateSetter.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // The binding in the state moved by 5 too, so the child that the click builds writes the parent.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.child.later')).not.toBeNull());
+    click(document.querySelector('.child.later')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
+  }, 20_000);
+
   it('keeps working after a hot update renders the page again', async () => {
     await resume('compact', { initial });
     renameAt(0);

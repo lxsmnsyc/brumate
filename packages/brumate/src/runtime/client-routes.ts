@@ -37,7 +37,7 @@ function mapValues(object: object, map: (value: unknown) => unknown): object {
 
 /** Adds a number to the scope IDs of a state record, in the places that the table names. */
 export function shiftState(ids: Core['scopeIds'], state: PageState, by: number): PageState {
-  const { fields, references } = ids;
+  const { fields, references, holders } = ids;
   const seen = new Set<object>();
   const shiftValue = (value: unknown): unknown => {
     // A reference is copied with its own fields, and its scope moved.
@@ -46,6 +46,15 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
         return Object.assign(Object.create(Object.getPrototypeOf(value)), value, {
           scope: shiftId(value.scope, by),
         });
+      }
+    }
+    // A holder is copied with every field moved.
+    for (const type of holders) {
+      if (value instanceof type) {
+        return Object.assign(
+          Object.create(Object.getPrototypeOf(value)),
+          mapValues(value, shiftValue),
+        );
       }
     }
     // A later record settles it, with a value whose IDs move too.
