@@ -1,18 +1,32 @@
 <script>
+  import { $bind, $signal } from 'brumate/signals';
   import Tree from '../../src/Tree.brm';
   import TreeItem from '../../src/TreeItem.brm';
   import Virtualizer from '../../src/Virtualizer.brm';
+  import type { Key } from '../../src/collection.ts';
 
   interface File {
     id: string;
     name: string;
+    children?: File[];
   }
-  const files: File[] = Array.from({ length: 200 }, (_, index) => ({ id: `f${index}`, name: `File ${index}` }));
+
+  const files: File[] = Array.from({ length: 200 }, (_, index) => ({
+    id: `f${index}`,
+    name: index === 120 ? 'Zebra' : `File ${index}`,
+    children:
+      index === 0
+        ? Array.from({ length: 100 }, (_, child) => ({ id: `c${child}`, name: `Child ${child}` }))
+        : undefined,
+  }));
+  let picked = $signal<Key[]>([]);
+  let open = $signal<Key[]>(['f0']);
 </script>
 
 <Virtualizer class="box" rowHeight=(24) style="height: 120px">
-  <Tree class="tree" aria-label="Files" items=files item=file />
+  <Tree class="tree" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) expandedKeys=$bind(open) getTextValue=((file) => file.name) />
 </Virtualizer>
+<p class="state">{JSON.stringify(picked)}</p>
 
 #template file(file: File) {
   <TreeItem class=(`row row-${file.id}`)>{file.name}</TreeItem>

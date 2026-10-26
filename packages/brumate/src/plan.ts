@@ -779,3 +779,13 @@ export function blockBodies(block: Block): Body[] {
       return [block.body];
   }
 }
+
+/**
+ * The arguments that tell the core which component holds a block in its children: the kind of the
+ * scope that renders the component and its anchor. Empty for a block outside children.
+ */
+export function holderArguments(plan: Plan, block: Block): string {
+  const holder = plan.blockHolders.get(block);
+  const anchor = holder && plan.anchors.get(holder.node);
+  return holder && anchor !== undefined ? `, ${holder.scope.id}, ${anchor}` : '';
+}

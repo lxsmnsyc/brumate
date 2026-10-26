@@ -24,6 +24,8 @@ export const NavigationTreeContext: Context<NavigationTreeState | null> =
 export interface NavigationLinkState {
   href: string | undefined;
   isCurrent: boolean;
+  /** The item is disabled, so its link does not navigate or take focus. */
+  isDisabled: boolean;
 }
 
 export const NavigationLinkContext: Context<NavigationLinkState | null> =

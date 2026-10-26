@@ -3,6 +3,7 @@ import { isWithin, lookup, upstreamMemos } from '../model.ts';
 import type { Declaration, Diagnostic, Reference, Scope, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
+import { holderArguments } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Patch } from './patch.ts';
@@ -145,6 +146,10 @@ export class Rewriter {
           JSON.stringify(`r${fallback.id}`),
           `[${kinds.join(', ')}]`,
         ];
+        const held = holderArguments(this.plan, block);
+        if (held) {
+          args.push(held.slice(2));
+        }
         return `$$b.reset.bind(null, ${args.join(', ')})`;
       }
       default:

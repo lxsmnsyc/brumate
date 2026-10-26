@@ -251,6 +251,15 @@ export function treeData<T>(
       return;
     }
     const moved = keys
+      // A key twice moves once, and a node inside a moved node moves with it.
+      .filter(
+        (key, at) =>
+          keys.indexOf(key) === at &&
+          !keys.some((other) => {
+            const found = other === key ? undefined : getItem(other);
+            return found !== undefined && keysWithin(found).includes(key);
+          }),
+      )
       .map((key) => getItem(key))
       .filter((found) => found !== undefined)
       // A node cannot move next to a node inside it.

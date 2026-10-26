@@ -22,6 +22,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 - `item` is a `#template` that renders a `TreeItem` for an item. The Tree renders it for each item that shows, and gives the TreeItem its key and its place in the tree.
 - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes. The children of a closed item do not render.
 - Selection is as in a [GridList](./grid-list.md): `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
+- `rowHeight` renders only the rows in view, as in a [Virtualizer](./virtualizer.md), which gives it too. `getTextValue` returns the text of an item for the letters that move to a row, for the rows out of view.
 - `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable. Without it, and with nothing selectable, Enter and a press open and close a row with children.
 
 ## Rows
@@ -39,8 +40,8 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ## Keyboard
 
-- Tab stops at the tree once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the tree leaves it.
-- Up and Down move between the rows that show, and Home and End go to the first and the last. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.
+- Tab stops at the tree once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the tree leaves it. When the row that has focus leaves the tree, such as when its parent closes from outside, the tree is a stop of Tab again.
+- Up and Down move between the rows that show, Home and End go to the first and the last, and PageUp and PageDown move a page. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.
 - Right opens a closed row. Left closes an open row, or else moves to the row that holds it. Right to left, they turn around.
 - On an open row, or a row with no children, Right and Left move through the controls in the row, and back to the row.
 - Space selects the row that has focus, Shift extends a range, Ctrl+A or Cmd+A selects all, and Escape clears the selection.

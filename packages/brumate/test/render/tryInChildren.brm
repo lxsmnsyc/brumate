@@ -1,0 +1,14 @@
+<script>
+  import ThemeBox from './ThemeBox.brm';
+  import Themed from './Themed.brm';
+</script>
+
+<ThemeBox>
+  #try {
+    <p class="ok"><Themed /></p>
+    <button class="throw" onClick=(() => { throw new Error('Clicked'); })>Throw</button>
+  } #catch (error, reset) {
+    <p class="caught"><Themed /></p>
+    <button class="reset" onClick=reset>Reset</button>
+  }
+</ThemeBox>

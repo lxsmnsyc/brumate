@@ -13,6 +13,8 @@ export interface TreeNode {
 export interface TreeRow<T extends TreeNode = TreeNode> {
   item: T;
   key: Key;
+  /** The place among all the rows that show, from 1. */
+  index: number;
   /** The depth, from 1 for an item at the top. */
   level: number;
   /** The place among its siblings, from 1. */
@@ -42,6 +44,7 @@ export function visibleRows<T extends TreeNode>(
       rows.push({
         item,
         key: item.id,
+        index: rows.length + 1,
         level,
         position: index + 1,
         size: list.length,
@@ -68,9 +71,11 @@ export const TreeRowContext: Context<TreeRowState | null> = createContext<TreeRo
   null,
 );
 
-/** What a Tree gives its rows: how to open and close one. */
+/** What a Tree gives its rows: how to open and close one, and whether it windows them. */
 export interface TreeState {
   toggle: (key: Key) => void;
+  /** The rows render only while in view, so each says its place among all of them. */
+  windowed: boolean;
 }
 
 export const TreeContext: Context<TreeState | null> = createContext<TreeState | null>(

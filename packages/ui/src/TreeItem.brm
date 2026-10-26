@@ -163,6 +163,7 @@
   data-key=(keyAttribute(id))
   data-parent=(row.parent === undefined ? undefined : keyAttribute(row.parent))
   data-text-value=textValue
+  aria-rowindex=(state?.windowed ? row.index : undefined)
   aria-level=(row.level)
   aria-posinset=(row.position)
   aria-setsize=(row.size)

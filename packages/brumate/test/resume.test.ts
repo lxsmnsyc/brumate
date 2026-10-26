@@ -2303,31 +2303,46 @@ describe('spreads and attributes of other code', () => {
 });
 
 describe('windowed lists', () => {
-  /** Lays out the scroll box and the spacers, as a browser would, with rows 30 pixels tall. */
-  function layout(scroll: { top: number }) {
+  /**
+   * Lays out the scroll boxes and the spacers, as a browser would, with rows 30 pixels tall.
+   * `.scroll` scrolls by `scroll`, and `.inner` by `inner`. A `.wrap` around a list is as tall
+   * as its content.
+   */
+  function layout(scroll: { top: number; height?: number }, inner: { top: number } = { top: 0 }) {
     const original = Element.prototype.getBoundingClientRect;
+    const box = (top: number, height: number) =>
+      ({
+        top,
+        bottom: top + height,
+        height,
+        left: 0,
+        right: 0,
+        width: 0,
+        x: 0,
+        y: top,
+      }) as DOMRect;
+    const scrolls = (element: Element) =>
+      element.classList.contains('scroll') || element.classList.contains('inner');
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
       this: Element,
     ) {
-      const box = (top: number, height: number) =>
-        ({
-          top,
-          bottom: top + height,
-          height,
-          left: 0,
-          right: 0,
-          width: 0,
-          x: 0,
-          y: top,
-        }) as DOMRect;
       if (this.classList.contains('scroll')) {
+        return box(0, scroll.height ?? 120);
+      }
+      if (this.classList.contains('inner')) {
         return box(0, 120);
+      }
+      if (this.classList.contains('wrap')) {
+        return box(0, 600);
       }
       const place = this.getAttribute('data-window');
       if (place) {
         const before = this.parentElement!.querySelector<HTMLElement>('[data-window=before]')!;
-        const rows = this.parentElement!.querySelectorAll('.row').length;
-        const start = -scroll.top;
+        const rows = Array.from(this.parentElement!.children).filter((child) =>
+          /\b(row|irow|group)\b/.test(child.className),
+        ).length;
+        const owner = this.closest('.inner, .scroll');
+        const start = -(owner?.classList.contains('inner') ? inner.top : scroll.top);
         const beforeHeight = parseFloat(before.style.height) || 0;
         return place === 'before'
           ? box(start, beforeHeight)
@@ -2338,6 +2353,33 @@ describe('windowed lists', () => {
       }
       return original.call(this);
     });
+    // A scroll box has more to scroll than it shows, and a wrapper is as tall as its content.
+    // The height of a scroll box, and of what it scrolls, for the elements of the fixtures.
+    const sized = (element: Element, box: number): number => {
+      if (element.classList.contains('wrap')) {
+        return 600;
+      }
+      return scrolls(element) ? box : 0;
+    };
+    const sizes = {
+      clientHeight(this: Element) {
+        return sized(this, scroll.height ?? 120);
+      },
+      scrollHeight(this: Element) {
+        return sized(this, 3000);
+      },
+    };
+    for (const [name, get] of Object.entries(sizes)) {
+      const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name);
+      Object.defineProperty(HTMLElement.prototype, name, { get, configurable: true });
+      onTestFinished(() => {
+        if (original) {
+          Object.defineProperty(HTMLElement.prototype, name, original);
+        } else {
+          delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
+        }
+      });
+    }
   }
 
   it('render the first items on the server, and the items in view in the browser', async () => {
@@ -2388,6 +2430,94 @@ describe('windowed lists', () => {
     await waitFor(() => expect(document.querySelector('.row-0')).toBeNull());
     expect(document.querySelector('.row-1')).not.toBeNull();
   });
+
+  /** Scrolls the box, and waits for the frame that draws. */
+  async function scrollTo(selector: string, scroll: { top: number }, top: number) {
+    scroll.top = top;
+    document.querySelector(selector)!.dispatchEvent(new Event('scroll'));
+    await new Promise((done) => requestAnimationFrame(() => done(undefined)));
+  }
+
+  it('show the #else body only for an empty list, not when no item is in view', async () => {
+    const scroll = { top: 0 };
+    layout(scroll);
+    await resume('windowedElse', {});
+    await waitFor(() => expect(document.querySelector('.row-0')).not.toBeNull());
+    await scrollTo('.scroll', scroll, 30 * 500);
+    await waitFor(() => expect(document.querySelector('.row-0')).toBeNull());
+    expect(document.querySelector('.none')).toBeNull();
+    await scrollTo('.scroll', scroll, 0);
+    await waitFor(() => expect(document.querySelector('.row-0')).not.toBeNull());
+    expect(document.querySelector('.none')).toBeNull();
+  });
+
+  it('keys the items by their index in the whole list, also after a scroll', async () => {
+    const scroll = { top: 0 };
+    layout(scroll);
+    await resume('windowedIndex', {});
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(7));
+    click(document.querySelector('.pick-1')!);
+    await waitFor(() => expect(text('.pick-1')).toBe('Row 1 1'));
+    await scrollTo('.scroll', scroll, 30 * 50);
+    await waitFor(() => expect(document.querySelector('.row-50')).not.toBeNull());
+    // The rows that come into view have no state of rows that left.
+    expect(text('.pick-48')).toBe('Row 48 0');
+    expect(text('.pick-50')).toBe('Row 50 0');
+    await scrollTo('.scroll', scroll, 0);
+    await waitFor(() => expect(document.querySelector('.row-1')).not.toBeNull());
+    expect(text('.pick-1')).toBe('Row 1 1');
+  });
+
+  it('keep updating a nested window while its item is out of the page for a while', async () => {
+    const scroll = { top: 0 };
+    const inner = { top: 0 };
+    layout(scroll, inner);
+    await resume('windowedNested', {});
+    await waitFor(() => expect(document.querySelector('.irow-0-0')).not.toBeNull());
+    // The group leaves the view, and the window is resized meanwhile.
+    await scrollTo('.scroll', scroll, 30 * 12);
+    await waitFor(() => expect(document.querySelector('.group-0')).toBeNull());
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((done) => requestAnimationFrame(() => done(undefined)));
+    await scrollTo('.scroll', scroll, 0);
+    await waitFor(() => expect(document.querySelector('.group-0')).not.toBeNull());
+    await scrollTo('.inner-0', inner, 30 * 40);
+    await waitFor(() => expect(document.querySelector('.irow-0-40')).not.toBeNull());
+  });
+
+  it('draws again when the box that scrolls the list changes its size', async () => {
+    const observers: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observers.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    const scroll = { top: 0, height: 120 };
+    layout(scroll);
+    await resume('windowed', {});
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(7));
+    expect(observers.length).toBeGreaterThan(0);
+    scroll.height = 300;
+    for (const callback of observers) {
+      callback();
+    }
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(13));
+  });
+
+  it('takes the box that scrolls vertically, not a wrapper that has no height', async () => {
+    const scroll = { top: 0 };
+    layout(scroll);
+    await resume('windowedWrapped', {});
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(7));
+    await scrollTo('.scroll', scroll, 30 * 50);
+    await waitFor(() => expect(document.querySelector('.row-50')).not.toBeNull());
+  });
 });
 
 describe('blocks in children', () => {
@@ -2398,6 +2528,40 @@ describe('blocks in children', () => {
     await waitFor(() => expect(text('.item-b')).toBe('boxed'));
     click(document.querySelector('.show')!);
     await waitFor(() => expect(text('.later')).toBe('boxed'));
+  });
+
+  it('follow the component that gets them through components that pass them on', async () => {
+    await resume('blockPassed', {});
+    expect(text('.item-a')).toBe('boxed');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.item-b')).toBe('boxed'));
+  });
+
+  it('render an #offscreen body that shows the first time with the contexts there', async () => {
+    await resume('offscreenInChildren', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.off')).toBe('boxed'));
+  });
+
+  it('render a #client body with the contexts there', async () => {
+    await resume('clientInChildren', {});
+    await waitFor(() => expect(text('.later')).toBe('boxed'));
+  });
+
+  it('render the bodies of a #try again with the contexts there', async () => {
+    await resume('tryInChildren', {});
+    expect(text('.ok')).toBe('boxed');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('boxed'));
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.ok')).toBe('boxed'));
+  });
+
+  it('render a #portal body that moves with the contexts there', async () => {
+    await resume('portalInChildren', {});
+    await waitFor(() => expect(text('#left .moved')).toBe('boxed'));
+    click(document.querySelector('.move')!);
+    await waitFor(() => expect(text('#right .moved')).toBe('boxed'));
   });
 });
 

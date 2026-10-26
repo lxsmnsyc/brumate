@@ -1,0 +1,16 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ThemeBox from './ThemeBox.brm';
+  import Themed from './Themed.brm';
+
+  let side = $signal('#left');
+</script>
+
+<section id="left"></section>
+<section id="right"></section>
+<button class="move" onClick=(() => (side = side === '#left' ? '#right' : '#left'))>Move</button>
+<ThemeBox>
+  #portal (side) {
+    <span class="moved"><Themed /></span>
+  }
+</ThemeBox>

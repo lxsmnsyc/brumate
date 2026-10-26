@@ -49,6 +49,7 @@
     append: appendFile,
     remove: removeFile,
     move: moveFile,
+    moveAfter: moveFileAfter,
     update: updateFile,
   } = treeData<File>({
     initialItems: [
@@ -76,6 +77,7 @@
   <button class="add-file" type="button" onClick=(() => appendFile('docs', { id: 'plan', name: 'plan.md' }))>Add file</button>
   <button class="add-folder" type="button" onClick=(() => appendFile(null, { id: 'new', name: 'New', children: [] }))>Add folder</button>
   <button class="move-notes" type="button" onClick=(() => moveFile('notes', 'docs', 0))>Move notes</button>
+  <button class="move-docs" type="button" onClick=(() => moveFileAfter('notes', ['docs', 'cv', 'docs']))>Move docs</button>
   <button class="remove-docs" type="button" onClick=(() => removeFile('docs'))>Remove docs</button>
   <button class="rename-notes" type="button" onClick=(() => updateFile('notes', { id: 'notes', name: 'todo.txt' }))>Rename notes</button>
   <p class="files-state">{JSON.stringify(pickedFiles)}</p>

@@ -20,6 +20,10 @@
   let sort = $signal<SortDescriptor | null>(null);
   let opened = $signal<Key[]>([]);
   let edits = $signal(0);
+  let chosen = $signal<Key[]>(['a', 'b']);
+  let chosenRows = $signal(['a', 'b', 'c']);
+  let kept = $signal<Key[]>(['x']);
+  let typed = $signal('');
   const shown = $memo(
     sort
       ? [...files].sort((a, b) => {
@@ -59,5 +63,32 @@
       <Row id="sent" class="sent"><Cell>Sent</Cell></Row>
     </TableBody>
   </Table>
+  <Table class="pick" aria-label="Pick" selectionMode="multiple" selectedKeys=$bind(chosen)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="pick-all" aria-label="Select all" /></Column>
+      <Column isRowHeader>Name</Column>
+    </TableHeader>
+    <TableBody>
+      #for (name of chosenRows by name) {
+        <Row id=(name) class=(`pick-row pick-${name}`) isDisabled=(name === 'c')>
+          <Cell><Checkbox slot="selection" aria-label=(`Select ${name}`) /></Cell>
+          <Cell>{name}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+  <button class="pick-add" type="button" onClick=(() => (chosenRows = [...chosenRows, 'd']))>Add row</button>
+  <button class="pick-remove" type="button" onClick=(() => (chosenRows = chosenRows.filter((name) => name !== 'b')))>Remove row</button>
+  <Table class="keep" aria-label="Keep" selectionMode="multiple" disallowEmptySelection selectedKeys=$bind(kept)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="keep-all" aria-label="Select all" /></Column>
+      <Column isRowHeader>Name</Column>
+    </TableHeader>
+    <TableBody>
+      <Row id="x" class="keep-x"><Cell><Checkbox slot="selection" aria-label="Select x" /></Cell><Cell>x</Cell></Row>
+      <Row id="y" class="keep-y"><Cell><Checkbox slot="selection" aria-label="Select y" /></Cell><Cell><input class="field" aria-label="Field" onInput=((event) => (typed = event.currentTarget.value)) /></Cell></Row>
+    </TableBody>
+  </Table>
+  <p class="picked">{JSON.stringify([chosen, kept, typed])}</p>
   <p class="state">{JSON.stringify([picked, sort, opened, edits])}</p>
 </main>

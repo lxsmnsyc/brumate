@@ -295,6 +295,8 @@ export interface ScopeState {
    * are, which contexts are found from in place of `p` and `o`.
    */
   t?: ScopeId;
+  /** For a component that passes its children on, the scope where they are finally inserted. */
+  f?: ScopeId;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */

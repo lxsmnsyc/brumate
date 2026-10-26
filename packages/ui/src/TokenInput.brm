@@ -1,5 +1,5 @@
 <script>
-  import { $client, $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import Token from './Token.brm';
   import {
@@ -45,9 +45,11 @@
   let composing = $signal(false);
   // Where the caret was in the value, to put it back after the box is written again.
   let caret = $signal<number | undefined>(undefined);
-  $setContext(TokenContext, { isDisabled: field.isDisabled });
-
-  const editable = !field.isDisabled && !field.isReadOnly;
+  const disabled = $memo(field.isDisabled);
+  const editable = $memo(!field.isDisabled && !field.isReadOnly);
+  // Whether the box was read once, for text that the user typed before this code loaded.
+  let synced = $signal(false);
+  $setContext(TokenContext, { isDisabled: disabled });
 
   /** Writes the box from the value, with each token copied from its stamp. */
   function write(value: TokenSegment[]) {
@@ -74,6 +76,11 @@
       }
       nodes.push(document.createTextNode(EDGE), span, document.createTextNode(EDGE));
     }
+    // A newline that ends the text shows no line, so a line break shows it. It reads as no text.
+    const last = value.at(-1);
+    if (last?.type === 'text' && last.text.endsWith('\n')) {
+      nodes.push(document.createElement('br'));
+    }
     element.replaceChildren(...nodes);
   }
 
@@ -81,25 +88,53 @@
   $effect(() => {
     const value = field.value;
     const element = box;
-    if (!element || composing || sameSegments(readSegments(element), value)) {
+    // The composition and the caret are no reason to write: the value is.
+    if (!element || $untrack(composing)) {
+      return;
+    }
+    const read = readSegments(element);
+    if (sameSegments(read, value)) {
+      $untrack((synced = true));
+      return;
+    }
+    // Text that the user typed before this code loaded is in the box, so it is the value.
+    if (!$untrack(synced)) {
+      $untrack((synced = true));
+      const next = $untrack(input());
+      if (next && !sameSegments(next, read)) {
+        write(next);
+        showCaret(element);
+      }
       return;
     }
     write(value);
-    if (caret !== undefined && document.activeElement === element) {
-      placeCaret(element, caret);
-    }
+    showCaret(element);
   });
 
-  function input() {
+  function showCaret(element: HTMLElement) {
+    const offset = $untrack(caret);
+    if (offset !== undefined && document.activeElement === element) {
+      placeCaret(element, offset);
+    }
+  }
+
+  function input(): TokenSegment[] | undefined {
     const element = box;
     if (!element || composing) {
-      return;
+      return undefined;
     }
     const read = readSegments(element);
     const next = tokenize(read, field!.pattern);
     caret = caretOffset(element);
     // Text that the browser wrote is in the box already. A new token needs the box written.
     field!.setValue(next);
+    // A caret in the space around a token goes back to where the value has it, so a Backspace
+    // after the text next to a token removes the token, not that space.
+    const at = getSelection()?.anchorNode;
+    if (at?.nodeType === 3 && (at as Text).data.includes(EDGE)) {
+      placeCaret(element, caret);
+    }
+    return next;
   }
 
   function keyDown(event: KeyboardEvent) {
@@ -144,7 +179,7 @@
   ref=box
   role=(field.role)
   contenteditable=(editable ? 'true' : 'false')
-  tabindex=(field.isDisabled ? undefined : '0')
+  tabindex=(disabled ? undefined : '0')
   aria-multiline=(field.allowsNewlines ? 'true' : undefined)
   aria-labelledby=(field.labelId)
   aria-describedby=(field.descriptionId)

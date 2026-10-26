@@ -13,8 +13,9 @@ function moved(event: PointerEvent): void {
     return;
   }
   // The code of a press loads on the first press, so the pointer can go up before the drag
-  // listens. A move with no button down ends the drag.
-  if (event.pointerType === 'mouse' && event.buttons === 0) {
+  // listens. A move with no button down and no pressure ends the drag, whatever the pointer. A
+  // touch or a pen in contact has a button down.
+  if (event.buttons === 0 && event.pressure === 0) {
     ended(event);
     return;
   }
@@ -40,14 +41,37 @@ function stopDrag(pointer: number): void {
   drag.end();
 }
 
-/** Follows the pointer until it goes up, with listeners of the window that stay the same. */
+/** True when the pointer is down now: a browser takes no capture of a pointer that is up. */
+function isDown(pointer: number, target: Element | undefined): boolean {
+  if (!target || typeof target.setPointerCapture !== 'function') {
+    return true;
+  }
+  try {
+    target.setPointerCapture(pointer);
+    target.releasePointerCapture(pointer);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Follows the pointer until it goes up, with listeners of the window that stay the same. With the
+ * `target` of the press, a pointer that went up before this code loaded ends the drag at once,
+ * as a touch or a pen, which send no move after they go up.
+ */
 export function startDrag(
   pointer: number,
   move: (event: PointerEvent) => void,
   end: () => void,
+  target?: Element,
 ): void {
   // A pointer drags one thing at a time, so a drag that it had ends first.
   stopDrag(pointer);
+  if (!isDown(pointer, target)) {
+    end();
+    return;
+  }
   drags.set(pointer, { move, end });
   window.addEventListener('pointermove', moved);
   window.addEventListener('pointerup', ended);

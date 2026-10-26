@@ -32,6 +32,7 @@
 
 <main class="page">
   <Tree class="tree" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) expandedKeys=$bind(open) disabledKeys=(['notes']) />
+  <Button class="collapse" onPress=(() => (open = []))>Collapse</Button>
   <Tree class="plain" aria-label="Folders" items=files item=folder />
   <Tree class="acting" aria-label="Acting" items=files item=folder onAction=((key) => (opened = [...opened, key])) />
   <p class="state">{JSON.stringify([picked, open, opened, edits])}</p>

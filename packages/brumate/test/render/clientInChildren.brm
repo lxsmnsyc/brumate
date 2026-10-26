@@ -1,0 +1,10 @@
+<script>
+  import ThemeBox from './ThemeBox.brm';
+  import Themed from './Themed.brm';
+</script>
+
+<ThemeBox>
+  #client ('idle') {
+    <p class="later"><Themed /></p>
+  }
+</ThemeBox>

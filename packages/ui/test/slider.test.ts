@@ -182,3 +182,39 @@ it('gives back the first values on a reset of the form', async () => {
   await page.waitFor(() => expect(state(page)[3]).toEqual([10, 50, 90]));
   expect(range(page, '.l2').value).toBe('90');
 });
+
+it('ends the drag of a touch or a pen that went up before the code loaded', async () => {
+  const page = await sliders();
+  layout(page.get('.price-track'), 200);
+  // A pointer that is up cannot be captured, as in a browser.
+  page.get('.low').setPointerCapture = () => {
+    throw new DOMException('The pointer is not active', 'InvalidStateError');
+  };
+  pointer('pointerdown', page.get('.low'), {
+    clientX: 40,
+    clientY: 5,
+    pointerId: 3,
+    pointerType: 'touch',
+  });
+  await new Promise((done) => setTimeout(done, 100));
+  expect(page.get('.low').hasAttribute('data-dragging')).toBe(false);
+});
+
+it('ends the drag of a pen that moves with no button down and no pressure', async () => {
+  const page = await sliders();
+  layout(page.get('.price-track'), 200);
+  pointer('pointerdown', page.get('.low'), {
+    clientX: 40,
+    clientY: 5,
+    pointerId: 4,
+    pointerType: 'pen',
+  });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(true));
+  pointer('pointermove', window as unknown as Element, {
+    clientX: 100,
+    clientY: 5,
+    pointerId: 4,
+    pointerType: 'pen',
+  });
+  await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(false));
+});

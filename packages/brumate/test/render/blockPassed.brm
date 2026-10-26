@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Pass from './Pass.brm';
+  import Themed from './Themed.brm';
+
+  let names = $signal(['a']);
+</script>
+
+<button class="add" onClick=(() => (names = [...names, 'b']))>Add</button>
+<Pass>
+  #for (name of names by name) {
+    <p class=(`item item-${name}`)><Themed /></p>
+  }
+</Pass>

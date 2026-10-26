@@ -69,3 +69,18 @@ it('links its rows, and marks the current page and the closed items that hold it
   expect(page.get('.item-tables').hasAttribute('data-current')).toBe(true);
   expect(page.get('.link-forms').hasAttribute('aria-current')).toBe(false);
 });
+
+it('renders the link of a disabled item as a span that no one can focus or follow', async () => {
+  const page = await navigation();
+  // Disabled by isDisabled on the item, and by disabledKeys on the tree.
+  for (const name of ['old', 'gone']) {
+    const link = page.get(`.link-${name}`);
+    expect(link.tagName).toBe('SPAN');
+    expect(link.hasAttribute('href')).toBe(false);
+    expect(link.hasAttribute('tabindex')).toBe(false);
+    expect(link.getAttribute('aria-disabled')).toBe('true');
+    expect(link.hasAttribute('data-disabled')).toBe(true);
+    expect(page.get(`.item-${name}`).getAttribute('aria-disabled')).toBe('true');
+  }
+  expect(page.get('.link-api').tagName).toBe('A');
+});

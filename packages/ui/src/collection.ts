@@ -172,14 +172,22 @@ export function moveFrom(
 
 /** The keys of the items from `anchor` to `to`, in order, without the disabled ones. */
 export function keysBetween(items: HTMLElement[], anchor: Key, to: Key): Key[] {
-  const keys = items.map((item) => keyOf(item));
+  return keysIn(
+    items.map((item) => keyOf(item)).filter((key): key is Key => key !== undefined),
+    anchor,
+    to,
+  );
+}
+
+/** The keys from `anchor` to `to` in a list of keys, for a collection that is not all rendered. */
+export function keysIn(keys: Key[], anchor: Key, to: Key): Key[] {
   const start = keys.indexOf(anchor);
   const end = keys.indexOf(to);
   if (start === -1 || end === -1) {
     return [to];
   }
   const [low, high] = start < end ? [start, end] : [end, start];
-  return keys.slice(low, high + 1).filter((key): key is Key => key !== undefined);
+  return keys.slice(low, high + 1);
 }
 
 /** How long the letters of a typeahead add up, in milliseconds, as in React Aria. */
@@ -189,21 +197,16 @@ const TYPEAHEAD = 1000;
 const typed = new WeakMap<Element, { text: string; timer: ReturnType<typeof setTimeout> }>();
 
 /** The text of an item that a typeahead matches: its `data-text-value`, or its text. */
-function textOf(item: HTMLElement): string {
+export function textOf(item: HTMLElement): string {
   return (item.dataset.textValue ?? item.textContent ?? '').trim().toLocaleLowerCase();
 }
 
 /**
- * Adds a character to the typeahead of a collection, and returns the first item from the focused
- * one whose text starts with what was typed. Space counts as a character once something was
- * typed. Returns undefined for a key that is not a character of the typeahead.
+ * Adds a character to the typeahead of a collection, and returns the text it has. Space counts as
+ * a character once something was typed. Returns undefined for a key that is not a character of
+ * the typeahead.
  */
-export function typeahead(
-  root: Element,
-  items: HTMLElement[],
-  from: HTMLElement | undefined,
-  event: KeyboardEvent,
-): HTMLElement | undefined {
+function typedText(root: Element, event: KeyboardEvent): string | undefined {
   if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
     return undefined;
   }
@@ -214,10 +217,47 @@ export function typeahead(
   clearTimeout(state?.timer);
   const text = (state?.text ?? '') + event.key.toLocaleLowerCase();
   typed.set(root, { text, timer: setTimeout(() => typed.delete(root), TYPEAHEAD) });
+  return text;
+}
+
+/**
+ * Adds a character to the typeahead of a collection, and returns the first item from the focused
+ * one whose text starts with what was typed. Returns undefined for a key that is not a character
+ * of the typeahead.
+ */
+export function typeahead(
+  root: Element,
+  items: HTMLElement[],
+  from: HTMLElement | undefined,
+  event: KeyboardEvent,
+): HTMLElement | undefined {
+  const text = typedText(root, event);
+  if (text === undefined) {
+    return undefined;
+  }
   // The search starts at the focused item, so typing its first letter again keeps it.
   const at = from ? items.indexOf(from) : 0;
   const order = [...items.slice(Math.max(at, 0)), ...items.slice(0, Math.max(at, 0))];
   return order.find((item) => textOf(item).startsWith(text));
+}
+
+/** The same for items that are not all rendered: each has a key and its lowercase text. */
+export function typeaheadKey(
+  root: Element,
+  items: { key: Key; text: string }[],
+  from: Key | undefined,
+  event: KeyboardEvent,
+): Key | undefined {
+  const text = typedText(root, event);
+  if (text === undefined) {
+    return undefined;
+  }
+  const at = Math.max(
+    items.findIndex((item) => item.key === from),
+    0,
+  );
+  const order = [...items.slice(at), ...items.slice(0, at)];
+  return order.find((item) => item.text.startsWith(text))?.key;
 }
 
 /** True while a typeahead has text, so Space adds to it rather than selecting. */
@@ -335,6 +375,8 @@ export interface ListBoxState {
   setActive?: (key: Key) => void;
   /** True when the rows can be dragged, in a GridList with `onReorder` or `getItems`. */
   isDraggable?: boolean;
+  /** True when a drag can drop in the list, in a GridList with `onReorder`. Its drag buttons work. */
+  isReorderable?: boolean;
   /** The keys of the rows that a drag moves. */
   dragging?: Key[];
   /** Where the rows that a drag moves would go. */

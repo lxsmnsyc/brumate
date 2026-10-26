@@ -52,13 +52,14 @@ Rows drag to new places with `onReorder`, and out of the list, such as to a [Dro
 ```
 
 - `onReorder` gets `keys`, the rows that move, and `target`, with the `key` of a row and a `dropPosition` of `before` or `after`. `moveKeys` of the [data helpers](./data.md), or `moveBefore` and `moveAfter` of `listData`, move them.
-- `getItems` gets the keys of the rows that a drag moves, and returns the data of each row, as a string for each type, such as `text/plain`. With no `getItems`, the data is the keys as text.
+- `getItems` gets the keys of the rows that a drag moves, in the order of the list, and returns the data of each row, as a string for each type, such as `text/plain`. With no `getItems`, the data is the keys as text. A [DropZone](./drop-zone.md) gets one item for each row. Other targets get the text of each type joined with new lines.
+- A drop on a row that moves, in a gap of the list, or that leaves the order as it is does not call `onReorder`. A drag that the list did not start, such as a file, is not taken.
 - A drag takes the selected rows when the dragged row is selected, and else that row.
 - A row shows `data-dragging` while a drag moves it, and `data-drop-target`, `before` or `after`, while a drag would drop by it.
 
 From the keys:
 
-- A `Button` with `slot="drag"` in a row starts a drag. Its label is "Drag" and the `textValue` of the row.
+- A `Button` with `slot="drag"` in a row starts a drag. Its label is "Drag" and the `textValue` of the row. It works with `onReorder` only, and is disabled with `getItems` alone, since a drag from the keys needs a place to drop in the list.
 - Up and Down choose where the rows go. The row by that place takes the focus.
-- Enter drops. Escape and Tab cancel.
+- Enter drops. Escape and Tab cancel, and so does focus leaving the list.
 - A live region says what happens, for screen readers.

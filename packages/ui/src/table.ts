@@ -87,6 +87,8 @@ export interface ColumnState {
   headerId: string;
   minWidth: number;
   maxWidth: number;
+  /** The width in pixels that its props give it, when they give one. */
+  width: number | undefined;
 }
 
 export const ColumnContext: Context<ColumnState | null> = createContext<ColumnState | null>(

@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -11,6 +11,7 @@
     keyOf,
     keysBetween,
     lastFocusedOf,
+    moveFrom,
     nextSelection,
     rangeOf,
     sameKeys,
@@ -37,6 +38,7 @@
    *   between columns, round the ends.
    * - Home and End go to the first and the last row, or the first and the last cell of a row.
    *   With Ctrl or Cmd, they go to the first cell of the first row, or the last of the last.
+   * - Page Up and Page Down move by a page of rows.
    * - Selection is as in a GridList, on the rows. A Checkbox with `slot="selection"` in a Column
    *   selects all the rows, and one in a Cell selects its row.
    * - `sortDescriptor` is the column and direction of the sort. A press of a Column with
@@ -80,9 +82,10 @@
   const hasAction = $isPassed(onRowAction);
   const tableId = $id();
   let root = $signal<HTMLElement>();
-  // How many rows can be selected, which the browser counts when the selection changes. The
-  // box in the header is checked when they all are.
-  let total = $signal(-1);
+  // The keys of the rows that can be selected, which the browser counts when the page loads and
+  // when the rows change. The box in the header is checked when all of them are selected, and
+  // mixed when some are. The header renders before the rows, so the server cannot count them.
+  let selectable = $signal<Key[]>([]);
   // The columns, which each Column adds as it renders.
   const columns: TableColumn[] = [];
 
@@ -96,7 +99,6 @@
       selectedKeys = next;
       onSelectionChange?.(next);
     }
-    total = rows().filter((row) => row.getAttribute('aria-disabled') !== 'true').length;
   }
 
   function select(key: Key, request: SelectionRequest) {
@@ -126,16 +128,42 @@
 
   function selectableKeys(): Key[] {
     return rows()
-      .map((row) => keyOf(row)!)
-      .filter((key) => !disabledKeys.includes(key));
+      .filter((row) => row.getAttribute('aria-disabled') !== 'true')
+      .map((row) => keyOf(row)!);
   }
+
+  function count() {
+    const keys = selectableKeys();
+    if (!sameKeys(keys, selectable)) {
+      selectable = keys;
+    }
+  }
+
+  $client(() => {
+    count();
+    const observer = new MutationObserver(count);
+    observer.observe(root!, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-disabled'],
+    });
+    return () => observer.disconnect();
+  }, 'idle');
 
   function toggleAll() {
     if (selectionMode !== 'multiple') {
       return;
     }
     const all = selectableKeys();
-    setSelection(all.every((key) => selectedKeys.includes(key)) ? [] : all);
+    if (all.every((key) => selectedKeys.includes(key))) {
+      // A table that needs a selection keeps it.
+      if (!disallowEmptySelection) {
+        setSelection([]);
+      }
+    } else {
+      setSelection(all);
+    }
   }
 
   function sort(column: Key) {
@@ -145,7 +173,7 @@
   }
 
   const selectAll = $memo({
-    all: total > 0 && selectedKeys.length >= total,
+    all: selectable.length > 0 && selectable.every((key) => selectedKeys.includes(key)),
     some: selectedKeys.length > 0,
   });
 
@@ -185,7 +213,6 @@
       : [];
   }
 
-  /** Focuses a row or a header, or a cell, or the first control in a cell, as React Aria does. */
   /** The elements in a cell or a column header that take focus, such as a ColumnResizer. */
   function controlsOf(item: HTMLElement): HTMLElement[] {
     return [
@@ -196,7 +223,19 @@
   }
 
   /**
-   * Focuses a row, or a cell or a column header, or its first control, or its last one when the
+   * The places in a cell or a column header that take focus, in order. A column header that sorts
+   * or resizes is the first, so Enter and Space reach it before its controls.
+   */
+  function stopsOf(item: HTMLElement): HTMLElement[] {
+    const controls = controlsOf(item);
+    const own =
+      item.getAttribute('role') === 'columnheader' &&
+      (item.hasAttribute('data-allows-sorting') || item.querySelector('[data-resizable-direction]'));
+    return own ? [item, ...controls] : controls;
+  }
+
+  /**
+   * Focuses a row, or a cell or a column header, or its first stop, or its last one when the
    * focus comes from after it, as React Aria focuses a cell's children.
    */
   function focusOn(item: HTMLElement | undefined, fromAfter = false) {
@@ -207,8 +246,8 @@
       focusItem(item);
       return;
     }
-    const controls = controlsOf(item);
-    focusItem((fromAfter ? controls.at(-1) : controls[0]) ?? item);
+    const stops = stopsOf(item);
+    focusItem((fromAfter ? stops.at(-1) : stops[0]) ?? item);
   }
 
   function focused(event: FocusEvent) {
@@ -313,11 +352,11 @@
     } else if (!typing && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       moved = true;
       const forward = (event.key === 'ArrowRight') !== rtl;
-      // From a control in a cell or a header: to the next control in it, then on.
-      if (!isRow && target !== item) {
-        const controls = controlsOf(item);
-        const at = controls.indexOf(target);
-        const stop = at === -1 ? undefined : controls[at + (forward ? 1 : -1)];
+      // From a stop in a cell or a header: to the next stop in it, then on.
+      if (!isRow) {
+        const stops = stopsOf(item);
+        const at = stops.indexOf(target);
+        const stop = at === -1 ? undefined : stops[at + (forward ? 1 : -1)];
         if (stop) {
           focusItem(stop);
           return;
@@ -331,6 +370,20 @@
         next = forward ? cells[0] : cells.at(-1);
       } else {
         next = cellsOf(row!)[column + (forward ? 1 : -1)] ?? row;
+      }
+    } else if (event.key === 'PageDown' || event.key === 'PageUp') {
+      moved = true;
+      if (isHeader) {
+        next = event.key === 'PageDown' && bodyRows[0] ? cellsOf(bodyRows[0])[column] : undefined;
+      } else {
+        const page = moveFrom(
+          element,
+          bodyRows,
+          row,
+          event.key === 'PageDown' ? 'pageDown' : 'pageUp',
+          false,
+        );
+        next = page && (isRow ? page : cellsOf(page)[column]);
       }
     } else if (!typing && (event.key === 'Home' || event.key === 'End')) {
       moved = true;
@@ -347,6 +400,10 @@
       }
     }
     if (moved) {
+      // Arrow keys are prevented by the markup. The other keys do not scroll the page.
+      if (!event.key.startsWith('Arrow')) {
+        event.preventDefault();
+      }
       const back = event.key === 'ArrowLeft' ? !rtl : event.key === 'ArrowRight' ? rtl : false;
       focusOn(next, back);
       const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
@@ -372,17 +429,20 @@
     if (isHeader) {
       const id = item.getAttribute('data-key');
       if ((event.key === 'Enter' || event.key === ' ') && item.hasAttribute('data-allows-sorting') && id) {
+        event.preventDefault();
         sort(JSON.parse(id) as Key);
       }
       return;
     }
     if (event.key === ' ' && !isTyping(element)) {
+      event.preventDefault();
       if (key !== undefined) {
         select(key, { shift: event.shiftKey, toggle: !replace || toggle });
       }
       return;
     }
     if (event.key === 'Enter' && key !== undefined) {
+      event.preventDefault();
       if (hasAction) {
         action(key);
       } else {
@@ -391,6 +451,7 @@
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
+      event.preventDefault();
       setSelection(selectableKeys());
       window.getSelection()?.removeAllRanges();
       return;

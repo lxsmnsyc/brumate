@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -9,7 +9,7 @@
     isTyping,
     itemsOf,
     keyOf,
-    keysBetween,
+    keysIn,
     lastFocusedOf,
     moveFrom,
     nextSelection,
@@ -17,7 +17,9 @@
     sameKeys,
     setLastFocused,
     setRange,
+    textOf,
     typeahead,
+    typeaheadKey,
   } from './collection.ts';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
@@ -34,7 +36,7 @@
    *
    * - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes.
    *   The children of a closed item do not render.
-   * - Up and Down move between rows, Home and End to the ends, and letters to the row whose text
+   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and letters to the row whose text
    *   starts with them.
    * - Right opens a closed row. Left closes an open row, or else moves to the row that holds it.
    *   Otherwise Left and Right move through the controls in a row and back to the row, right to
@@ -53,6 +55,7 @@
     escapeKeyBehavior = 'clearSelection',
     keyboardNavigationBehavior = 'arrow',
     rowHeight,
+    getTextValue,
     onAction,
     onSelectionChange,
     onExpandedChange,
@@ -75,6 +78,12 @@
      * A Virtualizer around the Tree gives it too.
      */
     rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed Tree.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
+    getTextValue?: (node: any) => string;
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
     onExpandedChange?: (keys: Key[]) => void;
@@ -104,8 +113,6 @@
     );
   }
 
-  $setContext(TreeContext, { toggle: toggleExpanded });
-
   /** The row that shows the item with a key. */
   function rowFor(key: Key) {
     return rows.find((row) => row.key === key);
@@ -114,6 +121,7 @@
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);
   const windowHeight = $memo(rowHeight ?? virtualizer?.rowHeight);
+  $setContext(TreeContext, { toggle: toggleExpanded, windowed: Boolean(windowHeight) });
   const hasAction = $isPassed(onAction);
   const gridId = $id();
   let root = $signal<HTMLElement>();
@@ -125,19 +133,33 @@
     }
   }
 
+  /**
+   * The keys of the rows that can take focus, in order. A windowed Tree renders only the rows in
+   * view, so the rows are the data, with the disabled keys and the rows in view that are disabled.
+   */
+  function enabledKeys(element: HTMLElement): Key[] {
+    const disabled = new Set(disabledKeys);
+    for (const item of itemsOf(element, 'row')) {
+      if (item.getAttribute('aria-disabled') === 'true') {
+        disabled.add(keyOf(item)!);
+      }
+    }
+    return rows.map((row) => row.key).filter((key) => !disabled.has(key));
+  }
+
   function select(key: Key, request: SelectionRequest) {
     const element = root;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
-    const items = element ? enabledItems(element, 'row') : [];
+    const order = element ? enabledKeys(element) : [];
     setSelection(
       nextSelection(selectedKeys, key, {
         mode: selectionMode,
         behavior: selectionBehavior,
         disallowEmpty: disallowEmptySelection,
         request: { ...request, shift },
-        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
-        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        range: shift ? keysIn(order, range!.anchor, key) : undefined,
+        previousRange: shift ? keysIn(order, range!.anchor, range!.end) : undefined,
         disabled: disabledKeys,
       }),
     );
@@ -214,9 +236,157 @@
 
   const tabMode = keyboardNavigationBehavior === 'tab';
 
+  // A row that has focus can leave without a focusout, such as when its parent closes from
+  // outside. The tree is a stop of Tab again when no row has focus.
+  $client(() => {
+    const element = root;
+    if (!element || tabMode) {
+      return undefined;
+    }
+    const observer = new MutationObserver(() => {
+      if (element.tabIndex === -1 && !element.contains(document.activeElement)) {
+        element.tabIndex = 0;
+      }
+    });
+    observer.observe(element, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, 'load');
+
   /** Focuses a row, or in tab mode its first control, such as its link. */
   function focusRow(row: HTMLElement | undefined) {
     focusItem(tabMode && row ? (tabbables(row)[0] ?? row) : row);
+  }
+
+  /** The element that scrolls the rows, or none for the page. */
+  function scrollerOf(element: HTMLElement) {
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent);
+      if (/^(auto|scroll|overlay)$/.test(style.overflowY || style.overflow)) {
+        return parent;
+      }
+    }
+    return undefined;
+  }
+
+  /** The height of a row that renders, from the space between the spacers of the window. */
+  function measuredHeight(element: HTMLElement) {
+    const before = element.querySelector('[data-window=before]');
+    const after = element.querySelector('[data-window=after]');
+    const count = itemsOf(element, 'row').length;
+    const height =
+      before && after && count > 0
+        ? (after.getBoundingClientRect().top - before.getBoundingClientRect().bottom) / count
+        : 0;
+    return height > 0 ? height : windowHeight!;
+  }
+
+  /**
+   * The key that a move reaches from a row, among the rows that can take focus. A windowed Tree
+   * has no elements for most rows, so it reads its data. A page is the rows that fit in the box.
+   */
+  function keyAfter(element: HTMLElement, from: Key, movement: Movement): Key {
+    const place = (key: Key) => rows.findIndex((row) => row.key === key);
+    const enabled = enabledKeys(element);
+    const at = place(from);
+    const before = enabled.filter((key) => place(key) < at);
+    const after = enabled.filter((key) => place(key) > at);
+    const page = Math.max(
+      1,
+      Math.floor((scrollerOf(element)?.clientHeight ?? window.innerHeight) / measuredHeight(element)),
+    );
+    switch (movement) {
+      case 'first':
+        return enabled[0] ?? from;
+      case 'last':
+        return enabled.at(-1) ?? from;
+      case 'next':
+        return after[0] ?? from;
+      case 'previous':
+        return before.at(-1) ?? from;
+      case 'pageDown':
+        return after.filter((key) => place(key) <= at + page).at(-1) ?? after[0] ?? from;
+      case 'pageUp':
+        return before.filter((key) => place(key) >= at - page)[0] ?? before.at(-1) ?? from;
+    }
+  }
+
+  // The latest move to a row that is out of view, so an earlier one does not take focus later.
+  let reveal = 0;
+
+  /**
+   * Focuses the row of a key. A windowed Tree may not render it, so it scrolls the row into
+   * view first, and focuses it when it renders. `plain` focuses the row, not its first control.
+   */
+  function focusKey(key: Key | undefined, plain = false) {
+    const element = root;
+    if (!element || key === undefined) {
+      return;
+    }
+    const find = () => itemsOf(element, 'row').find((item) => keyOf(item) === key);
+    const focus = (item: HTMLElement | undefined) => (plain ? focusItem(item) : focusRow(item));
+    const found = find();
+    reveal++;
+    const turn = reveal;
+    const at = rows.findIndex((row) => row.key === key);
+    if (found || !windowHeight || at === -1) {
+      focus(found);
+      return;
+    }
+    const size = measuredHeight(element);
+    const scroller = scrollerOf(element);
+    const box = scroller?.getBoundingClientRect();
+    const height = scroller?.clientHeight ?? window.innerHeight;
+    // The top of the row below the top of the tree, which puts the row in the middle of the box.
+    const offset = at * size - (height - size) / 2;
+    if (scroller && box) {
+      scroller.scrollTop = Math.max(
+        0,
+        element.getBoundingClientRect().top - box.top + scroller.scrollTop + offset,
+      );
+      scroller.dispatchEvent(new Event('scroll'));
+    } else {
+      window.scrollTo({ top: Math.max(0, window.scrollY + element.getBoundingClientRect().top + offset) });
+    }
+    // The window draws on the next frame after the scroll.
+    const wait = (frames: number) => {
+      const item = find();
+      if (turn !== reveal) {
+        return;
+      }
+      if (item) {
+        focus(item);
+      } else if (frames > 0) {
+        requestAnimationFrame(() => wait(frames - 1));
+      }
+    };
+    wait(30);
+  }
+
+  /** Focuses the row that a typeahead finds. A windowed Tree searches the data of all its rows. */
+  function typeTo(
+    element: HTMLElement,
+    items: HTMLElement[],
+    row: HTMLElement,
+    event: KeyboardEvent,
+    plain: boolean,
+  ) {
+    if (!windowHeight) {
+      const found = typeahead(element, items, row, event);
+      return plain ? focusItem(found) : focusRow(found);
+    }
+    const shown = new Map(itemsOf(element, 'row').map((item) => [keyOf(item), item]));
+    const enabled = new Set(enabledKeys(element));
+    // A row in view has its own text, and the others have the text of `getTextValue`.
+    const entries = rows
+      .filter((place) => enabled.has(place.key))
+      .map((place) => {
+        const item = shown.get(place.key);
+        return {
+          key: place.key,
+          text: item ? textOf(item) : (getTextValue?.(place.item) ?? '').toLocaleLowerCase(),
+        };
+      });
+    focusKey(typeaheadKey(element, entries, keyOf(row), event), plain);
   }
 
   function keyDown(event: KeyboardEvent) {
@@ -260,11 +430,25 @@
       movement = 'first';
     } else if (!typing && event.key === 'End') {
       movement = 'last';
+    } else if (event.key === 'PageDown') {
+      movement = 'pageDown';
+    } else if (event.key === 'PageUp') {
+      movement = 'pageUp';
     }
     if (movement) {
-      const next = moveFrom(element, items, row, movement, false);
-      const nextKey = next ? keyOf(next) : undefined;
-      focusRow(next);
+      // Shift extends a range from the row that has focus, when no press started one.
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+        setRange(element, key);
+      }
+      let nextKey: Key | undefined;
+      if (windowHeight && key !== undefined) {
+        nextKey = keyAfter(element, key, movement);
+        focusKey(nextKey);
+      } else {
+        const next = moveFrom(element, items, row, movement, false);
+        nextKey = next ? keyOf(next) : undefined;
+        focusRow(next);
+      }
       if (nextKey === undefined || selectionMode === 'none') {
         return;
       }
@@ -294,7 +478,7 @@
           return;
         }
         if (!expand && state.parent !== undefined) {
-          focusRow(itemsOf(element, 'row').find((item) => keyOf(item) === state.parent));
+          focusKey(state.parent);
           return;
         }
       }
@@ -307,7 +491,7 @@
     // A link of a row in tab mode keeps Enter and Space, and letters move to a row.
     if (tabMode && target !== row) {
       if (event.key.length === 1 && event.key !== ' ' && !toggle) {
-        focusRow(typeahead(element, items, row, event));
+        typeTo(element, items, row, event, false);
       }
       return;
     }
@@ -334,11 +518,7 @@
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
-      setSelection(
-        itemsOf(element, 'row')
-          .map((item) => keyOf(item)!)
-          .filter((item) => !disabledKeys.includes(item)),
-      );
+      setSelection(rows.map((place) => place.key).filter((item) => !disabledKeys.includes(item)));
       window.getSelection()?.removeAllRanges();
       return;
     }
@@ -352,7 +532,7 @@
       }
       return;
     }
-    focusItem(typeahead(element, items, row, event));
+    typeTo(element, items, row, event, true);
   }
 </script>
 
@@ -362,6 +542,7 @@
   role="treegrid"
   tabindex=(tabMode ? undefined : '0')
   data-collection
+  aria-rowcount=(windowHeight ? rows.length : undefined)
   aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
   onFocus=focused
   onFocusIn=focusIn

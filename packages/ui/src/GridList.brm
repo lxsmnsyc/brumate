@@ -41,7 +41,8 @@
    * - With `onReorder`, rows drag to new places in the list. With `getItems`, they drag out, such
    *   as to a DropZone, with the data that it gives. A drag takes the selected rows when the
    *   dragged row is selected, else that row. A Button with `slot="drag"` in a row starts a drag
-   *   from the keys: Up and Down choose where, Enter drops and Escape cancels.
+   *   from the keys, with `onReorder`: Up and Down choose where, Enter drops, and Escape, Tab or
+   *   focus leaving the list cancel.
    */
   const {
     selectionMode = 'none',
@@ -115,9 +116,19 @@
     onAction?.(key);
   }
 
-  /** The rows that a drag of the row moves: the selection when the row is in it, else the row. */
+  /**
+   * The rows that a drag of the row moves: the selection when the row is in it, else the row. They
+   * come in the order of the list.
+   */
   function draggedKeys(key: Key): Key[] {
-    return selectedKeys.includes(key) ? [...selectedKeys] : [key];
+    const chosen = selectedKeys.includes(key) ? selectedKeys : [key];
+    const element = root;
+    const ordered = element
+      ? itemsOf(element, 'row')
+          .map((item) => keyOf(item)!)
+          .filter((item) => chosen.includes(item))
+      : [];
+    return ordered.length > 0 ? ordered : [key];
   }
 
   function rowWith(key: Key): HTMLElement | undefined {
@@ -132,14 +143,29 @@
       return [];
     }
     const keys = itemsOf(element, 'row').map((item) => keyOf(item)!);
-    const targets: DropTarget[] = keys
-      .filter((key) => !dragging.includes(key))
-      .map((key) => ({ key, dropPosition: 'before' }));
-    const last = keys.at(-1);
-    if (last !== undefined && !dragging.includes(last)) {
+    const staying = keys.filter((key) => !dragging.includes(key));
+    const targets: DropTarget[] = staying.map((key) => ({ key, dropPosition: 'before' }));
+    const last = staying.at(-1);
+    if (last !== undefined) {
       targets.push({ key: last, dropPosition: 'after' });
     }
     return targets;
+  }
+
+  /** True when a drop of the rows at the target changes the order of the list. */
+  function moves(keys: Key[], target: DropTarget): boolean {
+    const element = root;
+    if (!element) {
+      return true;
+    }
+    const order = itemsOf(element, 'row').map((item) => keyOf(item)!);
+    const rest = order.filter((key) => !keys.includes(key));
+    const at = rest.indexOf(target.key);
+    if (at < 0) {
+      return false;
+    }
+    rest.splice(target.dropPosition === 'after' ? at + 1 : at, 0, ...keys);
+    return rest.some((key, index) => key !== order[index]);
   }
 
   function aim(target: DropTarget | undefined) {
@@ -176,17 +202,58 @@
     announcement = message;
   }
 
-  function drop() {
-    const target = dropTarget;
+  function drop(chosen?: DropTarget) {
+    const target = chosen ?? dropTarget;
     const keys = dragging;
     endDrag('Dropped.');
-    if (target && keys.length > 0) {
+    if (target && keys.length > 0 && moves(keys, target)) {
       onReorder?.({ keys, target });
     }
   }
 
+  // The keys that scroll the page are prevented at once, by a native listener, since the handler
+  // of the markup can load after the key. A field in a row keeps its own keys.
+  $client(() => {
+    const element = root;
+    if (!element) {
+      return undefined;
+    }
+    const keyDownNow = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const row = rowOf(target);
+      if (!row || event.defaultPrevented) {
+        return;
+      }
+      const own = target === row;
+      if (
+        ((event.key === 'Home' || event.key === 'End') && !isField(target, row)) ||
+        (event.key === ' ' && own && !isTyping(element)) ||
+        (event.key === 'Enter' && own)
+      ) {
+        event.preventDefault();
+      }
+    };
+    // The list is a tab stop whenever focus is not in it, also when the focused row went away
+    // and no focusout came.
+    const restore = () => {
+      if (!element.contains(document.activeElement)) {
+        element.tabIndex = 0;
+      }
+    };
+    const observer = new MutationObserver(restore);
+    observer.observe(element, { childList: true, subtree: true });
+    element.addEventListener('keydown', keyDownNow);
+    document.addEventListener('focusin', restore);
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('keydown', keyDownNow);
+      document.removeEventListener('focusin', restore);
+    };
+  }, 'load');
+
   // A drag reads and writes its DataTransfer only while its events run, so native listeners,
-  // which run at once, take the drags. The markup prevents the default of a drag over the rows.
+  // which run at once, take the drags. Only a drag that the list started is taken, so a drag
+  // from elsewhere, such as a file, keeps its default.
   $client(() => {
     const element = root;
     if (!element || !isDraggable) {
@@ -204,20 +271,34 @@
       event.dataTransfer.effectAllowed = onReorder ? 'copyMove' : 'copy';
       dragging = keys;
     };
-    const dragOver = (event: DragEvent) => {
+    /** Where a drop at the event goes: by the row under it, unless the row moves. */
+    const targetAt = (event: DragEvent): DropTarget | undefined => {
       const row = rowOf(event.target);
       const key = row ? keyOf(row) : undefined;
-      if (!onReorder || dragging.length === 0 || !row || key === undefined) {
+      if (!row || key === undefined || dragging.includes(key)) {
+        return undefined;
+      }
+      const box = row.getBoundingClientRect();
+      return { key, dropPosition: event.clientY < box.top + box.height / 2 ? 'before' : 'after' };
+    };
+    const dragOver = (event: DragEvent) => {
+      if (!onReorder || dragging.length === 0 || byKeys) {
+        return;
+      }
+      const target = targetAt(event);
+      if (!target) {
+        // Not over a row that stays, such as the gap of the list, takes no drop.
+        if (dropTarget) {
+          dropTarget = null;
+        }
         return;
       }
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
-      const box = row.getBoundingClientRect();
-      const dropPosition = event.clientY < box.top + box.height / 2 ? 'before' : 'after';
-      if (dropTarget?.key !== key || dropTarget.dropPosition !== dropPosition) {
-        dropTarget = { key, dropPosition };
+      if (dropTarget?.key !== target.key || dropTarget.dropPosition !== target.dropPosition) {
+        dropTarget = target;
       }
     };
     const dragLeave = (event: DragEvent) => {
@@ -226,13 +307,21 @@
       }
     };
     const dropped = (event: DragEvent) => {
-      if (dragging.length > 0 && dropTarget) {
+      if (dragging.length === 0 || byKeys) {
+        return;
+      }
+      const target = onReorder ? targetAt(event) : undefined;
+      if (target) {
         event.preventDefault();
-        drop();
+        drop(target);
+      } else {
+        endDrag('');
       }
     };
+    // The source row can go away during the drag, and then its dragend never reaches the list,
+    // so the document hears the end of the drag, and a drop elsewhere.
     const dragEnd = () => {
-      if (dragging.length > 0) {
+      if (dragging.length > 0 && !byKeys) {
         endDrag('');
       }
     };
@@ -240,13 +329,15 @@
     element.addEventListener('dragover', dragOver);
     element.addEventListener('dragleave', dragLeave);
     element.addEventListener('drop', dropped);
-    element.addEventListener('dragend', dragEnd);
+    document.addEventListener('dragend', dragEnd);
+    document.addEventListener('drop', dragEnd);
     return () => {
       element.removeEventListener('dragstart', dragStart);
       element.removeEventListener('dragover', dragOver);
       element.removeEventListener('dragleave', dragLeave);
       element.removeEventListener('drop', dropped);
-      element.removeEventListener('dragend', dragEnd);
+      document.removeEventListener('dragend', dragEnd);
+      document.removeEventListener('drop', dragEnd);
     };
   }, 'load');
 
@@ -262,6 +353,7 @@
     isDraggable,
     dragging,
     dropTarget,
+    isReorderable: hasReorder,
     startDrag,
   });
 
@@ -301,6 +393,10 @@
     const element = root;
     if (element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
+      // A drag from the keys ends when focus leaves the list, as in React Aria.
+      if (byKeys) {
+        endDrag('Drag canceled.');
+      }
     }
   }
 
@@ -311,6 +407,16 @@
     focusItem(stops[(at + (forward ? 1 : -1) + stops.length) % stops.length]);
   }
 
+  /** True for a text field in a row, which keeps its own keys. */
+  function isField(target: HTMLElement, row: HTMLElement): boolean {
+    return (
+      target !== row &&
+      (/^(TEXTAREA|SELECT)$/.test(target.tagName) ||
+        (target instanceof HTMLInputElement &&
+          !/^(checkbox|radio|button|submit|reset)$/.test(target.type)))
+    );
+  }
+
   function keyDown(event: KeyboardEvent) {
     const element = root;
     const target = event.target as HTMLElement;
@@ -319,11 +425,7 @@
       return;
     }
     // A field in a row keeps its own keys, other than Up, Down and Tab.
-    const typing =
-      target !== row &&
-      (/^(TEXTAREA|SELECT)$/.test(target.tagName) ||
-        (target instanceof HTMLInputElement &&
-          !/^(checkbox|radio|button|submit|reset)$/.test(target.type)));
+    const typing = isField(target, row);
     const items = enabledItems(element, 'row');
     const key = keyOf(row);
     const rtl = locale.direction === 'rtl';
@@ -336,6 +438,7 @@
         (target) => target.key === dropTarget?.key && target.dropPosition === dropTarget.dropPosition,
       );
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
         aim(targets[Math.min(Math.max(at + (event.key === 'ArrowDown' ? 1 : -1), 0), targets.length - 1)]);
       } else if (event.key === 'Enter') {
         event.preventDefault();
@@ -463,7 +566,6 @@
   onFocusOut=focusOut
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'))
   data-dragging=(dragging.length > 0 || undefined)
-  onDragOver=(prevent(() => {}))
   {...rest}
 >{children}</div>
 <VisuallyHidden><span aria-live="assertive">{announcement}</span></VisuallyHidden>

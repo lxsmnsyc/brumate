@@ -141,3 +141,73 @@ it('acts on a row with Enter and a press when nothing is selectable', async () =
   pressWith(page.get('.sent'));
   await page.waitFor(() => expect(state(page)[2]).toEqual(['inbox', 'sent']));
 });
+
+function picked(page: Page) {
+  return JSON.parse(page.text('.picked')) as [string[], string[], string];
+}
+
+function box(page: Page, name: string) {
+  return page.get(`.${name}-all input`) as HTMLInputElement;
+}
+
+it('shows the box of the header from the rows and the selection when it renders', async () => {
+  const page = await tables();
+  // Every row that can be selected is, and the disabled row is not counted.
+  await page.waitFor(() => expect(box(page, 'pick').checked).toBe(true));
+  expect(page.get('.pick-all').hasAttribute('data-indeterminate')).toBe(false);
+  // A new row that is not selected makes it mixed.
+  pressWith(page.get('.pick-add'));
+  await page.waitFor(() =>
+    expect(page.get('.pick-all').hasAttribute('data-indeterminate')).toBe(true),
+  );
+  // Removing a row that was selected keeps the rest.
+  pressWith(page.get('.pick-remove'));
+  await page.waitFor(() =>
+    expect(page.get('.pick-all').hasAttribute('data-indeterminate')).toBe(true),
+  );
+  expect(picked(page)[0]).toEqual(['a', 'b']);
+});
+
+it('leaves a disabled row out of select all, and respects disallowEmptySelection', async () => {
+  const page = await tables();
+  box(page, 'pick').click();
+  await page.waitFor(() => expect(picked(page)[0]).toEqual([]));
+  box(page, 'pick').click();
+  await page.waitFor(() => expect(picked(page)[0]).toEqual(['a', 'b']));
+  page.get('.pick-a').focus();
+  press('a', page.get('.pick-a'), { ctrlKey: true });
+  await new Promise((done) => setTimeout(done, 50));
+  expect(picked(page)[0]).toEqual(['a', 'b']);
+  // The table cannot be emptied from the header or Ctrl+A.
+  box(page, 'keep').click();
+  await page.waitFor(() => expect(picked(page)[1]).toEqual(['x', 'y']));
+  box(page, 'keep').click();
+  await new Promise((done) => setTimeout(done, 50));
+  expect(picked(page)[1]).toEqual(['x', 'y']);
+});
+
+it('moves by pages, keeps Home and End of a field, and prevents the keys it handles', async () => {
+  const page = await tables();
+  page.get('.table').focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-notes')));
+  press('PageDown');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-photo')));
+  press('PageUp');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-notes')));
+  const keys = ['Home', 'End', ' '];
+  for (const key of keys) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    document.activeElement!.dispatchEvent(event);
+    await page.waitFor(() => expect(event.defaultPrevented).toBe(true));
+  }
+  // A field keeps its own Home and End.
+  const field = page.get('.field');
+  field.focus();
+  for (const key of ['Home', 'End', ' ']) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    field.dispatchEvent(event);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(event.defaultPrevented).toBe(false);
+  }
+  expect(document.activeElement).toBe(field);
+});

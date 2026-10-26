@@ -12,6 +12,11 @@
     { type: 'token', text: '@ann' },
     { type: 'text', text: ' there' },
   ]);
+  let lines = $signal<TokenSegment[]>([{ type: 'text', text: 'a' }]);
+  const bo: TokenSegment[] = [{ type: 'token', text: '@bo' }];
+  const odd = 'combobox' as 'textbox';
+  let off = $signal(false);
+  let locked = $signal(false);
 </script>
 
 <form class="form">
@@ -24,7 +29,24 @@
     <Label>Empty</Label>
     <TokenInput class="empty-input" />
   </TokenField>
+  <TokenField class="odd" role=(odd)>
+    <Label>Odd</Label>
+    <TokenInput class="odd-input" />
+  </TokenField>
+  <TokenField class="lines" allowsNewlines placeholder="Lines" value=$bind(lines)>
+    <Label>Lines</Label>
+    <TokenInput class="lines-input" />
+  </TokenField>
+  <TokenField class="toggled" isDisabled=(off) isReadOnly=(locked) value=(bo)>
+    <Label>Toggled</Label>
+    <TokenInput class="toggled-input" />
+  </TokenField>
 </form>
+<button class="disable" type="button" onClick=(() => (off = true))>Disable</button>
+<button class="lock" type="button" onClick=(() => (locked = true))>Lock</button>
+<button class="clear-lines" type="button" onClick=(() => (lines = []))>Clear</button>
+<button class="enter-lines" type="button" onClick=(() => (lines = [{ type: 'text', text: 'a\n' }]))>Enter</button>
+<p class="lines-state">{JSON.stringify(lines)}</p>
 <button class="reset" type="button" onClick=(() => (value = [{ type: 'token', text: '#tag' }]))>Reset</button>
 <p class="state">{JSON.stringify(value)}</p>
 

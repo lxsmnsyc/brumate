@@ -11,9 +11,10 @@
    * Column of a Table in a ResizableTableContainer.
    *
    * - A drag resizes the column. Right to left, it turns around.
-   * - It holds a hidden range input, which a screen reader reads as the width in pixels. When
-   *   the input has focus, Enter starts a resize, the arrow keys change the width by 10 pixels,
-   *   and Escape, Enter, Space, Tab or a blur end it.
+   * - It holds a hidden range input, which a screen reader reads as the width in pixels. The
+   *   Column takes focus first, and the input after it. When the input has focus, Enter starts
+   *   a resize, the arrow keys change the width by 10 pixels, and Escape, Enter, Space, Tab or
+   *   a blur end it. A change of the input from assistive technology sets the width.
    * - It shows `data-resizing`, `data-resizable-direction` (`both`, `left` or `right`, as the
    *   width can grow or shrink), `data-hovered`, `data-focused` and `data-focus-visible`.
    */
@@ -33,8 +34,16 @@
   const resizing = $memo(sizes.resizing === key);
   const width = $memo(sizes.widths[key]);
   let hovered = $signal(false);
+  // The width that the browser laid the column out with, which is known once it is in the page.
+  let measured = $signal<number>();
+  // What the input reads before a resize: the measured width, or else the one that the props give.
+  const value = $memo(Math.floor(width ?? measured ?? column.width ?? column.minWidth));
+  // Without a most width, the input reaches past its value so a screen reader sees a range.
+  const max = $memo(
+    column.maxWidth >= Number.MAX_SAFE_INTEGER ? Math.max(1000, value) : column.maxWidth,
+  );
 
-  const { focused, focusVisible, onFocus, onBlur: blurRing, onKeyDown: keyRing } = focusRing(
+  const { focused, focusVisible, onFocus: ringFocus, onBlur: blurRing, onKeyDown: keyRing } = focusRing(
     undefined,
     undefined,
     undefined,
@@ -48,6 +57,14 @@
     return sizes!.widths[key] !== undefined
       ? sizes!.widths[key]!
       : (header(target)?.getBoundingClientRect().width ?? 0);
+  }
+
+  function focusIn(event: FocusEvent) {
+    ringFocus(event);
+    const size = header(event.currentTarget)?.getBoundingClientRect().width;
+    if (size) {
+      measured = size;
+    }
   }
 
   function pointerDown(event: PointerEvent) {
@@ -96,8 +113,15 @@
   // A range input changes by its own keys too, such as those of a screen reader.
   function changed(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
-    const before = current(input);
-    sizes!.resize(key, Number(input.value) > before ? before + 10 : before - 10);
+    const next = Number(input.value);
+    if (resizing) {
+      sizes!.resize(key, next);
+      return;
+    }
+    // Every column keeps its width first, so only this one changes.
+    sizes!.start(key);
+    sizes!.resize(key, next);
+    sizes!.end();
   }
 
   // At its least width it can only grow, and at its most only shrink, as React Aria names them.
@@ -134,11 +158,11 @@
     aria-label=label
     aria-labelledby=(`${inputId} ${column.headerId}`)
     aria-orientation="horizontal"
-    aria-valuetext=(width === undefined ? undefined : `${Math.floor(width)} pixels`)
+    aria-valuetext=(`${value} pixels`)
     min=(column.minWidth)
-    max=(column.maxWidth)
-    value=(width === undefined ? undefined : Math.floor(width))
-    onFocus=onFocus
+    max=(max)
+    value=(value)
+    onFocus=focusIn
     onBlur=blurred
     onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Space'))
     onInput=changed

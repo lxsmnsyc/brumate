@@ -1,0 +1,13 @@
+<script>
+  const rows = Array.from({ length: 100 }, (_, index) => ({ id: index, name: `Row ${index}` }));
+</script>
+
+<div class="scroll" style="height: 120px; overflow: auto">
+  <div class="wrap" style="overflow: auto">
+    <ul class="list">
+      #for (row of rows by row.id) window(30, 6) {
+        <li class=(`row row-${row.id}`)>{row.name}</li>
+      }
+    </ul>
+  </div>
+</div>

@@ -10,6 +10,7 @@
   interface Page extends NavigationNode {
     title: string;
     children?: Page[];
+    disabled?: boolean;
   }
 
   const pages: Page[] = [
@@ -23,17 +24,19 @@
       ],
     },
     { id: 'api', title: 'API', href: '#api' },
+    { id: 'old', title: 'Old', href: '#old', disabled: true },
+    { id: 'gone', title: 'Gone', href: '#gone' },
   ];
   let open = $signal<Key[]>([]);
 </script>
 
 <nav aria-label="Pages">
-  <NavigationTree class="nav" aria-label="Pages" items=pages item=page selectedRoute="#tables" expandedKeys=$bind(open) />
+  <NavigationTree class="nav" aria-label="Pages" items=pages item=page selectedRoute="#tables" expandedKeys=$bind(open) disabledKeys=(['gone']) />
 </nav>
 <p class="state">{JSON.stringify(open)}</p>
 
 #template page(page: Page) {
-  <NavigationTreeItem class=(`item item-${page.id}`) href=(page.href) textValue=(page.title)>
+  <NavigationTreeItem class=(`item item-${page.id}`) href=(page.href) isDisabled=(page.disabled) textValue=(page.title)>
     #if (page.children) {
       <Button slot="chevron" class=(`chevron chevron-${page.id}`)>▸</Button>
     }

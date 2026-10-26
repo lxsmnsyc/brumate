@@ -7,8 +7,10 @@
   import type { ReorderEvent } from '../../src/drop.ts';
 
   let files = $signal(['a', 'b', 'c', 'd']);
+  let calls = $signal(0);
 
   function reorder(event: ReorderEvent) {
+    calls++;
     files = moveKeys(files, event.target.key, event.keys, event.target.dropPosition === 'after', (file) => file);
   }
 </script>
@@ -22,3 +24,4 @@
   }
 </GridList>
 <p class="state">{JSON.stringify(files)}</p>
+<p class="calls">{calls}</p>

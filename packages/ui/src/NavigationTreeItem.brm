@@ -1,5 +1,6 @@
 <script>
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { ListBoxContext } from './collection.ts';
   import { NavigationLinkContext, NavigationTreeContext } from './navigation-tree.ts';
   import { TreeItemAttributesContext, TreeRowContext } from './tree.ts';
   import TreeItem from './TreeItem.brm';
@@ -8,6 +9,8 @@
    * A row of a NavigationTree, as NavigationTreeItem of React Aria Components. It is a TreeItem
    * with an `href`, which its NavigationTreeItemLink links to.
    *
+   * - A disabled item, by `isDisabled` or the `disabledKeys` of the tree, has a link that does not
+   *   navigate or take focus.
    * - It shows `data-href`, `data-current` when `href` is the route of the tree, and
    *   `data-current-ancestor` while it is closed and holds the current item.
    */
@@ -22,11 +25,15 @@
 
   const tree = $getContext(NavigationTreeContext);
   const place = $getContext(TreeRowContext);
+  const list = $getContext(ListBoxContext);
+  const disabled = $memo(
+    Boolean(isDisabled || (place && list?.disabledKeys.includes(place.row.key))),
+  );
   const current = $memo(href !== undefined && href !== '' && tree?.selectedRoute === href);
   const ancestor = $memo(
     Boolean(place && !place.row.isExpanded && tree?.ancestors.includes(place.row.key)),
   );
-  $setContext(NavigationLinkContext, { href, isCurrent: current });
+  $setContext(NavigationLinkContext, { href, isCurrent: current, isDisabled: disabled });
   // The row gets its attributes through a context, so the TreeItem's own props stay as they are.
   $setContext(TreeItemAttributesContext, {
     'data-href': href || undefined,

@@ -38,4 +38,7 @@ See [windowed lists](../docs/control-flow.md#windowed-lists) for how it renders.
 
 ## Keyboard
 
-The keys move between the rows that are rendered. A move to the edge of the view scrolls it, and the rows that come into view render, so Up and Down go through the whole list. Home and End go to the first and the last row that are rendered.
+- In a [Tree](./tree.md), the keys read the data of all its rows, not only those that render. Home, End, PageUp and PageDown, Ctrl+A, a range with Shift, Left to the row that holds a row, and letters reach rows that are out of view. A move to a row that is not rendered scrolls it into view, then focuses it.
+- Letters match the text of a row that renders, and for the others the text that `getTextValue` of the Tree returns for the item, such as `getTextValue=((file) => file.name)`. Without it, letters match the rows in view only.
+- The Tree has `aria-rowcount` with the count of all its rows, and each row `aria-rowindex`, since not all the rows are in the page.
+- The rows of the other collections move between the rows that are rendered. A move to the edge of the view scrolls it, and the rows that come into view render, so Up and Down go through the whole list. Home and End go to the first and the last row that are rendered.

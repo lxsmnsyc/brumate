@@ -573,6 +573,13 @@ export class Context {
     // component that gets them inserts them, so they find their contexts there too.
     const outer = inserted.findLast((item) => item.from === at);
     const entry = { from, at: outer ? outer.at : at, tag: tag ?? outer?.tag };
+    if (outer) {
+      // The browser finds the component that holds these children by this.
+      const passing = this.find(at);
+      if (passing) {
+        passing.record.f = outer.at;
+      }
+    }
     inserted.push(entry);
     try {
       return await renderBody();
