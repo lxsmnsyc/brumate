@@ -1618,7 +1618,7 @@ export class Emitter {
     const childrenName = this.emitChildren(node, scope);
     const extra: string[] = [];
     if (this.hasScope(undefined, staticClasses(node.attributes))) {
-      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: true`);
+      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: $$b.internal(true)`);
     }
     const anchor = this.anchor(scope, node);
     if (anchor) {

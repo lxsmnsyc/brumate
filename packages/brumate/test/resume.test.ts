@@ -436,7 +436,7 @@ describe('resume', () => {
     // The block that the client renders gets the current values.
     const big = document.querySelector<HTMLElement>('.big')!;
     expect(big.style.getPropertyValue('--s-9wx0az-0')).toBe('red');
-    expect(big.hasAttribute('s-9wx0az')).toBe(true);
+    expect(big.hasAttribute('b-c-9wx0az')).toBe(true);
   });
 
   it('adds the stylesheet when the client renders a component first', async () => {
