@@ -18,6 +18,8 @@
     },
     // A function in an object inside the value, as the slots of a part give them.
     steps: { double: { run: () => (count *= 2) } },
+    // Functions in a list, as the items of a menu or the inputs of a thumb give them.
+    actions: [{ run: () => (count += 100) }, { run: () => (count -= 1) }],
   });
 </script>
 
