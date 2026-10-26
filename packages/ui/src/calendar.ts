@@ -101,6 +101,10 @@ export interface DatePickerState {
   minValue?: DateString;
   maxValue?: DateString;
   isDateUnavailable?: (date: DateString, anchor?: DateString | null) => boolean;
+  /** The date that the Calendar shows first when there is no value. */
+  placeholderValue?: DateString;
+  isDisabled?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const DatePickerContext: Context<DatePickerState | null> =

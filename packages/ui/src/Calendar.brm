@@ -48,8 +48,8 @@
     isDateUnavailable: ownUnavailable,
     visibleDuration = { months: 1 },
     pageBehavior = 'visible',
-    isDisabled = false,
-    isReadOnly = false,
+    isDisabled: ownDisabled,
+    isReadOnly: ownReadOnly,
     isInvalid = false,
     'aria-label': ariaLabel,
     onChange,
@@ -83,9 +83,11 @@
   const picker = $getContext(DatePickerContext);
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
+  const isDisabled = $memo(ownDisabled ?? picker?.isDisabled ?? false);
+  const isReadOnly = $memo(ownReadOnly ?? picker?.isReadOnly ?? false);
   let {
     focusedValue = constrain(
-      toDate(firstOf(picker ? picker.value : value) ?? todayString()),
+      toDate(firstOf(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString()),
       minValue,
       maxValue,
     ).toString(),
