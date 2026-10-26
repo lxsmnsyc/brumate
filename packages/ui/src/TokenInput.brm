@@ -125,14 +125,15 @@
     }
     const read = readSegments(element);
     const next = tokenize(read, field!.pattern);
-    caret = caretOffset(element);
+    const offset = caretOffset(element);
+    caret = offset;
     // Text that the browser wrote is in the box already. A new token needs the box written.
     field!.setValue(next);
     // A caret in the space around a token goes back to where the value has it, so a Backspace
     // after the text next to a token removes the token, not that space.
     const at = getSelection()?.anchorNode;
-    if (at?.nodeType === 3 && (at as Text).data.includes(EDGE)) {
-      placeCaret(element, caret);
+    if (offset !== undefined && at?.nodeType === 3 && (at as Text).data.includes(EDGE)) {
+      placeCaret(element, offset);
     }
     return next;
   }
