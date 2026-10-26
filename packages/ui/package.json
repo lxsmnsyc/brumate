@@ -1,11 +1,13 @@
 {
   "name": "@brumate/ui",
   "version": "0.0.0",
-  "private": true,
   "description": "Accessible, unstyled components for brumate, after React Aria Components and Terracotta",
   "license": "MIT",
   "files": [
-    "src"
+    "src",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "NOTICE"
   ],
   "type": "module",
   "exports": {
@@ -30,7 +32,7 @@
     "vitest": "^5.0.4"
   },
   "peerDependencies": {
-    "brumate": "workspace:*"
+    "brumate": "workspace:^"
   },
   "brumate": {
     "version": 1,
