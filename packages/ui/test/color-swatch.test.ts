@@ -31,6 +31,12 @@ it('takes a name, and names how transparent a color is', async () => {
   expect(page.get('.clear').getAttribute('aria-label')).toBe('green, 75% transparent');
 });
 
+it('joins the name of the color and the aria-label of the caller', async () => {
+  const page = await colors();
+  expect(page.get('.labelled').getAttribute('aria-label')).toBe('red, Brand');
+  expect(page.get('.both').getAttribute('aria-label')).toBe('Ocean, Brand');
+});
+
 it('follows a color that changes', async () => {
   const page = await colors();
   page.click('.shift');

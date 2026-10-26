@@ -1,11 +1,14 @@
 <script>
   import { $bind, $signal } from 'brumate/signals';
   import ColorSwatch from '../../src/ColorSwatch.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
   import ColorSwatchPicker from '../../src/ColorSwatchPicker.brm';
   import ColorSwatchPickerItem from '../../src/ColorSwatchPickerItem.brm';
 
   let grid = $signal('rgb(255, 0, 0)');
-  let stack = $signal('#0000ff');
+  let stack = $signal('#ff0000');
+  let rtl = $signal('#ff0000');
+  let bad = $signal('nonsense');
   let changes = $signal<string[]>([]);
 </script>
 
@@ -26,5 +29,17 @@
     <ColorSwatchPickerItem class="o-red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
     <ColorSwatchPickerItem class="o-green" color="#00ff00"><ColorSwatch /></ColorSwatchPickerItem>
   </ColorSwatchPicker>
+  <I18nProvider locale="ar-EG">
+    <ColorSwatchPicker class="rtl" aria-label="Right to left" value=$bind(rtl)>
+      <ColorSwatchPickerItem class="r-red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
+      <ColorSwatchPickerItem class="r-green" color="#00ff00"><ColorSwatch /></ColorSwatchPickerItem>
+      <ColorSwatchPickerItem class="r-blue" color="#0000ff"><ColorSwatch /></ColorSwatchPickerItem>
+    </ColorSwatchPicker>
+  </I18nProvider>
+  <ColorSwatchPicker class="bad" aria-label="Invalid" value=$bind(bad)>
+    <ColorSwatchPickerItem class="b-red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="b-green" color="#00ff00"><ColorSwatch /></ColorSwatchPickerItem>
+  </ColorSwatchPicker>
   <output class="state">{JSON.stringify([grid, stack, changes])}</output>
+  <output class="more">{JSON.stringify([rtl, bad])}</output>
 </main>

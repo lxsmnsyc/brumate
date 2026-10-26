@@ -291,6 +291,60 @@ export function setLastFocused(root: Element, key: Key): void {
   lastFocused.set(root, key);
 }
 
+/** The selector of the items of a role, as `itemsOf` reads them. */
+function itemSelector(role: string): string {
+  return role
+    .split('|')
+    .map((name) => `[role=${name}][data-key]`)
+    .join(', ');
+}
+
+/**
+ * The item that focus goes to when a collection gets it: the one that had focus last, or else the
+ * first selected one, or else `fallback` of the items that can take focus, or the first.
+ */
+export function entryItem(
+  root: HTMLElement,
+  role: string,
+  fallback: (items: HTMLElement[]) => HTMLElement | undefined = (items) => items[0],
+): HTMLElement | undefined {
+  const items = enabledItems(root, role);
+  const last = lastFocusedOf(root);
+  return (
+    items.find((item) => last !== undefined && keyOf(item) === last) ??
+    items.find((item) => item.getAttribute('aria-selected') === 'true') ??
+    fallback(items)
+  );
+}
+
+/** The collection got focus itself: it passes the focus on to an item. */
+export function passFocus(
+  root: HTMLElement | undefined,
+  event: FocusEvent,
+  role: string,
+  fallback?: (items: HTMLElement[]) => HTMLElement | undefined,
+): void {
+  if (root && event.target === root && document.activeElement === root) {
+    focusItem(entryItem(root, role, fallback));
+  }
+}
+
+/** An item got focus. While one has focus, Tab leaves the collection rather than stopping at it. */
+export function trackFocusIn(root: HTMLElement | undefined, event: FocusEvent, role: string): void {
+  const item = (event.target as Element).closest?.(itemSelector(role));
+  if (root && item && root.contains(item)) {
+    root.tabIndex = -1;
+    setLastFocused(root, keyOf(item)!);
+  }
+}
+
+/** Focus left the collection: Tab stops at it again. */
+export function trackFocusOut(root: HTMLElement | undefined, event: FocusEvent): void {
+  if (root && !root.contains(event.relatedTarget as Node | null)) {
+    root.tabIndex = 0;
+  }
+}
+
 /** How a collection selects its items. */
 export type SelectionMode = 'none' | 'single' | 'multiple';
 

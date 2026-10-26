@@ -17,11 +17,14 @@
     enabledItems,
     focusItem,
     focusedItem,
+    isTyping,
     keyOf,
-    lastFocusedOf,
     movementOf,
     moveFrom,
-    setLastFocused,
+    passFocus,
+    trackFocusIn,
+    trackFocusOut,
+    typeahead,
   } from './collection.ts';
   import type { Key } from './collection.ts';
   import { formatColor, parseColor, tryParseColor } from './color.ts';
@@ -38,8 +41,10 @@
    *   that the user picks, in the format that the item has.
    * - `layout` is `grid`, the default, or `stack`. In a grid, the arrow keys move in two
    *   dimensions, by the boxes of the items. In a stack, Up and Down move.
-   * - The selection follows focus. Home and End move to the first and the last item. Space and
-   *   Enter select, and the selection cannot be empty.
+   * - The selection follows focus. Home and End move to the first and the last item, and PageUp
+   *   and PageDown move by the height of the list. Letters move to the item whose color name
+   *   starts with them. Space and Enter select, and the selection cannot be empty. A disabled
+   *   item is never selected.
    * - Tab stops once: at the item that had focus last, or else at the selected item, or the first
    *   item.
    * - It shows `data-layout`. Its items show `data-selected`, `data-focused`,
@@ -85,7 +90,8 @@
     );
     // The item gives its color as it wrote it, so the value has its format.
     const text = item?.getAttribute('data-color');
-    if (text && tryParseColor(text)) {
+    // A disabled item is never selected.
+    if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
       if (picker && !passed) {
         picker.setValue(parseColor(text), text);
       } else {
@@ -105,39 +111,16 @@
     hasAction: false,
   });
 
-  function entry(element: HTMLElement) {
-    const items = enabledItems(element, 'option');
-    const last = lastFocusedOf(element);
-    return (
-      items.find((item) => last !== undefined && keyOf(item) === last) ??
-      items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-      items[0]
-    );
-  }
-
   function focused(event: FocusEvent) {
-    const element = root;
-    // The list passes its focus on to an item.
-    if (element && event.target === element && document.activeElement === element) {
-      focusItem(entry(element));
-    }
+    passFocus(root, event, 'option');
   }
 
   function focusIn(event: FocusEvent) {
-    const element = root;
-    const item = (event.target as Element).closest?.('[role=option][data-key]');
-    if (element && item && element.contains(item)) {
-      // While an item has focus, Tab leaves the list rather than stopping at it.
-      element.tabIndex = -1;
-      setLastFocused(element, keyOf(item)!);
-    }
+    trackFocusIn(root, event, 'option');
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
-    if (element && !element.contains(event.relatedTarget as Node | null)) {
-      element.tabIndex = 0;
-    }
+    trackFocusOut(root, event);
   }
 
   /** The item in the next row above or below, whose middle is the nearest to the current one. */
@@ -194,13 +177,25 @@
       target = moveFrom(element, items, current, movement!, false);
     } else if (event.key === 'Home' || event.key === 'End') {
       target = event.key === 'Home' ? items[0] : items.at(-1);
-    } else if (event.key === ' ' || event.key === 'Enter') {
+    } else if (event.key === 'PageUp' || event.key === 'PageDown') {
+      target = moveFrom(
+        element,
+        items,
+        current,
+        event.key === 'PageDown' ? 'pageDown' : 'pageUp',
+        false,
+      );
+    } else if ((event.key === ' ' && !isTyping(element)) || event.key === 'Enter') {
       if (key !== undefined) {
         select(key);
       }
       return;
     } else {
-      return;
+      // Letters move to the item whose name starts with them.
+      target = typeahead(element, items, current, event);
+      if (!target) {
+        return;
+      }
     }
     const targetKey = target ? keyOf(target) : undefined;
     focusItem(target);
@@ -211,7 +206,7 @@
 
   const keys = {
     onKeyDown: $handler(
-      prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Space', 'Enter'),
+      prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter'),
     ),
   };
 </script>

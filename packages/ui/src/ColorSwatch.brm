@@ -10,13 +10,15 @@
    * - Without `color`, inside a ColorSwatchPickerItem, it shows the color of the item, and inside a
    *   ColorPicker the color of the picker.
    * - `colorName` names it for screen readers. Without it, a short name in English names it, such
-   *   as `dark blue`, with how transparent it is.
+   *   as `dark blue`, with how transparent it is. An `aria-label` adds to the name: `dark blue,
+   *   Brand`.
    * - The background shows the color over a checkerboard, so its alpha shows. The element has
    *   `--color` for CSS.
    */
-  const { color: given, colorName: name, ...rest } = $props<{
+  const { color: given, colorName: name, 'aria-label': ariaLabel, ...rest } = $props<{
     color?: string;
     colorName?: string;
+    'aria-label'?: string;
     [attribute: string]: unknown;
   }>();
 
@@ -25,7 +27,9 @@
   const color = $memo(given ?? item?.color ?? picker?.value ?? '#000000');
   const parsed = $memo(tryParseColor(color));
   const css = $memo(parsed ? formatColor(parsed) : 'transparent');
-  const label = $memo(name ?? (parsed ? colorName(parsed) : color));
+  const described = $memo(name ?? (parsed ? colorName(parsed) : color));
+  // As React Aria does, an `aria-label` of the caller adds to the name of the color.
+  const label = $memo(ariaLabel ? `${described}, ${ariaLabel}` : described);
 </script>
 
 <!-- The attributes of the caller come last, so its class adds to the part's. -->

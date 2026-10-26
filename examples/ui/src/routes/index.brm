@@ -742,10 +742,11 @@
 
 <section aria-labelledby="color-swatch-picker">
   <h2 id="color-swatch-picker">ColorSwatchPicker</h2>
-  <ColorSwatchPicker class="paint" aria-label="Paint" value=$bind(paint) style="display: flex; gap: 4px; width: 100px">
+  <ColorSwatchPicker class="paint" aria-label="Paint" value=$bind(paint) style="display: flex; flex-wrap: wrap; gap: 4px; width: 80px">
     <ColorSwatchPickerItem class="paint-red" color="#e2445a" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
     <ColorSwatchPickerItem class="paint-green" color="rgb(46, 160, 67)" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
     <ColorSwatchPickerItem class="paint-blue" color="hsl(217, 91%, 53%)" style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="paint-gray" color="#888888" isDisabled style="display: block"><ColorSwatch style="width: 2rem; height: 2rem" /></ColorSwatchPickerItem>
   </ColorSwatchPicker>
   <p class="paint-state">{paint}</p>
 </section>
