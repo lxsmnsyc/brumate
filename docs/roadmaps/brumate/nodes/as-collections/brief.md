@@ -36,6 +36,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: component-tag-live-props
+    kind: hard
+    why: a component in `as` needs this fix of the core
   - on: component-tag-handlers
     kind: hard
     why: a component in `as` needs this fix of the core
