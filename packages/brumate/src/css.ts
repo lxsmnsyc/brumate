@@ -8,7 +8,7 @@ import type { Diagnostic } from './model.ts';
 export interface StyleOutput {
   /** The scoped CSS of every `<style>` block, or an empty string. */
   css: string;
-  /** The attribute that marks the component's elements, such as `s-1abc`. */
+  /** The attribute that marks the component's elements, such as `b-c-1abc`. */
   attribute: string;
   /**
    * The custom property for each `${…}` interpolation, in source order. Text
@@ -300,7 +300,8 @@ function preprocess(
 
 /** Compiles the `<style>` blocks of a file into scoped CSS. */
 export function compileStyles(file: SFCFile, scope: string, filePath?: string): StyleOutput {
-  const attribute = `s-${scope}`;
+  // Under `b-`, which the compiler reserves, so markup and data cannot write it.
+  const attribute = `b-c-${scope}`;
   const diagnostics: Diagnostic[] = [];
   const variables: StyleOutput['variables'] = [];
   const dependencies: string[] = [];
@@ -312,7 +313,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
     let content = '';
     let position = 0;
     for (const expression of style.variables) {
-      const name = `--${attribute}-${variables.length}`;
+      const name = `--s-${scope}-${variables.length}`;
       let start = expression.start - 2 - contentStart;
       let end = expression.end + 1 - contentStart;
       // Text that touches the interpolation, such as `px` or `#`, goes into the value.
