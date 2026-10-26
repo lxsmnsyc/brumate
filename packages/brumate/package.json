@@ -17,6 +17,7 @@
   "files": [
     "dist",
     "types.d.ts",
+    "elements.d.ts",
     "forms",
     "skills"
   ],
@@ -108,6 +109,9 @@
     "./env": {
       "types": "./dist/runtime/env.d.ts",
       "default": "./dist/runtime/env.js"
+    },
+    "./elements": {
+      "types": "./elements.d.ts"
     },
     "./package.json": "./package.json"
   },
