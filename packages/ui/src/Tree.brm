@@ -442,7 +442,7 @@
 </script>
 
 <div
-  ref=root
+  ref=$bind(root)
   id=gridId
   role="treegrid"
   tabindex=(tabMode ? undefined : '0')

@@ -97,7 +97,7 @@ it('finds markup that comes later, blocks, listeners and forms of an $action', (
   <p>Loading</p>
 }
 #defer ('visible') {
-  <p ref=el>Later</p>
+  <p ref=$bind(el)>Later</p>
 }
 <form action=sign><button>Go</button></form>
 `);

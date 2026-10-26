@@ -348,7 +348,7 @@
 </script>
 
 <div
-  ref=root
+  ref=$bind(root)
   id=(field?.id ?? listId)
   role="listbox"
   tabindex=(field ? '-1' : '0')

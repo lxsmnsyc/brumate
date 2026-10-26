@@ -87,4 +87,4 @@
   });
 </script>
 
-<{as} ref=root data-orientation=orientation {...rest}>{children}</>
+<{as} ref=$bind(root) data-orientation=orientation {...rest}>{children}</>

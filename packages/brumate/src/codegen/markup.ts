@@ -1077,19 +1077,36 @@ export class Emitter {
     target: string,
     attribute: object,
     anchor: { scope: string; index: number },
+    when?: string,
   ): void {
     const declaration = this.refTargets.get(attribute);
     const element = `${this.helper('element')}(${anchor.scope}, ${anchor.index})`;
     const outer = this.options.outer;
+    const guard = when ? `if (${when}) ` : '';
     if (declaration && outer && !this.isInside(declaration.scope)) {
       // The signal belongs to a scope outside this render, so it is written after the element is in the page.
       const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
       this.line(
-        `${this.helper('after')}.push(() => $$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}));`,
+        `${this.helper('after')}.push(() => { ${guard}$$b.set(${path}, ${slotIndex(this.plan, declaration)}, ${element}); });`,
       );
     } else {
-      this.line(`${target} = ${element};`);
+      this.line(`${guard}${target} = ${element};`);
     }
+  }
+
+  /**
+   * What `ref` passes a component, as `$bind(name)` does: the value of the name with its slot, so
+   * the writes of the component reach it.
+   */
+  private bindingOf(declaration: Declaration): string {
+    const outer = this.options.outer;
+    const slot = slotIndex(this.plan, declaration);
+    if (outer && !this.isInside(declaration.scope)) {
+      const path = scopePath(this.plan, outer.baseVar, outer.base, declaration.scope);
+      return `$$b.binding($$b.get(${path}, ${slot}), ${path}, ${slot})`;
+    }
+    const scope = this.scopeVar(instanceScope(this.plan, declaration.scope));
+    return `$$b.binding(${declaration.name}, ${scope}, ${slot})`;
   }
 
   /**
@@ -1678,15 +1695,35 @@ export class Emitter {
       attributes = attributes.filter((attribute) => attribute !== own);
       extra.push(`"style": $$b.vars(${this.variableValues()}, ${existing})`);
     }
+    // A tag that names a component gets the binding of `ref` as its `ref` prop, and writes the
+    // element itself. A tag that names an element writes the element here.
+    const refs = node.attributes.flatMap((attribute) =>
+      attribute.kind === 'ref' ? [attribute] : [],
+    );
+    const tag = this.expression(node.tag);
+    let tagName = tag;
+    let binding = '';
+    if (refs.length > 0 && anchor) {
+      // A plain name is read again where the element is written. The code of another tag
+      // is read once, which keeps a block from cloning, so only such tags pay for it.
+      if (!/^\([^\s()+\-*/?:,;'"`[\]{}!&|<>=]+\)$/.test(tag)) {
+        tagName = this.unique('tag');
+        this.line(`const ${tagName} = ${tag};`);
+      }
+      const declaration = this.refTargets.get(refs.at(-1)!);
+      if (declaration) {
+        binding = `, ${this.bindingOf(declaration)}`;
+      }
+    }
     this.code(
       this.ready(
-        `$$b.dynamic(${this.expression(node.tag)}, ${spreadVariables ? `$$b.mergeAttributes([${this.dynamicProps(attributes, scope, extra)}], ${spreadVariables})` : this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))})`,
+        `$$b.dynamic(${tagName}, ${spreadVariables ? `$$b.mergeAttributes([${this.dynamicProps(attributes, scope, extra)}], ${spreadVariables})` : this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${binding})`,
       ),
     );
-    // `ref` gets the element that the tag renders. A tag that names a component has none.
-    for (const attribute of node.attributes) {
-      if (attribute.kind === 'ref' && anchor) {
-        this.emitRef(attribute.target, attribute, anchor);
+    // `ref` gets the element that the tag renders, when it names an element.
+    for (const attribute of refs) {
+      if (anchor) {
+        this.emitRef(attribute.target, attribute, anchor, `typeof ${tagName} !== 'function'`);
       }
     }
   }

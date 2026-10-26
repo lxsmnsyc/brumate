@@ -53,7 +53,7 @@ describe('syntax errors', () => {
       '<p icon=<Icon />>x</p>',
       'Markup is not allowed in attribute values. Use a #template. (Test.brm:1:9)',
     ],
-    ['<p ref=(a)>x</p>', 'Expected the name of a signal after "ref=" (Test.brm:1:8)'],
+    ['<p ref=(a)>x</p>', 'ref takes $bind, as in ref=$bind(name) (Test.brm:1:8)'],
     [
       '<p prefetch="idle">x</p>',
       'prefetch is removed. The code of the page loads when it starts (Test.brm:1:4)',

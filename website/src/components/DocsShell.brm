@@ -31,7 +31,7 @@
 
 
 <div class="docs">
-  <details class="sidebar-toggle" ref=menu>
+  <details class="sidebar-toggle" ref=$bind(menu)>
     <summary>Menu</summary>
   </details>
   <nav class="sidebar" aria-label=label>

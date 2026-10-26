@@ -242,7 +242,7 @@
 
 #template content() {
   <div
-    ref=panel
+    ref=$bind(panel)
     id=(trigger?.overlayId ?? ownId)
     tabindex="-1"
     style="position: fixed; top: 0; left: 0"
@@ -259,7 +259,7 @@
       The layer: the element of this floating part, which the overlays inside it render into.
       It has no box of its own, so it clips, moves and contains nothing.
     -->
-    <div ref=layer id=layerId data-layer style="display: contents">
+    <div ref=$bind(layer) id=layerId data-layer style="display: contents">
       #if (isNonModal || trigger?.isPreview || trigger?.isNonModal) {
         {content()}
       } #else {

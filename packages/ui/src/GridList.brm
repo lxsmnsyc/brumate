@@ -628,7 +628,7 @@
 </script>
 
 <div
-  ref=root
+  ref=$bind(root)
   id=gridId
   role="grid"
   tabindex="0"

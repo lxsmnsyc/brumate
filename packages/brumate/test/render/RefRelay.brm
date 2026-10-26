@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $props, type Bindable } from 'brumate/signals';
+  import RefButton from './RefButton.brm';
+
+  // Passes the binding on to a component that forwards it.
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+</script>
+
+<RefButton ref=$bind(ref) label="Relayed" />

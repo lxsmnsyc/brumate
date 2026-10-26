@@ -86,12 +86,12 @@ Wrappers apply while the event dispatches, so they work before the code of the p
 
 ## Reserved attributes
 
-| Attribute                    | Meaning                                                                              |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| `ref=name`                   | Writes the element into the signal `name`, declared with `$signal` in the same file. |
-| `action=fn`, `formaction=fn` | Posts a form to the server function `fn`. See [Forms](./forms.md).                   |
+| Attribute                    | Meaning                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref=$bind(name)`            | Writes the element into the signal `name`, declared with `$signal` in the same file, or into a `Bindable` prop that the component writes. |
+| `action=fn`, `formaction=fn` | Posts a form to the server function `fn`. See [Forms](./forms.md).                                                                        |
 
-`ref` is reserved on elements only. On components, it is an ordinary prop. `prefetch` on an element is a compile error, because the code of the page loads when it starts.
+`ref` is reserved on elements and dynamic tags, and it takes `$bind`. On components, it is an ordinary prop, so `<Button ref=$bind(el) />` binds it, and the component forwards it with `ref=$bind(ref)` on an element. `prefetch` on an element is a compile error, because the code of the page loads when it starts.
 
 Attribute names that start with `b-` are reserved on elements, because brumate writes them into the page. Using one is a compile error.
 

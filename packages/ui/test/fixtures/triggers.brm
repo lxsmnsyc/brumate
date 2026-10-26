@@ -13,7 +13,7 @@
   }, 'idle');
 </script>
 
-<p class="seen" ref=paragraph>{seen}</p>
+<p class="seen" ref=$bind(paragraph)>{seen}</p>
 <p class="idled">{idled}</p>
 #client {
   <p class="block">block</p>

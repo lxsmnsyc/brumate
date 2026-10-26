@@ -37,6 +37,7 @@ import {
   SlotReference,
   isAsyncIterable,
   isBinding,
+  isSlotReference,
   parseId,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
@@ -759,6 +760,40 @@ export class Context {
     if (names) {
       entry.names = names;
     }
+    // Elements that components forwarded to a signal of this scope, which rendered before it.
+    const forwarded = this.forwards?.get(scope);
+    if (forwarded) {
+      this.forwards!.delete(scope);
+      for (const [slot, value] of forwarded) {
+        values[slot] = value;
+      }
+    }
+  }
+
+  /** Elements that bound props of components forwarded to the slots of scopes that have no slots yet. */
+  private forwards?: Map<ScopeId, Map<number, ElementReference>>;
+
+  /**
+   * Writes the element that a component forwards to a slot of a scope above it, and on through
+   * the props that scope binds in turn. The parent records its slots after its children render,
+   * so a write for a scope that has none waits for them.
+   */
+  private forward(target: SlotReference, value: ElementReference): void {
+    const record = this.ownRecord(target.scope);
+    if (!record?.s) {
+      const waiting = ((this.forwards ??= new Map()).get(target.scope) ?? new Map()) as Map<
+        number,
+        ElementReference
+      >;
+      waiting.set(target.slot, value);
+      this.forwards.set(target.scope, waiting);
+      return;
+    }
+    record.s[target.slot] = value;
+    const next = (record.b as Record<number, unknown> | undefined)?.[target.slot];
+    if (isSlotReference(next)) {
+      this.forward(next, value);
+    }
   }
 
   /**
@@ -770,7 +805,13 @@ export class Context {
     for (const [name, slot] of Object.entries(slots)) {
       const value = props[name];
       if (isBinding(value)) {
-        (this.entry(scope).record.b ??= {})[slot] = value.target;
+        const record = this.entry(scope).record;
+        (record.b ??= {})[slot] = value.target;
+        // An element that the component wrote into its prop goes to the signal that it is bound to.
+        const written = record.s?.[slot];
+        if (written instanceof ElementReference && isSlotReference(value.target)) {
+          this.forward(value.target, written);
+        }
       }
     }
   }
@@ -1423,8 +1464,13 @@ export function dynamic(
   content: Raw | Lazy | undefined,
   ctx: Context,
   scope?: ScopeId,
+  ref?: unknown,
 ): string | Promise<string> {
   if (typeof tag === 'function') {
+    // The binding of `ref`, which the component forwards to its element.
+    if (ref !== undefined) {
+      attributes = { ...attributes, ref };
+    }
     // The handlers of the tag belong to this component, so they name its scope for the
     // component that renders the element.
     const entries = ownValue('b-on', attributes['b-on']);

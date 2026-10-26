@@ -602,8 +602,11 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       declared.add(declaration[1]!);
     }
     if (at > first && at < last && !line.startsWith('const $$') && !line.startsWith('let $$')) {
-      // A reference to an element finds it when it is read.
-      const reference = /^[\w$]+ = \$\$b\.elementAt\(/.test(line);
+      // A reference to an element finds it when it is read. A dynamic tag writes it unless the tag
+      // names a component, which forwards the element itself.
+      const reference = /^(?:if \(typeof .+ !== 'function'\) )?[\w$]+ = \$\$b\.elementAt\(/.test(
+        line,
+      );
       if (line !== '});' && line !== '};' && !line.startsWith('$$b.') && !reference) {
         return false;
       }

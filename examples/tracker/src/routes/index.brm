@@ -53,7 +53,7 @@
 <h1>Issues</h1>
 <form class="filters" role="search" onSubmit=(prevent(() => field?.blur()))>
   <input
-    ref=field
+    ref=$bind(field)
     type="search"
     name="q"
     value=query

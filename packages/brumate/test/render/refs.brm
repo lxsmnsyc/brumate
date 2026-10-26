@@ -10,9 +10,9 @@
   }
 </script>
 
-<input ref=input>
+<input ref=$bind(input)>
 <button onClick=focus>Focus</button>
 <button onClick=(() => (shown = true))>Show</button>
 #if (shown) {
-  <section ref=panel>{panel ? 'ready' : 'waiting'}</section>
+  <section ref=$bind(panel)>{panel ? 'ready' : 'waiting'}</section>
 }

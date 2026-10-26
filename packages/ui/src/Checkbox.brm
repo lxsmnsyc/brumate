@@ -177,6 +177,6 @@
         };
       }, 'idle');
     </script>
-    <span ref=marker hidden></span>
+    <span ref=$bind(marker) hidden></span>
   }
 </label>

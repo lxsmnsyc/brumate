@@ -1262,6 +1262,16 @@ export function bindings(
     const value = props[name];
     if (target && HAS_BINDINGS && isBinding(value)) {
       (target.b ??= {})[slot] = value.target;
+      // An element that the component wrote into its prop goes up once the markup is in the page,
+      // when the scope that holds the signal has its slots.
+      const written = target.s[slot];
+      if (written instanceof ElementReference) {
+        afterInsert.push(() => {
+          if (scopes.get(target.id) === target) {
+            set(target, slot, written);
+          }
+        });
+      }
     }
   }
 }
@@ -4389,9 +4399,13 @@ export function dynamicNodes(
   inner: Raw | Children | undefined,
   _ctx?: unknown,
   scope?: Scope | number,
+  ref?: unknown,
   foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
+    if (ref !== undefined) {
+      attributes = { ...attributes, ref };
+    }
     return componentNodes(
       tag as Component,
       inner ? { ...attributes, children: inner } : attributes,
@@ -4429,8 +4443,9 @@ export function foreignNodes(
   inner: Raw | Children | undefined,
   ctx?: unknown,
   scope?: Scope | number,
+  ref?: unknown,
 ): string | Node {
-  return dynamicNodes(tag, attributes, inner, ctx, scope, foreign);
+  return dynamicNodes(tag, attributes, inner, ctx, scope, ref, foreign);
 }
 
 export function dynamic(
@@ -4439,8 +4454,12 @@ export function dynamic(
   inner: Raw | Children | undefined,
   _ctx?: unknown,
   scope?: Scope | number,
+  ref?: unknown,
 ): string {
   if (typeof tag === 'function') {
+    if (ref !== undefined) {
+      attributes = { ...attributes, ref };
+    }
     return component(
       tag as Component,
       inner ? { ...attributes, children: inner } : attributes,

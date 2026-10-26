@@ -1,6 +1,6 @@
 # Syntax tree
 script
-element <p ref=limit>
+element <p ref=$bind(limit)>
   insert {count = 1}
 element <button onClick=(bad)>
   text "Bad"
@@ -28,22 +28,22 @@ sites
   server function save (12:18) reads db, user, count
   server function sync (17:12)
   function bad (21:12) reads double writes double, limit
-  insert (31:15) writes count
+  insert (31:22) writes count
   event button.click (32:17) reads bad calls bad
   event button.click (33:18) reads count writes count
 diagnostics
   error Server function "sync" must be async (17:12)
   error Declare a signal with "let name = $signal(value)" at the top level of a script (24:19)
-  error $ref is not supported. Use a $signal with ref=name (25:5)
+  error $ref is not supported. Use a $signal with ref=$bind(name) (25:5)
   error $produce needs a signal as its first argument (27:5)
-  error ref must name a $signal, but "limit" is a const (31:4)
+  error ref takes a $signal, or a prop that the component destructures with let, but "limit" is a const (31:4)
   error Signal "ready" can only be written in event handlers, effects, $client callbacks and functions (10:3)
   error Server function "save" captures "user". Pass it as an argument (14:20)
   error Server function "save" captures "count". Pass it as an argument (14:26)
   error Cannot assign to memo "double" (22:5)
   error Cannot assign to const "limit" (23:5)
   error Cannot assign to memo "double" (26:14)
-  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (31:15)
+  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (31:22)
 
 # Graph
 nodes
@@ -51,7 +51,7 @@ nodes
   signal count live
   signal ready static
   memo double live <- signal count
-  insert (31:15) static
+  insert (31:22) static
 client
   function bad (21:12)
   event button.click (32:17)
@@ -59,13 +59,13 @@ client
 diagnostics
   error Server function "sync" must be async (17:12)
   error Declare a signal with "let name = $signal(value)" at the top level of a script (24:19)
-  error $ref is not supported. Use a $signal with ref=name (25:5)
+  error $ref is not supported. Use a $signal with ref=$bind(name) (25:5)
   error $produce needs a signal as its first argument (27:5)
-  error ref must name a $signal, but "limit" is a const (31:4)
+  error ref takes a $signal, or a prop that the component destructures with let, but "limit" is a const (31:4)
   error Signal "ready" can only be written in event handlers, effects, $client callbacks and functions (10:3)
   error Server function "save" captures "user". Pass it as an argument (14:20)
   error Server function "save" captures "count". Pass it as an argument (14:26)
   error Cannot assign to memo "double" (22:5)
   error Cannot assign to const "limit" (23:5)
   error Cannot assign to memo "double" (26:14)
-  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (31:15)
+  error Signal "count" can only be written in event handlers, effects, $client callbacks and functions (31:22)

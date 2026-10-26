@@ -345,3 +345,69 @@ const { open } = $props<Props>();`),
     expect(messages('let { open = false } = $props<{ open?: Bindable<boolean> }>();')).toEqual([]);
   });
 });
+
+describe('ref', () => {
+  const component = (script: string, markup: string): string =>
+    `<script>\nimport { $bind, $props, $signal, type Bindable } from 'brumate/signals';\n${script}\n</script>\n\n${markup}`;
+
+  it('takes a signal and a prop that the component writes', () => {
+    expect(() =>
+      compile(component('let el = $signal<HTMLElement>();', '<p ref=$bind(el)>x</p>'), {
+        filename: 'Test.brm',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      compile(
+        component(
+          'let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();',
+          '<p ref=$bind(ref)>x</p>\n<{ref} ref=$bind(ref) />',
+        ),
+        { filename: 'Test.brm' },
+      ),
+    ).not.toThrow();
+  });
+
+  it('is an ordinary prop of a component', () => {
+    expect(() =>
+      compile(
+        component(
+          "import Button from './Button.brm';\nlet el = $signal<HTMLElement>();",
+          '<Button ref=$bind(el) />',
+        ),
+        { filename: 'Test.brm' },
+      ),
+    ).not.toThrow();
+  });
+
+  it('asks for $bind', () => {
+    for (const markup of ['<p ref=el>x</p>', '<p ref=(el)>x</p>', '<p ref=$bind(a.b)>x</p>']) {
+      expect(() =>
+        compile(component('let el = $signal<HTMLElement>();', markup), { filename: 'Test.brm' }),
+      ).toThrow('ref takes $bind, as in ref=$bind(name)');
+    }
+  });
+
+  it('rejects a prop that is read with const, or is not Bindable', () => {
+    expect(() =>
+      compile(
+        component(
+          'const { ref } = $props<{ ref?: Bindable<HTMLElement> }>();',
+          '<p ref=$bind(ref)>x</p>',
+        ),
+        { filename: 'Test.brm' },
+      ),
+    ).toThrow('ref takes a $signal, or a prop that the component destructures with let');
+    expect(() =>
+      compile(
+        component('let { ref } = $props<{ ref?: HTMLElement }>();', '<p ref=$bind(ref)>x</p>'),
+        { filename: 'Test.brm' },
+      ),
+    ).toThrow('The prop "ref" is not Bindable. Type it as Bindable<HTMLElement>');
+  });
+
+  it('rejects a name that is not a signal', () => {
+    expect(() =>
+      compile(component('const el = 1;', '<p ref=$bind(el)>x</p>'), { filename: 'Test.brm' }),
+    ).toThrow('ref takes a $signal, or a prop that the component destructures with let');
+  });
+});

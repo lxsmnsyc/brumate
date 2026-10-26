@@ -136,7 +136,7 @@
   <div data-toast-region=queue style="display: contents" onToastchange=sync>
     #if (shown.length > 0) {
       <div
-        ref=region
+        ref=$bind(region)
         role="region"
         aria-label=label
         data-queue=queue

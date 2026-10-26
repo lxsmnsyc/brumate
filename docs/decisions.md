@@ -6,7 +6,7 @@
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
 - There are twelve compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$setContext`, `$getContext`, `$id` and `$title`.
 - `$id()` makes an ID from the scope's ID and the call's position, so server and client agree without counting at runtime.
-- `ref=name` writes an element into a `$signal`. There is no separate ref function.
+- `ref=$bind(name)` writes an element into a `$signal`, or into a `Bindable` `let` prop, which forwards it to the caller. There is no separate ref function. `ref` always takes `$bind`, on elements, dynamic tags and components, so a component forwards a ref as it forwards any bound prop. A bare `ref=name` is a compile error, with no deprecation period. The server never sends an element: the state holds an element reference, which the browser resolves.
 - `$signal` does not track the values in its initial value.
 - `$effect` never runs on page load. It keeps Solid's name, but not its timing. `$client` is the way to run code without a change.
 - Signals never leave the file. Imported code receives values.

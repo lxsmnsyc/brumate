@@ -65,7 +65,7 @@ EventAttribute  = EventName { ":" Modifier } "=" Value ;
 EventName       = "on" Upper { IdentChar } ;
 Modifier        = "prevent" | "stop" | "passive" | "once" | "capture" ;
 
-RefAttribute    = "ref=" Ident ;
+RefAttribute    = "ref=$bind(" Ident ")" ;
 
 NamedAttribute  = AttributeName [ "=" Value ] ;
 AttributeName   = NameStart { NameChar } [ ":" NameStart { NameChar } ] ;
@@ -75,7 +75,7 @@ Computed        = "[" TS<Expression> "]" [ "=" Value ] ;
 ```
 
 - A name that matches `EventName` is always an event. Its `:` segments are modifiers. Any other name can have one `:` namespace, as in `xlink:href`.
-- `ref` is a reserved name on elements. On components it is an ordinary prop.
+- `ref` is a reserved name on elements and dynamic tags, and it takes `$bind(name)`. A bare name is a compile error. The name is a `$signal` of the file, or a `let` prop of type `Bindable`. On components, `ref` is an ordinary prop, so `ref=$bind(el)` binds it. A component forwards the prop with `ref=$bind(ref)` on an element.
 - `prefetch` on an element is a compile error, because the code of the page loads when it starts.
 - Names that start with `b-` are reserved on elements, because brumate writes them. Using one is a compile error.
 - Attributes must be separated by whitespace.

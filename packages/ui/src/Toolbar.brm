@@ -47,7 +47,7 @@
 </script>
 
 <div
-  ref=element
+  ref=$bind(element)
   role=(nested ? 'group' : 'toolbar')
   aria-orientation=(nested ? undefined : orientation)
   data-orientation=orientation

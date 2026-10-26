@@ -28,6 +28,6 @@
   }
 </script>
 
-<p ref=limit>{count = 1}</p>
+<p ref=$bind(limit)>{count = 1}</p>
 <button onClick=bad>Bad</button>
 <button onClick=(() => count++)>+</button>

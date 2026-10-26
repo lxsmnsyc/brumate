@@ -12,4 +12,4 @@
 </script>
 
 <button class="inc" onClick=(() => count++)>More</button>
-<p class="box" ref=box {...extra}>Box</p>
+<p class="box" ref=$bind(box) {...extra}>Box</p>

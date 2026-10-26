@@ -85,7 +85,7 @@
 </script>
 
 <div
-  ref=element
+  ref=$bind(element)
   role=(roleOf(selectionMode, nested))
   aria-orientation=(roleOf(selectionMode, nested) === 'group' ? undefined : orientation)
   aria-disabled=(isDisabled ? 'true' : undefined)
