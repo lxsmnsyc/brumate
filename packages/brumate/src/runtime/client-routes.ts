@@ -16,7 +16,13 @@ import type { PageState, ScopeId, ScopeState } from './shared.ts';
 /** The parts of the core that this module uses. */
 type Core = Pick<
   typeof Client,
-  'ElementReference' | 'FunctionReference' | 'SlotReference' | 'hooks' | 'removeScope' | 'scopes'
+  | 'ChildrenReference'
+  | 'ElementReference'
+  | 'FunctionReference'
+  | 'SlotReference'
+  | 'hooks'
+  | 'removeScope'
+  | 'scopes'
 >;
 
 /** Reads an ID, as `parseId` in `shared.ts` does. This module imports no code of its own. */
@@ -35,7 +41,7 @@ function shiftId(id: ScopeId, by: number): ScopeId {
 
 /** Adds a number to the scope IDs of a state record. */
 function shiftState(core: Core, state: PageState, by: number): PageState {
-  const { ElementReference, FunctionReference, SlotReference } = core;
+  const { ChildrenReference, ElementReference, FunctionReference, SlotReference } = core;
   const seen = new Set<object>();
   // References to elements and client functions name the scope of their markup.
   const shiftValue = (value: unknown): unknown => {
@@ -49,6 +55,10 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
         value.args,
         value.modifiers,
       );
+    }
+    // Children name the scope that wrote them, where they find their contexts.
+    if (value instanceof ChildrenReference) {
+      return new ChildrenReference(value.ref, shiftId(value.scope, by));
     }
     // The slot of a parent that a bound prop writes.
     if (value instanceof SlotReference) {
@@ -79,6 +89,7 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
       p: record.p === undefined ? undefined : shiftId(record.p, by),
       o: record.o === undefined ? undefined : shiftId(record.o, by),
       t: record.t === undefined ? undefined : shiftId(record.t, by),
+      f: record.f === undefined ? undefined : shiftId(record.f, by),
       c:
         record.c &&
         Object.fromEntries(
@@ -175,6 +186,7 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
  */
 export const ready: Promise<(partial: boolean) => void> = import('./client.ts').then(
   ({
+    ChildrenReference,
     ElementReference,
     FunctionReference,
     SlotReference,
@@ -184,7 +196,15 @@ export const ready: Promise<(partial: boolean) => void> = import('./client.ts').
     removeScope,
     scopes,
   }) => {
-    const core = { ElementReference, FunctionReference, SlotReference, hooks, removeScope, scopes };
+    const core = {
+      ChildrenReference,
+      ElementReference,
+      FunctionReference,
+      SlotReference,
+      hooks,
+      removeScope,
+      scopes,
+    };
     hooks.record = (script, state) => routeRecord(core, script, state);
     return (partial) => (partial ? leaveRoutes() : leavePage());
   },
