@@ -1,7 +1,7 @@
 ---
 id: scope-id-table
 title: One table of the fields with scope IDs
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: tests-current-build
 title: Tests compile with the current compiler
-status: todo
+status: active
 priority: must
 type: chore
 outline: false
