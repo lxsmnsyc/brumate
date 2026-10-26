@@ -1,7 +1,7 @@
 ---
 id: element-types
 title: Types for elements, markup and components
-status: active
+status: done
 priority: should
 type: contract
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify: pnpm --filter brumate exec tsc --noEmit -p .
 exclusive: []
-fulfilled_by: 
+fulfilled_by: "#263"
 gate: false
 added: 2026-10-26
 owns:
@@ -20,6 +20,11 @@ owns:
   - packages/brumate/package.json
   - packages/brumate/test/elements-types.ts
   - docs/roadmaps/brumate/contracts/element-types.md
+  - packages/brumate/src/check.ts
+  - packages/brumate/src/runtime/server.ts
+  - packages/brumate/test/check.test.ts
+  - packages/brumate/tsconfig.elements.json
+  - packages/tsc/test/tsc.test.ts
 shared:
   - .changeset/*.md
   - packages/brumate/types.d.ts
@@ -44,10 +49,10 @@ brumate has no type for an element, for markup or for a component, as JSX has `J
 
 ## Acceptance
 
-- [ ] packages/brumate/test/elements-types.ts checks, with `@ts-expect-error`: an unknown attribute of `a`, a wrong type for `href`, a handler with the wrong event, and that a `Markup` value is not a string.
-- [ ] The element-types contract is frozen, with the names and where they are exported.
-- [ ] `pnpm typecheck` passes.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] packages/brumate/test/elements-types.ts checks, with `@ts-expect-error`: an unknown attribute of `a`, a wrong type for `href`, a handler with the wrong event, and that a `Markup` value is not a string.
+- [x] The element-types contract is frozen, with the names and where they are exported.
+- [x] `pnpm typecheck` passes.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
@@ -56,3 +61,7 @@ M: the types are known from JSX libraries. Choosing which DOM fields are attribu
 ## Notes for the worker
 
 - Types only. Checking plain elements against them is element-checks.
+
+## Log
+
+- 2026-10-27: two reviews moved the generated component and template types into this node (check.ts, types.d.ts, server.ts), added a strict check of elements.d.ts, and a BoundSignal type for $bind. The user approved the contract and the merge.
