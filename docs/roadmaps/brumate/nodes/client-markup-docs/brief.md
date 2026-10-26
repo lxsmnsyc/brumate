@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/client-order.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - website/docs/effects.md
   - packages/brumate/test/client-order.test.ts

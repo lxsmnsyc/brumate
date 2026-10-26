@@ -36,6 +36,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 - Size comes first. Every core change reports the gzip size of todos (`pnpm bench`), within 0.3 kB.
 - Breaking changes are fine, with no deprecation periods.
 - client.ts is split (split-client-runtime) before the nodes that rewrite it. website/src/ui.ts is an append-only list of one line for each page, so it is shared, not split.
+- batching (the `flush()` audit) and element-checks (the caller fixes of the stricter check) sweep many parts of @brumate/ui. plan.py warns that a part is edited by four nodes or more. The edges order them: element-checks runs after the parts are rewritten.
 - Writing follows the plain-writing skill.
 
 ## Non-goals
@@ -68,6 +69,7 @@ Each item of the proposals maps to one node, or to built work:
 - Agent support: the skill -> brm-skill; llms.txt -> llms-txt; copy in the devtools -> devtools-copy; brumate check -> brumate-check; the tasks -> skill-tasks; an MCP server -> mcp-server
 - Compiler: steps 1 and 2 -> built (#147, 4d1d0f14, 624e210b); step 3 -> partly built, the rest -> drop-marker-index; step 4 -> values-spike, values-build; fixed walks -> fixed-walks; inlining and constant folding (2026-10-26) -> inlining-spike, inlining-build
 - Library: Headless UI phases 0 to 7, components from packages, nested TransitionChild -> built; leave animations for `#for` -> for-leave; takeaway 1 -> docs-generator and the four docs-* nodes; 2 -> popover-sizing; 3 -> fieldset; 4 -> context-menu; 5 -> color-scheme; 6 and 9 -> popover-group-alert; 7 and 8 -> part-guides; 10 -> feed; internationalization -> i18n; images -> images; Markdown with components -> markdown-plugin
+- Types (2026-10-26): brumate has no element, markup or component type -> element-types, element-checks; as.ts is unsound and opaque -> as-sound; the parts fall back to `any` for values -> ui-generics
 - Polymorphism and ref (2026-10-26): props types -> props-types-main (#245); `as` on more parts -> as-controls, as-collections; ref forwarding -> built (#243), its visible gap -> visible-forwarded-ref
 - Website: the home link, the shop demo, highlighting, the error section -> website-fixes; the docs of @brumate/ui -> docs-*; a guide to props types -> props-types-main; the code examples -> code-examples; a landing page -> ui-landing; `$client` in markup that the browser renders -> client-markup-docs
 

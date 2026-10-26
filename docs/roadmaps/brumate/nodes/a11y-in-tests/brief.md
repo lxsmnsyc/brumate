@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/testing-a11y.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/testing.ts
   - packages/brumate/test/testing-a11y.test.ts

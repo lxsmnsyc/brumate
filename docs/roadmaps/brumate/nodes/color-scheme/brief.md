@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/color-scheme.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/ColorScheme.brm
   - packages/ui/src/color-scheme.ts

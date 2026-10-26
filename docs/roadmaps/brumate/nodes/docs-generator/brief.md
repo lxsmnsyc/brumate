@@ -14,7 +14,7 @@ verify: pnpm --filter website exec vitest run test/props-table.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - website/plugins/props-table.ts
   - website/src/components/PropsTable.brm

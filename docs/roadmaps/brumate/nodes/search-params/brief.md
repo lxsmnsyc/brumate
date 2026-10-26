@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/search-params.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/search-params.ts
   - packages/brumate/test/search-params.test.ts

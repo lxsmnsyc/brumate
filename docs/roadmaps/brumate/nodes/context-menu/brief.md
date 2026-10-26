@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/context-menu.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/MenuTrigger.brm
   - packages/ui/src/DialogTrigger.brm

@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/devtools-copy.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/devtools-panel.ts
   - packages/brumate/src/runtime/devtools-copy.ts

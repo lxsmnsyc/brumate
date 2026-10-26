@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/fieldset.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/Fieldset.brm
   - packages/ui/src/Legend.brm
@@ -59,6 +59,9 @@ depends_on:
   - on: docs-controls
     kind: hard
     why: its page follows the props-table format, and it edits the field parts that docs-controls documents
+  - on: ui-generics
+    kind: hard
+    why: both edit the props of Select and ComboBox
   - on: split-ui-examples
     kind: hard
     why: a new part adds its own example and e2e module

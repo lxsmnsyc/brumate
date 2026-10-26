@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/as-collections.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/ListBox.brm
   - packages/ui/src/ListBoxItem.brm

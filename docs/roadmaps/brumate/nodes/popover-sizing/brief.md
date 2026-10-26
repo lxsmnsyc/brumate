@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/position.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/position.ts
   - packages/ui/src/Popover.brm

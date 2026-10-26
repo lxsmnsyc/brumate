@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/check-command.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/check-command.ts
   - packages/brumate/test/check-command.test.ts

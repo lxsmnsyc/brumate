@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/skill.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/skills/brumate/**
   - .claude/skills/brumate

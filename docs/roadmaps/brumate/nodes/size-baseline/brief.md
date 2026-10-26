@@ -14,7 +14,7 @@ verify: pnpm bench
 exclusive: [bench]
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - docs/performance.md
   - benchmarks/results/**

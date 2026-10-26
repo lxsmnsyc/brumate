@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run
 exclusive: [bench]
 fulfilled_by: 
 gate: true
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/src/runtime/client/**

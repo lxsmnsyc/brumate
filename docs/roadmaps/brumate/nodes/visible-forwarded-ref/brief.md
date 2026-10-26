@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t forwarded
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/codegen/markup.ts
   - packages/brumate/src/plan.ts

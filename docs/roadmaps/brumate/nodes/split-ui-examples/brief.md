@@ -14,7 +14,7 @@ verify: node e2e/run.mjs --only ui
 exclusive: []
 fulfilled_by: 
 gate: true
-added:
+added: 
 owns:
   - examples/ui/src/**
   - e2e/suites/ui.mjs

@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui typecheck
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/as.ts
   - packages/ui/test/props-types.ts

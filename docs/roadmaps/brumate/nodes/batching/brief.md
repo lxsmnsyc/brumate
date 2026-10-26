@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t batching
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/signals.ts
   - packages/brumate/src/runtime/client/handlers.ts

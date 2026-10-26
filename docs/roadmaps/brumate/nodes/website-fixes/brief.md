@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/highlight.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - website/src/components/Header.brm
   - website/src/components/BrandMark.brm

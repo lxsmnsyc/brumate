@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/early-input.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/runtime/client/resume.ts
   - packages/brumate/test/early-input.test.ts

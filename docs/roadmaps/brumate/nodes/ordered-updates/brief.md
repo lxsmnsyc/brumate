@@ -14,7 +14,7 @@ verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "updates of
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/brumate/src/plan.ts
   - packages/brumate/src/codegen/client.ts

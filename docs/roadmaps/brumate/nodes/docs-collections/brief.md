@@ -14,7 +14,7 @@ verify: pnpm --filter website check:samples && pnpm --filter website build
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - website/ui/list-box.md
   - website/ui/grid-list.md
@@ -52,6 +52,9 @@ depends_on:
     kind: hard
     why: the props-table format and its renderer exist only after docs-generator
   - on: as-collections
+    kind: hard
+    why: it changes the props types and defaults that the tables show
+  - on: ui-generics
     kind: hard
     why: it changes the props types and defaults that the tables show
 ---

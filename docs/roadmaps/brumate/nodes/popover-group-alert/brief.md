@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/popover-group.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/src/PopoverGroup.brm
   - packages/ui/src/Alert.brm

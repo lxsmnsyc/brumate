@@ -14,7 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/button.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
-added:
+added: 
 owns:
   - packages/ui/vitest.config.ts
 shared: []
