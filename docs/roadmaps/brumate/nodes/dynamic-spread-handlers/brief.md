@@ -1,7 +1,7 @@
 ---
 id: dynamic-spread-handlers
 title: A dynamic tag keeps the handlers of a spread in the browser
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "keeps the handlers of a spread"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#256"
 gate: false
 added: 2026-10-26
 owns:
@@ -40,9 +40,9 @@ A dynamic tag that the browser renders writes the attributes of a spread without
 
 ## Acceptance
 
-- [ ] The test of reviews/core-gaps.md section 4 fails on main and passes with the fix.
-- [ ] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The test of reviews/core-gaps.md section 4 fails on main and passes with the fix.
+- [x] The packages/brumate suite passes, and the gzip size of the eager core grows by at most 0.1 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
