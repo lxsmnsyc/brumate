@@ -8,7 +8,7 @@ target:
 from:
 size: M
 spike: false
-verify: pnpm --filter website check:samples
+verify: pnpm --filter website check:samples && pnpm --filter website build
 exclusive: []
 fulfilled_by: 
 gate: false
@@ -30,14 +30,32 @@ owns:
   - website/ui/radio-group.md
   - website/ui/switch.md
   - website/ui/form.md
-shared:
-  - website/ui/demos/**
+  - website/ui/demos/Button*.brm
+  - website/ui/demos/ToggleButton*.brm
+  - website/ui/demos/ToggleButtonGroup*.brm
+  - website/ui/demos/Link*.brm
+  - website/ui/demos/FileTrigger*.brm
+  - website/ui/demos/DropZone*.brm
+  - website/ui/demos/TextField*.brm
+  - website/ui/demos/SearchField*.brm
+  - website/ui/demos/TokenField*.brm
+  - website/ui/demos/NumberField*.brm
+  - website/ui/demos/Slider*.brm
+  - website/ui/demos/Checkbox*.brm
+  - website/ui/demos/CheckboxGroup*.brm
+  - website/ui/demos/RadioGroup*.brm
+  - website/ui/demos/Switch*.brm
+  - website/ui/demos/Form*.brm
+shared: []
 reserves: []
 provides: []
 depends_on:
   - on: docs-generator
-    kind: contract
-    via: props-table
+    kind: hard
+    why: the props-table format and its renderer exist only after docs-generator
+  - on: as-controls
+    kind: hard
+    why: it changes the props types and defaults that the tables show
 ---
 
 # Complete the docs of Buttons and Forms
@@ -57,7 +75,7 @@ Bring each page of Buttons and Forms in website/ui to the shape of the Terracott
 ## Acceptance
 
 - [ ] Each page has the sections Anatomy, Props, Data attributes, Keyboard (where the part takes keys), Controlled and uncontrolled (where it has state) and Styling.
-- [ ] Every new sample compiles: `pnpm --filter website check:samples`.
+- [ ] Every sample of the pages compiles: `pnpm --filter website check:samples`, which reads website/ui since docs-generator.
 - [ ] The website builds: `pnpm --filter website build`.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 

@@ -17,6 +17,7 @@ owns:
   - packages/ui/src/position.ts
   - packages/ui/src/Popover.brm
   - packages/ui/test/position.test.ts
+  - website/ui/popover.md
 shared: []
 reserves: []
 provides: []
@@ -24,6 +25,9 @@ depends_on:
   - on: as-controls
     kind: hard
     why: both edit Popover.brm, and as-controls changes its root
+  - on: docs-overlays
+    kind: hard
+    why: both edit popover.md
 ---
 
 # Popovers size and place themselves from CSS

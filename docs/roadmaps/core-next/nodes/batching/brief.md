@@ -16,8 +16,12 @@ added:
 owns:
   - packages/brumate/src/runtime/signals.ts
   - packages/brumate/src/runtime/client/handlers.ts
+  - docs/roadmaps/core-next/contracts/update-pass.md
 shared:
   - packages/brumate/src/runtime/client.ts
+  - packages/brumate/src/runtime/client/updates.ts
+  - packages/brumate/src/runtime/server.ts
+  - packages/brumate/src/index.ts
   - packages/ui/src/*.brm
 reserves: []
 provides: []
@@ -31,7 +35,7 @@ depends_on:
 
 ## Goal
 
-A pass is the outermost unit of code that runs at once: a handler up to its first await, a `$client` callback, a run of effects, or a value that settles. Bindings wait until the pass ends. `flush()` from brumate/signals runs them at once, for a handler that must focus or measure what it rendered.
+Freeze the update-pass contract first, with the signatures of `flush`, and of a hook for work at the end of a pass. A pass is the outermost unit of code that runs at once: a handler up to its first await, a `$client` callback, a run of effects, or a value that settles. Bindings wait until the pass ends. `flush()` from brumate/signals runs them at once, for a handler that must focus or measure what it rendered.
 
 ## Context
 

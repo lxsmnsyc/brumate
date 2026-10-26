@@ -20,11 +20,15 @@ owns:
 shared:
   - packages/brumate/src/runtime/signals.ts
   - packages/brumate/src/analyze.ts
+  - packages/brumate/src/macros.ts
+  - packages/brumate/src/features.ts
+  - packages/brumate/src/runtime/server.ts
+  - packages/brumate/src/runtime/client.ts
 reserves: []
 provides: []
 depends_on:
   - on: batching
-    kind: behavior
+    kind: contract
     via: update-pass
 ---
 
@@ -36,7 +40,7 @@ depends_on:
 
 ## Context
 
-- `$route().search` reads the query string but cannot write it. Two writes in one handler make one change of the URL, through the batching pass.
+- `$route().search` reads the query string but cannot write it. Its handling is in runtime/server.ts and client.ts, which `$searchParam` mirrors. Two writes in one handler make one change of the URL, through the end of a pass (update-pass contract).
 - Source: [State in the URL](../../../../proposals.md#state-in-the-url)
 
 ## Acceptance

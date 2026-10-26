@@ -19,6 +19,29 @@ owns:
   - packages/ui/src/Form.brm
   - packages/ui/test/fieldset.test.ts
   - website/ui/fieldset.md
+  - website/ui/demos/FieldsetDemo.brm
+  - packages/ui/src/TextField.brm
+  - packages/ui/src/SearchField.brm
+  - packages/ui/src/NumberField.brm
+  - packages/ui/src/TokenField.brm
+  - packages/ui/src/Select.brm
+  - packages/ui/src/ComboBox.brm
+  - packages/ui/src/Checkbox.brm
+  - packages/ui/src/Radio.brm
+  - packages/ui/src/Switch.brm
+  - packages/ui/src/Slider.brm
+  - packages/ui/src/DateField.brm
+  - packages/ui/src/TimeField.brm
+  - packages/ui/src/DatePicker.brm
+  - packages/ui/src/DateRangePicker.brm
+  - packages/ui/src/ColorField.brm
+  - packages/ui/src/ColorSlider.brm
+  - packages/ui/src/ColorArea.brm
+  - packages/ui/src/ColorWheel.brm
+  - packages/ui/src/TextArea.brm
+  - packages/ui/src/Input.brm
+  - packages/ui/src/Button.brm
+  - packages/ui/src/ToggleButton.brm
 shared:
   - packages/ui/src/contexts.ts
   - website/src/ui.ts
@@ -30,7 +53,10 @@ provides: []
 depends_on:
   - on: as-controls
     kind: hard
-    why: both edit the props of RadioGroup and CheckboxGroup
+    why: both edit the props of RadioGroup, CheckboxGroup and ToggleButton
+  - on: docs-controls
+    kind: hard
+    why: its page follows the props-table format, and it edits the field parts that docs-controls documents
   - on: split-ui-examples
     kind: hard
     why: a new part adds its own example and e2e module

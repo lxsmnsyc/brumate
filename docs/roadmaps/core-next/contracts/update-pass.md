@@ -13,7 +13,7 @@ What a pass of updates is, so code that writes several values, such as `$searchP
 
 ## Interface
 
-To be frozen by batching. It must define:
+To be frozen by batching, as its first step, before search-params starts. It must define these signatures:
 
 - When a pass starts and ends: a handler up to its first await, a `$client` callback, a run of effects, a value that settles.
 - How code registers work for the end of a pass, such as one URL update.
@@ -25,7 +25,7 @@ To be frozen by batching. It must define:
 
 ## Stub
 
-search-params can write the URL on each write until the contract is frozen, and move to the end of the pass after.
+None. search-params starts once the contract is frozen, and builds against the signatures. It integrates when batching is done.
 
 ## Contract tests
 

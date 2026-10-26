@@ -37,6 +37,7 @@ How a part of @brumate/ui exports its props, takes `as`, and forwards `ref`. The
 <{as ?? 'a'} ref=$bind(ref) {href} {...rest}>{children}</>
 ```
 
+- A part with `as` exports `<Name>OwnProps`, its own props, and `<Name>Props<T>`, which adds the target's. The props table reads `<Name>OwnProps`.
 - A part without `as` exports `<Name>Props` as one interface, and keeps `[attribute: string]: unknown` when it spreads attributes onto its element.
 - `AsTarget`, `TargetProps` and `AsProps` are in packages/ui/src/as.ts.
 - A part forwards `ref` with a `Bindable<HTMLElement>` prop and `ref=$bind(ref)` on its root (#243).
@@ -46,6 +47,7 @@ How a part of @brumate/ui exports its props, takes `as`, and forwards `ref`. The
 - With an element name in `as`, the props are the part's own props and the attributes of that element.
 - With a component in `as`, the props are the part's own props and the props of the component. The component must forward `ref` for the part to get its element.
 - A part's own props win over the target's.
+- A part that reads its own root uses the `ref` prop as its root signal: `let { ref } = $props<{ ref?: Bindable<HTMLElement> }>()`, then `ref=$bind(ref)` on the root, and the code reads `ref` where it read its own signal. With nothing bound, `ref` is a local value, so the part works alone. An element never has two `ref` bindings.
 
 ## Stub
 
@@ -58,3 +60,4 @@ packages/ui/test/props-types.ts, checked by `pnpm --filter @brumate/ui typecheck
 ## Changes
 
 - v1: from #242 (as #245) and #243.
+- v1.1: `<Name>OwnProps` for parts with `as`, and the rule for a part that reads its own root (from the adversarial review).

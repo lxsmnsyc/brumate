@@ -30,6 +30,7 @@ owns:
   - packages/ui/src/Popover.brm
   - packages/ui/src/Tooltip.brm
   - packages/ui/test/as-controls.test.ts
+  - packages/ui/test/fixtures/AsTarget.brm
 shared:
   - packages/ui/test/props-types.ts
 reserves: []
@@ -51,6 +52,9 @@ Give these parts an `as` prop that takes an element name or a component, as Terr
 - The part-props contract has the types (`AsProps`, `AsTarget`) and the pattern of ref forwarding (`ref=$bind(ref)` on a `Bindable<HTMLElement>` prop).
 - A part that reads its root through `ref` now gets it through the forwarded binding, also when `as` names a component.
 - Terracotta gives `as` to every component that renders an element.
+- A part that binds its own root, such as Popover and Tooltip with `ref=$bind(panel)`, uses the `ref` prop as its root signal instead, as the part-props contract says. Do not put two `ref` bindings on one element.
+- packages/ui/test/fixtures/AsTarget.brm is a component that forwards `ref`, for the tests of both as nodes. This node writes it.
+- Out of scope: Checkbox, Radio, Switch, the Table parts, Modal, ModalOverlay, Sheet, MenuSection, ListBoxSection, and the Slider and Color parts. Their element is their meaning, or their code reads a fixed structure. Say so in the outcome if one turns out to be cheap.
 - Source: Polymorphism, from the review of the parts against Terracotta (2026-10-26)
 
 ## Acceptance

@@ -18,13 +18,20 @@ owns:
   - packages/ui/src/DialogTrigger.brm
   - packages/ui/test/context-menu.test.ts
   - website/ui/menu.md
+  - website/ui/autocomplete.md
+  - website/ui/demos/CommandPaletteDemo.brm
+  - website/ui/demos/ContextMenuDemo.brm
 shared:
   - packages/ui/src/position.ts
+  - website/src/ui.ts
   - examples/ui/src/**
   - e2e/suites/ui/**
 reserves: []
 provides: []
 depends_on:
+  - on: docs-collections
+    kind: hard
+    why: both edit menu.md and autocomplete.md
   - on: popover-sizing
     kind: hard
     why: both edit position.ts, which must place an overlay at a point

@@ -24,6 +24,9 @@ depends_on:
   - on: split-client-runtime
     kind: hard
     why: it changes the resume code, which the split moves
+  - on: ordered-updates
+    kind: hard
+    why: its writes go through writeSlot, whose semantics ordered-updates changes
 ---
 
 # Fields typed before the code loads

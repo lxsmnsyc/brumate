@@ -19,6 +19,8 @@ owns:
   - packages/brumate/test/scope-ids.test.ts
 shared:
   - packages/brumate/src/runtime/client.ts
+  - packages/brumate/src/runtime/serial.ts
+  - packages/brumate/src/runtime/devtools.ts
 reserves: []
 provides: []
 depends_on: []
@@ -33,6 +35,8 @@ Put the record fields and reference classes that hold a scope ID in one table in
 ## Context
 
 - Three bugs in a week came from a place that missed a field (#168, #203, #212). `shiftState` in client-routes.ts is a hand-written chain of `instanceof`.
+- client-routes.ts imports no code of its own, so it stays small and loads lazily (its comment at line 28). Keep that: client.ts passes the table to `shiftState` as an argument.
+- Other walkers: `parseId` in client.ts, the plugins of serial.ts, and devtools.ts. Each reads the table, or the outcome says why not.
 - Source: [One table of the fields with scope IDs](../../../../proposals.md#one-table-of-the-fields-with-scope-ids)
 
 ## Acceptance

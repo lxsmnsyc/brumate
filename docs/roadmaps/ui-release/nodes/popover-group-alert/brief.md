@@ -18,8 +18,12 @@ owns:
   - packages/ui/src/Alert.brm
   - packages/ui/test/popover-group.test.ts
   - website/ui/alert.md
+  - website/ui/popover-group.md
+  - website/ui/demos/AlertDemo.brm
+  - website/ui/demos/PopoverGroupDemo.brm
 shared:
   - packages/ui/src/overlay.ts
+  - packages/ui/src/Popover.brm
   - website/src/ui.ts
   - examples/ui/src/**
   - e2e/suites/ui/**
@@ -29,6 +33,12 @@ depends_on:
   - on: split-ui-examples
     kind: hard
     why: it adds examples and e2e steps
+  - on: as-controls
+    kind: hard
+    why: it reads the root of Popover, which as-controls changes
+  - on: docs-generator
+    kind: hard
+    why: its pages follow the props-table format
 ---
 
 # PopoverGroup and Alert

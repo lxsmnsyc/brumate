@@ -8,7 +8,7 @@ target:
 from:
 size: M
 spike: false
-verify: pnpm --filter website check:samples
+verify: pnpm --filter website check:samples && pnpm --filter website build
 exclusive: []
 fulfilled_by: 
 gate: false
@@ -28,14 +28,30 @@ owns:
   - website/ui/navigation-tree.md
   - website/ui/virtualizer.md
   - website/ui/data.md
-shared:
-  - website/ui/demos/**
+  - website/ui/demos/ListBox*.brm
+  - website/ui/demos/GridList*.brm
+  - website/ui/demos/Menu*.brm
+  - website/ui/demos/Select*.brm
+  - website/ui/demos/ComboBox*.brm
+  - website/ui/demos/Autocomplete*.brm
+  - website/ui/demos/Tabs*.brm
+  - website/ui/demos/TagGroup*.brm
+  - website/ui/demos/SelectionIndicator*.brm
+  - website/ui/demos/Table*.brm
+  - website/ui/demos/Tree*.brm
+  - website/ui/demos/NavigationTree*.brm
+  - website/ui/demos/Virtualizer*.brm
+  - website/ui/demos/Data*.brm
+shared: []
 reserves: []
 provides: []
 depends_on:
   - on: docs-generator
-    kind: contract
-    via: props-table
+    kind: hard
+    why: the props-table format and its renderer exist only after docs-generator
+  - on: as-collections
+    kind: hard
+    why: it changes the props types and defaults that the tables show
 ---
 
 # Complete the docs of Collections and Data
@@ -55,7 +71,7 @@ Bring each page of Collections and Data in website/ui to the shape of the Terrac
 ## Acceptance
 
 - [ ] Each page has the sections Anatomy, Props, Data attributes, Keyboard (where the part takes keys), Controlled and uncontrolled (where it has state) and Styling.
-- [ ] Every new sample compiles: `pnpm --filter website check:samples`.
+- [ ] Every sample of the pages compiles: `pnpm --filter website check:samples`, which reads website/ui since docs-generator.
 - [ ] The website builds: `pnpm --filter website build`.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 

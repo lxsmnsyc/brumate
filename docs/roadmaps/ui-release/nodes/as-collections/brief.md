@@ -30,6 +30,7 @@ owns:
   - packages/ui/test/as-collections.test.ts
 shared:
   - packages/ui/test/props-types.ts
+  - packages/ui/test/fixtures/AsTarget.brm
 reserves: []
 provides: []
 depends_on:
@@ -48,6 +49,9 @@ Give the collection parts an `as` prop that takes an element name or a component
 
 - These parts read their root and their items through `ref` for keys, focus and typeahead. Since ref forwarding (#243), a component in `as` gives them the element too.
 - Terracotta renders its listbox and options as any element, with the right role.
+- A part that binds its own root uses the `ref` prop as its root signal, as the part-props contract says.
+- Use packages/ui/test/fixtures/AsTarget.brm as the component in `as`. If as-controls has not written it yet, write the same file.
+- Out of scope: Checkbox, Radio, Switch, the Table parts, Modal, ModalOverlay, Sheet, MenuSection, ListBoxSection, and the Slider and Color parts. Their element is their meaning, or their code reads a fixed structure. Say so in the outcome if one turns out to be cheap.
 - Source: Polymorphism, from the review of the parts against Terracotta (2026-10-26)
 
 ## Acceptance

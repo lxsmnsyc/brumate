@@ -16,9 +16,10 @@ added:
 owns:
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/src/runtime/client/**
+  - docs/roadmaps/core-next/contracts/client-modules.md
 shared: []
 reserves: []
-provides: []
+provides: [client-modules]
 depends_on:
   - on: scope-id-table
     kind: hard
@@ -34,6 +35,7 @@ Move client.ts (4,700 lines) into modules by feature, such as updates, blocks, c
 ## Context
 
 - Every core node of this roadmap and of client-size edits client.ts, so they collide. A split lets them own their own modules.
+- The client-modules contract names the modules that the later nodes own: client/updates.ts (`run`, `memo`, `writeSlot`, `flushEffects`), client/resume.ts (`init` and the bound-field writes), client/handlers.ts (`handle`), client/blocks.ts (the marker observer). Keep these names, or change the contract and say so.
 - Source: Split hot files by feature first, from the parallel-roadmap skill
 
 ## Acceptance

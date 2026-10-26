@@ -15,7 +15,6 @@ gate: false
 added:
 owns:
   - packages/ui/vitest.config.ts
-  - website/vitest.config.ts
 shared: []
 reserves: []
 provides: []
@@ -26,7 +25,7 @@ depends_on: []
 
 ## Goal
 
-The tests of @brumate/ui and the website compile components with brumate from its source, not from packages/brumate/dist, so a stale dist cannot hide a change of the compiler.
+The tests of @brumate/ui compile components with brumate from its source, not from packages/brumate/dist, so a stale dist cannot hide a change of the compiler.
 
 ## Context
 
@@ -35,10 +34,14 @@ The tests of @brumate/ui and the website compile components with brumate from it
 
 ## Acceptance
 
-- [ ] With dist deleted, the ui tests still pass.
+- [ ] With packages/brumate/dist deleted, the ui tests still pass.
 - [ ] `pnpm test` passes.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
 S: two configs.
+
+## Notes for the worker
+
+- The website has no tests yet. ui-release/docs-generator adds them, with a config that resolves brumate to its source.

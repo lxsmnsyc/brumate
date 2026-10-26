@@ -8,7 +8,7 @@ target:
 from:
 size: M
 spike: false
-verify: pnpm --filter website check:samples
+verify: pnpm --filter website check:samples && pnpm --filter website build
 exclusive: []
 fulfilled_by: 
 gate: false
@@ -34,14 +34,36 @@ owns:
   - website/ui/visually-hidden.md
   - website/ui/keyboard.md
   - website/ui/i18n-provider.md
-shared:
-  - website/ui/demos/**
+  - website/ui/demos/Dialog*.brm
+  - website/ui/demos/Popover*.brm
+  - website/ui/demos/Modal*.brm
+  - website/ui/demos/Sheet*.brm
+  - website/ui/demos/Tooltip*.brm
+  - website/ui/demos/PreviewTrigger*.brm
+  - website/ui/demos/Toast*.brm
+  - website/ui/demos/Disclosure*.brm
+  - website/ui/demos/DisclosureGroup*.brm
+  - website/ui/demos/Breadcrumbs*.brm
+  - website/ui/demos/Toolbar*.brm
+  - website/ui/demos/Meter*.brm
+  - website/ui/demos/ProgressBar*.brm
+  - website/ui/demos/Group*.brm
+  - website/ui/demos/Separator*.brm
+  - website/ui/demos/Heading*.brm
+  - website/ui/demos/Transition*.brm
+  - website/ui/demos/VisuallyHidden*.brm
+  - website/ui/demos/Keyboard*.brm
+  - website/ui/demos/I18NProvider*.brm
+shared: []
 reserves: []
 provides: []
 depends_on:
   - on: docs-generator
-    kind: contract
-    via: props-table
+    kind: hard
+    why: the props-table format and its renderer exist only after docs-generator
+  - on: as-controls
+    kind: hard
+    why: it changes the props types and defaults that the tables show
 ---
 
 # Complete the docs of Overlays, Navigation, Status, Layout, Animation and Utilities
@@ -61,7 +83,7 @@ Bring each page of Overlays, Navigation, Status, Layout, Animation and Utilities
 ## Acceptance
 
 - [ ] Each page has the sections Anatomy, Props, Data attributes, Keyboard (where the part takes keys), Controlled and uncontrolled (where it has state) and Styling.
-- [ ] Every new sample compiles: `pnpm --filter website check:samples`.
+- [ ] Every sample of the pages compiles: `pnpm --filter website check:samples`, which reads website/ui since docs-generator.
 - [ ] The website builds: `pnpm --filter website build`.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 

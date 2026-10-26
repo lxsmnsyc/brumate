@@ -17,6 +17,7 @@ owns:
   - website/ui/your-own-parts.md
   - website/ui/keyboard-and-focus.md
   - website/ui/async-content.md
+  - website/ui/demos/OwnPartDemo.brm
   - packages/ui/test/async-overlay.test.ts
 shared:
   - website/src/ui.ts

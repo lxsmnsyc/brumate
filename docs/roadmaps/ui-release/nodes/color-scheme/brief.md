@@ -18,6 +18,7 @@ owns:
   - packages/ui/src/color-scheme.ts
   - packages/ui/test/color-scheme.test.ts
   - website/ui/color-scheme.md
+  - website/ui/demos/ColorSchemeDemo.brm
 shared:
   - website/src/ui.ts
   - examples/ui/src/**
@@ -28,6 +29,9 @@ depends_on:
   - on: split-ui-examples
     kind: hard
     why: it adds an example and an e2e step
+  - on: docs-generator
+    kind: hard
+    why: its page follows the props-table format
 ---
 
 # A color scheme part without a first-paint flash

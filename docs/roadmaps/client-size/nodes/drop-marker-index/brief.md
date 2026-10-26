@@ -11,7 +11,7 @@ spike: false
 verify: pnpm --filter brumate exec vitest run
 exclusive: [bench]
 fulfilled_by: 
-gate: false
+gate: true
 added:
 owns:
   - packages/brumate/src/runtime/client/blocks.ts
@@ -51,4 +51,4 @@ L: blast radius high (core rendering), size medium.
 
 ## Notes for the worker
 
-- The core-next roadmap may split client.ts first. Check its status before you start, and work in the module that holds the code.
+- Start only after core-next/split-client-runtime and core-next/visible-forwarded-ref are done or dropped: both edit the same runtime code and markup.ts. plan.py cannot see edges across roadmaps, so this node is gated.

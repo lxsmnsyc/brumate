@@ -8,7 +8,7 @@ target:
 from:
 size: M
 spike: false
-verify: pnpm --filter website check:samples
+verify: pnpm --filter website check:samples && pnpm --filter website build
 exclusive: []
 fulfilled_by: 
 gate: false
@@ -26,14 +26,25 @@ owns:
   - website/ui/date-field.md
   - website/ui/time-field.md
   - website/ui/date-picker.md
-shared:
-  - website/ui/demos/**
+  - website/ui/demos/ColorPicker*.brm
+  - website/ui/demos/ColorSwatch*.brm
+  - website/ui/demos/ColorSlider*.brm
+  - website/ui/demos/ColorArea*.brm
+  - website/ui/demos/ColorWheel*.brm
+  - website/ui/demos/ColorField*.brm
+  - website/ui/demos/ColorSwatchPicker*.brm
+  - website/ui/demos/Calendar*.brm
+  - website/ui/demos/RangeCalendar*.brm
+  - website/ui/demos/DateField*.brm
+  - website/ui/demos/TimeField*.brm
+  - website/ui/demos/DatePicker*.brm
+shared: []
 reserves: []
 provides: []
 depends_on:
   - on: docs-generator
-    kind: contract
-    via: props-table
+    kind: hard
+    why: the props-table format and its renderer exist only after docs-generator
 ---
 
 # Complete the docs of Colors and Dates
@@ -53,7 +64,7 @@ Bring each page of Colors and Dates in website/ui to the shape of the Terracotta
 ## Acceptance
 
 - [ ] Each page has the sections Anatomy, Props, Data attributes, Keyboard (where the part takes keys), Controlled and uncontrolled (where it has state) and Styling.
-- [ ] Every new sample compiles: `pnpm --filter website check:samples`.
+- [ ] Every sample of the pages compiles: `pnpm --filter website check:samples`, which reads website/ui since docs-generator.
 - [ ] The website builds: `pnpm --filter website build`.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
