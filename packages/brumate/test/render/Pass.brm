@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import ThemeBox from './ThemeBox.brm';
+
+  const { children } = $props<{ children?: unknown }>();
+</script>
+
+<ThemeBox>{children}</ThemeBox>

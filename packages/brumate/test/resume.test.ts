@@ -2399,6 +2399,40 @@ describe('blocks in children', () => {
     click(document.querySelector('.show')!);
     await waitFor(() => expect(text('.later')).toBe('boxed'));
   });
+
+  it('follow the component that gets them through components that pass them on', async () => {
+    await resume('blockPassed', {});
+    expect(text('.item-a')).toBe('boxed');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.item-b')).toBe('boxed'));
+  });
+
+  it('render an #offscreen body that shows the first time with the contexts there', async () => {
+    await resume('offscreenInChildren', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.off')).toBe('boxed'));
+  });
+
+  it('render a #client body with the contexts there', async () => {
+    await resume('clientInChildren', {});
+    await waitFor(() => expect(text('.later')).toBe('boxed'));
+  });
+
+  it('render the bodies of a #try again with the contexts there', async () => {
+    await resume('tryInChildren', {});
+    expect(text('.ok')).toBe('boxed');
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(text('.caught')).toBe('boxed'));
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.ok')).toBe('boxed'));
+  });
+
+  it('render a #portal body that moves with the contexts there', async () => {
+    await resume('portalInChildren', {});
+    await waitFor(() => expect(text('#left .moved')).toBe('boxed'));
+    click(document.querySelector('.move')!);
+    await waitFor(() => expect(text('#right .moved')).toBe('boxed'));
+  });
 });
 
 describe('cloned markup', () => {

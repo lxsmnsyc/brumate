@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ThemeBox from './ThemeBox.brm';
+  import Themed from './Themed.brm';
+
+  let shown = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (shown = !shown))>Show</button>
+<ThemeBox>
+  #offscreen (shown) {
+    <p class="off"><Themed /></p>
+  }
+</ThemeBox>

@@ -83,11 +83,19 @@ export interface ClientModule {
    * The `#try` blocks that catch errors of client code, by the scope kinds
    * inside their bodies: the kind of the scope that holds the block, the
    * anchor of the block, the render functions of the body and the `#catch`
-   * body, and the kinds of both bodies.
+   * body, and the kinds of both bodies, and the holder of a block in children.
    */
   t?: Record<
     number,
-    [owner: number, anchor: number, body: string, fallback: string, kinds: number[]]
+    [
+      owner: number,
+      anchor: number,
+      body: string,
+      fallback: string,
+      kinds: number[],
+      holderKind?: number,
+      holderAnchor?: number,
+    ]
   >;
 }
 
@@ -117,6 +125,8 @@ export interface Scope {
   owned?: Set<Scope>;
   /** For children that a component inserted, the scope where they are, for contexts. */
   t?: Scope;
+  /** For a component that passes its children on, the scope where they are finally inserted. */
+  f?: Scope;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
@@ -494,6 +504,9 @@ function addScopes(state: PageState, root: string): Scope[] {
     }
     if (record.t !== undefined) {
       scope.t = scopes.get(record.t);
+    }
+    if (record.f !== undefined) {
+      scope.f = scopes.get(record.f);
     }
   }
   // The bundles of the roots first, so the components that they hold load with them.
@@ -1137,7 +1150,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
 async function catchInto(
   owner: Scope,
   module: ClientModule,
-  [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
+  [, anchor, , fallback, kinds, holderKind, holderAnchor]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
   const updates = await loadPart(module, 'update');
@@ -1147,7 +1160,8 @@ async function catchInto(
   }
   const end = rangeEnd(start);
   removeBlock(owner, kinds, start, end);
-  insertHTML(end, (updates[fallback] as (parent: Scope, error: unknown) => string)(owner, error));
+  const render = inPlace(owner, updates[fallback] as Render, holderKind, holderAnchor)!;
+  insertHTML(end, (render as unknown as (parent: Scope, error: unknown) => string)(owner, error));
 }
 
 /** Returns the instance of a scope by its ID. */
@@ -2144,6 +2158,8 @@ export function portalTo(
   target: unknown,
   render: Render,
   kinds: number[] = [],
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   disposeKinds(scope, kinds);
   const element = typeof target === 'string' ? document.querySelector(target) : target;
@@ -2152,7 +2168,8 @@ export function portalTo(
   }
   // The body's scope is the first scope that the render creates.
   const id = nextId;
-  insertHTML({ parent: element }, `<!--P${id}-->${render(scope)}<!--/P-->`);
+  const body = inPlace(scope, render, holderKind, holderAnchor)!;
+  insertHTML({ parent: element }, `<!--P${id}-->${body(scope)}<!--/P-->`);
 }
 
 /** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */
@@ -2476,7 +2493,9 @@ function holderOf(scope: Scope, kind?: number, anchor?: number): Scope | undefin
   for (let current: Scope | undefined = scope; current; current = current.p) {
     if (current.k === kind) {
       const id = current.c?.[anchor];
-      return id === undefined ? undefined : scopes.get(id);
+      const holder = id === undefined ? undefined : scopes.get(id);
+      // A component that passes its children on holds them where they are finally inserted.
+      return holder?.f ?? holder;
     }
   }
   return undefined;
@@ -2572,6 +2591,8 @@ export async function reset(
   body: string,
   fallback: string,
   kinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
 ): Promise<void> {
   const updates = await loadPart(await loadModule(id), 'update');
   const start = blockStart(scope, anchor);
@@ -2582,12 +2603,13 @@ export async function reset(
   removeBlock(scope, kinds, start, end);
   let html: string | DocumentFragment;
   try {
-    html = (updates[body] as Render)(scope);
+    html = inPlace(scope, updates[body] as Render, holderKind, holderAnchor)!(scope);
   } catch (error) {
     // Scopes that the body created before it threw.
     disposeKinds(scope, kinds);
     afterInsert.length = 0;
-    html = (updates[fallback] as (parent: Scope, error: unknown) => string)(scope, error);
+    const render = inPlace(scope, updates[fallback] as Render, holderKind, holderAnchor)!;
+    html = (render as unknown as (parent: Scope, error: unknown) => string)(scope, error);
   }
   insertHTML(end, html);
 }
@@ -2596,7 +2618,14 @@ export async function reset(
  * Renders the body of a `#client` block once, in place of its fallback.
  * `kinds` are the scope IDs inside the fallback, whose instances go.
  */
-export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
+export function fill(
+  scope: Scope,
+  anchor: number,
+  render: Render,
+  kinds: number[] = [],
+  holderKind?: number,
+  holderAnchor?: number,
+): void {
   const start = blockStart(scope, anchor);
   // A block that rendered its body has a third number.
   if (!start || start.data.split(':').length > 2) {
@@ -2605,7 +2634,7 @@ export function fill(scope: Scope, anchor: number, render: Render, kinds: number
   start.data += ':1';
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
-  insertHTML(end, render(scope));
+  insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
 }
 
 /**
@@ -2619,6 +2648,8 @@ export function offscreen(
   value: unknown,
   render: Render,
   kind: number,
+  holderKind?: number,
+  holderAnchor?: number,
 ): void {
   const start = blockStart(scope, anchor);
   if (!start) {
@@ -2633,7 +2664,7 @@ export function offscreen(
   start.data = `b${scope.id}:${anchor}:${visible ? 1 : 0}`;
   const end = rangeEnd(start);
   if (state === '-1') {
-    insertHTML(end, render(scope));
+    insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
     return;
   }
   let body: Scope | undefined;
@@ -3535,6 +3566,8 @@ class Children {
     for (let index = insertedChildren.length - 1; index >= 0; index--) {
       if (insertedChildren[index]!.from === at) {
         target = insertedChildren[index]!.at;
+        // A block in these children finds the component that holds them by this.
+        at.f = target;
         break;
       }
     }

@@ -15,7 +15,7 @@ import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
 import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
-import { blockBodies, serverFunctionId } from '../plan.ts';
+import { blockBodies, holderArguments, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
 import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
@@ -1132,23 +1132,12 @@ class ClientGenerator {
     return `r${this.plan.bodyScopes.get(body)!.id}`;
   }
 
-  /**
-   * For a block in the children of a component of this file: the kind of the scope of the
-   * component and its anchor, with which the core finds the component, so the new bodies of the
-   * block read its contexts.
-   */
-  private holderArgument(block: Block): string {
-    const holder = this.plan.blockHolders.get(block);
-    const anchor = holder && this.plan.anchors.get(holder.node);
-    return holder && anchor !== undefined ? `, ${holder.scope.id}, ${anchor}` : '';
-  }
-
   private emitBlockUpdate(block: Block, fn: string, base: Scope): void {
     const anchor = this.plan.anchors.get(block);
     if (anchor === undefined) {
       return;
     }
-    const held = this.holderArgument(block);
+    const held = holderArguments(this.plan, block);
     const headers = this.headerSites(block);
     const header = (index: number): string => this.rewriter.rewrite(headers[index]!, '$$s', base);
     switch (block.kind) {
@@ -1204,13 +1193,13 @@ class ClientGenerator {
         // A new target moves the body: the old one is removed and the body renders into the new one.
         const body = this.plan.bodyScopes.get(block.body)!;
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.portalTo($$s, ${header(0)}, r${body.id}, [${body.id}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.portalTo($$s, ${header(0)}, r${body.id}, [${body.id}]${held});\n}`,
         );
         return;
       }
       case 'offscreen':
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id});\n}`,
+          `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id}${held});\n}`,
         );
         return;
       case 'key': {
@@ -1403,16 +1392,19 @@ class ClientGenerator {
           (site) => site.kind === 'block' && site.block === block,
         )!;
         const target = this.rewriter.rewrite(header, '$$s', instanceScope(this.plan, base));
+        const held = holderArguments(this.plan, block);
         this.emit(
-          `export function k${scope.id}($$s) {\n  $$b.portalTo($$s, ${target}, r${scope.id});\n}`,
+          `export function k${scope.id}($$s) {\n  $$b.portalTo($$s, ${target}, r${scope.id}${held && `, []${held}`});\n}`,
         );
       }
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
         // The fallback's scopes go when the body renders in its place.
-        const fallback = block.fallback
-          ? `, ${this.hoist(`[${this.kinds([block.fallback]).join(', ')}]`)}`
-          : '';
+        const held = holderArguments(this.plan, block);
+        const kinds = block.fallback
+          ? this.hoist(`[${this.kinds([block.fallback]).join(', ')}]`)
+          : '[]';
+        const fallback = block.fallback || held ? `, ${kinds}${held}` : '';
         this.emit(
           `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );
@@ -1618,7 +1610,7 @@ class ClientGenerator {
    * The `#try` blocks that catch errors of client code, by the scope kinds
    * inside their bodies: the kind of the scope that holds the block, the
    * anchor of the block, the render functions of the body and the `#catch`
-   * body, and the kinds of both bodies.
+   * body, and the kinds of both bodies, and the holder of a block in children.
    */
   private triesTable(): string | undefined {
     const entries: string[] = [];
@@ -1634,7 +1626,8 @@ class ClientGenerator {
       }
       const owner = instanceScope(this.plan, scope.parent!);
       const fallback = this.plan.bodyScopes.get(block.fallback)!;
-      const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]]`;
+      const held = holderArguments(this.plan, block);
+      const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]${held}]`;
       for (const inside of this.model.scopes) {
         if (isWithin(inside, scope)) {
           entries.push(`${inside.id}: ${entry}`);
