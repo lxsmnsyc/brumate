@@ -1,6 +1,6 @@
 ---
 name: brumate
-description: Writes and fixes brumate components, the `.brm` files, with their state, events, control flow, server functions and @brumate/ui parts. Use it when a task creates or edits a `.brm` file, or reads an error of the brumate compiler.
+description: Writes and fixes brumate components, the `.brm` files, with their state, events, control flow and server functions. Use it when a task creates or edits a `.brm` file, or reads an error of the brumate compiler.
 ---
 
 # Writing .brm files
@@ -47,7 +47,6 @@ Read the file for the part of the work that you do.
 - [references/signals.md](references/signals.md): every function of `brumate/signals`, with what it returns and where it goes.
 - [references/state.md](references/state.md): signals, memos, async data, effects, `$client` and refs.
 - [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, and `$handler`.
-- [references/ui.md](references/ui.md): the parts of `@brumate/ui`, and how to compose them.
 - [references/errors.md](references/errors.md): every compile error, its cause, and the form to write instead.
 
 ## Checking your work
