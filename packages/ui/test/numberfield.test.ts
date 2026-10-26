@@ -126,7 +126,9 @@ it('names the input and its Buttons by aria-label, and disables a Button a step 
   expect(input.getAttribute('aria-label')).toBe('Quantity');
   expect(input.required).toBe(true);
   expect(page.get('.qty-plus').getAttribute('aria-label')).toBe('Increase Quantity');
-  await page.waitFor(() => expect(page.get('.qty-plus').hasAttribute('aria-labelledby')).toBe(false));
+  await page.waitFor(() =>
+    expect(page.get('.qty-plus').hasAttribute('aria-labelledby')).toBe(false),
+  );
   // 10 + 5 passes the maximum of 12, as in React Aria.
   expect(page.get('.qty-plus').hasAttribute('disabled')).toBe(true);
   expect(page.get('.qty-minus').hasAttribute('disabled')).toBe(false);

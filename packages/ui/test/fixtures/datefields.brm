@@ -12,6 +12,8 @@
   let due = $signal<string | null>('2026-10-15');
   let empty = $signal<string | null>(null);
   let german = $signal<string | null>('2026-10-15');
+  let sent = $signal<string | null>('2026-03-10');
+  let need = $signal<string | null>(null);
 </script>
 
 <main>
@@ -31,7 +33,18 @@
       <DateInput class="german-input" />
     </DateField>
   </I18nProvider>
-  <p class="state">{JSON.stringify([due, empty, german])}</p>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <DateField class="sent" name="sent" value=$bind(sent)>
+      <Label>Sent</Label>
+      <DateInput class="sent-input" />
+    </DateField>
+    <DateField class="need" name="need" value=$bind(need) isRequired>
+      <Label>Need</Label>
+      <DateInput class="need-input" />
+      <FieldError class="need-error" />
+    </DateField>
+  </form>
+  <p class="state">{JSON.stringify([due, empty, german, sent, need])}</p>
 </main>
 
 #template custom(item: Segment) {

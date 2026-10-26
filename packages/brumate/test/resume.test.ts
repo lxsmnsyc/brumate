@@ -2396,6 +2396,17 @@ describe('cloned SVG', () => {
   });
 });
 
+describe('a spread that writes nothing on the server', () => {
+  it('keeps the attributes that other code set on its first update', async () => {
+    await resume('spreadEmpty', {});
+    const box = document.querySelector<HTMLElement>('.wrap > div')!;
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.fill')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('Full'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
 describe('templates called again', () => {
   it('update in place with their new arguments, and keep their elements', async () => {
     await resume('templateInPlace', {});
@@ -2417,6 +2428,34 @@ describe('templates called again', () => {
     // The browser rendered this one, and it stays too.
     expect(lines()[2]).toBe(added);
     expect(lines()[0]).toBe(first);
+  });
+
+  it('render again after the insert showed something else', async () => {
+    await resume('templateToggled', {});
+    const slot = () => document.querySelector('.slot')!.textContent;
+    expect(slot()).toBe('1');
+    click(document.querySelector('.tg')!);
+    await waitFor(() => expect(slot()).toBe('none'));
+    click(document.querySelector('.inc')!);
+    click(document.querySelector('.tg')!);
+    await waitFor(() => expect(slot()).toBe('2'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(slot()).toBe('3'));
+  });
+
+  it('do not update another template of the same component in place', async () => {
+    await resume('templateSwitched', {});
+    const shown = () => {
+      const element = document.querySelector('.slot > span')!;
+      return `${element.className} ${element.textContent}`;
+    };
+    expect(shown()).toBe('tb B1');
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(shown()).toBe('ta A1'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(shown()).toBe('ta A2'));
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(shown()).toBe('tb B2'));
   });
 });
 

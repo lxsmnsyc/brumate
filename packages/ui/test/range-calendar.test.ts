@@ -79,8 +79,11 @@ it('selects a range with the keys, and Escape drops one that is not done', async
   const grid = page.get('.stay-grid');
   cell(page, '.stay-grid', '2026-10-12').focus();
   press('Enter', grid);
-  await page.waitFor(() => expect(selected(page, '.stay-grid')).toEqual(['2026-10-12']));
-  press('ArrowRight', grid);
+  // Focus moves on to the next date, as in React Aria, so the range shows to it.
+  await page.waitFor(() =>
+    expect(selected(page, '.stay-grid')).toEqual(['2026-10-12', '2026-10-13']),
+  );
+  expect(document.activeElement).toBe(cell(page, '.stay-grid', '2026-10-13'));
   press('ArrowRight', grid);
   await page.waitFor(() =>
     expect(selected(page, '.stay-grid')).toEqual(['2026-10-12', '2026-10-13', '2026-10-14']),
@@ -99,7 +102,7 @@ it('selects a range with the keys, and Escape drops one that is not done', async
   press('ArrowDown', grid);
   press('Enter', grid);
   await page.waitFor(() =>
-    expect(state(page)[0]).toEqual({ start: '2026-10-14', end: '2026-10-21' }),
+    expect(state(page)[0]).toEqual({ start: '2026-10-14', end: '2026-10-22' }),
   );
 });
 
@@ -121,4 +124,50 @@ it('does not select a range over a date that cannot be picked, unless the ranges
   );
   // The dates that cannot be picked do not show as selected.
   expect(cell(page, '.loose-grid', '2026-10-24').hasAttribute('data-selected')).toBe(false);
+});
+
+it('selects a range with a press of the pointer and a release on another date', async () => {
+  const page = await calendars();
+  pointer('pointerdown', cell(page, '.trip-grid', '2026-10-20'), { pointerType: 'mouse' });
+  await page.waitFor(() => expect(selected(page, '.trip-grid')).toEqual(['2026-10-20']));
+  pointer('pointerup', cell(page, '.trip-grid', '2026-10-22'), { pointerType: 'mouse' });
+  await page.waitFor(() =>
+    expect(state(page)[1]).toEqual({ start: '2026-10-20', end: '2026-10-22' }),
+  );
+});
+
+it('keeps a range that is not done within reach, and does not show it as invalid', async () => {
+  const page = await calendars();
+  cell(page, '.trip-grid', '2026-10-22').click();
+  await page.waitFor(() => expect(selected(page, '.trip-grid')).toEqual(['2026-10-22']));
+  // October 24 and 25 are a weekend, so the dates after them are out of reach.
+  const far = cell(page, '.trip-grid', '2026-10-27');
+  expect(far.hasAttribute('data-invalid')).toBe(true);
+  expect(far.getAttribute('aria-disabled')).toBe('true');
+  expect(page.get('.trip').hasAttribute('data-invalid')).toBe(false);
+  cell(page, '.trip-grid', '2026-10-22').focus();
+  press('ArrowDown', page.get('.trip-grid'));
+  // Focus stops at the last date in reach.
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(cell(page, '.trip-grid', '2026-10-23')),
+  );
+});
+
+it('shows data-focused only while focus is in the grid, and starts the week on firstDayOfWeek', async () => {
+  const page = await calendars();
+  expect(page.get('.trip-grid').querySelector('[data-focused]')).toBeNull();
+  cell(page, '.trip-grid', '2026-10-20').focus();
+  await page.waitFor(() =>
+    expect(cell(page, '.trip-grid', '2026-10-20').hasAttribute('data-focused')).toBe(true),
+  );
+  expect(page.get('.week-grid [data-date]').getAttribute('data-date')).toBe('2026-09-28');
+  expect(page.get('.trip-grid [data-date]').getAttribute('data-date')).toBe('2026-09-27');
+});
+
+it('names the error message on the dates of an invalid value', async () => {
+  const page = await calendars();
+  const error = page.get('.bad-error');
+  expect(error.id).not.toBe('');
+  expect(cell(page, '.bad-grid', '2026-10-05').getAttribute('aria-describedby')).toBe(error.id);
+  expect(cell(page, '.bad-grid', '2026-10-07').hasAttribute('aria-describedby')).toBe(false);
 });

@@ -29,7 +29,8 @@ A grid of the days of a month, to pick a date.
 - `isDateUnavailable` is a function that gets a date and returns true for a date that cannot be picked, such as a weekend.
 - `isDisabled` disables the whole Calendar. `isReadOnly` keeps the value but lets focus move.
 - `isInvalid` marks the selected date as invalid.
-- The days of the week, the names of the months and the first day of the week follow the locale of an [I18nProvider](./i18n-provider.md).
+- The days of the week, the names of the months and the first day of the week follow the locale of an [I18nProvider](./i18n-provider.md). `firstDayOfWeek`, such as `"mon"`, starts each week on another day.
+- A `Text` with `slot="errorMessage"` describes the dates of an invalid value, which name it in `aria-describedby`.
 
 ## Months
 
@@ -39,7 +40,7 @@ A grid of the days of a month, to pick a date.
 
 ## Keys
 
-- The arrow keys move focus by a day and by a week. Right to left, Left and Right swap.
+- The arrow keys move focus by a day and by a week. Right to left, Left and Right swap. A key with Ctrl, Alt or Meta, or an arrow key with Shift, moves nothing.
 - PageUp and PageDown move by a month, or by a year with Shift.
 - Home and End go to the start and the end of the month.
 - Enter and Space select the date that has focus.
@@ -59,4 +60,4 @@ A grid of the days of a month, to pick a date.
 
 - Only the date that has focus is in the order of Tab.
 - A date of another month is hidden and disabled.
-- A cell shows `data-selected`, `data-focused`, `data-focus-visible`, `data-today`, `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`, `data-invalid` and `data-pressed`.
+- A cell shows `data-focused` while focus is in its grid. It shows `data-selected`, `data-focus-visible`, `data-today`, `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`, `data-invalid` and `data-pressed`.

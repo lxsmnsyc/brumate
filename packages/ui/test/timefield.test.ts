@@ -64,7 +64,7 @@ it('shows the segments of the clock of the locale, or of hourCycle', async () =>
   expect(segment(page, '.forced-input', 'hour').getAttribute('aria-valuemax')).toBe('23');
   expect(segment(page, '.meeting-input', 'dayPeriod').getAttribute('aria-label')).toBe('AM/PM');
   expect(segment(page, '.meeting-input', 'dayPeriod').getAttribute('inputmode')).toBe('text');
-  expect((page.get('.meeting input[type="hidden"]') as HTMLInputElement).value).toBe('14:30');
+  expect((page.get('.meeting input[aria-hidden="true"]') as HTMLInputElement).value).toBe('14:30');
 });
 
 it('steps the hour and the minute around the clock, and AM and PM by 12 hours', async () => {
@@ -101,7 +101,9 @@ it('types each segment, keeps the period of a 12-hour clock, and types a or p in
   await page.waitFor(() =>
     expect(document.activeElement).toBe(segment(page, '.empty-input', 'dayPeriod')),
   );
-  await page.waitFor(() => expect(state(page)[2]).toBe('11:05:09'));
+  // AM or PM is a segment of its own, so the time is not done until it is set.
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  expect(state(page)[2]).toBe(null);
   type('p');
   await page.waitFor(() => expect(state(page)[2]).toBe('23:05:09'));
   expect(segments(page, '.empty-input')).toEqual(['11', ':', '05', ':', '09', ' ', 'PM']);
@@ -109,4 +111,41 @@ it('types each segment, keeps the period of a 12-hour clock, and types a or p in
   segment(page, '.forced-input', 'hour').focus();
   type('20');
   await page.waitFor(() => expect(state(page)[3]).toBe('20:30'));
+});
+
+it('steps a 12-hour hour within its period, and Home, End and PageUp go to the ends and further', async () => {
+  const page = await fields();
+  const hour = segment(page, '.late-input', 'hour');
+  hour.focus();
+  press('ArrowUp', hour);
+  // 11 AM goes to 12 AM, as in React Aria, not to 12 PM.
+  await page.waitFor(() => expect(state(page)[4]).toBe('00:00'));
+  press('End', hour);
+  await page.waitFor(() => expect(state(page)[4]).toBe('11:00'));
+  press('Home', hour);
+  await page.waitFor(() => expect(state(page)[4]).toBe('00:00'));
+  const minute = segment(page, '.late-input', 'minute');
+  minute.focus();
+  press('PageUp', minute);
+  await page.waitFor(() => expect(state(page)[4]).toBe('00:15'));
+  const period = segment(page, '.late-input', 'dayPeriod');
+  period.focus();
+  press('End', period);
+  await page.waitFor(() => expect(state(page)[4]).toBe('12:15'));
+});
+
+it('checks isRequired on a submit, gives back the first time on a reset, and compares times by seconds', async () => {
+  const page = await fields();
+  const form = page.get('.form') as HTMLFormElement;
+  expect(form.checkValidity()).toBe(false);
+  await page.waitFor(() => expect(page.text('.need-error')).not.toBe(''));
+  expect(page.get('.need').hasAttribute('data-invalid')).toBe(true);
+  const hour = segment(page, '.late-input', 'hour');
+  hour.focus();
+  press('ArrowDown', hour);
+  await page.waitFor(() => expect(state(page)[4]).toBe('10:00'));
+  form.reset();
+  await page.waitFor(() => expect(state(page)[4]).toBe('11:00'));
+  expect(page.get('.need').hasAttribute('data-invalid')).toBe(false);
+  expect(page.get('.exact').hasAttribute('data-invalid')).toBe(false);
 });

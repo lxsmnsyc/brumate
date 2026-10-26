@@ -12,6 +12,7 @@
   import Popover from '../../src/Popover.brm';
 
   let trip = $signal<string | null>('2026-10-15');
+  let later = $signal<string | null>(null);
 </script>
 
 <main>
@@ -34,5 +35,19 @@
       </Dialog>
     </Popover>
   </DatePicker>
-  <p class="state">{JSON.stringify([trip])}</p>
+  <DatePicker class="later" value=$bind(later) placeholderValue="2030-03-01">
+    <Label>Later</Label>
+    <Group>
+      <DateInput />
+      <Button class="later-button">▼</Button>
+    </Group>
+    <Popover>
+      <Dialog class="later-dialog">
+        <Calendar>
+          <CalendarGrid class="later-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="state">{JSON.stringify([trip, later])}</p>
 </main>

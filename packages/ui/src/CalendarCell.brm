@@ -44,21 +44,38 @@
   const unavailable = $memo(
     !disabled && (calendar?.isDateUnavailable?.(date) ?? false),
   );
-  const selectable = $memo(!disabled && !unavailable);
+  // After the first date of a range, a date past the nearest one that cannot be picked is out of
+  // reach, as React Aria marks it invalid.
+  const unreachable = $memo(
+    Boolean(
+      calendar?.available &&
+        ((calendar.available[0] !== undefined && date < calendar.available[0]) ||
+          (calendar.available[1] !== undefined && date > calendar.available[1])),
+    ),
+  );
+  const selectable = $memo(!disabled && !unavailable && !unreachable);
   // In the dates that show as selected: one date, or a range.
   const inSelection = $memo(
     Boolean(calendar?.selection && calendar.selection[0] <= date && date <= calendar.selection[1]),
   );
   const invalidValue = $memo(Boolean(calendar?.isInvalid && inSelection));
+  const invalid = $memo(invalidValue || (unreachable && !disabled));
   const selected = $memo((selectable && inSelection) || (invalidValue && !disabled));
   const selectionStart = $memo(selected && calendar?.selection?.[0] === date);
   const selectionEnd = $memo(selected && calendar?.selection?.[1] === date);
-  const focused = $memo(!outsideMonth && calendar?.focusedDate === date);
+  // The date that gets focus, which shows `data-focused` only while focus is in the grid.
+  const current = $memo(!outsideMonth && calendar?.focusedDate === date);
+  const focused = $memo(current && Boolean(calendar?.isFocused));
   const label = $memo(calendar ? cellLabel(calendar, date, selected) : date);
   const number = $memo(calendar ? dayNumber(date, calendar.locale) : String(Number(date.slice(8))));
 
   function pressed(event: MouseEvent) {
     if (!calendar || !selectable) {
+      return;
+    }
+    // The press of the pointer that started a range already selected this date.
+    if (calendar.startedBy(date)) {
+      (event.currentTarget as HTMLElement).focus({ preventScroll: true });
       return;
     }
     if (calendar.isReadOnly) {
@@ -94,11 +111,23 @@
   }
 
   function pointerDown(event: PointerEvent) {
-    (event.currentTarget as HTMLElement).setAttribute('data-pressed', '');
+    const target = event.currentTarget as HTMLElement;
+    target.setAttribute('data-pressed', '');
+    if (calendar && selectable) {
+      calendar.pressStart(date, event);
+    }
   }
 
   function pointerUp(event: PointerEvent) {
     (event.currentTarget as HTMLElement).removeAttribute('data-pressed');
+  }
+
+  // A release on a date after a press on another one ends the range there.
+  function released(event: PointerEvent) {
+    pointerUp(event);
+    if (calendar && selectable) {
+      calendar.pressEnd(date);
+    }
   }
 </script>
 
@@ -110,11 +139,12 @@
 >
   <div
     role="button"
-    tabindex=(disabled ? undefined : focused ? '0' : '-1')
-    autofocus=((calendar?.autoFocus && focused) || undefined)
+    tabindex=(disabled ? undefined : current ? '0' : '-1')
+    autofocus=((calendar?.autoFocus && current) || undefined)
     aria-label=label
     aria-disabled=(!selectable || undefined)
-    aria-invalid=(invalidValue || undefined)
+    aria-invalid=(invalid || undefined)
+    aria-describedby=(invalidValue && calendar ? calendar.errorId : undefined)
     hidden=(outsideMonth || undefined)
     data-calendar=(calendar?.id)
     data-date=date
@@ -127,13 +157,13 @@
     data-unavailable=(unavailable || undefined)
     data-outside-month=(outsideMonth || undefined)
     data-outside-visible-range=(outsideRange || undefined)
-    data-invalid=(invalidValue || undefined)
+    data-invalid=(invalid || undefined)
     onClick=pressed
     onFocusIn=focusIn
     onFocusOut=focusOut
     onPointerEnter=pointerEnter
     onPointerDown=pointerDown
-    onPointerUp=pointerUp
+    onPointerUp=released
     onPointerLeave=pointerUp
     {...rest}
   >{children ?? number}</div>

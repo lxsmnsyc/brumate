@@ -150,10 +150,20 @@ it('drags a thumb from where the pointer took it, and two pointers drag two thum
   // The low thumb is at 40 of 200. The pointer takes it 6 to the right of its center.
   pointer('pointerdown', page.get('.low'), { clientX: 46, clientY: 5, pointerId: 1 });
   await page.waitFor(() => expect(page.get('.low').hasAttribute('data-dragging')).toBe(true));
-  pointer('pointermove', window as unknown as Element, { clientX: 50, clientY: 5, buttons: 1, pointerId: 1 });
+  pointer('pointermove', window as unknown as Element, {
+    clientX: 50,
+    clientY: 5,
+    buttons: 1,
+    pointerId: 1,
+  });
   // 4 to the right is 2 more, not a jump to the pointer.
   await page.waitFor(() => expect(state(page)[1]).toEqual([22, 80]));
-  pointer('pointerdown', page.get('.high'), { clientX: 160, clientY: 5, pointerId: 2, pointerType: 'touch' });
+  pointer('pointerdown', page.get('.high'), {
+    clientX: 160,
+    clientY: 5,
+    pointerId: 2,
+    pointerType: 'touch',
+  });
   await page.waitFor(() => expect(page.get('.high').hasAttribute('data-dragging')).toBe(true));
   // The first drag goes on.
   expect(page.get('.low').hasAttribute('data-dragging')).toBe(true);

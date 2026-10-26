@@ -322,8 +322,8 @@ export function spread(attributes: Record<string, unknown>, names = false): stri
     }
   }
   // `b-s` names the attributes of a spread that changes in the browser. Its first update there
-  // removes only those.
-  return names && written.length > 0 ? `${result} b-s="${written.join(' ')}"` : result;
+  // removes only those, so a spread that wrote none still writes it, empty.
+  return names ? `${result} b-s="${written.join(' ')}"` : result;
 }
 
 export const VOID_ELEMENTS: Set<string> = new Set([

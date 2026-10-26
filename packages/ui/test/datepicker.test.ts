@@ -2,7 +2,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DatePickers from './fixtures/datepickers.brm?brumate-server';
-import { press } from './interact.ts';
+import { press, pressWith } from './interact.ts';
 
 let unmount: (() => void) | undefined;
 afterEach(() => {
@@ -51,7 +51,9 @@ it('names its Button by the Label, and shows the date in the segments', async ()
   expect(trigger.getAttribute('aria-expanded')).toBe('false');
   expect(page.get('.trip-input').getAttribute('aria-labelledby')).toBe(page.get('.trip-label').id);
   expect(segments(page)).toEqual(['10', '/', '15', '/', '2026']);
-  expect((page.get('.trip input[type="hidden"]') as HTMLInputElement).value).toBe('2026-10-15');
+  expect((page.get('.trip input[aria-hidden="true"]') as HTMLInputElement).value).toBe(
+    '2026-10-15',
+  );
 });
 
 it('opens a Calendar on the selected date, and a pick sets the date and closes it', async () => {
@@ -86,4 +88,16 @@ it('shows a typed date in the Calendar, and closes with Escape', async () => {
   press('Escape', document.activeElement!);
   await page.waitFor(() => expect(find('.trip-popover')).toBeNull());
   expect(state(page)[0]).toBe('2026-10-16');
+});
+
+it('names its Group and its Dialog by the Label, and opens the Calendar at placeholderValue', async () => {
+  const page = await pickers();
+  expect(page.get('.trip-group').getAttribute('aria-labelledby')).toBe(page.get('.trip-label').id);
+  pressWith(page.get('.later-button'));
+  await page.waitFor(() => expect(find('.later-dialog')).not.toBeNull());
+  const dialog = find('.later-dialog')!;
+  const button = page.get('.later-button');
+  expect(dialog.getAttribute('aria-labelledby')).toContain(button.id);
+  // The Calendar shows the month of placeholderValue, as there is no date.
+  expect(find('.later-grid [data-date="2030-03-01"]:not([data-outside-month])')).not.toBeNull();
 });

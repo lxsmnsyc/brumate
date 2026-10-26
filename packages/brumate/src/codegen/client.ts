@@ -1457,6 +1457,8 @@ class ClientGenerator {
     }
     const pairs = slots.map(([slot, name]) => `[${slot}, ${name}]`);
     this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+    // The ID of the template's scope, so an insert updates in place only a scope of this template.
+    this.emit(`export const ${symbol}k = ${scope.id};`);
   }
 
   private withTemplates(site: Site, code: string): string {

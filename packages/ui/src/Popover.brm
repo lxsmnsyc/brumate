@@ -93,7 +93,7 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
-  $setContext(DialogContext, { close });
+  $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
   $setContext(TransitionContext, { show: wanted, entered: rested });
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
   $setContext(OverlayTriggerContext, null);

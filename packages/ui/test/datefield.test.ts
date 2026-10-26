@@ -78,7 +78,7 @@ it('shows the segments in the order of the locale, as spinbuttons named by the l
   expect(segment(page, '.empty-input', 'day').getAttribute('aria-valuetext')).toBe('Empty');
   expect(segment(page, '.empty-input', 'day').hasAttribute('data-placeholder')).toBe(true);
   expect(segment(page, '.empty-input', 'day').classList.contains('custom')).toBe(true);
-  expect((page.get('.due input[type="hidden"]') as HTMLInputElement).value).toBe('2026-10-15');
+  expect((page.get('.due input[aria-hidden="true"]') as HTMLInputElement).value).toBe('2026-10-15');
 });
 
 it('steps a segment around its range with the arrow keys, and starts an empty one at the placeholder', async () => {
@@ -136,7 +136,7 @@ it('takes digits away with Backspace, empties the date, and moves back from an e
   backspace();
   await page.waitFor(() => expect(year.textContent).toBe('yyyy'));
   await page.waitFor(() => expect(state(page)[0]).toBeNull());
-  expect((page.get('.due input[type="hidden"]') as HTMLInputElement).value).toBe('');
+  expect((page.get('.due input[aria-hidden="true"]') as HTMLInputElement).value).toBe('');
   backspace();
   await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
 });
@@ -157,4 +157,40 @@ it('moves between the segments with ArrowLeft and ArrowRight', async () => {
   type('1');
   await page.waitFor(() => expect(segment(page, '.due-input', 'day').textContent).toBe('1'));
   expect(document.activeElement).toBe(segment(page, '.due-input', 'day'));
+});
+
+it('goes to the ends with Home and End, steps a page with PageUp, and a press on the group focuses a segment', async () => {
+  const page = await fields();
+  const month = segment(page, '.sent-input', 'month');
+  month.focus();
+  press('End', month);
+  await page.waitFor(() => expect(state(page)[3]).toBe('2026-12-10'));
+  press('Home', month);
+  await page.waitFor(() => expect(state(page)[3]).toBe('2026-01-10'));
+  const day = segment(page, '.sent-input', 'day');
+  day.focus();
+  press('PageUp', day);
+  await page.waitFor(() => expect(state(page)[3]).toBe('2026-01-17'));
+  page
+    .get('.sent-input')
+    .dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }),
+    );
+  await page.waitFor(() =>
+    expect(document.activeElement).toBe(segment(page, '.sent-input', 'year')),
+  );
+});
+
+it('checks isRequired on a submit, and gives back the first date on a reset', async () => {
+  const page = await fields();
+  const form = page.get('.form') as HTMLFormElement;
+  expect(form.checkValidity()).toBe(false);
+  await page.waitFor(() => expect(page.get('.need').hasAttribute('data-invalid')).toBe(true));
+  const year = segment(page, '.sent-input', 'year');
+  year.focus();
+  press('ArrowUp', year);
+  await page.waitFor(() => expect(state(page)[3]).toBe('2027-03-10'));
+  form.reset();
+  await page.waitFor(() => expect(state(page)[3]).toBe('2026-03-10'));
+  expect(page.get('.need').hasAttribute('data-invalid')).toBe(false);
 });

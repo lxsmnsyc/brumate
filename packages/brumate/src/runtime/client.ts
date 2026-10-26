@@ -2224,8 +2224,17 @@ function write(
 ): void {
   // The same template again at an insert updates in place, with its new arguments, as a snippet
   // of Svelte does. Its elements and their focus stay.
+  // The server rendered what an insert shows until its first write in the browser.
+  const firstWrite = key !== undefined && !writtenInserts.has(key);
+  if (key) {
+    writtenInserts.add(key);
+  }
   if (HAS_TEMPLATES && key && value instanceof TemplateCall) {
-    const known = templateInserts.get(key) ?? renderedTemplate(value, at);
+    const known =
+      templateInserts.get(key) ??
+      (firstWrite
+        ? renderedTemplate(value, at, loadedFunction(`${value.ref}k`) as unknown as number)
+        : undefined);
     // The template's `a` export gives the slots of its arguments, also of destructured ones.
     const slotsOf = loadedFunction(`${value.ref}a`) as
       | ((...args: unknown[]) => [number, unknown][])
@@ -2281,6 +2290,9 @@ function write(
 /** The scope of the template that each insert shows, by the node that marks the insert. */
 const templateInserts = new WeakMap<Node, { ref: string; scope: Scope }>();
 
+/** The inserts that the browser wrote, which no longer show what the server rendered. */
+const writtenInserts = new WeakSet<Node>();
+
 /**
  * The scope of a template that the server rendered at an insert: the scope that the template's
  * component made, and that finds its contexts from the insert.
@@ -2288,10 +2300,15 @@ const templateInserts = new WeakMap<Node, { ref: string; scope: Scope }>();
 function renderedTemplate(
   call: TemplateCall,
   at: Scope | undefined,
+  k: number | undefined,
 ): { ref: string; scope: Scope } | undefined {
+  if (k === undefined) {
+    return undefined;
+  }
   let found: Scope | undefined;
   for (const scope of scopes.values()) {
-    if (call.owner && scope.p === call.owner && scope.t === at) {
+    // The scope is of this template, not of another template of the same component.
+    if (call.owner && scope.p === call.owner && scope.t === at && scope.k === k) {
       // Two templates of the same component at one insert cannot be told apart.
       if (found) {
         return undefined;
@@ -2396,7 +2413,7 @@ export function attrs(
         element,
         new Set(
           (written === null ? element.getAttributeNames() : written.split(' ')).filter(
-            (name) => !own.includes(name) && !name.startsWith('b-'),
+            (name) => name !== '' && !own.includes(name) && !name.startsWith('b-'),
           ),
         ),
       );
