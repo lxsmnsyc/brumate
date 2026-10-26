@@ -1568,7 +1568,7 @@ export async function run({ browser, url, runner }) {
     await waitState('hsb(210, 51%, 81%)');
     await page.keyboard.press('PageDown');
     await waitState('hsb(210, 51%, 71%)');
-    await page.keyboard.press('Shift+PageUp');
+    await page.keyboard.press('Shift+ArrowRight');
     await waitState('hsb(210, 61%, 71%)');
     await page.keyboard.press('Home');
     await waitState('hsb(210, 51%, 71%)');

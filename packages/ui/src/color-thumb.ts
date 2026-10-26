@@ -42,6 +42,8 @@ export interface ColorThumbInput {
    * x moves y. Without it, the arrows and Home and End move the input as a range input does.
    */
   keys?: boolean;
+  /** The role description of the input, such as `2D slider` for an area. */
+  roleDescription?: string;
 }
 
 /** What a part tells a ColorThumb. */

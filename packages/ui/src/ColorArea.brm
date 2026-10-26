@@ -34,9 +34,10 @@
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
    *   the color once a drag or a key ends. The color keeps the format that it was given.
-   * - Left and Right move x by a step, and Up and Down move y, on either input. PageUp and
-   *   PageDown move y by a page, and with Shift they move x. Home and End move x down and up by a
-   *   page, as React Aria does. A screen reader hears both values and the name of the color.
+   * - Left and Right move x by a step, and Up and Down move y, on either input, by a page with
+   *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page, as
+   *   React Aria does. A screen reader hears both values and the name of the color, and the
+   *   inputs have the role description `2D slider`.
    * - A press on the area moves the thumb there, and a drag follows. A press on the thumb keeps
    *   the distance from the pointer to its center, so the thumb does not jump.
    * - The element has `--area-background`, the gradient of the two channels, for the style of the
@@ -221,27 +222,29 @@
     setAxes(xValue, yValue + direction * yRange.pageSize);
   }
 
-  // The arrows move a step, the pages move y or, with Shift, x, and Home and End move x a page.
+  // The arrows move a step, or a page with Shift. The pages move y, and Home and End move x.
   function inputKey(_index: number, key: string, shiftKey: boolean) {
     const sign = rtl ? -1 : 1;
+    const xStep = shiftKey ? xRange.pageSize : xRange.step;
+    const yStep = shiftKey ? yRange.pageSize : yRange.step;
     switch (key) {
       case 'ArrowRight':
-        setAxes(xValue + sign * xRange.step, yValue);
+        setAxes(xValue + sign * xStep, yValue);
         break;
       case 'ArrowLeft':
-        setAxes(xValue - sign * xRange.step, yValue);
+        setAxes(xValue - sign * xStep, yValue);
         break;
       case 'ArrowUp':
-        setAxes(xValue, yValue + yRange.step);
+        setAxes(xValue, yValue + yStep);
         break;
       case 'ArrowDown':
-        setAxes(xValue, yValue - yRange.step);
+        setAxes(xValue, yValue - yStep);
         break;
       case 'PageUp':
-        setAxes(xValue + (shiftKey ? xRange.pageSize : 0), yValue + (shiftKey ? 0 : yRange.pageSize));
+        setAxes(xValue, yValue + yRange.pageSize);
         break;
       case 'PageDown':
-        setAxes(xValue - (shiftKey ? xRange.pageSize : 0), yValue - (shiftKey ? 0 : yRange.pageSize));
+        setAxes(xValue, yValue - yRange.pageSize);
         break;
       case 'End':
         setAxes(xValue + sign * xRange.pageSize, yValue);
@@ -290,6 +293,7 @@
         label: channelName(axes.x),
         orientation: 'horizontal',
         keys: true,
+        roleDescription: '2D slider',
       },
       {
         id: thumbId({ id }, 1),
@@ -302,6 +306,7 @@
         label: channelName(axes.y),
         orientation: 'vertical',
         keys: true,
+        roleDescription: '2D slider',
       },
     ],
     isDragging: dragging,

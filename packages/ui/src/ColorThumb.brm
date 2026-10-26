@@ -101,6 +101,7 @@
         aria-label=(item.label)
         aria-labelledby=(item.labelledBy)
         aria-orientation=(item.orientation ?? 'horizontal')
+        aria-roledescription=(item.roleDescription)
         aria-valuetext=(item.valueText)
         class="input"
         onInput=((event: Event) => input(event, index))
@@ -121,6 +122,7 @@
         aria-label=(item.label)
         aria-labelledby=(item.labelledBy)
         aria-orientation=(item.orientation ?? 'horizontal')
+        aria-roledescription=(item.roleDescription)
         aria-valuetext=(item.valueText)
         class="input"
         onInput=((event: Event) => input(event, index))

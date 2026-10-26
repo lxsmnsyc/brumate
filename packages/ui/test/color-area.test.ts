@@ -110,20 +110,24 @@ it('moves x with Left and Right and y with Up and Down, on either input', async 
   await page.waitFor(() => expect(state(page)[5]).toBe('hsb(210, 50%, 79%)'));
 });
 
-it('moves y a page with PageUp and PageDown, and x with Shift', async () => {
+it('moves y a page with PageUp and PageDown, and a page with Shift and an arrow', async () => {
   const page = await areas();
-  const { x } = inputs(page, '.hsb');
+  const { x, y } = inputs(page, '.hsb');
+  expect(x.getAttribute('aria-roledescription')).toBe('2D slider');
+  expect(y.getAttribute('aria-roledescription')).toBe('2D slider');
   x.focus();
   press('PageUp', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 90%)'));
   press('PageDown', x);
   press('PageDown', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 70%)'));
+  // Shift with PageUp moves y too, as in React Aria.
   press('PageUp', x, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 80%)'));
+  press('ArrowRight', x, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 80%)'));
+  press('ArrowDown', x, { shiftKey: true });
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 70%)'));
-  press('PageDown', x, { shiftKey: true });
-  press('PageDown', x, { shiftKey: true });
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 70%)'));
 });
 
 it('moves x a page with Home and End, to the ends of its range', async () => {

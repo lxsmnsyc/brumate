@@ -27,7 +27,8 @@ An area for two channels of a color.
 The thumb has a hidden `<input type="range">` for each axis. The keys work on either of them.
 
 - Left and Right move x by a step. Up and Down move y.
-- PageUp and PageDown move y by a page. With Shift, they move x.
+- With Shift, the arrow keys move by a page.
+- PageUp and PageDown move y by a page.
 - Home and End move x down and up by a page.
 - Right to left, x is mirrored: Left moves toward the larger values, and Home goes to the right.
 - A screen reader hears both values and a name of the color, such as `Saturation 50%, Brightness 80%, blue`.
