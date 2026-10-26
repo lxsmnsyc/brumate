@@ -16,7 +16,8 @@
       | 'sun'
       | 'moon'
       | 'arrow-right'
-      | 'chevron';
+      | 'chevron'
+      | 'grip';
     size?: number;
     [attribute: string]: unknown;
   }>();
