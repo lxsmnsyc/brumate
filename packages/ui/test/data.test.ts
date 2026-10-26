@@ -114,3 +114,9 @@ it('changes the nodes of a tree, which a Tree shows', async () => {
   await page.waitFor(() => expect(fileRows(page)).toEqual(['new@1']));
   expect(page.text('.files-state')).toBe('[]');
 });
+
+it('moves a node with its children once, when the keys name both, or name a node twice', async () => {
+  const page = await data();
+  pressWith(page.get('.move-docs'));
+  await page.waitFor(() => expect(fileRows(page)).toEqual(['notes@1', 'docs@1', 'cv@2']));
+});
