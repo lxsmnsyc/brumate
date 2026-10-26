@@ -141,9 +141,33 @@ To check:
 - Async memos, values the server streams and `$optimistic` guesses write later, and start passes of their own.
 - The size of the core, and of the `g` tables with the memo lists.
 
+#### Batching
+
+Today each write is a pass of its own. `run` runs the updates of the write at once, and effects wait only until that write ends, since `running` goes back to 0 after it. A handler that writes `first = 'Ada'; last = 'Lovelace'` makes two passes:
+
+- A binding such as `{first} {last}` writes the DOM twice, once with the new first name and the old last name.
+- An effect that reads both runs twice.
+- A state between the writes can throw. `{total / count}` can divide by zero, and the body of `#if (items.length)` that reads `items[index]` can read past the end.
+
+A pass would be the outermost unit of code that runs at once, not a single write:
+
+- A handler, a `$client` callback, a run of effects, or a value that settles, such as an async memo, a value that the server streams, or an `$optimistic` guess. The core already starts each of them, as `handle()` starts a handler.
+- In a pass, writes mark their slots. Memos stay eager, so a handler that writes `count` and then reads `double` reads the new value.
+- Bindings wait in the queue of ordered updates, once each, and run in the order of the graph when the pass ends. Effects run after them.
+- A handler that awaits is a pass up to its first `await`, and each part after an `await` is a pass of its own. So nothing depends on when microtasks run.
+- A `$bind` write from a child, in the same handler, joins the pass of the parent.
+- `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that opens an `#if` and must focus or measure what it rendered.
+
+Batching on microtasks, as Vue and Svelte 5 do, would batch across `await` too. But every handler that writes and then reads the DOM would need `await tick()`, and the parts of `@brumate/ui` focus and measure right after they open things. A pass for each unit of code keeps the DOM written when the handler returns.
+
+To check:
+
+- The handlers of `@brumate/ui` that write and then read the DOM before they return. Each one needs `flush()`, or does that work in a `$client` callback or an effect already.
+- A test for each case above: one DOM write for two writes in a handler, one run of an effect that reads both, no throw from a state between writes, and `flush()`.
+
 The tests mark each case with `it.fails`. The fix turns them into `it`.
 
-Cost: a few days. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo` and `writeSlot` of the core.
+Cost: a few days for the order, and a day or two more for batching, since it uses the queue of bindings that the order adds. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo`, `writeSlot` and `handle` of the core.
 
 ## Data
 
