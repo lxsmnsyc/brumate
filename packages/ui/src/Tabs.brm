@@ -61,7 +61,7 @@
       onSelectionChange?.(key);
     }
   }
-  $client(() => check(), 'load');
+  $client(() => check(), 'idle');
   $effect(() => {
     void selectedKey;
     // The tabs update after the key does.

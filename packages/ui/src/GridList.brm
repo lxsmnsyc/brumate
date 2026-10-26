@@ -339,7 +339,7 @@
       document.removeEventListener('dragend', dragEnd);
       document.removeEventListener('drop', dragEnd);
     };
-  }, 'load');
+  }, 'visible');
 
   // The rows read the selection from the state of a ListBox, which they share with its options.
   $setContext(ListBoxContext, {

@@ -34,7 +34,6 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Accessibility checks in tests](#accessibility-checks-in-tests)                   | Tooling  | Medium | Small  |
 | [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids) | Runtime  | High   | Small  |
 | [Fields typed before the code loads](#fields-typed-before-the-code-loads)         | Runtime  | High   | Medium |
-| [Triggers in tests](#triggers-in-tests)                                           | Tooling  | Medium | Small  |
 | [Tests against the current build](#tests-against-the-current-build)               | Tooling  | Medium | Small  |
 | [Keys of collections from their data](#keys-of-collections-from-their-data)       | Library  | Medium | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling  | High   | Medium |
@@ -607,18 +606,6 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 - A content mapper from `toTypeScript` would let `tsc` and the editor of TypeScript 7 check `.brm` files.
 - It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
 - This waits for the API to be stable, and for its documentation.
-
-### Triggers in tests
-
-happy-dom has no IntersectionObserver that reports, so `$client(fn, 'visible')`, the default, never runs in a test, and neither does `#client` or `#defer` with `'visible'`. The parts of `@brumate/ui` use `'load'` for this reason, which the compiler warns about, so code for the page bends to the tests.
-
-`brumate/testing` can fire the triggers:
-
-- `mount` and `visit` install an IntersectionObserver that reports each element it observes as visible. An option keeps an element out of view, for a test of what waits for it.
-- An action fires `'idle'` at once, or each `'idle'` fires after the event that starts the page.
-- The parts of `@brumate/ui` then use the trigger that the page needs, and their tests still pass.
-
-Cost: a day.
 
 ### Tests against the current build
 
@@ -1319,4 +1306,4 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
 
-Ordered updates come before other work on the core. The tests show the cases. The table of the fields with scope IDs and the tests against the current build come first of all, since they are small and keep the next changes of the core safe. Fields typed before the code loads follow, and the triggers in tests and the keys of collections go with the work on `@brumate/ui`.
+Ordered updates come before other work on the core. The tests show the cases. The table of the fields with scope IDs and the tests against the current build come first of all, since they are small and keep the next changes of the core safe. Fields typed before the code loads follow, and the keys of collections go with the work on `@brumate/ui`.

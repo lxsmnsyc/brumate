@@ -121,7 +121,7 @@
   $client(() => () => {
     cancelLongPress(triggerId);
     previews.forget(overlayId);
-  }, 'load');
+  }, 'idle');
 
   // While it is open, the page decides when it closes.
   $effect(() => {

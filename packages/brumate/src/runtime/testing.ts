@@ -2,6 +2,15 @@
 // a page does: the HTML and the state first, then the loader, which loads
 // client code when an event fires. `visit` does the same for a route, with
 // the requests of the page answered by the routes of the app.
+//
+// The triggers of `$client`, `#client` and `#defer` fire as follows:
+// - 'load' fires when the loader starts.
+// - 'visible' fires when the IntersectionObserver that `mount` and `visit`
+//   install reports the element, which it does at once unless the test keeps
+//   the element out of view.
+// - 'idle' fires as in a browser that has no requestIdleCallback, which
+//   includes happy-dom: on a timer after the page starts. The loader decides
+//   this, so a test needs no action for it.
 
 import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
@@ -32,6 +41,11 @@ export interface Actions {
   /** Submits a form, as its submit button does. */
   submit: (selector: string) => void;
   /**
+   * Brings the elements that match a selector into view, so what waits for
+   * them with the 'visible' trigger runs. See `offscreen`.
+   */
+  reveal: (selector: string) => void;
+  /**
    * Retries an assertion until it passes. The first event of a test loads
    * client code, so its effects arrive a moment later.
    */
@@ -43,6 +57,135 @@ export interface Mounted extends Actions {
   container: HTMLElement;
   /** Stops the loader and removes the component. */
   unmount: () => void;
+}
+
+/** The elements that the test keeps out of view, and the observers that wait for them. */
+interface View {
+  /** The selectors of `offscreen`, one entry for each mount or visit. */
+  hidden: Set<{ selector: string }>;
+  /** The elements that the test brought into view. */
+  revealed: WeakSet<Element>;
+  /** Reports an element to the observers that wait for it, as visible. */
+  waiting: Set<{ element: Element; report: () => void }>;
+  users: number;
+  original: typeof IntersectionObserver | undefined;
+}
+
+let view: View | undefined;
+
+/** Reports an element that waits out of view, as visible. */
+function reveal(element: Element): void {
+  view?.revealed.add(element);
+  for (const entry of view?.waiting ?? []) {
+    if (entry.element === element) {
+      view!.waiting.delete(entry);
+      entry.report();
+    }
+  }
+}
+
+/**
+ * Replaces the IntersectionObserver of the environment with one that reports
+ * each element it observes as visible, except the ones that match a selector
+ * of `offscreen`. happy-dom has an observer that never reports. Returns what
+ * puts the observer of the environment back.
+ */
+function watchView(offscreen: string | undefined): () => void {
+  if (!view) {
+    const current: View = {
+      hidden: new Set(),
+      revealed: new WeakSet(),
+      waiting: new Set(),
+      users: 0,
+      original: globalThis.IntersectionObserver,
+    };
+    class Reporting {
+      readonly #callback: IntersectionObserverCallback;
+      readonly #entries = new Set<{ element: Element; report: () => void }>();
+      readonly root = null;
+      readonly rootMargin = '0px';
+      readonly thresholds = [0];
+      constructor(callback: IntersectionObserverCallback) {
+        this.#callback = callback;
+      }
+      observe(element: Element): void {
+        const report = (): void => {
+          const rect = element.getBoundingClientRect();
+          this.#callback(
+            [
+              {
+                target: element,
+                isIntersecting: true,
+                intersectionRatio: 1,
+                boundingClientRect: rect,
+                intersectionRect: rect,
+                rootBounds: null,
+                time: performance.now(),
+              },
+            ],
+            this as unknown as IntersectionObserver,
+          );
+        };
+        const entry = { element, report };
+        this.#entries.add(entry);
+        if (
+          !current.revealed.has(element) &&
+          [...current.hidden].some(({ selector }) => element.matches(selector))
+        ) {
+          current.waiting.add(entry);
+        } else {
+          queueMicrotask(() => {
+            if (this.#entries.has(entry)) {
+              report();
+            }
+          });
+        }
+      }
+      unobserve(element: Element): void {
+        for (const entry of this.#entries) {
+          if (entry.element === element) {
+            this.#entries.delete(entry);
+            current.waiting.delete(entry);
+          }
+        }
+      }
+      disconnect(): void {
+        for (const entry of this.#entries) {
+          current.waiting.delete(entry);
+        }
+        this.#entries.clear();
+      }
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+    globalThis.IntersectionObserver = Reporting as unknown as typeof IntersectionObserver;
+    view = current;
+  }
+  const current = view;
+  current.users++;
+  // One entry for each user, so two mounts that keep out the same selector do not clear each other.
+  const hidden = { selector: offscreen ?? '' };
+  if (offscreen !== undefined) {
+    current.hidden.add(hidden);
+  }
+  let released = false;
+  return () => {
+    if (released) {
+      return;
+    }
+    released = true;
+    current.hidden.delete(hidden);
+    if (--current.users === 0) {
+      if (current.original) {
+        globalThis.IntersectionObserver = current.original;
+      } else {
+        delete (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver;
+      }
+      current.waiting.clear();
+      view = undefined;
+    }
+  };
 }
 
 /** The actions on the elements inside `root`. */
@@ -65,6 +208,11 @@ function actions(root: ParentNode): Actions {
     },
     submit: (selector) => {
       get(selector).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    },
+    reveal: (selector) => {
+      for (const element of root.querySelectorAll(selector)) {
+        reveal(element);
+      }
     },
     waitFor: async (assertion, timeout = 2000) => {
       const until = Date.now() + timeout;
@@ -120,8 +268,17 @@ function append(container: HTMLElement, html: string): void {
 export type Mount = <P>(
   component: Component<P>,
   props: P,
-  renderOptions?: RenderOptions,
+  renderOptions?: MountRenderOptions,
 ) => Promise<Mounted>;
+
+/** The options of `render`, and the elements to keep out of view. */
+export interface MountRenderOptions extends RenderOptions {
+  /**
+   * A selector of elements that stay out of view, for a test of what waits
+   * for them with the 'visible' trigger. `reveal` brings them into view.
+   */
+  offscreen?: string;
+}
 
 /** Mounts so far, so each starts its scope IDs at a number of its own. */
 let mounts = 0;
@@ -138,11 +295,12 @@ export function createMount(options: TestingOptions): Mount {
   return async function mount<P>(
     component: Component<P>,
     props: P,
-    renderOptions: RenderOptions = {},
+    { offscreen, ...renderOptions }: MountRenderOptions = {},
   ): Promise<Mounted> {
     // IDs of their own, so two mounts in a file do not share scopes or state references.
     const base = renderOptions.base ?? ++mounts * 1_000_000;
     const { html, state, pending } = await render(component, props, { ...renderOptions, base });
+    const unwatch = watchView(offscreen);
     const container = document.createElement('div');
     container.innerHTML = html + state;
     document.body.append(container);
@@ -160,6 +318,7 @@ export function createMount(options: TestingOptions): Mount {
         return;
       }
       mounted = false;
+      unwatch();
       if (--loader.users === 0) {
         loader.stop();
         loader = undefined;
@@ -297,6 +456,8 @@ export interface VisitOptions {
   cookies?: Record<string, string>;
   /** Headers of every request, such as `accept-language`. */
   headers?: HeadersInit;
+  /** A selector of elements that stay out of view until `reveal` brings them in. */
+  offscreen?: string;
 }
 
 export interface Visited extends Actions {
@@ -466,6 +627,7 @@ export function createVisit(options: VisitorOptions): Visit {
     document.querySelectorAll('script').forEach(runOnce);
     scripts.observe(document, { childList: true, subtree: true });
 
+    const unwatch = watchView(visitOptions.offscreen);
     const stop = start({ load: options.load, rpc: prefix, navigate: true });
     let rest = html.slice(cut);
     let open = true;
@@ -503,6 +665,7 @@ export function createVisit(options: VisitorOptions): Visit {
         open = false;
         visited = undefined;
         stop();
+        unwatch();
         scripts.disconnect();
         reader.cancel().catch(() => {});
         if (globalThis.fetch === answer) {

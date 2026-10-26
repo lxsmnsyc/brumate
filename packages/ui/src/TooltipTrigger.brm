@@ -70,7 +70,7 @@
 
   // A trigger that leaves the page, such as in an #if or on a route change, stops its timers, so
   // they open nothing later and the next tooltip still waits for its delay.
-  $client(() => () => tooltips.forget(tooltipId), 'load');
+  $client(() => () => tooltips.forget(tooltipId), 'idle');
 
   function hoverStarted(event: HoverEvent) {
     plain()?.onHoverStart?.(event);

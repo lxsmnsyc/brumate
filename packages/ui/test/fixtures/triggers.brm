@@ -1,0 +1,20 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let seen = $signal('waiting');
+  let idled = $signal('waiting');
+  let paragraph = $signal<HTMLElement>();
+
+  $client(() => {
+    seen = paragraph ? 'visible' : 'no element';
+  });
+  $client(() => {
+    idled = 'idle';
+  }, 'idle');
+</script>
+
+<p class="seen" ref=paragraph>{seen}</p>
+<p class="idled">{idled}</p>
+#client {
+  <p class="block">block</p>
+}

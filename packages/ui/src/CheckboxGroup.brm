@@ -62,7 +62,9 @@
     message = text;
   }
 
-  // The code of the group runs, so it can make the boxes optional when one is checked.
+  // The code of the group runs, so it can make the boxes optional when one is checked. It stays
+  // on 'load', since a form can submit before the page is idle, and a box that is required would
+  // block it.
   let running = $signal(false);
   $client(() => {
     running = true;

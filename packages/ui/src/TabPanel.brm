@@ -33,7 +33,7 @@
     const element = panel;
     hasTabbable = Boolean(element && tabbables(element).length > 0);
   }
-  $client(() => measure(), 'load');
+  $client(() => measure(), 'visible');
   $effect(() => {
     void selected;
     queueMicrotask(() => $untrack(measure()));
