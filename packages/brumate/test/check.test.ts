@@ -13,17 +13,27 @@ describe('toTypeScript', () => {
       "<script>\n  import { $props } from 'brumate/signals';\n  import Badge from './Badge.brm';\n  const { label } = $props<{ label: string }>();\n</script>\n\n<Badge label=label />",
     );
     expect(code).toMatch(
-      /^export default \$\$Component;\nasync function \$\$Component\(\$\$props: \{ label: string \}/,
+      /^export default \$\$Component;\nasync function \$\$Component\(\$\$props: \(\{ label: string \}\)/,
     );
     expect(code).toContain('const { label } = $props<{ label: string }>();');
-    expect(code).toContain('$$component(Badge, { label: (label), });');
+    // A direct call checks the props as a fresh object, so a prop that Badge does not take is an error.
+    expect(code).toContain('Badge({ label: (label), });');
+  });
+
+  it('types the props from every call of $props', () => {
+    const code = body(
+      "<script>\n  import { $props } from 'brumate/signals';\n  const { label } = $props<{ label: string }>();\n  let { open } = $props<{ open?: Bindable<boolean> }>();\n</script>",
+    );
+    expect(code).toMatch(
+      /\(\$\$props: \(\{ label: string \}\) & \(\{ open\?: Bindable<boolean> \}\),/,
+    );
   });
 
   it('names a prop of a shorthand by the name after its brace', () => {
     const code = body(
       "<script>\n  import { $props } from 'brumate/signals';\n  import Badge from './Badge.brm';\n  const { label, onPick } = $props<{ label: string; onPick: () => void }>();\n</script>\n\n<Badge {label} {onPick} />",
     );
-    expect(code).toContain('$$component(Badge, { label: (label), onPick: (onPick), });');
+    expect(code).toContain('Badge({ label: (label), onPick: (onPick), });');
   });
 
   it('names the component function so that the file can import its component name', () => {

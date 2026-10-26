@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  const { label } = $props<{ label: string }>();
+  let { open = false } = $props<{ open?: Bindable<boolean> }>();
+</script>
+
+<button onClick=(() => (open = !open))>{label}</button>

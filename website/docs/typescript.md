@@ -40,7 +40,7 @@ In another editor, add the plugin to `tsconfig.json`, and use the TypeScript ver
 
 - The scripts, as TypeScript.
 - Every expression in the markup: attributes, inserts, block headers and style variables. Each one sees the names around it, such as the item of a `#for`.
-- The props of components. A prop with the wrong type is reported at the prop, and a missing prop at the tag. The props type is the type argument of `$props<T>()`.
+- The props of components. A prop with the wrong type, or one that the component does not take, is reported at the prop, and a missing prop at the tag. The props type is the type argument of `$props<T>()`, or of every call of it together. A component that passes other attributes on takes them with an index signature, such as `[attribute: string]: unknown`.
 - Event handlers on elements. The event has the type of its name, such as `MouseEvent` for `onClick`, and `event.currentTarget` is the element, such as `HTMLInputElement` for `<input>`.
 - The items and indexes of `#for`, the `error` and `reset` of `#catch`, and the parameters of `#template`.
 - Links made with `href` from `brumate/routes`, against the route files. See [Routing](./routing.md).

@@ -55,7 +55,8 @@
     children?: unknown;
     [attribute: string]: unknown;
   }>();
-  let { isOpen } = $props<{ isOpen?: Bindable<boolean> }>();
+  // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
+  let { isOpen } = $props<{ isOpen?: Bindable<boolean | undefined> }>();
 
   const trigger = $getContext(OverlayTriggerContext);
   const parentLayer = $getContext(LayerContext);

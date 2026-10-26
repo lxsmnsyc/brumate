@@ -1,0 +1,10 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Badge from './Badge.brm';
+  import Split from './Split.brm';
+
+  let open = $signal(false);
+</script>
+
+<Badge label="a" count=(1) tone="red" />
+<Split label="b" open=$bind(open) />
