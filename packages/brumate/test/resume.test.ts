@@ -3900,6 +3900,39 @@ describe('scopes in groups', () => {
     expect(await clientRecords(Object.keys(expected))).toEqual(expected);
   });
 
+  it('moves the scope of children, and of the holder of passed children', async () => {
+    const server = await import(file('blockPassed.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + moved(state));
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    await (
+      await import('../src/runtime/client-routes.ts')
+    ).ready;
+    client.init({
+      load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    // Children render with the scope that wrote them, at its new ID.
+    const children = [...client.scopes.values()].flatMap((scope) =>
+      scope.s.filter(
+        (value): value is { from: unknown } =>
+          typeof value === 'object' && value !== null && 'ref' in value,
+      ),
+    );
+    expect(children.length).toBeGreaterThan(0);
+    for (const value of children) {
+      expect(value.from).toBeDefined();
+    }
+    // The component that passes its children on knows where they are, at its new ID too.
+    const holders = [...client.scopes.values()].filter((scope) => scope.f !== undefined);
+    expect(holders.length).toBeGreaterThan(0);
+    for (const scope of holders) {
+      expect(client.scopes.get(scope.f!.id)).toBe(scope.f);
+    }
+    client.dispose();
+  });
+
   it('moves the IDs of scopes in groups', async () => {
     const expected = await serverRecords('packed', { initial: rows });
     const server = await import(file('packed.brm.ts'));

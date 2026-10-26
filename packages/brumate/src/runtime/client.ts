@@ -60,7 +60,13 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference, SlotReference, unbind } from './shared.ts';
+export {
+  ChildrenReference,
+  ElementReference,
+  FunctionReference,
+  SlotReference,
+  unbind,
+} from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
