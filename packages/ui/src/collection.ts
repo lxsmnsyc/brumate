@@ -117,10 +117,16 @@ export function moveFrom(
       (item) => from.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
     );
     if (movement === 'next') {
-      return after === -1 ? (wrap ? items[0] : items.at(-1)) : items[after];
+      if (after !== -1) {
+        return items[after];
+      }
+      return wrap ? items[0] : items.at(-1);
     }
     at = after === -1 ? items.length : after;
-    return at === 0 ? (wrap ? items.at(-1) : items[0]) : items[at - 1];
+    if (at !== 0) {
+      return items[at - 1];
+    }
+    return wrap ? items.at(-1) : items[0];
   }
   switch (movement) {
     case 'first':

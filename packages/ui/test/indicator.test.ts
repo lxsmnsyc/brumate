@@ -31,8 +31,8 @@ it('renders only in the selected item, and moves with the selection', async () =
 });
 
 it('animates from the last indicator with the duration of its CSS, and not without one', async () => {
-  const animate = vi.fn();
-  Element.prototype.animate = animate as unknown as Element['animate'];
+  const animate = vi.fn<Element['animate']>();
+  Element.prototype.animate = animate;
   const page = await indicators();
   // The indicators on the page start where they are.
   await new Promise((done) => setTimeout(done, 50));
@@ -56,8 +56,8 @@ it('animates from the last indicator with the duration of its CSS, and not witho
 });
 
 it('moves from where the last indicator is now, after the layout changed', async () => {
-  const animate = vi.fn();
-  Element.prototype.animate = animate as unknown as Element['animate'];
+  const animate = vi.fn<Element['animate']>();
+  Element.prototype.animate = animate;
   // happy-dom lays nothing out, so each tab has a box at its own x.
   const left = { list: 0, grid: 50 };
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
