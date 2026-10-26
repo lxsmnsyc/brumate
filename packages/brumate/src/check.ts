@@ -50,7 +50,6 @@ export interface CheckOutput {
  */
 const HELPERS = `/// <reference types="brumate/types" />
 type $$Component<P> = (props: P, ...rest: any[]) => unknown;
-declare function $$component<P>(component: $$Component<P>, props: P): void;
 declare function $$dynamic(tag: string | $$Component<any>, props: Record<string, unknown>): void;
 type $$Event<K, M> = K extends keyof M ? M[K] : Event;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
@@ -115,11 +114,14 @@ function isTopLevel(statement: oxc.Node): boolean {
   );
 }
 
-/** Finds the type argument of `$props<T>()`, as a range of the file. */
-function propsType(program: oxc.Program | undefined): Range | undefined {
-  let found: Range | undefined;
+/**
+ * Finds the type arguments of the calls of `$props<T>()`, as ranges of the file. A component can
+ * call it more than once, such as once with `const` and once with `let` for its bindable props.
+ */
+function propsTypes(program: oxc.Program | undefined): Range[] {
+  const found: Range[] = [];
   const visit = (node: unknown): void => {
-    if (found || typeof node !== 'object' || node === null) {
+    if (typeof node !== 'object' || node === null) {
       return;
     }
     const value = node as oxc.Node & {
@@ -132,7 +134,7 @@ function propsType(program: oxc.Program | undefined): Range | undefined {
       value.callee.name === '$props' &&
       value.typeArguments?.params[0]
     ) {
-      found = value.typeArguments.params[0];
+      found.push(value.typeArguments.params[0]);
       return;
     }
     for (const child of Object.values(value)) {
@@ -216,15 +218,20 @@ class Generator {
       out.copy(statement);
       out.text('\n');
     }
-    const type = propsType(file.instanceScript?.program);
+    const types = propsTypes(file.instanceScript?.program);
     // The function has a name of its own, so the component name of the file can be imported.
     out.text(`\nexport default ${COMPONENT};\nasync function ${COMPONENT}`);
     if (file.generics) {
       out.text(`<${file.generics}>`);
     }
     out.text('($$props: ');
-    if (type) {
-      out.copy(type);
+    if (types.length > 0) {
+      // The props of the calls together.
+      types.forEach((type, index) => {
+        out.text(index > 0 ? ' & (' : '(');
+        out.copy(type);
+        out.text(')');
+      });
     } else {
       out.text('Record<string, any>');
     }
@@ -438,9 +445,10 @@ class Generator {
   private component(node: ComponentNode): void {
     const { out } = this;
     const nameStart = node.start + 1;
-    out.text('$$component(');
+    // A direct call checks the props as a fresh object, so an unknown prop is reported, and the
+    // type parameters of a generic component are inferred from them.
     out.copy({ start: nameStart, end: nameStart + node.name.length });
-    out.text(', ');
+    out.text('(');
     // A missing prop is reported on the object, so its brace stands for the `<` of the tag.
     out.stand({ start: node.start, end: node.start + 1 }, '{');
     this.props(node.attributes, node.children.length > 0);
