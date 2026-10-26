@@ -1,7 +1,7 @@
 ---
 id: tests-current-build
 title: Tests compile with the current compiler
-status: active
+status: done
 priority: must
 type: chore
 outline: false
@@ -10,9 +10,9 @@ target:
 from:
 size: S
 spike: false
-verify: pnpm --filter @brumate/ui exec vitest run test/button.test.ts
+verify: mv packages/brumate/dist packages/brumate/dist.away; pnpm --filter @brumate/ui exec vitest run; s=$?; mv packages/brumate/dist.away packages/brumate/dist; exit $s
 exclusive: []
-fulfilled_by: 
+fulfilled_by: "#248"
 gate: false
 added: 
 owns:
@@ -36,8 +36,8 @@ The tests of @brumate/ui compile components with brumate from its source, not fr
 
 ## Acceptance
 
-- [ ] With packages/brumate/dist deleted, the ui tests still pass.
-- [ ] `pnpm test` passes.
+- [x] With packages/brumate/dist deleted, the ui tests still pass.
+- [x] `pnpm test` passes.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
