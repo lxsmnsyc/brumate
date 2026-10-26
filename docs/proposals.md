@@ -32,6 +32,9 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
 | [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
 | [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
+| [Internationalization](#internationalization)                         | Library  | High   | Large  |
+| [Images](#images)                                                     | Build    | Medium | Medium |
+| [State in the URL](#state-in-the-url)                                 | Routing  | High   | Small  |
 | [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
 
 ## Syntax
@@ -367,6 +370,36 @@ The benchmarks measure renders and loads, but an app cannot see them.
 Cost: about 1 week.
 
 ## Routing
+
+### State in the URL
+
+A filter, a tab or a page of results belongs in the URL, so it survives a reload and can be shared. `$route().search` reads the query string, but it cannot write it, and a change of the query string asks the server for the page again (`navigation.md`). Each change of a filter costs a request.
+
+`$searchParam(name, options)` from `brumate/signals` gives a signal bound to one parameter of the query string:
+
+```brm
+<script>
+  import { $searchParam } from 'brumate/signals';
+
+  let query = $searchParam('q', { default: '' });
+  let page = $searchParam('page', { default: 1, parse: Number });
+</script>
+
+<input type="search" value=$bind(query)>
+<p>Page {page}</p>
+```
+
+- On the server it reads the URL of the request, so the first render shows the right state, with no flash.
+- In the browser a write updates the URL with `history.replaceState`, or `pushState` with `{ history: 'push' }`, and does not ask the server. The updates run in the browser, as for any signal.
+- Back and forward write the signal from the URL.
+- `parse` and `serialize` convert other types than strings. A value equal to `default` leaves the parameter out of the URL.
+- `{ server: true }` keeps the request: a write navigates, so the server renders the page with the new value, as a change of the query string does now. It suits a parameter that the server needs, such as a page of results that a `#defer` body reads.
+- Two writes in one handler make one change of the URL, with the batching of ordered updates.
+- `$route().search` reads the parameters that `$searchParam` writes.
+
+It is like `nuqs` in React or the shallow routing of SvelteKit, with no hydration to read the URL first.
+
+Cost: a few days.
 
 ## Server
 
@@ -915,6 +948,136 @@ Not ported:
 Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 months. Phases 4 to 7 can follow what users ask for.
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
+
+### Internationalization
+
+Brumate has nothing to translate the text of a page. `I18nProvider` of `@brumate/ui` sets the locale and the direction of the parts, not their text. Resuming makes a design possible that ships almost no messages: markup that the browser never renders again stays on the server with its text.
+
+#### Messages
+
+Messages live in a catalog for each locale, such as `messages/en.json` and `messages/fr.json`, with ICU message syntax:
+
+```json
+{
+  "greeting": "Hello, {name}!",
+  "cart": "{count, plural, =0 {Your cart is empty} one {# item} other {# items}}",
+  "docs": "Read the <link>docs</link>."
+}
+```
+
+The Vite plugin compiles each catalog into functions, as Paraglide does, and a component imports them:
+
+```brm
+<script>
+  import { m } from 'brumate/messages';
+  import { $props } from 'brumate/signals';
+
+  const { name, count } = $props<{ name: string; count: number }>();
+</script>
+
+<h1>{m.greeting({ name })}</h1>
+<p>{m.cart({ count })}</p>
+```
+
+- `m.greeting` is a function with the types of its parameters, from a declaration file that the plugin writes. A missing message or a missing parameter is a type error.
+- Plurals and selects use `Intl.PluralRules`, with the same code on the server and in the browser.
+- A message missing in a locale falls back along a chain, such as `fr-CA`, `fr`, `en`. The dev server warns about it.
+
+#### What ships
+
+- Markup that the browser never renders again calls its messages on the server. Its text is in the HTML, and neither the message nor the catalog reaches the browser.
+- Markup that the browser renders or updates, a handler or a `$client` callback, calls `m.greeting` in the browser. Only those messages ship, since each is an export of its own, and the bundler leaves the others out.
+- A message that ships holds the text of each locale, as in Paraglide 2, or a module for each locale loads with the code of the page, as the locale of `<html lang>` says. The choice is for the spike: one module for all is simpler, one for each locale is smaller when there are many.
+- A translated string that a memo holds is in the page state like any value. The catalog is not.
+
+#### The locale
+
+- The middleware picks the locale for each request: from a segment of the route, such as `/fr/docs`, from a cookie, or from `Accept-Language`, with a strategy that the app sets.
+- `$locale()` from `brumate/signals` reads it, as `$route()` reads the route, on the server and in the browser.
+- The server writes `<html lang dir>`, and `I18nProvider` of `@brumate/ui` reads the same locale.
+- A change of locale is a navigation, such as to `/fr/...` or after a cookie changes, so the server renders the page with its text. Text is on the server, so nothing else is needed.
+- With routes by locale, `#head` gets the `hreflang` links, and prerendering writes each page for each locale.
+
+#### Formatting
+
+`brumate/i18n` gives functions over `Intl`: numbers, currency, dates, relative times and lists, which read the locale. The number parsing of NumberField in `@brumate/ui` moves into it.
+
+#### To decide
+
+- Markup in messages, such as `<link>` above. A message could take a `#template` for each tag, which gets the text inside the tag. Or the message returns its parts, and markup renders them.
+- How a `.brm.ts` module function reads messages and the locale.
+- Whether the catalogs follow the format of inlang, so its editors and machine translation work with them.
+
+Cost: about two weeks: the catalogs and their compile, the locale in middleware and in the core, formatting, and the docs. Then a spike for the open questions.
+
+### Images
+
+Brumate leaves images to the app. A Vite plugin and an `Image` part, after `@solidjs/image`, can make them responsive at build time. Resuming means that most of it needs no code in the browser.
+
+#### Importing an image
+
+```brm
+<script>
+  import { Image } from 'brumate/image';
+  import hero from './hero.jpg?image';
+</script>
+
+<Image {...hero} alt="The harbor at dawn" sizes="(max-width: 800px) 100vw, 800px" />
+```
+
+The plugin handles imports that end in `?image`:
+
+- It reads the file with sharp and writes a file for each output format and each width, such as `webp` and `jpeg` at 480, 800 and 1200 pixels. Widths larger than the source are dropped, so an image is never enlarged.
+- Formats are offered smallest first: AVIF, WebP, then JPEG, or PNG for an image with transparency. The last format is the fallback of the `<img>`.
+- The import gives the `src` with the intrinsic width and height, the variants, and a preview.
+- Photos are turned upright with their EXIF orientation. Animated GIFs stay animated as WebP.
+- Each file is named by a hash of the content of the source, the format, the width and the quality. A build reuses a file from the cache when nothing changed, also on a fresh checkout in CI.
+- In a build the files are assets of the bundle, so `base` and the manifest apply. The dev server writes them to a cache directory and serves them from there.
+- `?image-url`, with `width` and `format`, gives the URL of one file, for an `og:image`, a CSS background or a canvas.
+- `image:` followed by any string goes through `transformURL` of the options, which returns the source and variants of a CDN.
+
+#### The `Image` part
+
+It renders a `<picture>` with a `<source>` for each format and an `<img>`, inside a box with the aspect ratio of the image, so the page does not shift while it loads.
+
+- A lazy image uses the browser: `loading="lazy"` and `decoding="async"`. `@solidjs/image` needs an IntersectionObserver and JavaScript for this. Here the image needs no code, and works without scripts with no `<noscript>` copy.
+- `eager` loads the image at once, with `fetchpriority="high"`, and the server adds a `<link rel="preload">` to `#head` with `imagesrcset` and `imagesizes`. One image of a page, the largest one above the fold, should be eager.
+- `sizes` passes on to each `<source>`. It defaults to `100vw`, which is right only for a full-width image, so the docs say to set it.
+- `crossOrigin`, `fetchPriority`, `decoding` and the other attributes of `<img>` pass on.
+- Each element has `data-image` with its role (`box`, `picture`, `img`, `preview`), and `data-loaded` once the image loads, for styles, as the parts of `@brumate/ui` do.
+
+#### Previews
+
+The default preview is an image about 20 pixels wide, inlined as a data URL, and the main color of the image. The box paints them behind the image, scaled up, which blurs them. That needs no code: the image covers the preview once it loads.
+
+- A fade-in on load is an `onLoad` handler. The loader listens to `load` in the capture phase, since it does not bubble, so its code loads only when an image loads, and a page without the fade loads none.
+- BlurHash and ThumbHash previews need code to decode in the browser. A `$client(…, 'visible')` callback decodes one when the box comes into view, and the server paints the average color until then. Only an app that turns them on ships the decoder.
+- With `prefers-reduced-motion`, there is no fade.
+
+#### Errors
+
+- `onError` runs when the image fails.
+- An `error` prop, a `#template`, renders in place of the image, over the preview, in the browser.
+
+#### Options
+
+| Option        | Default                        | What it does                                     |
+| ------------- | ------------------------------ | ------------------------------------------------ |
+| `sizes`       | required                       | The widths to write                              |
+| `input`       | `png`, `jpeg`, `webp`, `gif`   | The formats of files that the plugin handles     |
+| `output`      | `webp`, `jpeg`                 | The formats to write                             |
+| `quality`     | 50 for AVIF, 80 for the others | The quality of sharp, for all or for each format |
+| `placeholder` | an image of 20 pixels          | `false`, a size, `blurhash` or `thumbhash`       |
+| `remote`      | none                           | `transformURL` for `image:` imports              |
+| `concurrency` | the number of cores            | The most images that sharp handles at once       |
+
+#### To decide
+
+- Whether the plugin is part of `brumate/vite` or a package of its own, since sharp is a large dependency. A package of its own, `@brumate/image`, keeps it out of apps that do not use it.
+- Whether `Image` is a part of `@brumate/ui` or of the image package.
+- Art direction, with a `<source media>` for each crop.
+
+Cost: about a week, with most of the plugin taken from `@solidjs/image`.
 
 ### Markdown with components
 
