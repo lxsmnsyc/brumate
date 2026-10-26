@@ -1,0 +1,123 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { swatchBackground, tryParseColor, formatColor } from './color.ts';
+  import { ColorThumbContext } from './color-thumb.ts';
+
+  /**
+   * The thumb of a ColorSlider, a ColorArea or a ColorWheel, as ColorThumb of React Aria
+   * Components. It works only inside one of them, which gives it its state in
+   * `ColorThumbContext`, see `color-thumb.ts`.
+   *
+   * - It is placed at the position that its parent gives, and has `--color` and a background of
+   *   the color over a checkerboard, so its alpha shows.
+   * - It holds the hidden range inputs that its parent gives, one or two, for screen readers and
+   *   keys, and for a form with `name`, also before the code loads.
+   * - A drag takes the thumb from where the pointer was, so it does not jump to the pointer.
+   * - It shows `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const thumb = $getContext(ColorThumbContext);
+
+  function color(css: string | undefined): string {
+    const parsed = css ? tryParseColor(css) : undefined;
+    return parsed ? formatColor(parsed) : 'transparent';
+  }
+
+  function input(event: Event, index: number) {
+    if (!thumb || thumb.isDisabled) {
+      return;
+    }
+    thumb.onInputChange(index, Number((event.currentTarget as HTMLInputElement).value));
+  }
+
+  // PageUp and PageDown move by a page, which the range input does not know.
+  function keyDown(event: KeyboardEvent, index: number) {
+    if (!thumb || thumb.isDisabled || (event.key !== 'PageUp' && event.key !== 'PageDown')) {
+      return;
+    }
+    thumb.onInputPage(index, event.key === 'PageUp' ? 1 : -1);
+    thumb.onChangeEnd();
+  }
+
+  function pressed(event: PointerEvent) {
+    if (thumb && !thumb.isDisabled && event.button === 0) {
+      thumb.onPress(event);
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    thumb?.onFocusChange(true, (event.target as Element).matches?.(':focus-visible') ?? false);
+  }
+
+  function focusOut() {
+    thumb?.onFocusChange(false, false);
+  }
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  class="thumb"
+  data-color-thumb
+  data-dragging=(thumb?.isDragging || undefined)
+  data-focused=(thumb?.isFocused || undefined)
+  data-focus-visible=(thumb?.isFocusVisible || undefined)
+  data-disabled=(thumb?.isDisabled || undefined)
+  onPointerDown=(prevent(pressed))
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...rest}
+>
+  {children}
+  #for (item, index of (thumb?.inputs ?? []) by item.id) {
+    <input
+      id=(item.id)
+      type="range"
+      name=(item.name)
+      min=(item.min)
+      max=(item.max)
+      step=(item.step)
+      value=(String(item.value))
+      disabled=(thumb?.isDisabled || undefined)
+      dir=(thumb?.direction)
+      aria-label=(item.label)
+      aria-labelledby=(item.labelledBy)
+      aria-orientation=(item.orientation ?? 'horizontal')
+      aria-valuetext=(item.valueText)
+      class="input"
+      onInput=((event: Event) => input(event, index))
+      onChange=(() => thumb?.onChangeEnd())
+      onKeyDown=(prevent((event: KeyboardEvent) => keyDown(event, index), 'PageUp', 'PageDown'))
+    >
+  }
+</div>
+
+<style>
+  /* The thumb is centered on its position, and a drag on it does not scroll the page. */
+  .thumb {
+    --color: ${color(thumb?.color)};
+    --left: ${thumb?.left ?? 0}%;
+    --top: ${thumb?.top ?? 0}%;
+    position: absolute;
+    left: var(--left);
+    top: var(--top);
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    background: ${swatchBackground(color(thumb?.color))};
+  }
+
+  /* The range input is out of sight, and a screen reader and the keys still reach it. */
+  .input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+  }
+</style>

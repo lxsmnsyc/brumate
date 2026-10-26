@@ -45,7 +45,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Colors',
-    pages: ['color-swatch'],
+    pages: ['color-swatch', 'color-slider'],
   },
   {
     title: 'Dates',
@@ -221,6 +221,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A sample of a color, named for screen readers.',
     href: 'color-swatch',
     demo: 'ColorSwatchDemo',
+  },
+  {
+    title: 'ColorSlider',
+    summary: 'A slider for one channel of a color.',
+    href: 'color-slider',
+    demo: 'ColorSliderDemo',
   },
   {
     title: 'Calendar',

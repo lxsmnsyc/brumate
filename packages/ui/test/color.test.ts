@@ -1,9 +1,11 @@
 // The tests of the color model follow the tests of Color in React Stately.
 import { describe, expect, it } from 'vitest';
 import {
+  channelGradient,
   channelRange,
   channelValue,
   colorName,
+  displayColor,
   formatChannelValue,
   formatColor,
   formatLike,
@@ -135,5 +137,42 @@ describe('colorName', () => {
     expect(colorName(parseColor('#ffffff'))).toBe('white');
     expect(colorName(parseColor('rgba(0, 128, 0, 0.25)'))).toBe('dark green, 75% transparent');
     expect(colorName(parseColor('rgba(0, 200, 0, 0.25)'))).toBe('green, 75% transparent');
+  });
+});
+
+describe('displayColor', () => {
+  it('shows a hue at full color, and a channel without its alpha', () => {
+    expect(displayColor(parseColor('#336699'), 'hue')).toEqual({
+      space: 'hsl',
+      values: [210, 100, 50],
+      alpha: 1,
+    });
+    expect(displayColor(parseColor('rgba(10, 20, 30, 0.5)'), 'red').alpha).toBe(1);
+    expect(displayColor(parseColor('rgba(10, 20, 30, 0.5)'), 'alpha').alpha).toBe(0.5);
+  });
+});
+
+describe('channelGradient', () => {
+  it('goes through the hues of the wheel', () => {
+    const gradient = channelGradient(parseColor('#336699'), 'hue', 'right');
+    expect(gradient).toBe(
+      'linear-gradient(to right, hsla(0, 100%, 50%, 1), hsla(60, 100%, 50%, 1), hsla(120, 100%, 50%, 1), hsla(180, 100%, 50%, 1), hsla(240, 100%, 50%, 1), hsla(300, 100%, 50%, 1), hsla(360, 100%, 50%, 1))',
+    );
+  });
+
+  it('goes from the lowest to the highest value, and through the middle for lightness', () => {
+    expect(channelGradient(parseColor('rgb(10, 20, 30)'), 'red', 'top')).toBe(
+      'linear-gradient(to top, rgba(0, 20, 30, 1), rgba(255, 20, 30, 1))',
+    );
+    expect(channelGradient(parseColor('hsl(120, 100%, 40%)'), 'lightness', 'left')).toBe(
+      'linear-gradient(to left, hsla(120, 100%, 0%, 1), hsla(120, 100%, 50%, 1), hsla(120, 100%, 100%, 1))',
+    );
+  });
+
+  it('shows alpha over a checkerboard', () => {
+    const gradient = channelGradient(parseColor('rgb(10, 20, 30)'), 'alpha', 'right');
+    expect(gradient).toMatch(
+      /^linear-gradient\(to right, rgba\(10, 20, 30, 0\), rgba\(10, 20, 30, 1\)\), repeating-conic-gradient/,
+    );
   });
 });

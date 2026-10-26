@@ -1,0 +1,243 @@
+<script>
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import type { ColorChannel, ColorSpace } from './color.ts';
+  import {
+    channelGradient,
+    channelName,
+    channelRange,
+    channelValue,
+    colorName,
+    displayColor,
+    formatChannelValue,
+    formatColor,
+    formatLike,
+    parseColor,
+    toSpace,
+    tryParseColor,
+    withChannelValue,
+  } from './color.ts';
+  import { ColorThumbContext } from './color-thumb.ts';
+  import { LabelContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+  import { clamp, snapToStep } from './numbers.ts';
+  import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
+
+  /**
+   * A slider for one channel of a color, as ColorSlider of React Aria Components. It holds a Label,
+   * a SliderOutput, and a SliderTrack with a ColorThumb. The Label, the SliderOutput and the
+   * SliderTrack are those of Slider, which this part gives the state of a slider.
+   *
+   * - `channel` is the channel that it adjusts: hue, saturation, lightness, brightness, red,
+   *   green, blue or alpha. `colorSpace` is the space that it reads the channel in, such as `hsl`
+   *   for hue, which a color of another space moves to.
+   * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
+   *   the color once a drag or a key ends. The color keeps the format that it was given.
+   * - The range, the step and the page of PageUp and PageDown are those of the channel.
+   * - The element has `--track-background`, the gradient of the channel, for the style of the
+   *   SliderTrack: `background: var(--track-background)`. The ColorThumb has `--color`.
+   * - It is a group that the Label names. Without a Label, the name of the channel names it.
+   * - The output shows the channel in the format of the locale, such as `210°` or `50%`.
+   * - It shows `data-orientation` and `data-disabled`. A reset of the form gives back the first
+   *   color.
+   */
+  const {
+    channel,
+    colorSpace,
+    orientation = 'horizontal',
+    isDisabled = false,
+    name,
+    onChange,
+    onChangeEnd,
+    children,
+    ...rest
+  } = $props<{
+    channel: ColorChannel;
+    colorSpace?: ColorSpace;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    name?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
+
+  const locale = $getContext(LocaleContext);
+  // The color that a reset of the form gives back.
+  let initialValue = $signal(value);
+  let dragging = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  const id = $id();
+  const labelId = $id();
+  const rtl = $memo(locale.direction === 'rtl');
+  const vertical = $memo(orientation === 'vertical');
+  const range = $memo(channelRange(channel));
+  // The color in the space of the slider. A value that is no color reads as black.
+  const color = $memo(
+    ((parsed) => (colorSpace ? toSpace(parsed, colorSpace) : parsed))(
+      tryParseColor(value) ?? parseColor('#000000'),
+    ),
+  );
+  const current = $memo(
+    snapToStep(
+      clamp(channelValue(color, channel), range.minValue, range.maxValue),
+      range.minValue,
+      range.maxValue,
+      range.step,
+    ),
+  );
+  const label = $memo(formatChannelValue(color, channel, locale.locale));
+  // Screen readers get the value and what color it makes, as in React Aria.
+  const valueText = $memo(
+    channel === 'alpha'
+      ? label
+      : `${label}, ${colorName(channel === 'hue' ? displayColor(color, channel) : color)}`,
+  );
+  const percent = $memo(
+    ((current - range.minValue) / (range.maxValue - range.minValue)) * 100,
+  );
+  const background = $memo(
+    channelGradient(color, channel, vertical ? 'top' : rtl ? 'left' : 'right'),
+  );
+  const name_ = $memo(channelName(channel));
+
+  function setThumb(_index: number, next: number) {
+    if (isDisabled) {
+      return;
+    }
+    const snapped = snapToStep(next, range.minValue, range.maxValue, range.step);
+    const text = formatLike(withChannelValue(color, channel, snapped), value);
+    if (text === value) {
+      return;
+    }
+    value = text;
+    onChange?.(value);
+  }
+
+  function setDragging(_index: number, next: boolean) {
+    dragging = next;
+    if (!next) {
+      onChangeEnd?.(value);
+    }
+  }
+
+  function press(event: PointerEvent) {
+    const track = (event.currentTarget as Element).closest('[data-slider-track]');
+    document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
+    if (!track) {
+      return;
+    }
+    const state = { orientation, minValue: range.minValue, maxValue: range.maxValue, step: range.step };
+    const at = (move: { clientX: number; clientY: number }, offset = 0) =>
+      valueAt(state as never, track, move.clientX, move.clientY, rtl, offset);
+    // The thumb keeps the distance to the pointer, as in React Aria.
+    const offset =
+      pointAt(state as never, track, event.clientX, event.clientY, rtl) -
+      (current - range.minValue) / (range.maxValue - range.minValue);
+    setDragging(0, true);
+    startDrag(
+      event.pointerId,
+      (move) => setThumb(0, at(move, offset)),
+      () => setDragging(0, false),
+      event.currentTarget as Element,
+    );
+  }
+
+  function inputChange(_index: number, next: number) {
+    setThumb(0, next);
+  }
+
+  function inputPage(_index: number, direction: 1 | -1) {
+    setThumb(0, current + direction * range.pageSize);
+  }
+
+  function focusChange(isFocused: boolean, isFocusVisible: boolean) {
+    focused = isFocused;
+    focusVisible = isFocusVisible;
+  }
+
+  function end() {
+    setDragging(0, false);
+  }
+
+  // A reset of the form gives back the first color, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      value = initialValue;
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(SliderContext, {
+    values: [current],
+    minValue: range.minValue,
+    maxValue: range.maxValue,
+    step: range.step,
+    pageSize: range.pageSize,
+    orientation,
+    isDisabled,
+    id,
+    labelId,
+    label,
+    labels: [valueText],
+    dragging: dragging ? [0] : [],
+    setThumb,
+    setDragging,
+  });
+  $setContext(ColorThumbContext, {
+    color: formatColor(displayColor(color, channel)),
+    left: vertical ? 50 : rtl ? 100 - percent : percent,
+    top: vertical ? 100 - percent : 50,
+    inputs: [
+      {
+        id: thumbId({ id }, 0),
+        name,
+        min: range.minValue,
+        max: range.maxValue,
+        step: range.step,
+        value: current,
+        valueText,
+        label: name_,
+        labelledBy: labelId,
+        orientation,
+      },
+    ],
+    isDragging: dragging,
+    isFocused: focused,
+    isFocusVisible: focusVisible,
+    isDisabled,
+    onInputChange: inputChange,
+    onInputPage: inputPage,
+    onPress: press,
+    onFocusChange: focusChange,
+    onChangeEnd: end,
+    direction: locale.direction,
+  });
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  role="group"
+  aria-label=name_
+  aria-labelledby=labelId
+  class="slider"
+  data-orientation=orientation
+  data-disabled=(isDisabled || undefined)
+  {...rest}
+>{children}</div>
+
+<style>
+  .slider {
+    --track-background: ${background};
+  }
+</style>

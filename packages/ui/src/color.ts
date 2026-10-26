@@ -421,7 +421,46 @@ export function colorName(color: Color): string {
   return name;
 }
 
+const CHECKERBOARD = 'repeating-conic-gradient(#e6e6e6 0% 25%, #fff 0% 50%) 50% / 16px 16px';
+
 /** The background of a swatch: the color over a checkerboard, which shows its alpha. */
 export function swatchBackground(color: string): string {
-  return `linear-gradient(${color}, ${color}), repeating-conic-gradient(#e6e6e6 0% 25%, #fff 0% 50%) 50% / 16px 16px`;
+  return `linear-gradient(${color}, ${color}), ${CHECKERBOARD}`;
+}
+
+/**
+ * The color that a slider of a channel shows on its thumb, as React Stately does: a hue at full
+ * saturation, and the color without its alpha for the other channels, except alpha.
+ */
+export function displayColor(color: Color, channel: ColorChannel): Color {
+  if (channel === 'hue') {
+    return { space: 'hsl', values: [channelValue(color, 'hue'), 100, 50], alpha: 1 };
+  }
+  return channel === 'alpha' ? color : { ...color, alpha: 1 };
+}
+
+/**
+ * The background of the track of a slider of a channel: a `linear-gradient` that goes `to` a side,
+ * through the values of the channel, with the other channels of the color as they are.
+ */
+export function channelGradient(
+  color: Color,
+  channel: ColorChannel,
+  to: 'top' | 'right' | 'left',
+): string {
+  const base = displayColor(color, channel);
+  const { minValue, maxValue } = RANGES[channel];
+  // Hue passes through each sixth of the wheel. Lightness needs the middle, or the hue would not
+  // show. The other channels change in a straight line.
+  let values = [minValue, maxValue];
+  if (channel === 'hue') {
+    values = [0, 60, 120, 180, 240, 300, 360];
+  } else if (channel === 'lightness') {
+    values = [minValue, (maxValue - minValue) / 2, maxValue];
+  }
+  const stops = values
+    .map((value) => formatColor(withChannelValue(base, channel, value)))
+    .join(', ');
+  const gradient = `linear-gradient(to ${to}, ${stops})`;
+  return channel === 'alpha' ? `${gradient}, ${CHECKERBOARD}` : gradient;
 }

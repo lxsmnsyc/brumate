@@ -1,0 +1,49 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSlider from '../../src/ColorSlider.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import Label from '../../src/Label.brm';
+  import SliderOutput from '../../src/SliderOutput.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+
+  let hue = $signal('hsl(180, 100%, 50%)');
+  let red = $signal('#336699');
+  let alpha = $signal('rgba(10, 20, 30, 0.5)');
+  let green = $signal('#00ff00');
+  let ended = $signal<unknown>(null);
+</script>
+
+<main class="page">
+  <ColorSlider class="hue" channel="hue" value=$bind(hue) name="hue" onChangeEnd=((next: unknown) => (ended = next))>
+    <Label class="hue-label">Hue</Label>
+    <SliderOutput class="hue-output" />
+    <SliderTrack class="hue-track" style="width: 200px; height: 20px">
+      <ColorThumb class="hue-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="red" channel="red" value=$bind(red)>
+    <SliderTrack class="red-track">
+      <ColorThumb class="red-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="alpha" channel="alpha" value=$bind(alpha) orientation="vertical">
+    <SliderOutput class="alpha-output" />
+    <SliderTrack class="alpha-track">
+      <ColorThumb class="alpha-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="light" channel="lightness" colorSpace="hsl" value=$bind(red) isDisabled>
+    <SliderOutput class="light-output" />
+    <SliderTrack class="light-track">
+      <ColorThumb class="light-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <form class="form">
+    <ColorSlider class="green" channel="green" value=$bind(green) name="green">
+      <SliderTrack class="green-track">
+        <ColorThumb class="green-thumb" />
+      </SliderTrack>
+    </ColorSlider>
+  </form>
+  <p class="state">{JSON.stringify([hue, red, alpha, ended, green])}</p>
+</main>

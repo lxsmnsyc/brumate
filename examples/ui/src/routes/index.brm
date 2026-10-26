@@ -83,6 +83,8 @@
   import DatePicker from '@brumate/ui/DatePicker.brm';
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
   import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -133,6 +135,7 @@
   let city = $signal<Key | null>(null);
   let quantity = $signal(1);
   let span = $signal([20, 60]);
+  let tint = $signal('hsl(210, 100%, 50%)');
   let delivery = $signal<string | null>('2026-10-15');
   let birthday = $signal<string | null>('2026-10-15');
   let pickup = $signal<string | null>('14:30');
@@ -707,6 +710,18 @@
   <h2 id="color-swatch">ColorSwatch</h2>
   <ColorSwatch class="swatch-red" color="#e2445a" style="width: 2rem; height: 2rem" />
   <ColorSwatch class="swatch-ocean" color="hsl(210, 50%, 40%)" colorName="Ocean" style="width: 2rem; height: 2rem" />
+</section>
+
+<section aria-labelledby="color-slider">
+  <h2 id="color-slider">ColorSlider</h2>
+  <ColorSlider class="tint" channel="hue" value=$bind(tint)>
+    <Label>Hue</Label>
+    <SliderOutput class="tint-output" />
+    <SliderTrack class="tint-track" style="width: 200px; height: 20px; background: var(--track-background)">
+      <ColorThumb class="tint-thumb" style="top: 50%; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </SliderTrack>
+  </ColorSlider>
+  <p class="tint-state">{tint}</p>
 </section>
 
 <section aria-labelledby="calendar">
