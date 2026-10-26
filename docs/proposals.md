@@ -19,6 +19,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
 | [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
 | [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
+| [Styles in blocks](#styles-in-blocks)                                 | Syntax   | Medium | Medium |
 | [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
 | [Server components](#server-components)                               | Syntax   | High   | Large  |
 | [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
@@ -97,6 +98,47 @@ Cost: about 2 weeks, most of it for scrolling, focus and the items of different 
 - `#for await (item of stream) { … } #else { … }` would be the same without the memo, and the server would stream the items of a stream that starts with the page, as `#loading` bodies stream, with the browser reading on from there.
 
 Cost: about 1 to 2 weeks for the server part, when a page needs a stream that starts with it. Handing the stream from the server to the browser without reading it twice is most of it.
+
+### Styles in blocks
+
+A block body can start with a `<script>`, which declares values for each instance of the body. A `<style>` could live in a block body too, scoped as the `let` of a block script is:
+
+```brm
+#for (tag of tags by tag.id) {
+  <script>
+    let hovered = $signal(false);
+  </script>
+  <span class="tag" onPointerEnter=(() => (hovered = true))>{tag.name}</span>
+  <style>
+    .tag {
+      background: ${tag.color};
+      outline: ${hovered ? '2px solid' : 'none'};
+    }
+  </style>
+}
+```
+
+Today `${}` in a `<style>` reads only values of the component, and its custom properties are set on the top-level elements of the component. Values for each item of a `#for` need inline `style` attributes, or a component of their own.
+
+Scope, as for `let`:
+
+- A style in a block matches the elements of the block and of the blocks inside it. It reaches nothing outside the block: not the other markup of the component, and not a block next to it.
+- The `<style>` of the component is the outer scope, and its rules match the elements of every block, as now.
+- When an outer and an inner style both match an element, both apply, as CSS does. The compiler writes the rules of an inner block after those of the outer ones, so the inner rule wins at the same specificity.
+- `${}` reads what is in scope where the style is: the values of the block script, of the blocks around it, and of the component.
+- Children that the block inserts belong to the component that wrote them, so a style in the block does not reach them. The markup of a `#template` is a block of its own.
+
+The compile:
+
+- Each block with a style gets an attribute of scope, such as `s-<hash>-2`, on its elements and on the elements of the blocks inside it. Its selectors get that attribute, as the selectors of the component get `s-<hash>`.
+- The custom properties of `${}` go on the top-level elements of each instance of the block, as they go on the top-level elements of a component now. A change sets them on the elements of that instance.
+- The styles of the blocks join the stylesheet of the component, so it still loads once per page.
+- A style in a block cannot hold `:global(…)`. A global rule reads as if it applied while the block shows, and it would not. Global rules stay in the `<style>` of the component.
+- A `<style>` in markup is an error today, so nothing that works now changes.
+
+A style in an `#if` matches only the elements of its branch, which exist only while the branch shows. So the CSS needs no condition of its own.
+
+Cost: about a week: the attribute of scope and its selectors, variables for each instance of a block, and the docs, as "A style in a block" next to "A script in a block".
 
 ### Reveal order of `#defer` blocks
 
