@@ -2,7 +2,7 @@
   import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { TextContext } from './contexts.ts';
-  import { dragTypes, dropItems } from './drop.ts';
+  import { allowedOperations, dragTypes, dropItems } from './drop.ts';
   import type { DropEvent, DropOperation } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
 
@@ -11,7 +11,8 @@
    *
    * - `onDrop` gets the items of a drop: text, with `getText(type)`, and files, with `getFile()`.
    *   `onDropEnter` and `onDropExit` hear of a drag over it.
-   * - `getDropOperation`, with the types of the drag, can refuse it with `'cancel'`.
+   * - `getDropOperation`, with the types of the drag and the operations its source allows, can
+   *   refuse it with `'cancel'`. The drag shows `data-drop-target` only for an allowed operation.
    * - Keyboard and screen reader users focus a hidden button, which a click on the area focuses
    *   too, and paste: the paste drops its items. A Text with `slot="label"` names the button.
    * - A FileTrigger in it picks files from the device.
@@ -48,16 +49,25 @@
   let depth = $signal(0);
   $setContext(TextContext, { slots: { label: { id: textId } } });
 
-  /** The operation of a drag of these types: copy, unless `getDropOperation` says otherwise. */
-  function operation(types: Set<string>): DropOperation {
-    if (isDisabled) {
+  /**
+   * The operation of a drag of these types: the first that its source allows, unless
+   * `getDropOperation` says otherwise. An operation that the source does not allow cancels.
+   */
+  function operation(types: Set<string>, allowed: DropOperation[]): DropOperation {
+    if (isDisabled || allowed.length === 0) {
       return 'cancel';
     }
-    return getDropOperation ? getDropOperation(types, ['copy', 'move', 'link']) : 'copy';
+    const chosen = getDropOperation ? getDropOperation(types, allowed) : allowed[0]!;
+    return allowed.includes(chosen) ? chosen : 'cancel';
+  }
+
+  /** The operation of a drag, with the types and operations that it shows. */
+  function operationOf(data: DataTransfer): DropOperation {
+    return operation(dragTypes(data), allowedOperations(data.effectAllowed));
   }
 
   function dragEnter(event: DragEvent) {
-    if (!event.dataTransfer || operation(dragTypes(event.dataTransfer)) === 'cancel') {
+    if (!event.dataTransfer || operationOf(event.dataTransfer) === 'cancel') {
       return;
     }
     depth++;
@@ -68,7 +78,7 @@
   }
 
   function dragOver(event: DragEvent) {
-    const chosen = event.dataTransfer ? operation(dragTypes(event.dataTransfer)) : 'cancel';
+    const chosen = event.dataTransfer ? operationOf(event.dataTransfer) : 'cancel';
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = chosen === 'cancel' ? 'none' : chosen;
     }
@@ -94,7 +104,7 @@
     if (!data) {
       return;
     }
-    const chosen = operation(dragTypes(data));
+    const chosen = operationOf(data);
     if (chosen === 'cancel') {
       return;
     }
@@ -103,7 +113,7 @@
 
   function paste(event: ClipboardEvent) {
     const data = event.clipboardData;
-    if (!data || isDisabled || operation(dragTypes(data)) === 'cancel') {
+    if (!data || isDisabled || operation(dragTypes(data), ['copy']) === 'cancel') {
       return;
     }
     onDrop?.({ type: 'drop', items: dropItems(data), x: 0, y: 0, dropOperation: 'copy' });

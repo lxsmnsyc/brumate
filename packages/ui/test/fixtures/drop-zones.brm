@@ -6,6 +6,7 @@
 
   let dropped = $signal<string[]>([]);
   let entered = $signal(0);
+  let allowed = $signal<string[]>([]);
 
   async function received(event: DropEvent) {
     const texts: string[] = [];
@@ -15,7 +16,8 @@
     dropped = [...dropped, ...texts];
   }
 
-  function onlyText(types: Set<string>): DropOperation {
+  function onlyText(types: Set<string>, operations: DropOperation[]): DropOperation {
+    allowed = operations;
     return types.has('text/plain') ? 'copy' : 'cancel';
   }
 </script>
@@ -23,4 +25,4 @@
 <DropZone class="zone" onDrop=received onDropEnter=(() => entered++) getDropOperation=onlyText>
   <Text slot="label" class="label">Drop text here</Text>
 </DropZone>
-<p class="state">{JSON.stringify([dropped, entered])}</p>
+<p class="state">{JSON.stringify([dropped, entered, allowed])}</p>
