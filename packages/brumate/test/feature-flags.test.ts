@@ -103,3 +103,21 @@ it('finds markup that comes later, blocks, listeners and forms of an $action', (
 `);
   expect(late).toMatchObject({ lateMarkup: true, blocks: true, actions: true, listeners: false });
 });
+
+it('finds the titles, listeners and forms of a #client body, which has no markup on the server', () => {
+  const inClient = use(`<script>
+  import { $action, $signal } from 'brumate/signals';
+  async function sign(form: FormData) { 'use server'; return 1; }
+  const signed = $action(sign);
+  let count = $signal(0);
+</script>
+#client ('idle') {
+  #head {
+    <title>{\`Count \${count}\`}</title>
+  }
+  <window onKeyDown=(() => count++) />
+  <form action=sign><button>Go</button></form>
+}
+`);
+  expect(inClient).toMatchObject({ titles: true, listeners: true, actions: true, blocks: true });
+});

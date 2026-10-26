@@ -51,17 +51,20 @@ export function allFeatures(): Features {
 /** The features of the core that a compiled component uses. */
 export function featuresOf(result: CompileResult): Features {
   const client = [result.client, result.render, ...Object.values(result.parts)].join('\n');
+  // A `#client` body has no markup on the server, so its titles, listeners and forms are only in
+  // the code of the browser.
+  const all = `${result.server}\n${client}`;
   return {
     // The server sends a reference to the export that renders them, or the browser makes them.
     children: result.plan.childrenRenders.size > 0 || /\$\$b\.children\(/.test(client),
     // A template that the browser can call has an export of its own, `t` and a number.
     templates: /\bexport (?:const|function) t\d+\b/.test(client),
-    titles: /\bb-t\b/.test(result.server),
-    bindings: /\$\$b\.binding\(/.test(`${result.server}\n${client}`),
+    titles: /\bb-t\b/.test(all),
+    bindings: /\$\$b\.binding\(/.test(all),
     lateMarkup: /\$\$ctx\.(?:boundary|defer|deferBlock)\(|\bgather\(/.test(result.server),
-    blocks: /\bb-(?:client|defer)\b/.test(result.server),
-    listeners: /\bb-listen\b/.test(result.server),
-    actions: /\$\$b\.action\(/.test(result.server),
+    blocks: /\bb-(?:client|defer)\b/.test(all),
+    listeners: /\bb-listen\b/.test(all),
+    actions: /\$\$b\.action\(/.test(all),
     // A render function that gives HTML. One with no markup gives an empty string.
     clientHTML: /\breturn \$\$html;/.test(client),
   };

@@ -29,6 +29,19 @@ export function importSource(file: SFCFile, name: string): string | undefined {
   return undefined;
 }
 
+/** The import specifiers of the `.brm` files that a file imports. */
+export function importedComponents(file: SFCFile): string[] {
+  const specifiers: string[] = [];
+  for (const program of [file.moduleScript?.program, file.instanceScript?.program]) {
+    for (const statement of program?.body ?? []) {
+      if (statement.type === 'ImportDeclaration' && statement.source.value.endsWith('.brm')) {
+        specifiers.push(statement.source.value);
+      }
+    }
+  }
+  return specifiers;
+}
+
 /** The markup inside a node: the children of an element, or the bodies of a block. */
 export function childrenOf(node: Markup): Markup[] {
   switch (node.kind) {

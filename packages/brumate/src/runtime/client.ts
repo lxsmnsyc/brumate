@@ -717,10 +717,9 @@ export function init(value: CoreOptions): void {
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();
-  // Records that are still streaming settle their promises when their scripts run.
-  if (HAS_LATE_MARKUP) {
-    queue.push = pushRecords;
-  }
+  // Records that are still streaming settle their promises when their scripts run. A promise of
+  // the page state streams in a later record without any markup that comes later.
+  queue.push = pushRecords;
   for (const record of queue.splice(0)) {
     readRecord(record);
   }
@@ -2105,9 +2104,7 @@ function insertHTML(
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size
-    ? fragments.flatMap((part) => [...part.childNodes])
-    : undefined;
+  const added = hiding?.bodies.size ? fragments.flatMap((part) => [...part.childNodes]) : undefined;
   for (const part of fragments) {
     if ('parent' in before) {
       before.parent.append(part);
