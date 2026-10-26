@@ -11,37 +11,38 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
 - The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
-| Proposal                                                                          | Area     | Value  | Cost   |
-| --------------------------------------------------------------------------------- | -------- | ------ | ------ |
-| [Idempotent calls](#idempotent-calls)                                             | Server   | Low    | Small  |
-| [Two-way realtime](#two-way-realtime)                                             | Server   | Medium | Medium |
-| [Embedding in other sites](#embedding-in-other-sites)                             | Build    | Medium | Medium |
-| [Named view transitions](#named-view-transitions)                                 | Syntax   | Low    | Small  |
-| [Long lists](#long-lists)                                                         | Syntax   | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                               | Syntax   | Low    | Medium |
-| [Styles in blocks](#styles-in-blocks)                                             | Syntax   | Medium | Medium |
-| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)                  | Syntax   | Low    | Small  |
-| [Server components](#server-components)                                           | Syntax   | High   | Large  |
-| [Devtools](#devtools)                                                             | Tooling  | High   | Medium |
-| [Component workbench](#component-workbench)                                       | Tooling  | Medium | Medium |
-| [Agent support](#agent-support)                                                   | Tooling  | High   | Medium |
-| [Worker functions](#worker-functions)                                             | Runtime  | Medium | Medium |
-| [Offline pages](#offline-pages)                                                   | Runtime  | Medium | Medium |
-| [Observability](#observability)                                                   | Runtime  | Medium | Medium |
-| [Ordered updates](#ordered-updates)                                               | Runtime  | Medium | Medium |
-| [External scripts](#external-scripts)                                             | Syntax   | Medium | Small  |
-| [What ships, in the editor](#what-ships-in-the-editor)                            | Tooling  | Medium | Medium |
-| [Accessibility checks in tests](#accessibility-checks-in-tests)                   | Tooling  | Medium | Small  |
-| [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids) | Runtime  | High   | Small  |
-| [Fields typed before the code loads](#fields-typed-before-the-code-loads)         | Runtime  | High   | Medium |
-| [Tests against the current build](#tests-against-the-current-build)               | Tooling  | Medium | Small  |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling  | High   | Medium |
-| [Headless UI components](#headless-ui-components)                                 | Library  | High   | Large  |
-| [Markdown with components](#markdown-with-components)                             | Library  | Medium | Medium |
-| [Internationalization](#internationalization)                                     | Library  | High   | Large  |
-| [Images](#images)                                                                 | Build    | Medium | Medium |
-| [State in the URL](#state-in-the-url)                                             | Routing  | High   | Small  |
-| [A smaller and faster client](#a-smaller-and-faster-client)                       | Compiler | High   | Large  |
+| Proposal                                                                                      | Area     | Value  | Cost   |
+| --------------------------------------------------------------------------------------------- | -------- | ------ | ------ |
+| [Idempotent calls](#idempotent-calls)                                                         | Server   | Low    | Small  |
+| [Two-way realtime](#two-way-realtime)                                                         | Server   | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                                         | Build    | Medium | Medium |
+| [Named view transitions](#named-view-transitions)                                             | Syntax   | Low    | Small  |
+| [Long lists](#long-lists)                                                                     | Syntax   | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                                           | Syntax   | Low    | Medium |
+| [Styles in blocks](#styles-in-blocks)                                                         | Syntax   | Medium | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)                              | Syntax   | Low    | Small  |
+| [Server components](#server-components)                                                       | Syntax   | High   | Large  |
+| [Devtools](#devtools)                                                                         | Tooling  | High   | Medium |
+| [Component workbench](#component-workbench)                                                   | Tooling  | Medium | Medium |
+| [Agent support](#agent-support)                                                               | Tooling  | High   | Medium |
+| [Worker functions](#worker-functions)                                                         | Runtime  | Medium | Medium |
+| [Offline pages](#offline-pages)                                                               | Runtime  | Medium | Medium |
+| [Observability](#observability)                                                               | Runtime  | Medium | Medium |
+| [Ordered updates](#ordered-updates)                                                           | Runtime  | Medium | Medium |
+| [External scripts](#external-scripts)                                                         | Syntax   | Medium | Small  |
+| [What ships, in the editor](#what-ships-in-the-editor)                                        | Tooling  | Medium | Medium |
+| [Accessibility checks in tests](#accessibility-checks-in-tests)                               | Tooling  | Medium | Small  |
+| [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids)             | Runtime  | High   | Small  |
+| [Fields typed before the code loads](#fields-typed-before-the-code-loads)                     | Runtime  | High   | Medium |
+| [Tests against the current build](#tests-against-the-current-build)                           | Tooling  | Medium | Small  |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)                         | Tooling  | High   | Medium |
+| [Headless UI components](#headless-ui-components)                                             | Library  | High   | Large  |
+| [What to take from Terracotta and Headless UI](#what-to-take-from-terracotta-and-headless-ui) | Library  | High   | Medium |
+| [Markdown with components](#markdown-with-components)                                         | Library  | Medium | Medium |
+| [Internationalization](#internationalization)                                                 | Library  | High   | Large  |
+| [Images](#images)                                                                             | Build    | Medium | Medium |
+| [State in the URL](#state-in-the-url)                                                         | Routing  | High   | Small  |
+| [A smaller and faster client](#a-smaller-and-faster-client)                                   | Compiler | High   | Large  |
 
 ## Syntax
 
@@ -1047,6 +1048,95 @@ Not ported:
 Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 months. Phases 4 to 7 can follow what users ask for.
 
 Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
+
+### What to take from Terracotta and Headless UI
+
+A review of `@brumate/ui` as of 2026-10-26 (116 parts, phases 0 to 7 shipped) against [Terracotta](https://github.com/lxsmnsyc/terracotta) and [Headless UI](https://github.com/tailwindlabs/headlessui) (`packages/@headlessui-react`). Terracotta's docs are in its `docs/` folder, and its code in `packages/terracotta/src`. The Headless UI findings come from its source, not from headlessui.com. Each takeaway lists what the library does, what the parts do now, what to adopt, and the cost. They are ranked by value.
+
+Out of scope here, since other work covers them: exporting the props types of the parts, and the polymorphic `as` with typed props.
+
+#### 1. Props tables, anatomy and keyboard tables in the docs
+
+- **They do.** Each Terracotta page has the same sections: an anatomy tree of the parts (`docs/components/accordion.md`, "Anatomy"), examples, a table of the state attributes with when each is present, a keyboard table, and an API table of every prop with its type and default. The pages of Headless UI have the same tables, with the data attributes of each part.
+- **We do.** `website/ui/*.md` have a live demo and bullets. Props are named in the prose, such as `menuTrigger="focus"` in `website/ui/combo-box.md`, so a reader cannot see all the props of a part, their types or their defaults. Only 13 of the 69 pages have a Keyboard section (`list-box.md`, `menu.md`, `tabs.md`, and others). The attributes of a part are in a bullet, or missing: `styling.md` says each page lists its own.
+- **Adopt.** Generate three blocks from each `.brm` file, since the `$props<{…}>` type and the doc comment are already there: a props table (name, type, default, one line from the comment), a table of the `data-*` attributes and CSS variables, and an anatomy tree from the example. Keep the Keyboard sections by hand, and add one to each part that has keys. A check in CI fails when a prop has no line in the comment.
+- **Cost.** Medium. The generator reads the types of the `.brm` files, which the work on exported props types makes easier. Writing the missing Keyboard sections is the larger part.
+
+#### 2. Popovers that size and place themselves from CSS
+
+- **They do.** Headless UI sets `max-height` of an anchored panel to the room that is left, as `min(var(--anchor-max-height, 100vh), <available>px)` (`internal/floating.tsx`), so a long `ListboxOptions` scrolls with no CSS from the author. It reads the gap, offset and padding from the CSS variables `--anchor-gap`, `--anchor-offset` and `--anchor-padding` when the props are not set, so one class gives the placement of a part in utility CSS. It also has `anchor="selection"`, which puts a Listbox over its selected item, with no gap.
+- **We do.** `Popover.brm` and `position.ts` set `--available-height` and `--trigger-width`, but not `max-height`. Every `Select`, `ComboBox` and `Menu` that can be long needs `max-height: var(--available-height); overflow: auto` from the author, or it runs off the window. `offset`, `crossOffset` and `containerPadding` are props only.
+- **Adopt.**
+  - Set `max-height` on the overlay to the room that is left, unless the author's CSS sets one. The author keeps control with `--anchor-max-height`.
+  - Read `--popover-offset`, `--popover-cross-offset` and `--popover-padding` as the fallback of the three props.
+  - Skip `anchor="selection"`: React Aria does not have it, and the 95% rule keeps the Select simple.
+- **Cost.** Small. `position.ts` already measures the room. A style written by the author must win, so the check is a computed `max-height` of `none`.
+
+#### 3. Disabled and labels that flow down a `Fieldset` or `Field`
+
+- **They do.** Headless UI has `Fieldset`, `Legend` and `Field` (`components/fieldset/fieldset.tsx`, `components/field/field.tsx`). `disabled` on a Fieldset reaches every control inside through a context (`internal/disabled.tsx`). A `Field` ids its `Label`, `Description` and control, and wires `aria-labelledby` and `aria-describedby` between them with no `htmlFor` or `id`.
+- **We do.** Each control takes its own `isDisabled`. `Form.brm` and `Group.brm` do not pass it down: `Group` reads `isDisabled` only to show its own `data-disabled`. A form that locks while it saves needs `isDisabled=(saving)` on every field. The labels are wired inside each field, through slots, which is enough for a `TextField` but not for a plain `<input>` that the author wants to label.
+- **Adopt.**
+  - A `Fieldset` part, `<fieldset>` with a `Legend` that names it, and an `isDisabled` that a `DisabledContext` carries to every part inside. A part's own `isDisabled` wins when it is set.
+  - `isDisabled` on `Form`, through the same context, so a form can lock while its action runs.
+  - Leave out a `Field` for plain inputs. The parts already wire their labels.
+- **Cost.** Medium. Every field part reads one more context in its `isDisabled` merge, about 25 parts. The tests are the same for each.
+
+#### 4. A context menu and a command palette
+
+- **They do.** Terracotta has `ContextMenu` with a boundary that opens on `contextmenu` and puts the panel at the cursor (`components/context-menu`, doc "Positioning at the cursor", "Letting the browser menu through"). It has `CommandBar`, a dialog that installs Cmd or Ctrl+K on `window` and can yield the shortcut to a handler that wants it (`components/command-bar`, doc "Yielding the shortcut to another handler"). Headless UI has neither.
+- **We do.** A `MenuTrigger` opens from a press. `preview.ts` listens for `contextmenu` only for a `PreviewTrigger`. There is no right-click menu, and a command palette is an `Autocomplete` with a `Menu` that the author puts in a `Modal` and opens by hand (`website/ui/autocomplete.md`).
+- **Adopt.**
+  - `trigger="contextmenu"` on `MenuTrigger`, which places the menu at the pointer, and a long press on touch, as React Aria's `trigger="longPress"` does. The menu stays a real Menu, with its keys.
+  - A `shortcut="Mod+K"` prop on `DialogTrigger`, which uses the same key syntax as `prevent`. It skips the shortcut while an input has focus unless the author says otherwise. Add a command palette recipe to `autocomplete.md`.
+  - Leave out Terracotta's separate `CommandBar` parts. The existing parts compose to the same thing.
+- **Cost.** Small for the shortcut, medium for the context menu: placing at a point needs `position.ts` to take a point in place of a trigger.
+
+#### 5. A color scheme without the first-paint flash
+
+- **It does.** Terracotta's `ColorSchemeProvider` keeps a light, dark or system preference in `localStorage`, toggles `dark` on `<html>`, follows `prefers-color-scheme`, and syncs tabs through the `storage` event (`docs/components/color-scheme.md`). Its docs say the server cannot know the saved scheme, so the first paint flashes, and give a head script as the fix (`docs/guides/ssr.md`).
+- **We do.** Nothing. The parts have no help for it, and each app writes its own switch.
+- **Adopt.** A `ColorScheme` part and a `colorScheme()` helper in `@brumate/ui`. Store the preference in a cookie, so the server renders the class with the first response and there is no flash and no head script. Fall back to `prefers-color-scheme` when there is no cookie, with a small `#head` script for that case only. The preference is a bindable `value`, as everywhere else.
+- **Cost.** Small to medium. Reading a cookie in a component needs request locals, which shipped in 0.2.0. It is not in React Aria, so it is optional, but every app that ships these parts needs it.
+
+#### 6. `PopoverGroup`, for popovers that share focus
+
+- **They do.** Headless UI's `PopoverGroup` (`components/popover/popover-group.tsx`) registers its popovers, so focus that moves from one to another, such as with Tab through a nav bar of menus, closes none of them. Without it, a popover closes when focus leaves.
+- **We do.** A non-modal popover closes when focus leaves it (`Popover.brm`, `isNonModal`). A row of non-modal popovers, such as a nav bar, has no way to keep the next one open. The nested layers cover popovers inside popovers, not siblings.
+- **Adopt.** A `PopoverGroup` part that provides a context. A non-modal popover does not close for focus that goes to the trigger or the panel of another popover of its group.
+- **Cost.** Small. It is one context and one check in the focus-leave handler. The value is low until a nav bar example needs it.
+
+#### 7. Documented hooks for building a part
+
+- **They do.** Headless UI has `DataInteractive`, which gives any element `data-hover`, `data-focus` and `data-active` (`components/data-interactive/data-interactive.tsx`). Terracotta exports the state of every part as `create…State`, `use…State` and a `…StateChild` component, and lists them in `docs/states.md`, so the author can read or build on the state of a `Disclosure` from any depth.
+- **We do.** `press.brm.ts`, `hover.brm.ts` and `focus.brm.ts` do the same work for every part, and `contexts.ts` holds `DisclosurePanelContext`, `OverlayTriggerContext` and the others. The package exports both, but no page documents them, and the plan's "guide to writing a part" is not on the website. An author who wants a close button deep in a Dialog, or a card that shows `data-hovered`, has to read the source.
+- **Adopt.** A page, "Your own parts", with the exported contexts (what each holds, which part provides it), and the `press`, `hover` and `focusRing` functions with an example of each. Add an `Interactive` part, a wrapper that gives its element the three attributes, for the cases where an author does not want to write a script.
+- **Cost.** Small. It is mostly docs. The contexts become public, so their shape is held steady from then on.
+
+#### 8. Guides that cross parts
+
+- **They do.** Terracotta has `docs/guides/keyboard-and-focus.md`: roving tabindex, virtual focus, focus restoration and trap, in one place. It has a guide to what happens when panel content arrives late (`docs/guides/rendering.md`, "Async content"): focus is taken once when a panel opens, so a panel that shows a fallback has nothing to focus.
+- **We do.** The rules are on each page (`popover.md` "Focus", `list-box.md` "Keyboard"), so they repeat and differ in words. Nothing says what a Dialog does with a `#defer` or `#loading` body.
+- **Adopt.** Two pages: "Keyboard and focus", with each rule once and the pages that follow it linked, and "Content that loads late in an overlay". First check where focus goes for a `#defer` body in a `Dialog`, then write what is found, and add a test if it is wrong.
+- **Cost.** Small, and the check of `#defer` may find a real gap.
+
+#### 9. `Alert`
+
+- **It does.** Terracotta's `Alert` is a `role="alert"` element with no state (`components/alert`, `docs/components/alert.md`). The docs say to render it conditionally, and to give it a key to announce the same message twice.
+- **We do.** `ToastContent` is an `alert`, and `FieldError` is a live region, but a banner for a failed save has no part.
+- **Adopt.** An `Alert` part, `<div role="alert">`, with the page showing the rule about conditional rendering.
+- **Cost.** Small. Low value, since a `<div role="alert">` is as short.
+
+#### 10. `Feed`
+
+- **It does.** Terracotta's `Feed` is the ARIA feed pattern: `aria-setsize`, `aria-posinset`, `aria-busy`, and PageUp and PageDown between articles (`components/feed`, `docs/components/feed.md`). Headless UI has none.
+- **We do.** No part. A `GridList` or a `Virtualizer` is the closest, and neither has the feed keys.
+- **Adopt.** Wait for a request. A timeline with a streaming `#for` (see [Streaming lists](#streaming-lists)) is the use that brumate suits, so it would come with that proposal.
+- **Cost.** Medium. Low value for now.
+
+#### What we match, so there is nothing to take
+
+Render props as `#template` props, `data-*` state, controlled and uncontrolled state with `$bind`, `Transition` and `TransitionChild` with `getAnimations()`, `data-closed`, `unmount="offscreen"` and `appear`, a toast queue outside the component tree, `DisclosureGroup`, virtual focus and `aria-activedescendant` in `ComboBox`, roving tabindex, focus trap and restore, a `slot="close"` button in place of `CloseButton`, open on focus (`immediate`) as `menuTrigger="focus"`, form values before the code loads, `hidden="until-found"`, `Virtualizer`, and the absence of a flash on the server, which resuming gives.
 
 ### Internationalization
 
