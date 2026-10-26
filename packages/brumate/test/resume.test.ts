@@ -624,6 +624,34 @@ describe('resume', () => {
     expect(document.querySelector<HTMLElement>('.chart')!.dataset.drawn).toBe('yes');
   });
 
+  it('watches the first element after the markers of visible $client callbacks, not another marker', async () => {
+    const observed: Element[] = [];
+    class InView {
+      readonly callback: IntersectionObserverCallback;
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element): void {
+        observed.push(target);
+        // A template has no box, so a browser never reports it in view.
+        if (target.tagName !== 'TEMPLATE') {
+          this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          );
+        }
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', InView);
+    const server = await import(file('twoVisible.brm.ts'));
+    await renderParts(server.default, {});
+    await resume('twoVisible', {});
+    expect(observed.map((element) => element.tagName)).toEqual(['P', 'P']);
+    await waitFor(() => expect(text('.status')).toBe('first second'));
+  });
+
   it('runs capture handlers first, keeps events that do not bubble on their target, and listens passively', async () => {
     const flags = new Map<string, unknown>();
     const add = document.addEventListener.bind(document);
