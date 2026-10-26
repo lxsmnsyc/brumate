@@ -767,7 +767,84 @@ Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and
 
 ### The home link
 
-The home link in the header, on the docs and on `/ui`, shows a circle with a gradient where the site needs an icon. Draw a mark for brumate, and use it in the header, as the favicon, and on the home page.
+The home link in the header, on the docs and on `/ui`, is missing its icon. The placeholder circle was removed and nothing shows in its place, though `website/src/components/BrandMark.brm` has an SVG mark. Find why the mark does not show, then use it in the header, as the favicon, and on the home page.
+
+### The shop demo on the home page
+
+The list of bundles next to the shop demo shows every script the page loaded, including the site's own. `NETWORK_SCRIPT` in `website/src/scripts.ts` keeps each resource entry whose name looks like a script. It should show only the bundles that the shop needs, so the size it shows is the size of the shop.
+
+### Syntax highlighting
+
+`BLOCK_KEYWORDS` in `packages/brumate/src/highlight.ts` lacks `reveal` and `defer`, so `#reveal` and `#defer` are not highlighted. The list of the parser, in `packages/brumate/src/parser.ts`, has both.
+
+- Take the list from one place, so the highlighter and the parser cannot differ.
+- Check the rest of the grammar against the parser the same way.
+
+### The error section on the home page
+
+`.type-error` in `website/src/routes/index.brm` has a colored left border. The devtools dropped that style, and the home page should drop it too.
+
+### The docs of @brumate/ui
+
+The pages of the parts are bare next to Terracotta, React Aria and Headless UI. Each page needs:
+
+- A table of the props, with their types, defaults and what they do.
+- Examples of common uses.
+- Controlled and uncontrolled use, side by side.
+- Styling from the `data-*` attributes, with an example of each.
+- The keyboard keys it handles, and what it does for accessibility.
+
+Compare the pages of each part with those of the three libraries before writing them.
+
+### A guide to props types
+
+Other files need the props type of a component, such as a wrapper that passes props on, a story, or a test. A component can export it from `<script module>`, and its instance script uses it:
+
+```brm
+<script module>
+  export interface ButtonProps {
+    label: string;
+    isDisabled?: boolean;
+  }
+</script>
+
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { label, isDisabled } = $props<ButtonProps>();
+</script>
+```
+
+Another file then imports it with `import type { ButtonProps } from './Button.brm'`. Nothing documents this yet. A guide in `website/docs/typescript.md` should cover:
+
+- Exporting the props type, and importing it in a `.brm`, a `.ts` and a test.
+- That it works where the TypeScript plugin of brumate runs, in the editor and `brumate-tsc`. Plain `tsc` reads `.brm` imports through `declare module '*.brm'` and sees `any`.
+- Extending the props of another component, such as a part that adds to the props of a `Button`.
+- A generic component, whose props type takes its type parameter.
+
+The parts of `@brumate/ui` export their props types the same way, so apps can use them, and the props tables of their pages can come from them.
+
+### `$client` in markup that the browser renders
+
+The docs of `$client` describe the triggers for a page that loads. They do not say when the callback runs for a component that the browser renders, such as in an `#if` that opens. Add a section to `website/docs/effects.md`:
+
+- The callback runs after the markup is in the page, never during the render. The loader finds its template before the insert and starts it after, and the call goes through a promise, so it is not synchronous with the render.
+- `'load'` runs right after the insert, usually before the next paint, or when its code loads if it has not.
+- `'visible'` runs when its element enters the viewport, on the next frame at the soonest.
+- `'idle'` runs when the browser is next idle.
+- An element that it reads through `ref` is in the page when it runs.
+- Each mount runs it again. Closing the block runs its cleanup, and opening it makes a new instance, whose callback runs once.
+- A handler that opens the block cannot see what the callback set up, in the same run.
+
+A test pins the order: the markup is in the page, then the callback runs, for each trigger.
+
+### The code examples
+
+The examples of the docs and of `@brumate/ui` need another pass:
+
+- Use the features of the markup where they fit, such as the `{name}` and `{onClick}` shorthands, blocks, and `class={}` objects.
+- Format the examples of `@brumate/ui`. Some are one long line, such as the `<Tree>` in `website/ui/tree.md`.
+- Check that each example still works.
 
 ### A landing page for @brumate/ui
 
@@ -786,7 +863,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
+4. **The website**: the fixes of the home link, the shop demo, the highlighting and the error section first, since they are small. Then the guide to props types, the docs and examples of `@brumate/ui`, and a landing page for it, before the parts are published.
 5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
 6. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
 7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.

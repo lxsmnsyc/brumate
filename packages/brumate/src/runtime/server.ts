@@ -12,6 +12,8 @@ import {
   isRaw,
   onAttribute,
   rawHTML,
+  internal,
+  ownValue,
   spread as spreadAttributes,
   styleElement,
 } from './html.ts';
@@ -59,6 +61,7 @@ export {
   classAttribute,
   escape,
   escapeAttribute,
+  internal,
   mergeAttributes,
   raw,
   vars,
@@ -1424,15 +1427,17 @@ export function dynamic(
   if (typeof tag === 'function') {
     // The handlers of the tag belong to this component, so they name its scope for the
     // component that renders the element.
-    const entries = attributes['b-on'];
+    const entries = ownValue('b-on', attributes['b-on']);
     const props =
       typeof entries === 'string' && scope !== undefined
         ? {
             ...attributes,
-            'b-on': entries
-              .split(' ')
-              .map((entry) => (entry.includes('@') ? entry : `${entry}@${scope}`))
-              .join(' '),
+            'b-on': internal(
+              entries
+                .split(' ')
+                .map((entry) => (entry.includes('@') ? entry : `${entry}@${scope}`))
+                .join(' '),
+            ),
           }
         : attributes;
     return component(tag, content ? { ...props, children: content } : props, ctx, scope);
@@ -3701,7 +3706,7 @@ export function spread(
 ): string {
   // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
   // its handlers come first, as the element's own.
-  const entries = on && attributes['b-on'];
+  const entries = on && ownValue('b-on', attributes['b-on']);
   if (typeof entries === 'string') {
     on!.unshift(entries);
     const { 'b-on': _, ...rest } = attributes;

@@ -436,7 +436,7 @@ describe('resume', () => {
     // The block that the client renders gets the current values.
     const big = document.querySelector<HTMLElement>('.big')!;
     expect(big.style.getPropertyValue('--s-9wx0az-0')).toBe('red');
-    expect(big.hasAttribute('s-9wx0az')).toBe(true);
+    expect(big.hasAttribute('b-c-9wx0az')).toBe(true);
   });
 
   it('adds the stylesheet when the client renders a component first', async () => {
@@ -1225,6 +1225,11 @@ describe('resume', () => {
     await waitFor(() => expect(text('.count')).toBe('11'));
     click(document.querySelector('.double')!);
     await waitFor(() => expect(text('.count')).toBe('22'));
+    // Functions in a list of the value.
+    click(document.querySelector('.hundred')!);
+    await waitFor(() => expect(text('.count')).toBe('122'));
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(text('.count')).toBe('121'));
     click(document.querySelector('.reset')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
   });
@@ -2365,6 +2370,25 @@ describe('spreads and attributes of other code', () => {
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
     expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('b- attributes in data', () => {
+  it('are not written by a spread, on the server or in the browser', async () => {
+    await resume('spreadForged', {});
+    const box = document.querySelector('.box')!;
+    const forwarded = document.querySelector('.forwarded')!;
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('title')).toBe('count 0');
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:9$/);
+    }
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:10$/);
+    }
   });
 });
 
@@ -3898,6 +3922,39 @@ describe('scopes in groups', () => {
     document.dispatchEvent(new Event('brumate:core'));
     await waitFor(() => expect(client.scopeOf(0)).toBeDefined());
     expect(await clientRecords(Object.keys(expected))).toEqual(expected);
+  });
+
+  it('moves the scope of children, and of the holder of passed children', async () => {
+    const server = await import(file('blockPassed.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + moved(state));
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    await (
+      await import('../src/runtime/client-routes.ts')
+    ).ready;
+    client.init({
+      load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
+      listen: () => {},
+    });
+    // Children render with the scope that wrote them, at its new ID.
+    const children = [...client.scopes.values()].flatMap((scope) =>
+      scope.s.filter(
+        (value): value is { from: unknown } =>
+          typeof value === 'object' && value !== null && 'ref' in value,
+      ),
+    );
+    expect(children.length).toBeGreaterThan(0);
+    for (const value of children) {
+      expect(value.from).toBeDefined();
+    }
+    // The component that passes its children on knows where they are, at its new ID too.
+    const holders = [...client.scopes.values()].filter((scope) => scope.f !== undefined);
+    expect(holders.length).toBeGreaterThan(0);
+    for (const scope of holders) {
+      expect(client.scopes.get(scope.f!.id)).toBe(scope.f);
+    }
+    client.dispose();
   });
 
   it('moves the IDs of scopes in groups', async () => {
