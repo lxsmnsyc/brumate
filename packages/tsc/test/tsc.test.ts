@@ -20,7 +20,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     // An expression in the markup.
     "App.brm(11,10): error TS2551: Property 'toFixed' does not exist on type 'string'. Did you mean 'fixed'?",
     // `$bind` on a prop that is not `Bindable`, at the prop.
-    "Bind.brm(10,9): error TS2322: Type 'BindableMark<number>' is not assignable to type 'number'.",
+    "Bind.brm(10,9): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'number'.",
     // A key of `prevent` that is not a key name.
     "Keys.brm(9,56): error TS2345: Argument of type '\"ArowUp\"' is not assignable to parameter of type 'KeyName'.",
     // A prop that the component does not take, at the prop. The bindable prop of a second
