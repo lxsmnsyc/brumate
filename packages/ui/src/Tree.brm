@@ -1,5 +1,5 @@
 <script>
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -34,7 +34,7 @@
    *
    * - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes.
    *   The children of a closed item do not render.
-   * - Up and Down move between rows, Home and End to the ends, and letters to the row whose text
+   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and letters to the row whose text
    *   starts with them.
    * - Right opens a closed row. Left closes an open row, or else moves to the row that holds it.
    *   Otherwise Left and Right move through the controls in a row and back to the row, right to
@@ -214,6 +214,22 @@
 
   const tabMode = keyboardNavigationBehavior === 'tab';
 
+  // A row that has focus can leave without a focusout, such as when its parent closes from
+  // outside. The tree is a stop of Tab again when no row has focus.
+  $client(() => {
+    const element = root;
+    if (!element || tabMode) {
+      return undefined;
+    }
+    const observer = new MutationObserver(() => {
+      if (element.tabIndex === -1 && !element.contains(document.activeElement)) {
+        element.tabIndex = 0;
+      }
+    });
+    observer.observe(element, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, 'load');
+
   /** Focuses a row, or in tab mode its first control, such as its link. */
   function focusRow(row: HTMLElement | undefined) {
     focusItem(tabMode && row ? (tabbables(row)[0] ?? row) : row);
@@ -260,6 +276,10 @@
       movement = 'first';
     } else if (!typing && event.key === 'End') {
       movement = 'last';
+    } else if (event.key === 'PageDown') {
+      movement = 'pageDown';
+    } else if (event.key === 'PageUp') {
+      movement = 'pageUp';
     }
     if (movement) {
       const next = moveFrom(element, items, row, movement, false);

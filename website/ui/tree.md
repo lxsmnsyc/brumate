@@ -39,8 +39,8 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ## Keyboard
 
-- Tab stops at the tree once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the tree leaves it.
-- Up and Down move between the rows that show, and Home and End go to the first and the last. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.
+- Tab stops at the tree once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the tree leaves it. When the row that has focus leaves the tree, such as when its parent closes from outside, the tree is a stop of Tab again.
+- Up and Down move between the rows that show, Home and End go to the first and the last, and PageUp and PageDown move a page. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.
 - Right opens a closed row. Left closes an open row, or else moves to the row that holds it. Right to left, they turn around.
 - On an open row, or a row with no children, Right and Left move through the controls in the row, and back to the row.
 - Space selects the row that has focus, Shift extends a range, Ctrl+A or Cmd+A selects all, and Escape clears the selection.

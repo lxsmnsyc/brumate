@@ -127,3 +127,27 @@ it('opens and closes on a press and Enter when nothing is selectable, and acts w
   await page.waitFor(() => expect(state(page)[2]).toEqual(['photos']));
   expect(keys(page, '.acting')).toEqual(['docs', 'photos', 'notes']);
 });
+
+it('moves a page with PageDown and PageUp', async () => {
+  const page = await trees();
+  page.get('.tree').focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-docs')));
+  press('PageDown');
+  // The last row that can take focus, since notes is disabled.
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-photos')));
+  press('PageUp');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-docs')));
+});
+
+it('stays a stop of Tab when the row that had focus leaves the tree', async () => {
+  const page = await trees();
+  page.get('.tree').focus();
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-docs')));
+  press('ArrowDown');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-cv')));
+  expect(page.get('.tree').getAttribute('tabindex')).toBe('-1');
+  // Its parent closes from outside, which removes the focused row.
+  page.get('.collapse').click();
+  await page.waitFor(() => expect(keys(page, '.tree')).toEqual(['docs', 'photos', 'notes']));
+  await page.waitFor(() => expect(page.get('.tree').getAttribute('tabindex')).toBe('0'));
+});
