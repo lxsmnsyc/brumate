@@ -22,6 +22,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
 | [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
 | [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
+| [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
 | [Worker functions](#worker-functions)                                 | Runtime  | Medium | Medium |
 | [Offline pages](#offline-pages)                                       | Runtime  | Medium | Medium |
 | [Observability](#observability)                                       | Runtime  | Medium | Medium |
@@ -315,6 +316,82 @@ The project analysis classifies each component by what it depends on, itself and
 4. Stories with server answers, a request, a route and providers, if apps ask for them.
 
 The first user is `@brumate/ui`, whose parts are almost all self-contained, so the workbench grows with the `Select` spike.
+
+### Agent support
+
+Coding agents write `.brm` files from what they know of Svelte, Vue and JSX, and brumate differs from each in small ways. An agent writes `minValue=minValue` where brumate has `{minValue}`, `} else {` where it needs `} #else {`, or an arrow in `let` where a value of the page state must be a function declaration. The compiler catches some of these, and the rest compile into code that works but reads badly. Agents also read the docs one page at a time, and the devtools show a problem to a person but give an agent nothing to read.
+
+What brumate has today:
+
+- Compile errors that say what to write instead, such as `Import $memo from 'brumate/signals'`.
+- `brumate inspect`, with `--json`, which reports what each component ships and why.
+- The search index of the website, which already turns the docs and the pages of `@brumate/ui` into plain text.
+- No skill, no `llms.txt`, and no way to copy what the devtools show.
+
+#### A skill for `.brm` files
+
+A skill in the [Agent Skills](https://agentskills.io) format, `SKILL.md` with a name, a description and the instructions, that an agent loads when it works on `.brm` files.
+
+- It ships in the `brumate` package as `skills/brumate/`, so an app has the version that matches its brumate. `npx brumate skill` copies it into `.claude/skills/brumate/`, or prints where it is for other agents.
+- The repository links the same files from `.claude/skills/brumate/`, so work on brumate itself uses it too.
+- `SKILL.md` stays short: the layout of a file, the rules below, and the checks to run. Longer references sit next to it, for an agent to read when it needs them:
+  - `syntax.md`: markup, attributes, blocks and templates, one example each.
+  - `state.md`: signals, memos, props, `$bind`, contexts and module functions.
+  - `events.md`: handlers, the wrappers of `brumate/events`, and why handlers are passive.
+  - `ui.md`: how the parts of `@brumate/ui` fit together, such as a Label, a field and a FieldError.
+  - `errors.md`: each compile error, with what causes it and the fix.
+- The rules are the mistakes that agents make, with the right form:
+  - Attributes: `{name}` for `name=name`, and `{onClick}` for a handler.
+  - Blocks: `} #else {`, `} #else if (…) {` and `} #catch (error) {`.
+  - Handlers: `prevent(handler, 'Enter')` from `brumate/events` for `preventDefault`, because delegated handlers are passive and run after the event.
+  - State: a function in the page state is a function declaration. Signals never leave the file, so a child gets a value and a function that writes it.
+  - Props: `let` props for values that a parent binds with `$bind`, and `Bindable<T>` in their types.
+  - Markup as a value: a `#template`, never markup in an expression.
+  - Module functions: called at the top level and destructured. A plain helper of a `.brm.ts` file goes in a `.ts` file.
+- It ends with the checks, in order: `brumate-tsc --noEmit`, the tests, and `brumate inspect` for what a component ships.
+
+So the skill does not drift from the compiler:
+
+- A test compiles every `brm` code block of the skill, and a block marked as wrong must fail with the error that the skill names.
+- `errors.md` is generated from the messages of the compiler, so a new error gets an entry.
+- A small set of tasks, such as a counter, a keyed list, a form with a server function and a Select, checks what an agent writes with the skill: each task must compile, pass `brumate-tsc`, and pass its test. It runs by hand before a release, not in CI.
+
+#### Docs for agents on the website
+
+- `/llms.txt` lists the pages of the docs and of `@brumate/ui`, each with its title, one line about it, and a link to its Markdown, as [llms.txt](https://llmstxt.org) describes.
+- `/llms-full.txt` holds every page in one file, for an agent that reads the docs at once.
+- Each page has its Markdown at the same path with `.md`, such as `/docs/components.md`, with the live examples as code blocks.
+- A button on each page copies its Markdown, for a person who pastes it into a chat.
+- A Vite plugin of the website builds all three from the same files as the search index, so they stay in step with the pages.
+
+#### Copy for an agent in the devtools
+
+A button copies what a part of the devtools shows, as Markdown that an agent can read:
+
+- **An error:** the message, the component and its file and line, the source around the line, the scope with its values, and the versions of brumate and Vite.
+- **A component:** its file, its props and the value of each slot by name, its contexts, and the report of `brumate inspect` for it.
+- **A handler run of the timeline:** the event, the writes that it made, the updates that ran, and the server calls with their times.
+
+Values are cut at a length, and the devtools copy nothing from cookies or headers. The devtools run only on the dev server, so a production page copies nothing.
+
+#### A command for agents
+
+- `brumate check` runs the compiler and the type checker on the project, and prints each problem as JSON with its file, its range, its message and a link to the docs. An agent runs one command and reads one answer, instead of parsing the output of two tools.
+- Each compile error gets a code, such as `BRM012`, and a link to the section of the docs that explains it. The link is in the message, so a person sees it too.
+
+#### Later
+
+- A server of the [Model Context Protocol](https://modelcontextprotocol.io) in the dev server, with tools that search the docs, inspect a component, check a file, and read the state of the open page. It waits until the pieces above show which tools agents use.
+
+#### Order
+
+1. The skill, its references, and the test of its code blocks. About 3 days.
+2. `llms.txt`, `llms-full.txt`, the Markdown of each page, and the copy button. About 2 days.
+3. Copy for an agent in the devtools. About 3 days.
+4. `brumate check` with JSON, codes for compile errors, and links to the docs. About 4 days.
+5. The tasks that check the skill, run by hand.
+
+Each step is its own pull request.
 
 ### Embedding in other sites
 
