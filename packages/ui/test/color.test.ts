@@ -12,6 +12,7 @@ import {
   formatColor,
   formatLike,
   parseColor,
+  sameColor,
   toSpace,
   tryParseColor,
   withChannelValue,
@@ -21,8 +22,8 @@ describe('parseColor', () => {
   it('reads hex with 3, 4, 6 and 8 digits', () => {
     expect(parseColor('#abc')).toEqual({ space: 'rgb', values: [170, 187, 204], alpha: 1 });
     expect(parseColor('#AABBCC')).toEqual({ space: 'rgb', values: [170, 187, 204], alpha: 1 });
-    expect(parseColor('#abc8').alpha).toBe(0.53);
-    expect(parseColor('#aabbcc80').alpha).toBe(0.5);
+    expect(parseColor('#abc8').alpha).toBeCloseTo(0.53, 2);
+    expect(parseColor('#aabbcc80').alpha).toBeCloseTo(0.5, 2);
   });
 
   it('reads rgb, hsl and hsb, with alpha, commas or spaces, and percents', () => {
@@ -130,7 +131,41 @@ describe('channels', () => {
   });
 });
 
+describe('precision', () => {
+  it('keeps the alpha of hexa, and rounds it only when it formats', () => {
+    expect(parseColor('#AABBCCDD').alpha).toBe(221 / 255);
+    expect(formatColor(parseColor('#AABBCCDD'), 'hexa')).toBe('#AABBCCDD');
+    expect(formatColor(parseColor('#00000001'), 'hexa')).toBe('#00000001');
+    expect(formatLike(parseColor('#00000001'), '#000000')).toBe('#00000001');
+  });
+
+  it('gives undefined for a value that is not text', () => {
+    expect(tryParseColor(null)).toBeUndefined();
+    expect(tryParseColor(undefined)).toBeUndefined();
+    expect(tryParseColor(12 as never)).toBeUndefined();
+  });
+
+  it('compares colors, not text', () => {
+    expect(sameColor('#887f7f', '#887F7F')).toBe(true);
+    expect(sameColor('#e2445a', 'rgb(226, 68, 90)')).toBe(true);
+    expect(sameColor('#e2445a', parseColor('#E2445A'))).toBe(true);
+    expect(sameColor('#e2445a', '#e2445b')).toBe(false);
+    expect(sameColor('#AABBCCDD', '#AABBCCDE')).toBe(false);
+    expect(sameColor('#aabbcc', '#aabbccff')).toBe(true);
+    expect(sameColor('#aabbcc', '#aabbcc80')).toBe(false);
+    expect(sameColor('nope', 'nope')).toBe(true);
+    expect(sameColor('nope', '#000000')).toBe(false);
+    expect(sameColor(null, null)).toBe(true);
+    expect(sameColor(null, '#000000')).toBe(false);
+  });
+});
+
 describe('colorName', () => {
+  it('names the transparency only when its percent is above 0', () => {
+    expect(colorName(parseColor('rgba(255, 0, 0, 0.999)'))).toBe('red');
+    expect(colorName(parseColor('rgba(255, 0, 0, 0.99)'))).toBe('red, 1% transparent');
+  });
+
   it('names a color by its hue, its shade and its alpha', () => {
     expect(colorName(parseColor('#ff0000'))).toBe('red');
     expect(colorName(parseColor('hsl(360, 100%, 50%)'))).toBe('red');

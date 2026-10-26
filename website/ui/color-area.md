@@ -17,7 +17,8 @@ An area for two channels of a color.
 - `colorSpace` is the space that it reads the channels in, `rgb`, `hsl` or `hsb`. A color of another space moves to it. Without it, the space is the first of `hsb`, `hsl` and `rgb` that has both channels. Give one channel, and the other is the next channel of the space.
 - `value` is a color of CSS, such as `#e2445a`. It starts its own state, or binds with `$bind`. See [State](./state.md).
 - `onChange` gets each change. `onChangeEnd` gets the color once a drag or a key ends.
-- The color keeps the format it was given: hex stays hex, and `hsl()` stays `hsl()`. A hex color rounds to whole numbers of red, green and blue, so a step of a channel can leave the color as it was.
+- The color keeps the format it was given: hex stays hex, and `hsl()` stays `hsl()`.
+- The area edits a color at full precision, and gives back the format of the caller. Hex cannot hold the hue of a gray, nor hsl the saturation of black, so a drag to saturation 0 and back keeps the hue. `value` and `onChange` change only when an edit makes another color. When `value` changes from outside, such as from a reset of the form, the color follows it.
 - `isDisabled` keeps it still and shows `data-disabled`.
 - `xName` and `yName` send the two values with a form, also before the code of the page loads. A reset of the form gives back the first color.
 - The area is a group named `Color area`. Give it an `aria-label` of your own, such as `Saturation and brightness`.

@@ -1,6 +1,7 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
+import type { Color } from './color.ts';
 import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { HoverEvent, PressEvent } from './events.ts';
@@ -278,8 +279,15 @@ export const ColorSwatchContext: Context<ColorSwatchState | null> =
  * that the caller gave a `value` keeps its own.
  */
 export interface ColorPickerState {
+  /** The color as text, in the format of the caller. */
   value: string;
-  setValue: (value: string) => void;
+  /** The color at full precision, which the parts edit. It follows `value` when that changes. */
+  color: Color;
+  /**
+   * Sets the color. The picker writes it to `value` in the format of `value`, only when that is
+   * another color, or writes `text` instead when it is given.
+   */
+  setValue: (color: Color, text?: string) => void;
 }
 
 export const ColorPickerContext: Context<ColorPickerState | null> =

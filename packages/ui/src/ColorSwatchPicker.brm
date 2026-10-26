@@ -24,7 +24,7 @@
     setLastFocused,
   } from './collection.ts';
   import type { Key } from './collection.ts';
-  import { formatColor, tryParseColor } from './color.ts';
+  import { formatColor, parseColor, tryParseColor } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
 
@@ -87,7 +87,7 @@
     const text = item?.getAttribute('data-color');
     if (text && tryParseColor(text)) {
       if (picker && !passed) {
-        picker.setValue(text);
+        picker.setValue(parseColor(text), text);
       } else {
         value = text;
       }

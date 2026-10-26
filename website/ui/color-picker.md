@@ -23,6 +23,7 @@ Holds one color for the color parts inside it.
 
 ## Format
 
+- The picker keeps its color at full precision, which hex cannot hold, such as the hue of a gray. The parts edit that color and share it. It gives back the format of the caller, and writes `value`, `$bind` and `onChange` only when an edit makes another color. When `value` changes from outside, the color follows it.
 - The picker keeps the format of its value. A part writes in that format, so `hsb(210, 50%, 80%)` stays in `hsb` when the field types a hex.
 - A pick in a `ColorSwatchPicker` gives the color as the item wrote it, and the picker has that format from then on.
 - A `ColorField` that is cleared keeps the color of the picker, as the picker has no empty value.

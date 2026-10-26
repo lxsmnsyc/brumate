@@ -1,8 +1,8 @@
 <script>
-  import { $client, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import type { Bindable } from 'brumate/signals';
-  import type { ColorChannel, ColorSpace } from './color.ts';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
   import {
     areaChannels,
     areaGradient,
@@ -15,6 +15,7 @@
     formatColor,
     formatLike,
     parseColor,
+    sameColor,
     toSpace,
     tryParseColor,
     withChannelValue,
@@ -36,6 +37,11 @@
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
    *   the color once a drag or a key ends. The color keeps the format that it was given.
+   * - It edits a color at full precision, and gives back the format of `value`. Hex cannot hold
+   *   the hue of a gray, nor hsl the saturation of black, so the thumb keeps the hue and the
+   *   saturation that the color had when the other channel moves to an end and back. `value` and
+   *   `onChange` are left alone while an edit makes no other color. When `value` changes from
+   *   outside, such as from a reset of the form, the color follows it.
    * - Left and Right move x by a step, and Up and Down move y, on either input, by a page with
    *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page, as
    *   React Aria does. A screen reader hears both values and the name of the color, and the
@@ -80,11 +86,12 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  function write(next: string) {
+  function write(next: Color, text: string) {
     if (picker && !passed) {
-      picker.setValue(next);
+      picker.setValue(next, text);
     } else {
-      value = next;
+      working = next;
+      value = text;
     }
   }
 
@@ -97,10 +104,28 @@
   const id = $id();
   const rtl = $memo(locale.direction === 'rtl');
   const axes = $memo(areaChannels(xChannel, yChannel, colorSpace));
+
+  // The color to edit for a value, in the space of the area. A value that is no color reads as
+  // black.
+  function fresh(text: string) {
+    return toSpace(tryParseColor(text) ?? parseColor('#000000'), axes.space);
+  }
+
+  // The color at full precision. A value that changes from outside gives a new one, and the writes
+  // of the part do not, since they make the same color.
+  let working = $signal(fresh(held));
+  $effect(() => {
+    const next = held;
+    if (!$untrack(sameColor(working, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
   const xRange = $memo(channelRange(axes.x));
   const yRange = $memo(channelRange(axes.y));
   // The color in the space of the area. A value that is no color reads as black.
-  const color = $memo(toSpace(tryParseColor(held) ?? parseColor('#000000'), axes.space));
+  const color = $memo(
+    picker && !passed ? toSpace(picker.color, axes.space) : working,
+  );
   const xValue = $memo(
     snapToStep(
       clamp(channelValue(color, axes.x), xRange.minValue, xRange.maxValue),
@@ -131,25 +156,34 @@
   );
   const gradient = $memo(areaGradient(color, axes.x, axes.y, rtl ? 'left' : 'right'));
 
-  // Moves the thumb to a value for each axis, on a step and in the range.
-  function setAxes(x: number, y: number) {
+  // Moves the thumb to a value for each axis, on a step and in the range. An axis that is left out
+  // keeps its value at full precision.
+  function setAxes(x: number | undefined, y: number | undefined) {
     if (isDisabled) {
       return;
     }
-    const next = withChannelValue(
-      withChannelValue(
-        color,
+    let next = color;
+    if (x !== undefined) {
+      next = withChannelValue(
+        next,
         axes.x,
         snapToStep(x, xRange.minValue, xRange.maxValue, xRange.step),
-      ),
-      axes.y,
-      snapToStep(y, yRange.minValue, yRange.maxValue, yRange.step),
-    );
+      );
+    }
+    if (y !== undefined) {
+      next = withChannelValue(
+        next,
+        axes.y,
+        snapToStep(y, yRange.minValue, yRange.maxValue, yRange.step),
+      );
+    }
     const text = formatLike(next, held);
-    if (text === held) {
+    // The same color keeps the string of the caller.
+    if (sameColor(text, held)) {
+      write(next, held);
       return;
     }
-    write(text);
+    write(next, text);
     onChange?.(text);
   }
 
@@ -227,14 +261,14 @@
 
   function inputChange(index: number, next: number) {
     if (index === 0) {
-      setAxes(next, yValue);
+      setAxes(next, undefined);
     } else {
-      setAxes(xValue, next);
+      setAxes(undefined, next);
     }
   }
 
   function inputPage(_index: number, direction: 1 | -1) {
-    setAxes(xValue, yValue + direction * yRange.pageSize);
+    setAxes(undefined, yValue + direction * yRange.pageSize);
   }
 
   // The arrows move a step, or a page with Shift. The pages move y, and Home and End move x.
@@ -244,28 +278,28 @@
     const yStep = shiftKey ? yRange.pageSize : yRange.step;
     switch (key) {
       case 'ArrowRight':
-        setAxes(xValue + sign * xStep, yValue);
+        setAxes(xValue + sign * xStep, undefined);
         break;
       case 'ArrowLeft':
-        setAxes(xValue - sign * xStep, yValue);
+        setAxes(xValue - sign * xStep, undefined);
         break;
       case 'ArrowUp':
-        setAxes(xValue, yValue + yStep);
+        setAxes(undefined, yValue + yStep);
         break;
       case 'ArrowDown':
-        setAxes(xValue, yValue - yStep);
+        setAxes(undefined, yValue - yStep);
         break;
       case 'PageUp':
-        setAxes(xValue, yValue + yRange.pageSize);
+        setAxes(undefined, yValue + yRange.pageSize);
         break;
       case 'PageDown':
-        setAxes(xValue, yValue - yRange.pageSize);
+        setAxes(undefined, yValue - yRange.pageSize);
         break;
       case 'End':
-        setAxes(xValue + sign * xRange.pageSize, yValue);
+        setAxes(xValue + sign * xRange.pageSize, undefined);
         break;
       case 'Home':
-        setAxes(xValue - sign * xRange.pageSize, yValue);
+        setAxes(xValue - sign * xRange.pageSize, undefined);
         break;
     }
   }
@@ -286,7 +320,7 @@
       return undefined;
     }
     function reset() {
-      write(initialValue);
+      write(fresh(initialValue), initialValue);
     }
     owner.addEventListener('reset', reset);
     return () => owner.removeEventListener('reset', reset);

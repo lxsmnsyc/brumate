@@ -27,16 +27,17 @@
   import {
     channelName,
     channelRange,
-    channelValue,
+    editSpace,
     formatChannelValue,
     formatColor,
     formatLike,
     parseColor,
+    sameColor,
     toSpace,
     tryParseColor,
     withChannelValue,
   } from './color.ts';
-  import type { ColorChannel, ColorSpace } from './color.ts';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
@@ -59,6 +60,12 @@
    * - `value` is a color as text, or `null`. `value=(x)` starts its own, and `value=$bind(signal)`
    *   writes the caller's. It keeps the format of the caller's value, and is hex when it started
    *   empty. A change of one channel keeps the alpha of the color.
+   * - A channel field edits a color at full precision, and gives back the format of `value`. Hex
+   *   cannot hold the hue of a gray, so a hue that the user types stays in the field, and `value`
+   *   and `onChange` are left alone while the edit makes no other color. When `value` changes
+   *   from outside, the color follows it.
+   * - A blur or an Enter without typing changes nothing, and neither does text that makes the
+   *   same color, which keeps the string of the caller, whatever its case.
    * - `name` sends the hex, or the channel value, as it reads in the input. A reset of the form
    *   gives back the first value.
    * - `isRequired` asks the browser to check it on a submit, and the FieldError shows the message.
@@ -115,7 +122,16 @@
   const { present: hasLabel } = described(labelId);
   // The value that a reset of the form gives back.
   let initialValue = $signal(held);
-  let text = $signal(display(held));
+  let working = $signal<Color | undefined>(fresh(held));
+  // The color that the field edits: the one of the picker, or its own.
+  const color = $memo(
+    picker && !passed
+      ? channel
+        ? toSpace(picker.color, colorSpace ?? editSpace(picker.color, channel))
+        : picker.color
+      : working,
+  );
+  let text = $signal(display(color));
   let edited = $signal(false);
   // The message of the browser, once the field was checked on a submit.
   let committed = $signal(false);
@@ -150,13 +166,13 @@
     return new NumberParser(locale.locale, options());
   }
 
-  function colorOf(color: string | null) {
-    const parsed = color === null ? undefined : tryParseColor(color);
-    return parsed && channel && colorSpace ? toSpace(parsed, colorSpace) : parsed;
+  // The color to edit for a value: in the space of the channel, or as it is for hex.
+  function fresh(text: string | null): Color | undefined {
+    const parsed = text === null ? undefined : tryParseColor(text);
+    return parsed && channel ? toSpace(parsed, colorSpace ?? editSpace(parsed, channel)) : parsed;
   }
 
-  function display(color: string | null): string {
-    const parsed = colorOf(color);
+  function display(parsed: Color | undefined): string {
     if (!parsed) {
       return '';
     }
@@ -194,43 +210,63 @@
     return document.getElementById(inputId) as HTMLInputElement | null;
   }
 
-  function setValue(next: string | null) {
+  /**
+   * Sets the value to a color, or to null. The color is kept at full precision, and `next` is the
+   * text of the value. The same color keeps the string of the caller and fires nothing.
+   */
+  function setValue(next: string | null, nextColor: Color | undefined) {
     // A picker keeps its color when the field clears.
     if (picker && !passed && next === null) {
-      text = display(held);
+      text = display(color);
       return;
     }
-    if (next !== held) {
-      if (picker && !passed) {
-        picker.setValue(next!);
-      } else {
+    const same = next === null || held === null ? next === held : sameColor(next, held);
+    if (picker && !passed) {
+      picker.setValue(nextColor!, same ? held! : next!);
+    } else {
+      working = nextColor;
+      if (!same) {
         value = next;
       }
+    }
+    if (!same) {
       edited = true;
       onChange?.(next);
     }
-    text = display(next);
+    text = display(nextColor);
   }
 
-  /** The color with the hex, in the format of the value. */
-  function withHex(hex: string): string {
-    const base = held === null ? undefined : tryParseColor(held);
-    const color = { ...parseColor(hex), alpha: base?.alpha ?? 1 };
-    return formatLike(color, held ?? '#000000');
+  /** Sets the value to a color, in the format of the value. */
+  function setColor(next: Color) {
+    setValue(formatLike(next, held ?? '#000000'), next);
   }
 
-  /** The value with the channel at a number, in the format of the value. */
-  function withChannel(number: number): string {
-    const base = colorOf(held) ?? parseColor('#000000');
-    const color = withChannelValue(colorSpace ? toSpace(base, colorSpace) : base, channel!, number);
-    return formatLike(color, held ?? '#000000');
+  /** Sets the color to the hex, with the alpha that it had. */
+  function setHex(hex: string) {
+    setColor({ ...parseColor(hex), alpha: color?.alpha ?? 1 });
   }
 
-  // A value that the caller sets shows in the input.
+  /** Sets the channel to a number. */
+  function setChannel(number: number) {
+    const base = color ?? fresh('#000000')!;
+    setColor(withChannelValue(base, channel!, number));
+  }
+
+  // A value that the caller sets gives a new color. The writes of the field do not, since they
+  // make the same color.
   $effect(() => {
     const next = held;
-    if ($untrack(read(text)) !== $untrack(read(display(next)))) {
-      $untrack((text = display(next)));
+    const current = $untrack(working);
+    if (next === null ? current !== undefined : !$untrack(sameColor(current, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
+
+  // The color shows in the input, unless the text says the same already.
+  $effect(() => {
+    const next = display(color);
+    if ($untrack(read(text)) !== $untrack(read(next))) {
+      $untrack((text = next));
     }
   });
 
@@ -248,20 +284,24 @@
 
   /** Reads the text, and gives the value it says, or reverts. */
   function commit() {
+    // Text that was not edited commits nothing, so a blur does not rewrite the value.
+    if (text === display(color)) {
+      return;
+    }
     if (!channel && text.trim() === '') {
-      setValue(null);
+      setValue(null, undefined);
       return;
     }
     const parsed = typed;
     if (parsed === undefined) {
-      text = display(held);
+      text = display(color);
       return;
     }
     if (channel) {
       const { minValue, maxValue, step } = range!;
-      setValue(withChannel(snapToStep(parsed as number, minValue, maxValue, step)));
+      setChannel(snapToStep(parsed as number, minValue, maxValue, step));
     } else {
-      setValue(withHex(parsed as string));
+      setHex(parsed as string);
     }
   }
 
@@ -281,7 +321,7 @@
           ? minValue
           : maxValue
         : snapToStep(clamp(addStep(current, size, sign), minValue, maxValue), minValue, maxValue, step);
-      setValue(withChannel(next));
+      setChannel(next);
       return true;
     }
     const hex = typed ?? (held === null ? undefined : formatColor(parseColor(held), 'hex'));
@@ -291,7 +331,7 @@
           ? 0
           : HEX_MAX
         : clamp(Number.parseInt((hex as string).slice(1), 16) + sign * (page ? 16 : 1), 0, HEX_MAX);
-    setValue(withHex(`#${next.toString(16).padStart(6, '0')}`));
+    setHex(`#${next.toString(16).padStart(6, '0')}`);
     return true;
   }
 
@@ -300,9 +340,9 @@
       return;
     }
     if (channel) {
-      setValue(withChannel(end === 'min' ? range!.minValue : range!.maxValue));
+      setChannel(end === 'min' ? range!.minValue : range!.maxValue);
     } else {
-      setValue(withHex(end === 'min' ? '#000000' : '#FFFFFF'));
+      setHex(end === 'min' ? '#000000' : '#FFFFFF');
     }
   }
 
@@ -392,7 +432,7 @@
       return undefined;
     }
     function reset() {
-      setValue(initialValue);
+      setValue(initialValue, fresh(initialValue));
       edited = false;
       committed = false;
       nativeErrors = [];

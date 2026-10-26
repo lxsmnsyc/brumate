@@ -1,8 +1,9 @@
 <script>
-  import { $props, $setContext } from 'brumate/signals';
+  import { $effect, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ColorPickerContext } from './contexts.ts';
-  import { tryParseColor } from './color.ts';
+  import { formatLike, parseColor, sameColor, toSpace, tryParseColor } from './color.ts';
+  import type { Color } from './color.ts';
 
   /**
    * Holds a color for the color parts inside it, as ColorPicker of React Aria Components. It has
@@ -10,6 +11,10 @@
    *
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change from any part.
+   * - It keeps the color at full precision, which hex cannot hold, such as the hue of a gray. The
+   *   parts inside it edit that color, so they share it. It writes `value`, `$bind` and `onChange`
+   *   in the format of `value`, only when an edit makes another color.
+   * - When `value` changes from outside, the color follows it.
    * - ColorArea, ColorSlider, ColorWheel, ColorField and ColorSwatchPicker inside it show the
    *   color and write it. ColorSwatch shows it.
    * - A part that has its own `value` keeps it, and a part outside a picker is unchanged.
@@ -22,14 +27,31 @@
   }>();
   let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
 
-  function setValue(next: string) {
-    if (next !== value && tryParseColor(next)) {
-      value = next;
-      onChange?.(next);
+  // The color that the parts edit, in hsb as React Aria keeps it. A value that is no color is black.
+  function fresh(text: string): Color {
+    return toSpace(tryParseColor(text) ?? parseColor('#000000'), 'hsb');
+  }
+
+  let color = $signal(fresh(value));
+
+  // A value that changes from outside gives a new color. The writes of the picker do not.
+  $effect(() => {
+    const next = value;
+    if (!$untrack(sameColor(color, next))) {
+      $untrack((color = fresh(next)));
+    }
+  });
+
+  function setValue(next: Color, text?: string) {
+    const written = text ?? formatLike(next, value);
+    color = next;
+    if (tryParseColor(written) && !sameColor(written, value)) {
+      value = written;
+      onChange?.(written);
     }
   }
 
-  $setContext(ColorPickerContext, { value, setValue });
+  $setContext(ColorPickerContext, { value, color, setValue });
 </script>
 
 {children}

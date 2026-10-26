@@ -21,7 +21,8 @@ A slider for one channel of a color.
 - `colorSpace` is the space that it reads the channel in, `rgb`, `hsl` or `hsb`. A color of another space moves to it. Without it, the color keeps its own space, and moves to one that has the channel when its own does not.
 - `value` is a color of CSS, such as `#e2445a`. It starts its own state, or binds with `$bind`. See [State](./state.md).
 - `onChange` gets each change. `onChangeEnd` gets the color once a drag or a key ends.
-- The color keeps the format it was given: hex stays hex, and `hsl()` stays `hsl()`. A hex color rounds to whole numbers of red, green and blue, so a hue read back from it can differ by a degree.
+- The color keeps the format it was given: hex stays hex, and `hsl()` stays `hsl()`.
+- The slider edits a color at full precision, and gives back the format of the caller. Hex cannot hold the hue of a gray, so the thumb of a hue keeps where the user put it. `value` and `onChange` change only when an edit makes another color, and then the string of the caller stays as it was. When `value` changes from outside, such as from a reset of the form, the color follows it.
 - `orientation` is `horizontal` or `vertical`. `isDisabled` keeps it still. `name` sends the value of the channel with a form, also before the code of the page loads.
 - The ColorSlider is a group that its Label names. Without a Label, the name of the channel names it, such as `Hue`. It shows `data-orientation` and `data-disabled`.
 - A reset of the form gives back the first color.

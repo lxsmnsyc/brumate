@@ -1,7 +1,7 @@
 <script>
-  import { $client, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
-  import type { ColorChannel, ColorSpace } from './color.ts';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
   import {
     channelGradient,
     channelName,
@@ -9,10 +9,12 @@
     channelValue,
     colorName,
     displayColor,
+    editSpace,
     formatChannelValue,
     formatColor,
     formatLike,
     parseColor,
+    sameColor,
     toSpace,
     tryParseColor,
     withChannelValue,
@@ -36,6 +38,10 @@
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
    *   the color once a drag or a key ends. The color keeps the format that it was given.
+   * - It edits a color at full precision, and gives back the format of `value`. Hex cannot hold
+   *   the hue of a gray, so the thumb of a hue keeps where the user put it, and `value` and
+   *   `onChange` are left alone while the edit makes no other color. When `value` changes from
+   *   outside, such as from a reset of the form, the color follows it.
    * - The range, the step and the page of PageUp and PageDown are those of the channel.
    * - The element has `--track-background`, the gradient of the channel, for the style of the
    *   SliderTrack: `background: var(--track-background)`. The ColorThumb has `--color`.
@@ -72,11 +78,29 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  function write(next: string) {
+  // The color to edit for a value, in `colorSpace`, or in the space that has the channel. A value
+  // that is no color reads as black.
+  function fresh(text: string) {
+    const parsed = tryParseColor(text) ?? parseColor('#000000');
+    return toSpace(parsed, colorSpace ?? editSpace(parsed, channel));
+  }
+
+  // The color at full precision. A value that changes from outside gives a new one, and the writes
+  // of the part do not, since they make the same color.
+  let working = $signal(fresh(held));
+  $effect(() => {
+    const next = held;
+    if (!$untrack(sameColor(working, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
+
+  function write(next: Color, text: string) {
     if (picker && !passed) {
-      picker.setValue(next);
+      picker.setValue(next, text);
     } else {
-      value = next;
+      working = next;
+      value = text;
     }
   }
 
@@ -93,9 +117,9 @@
   const range = $memo(channelRange(channel));
   // The color in the space of the slider. A value that is no color reads as black.
   const color = $memo(
-    ((parsed) => (colorSpace ? toSpace(parsed, colorSpace) : parsed))(
-      tryParseColor(held) ?? parseColor('#000000'),
-    ),
+    picker && !passed
+      ? toSpace(picker.color, colorSpace ?? editSpace(picker.color, channel))
+      : working,
   );
   const current = $memo(
     snapToStep(
@@ -125,11 +149,14 @@
       return;
     }
     const snapped = snapToStep(next, range.minValue, range.maxValue, range.step);
-    const text = formatLike(withChannelValue(color, channel, snapped), held);
-    if (text === held) {
+    const edited = withChannelValue(color, channel, snapped);
+    const text = formatLike(edited, held);
+    // The same color keeps the string of the caller.
+    if (sameColor(text, held)) {
+      write(edited, held);
       return;
     }
-    write(text);
+    write(edited, text);
     onChange?.(text);
   }
 
@@ -186,7 +213,7 @@
       return undefined;
     }
     function reset() {
-      write(initialValue);
+      write(fresh(initialValue), initialValue);
     }
     owner.addEventListener('reset', reset);
     return () => owner.removeEventListener('reset', reset);

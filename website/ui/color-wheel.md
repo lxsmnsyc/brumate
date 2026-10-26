@@ -17,7 +17,8 @@ A circular track for the hue of a color.
 - `outerRadius` and `innerRadius` are the radii of the ring in pixels. The ColorWheel is a square of twice the outer radius.
 - `value` is a color of CSS, such as `hsl(210, 80%, 50%)`. It starts its own state, or binds with `$bind`. See [State](./state.md).
 - `onChange` gets each change. `onChangeEnd` gets the color once a drag or a key ends.
-- The color keeps the format it was given, and its saturation and its lightness or brightness. A color of the rgb space, such as hex, is read as hue, saturation and lightness. A hex color rounds to whole numbers of red, green and blue, so a hue read back from it can differ by a degree.
+- The color keeps the format it was given, and its saturation and its lightness or brightness. A color of the rgb space, such as hex, is read as hue, saturation and brightness.
+- The wheel edits a color at full precision, and gives back the format of the caller. Hex cannot hold the hue of a gray, so the thumb of a gray keeps where the user put it. `value` and `onChange` change only when an edit makes another color. When `value` changes from outside, such as from a reset of the form, the color follows it.
 - `isDisabled` keeps it still. `name` sends the hue with a form, also before the code of the page loads.
 - A screen reader reads the input as `Hue`. Give `aria-label` or `aria-labelledby` to name it another way.
 - It shows `data-disabled`. A reset of the form gives back the first color.

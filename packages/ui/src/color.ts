@@ -1,6 +1,10 @@
 // The color of the color parts, after the Color of React Stately. A color goes in the state of the
 // page as a string of CSS, such as `#e2445a` or `hsl(355, 74%, 58%)`, since the page state cannot
 // hold an instance of a class. The parts parse it with `parseColor`, and give back a string.
+//
+// A string cannot hold all of a color. Hex has no hue for a gray, and hsl has no saturation at
+// lightness 0. So a part that edits a color keeps a `Color` at full precision as well, and writes
+// `formatLike(color, value)` to the string only when that is another color (`sameColor`).
 
 import { clamp } from './numbers.ts';
 
@@ -96,7 +100,10 @@ export function parseColor(value: string): Color {
 }
 
 /** Parses a color, or gives undefined for text that is not one. */
-export function tryParseColor(value: string): Color | undefined {
+export function tryParseColor(value: string | null | undefined): Color | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
   const text = value.trim();
   const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(text);
   if (hex) {
@@ -108,7 +115,7 @@ export function tryParseColor(value: string): Color | undefined {
     return {
       space: 'rgb',
       values: [at(0), at(2), at(4)],
-      alpha: digits.length === 8 ? round(at(6) / 255, 2) : 1,
+      alpha: digits.length === 8 ? at(6) / 255 : 1,
     };
   }
   const match = FUNCTION.exec(text);
@@ -321,6 +328,41 @@ export function formatChannelValue(color: Color, channel: ColorChannel, locale: 
 
 // Formatting.
 
+/** The alpha as a step of 8 bits, from 0 to 255. */
+function alphaBits(alpha: number): number {
+  return Math.round(clamp(alpha, 0, 1) * 255);
+}
+
+/**
+ * True when two colors are the same color, as text or as a `Color`: their red, green, blue and
+ * alpha are the same at 8 bits. `#e2445a` and `#E2445A` are the same, and so are `#e2445a` and
+ * `rgb(226, 68, 90)`. Text that is no color is the same as the same text.
+ */
+export function sameColor(
+  a: Color | string | null | undefined,
+  b: Color | string | null | undefined,
+): boolean {
+  const first = typeof a === 'string' ? tryParseColor(a) : (a ?? undefined);
+  const second = typeof b === 'string' ? tryParseColor(b) : (b ?? undefined);
+  if (!first || !second) {
+    return !first && !second && a === b;
+  }
+  const x = toSpace(first, 'rgb').values;
+  const y = toSpace(second, 'rgb').values;
+  return (
+    x.every((value, index) => Math.round(value) === Math.round(y[index]!)) &&
+    alphaBits(first.alpha) === alphaBits(second.alpha)
+  );
+}
+
+/**
+ * The space that a part edits a channel in, for a color: the space of the color when it has the
+ * channel, and else the space of the channel, such as hsb for the hue of a color in rgb.
+ */
+export function editSpace(color: Color, channel: ColorChannel): ColorSpace {
+  return channel === 'alpha' ? color.space : spaceOf(channel, color.space);
+}
+
 function hexOf(value: number): string {
   return Math.round(clamp(value, 0, 255))
     .toString(16)
@@ -367,14 +409,14 @@ export function formatLike(color: Color, like: string): string {
   if (text.startsWith('#')) {
     return formatColor(
       color,
-      color.alpha < 1 || text.length === 5 || text.length === 9 ? 'hexa' : 'hex',
+      alphaBits(color.alpha) < 255 || text.length === 5 || text.length === 9 ? 'hexa' : 'hex',
     );
   }
   const kind = /^(rgb|hsl|hsb)a?\(/.exec(text)?.[1] as 'rgb' | 'hsl' | 'hsb' | undefined;
   if (!kind) {
     return formatColor(color);
   }
-  const alpha = text.startsWith(`${kind}a(`) || color.alpha < 1;
+  const alpha = text.startsWith(`${kind}a(`) || alphaBits(color.alpha) < 255;
   return formatColor(color, `${kind}${alpha ? 'a' : ''}` as ColorFormat);
 }
 
@@ -415,8 +457,9 @@ export function colorName(color: Color): string {
     const tone = saturation >= 12 && saturation < 40 ? 'grayish ' : '';
     name = `${shade}${tone}${base}`;
   }
-  if (color.alpha < 1) {
-    name += `, ${Math.round((1 - color.alpha) * 100)}% transparent`;
+  const transparent = Math.round((1 - color.alpha) * 100);
+  if (transparent > 0) {
+    name += `, ${transparent}% transparent`;
   }
   return name;
 }

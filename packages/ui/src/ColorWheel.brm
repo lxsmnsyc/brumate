@@ -1,5 +1,5 @@
 <script>
-  import { $client, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import {
     channelName,
@@ -7,14 +7,17 @@
     channelValue,
     colorName,
     displayColor,
+    editSpace,
     formatChannelValue,
     formatColor,
     formatLike,
     parseColor,
+    sameColor,
     toSpace,
     tryParseColor,
     withChannelValue,
   } from './color.ts';
+  import type { Color } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import { ColorWheelContext, hueDown, hueToPoint, hueUp, pointToHue, wrapHue } from './color-wheel.ts';
@@ -33,7 +36,11 @@
    * - `value` is a color of CSS, such as `hsl(120, 50%, 40%)`. `value=(color)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd` the
    *   color once a drag or a key ends. The color keeps its format and its saturation and
-   *   lightness or brightness. A color of the rgb space is read as hsl.
+   *   lightness or brightness. A color of the rgb space, such as hex, is read as hsb.
+   * - It edits a color at full precision, and gives back the format of `value`. Hex cannot hold
+   *   the hue of a gray, so the thumb of a gray keeps where the user put it, and `value` and
+   *   `onChange` are left alone while the edit makes no other color. When `value` changes from
+   *   outside, such as from a reset of the form, the color follows it.
    * - The thumb has one hidden range input, from 0 to 360, named by `name`. The wheel takes its
    *   keys, as React Aria does: Right and Up raise the hue by 1, and Left and Down lower it, by 15
    *   with Shift. A hue past either end starts over, so Left at 0 goes to 359. PageUp and PageDown
@@ -74,11 +81,12 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  function write(next: string) {
+  function write(next: Color, text: string) {
     if (picker && !passed) {
-      picker.setValue(next);
+      picker.setValue(next, text);
     } else {
-      value = next;
+      working = next;
+      value = text;
     }
   }
 
@@ -90,12 +98,25 @@
   let focusVisible = $signal(false);
   const id = $id();
   const range = channelRange('hue');
-  // The color as hue and saturation with lightness or brightness. A value that is no color, or in
-  // rgb, reads as hsl.
+  // The color to edit for a value, as hue and saturation with lightness or brightness: in its own
+  // space, or in hsb for rgb. A value that is no color reads as red.
+  function fresh(text: string) {
+    const parsed = tryParseColor(text) ?? parseColor('hsl(0, 100%, 50%)');
+    return toSpace(parsed, editSpace(parsed, 'hue'));
+  }
+
+  // The color at full precision. A value that changes from outside gives a new one, and the writes
+  // of the part do not, since they make the same color.
+  let working = $signal(fresh(held));
+  $effect(() => {
+    const next = held;
+    if (!$untrack(sameColor(working, next))) {
+      $untrack((working = fresh(next)));
+    }
+  });
+
   const color = $memo(
-    ((parsed) => (parsed.space === 'rgb' ? toSpace(parsed, 'hsl') : parsed))(
-      tryParseColor(held) ?? parseColor('hsl(0, 100%, 50%)'),
-    ),
+    picker && !passed ? toSpace(picker.color, editSpace(picker.color, 'hue')) : working,
   );
   const hue = $memo(channelValue(color, 'hue'));
   const shown = $memo(displayColor(color, 'hue'));
@@ -114,8 +135,14 @@
     if (hued === hue) {
       return;
     }
-    const text = formatLike(withChannelValue(color, 'hue', hued), held);
-    write(text);
+    const edited = withChannelValue(color, 'hue', hued);
+    const text = formatLike(edited, held);
+    // The same color keeps the string of the caller.
+    if (sameColor(text, held)) {
+      write(edited, held);
+      return;
+    }
+    write(edited, text);
     onChange?.(text);
   }
 
@@ -229,7 +256,7 @@
       return undefined;
     }
     function reset() {
-      write(initialValue);
+      write(fresh(initialValue), initialValue);
     }
     owner.addEventListener('reset', reset);
     return () => owner.removeEventListener('reset', reset);
