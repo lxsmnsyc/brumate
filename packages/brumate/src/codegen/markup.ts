@@ -1558,8 +1558,26 @@ export class Emitter {
         ? `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
         : undefined;
     };
-    // The functions can be the values of keys of objects inside the value too.
+    // The functions can be the values of keys of objects, or items of lists, inside the value too.
+    const nested = (node: oxc.Node): boolean =>
+      node.type === 'ObjectExpression' || node.type === 'ArrayExpression';
     const visit = (node: oxc.Node): string => {
+      if (node.type === 'ArrayExpression') {
+        let code = '';
+        let position = node.start;
+        for (const element of node.elements) {
+          if (!element || element.type === 'SpreadElement') {
+            continue;
+          }
+          const marked = nested(element) ? visit(element) : mark(element);
+          if (!marked) {
+            continue;
+          }
+          code += this.patch.slice(position, element.start) + marked;
+          position = element.end;
+        }
+        return code + this.patch.slice(position, node.end);
+      }
       if (node.type !== 'ObjectExpression') {
         return mark(node) ?? this.source(node);
       }
@@ -1569,10 +1587,9 @@ export class Emitter {
         if (property.type !== 'Property' || property.computed) {
           continue;
         }
-        const marked =
-          property.value.type === 'ObjectExpression'
-            ? visit(property.value)
-            : mark(property.value, property.method);
+        const marked = nested(property.value)
+          ? visit(property.value)
+          : mark(property.value, property.method);
         if (!marked) {
           continue;
         }
@@ -1618,17 +1635,17 @@ export class Emitter {
     const childrenName = this.emitChildren(node, scope);
     const extra: string[] = [];
     if (this.hasScope(undefined, staticClasses(node.attributes))) {
-      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: true`);
+      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: $$b.internal(true)`);
     }
     const anchor = this.anchor(scope, node);
     if (anchor) {
-      extra.push(`"b-b": \`\${${anchor.scope}}:${anchor.index}\``);
+      extra.push(`"b-b": $$b.internal(\`\${${anchor.scope}}:${anchor.index}\`)`);
     }
     const events = node.attributes.flatMap((attribute) =>
       attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
     );
     if (events.length > 0) {
-      extra.push(`"b-on": ${JSON.stringify(events.join(' '))}`);
+      extra.push(`"b-on": $$b.internal(${JSON.stringify(events.join(' '))})`);
     }
     let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     const { variables } = this.plan.styles;
@@ -1637,7 +1654,7 @@ export class Emitter {
     let spreadVariables: string | undefined;
     if (variables.length > 0 && this.nesting === 0) {
       if (this.plan.liveStyles) {
-        extra.push(`"b-v": ${this.scopeVar(this.plan.graph.model.component)}`);
+        extra.push(`"b-v": $$b.internal(${this.scopeVar(this.plan.graph.model.component)})`);
       }
     }
     if (
