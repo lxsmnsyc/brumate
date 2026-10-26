@@ -18,6 +18,9 @@ added: 2026-10-26
 owns:
   - packages/brumate/test/render/ScopeWrap.brm
   - packages/brumate/test/render/componentTagHandlers.brm
+  - packages/brumate/src/codegen/markup.ts
+  - packages/brumate/src/runtime/server.ts
+  - packages/brumate/test/__snapshots__/render/**
 shared:
   - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
@@ -60,3 +63,7 @@ When the browser renders a dynamic tag whose tag is a component, and that compon
 ## Sizing
 
 S: two small changes in the client runtime, as the server already does them.
+
+## Log
+
+- 2026-10-27: the review of #262 found a cheaper design in the compiler, within budget: the codegen writes the scoped b-on entries of a dynamic tag, and the server drops its own scope code. So markup.ts, server.ts and the render snapshots are part of the node.
