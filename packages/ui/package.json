@@ -1,7 +1,7 @@
 {
   "name": "@brumate/ui",
   "version": "0.0.0",
-  "description": "Accessible, unstyled components for brumate, after React Aria Components and Terracotta",
+  "description": "Accessible, unstyled components for brumate",
   "license": "MIT",
   "files": [
     "src",
