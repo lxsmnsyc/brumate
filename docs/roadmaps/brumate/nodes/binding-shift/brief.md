@@ -1,7 +1,7 @@
 ---
 id: binding-shift
 title: Navigation moves the scope IDs of bindings
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

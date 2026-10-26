@@ -1,7 +1,7 @@
 ---
 id: component-tag-handlers
 title: A component in a dynamic tag keeps the handlers of its caller in the browser
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
