@@ -34,10 +34,29 @@ owns:
   - packages/ui/test/as-controls.test.ts
   - packages/ui/test/fixtures/AsTarget.brm
 shared:
+  - .changeset/*.md
   - packages/ui/test/props-types.ts
 reserves: []
 provides: []
 depends_on:
+  - on: component-tag-live-props
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: component-tag-handlers
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: dynamic-spread-anchor
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: component-prop-render
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: nested-template-imports
+    kind: hard
+    why: a component in `as` needs this fix of the core
+  - on: dynamic-spread-handlers
+    kind: hard
+    why: a component in `as` needs this fix of the core
   - on: props-types-main
     kind: hard
     why: as.ts and the exported props types are on main only after #245 merges

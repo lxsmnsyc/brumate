@@ -78,8 +78,8 @@ export function partOf(name: string): string {
 }
 
 // Sites whose code does not run while a body renders.
-// Sites that run only in the browser, where a component is its render function already.
-const SERVER_ONLY_SKIPPED = new Set(['server-function', 'event', 'effect', 'client']);
+// Sites that run only in the browser, where a component is its render function and not a stub.
+const BROWSER_ONLY_SITES = new Set(['server-function', 'event', 'effect', 'client']);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
 /**
@@ -290,7 +290,7 @@ class ClientGenerator {
       if (
         declaration.kind !== 'import' ||
         !imported?.source.endsWith('.brm') ||
-        !declaration.reads.some((read) => !SERVER_ONLY_SKIPPED.has(read.site.kind))
+        !declaration.reads.some((read) => !BROWSER_ONLY_SITES.has(read.site.kind))
       ) {
         continue;
       }
@@ -636,13 +636,23 @@ class ClientGenerator {
           const template = this.model.scopes.find(
             (item) => item.template?.name === callee.name && item.parent === callee.scope,
           );
-          if (template && !result.some((item) => isWithin(template, item))) {
+          if (template && !result.includes(template)) {
             result.push(template);
           }
         }
       }
     }
     return result;
+  }
+
+  /**
+   * The scopes of a list that nothing else in it declares. A template that sits within a
+   * scope of the list is emitted where its `#template` is, so a render emits only the others.
+   */
+  private declared(list: Scope[]): Scope[] {
+    return list.filter(
+      (item, index) => !list.slice(0, index).some((other) => isWithin(item, other)),
+    );
   }
 
   private propsMap(): string {
@@ -1366,7 +1376,7 @@ class ClientGenerator {
     for (const line of this.prologue(inside, base)) {
       emitter.line(line);
     }
-    for (const template of inside.slice(1)) {
+    for (const template of this.declared(inside).slice(1)) {
       emitter.emitTemplate(template.template!);
     }
     if (isItem) {
@@ -1514,7 +1524,7 @@ class ClientGenerator {
           emitter.line(`let ${declaration.name} = ${value};`);
         }
       }
-      for (const template of inside.filter((item) => item.kind === 'template')) {
+      for (const template of this.declared(inside).filter((item) => item.kind === 'template')) {
         emitter.emitTemplate(template.template!);
       }
       emitter.emitChildrenBody(node, scope);
@@ -1595,7 +1605,7 @@ class ClientGenerator {
     for (const line of this.prologue(templates, base)) {
       emitter.line(line);
     }
-    for (const template of templates) {
+    for (const template of this.declared(templates)) {
       emitter.emitTemplate(template.template!);
     }
     emitter.flush();

@@ -25,6 +25,7 @@ owns:
   - website/package.json
   - docs/roadmaps/brumate/contracts/props-table.md
 shared:
+  - .changeset/*.md
   - website/vite.config.ts
   - website/plugins/markdown.ts
 reserves: []

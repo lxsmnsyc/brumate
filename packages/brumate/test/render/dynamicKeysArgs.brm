@@ -1,0 +1,22 @@
+<script>
+  import { $handler, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+
+  let open = $signal(false);
+  let as = $signal<any>('div');
+  let seen = $signal('');
+
+  function say(label: string) {
+    seen = label;
+  }
+
+  function keys() {
+    return { onKeyDown: $handler(prevent(say, 'Enter', '"'), 'say "hi" & <b>') };
+  }
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <{as} class="list" tabindex="0" onClick=(() => (seen = 'own')) {...keys()}>List</>
+}
+<p class="seen">{seen}</p>

@@ -2118,6 +2118,60 @@ describe('children', () => {
     await waitFor(() => expect(text('.inc')).toBe('1'));
   });
 
+  it('a dynamic tag keeps the handlers of a spread when the browser renders it', async () => {
+    await resume('dynamicKeys', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
+    press('a');
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+  });
+
+  it('keeps the handlers of a spread on dynamic tags of a list that the browser renders', async () => {
+    await resume('dynamicKeysEach', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row').length).toBe(2));
+    for (const row of document.querySelectorAll('.row')) {
+      row.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    }
+    await waitFor(() => expect(text('.presses')).toBe('2'));
+  });
+
+  it('writes the b-on of a dynamic tag escaped, with its own handlers first', async () => {
+    await resume('dynamicKeysArgs', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.list')).not.toBeNull());
+    const on = document.querySelector('.list')!.getAttribute('b-on')!;
+    expect(on).toBe(
+      'click=DynamicKeysArgs_nhpusu#h9 keydown:prevent(Enter,")=DynamicKeysArgs_nhpusu#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
+    click(document.querySelector('.list')!);
+    await waitFor(() => expect(text('.seen')).toBe('own'));
+    expect(press('Enter').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.seen')).toBe('say "hi" & <b>'));
+    expect(press('x').defaultPrevented).toBe(false);
+    expect(press('"').defaultPrevented).toBe(true);
+  });
+
+  it('a dynamic tag that changes its element keeps the handlers of a spread', async () => {
+    await resume('dynamicKeysSwap', {});
+    expect(press('Enter').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('section.list')).not.toBeNull());
+    expect(document.querySelector('div.list')).toBeNull();
+    // The new element writes its own entries and those of the spread, escaped.
+    const on = document.querySelector('section.list')!.getAttribute('b-on')!;
+    expect(on).toBe(
+      'click=DynamicKeysSwap_5gjjdw#h8 keydown:prevent(Enter,")=DynamicKeysSwap_5gjjdw#h12@0@%5B%22say%20%5C%22hi%5C%22%20%26%20%3Cb%3E%22%5D',
+    );
+    click(document.querySelector('.list')!);
+    await waitFor(() => expect(text('.seen')).toBe('own'));
+    expect(press('"').defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.seen')).toBe('say "hi" & <b>'));
+    expect(text('.presses')).toBe('2');
+    expect(press('x').defaultPrevented).toBe(false);
+  });
+
   it('updates children that the server rendered before values changed', async () => {
     await resume('cards', {});
     click(document.querySelector('.outside')!);
@@ -2212,6 +2266,92 @@ describe('a component in a prop', () => {
     expect(text('a.item')).toBe('Item 1');
     click(document.querySelector('a.item')!);
     await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders when it goes through two components', async () => {
+    await resume('twoLevelAsPage', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders when a context holds it', async () => {
+    await resume('contextAsPage', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('keeps the items of the server and of the browser through a reverse', async () => {
+    await resume('hydratedEachPage', {});
+    expect(document.querySelectorAll('a.item')).toHaveLength(1);
+    click(document.querySelector('a.item')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('a.item')).toHaveLength(2));
+    click(document.querySelector('.rev')!);
+    await waitFor(() => expect(text('a.item')).toBe('Item 2'));
+    expect(document.querySelectorAll('a.item')).toHaveLength(2);
+    expect(document.querySelectorAll('div.item')).toHaveLength(0);
+    click(document.querySelectorAll('a.item')[1]!);
+    await waitFor(() => expect(text('.clicks')).toBe('2'));
+  });
+
+  it('renders the component that a handler sets', async () => {
+    await resume('swapAsPage', {});
+    expect(document.querySelector('a.t')).not.toBeNull();
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('i.t')).not.toBeNull());
+    expect(text('i.t')).toBe('T0');
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('i.t')).toBe('T1'));
+  });
+});
+
+describe('templates inside blocks', () => {
+  /** The names of the functions that each render function of the update part declares inside it. */
+  function declared(name: string): string[][] {
+    const code = readFileSync(join(output, `${name}.brm.client.update.ts`), 'utf8');
+    const renders = code.split(/^export function /m).slice(1);
+    return renders.map((render) =>
+      [...render.matchAll(/^ {2}function (\w+)\(/gm)].map((m) => m[1]!),
+    );
+  }
+
+  it('a component used in a template that sits inside a block is imported', async () => {
+    await resume('templateNested', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.tpl')).not.toBeNull());
+    expect(declared('templateNested').flat()).toEqual(['item']);
+  });
+
+  it('a component used in a template that sits inside a block two blocks deep is imported', async () => {
+    await resume('templateNestedDeep', {});
+    click(document.querySelector('.outer')!);
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(document.querySelector('a.deep')).not.toBeNull());
+    expect(declared('templateNestedDeep').flat()).toEqual(['item']);
+  });
+
+  it('a component used in a template that sits inside a block and in another template is imported', async () => {
+    await resume('templateNestedTwice', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('b.outer a.inner').length).toBe(2));
+    expect(text('b.outer a.inner')).toBe('one');
+    expect(declared('templateNestedTwice').flat().toSorted()).toEqual(['inner', 'outer']);
+  });
+
+  it('a template that sits inside a block in a loop reads the value of the loop', async () => {
+    await resume('templateNestedLoop', {});
+    click(document.querySelector('.on')!);
+    await waitFor(() => expect(document.querySelectorAll('a.row').length).toBe(2));
+    expect([...document.querySelectorAll('a.row')].map((node) => node.textContent)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(declared('templateNestedLoop').flat()).toEqual(['item']);
   });
 });
 
@@ -3571,6 +3711,12 @@ describe('refs forwarded through components', () => {
     await waitFor(() => expect(document.querySelector('section')).not.toBeNull());
     click(document.querySelector('.read')!);
     await waitFor(() => expect(text('.seen')).toBe('SECTION'));
+  });
+
+  it('a forwarded ref reaches a component that spreads its props', async () => {
+    await resume('refForwardSpread', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
   });
 
   it('leaves the element out of the page state', async () => {

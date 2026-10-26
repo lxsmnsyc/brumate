@@ -1,0 +1,6 @@
+<script>
+  import AsLink from './AsLink.brm';
+  import PassAs from './PassAs.brm';
+</script>
+
+<PassAs as=AsLink />

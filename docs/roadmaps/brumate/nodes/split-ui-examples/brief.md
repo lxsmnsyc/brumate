@@ -19,7 +19,8 @@ owns:
   - examples/ui/src/**
   - e2e/suites/ui.mjs
   - e2e/suites/ui/**
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on: []

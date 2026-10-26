@@ -1,0 +1,6 @@
+<script>
+  import AsLink from './AsLink.brm';
+  import HydratedEach from './HydratedEach.brm';
+</script>
+
+<HydratedEach as=AsLink />

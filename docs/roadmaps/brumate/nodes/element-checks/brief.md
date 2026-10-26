@@ -19,6 +19,7 @@ owns:
   - packages/brumate/src/check.ts
   - packages/tsc/test/fixture/src/Elements.brm
 shared:
+  - .changeset/*.md
   - packages/tsc/test/tsc.test.ts
   - packages/brumate/test/check.test.ts
   - website/**

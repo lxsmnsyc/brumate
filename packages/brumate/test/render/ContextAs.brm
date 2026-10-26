@@ -1,0 +1,14 @@
+<script>
+  import { $getContext, $signal } from 'brumate/signals';
+  import { LateAsContext } from './lateAsContext.ts';
+
+  const shared = $getContext(LateAsContext);
+  let open = $signal(false);
+  let clicks = $signal(0);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <{shared!.as} class="late" onClick=(() => clicks += 1)>Late</>
+}
+<p class="clicks">{clicks}</p>

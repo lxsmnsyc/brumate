@@ -48,7 +48,8 @@ owns:
   - website/ui/demos/RadioGroup*.brm
   - website/ui/demos/Switch*.brm
   - website/ui/demos/Form*.brm
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

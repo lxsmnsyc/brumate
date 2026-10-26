@@ -19,7 +19,8 @@ owns:
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/src/runtime/client/**
   - docs/roadmaps/brumate/contracts/client-modules.md
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: [client-modules]
 depends_on:

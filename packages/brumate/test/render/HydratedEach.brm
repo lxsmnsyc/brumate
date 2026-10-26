@@ -1,0 +1,17 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // A list whose first item the server renders, and whose other items the browser renders.
+  const { as } = $props<{ as: any }>();
+  let items = $signal<number[]>([1]);
+  let clicks = $signal(0);
+</script>
+
+<button class="add" onClick=(() => (items = [...items, items.length + 1]))>Add</button>
+<button class="rev" onClick=(() => (items = items.toReversed()))>Reverse</button>
+<ul>
+  #for (item of items by item) {
+    <li><{as} class="item" onClick=(() => clicks += 1)>Item {item}</></li>
+  }
+</ul>
+<p class="clicks">{clicks}</p>

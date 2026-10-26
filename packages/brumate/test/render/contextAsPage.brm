@@ -1,0 +1,10 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import AsLink from './AsLink.brm';
+  import ContextAs from './ContextAs.brm';
+  import { LateAsContext } from './lateAsContext.ts';
+
+  $setContext(LateAsContext, { as: AsLink });
+</script>
+
+<ContextAs />

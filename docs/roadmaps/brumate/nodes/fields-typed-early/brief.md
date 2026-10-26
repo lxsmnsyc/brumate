@@ -19,6 +19,7 @@ owns:
   - packages/brumate/src/runtime/client/resume.ts
   - packages/brumate/test/early-input.test.ts
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
 reserves: []
 provides: []

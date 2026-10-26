@@ -20,7 +20,8 @@ owns:
   - packages/ui/src/Popover.brm
   - packages/ui/test/position.test.ts
   - website/ui/popover.md
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

@@ -20,6 +20,7 @@ owns:
   - website/src/components/CopyMarkdown.brm
   - website/test/llms.test.ts
 shared:
+  - .changeset/*.md
   - website/vite.config.ts
 reserves: []
 provides: []

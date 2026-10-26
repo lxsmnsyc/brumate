@@ -1,6 +1,6 @@
 ---
 id: server-components
-title: Server components and #server
+title: "Server components and #server"
 status: todo
 priority: later
 type: feature
