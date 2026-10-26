@@ -177,7 +177,7 @@ worker.close();
 ```
 
 - The browser calls a worker function as a server function, and gets a promise of its channel. The index stays in the worker between calls, and `run` calls into it.
-- `close()` of the channel that it returned ends the worker. A worker function that returns a plain value, not a channel, ends its worker when it returns.
+- Closing the channel that it returned, from either end, ends the worker. The worker can close it to stop itself, such as when its work is done. A worker function that returns a plain value, not a channel, ends its worker when it returns.
 - The worker loads on the first call, with only the code of its functions.
 - The channel is the one of [two-way realtime](#two-way-realtime), over `postMessage` in place of a connection, with the same serializer, so the worker can report its progress through a channel of the browser.
 - On the server, a worker function runs in place, or in a worker thread with an option.
@@ -236,15 +236,18 @@ export async function room(name: string, client: Channel<{ message(message: Mess
   const user = currentUser();
   // A call of the browser's channel, over the connection.
   const leave = rooms.join(name, (message) => client.run('message', message));
-  getSocket().onClose(leave);
-  return createChannel({
-    send(text: string) {
-      rooms.post(name, { user, text });
+  return createChannel(
+    {
+      send(text: string) {
+        rooms.post(name, { user, text });
+      },
+      history(): Promise<Message[]> {
+        return rooms.history(name);
+      },
     },
-    history(): Promise<Message[]> {
-      return rooms.history(name);
-    },
-  });
+    // The channel ends from either side, or with the connection.
+    { onClose: leave },
+  );
 }
 ```
 
@@ -294,7 +297,7 @@ interface Channel<T extends Record<string, (...args: never[]) => unknown>> {
     name: K,
     ...args: Parameters<T[K]>
   ): Promise<Awaited<ReturnType<T[K]>>>;
-  /** Ends the channel. Calls in flight and later calls reject. */
+  /** Ends the channel for both of its ends. Calls in flight and later calls reject. */
   close(): void;
   /** Settles when the channel ends, from either side, or from the connection. */
   readonly closed: Promise<void>;
@@ -307,16 +310,28 @@ interface Channel<T extends Record<string, (...args: never[]) => unknown>> {
 - Arguments and results go through the serializer of server functions: values, promises, and async iterables that stream. A channel in an argument or a result is a channel on the other side too, so a function can hand out another channel, such as one for each document that a user opens.
 - A side can call only the functions of a channel that the other side gave it. A channel has an ID on its connection, which means nothing on another one, so there is no route to guess.
 - Calls on one channel arrive in the order they were made.
-- A channel that the other side drops, such as one that is garbage collected, is released on both sides.
+- `createChannel` returns a `Channel` too, whose `run` calls the functions in place. Sent to the other side, it is a channel that calls them over the connection.
+
+#### Ending a channel
+
+A channel has two ends: the owner, which made it with `createChannel` and keeps the functions, and the holder, which calls them. Either end can close it:
+
+- The holder closes it with `close()` when it is done, such as a browser that leaves a chat, or a server that stops sending to a browser.
+- The owner closes it with `close()` of the channel that `createChannel` returned, to revoke it, such as a server that removes a user from a room.
+- `createChannel(functions, { onClose })` tells the owner when the channel ends, from either end or with the connection. That is where it cleans up, such as leaving the room.
+- On both ends, `closed` settles, and calls in flight and later calls reject.
+- A channel that its holder drops, such as one that is garbage collected, closes as if the holder had closed it.
+
+The channel that a socket or worker function returns is the root of its connection. Closing it, from either end, closes the connection, and with it every other channel on it. Closing another channel ends only that channel.
 
 Both sides use the same `Channel`: the browser calls the server's with `chat.run('send', text)`, and the server calls the browser's with `client.run('message', message)`.
 
 #### The connection
 
-- The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close`.
+- The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close` of the connection.
 - The browser opens the connection when client code calls the socket function, not with the page, so a page that never calls it loads nothing.
 - The arguments of a call can have a schema, as the arguments of a server function can, and rate limits apply to each call.
-- `close()` of the channel that the socket function returned ends the connection. So does `getSocket().close()` on the server.
+- Closing the root channel, from either end, ends the connection, as does `getSocket().close()` on the server.
 - When the connection drops, a `reconnect` option calls the socket function again with the same arguments, and the channels that the browser holds go on with the new connection. Calls go by name, so a channel needs nothing of the old connection, and a component keeps the channel it has. Calls in flight when it dropped reject.
 - On the server, while a page renders, a call of a socket function calls it directly, with channels that call the functions in place. A component can render its first value without a connection.
 - The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. With Nitro, the WebSocket side uses its crossws support, which runs on Node, Bun, Deno and Cloudflare. A server of the app's own passes the upgrade to a handler that brumate exports.
