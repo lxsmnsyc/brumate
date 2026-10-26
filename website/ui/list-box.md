@@ -7,6 +7,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 ```
 
 - A `ListBox` holds `ListBoxItem` elements, each with an `id`, its key. Write them out, or render them from a `#for`.
+- A ListBox can take `items`, each with an `id`, and an `item` template that renders a `ListBoxItem` for each, as a [Tree](./tree.md) does. With `rowHeight`, or in a [Virtualizer](./virtualizer.md), a vertical list renders only the items in view, and its keys read the data of all the items. `getTextValue` returns the text of an item for the letters that move to an item, for the items out of view. A list in a field, such as a ComboBox, renders all its items.
 - `selectionMode` is `none`, the default, `single` or `multiple`. `selectedKeys` is the list of the keys of the selected items. See [State](./state.md).
 - `disabledKeys`, or `isDisabled` on an item, keeps items from focus and selection.
 - `disallowEmptySelection` keeps one item selected.
@@ -30,6 +31,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 - Tab stops at the list once. Focus goes to the item that had focus last, or else to the first selected item, or the first item.
 - The arrow keys move focus, and Home, End, PageUp and PageDown go further. `orientation="horizontal"` uses Left and Right, which turn around right to left. `shouldFocusWrap` goes from the last item to the first.
 - Typing moves to the item whose text starts with what was typed, in the second after each letter. `textValue` sets that text for an item whose content is more than text.
+- With `items` in a windowed list, Home, End, the page keys, Ctrl+A, ranges with Shift and letters reach items that are out of view. A move to one scrolls it into view, then focuses it.
 - The keys that move focus never scroll the page, also before the code of the list loads. The arrow keys of the other axis keep their default, such as Left and Right in a vertical list.
 
 ## Sections
@@ -52,4 +54,4 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 
 ## How it reads the items
 
-React Aria reads the items from the children of the list. A part of brumate cannot read its children, so the ListBox reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. This is why items can come from any markup, a `#for` or sections, with no `items` prop.
+React Aria reads the items from the children of the list. A part of brumate cannot read its children, so the ListBox reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. This is why items can come from any markup, a `#for` or sections, with no `items` prop. A list that renders only the items in view has no page to read, so it takes `items` and reads their data.

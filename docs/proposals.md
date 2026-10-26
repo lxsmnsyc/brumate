@@ -35,7 +35,6 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids) | Runtime  | High   | Small  |
 | [Fields typed before the code loads](#fields-typed-before-the-code-loads)         | Runtime  | High   | Medium |
 | [Tests against the current build](#tests-against-the-current-build)               | Tooling  | Medium | Small  |
-| [Keys of collections from their data](#keys-of-collections-from-their-data)       | Library  | Medium | Medium |
 | [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling  | High   | Medium |
 | [Headless UI components](#headless-ui-components)                                 | Library  | High   | Large  |
 | [Markdown with components](#markdown-with-components)                             | Library  | Medium | Medium |
@@ -1179,17 +1178,6 @@ The default preview is an image about 20 pixels wide, inlined as a data URL, and
 
 Cost: about a week, with most of the plugin taken from `@solidjs/image`.
 
-### Keys of collections from their data
-
-The keyboard helpers of `collection.ts` read the rows from the DOM. A collection whose rows are windowed renders only some of them, so Home, End, select all, typeahead and ranges with Shift see only the rows in the page. Tree reads its rows from its data since #204, a fix for one part. GridList, ListBox and Table in a Virtualizer still have the problem.
-
-- The model of a collection gives its keys in order, which are disabled, and the text of each, from its items, as Tree's `visibleRows` does.
-- The keyboard helpers read the model when the collection is windowed, and the DOM otherwise.
-- A move to a row that is not rendered scrolls it into view, then focuses it, as Tree does.
-- `getTextValue` names the text of an item for typeahead, as on Tree.
-
-Cost: a few days, with the tests of Tree moved to each collection.
-
 ### Markdown with components
 
 Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
@@ -1306,4 +1294,4 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
 
-Ordered updates come before other work on the core. The tests show the cases. The table of the fields with scope IDs and the tests against the current build come first of all, since they are small and keep the next changes of the core safe. Fields typed before the code loads follow, and the keys of collections go with the work on `@brumate/ui`.
+Ordered updates come before other work on the core. The tests show the cases. The table of the fields with scope IDs and the tests against the current build come first of all, since they are small and keep the next changes of the core safe. Fields typed before the code loads follow.

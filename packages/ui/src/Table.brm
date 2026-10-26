@@ -9,7 +9,7 @@
     isTyping,
     itemsOf,
     keyOf,
-    keysBetween,
+    keysIn,
     lastFocusedOf,
     moveFrom,
     nextSelection,
@@ -19,17 +19,31 @@
     setRange,
     typeahead,
   } from './collection.ts';
-  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type {
+    Key,
+    Movement,
+    SelectionBehavior,
+    SelectionMode,
+    SelectionRequest,
+  } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
+  import { VirtualizerContext } from './virtualizer.ts';
+  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
   import type { SortDescriptor, TableColumn } from './table.ts';
 
   /**
    * A table of rows and columns that the user can move through, select and sort, as Table of
    * React Aria Components. It holds a TableHeader of Column elements and a TableBody of Row
-   * elements, each with a Cell for each column, written out or from a `#for`.
+   * elements, each with a Cell for each column, written out or from a `#for`. Or it takes `items`,
+   * and its TableBody renders a Row for each with its `item` template.
    *
+   * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the rows in view. Its
+   *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, the box in
+   *   the header, ranges with Shift and letters reach rows that are out of view, and a move to
+   *   one scrolls it into view first. Letters match the text of the rows in view, and
+   *   `getTextValue` gives the text of the others.
    * - Tab stops once, at the row or cell that had focus last, and Tab from inside leaves it.
    * - Up and Down move between rows, and from a cell to the cell of its column in the next row.
    *   Up from the first row goes to the column headers.
@@ -54,6 +68,9 @@
     onRowAction,
     onSelectionChange,
     onSortChange,
+    rowHeight,
+    getTextValue,
+    items,
     children,
     ...rest
   } = $props<{
@@ -65,6 +82,19 @@
     onRowAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
     onSortChange?: (descriptor: SortDescriptor) => void;
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the table gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed table.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the rows, each with an `id`. The `item` template of the TableBody renders each. */
+    items?: readonly { id: Key }[];
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -72,6 +102,9 @@
   let { sortDescriptor = null } = $props<{ sortDescriptor?: Bindable<SortDescriptor | null> }>();
 
   const locale = $getContext(LocaleContext);
+  const virtualizer = $getContext(VirtualizerContext);
+  // Only a table with its items as data can window, since the rows are then made from the data.
+  const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const sizes = $getContext(TableResizeContext);
   // In a ResizableTableContainer, the table lays out its columns by their widths, and is as wide
   // as they are once a resize gives them all widths.
@@ -94,6 +127,20 @@
     return element ? itemsOf(element, 'row').filter((row) => row.closest('tbody')) : [];
   }
 
+  /** The keys of the items, in order. */
+  function order(): Key[] {
+    return (items ?? []).map((one) => one.id);
+  }
+
+  /** The keys of the rows that can take focus. A windowed table reads its data, not the page. */
+  function enabledKeys(element: HTMLElement): Key[] {
+    return windowHeight
+      ? enabledKeysOf(element, 'row', order(), disabledKeys)
+      : rows()
+          .filter((row) => row.getAttribute('aria-disabled') !== 'true')
+          .map((row) => keyOf(row)!);
+  }
+
   function setSelection(next: Key[]) {
     if (!sameKeys(next, selectedKeys)) {
       selectedKeys = next;
@@ -105,15 +152,14 @@
     const element = root;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
-    const items = rows().filter((row) => row.getAttribute('aria-disabled') !== 'true');
     setSelection(
       nextSelection(selectedKeys, key, {
         mode: selectionMode,
         behavior: selectionBehavior,
         disallowEmpty: disallowEmptySelection,
         request: { ...request, shift },
-        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
-        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        range: shift ? keysIn(enabledKeys(element!), range!.anchor, key) : undefined,
+        previousRange: shift ? keysIn(enabledKeys(element!), range!.anchor, range!.end) : undefined,
         disabled: disabledKeys,
       }),
     );
@@ -127,9 +173,8 @@
   }
 
   function selectableKeys(): Key[] {
-    return rows()
-      .filter((row) => row.getAttribute('aria-disabled') !== 'true')
-      .map((row) => keyOf(row)!);
+    const element = root;
+    return element ? enabledKeys(element) : [];
   }
 
   function count() {
@@ -187,7 +232,15 @@
     action,
     hasAction,
   });
-  $setContext(TableContext, { columns, sortDescriptor, sort, selectAll, toggleAll });
+  $setContext(TableContext, {
+    columns,
+    sortDescriptor,
+    sort,
+    selectAll,
+    toggleAll,
+    items,
+    windowHeight,
+  });
 
   /** The row, cell or column header of the table that holds an element. */
   function itemOf(target: EventTarget | null) {
@@ -254,14 +307,14 @@
     const element = root;
     // The table passes its focus on to the row or cell that had it last, or to a row.
     if (element && event.target === element && document.activeElement === element) {
-      const items = enabledItems(element, 'row').filter((row) => row.closest('tbody'));
+      const rendered = enabledItems(element, 'row').filter((row) => row.closest('tbody'));
       const last = lastFocusedOf(element);
       const lastCell = element.querySelector<HTMLElement>('[data-last-focused]');
       focusOn(
         lastCell ??
-          items.find((item) => last !== undefined && keyOf(item) === last) ??
-          items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-          items[0] ??
+          rendered.find((row) => last !== undefined && keyOf(row) === last) ??
+          rendered.find((row) => row.getAttribute('aria-selected') === 'true') ??
+          rendered[0] ??
           headers()[0],
       );
     }
@@ -331,9 +384,19 @@
     const global = toggle;
     let next: HTMLElement | undefined;
     let moved = false;
+    // A windowed table reaches rows by their keys, since most have no element. `reach` is the
+    // key of the row, and `pick` the element of it to focus: the row, or its cell of the column.
+    let reach: Key | undefined;
+    let pick: (target: HTMLElement) => HTMLElement | undefined = (target) =>
+      isRow ? target : cellsOf(target)[column];
+    const enabled = windowHeight ? enabledKeys(element) : [];
+    const keyFrom = (movement: Movement) =>
+      keyAfter(element, 'row', order(), enabled, key ?? enabled[0]!, movement, windowHeight!);
     if (event.key === 'ArrowDown') {
       moved = true;
-      if (isHeader) {
+      if (windowHeight) {
+        reach = isHeader ? enabled[0] : keyFrom('next');
+      } else if (isHeader) {
         next = bodyRows[0] && cellsOf(bodyRows[0])[column];
       } else {
         const below = bodyRows[rowAt + 1];
@@ -341,7 +404,14 @@
       }
     } else if (event.key === 'ArrowUp') {
       moved = true;
-      if (!isHeader) {
+      if (windowHeight) {
+        reach = isHeader ? undefined : keyFrom('previous');
+        // Up from the first row goes to the column headers.
+        if (!isHeader && reach === key) {
+          reach = undefined;
+          next = headers()[isRow ? 0 : column];
+        }
+      } else if (!isHeader) {
         const above = bodyRows[rowAt - 1];
         next = above
           ? isRow
@@ -373,7 +443,13 @@
       }
     } else if (event.key === 'PageDown' || event.key === 'PageUp') {
       moved = true;
-      if (isHeader) {
+      if (windowHeight) {
+        reach = isHeader
+          ? event.key === 'PageDown'
+            ? enabled[0]
+            : undefined
+          : keyFrom(event.key === 'PageDown' ? 'pageDown' : 'pageUp');
+      } else if (isHeader) {
         next = event.key === 'PageDown' && bodyRows[0] ? cellsOf(bodyRows[0])[column] : undefined;
       } else {
         const page = moveFrom(
@@ -391,6 +467,10 @@
       if (isHeader) {
         const all = headers();
         next = first ? all[0] : all.at(-1);
+      } else if (windowHeight && (isRow || global)) {
+        reach = keyFrom(first ? 'first' : 'last');
+        pick = (target) =>
+          isRow ? target : first ? cellsOf(target)[0] : cellsOf(target).at(-1);
       } else if (isRow || global) {
         const edge = first ? bodyRows[0] : bodyRows.at(-1);
         next = edge && (isRow ? edge : first ? cellsOf(edge)[0] : cellsOf(edge).at(-1));
@@ -404,10 +484,23 @@
       if (!event.key.startsWith('Arrow')) {
         event.preventDefault();
       }
+      // Shift extends a range from the row that has focus, when no press started one.
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+        setRange(element, key);
+      }
       const back = event.key === 'ArrowLeft' ? !rtl : event.key === 'ArrowRight' ? rtl : false;
-      focusOn(next, back);
-      const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
-      const nextKey = nextRow && !next?.closest('thead') ? keyOf(nextRow) : undefined;
+      let nextKey: Key | undefined;
+      if (reach !== undefined) {
+        // Staying on the row, at the first or the last of the rows, is no move.
+        nextKey = reach === key ? undefined : reach;
+        focusKeyIn(element, 'row', order(), reach, windowHeight, (target) =>
+          focusOn(target && pick(target), back),
+        );
+      } else {
+        focusOn(next, back);
+        const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
+        nextKey = nextRow && !next?.closest('thead') ? keyOf(nextRow) : undefined;
+      }
       if (
         nextKey === undefined ||
         nextKey === key ||
@@ -467,7 +560,22 @@
       return;
     }
     if (isRow) {
-      focusOn(typeahead(element, bodyRows, row, event));
+      if (windowHeight) {
+        const found = typeaheadWindowed(
+          element,
+          'row',
+          (items ?? []).map((one) => ({ key: one.id, item: one })),
+          enabledKeys(element),
+          key,
+          event,
+          getTextValue,
+        );
+        if (found !== undefined) {
+          focusKeyIn(element, 'row', order(), found, windowHeight, focusOn);
+        }
+      } else {
+        focusOn(typeahead(element, bodyRows, row, event));
+      }
     }
   }
 </script>

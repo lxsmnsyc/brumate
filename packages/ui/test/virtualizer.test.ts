@@ -2,6 +2,9 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Virtualized from './fixtures/virtualized.brm?brumate-server';
+import VirtualizedGridList from './fixtures/virtualized-grid-list.brm?brumate-server';
+import VirtualizedListBox from './fixtures/virtualized-list-box.brm?brumate-server';
+import VirtualizedTable from './fixtures/virtualized-table.brm?brumate-server';
 import { press } from './interact.ts';
 
 let unmount: (() => void) | undefined;
@@ -49,7 +52,7 @@ function layout() {
       height = parseFloat(this.style.height);
     } else if (this.dataset.window === 'after') {
       const before = this.parentElement!.querySelector<HTMLElement>('[data-window=before]')!;
-      const rows = this.parentElement!.querySelectorAll('[role=row]').length;
+      const rows = this.parentElement!.querySelectorAll(':scope > [data-key]').length;
       top = -scrolled + parseFloat(before.style.height) + rows * ROW;
       height = parseFloat(this.style.height);
     }
@@ -80,9 +83,9 @@ function layout() {
   };
 }
 
-async function windowed() {
+async function windowed(fixture: typeof Virtualized = Virtualized) {
   const restore = layout();
-  const page = await mount(Virtualized, {});
+  const page = await mount(fixture, {});
   unmount = () => {
     page.unmount();
     restore();
@@ -146,4 +149,72 @@ it('moves to a parent that is not rendered with Left', async () => {
   expect(page.get('.tree').querySelector('.row-f0')).toBe(null);
   press('ArrowLeft');
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-f0')));
+});
+
+// The other collections take their items as data, so they move, select and search all their rows
+// while only some are in the page.
+const collections = [
+  ['GridList', VirtualizedGridList, 'row'],
+  ['ListBox', VirtualizedListBox, 'option'],
+  ['Table', VirtualizedTable, 'row'],
+] as const;
+
+for (const [name, fixture, role] of collections) {
+  const rendered = (page: { get: (selector: string) => HTMLElement }) =>
+    page.get('.list').querySelectorAll(`[role=${role}][data-key]`).length;
+
+  it(`renders the first rows of a ${name}, and spacers for the height of the rest`, async () => {
+    const page = await windowed(fixture);
+    const after = page.get('.list').querySelector<HTMLElement>('[data-window=after]')!;
+    expect(after.getAttribute('aria-hidden')).toBe('true');
+    await page.waitFor(() => expect(rendered(page)).toBeLessThan(30));
+    expect(parseFloat(after.style.height)).toBeGreaterThan(24 * 250);
+    page.get('.row-r0').focus();
+    press('ArrowDown');
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r1')));
+  });
+
+  it(`goes to the last row of a ${name} with End, and back to the first with Home`, async () => {
+    const page = await windowed(fixture);
+    page.get('.row-r0').focus();
+    press('End');
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r299')));
+    expect(rendered(page)).toBeLessThan(30);
+    press('Home');
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r0')));
+  });
+
+  it(`moves a page of rows of a ${name} with PageDown and PageUp`, async () => {
+    const page = await windowed(fixture);
+    page.get('.row-r0').focus();
+    press('PageDown');
+    // A page of the box is 5 rows.
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r5')));
+    press('PageUp');
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r0')));
+  });
+
+  it(`selects every row of a ${name} with Ctrl+A, and a range with Shift+End`, async () => {
+    const page = await windowed(fixture);
+    page.get('.row-r0').focus();
+    press('a', document.activeElement, { ctrlKey: true });
+    await page.waitFor(() => expect(JSON.parse(page.text('.state')).length).toBe(300));
+    press('Escape');
+    await page.waitFor(() => expect(page.text('.state')).toBe('[]'));
+    press('End', document.activeElement, { shiftKey: true });
+    await page.waitFor(() => expect(JSON.parse(page.text('.state')).length).toBe(300));
+  });
+
+  it(`searches all rows of a ${name} with typeahead`, async () => {
+    const page = await windowed(fixture);
+    page.get('.row-r0').focus();
+    press('z');
+    await page.waitFor(() => expect(document.activeElement).toBe(page.get('.row-r120')));
+  });
+}
+
+it('selects every row of a Table from the box in its header, not only those in the page', async () => {
+  const page = await windowed(VirtualizedTable);
+  page.get('.select-all input').click();
+  await page.waitFor(() => expect(JSON.parse(page.text('.state')).length).toBe(300));
 });

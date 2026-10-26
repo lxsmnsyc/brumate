@@ -25,6 +25,7 @@
     isTyping,
     keyOf,
     keysBetween,
+    keysIn,
     movementOf,
     moveFrom,
     nextSelection,
@@ -39,11 +40,19 @@
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
+  import { VirtualizerContext } from './virtualizer.ts';
+  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
    * A list of options that the user selects from, as ListBox of React Aria Components. Its items
-   * are ListBoxItem elements, written out, from a `#for`, or in ListBoxSection elements.
+   * are ListBoxItem elements, written out, from a `#for`, or in ListBoxSection elements. Or it
+   * takes `items`, as Tree does, and renders each with the `item` template.
    *
+   * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the options in view. Its
+   *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, ranges with
+   *   Shift and letters reach options that are out of view, and a move to one scrolls it into view
+   *   first. Letters match the text of the options in view, and `getTextValue` gives the text of
+   *   the others. It windows a vertical list that no field filters.
    * - `selectionMode` is `none` (the default), `single` or `multiple`. `selectedKeys` is the list
    *   of the `id` of the selected items.
    * - `selectionBehavior="toggle"`, the default, adds and removes items as checkboxes do.
@@ -64,6 +73,10 @@
     orientation = 'vertical',
     onAction,
     onSelectionChange,
+    rowHeight,
+    getTextValue,
+    items,
+    item,
     children,
     ...rest
   } = $props<{
@@ -76,6 +89,21 @@
     orientation?: 'vertical' | 'horizontal';
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
+    /**
+     * The height of an option in pixels, which renders only the options in view, as in a
+     * Virtualizer. A Virtualizer around the list gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the options out of view of a windowed list.
+     * The options in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the options, each with an `id`. The `item` template renders each one. */
+    items?: readonly { id: Key }[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
+    item?: (item: any) => unknown;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
@@ -86,6 +114,12 @@
   const given = $getContext(ListBoxGivenContext);
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
   const field = $getContext(CollectionFocusContext);
+  const virtualizer = $getContext(VirtualizerContext);
+  // A list windows when its options are made from data. A field around it filters the options in
+  // the page, and a horizontal list has no window.
+  const windowHeight = $memo(
+    items && !field && orientation === 'vertical' ? (rowHeight ?? virtualizer?.rowHeight) : undefined,
+  );
   const mode = $memo(given ? 'single' : selectionMode);
   const chosen = $memo(given ? given.selectedKeys : selectedKeys);
   const hasAction = $isPassed(onAction);
@@ -99,6 +133,33 @@
     }
   }
 
+  /** The keys of the items, in order. */
+  function order(): Key[] {
+    return (items ?? []).map((one) => one.id);
+  }
+
+  /** The keys of the options that can take focus. A windowed list reads its data, not the page. */
+  function enabledKeys(element: HTMLElement): Key[] {
+    return windowHeight
+      ? enabledKeysOf(element, 'option', order(), disabledKeys)
+      : enabledItems(element, 'option').map((option) => keyOf(option)!);
+  }
+
+  /** The keys of the options from the anchor to a key, in order, that can take focus. */
+  function keysFrom(element: HTMLElement, anchor: Key, to: Key): Key[] {
+    return windowHeight
+      ? keysIn(enabledKeys(element), anchor, to)
+      : keysBetween(enabledItems(element, 'option'), anchor, to);
+  }
+
+  /** Focuses the option of a key. A windowed list may not render it, so it scrolls it into view. */
+  function focusKey(key: Key | undefined) {
+    const element = root;
+    if (element && key !== undefined) {
+      focusKeyIn(element, 'option', order(), key, windowHeight, focusItem);
+    }
+  }
+
   function select(key: Key, request: SelectionRequest) {
     if (given) {
       given.select(key);
@@ -107,15 +168,14 @@
     const element = root;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
-    const items = element ? enabledItems(element, 'option') : [];
     setSelection(
       nextSelection(chosen, key, {
         mode,
         behavior: selectionBehavior,
         disallowEmpty: disallowEmptySelection,
         request: { ...request, shift },
-        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
-        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        range: shift ? keysFrom(element!, range!.anchor, key) : undefined,
+        previousRange: shift ? keysFrom(element!, range!.anchor, range!.end) : undefined,
         disabled: disabledKeys,
       }),
     );
@@ -162,8 +222,8 @@
   function focused(event: FocusEvent) {
     // A field around the list keeps the focus.
     if (!field) {
-      passFocus(root, event, 'option', (items) =>
-        given?.focusStrategy === 'last' ? items.at(-1) : items[0],
+      passFocus(root, event, 'option', (options) =>
+        given?.focusStrategy === 'last' ? options.at(-1) : options[0],
       );
     }
   }
@@ -181,7 +241,7 @@
     if (!element) {
       return;
     }
-    const items = enabledItems(element, 'option');
+    const rendered = enabledItems(element, 'option');
     const current = focusedItem(element, 'option');
     const key = current ? keyOf(current) : undefined;
     const movement = movementOf(event.key, orientation, locale.direction);
@@ -192,9 +252,24 @@
       if (event.shiftKey && mode === 'multiple' && key !== undefined && !rangeOf(element)) {
         setRange(element, key);
       }
-      const target = moveFrom(element, items, current, movement, shouldFocusWrap);
-      const targetKey = target ? keyOf(target) : undefined;
-      focusItem(target);
+      let targetKey: Key | undefined;
+      if (windowHeight && key !== undefined) {
+        targetKey = keyAfter(
+          element,
+          'option',
+          order(),
+          enabledKeys(element),
+          key,
+          movement,
+          windowHeight,
+          shouldFocusWrap,
+        );
+        focusKey(targetKey);
+      } else {
+        const target = moveFrom(element, rendered, current, movement, shouldFocusWrap);
+        targetKey = target ? keyOf(target) : undefined;
+        focusItem(target);
+      }
       if (targetKey === undefined || mode === 'none' || given) {
         return;
       }
@@ -230,7 +305,7 @@
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && mode === 'multiple') {
-      setSelection(items.map((item) => keyOf(item)!));
+      setSelection(enabledKeys(element));
       // The browser selected the text of the page too, before this handler ran.
       window.getSelection()?.removeAllRanges();
       return;
@@ -248,12 +323,18 @@
       }
       return;
     }
-    const found = typeahead(element, items, current, event);
-    if (found) {
+    let foundKey: Key | undefined;
+    if (windowHeight) {
+      const rows = (items ?? []).map((one) => ({ key: one.id, item: one }));
+      foundKey = typeaheadWindowed(element, 'option', rows, enabledKeys(element), key, event, getTextValue);
+      focusKey(foundKey);
+    } else {
+      const found = typeahead(element, rendered, current, event);
+      foundKey = found ? keyOf(found) : undefined;
       focusItem(found);
-      if (replace && mode !== 'none' && !given) {
-        select(keyOf(found)!, { shift: false, toggle: false });
-      }
+    }
+    if (foundKey !== undefined && replace && mode !== 'none' && !given) {
+      select(foundKey, { shift: false, toggle: false });
     }
   }
 
@@ -281,4 +362,17 @@
   onFocusOut=focusOut
   {...keys(orientation === 'horizontal')}
   {...rest}
->{children}</div>
+>
+  {children}
+  #if (items && item) {
+    #if (windowHeight) {
+      #for (entry of items by entry.id) window(windowHeight) {
+        {item(entry)}
+      }
+    } #else {
+      #for (entry of items by entry.id) {
+        {item(entry)}
+      }
+    }
+  }
+</div>

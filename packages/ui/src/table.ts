@@ -25,6 +25,10 @@ export interface TableState {
   /** Whether every row that can be selected is, and whether some are, for the box in the header. */
   selectAll: { all: boolean; some: boolean };
   toggleAll: () => void;
+  /** The data of the rows, when the Table has `items`, which its TableBody renders. */
+  items: readonly { id: Key }[] | undefined;
+  /** The height of a row in pixels when only the rows in view render, else none. */
+  windowHeight: number | undefined;
 }
 
 export const TableContext: Context<TableState | null> = createContext<TableState | null>(

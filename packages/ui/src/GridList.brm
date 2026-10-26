@@ -1,5 +1,5 @@
 <script>
-  import { $client, $getContext, $id, $isPassed, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
@@ -13,6 +13,7 @@
     isTyping,
     keyOf,
     keysBetween,
+    keysIn,
     lastFocusedOf,
     moveFrom,
     nextSelection,
@@ -26,11 +27,19 @@
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
+  import { VirtualizerContext } from './virtualizer.ts';
+  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
    * A list of rows that can hold buttons, checkboxes and links, as GridList of React Aria
-   * Components. Its items are GridListItem elements, written out or from a `#for`.
+   * Components. Its items are GridListItem elements, written out or from a `#for`. Or it takes
+   * `items`, as Tree does, and renders each with the `item` template.
    *
+   * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the rows in view. Its
+   *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, ranges with
+   *   Shift and letters reach rows that are out of view, and a move to one scrolls it into view
+   *   first. Letters match the text of the rows in view, and `getTextValue` gives the text of the
+   *   others.
    * - Up and Down move between rows, Home and End to the ends, and letters to the row whose text
    *   starts with them. Left and Right move through the controls in a row and back to the row,
    *   right to left the other way round.
@@ -54,6 +63,10 @@
     onSelectionChange,
     onReorder,
     getItems,
+    rowHeight,
+    getTextValue,
+    items,
+    item,
     children,
     ...rest
   } = $props<{
@@ -66,12 +79,30 @@
     onSelectionChange?: (keys: Key[]) => void;
     onReorder?: (event: ReorderEvent) => void;
     getItems?: (keys: Key[]) => DragItem[];
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the list gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed list.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the rows, each with an `id`. The `item` template renders each one. */
+    items?: readonly { id: Key }[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
+    item?: (item: any) => unknown;
     children?: unknown;
     [attribute: string]: unknown;
   }>();
   let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
 
   const locale = $getContext(LocaleContext);
+  const virtualizer = $getContext(VirtualizerContext);
+  // Only a list with its items as data can window, since the rows are then made from the data.
+  const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const hasAction = $isPassed(onAction);
   const hasReorder = $isPassed(onReorder);
   const hasItems = $isPassed(getItems);
@@ -91,19 +122,37 @@
     }
   }
 
+  /** The keys of the items, in order. */
+  function order(): Key[] {
+    return (items ?? []).map((one) => one.id);
+  }
+
+  /** The keys of the rows that can take focus. A windowed list reads its data, not the page. */
+  function enabledKeys(element: HTMLElement): Key[] {
+    return windowHeight
+      ? enabledKeysOf(element, 'row', order(), disabledKeys)
+      : enabledItems(element, 'row').map((row) => keyOf(row)!);
+  }
+
+  /** The keys of the rows from the anchor to a key, in order, that can take focus. */
+  function keysFrom(element: HTMLElement, anchor: Key, to: Key): Key[] {
+    return windowHeight
+      ? keysIn(enabledKeys(element), anchor, to)
+      : keysBetween(enabledItems(element, 'row'), anchor, to);
+  }
+
   function select(key: Key, request: SelectionRequest) {
     const element = root;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
-    const items = element ? enabledItems(element, 'row') : [];
     setSelection(
       nextSelection(selectedKeys, key, {
         mode: selectionMode,
         behavior: selectionBehavior,
         disallowEmpty: disallowEmptySelection,
         request: { ...request, shift },
-        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
-        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        range: shift ? keysFrom(element!, range!.anchor, key) : undefined,
+        previousRange: shift ? keysFrom(element!, range!.anchor, range!.end) : undefined,
         disabled: disabledKeys,
       }),
     );
@@ -369,12 +418,12 @@
     const element = root;
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
-      const items = enabledItems(element, 'row');
+      const rendered = enabledItems(element, 'row');
       const last = lastFocusedOf(element);
       focusItem(
-        items.find((item) => last !== undefined && keyOf(item) === last) ??
-          items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-          items[0],
+        rendered.find((row) => last !== undefined && keyOf(row) === last) ??
+          rendered.find((row) => row.getAttribute('aria-selected') === 'true') ??
+          rendered[0],
       );
     }
   }
@@ -417,6 +466,19 @@
     );
   }
 
+  /** The items with their keys, which typeahead reads. */
+  function rowsOf() {
+    return (items ?? []).map((one) => ({ key: one.id, item: one }));
+  }
+
+  /** Focuses the row of a key. A windowed list may not render it, so it scrolls it into view. */
+  function focusKey(key: Key | undefined) {
+    const element = root;
+    if (element && key !== undefined) {
+      focusKeyIn(element, 'row', order(), key, windowHeight, focusItem);
+    }
+  }
+
   function keyDown(event: KeyboardEvent) {
     const element = root;
     const target = event.target as HTMLElement;
@@ -426,7 +488,7 @@
     }
     // A field in a row keeps its own keys, other than Up, Down and Tab.
     const typing = isField(target, row);
-    const items = enabledItems(element, 'row');
+    const rendered = enabledItems(element, 'row');
     const key = keyOf(row);
     const rtl = locale.direction === 'rtl';
     const replace = selectionBehavior === 'replace';
@@ -482,9 +544,15 @@
       if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
         setRange(element, key);
       }
-      const next = moveFrom(element, items, row, movement, false);
-      const nextKey = next ? keyOf(next) : undefined;
-      focusItem(next);
+      let nextKey: Key | undefined;
+      if (windowHeight && key !== undefined) {
+        nextKey = keyAfter(element, 'row', order(), enabledKeys(element), key, movement, windowHeight);
+        focusKey(nextKey);
+      } else {
+        const next = moveFrom(element, rendered, row, movement, false);
+        nextKey = next ? keyOf(next) : undefined;
+        focusItem(next);
+      }
       if (nextKey === undefined || selectionMode === 'none') {
         return;
       }
@@ -505,7 +573,7 @@
     // Ctrl+A and Escape work from the controls of a row too.
     if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
       event.preventDefault();
-      setSelection(items.map((item) => keyOf(item)!));
+      setSelection(enabledKeys(element));
       window.getSelection()?.removeAllRanges();
       return;
     }
@@ -544,12 +612,17 @@
       }
       return;
     }
-    const found = typeahead(element, items, row, event);
-    if (found) {
+    let foundKey: Key | undefined;
+    if (windowHeight) {
+      foundKey = typeaheadWindowed(element, 'row', rowsOf(), enabledKeys(element), key, event, getTextValue);
+      focusKey(foundKey);
+    } else {
+      const found = typeahead(element, rendered, row, event);
+      foundKey = found ? keyOf(found) : undefined;
       focusItem(found);
-      if (replace && selectionMode !== 'none') {
-        select(keyOf(found)!, { shift: false, toggle: false });
-      }
+    }
+    if (foundKey !== undefined && replace && selectionMode !== 'none') {
+      select(foundKey, { shift: false, toggle: false });
     }
   }
 </script>
@@ -567,5 +640,18 @@
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Mod+ArrowUp', 'Mod+ArrowDown', 'Mod+PageUp', 'Mod+PageDown'))
   data-dragging=(dragging.length > 0 || undefined)
   {...rest}
->{children}</div>
+>
+  {children}
+  #if (items && item) {
+    #if (windowHeight) {
+      #for (entry of items by entry.id) window(windowHeight) {
+        {item(entry)}
+      }
+    } #else {
+      #for (entry of items by entry.id) {
+        {item(entry)}
+      }
+    }
+  }
+</div>
 <VisuallyHidden><span aria-live="assertive">{announcement}</span></VisuallyHidden>

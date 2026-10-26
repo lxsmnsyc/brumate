@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Virtualizer from '../../src/Virtualizer.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  const files = Array.from({ length: 300 }, (_, index) => ({
+    id: `r${index}`,
+    name: index === 120 ? 'Zebra' : `File ${index}`,
+  }));
+  let picked = $signal<Key[]>([]);
+</script>
+
+<Virtualizer class="box" rowHeight=(24) style="height: 120px">
+  <ListBox class="list" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) getTextValue=((file) => file.name) />
+</Virtualizer>
+<p class="state">{JSON.stringify(picked)}</p>
+
+#template file(file: { id: string; name: string }) {
+  <ListBoxItem id=(file.id) class=(`row row-${file.id}`)>{file.name}</ListBoxItem>
+}

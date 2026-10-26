@@ -19,7 +19,17 @@ A box that scrolls a long collection, such as thousands of rows, and renders onl
 
 ## Other collections
 
-The rows of a [GridList](./grid-list.md), a [ListBox](./list-box.md) or a [Table](./table.md) come from a `#for` of your own. Give it `window(height)`, and it renders only the rows in view, in the box that scrolls:
+A [GridList](./grid-list.md), a [ListBox](./list-box.md) or a [Table](./table.md) takes `items`, as a Tree does, and renders only the rows in view when it is in a Virtualizer:
+
+```html
+<Virtualizer rowHeight=(32) style="height: 300px">
+  <ListBox aria-label="Files" items=files item=file getTextValue=((file) => file.name) />
+</Virtualizer>
+```
+
+A Table takes `items` and `getTextValue`, and its `TableBody` takes `item`. Their keys read the data, as the keyboard section says.
+
+Rows that you write out or render from a `#for` of your own have no data to read. Give the `#for` `window(height)`, and it renders only the rows in view, in the box that scrolls:
 
 ```html
 <Virtualizer style="height: 300px">
@@ -38,7 +48,9 @@ See [windowed lists](../docs/control-flow.md#windowed-lists) for how it renders.
 
 ## Keyboard
 
-- In a [Tree](./tree.md), the keys read the data of all its rows, not only those that render. Home, End, PageUp and PageDown, Ctrl+A, a range with Shift, Left to the row that holds a row, and letters reach rows that are out of view. A move to a row that is not rendered scrolls it into view, then focuses it.
-- Letters match the text of a row that renders, and for the others the text that `getTextValue` of the Tree returns for the item, such as `getTextValue=((file) => file.name)`. Without it, letters match the rows in view only.
-- The Tree has `aria-rowcount` with the count of all its rows, and each row `aria-rowindex`, since not all the rows are in the page.
-- The rows of the other collections move between the rows that are rendered. A move to the edge of the view scrolls it, and the rows that come into view render, so Up and Down go through the whole list. Home and End go to the first and the last row that are rendered.
+- In a [Tree](./tree.md), and in a GridList, a ListBox or a Table that has `items`, the keys read the data of all the rows, not only those that render. Home, End, PageUp and PageDown, Ctrl+A, a range with Shift, and letters reach rows that are out of view. In a Tree, Left reaches the row that holds a row. A move to a row that is not rendered scrolls it into view, then focuses it.
+- In a Table, the box in the header selects every row that can be selected, also those that are not rendered.
+- Letters match the text of a row that renders, and for the others the text that `getTextValue` returns for the item, such as `getTextValue=((file) => file.name)`. Without it, letters match the rows in view only.
+- The Tree has `aria-rowcount` with the count of all its rows, and each row `aria-rowindex`, since not all the rows are in the page. The other collections do not have them yet.
+- A ListBox windows a vertical list that no field filters, so a ListBox in a ComboBox renders all its items. A GridList windowed with `onReorder` drags only between the rows that render.
+- The rows of a collection that has no `items` move between the rows that are rendered. A move to the edge of the view scrolls it, and the rows that come into view render, so Up and Down go through the whole list. Home and End go to the first and the last row that are rendered.
