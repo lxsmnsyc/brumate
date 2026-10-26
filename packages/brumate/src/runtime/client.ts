@@ -13,7 +13,6 @@ import {
   actionAttributes,
   attributeText,
   insertValue,
-  internal,
   bindEntry,
   handlerEntry,
   onAttribute,
@@ -785,8 +784,8 @@ export function spread(
 ): string {
   if (on) {
     on.push(...spreadEntries(attributes));
-    // A component in a dynamic tag gets the handlers of the tag as `b-on`, first as the own ones.
-    return spreadText(attributes, names).replace(/ b-on="[^"]*"/, '');
+    // The `b-on` of a dynamic tag that names a component is in `on`, not written as an attribute.
+    return spreadText({ ...attributes, 'b-on': undefined }, names);
   }
   return spreadText(attributes, names);
 }
@@ -4406,24 +4405,6 @@ function startAttributes(attributes: Record<string, unknown>): string {
   return spread(attributes, on) + onAttribute(on, '');
 }
 
-/** The props of a component in a dynamic tag, with its handlers in the scope of the tag. */
-function tagProps(
-  attributes: Record<string, unknown>,
-  scope: Scope | number | undefined,
-  inner: Raw | Children | undefined,
-  ref: unknown,
-): Record<string, unknown> {
-  const on = ownValue('b-on', attributes['b-on']) as string | undefined;
-  return {
-    ...attributes,
-    ...(ref !== undefined && { ref }),
-    ...(inner && { children: inner }),
-    ...(on && {
-      'b-on': internal(on.replace(/(^| )[^ @]+(?= |$)/g, `$&@${(scope as Scope).id ?? scope}`)),
-    }),
-  };
-}
-
 /**
  * Renders a dynamic tag for a clone: the element, with its attributes and content, or what a
  * component renders.
@@ -4438,9 +4419,12 @@ export function dynamicNodes(
   foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
+    if (ref !== undefined) {
+      attributes = { ...attributes, ref };
+    }
     return componentNodes(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      tagProps(attributes, scope, inner, ref),
+      inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,
     );
@@ -4489,9 +4473,12 @@ export function dynamic(
   ref?: unknown,
 ): string {
   if (typeof tag === 'function') {
+    if (ref !== undefined) {
+      attributes = { ...attributes, ref };
+    }
     return component(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      tagProps(attributes, scope, inner, ref),
+      inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,
     );

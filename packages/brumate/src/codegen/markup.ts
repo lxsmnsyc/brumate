@@ -1671,7 +1671,11 @@ export class Emitter {
       attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
     );
     if (events.length > 0) {
-      extra.push(`"b-on": $$b.internal(${JSON.stringify(events.join(' '))})`);
+      // The entries name the scope of the handlers, for a component that renders the element.
+      const owner = instanceScope(this.plan, scope);
+      const id = this.isInside(owner) ? this.scopeVar(owner) : `${this.scopeVar(owner)}.id`;
+      const entries = events.map((event) => `${JSON.stringify(`${event}@`)} + ${id}`);
+      extra.push(`"b-on": $$b.internal(${entries.join(' + " " + ')})`);
     }
     let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
     const { variables } = this.plan.styles;
