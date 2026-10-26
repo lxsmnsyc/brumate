@@ -1,4 +1,18 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface SelectionIndicatorOwnProps {
+    children?: unknown;
+  }
+
+  /**
+   * The props of SelectionIndicator. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type SelectionIndicatorProps<T extends AsTarget = 'span'> = AsProps<T, SelectionIndicatorOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'span'">
   import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import { SelectionIndicatorContext, moveIndicator } from './selection-indicator.ts';
 
@@ -14,11 +28,7 @@
    * - It moves from where the last one is now, also when the layout changed since, such as on a
    *   resize.
    */
-  const { as = 'span', children, ...rest } = $props<{
-    as?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { as = 'span', children, ...rest } = $props<SelectionIndicatorProps<T>>();
 
   const item = $getContext(SelectionIndicatorContext);
   const selected = $memo(Boolean(item?.isSelected));

@@ -1,3 +1,16 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+
+  export interface ColorSwatchPickerProps {
+    layout?: 'grid' | 'stack';
+    onChange?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $client,
@@ -10,7 +23,6 @@
     $setContext,
     $signal,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -26,7 +38,6 @@
     trackFocusOut,
     typeahead,
   } from './collection.ts';
-  import type { Key } from './collection.ts';
   import { formatColor, parseColor, tryParseColor } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
@@ -55,13 +66,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    layout?: 'grid' | 'stack';
-    onChange?: (value: string) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = '' } = $props<{ value?: Bindable<string> }>();
+  } = $props<ColorSwatchPickerProps>();
+  let { value = '' } = $props<ColorSwatchPickerProps>();
 
   // Inside a ColorPicker, a list without a `value` shows the color of the picker and writes it.
   const picker = $getContext(ColorPickerContext);

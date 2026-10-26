@@ -1,3 +1,22 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Placement } from './position.ts';
+
+  export interface PopoverProps {
+    placement?: Placement;
+    offset?: number;
+    crossOffset?: number;
+    shouldFlip?: boolean;
+    containerPadding?: number;
+    isNonModal?: boolean;
+    transition?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $effect,
@@ -10,7 +29,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -27,7 +45,6 @@
     release,
   } from './overlay.ts';
   import { followTrigger } from './position.ts';
-  import type { Placement } from './position.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
@@ -60,19 +77,8 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    placement?: Placement;
-    offset?: number;
-    crossOffset?: number;
-    shouldFlip?: boolean;
-    containerPadding?: number;
-    isNonModal?: boolean;
-    transition?: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { isOpen } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<PopoverProps>();
+  let { isOpen } = $props<PopoverProps>();
 
   const trigger = $getContext(OverlayTriggerContext);
   const parentLayer = $getContext(LayerContext);

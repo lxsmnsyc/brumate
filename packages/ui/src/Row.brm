@@ -1,8 +1,20 @@
+<script module>
+  import type { Key } from './collection.ts';
+
+  export interface RowProps {
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
-  import type { Key } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TableRowContext } from './table.ts';
@@ -23,14 +35,7 @@
     onAction,
     children,
     ...rest
-  } = $props<{
-    id: Key;
-    textValue?: string;
-    isDisabled?: boolean;
-    onAction?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<RowProps>();
 
   const list = $getContext(ListBoxContext);
   const mode = $memo(list?.selectionMode ?? 'none');

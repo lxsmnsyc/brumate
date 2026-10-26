@@ -1,3 +1,12 @@
+<script module>
+  import type { Movement } from './collection.ts';
+
+  export interface TagListProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -10,7 +19,6 @@
     moveFrom,
     setLastFocused,
   } from './collection.ts';
-  import type { Movement } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { TagGroupContext } from './tags.ts';
 
@@ -22,7 +30,7 @@
    * - The arrow keys move to the next and the previous tag, Left and Right turning around right
    *   to left, and Home and End go to the ends.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<TagListProps>();
 
   const group = $getContext(TagGroupContext);
   const locale = $getContext(LocaleContext);

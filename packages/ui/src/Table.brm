@@ -1,6 +1,26 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type { SortDescriptor, TableColumn } from './table.ts';
+
+  export interface TableProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onRowAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onSortChange?: (descriptor: SortDescriptor) => void;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    sortDescriptor?: Bindable<SortDescriptor | null>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -19,11 +39,9 @@
     setRange,
     typeahead,
   } from './collection.ts';
-  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
-  import type { SortDescriptor, TableColumn } from './table.ts';
 
   /**
    * A table of rows and columns that the user can move through, select and sort, as Table of
@@ -56,20 +74,9 @@
     onSortChange,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    onRowAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onSortChange?: (descriptor: SortDescriptor) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
-  let { sortDescriptor = null } = $props<{ sortDescriptor?: Bindable<SortDescriptor | null> }>();
+  } = $props<TableProps>();
+  let { selectedKeys = [] } = $props<TableProps>();
+  let { sortDescriptor = null } = $props<TableProps>();
 
   const locale = $getContext(LocaleContext);
   const sizes = $getContext(TableResizeContext);

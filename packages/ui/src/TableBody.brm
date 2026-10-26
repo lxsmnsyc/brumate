@@ -1,8 +1,15 @@
+<script module>
+  export interface TableBodyProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props } from 'brumate/signals';
 
   /** The rows of a Table, as TableBody of React Aria Components: Row elements. */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<TableBodyProps>();
 </script>
 
 <tbody role="rowgroup" {...rest}>{children}</tbody>

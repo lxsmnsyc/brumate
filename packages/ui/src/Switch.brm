@@ -1,6 +1,20 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface SwitchProps {
+    name?: string;
+    value?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    onChange?: (selected: boolean) => void;
+    children?: unknown;
+    isSelected?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $memo, $props } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -14,16 +28,8 @@
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
    */
   const { name, value, isDisabled = false, isReadOnly = false, onChange, children, ...rest } =
-    $props<{
-      name?: string;
-      value?: string;
-      isDisabled?: boolean;
-      isReadOnly?: boolean;
-      onChange?: (selected: boolean) => void;
-      children?: unknown;
-      [attribute: string]: unknown;
-    }>();
-  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+    $props<SwitchProps>();
+  let { isSelected = false } = $props<SwitchProps>();
 
   const disabled = $memo(isDisabled);
 

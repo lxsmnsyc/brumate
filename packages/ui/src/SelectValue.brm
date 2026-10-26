@@ -1,7 +1,19 @@
+<script module>
+  import type { Key } from './collection.ts';
+
+  export interface SelectValueProps {
+    render?: (state: {
+      selectedKey: Key | null;
+      selectedText: string | undefined;
+      isPlaceholder: boolean;
+    }) => unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { SelectValueContext } from './collection.ts';
-  import type { Key } from './collection.ts';
 
   /**
    * The value of a Select in its Button, as SelectValue of React Aria Components. It shows the
@@ -11,14 +23,7 @@
    * key until the code loads. `render`, a `#template`, names the selection in the HTML too. It
    * gets `selectedKey`, `selectedText` and `isPlaceholder`.
    */
-  const { render, ...rest } = $props<{
-    render?: (state: {
-      selectedKey: Key | null;
-      selectedText: string | undefined;
-      isPlaceholder: boolean;
-    }) => unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { render, ...rest } = $props<SelectValueProps>();
 
   const select = $getContext(SelectValueContext);
   const selectedKey = $memo(select?.selectedKey ?? null);

@@ -1,3 +1,13 @@
+<script module>
+  export interface DisclosurePanelProps {
+    role?: 'group' | 'region';
+    transition?: boolean;
+    unmount?: boolean | 'offscreen';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { DisclosurePanelContext } from './contexts.ts';
@@ -17,13 +27,7 @@
    *   `--disclosure-panel-height` holds the height of its content while it moves, so CSS can
    *   animate the height. A TransitionChild inside moves with it.
    */
-  const { role = 'group', transition = false, unmount = false, children, ...rest } = $props<{
-    role?: 'group' | 'region';
-    transition?: boolean;
-    unmount?: boolean | 'offscreen';
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { role = 'group', transition = false, unmount = false, children, ...rest } = $props<DisclosurePanelProps>();
 
   const state = $getContext(DisclosurePanelContext);
   const expanded = $untrack(Boolean(state?.isExpanded));

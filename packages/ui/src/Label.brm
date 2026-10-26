@@ -1,4 +1,19 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface LabelOwnProps {
+    slot?: string | null;
+    children?: unknown;
+  }
+
+  /**
+   * The props of Label. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type LabelProps<T extends AsTarget = 'label'> = AsProps<T, LabelOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'label'">
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
@@ -7,12 +22,7 @@
    * The label of a field, as Label of React Aria Components. A field gives it an ID and the `for`
    * of its input. The caller's `id` and `for` win.
    */
-  const { as = 'label', slot, children, ...rest } = $props<{
-    as?: string;
-    slot?: string | null;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { as = 'label', slot, children, ...rest } = $props<LabelProps<T>>();
 
   const context = $getContext(LabelContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

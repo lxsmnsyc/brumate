@@ -1,4 +1,18 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface CalendarHeadingOwnProps {
+    children?: unknown;
+  }
+
+  /**
+   * The props of CalendarHeading. `as` takes an element name or a component, and the other props
+   * are those of the target.
+   */
+  export type CalendarHeadingProps<T extends AsTarget = 'h2'> = AsProps<T, CalendarHeadingOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'h2'">
   import { $getContext, $props } from 'brumate/signals';
   import { CalendarContext, rangeLabel, toDate } from './calendar.ts';
 
@@ -6,7 +20,7 @@
    * The months that a Calendar shows, such as `October 2026`, as CalendarHeading of React Aria
    * Components. It is hidden from screen readers, which read the name of the Calendar.
    */
-  const { as = 'h2', ...rest } = $props<{ as?: string; [attribute: string]: unknown }>();
+  const { as = 'h2', ...rest } = $props<CalendarHeadingProps<T>>();
 
   const calendar = $getContext(CalendarContext);
 </script>

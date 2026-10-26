@@ -1,10 +1,26 @@
+<script module>
+  import type { ProgressBarState } from './progress.ts';
+
+  export interface ProgressBarProps {
+    value?: number;
+    isIndeterminate?: boolean;
+    minValue?: number;
+    maxValue?: number;
+    /** The text of the value, in place of the formatted number. */
+    valueLabel?: string;
+    formatOptions?: Intl.NumberFormatOptions;
+    content?: (state: ProgressBarState) => unknown;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { LocaleContext } from './locale.ts';
   import { progressOf } from './progress.ts';
-  import type { ProgressBarState } from './progress.ts';
 
   /**
    * The progress of a task, as ProgressBar of React Aria Components:
@@ -23,18 +39,7 @@
     content,
     children,
     ...rest
-  } = $props<{
-    value?: number;
-    isIndeterminate?: boolean;
-    minValue?: number;
-    maxValue?: number;
-    /** The text of the value, in place of the formatted number. */
-    valueLabel?: string;
-    formatOptions?: Intl.NumberFormatOptions;
-    content?: (state: ProgressBarState) => unknown;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ProgressBarProps>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();

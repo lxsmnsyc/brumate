@@ -1,3 +1,10 @@
+<script module>
+  export interface OverlayArrowProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props } from 'brumate/signals';
 
@@ -6,7 +13,7 @@
    * places it along its side, with `left` or `top`, and gives it `data-placement`, the side of
    * the trigger that the popover is on, so CSS can point it.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<OverlayArrowProps>();
 </script>
 
 <div data-overlay-arrow aria-hidden="true" style="position: absolute" {...rest}>{children}</div>

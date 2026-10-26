@@ -1,3 +1,10 @@
+<script module>
+  export interface SliderOutputProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { SliderContext, thumbId } from './slider.ts';
@@ -7,7 +14,7 @@
    * such as `40` or `20 – 80`. It is an `<output>` for the thumbs, which does not announce each
    * change.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<SliderOutputProps>();
 
   const slider = $getContext(SliderContext);
   const forIds = $memo(slider ? slider.values.map((_, index) => thumbId(slider, index)).join(' ') : undefined);

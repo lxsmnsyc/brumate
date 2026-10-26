@@ -1,3 +1,23 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+
+  export interface ListBoxProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    shouldFocusWrap?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    orientation?: 'vertical' | 'horizontal';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $client,
@@ -12,7 +32,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -36,7 +55,6 @@
     trackFocusOut,
     typeahead,
   } from './collection.ts';
-  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
 
@@ -66,20 +84,8 @@
     onSelectionChange,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    shouldFocusWrap?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    orientation?: 'vertical' | 'horizontal';
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<ListBoxProps>();
+  let { selectedKeys = [] } = $props<ListBoxProps>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.

@@ -10,7 +10,7 @@ A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen re
 - `onHoverStart`, `onHoverEnd` and `onHoverChange` follow a mouse or a pen. A touch never hovers.
 - `isDisabled` sets `disabled` on the button. `isPending` keeps its focus and presses nothing, such as while a form sends.
 - `type` is `button` by default, so a button in a form does not send it. Use `type="submit"` for one that does.
-- `as` renders another element, such as `as="a"`, with `role="button"` and a place in the order of Tab.
+- `as` renders another element, such as `as="a"`, with `role="button"` and a place in the order of Tab. `as` takes the name of an element or a component, and the other props are those of the target, so `as="a"` takes `href`, and a prop that the target does not take is a type error. `ButtonProps` is the props type. See [Props types](../docs/typescript.md#props-types).
 - A press that leaves the button ends without `onPress`, and starts again when the pointer comes back. Space never scrolls the page.
 
 ## Attributes

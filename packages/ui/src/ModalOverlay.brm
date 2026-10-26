@@ -1,3 +1,17 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface ModalOverlayProps {
+    isDismissable?: boolean;
+    isKeyboardDismissDisabled?: boolean;
+    transition?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean | undefined>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $effect,
@@ -10,7 +24,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -47,16 +60,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    isDismissable?: boolean;
-    isKeyboardDismissDisabled?: boolean;
-    transition?: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ModalOverlayProps>();
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
-  let { isOpen } = $props<{ isOpen?: Bindable<boolean | undefined> }>();
+  let { isOpen } = $props<ModalOverlayProps>();
 
   const trigger = $getContext(OverlayTriggerContext);
   const parentLayer = $getContext(LayerContext);

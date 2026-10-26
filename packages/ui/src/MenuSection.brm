@@ -1,3 +1,11 @@
+<script module>
+  export interface MenuSectionProps {
+    children?: unknown;
+    'aria-label'?: string;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $id, $isPassed, $props, $setContext } from 'brumate/signals';
   import { SectionContext } from './collection.ts';
@@ -6,11 +14,7 @@
    * A group of the items of a Menu, as MenuSection of React Aria Components. A Header inside names
    * it. A section with no Header needs `aria-label`.
    */
-  const { children, 'aria-label': label, ...rest } = $props<{
-    children?: unknown;
-    'aria-label'?: string;
-    [attribute: string]: unknown;
-  }>();
+  const { children, 'aria-label': label, ...rest } = $props<MenuSectionProps>();
 
   const headerId = $id();
   const named = $isPassed(label);

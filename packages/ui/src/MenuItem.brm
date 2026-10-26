@@ -1,9 +1,25 @@
+<script module>
+  import type { Key } from './collection.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+
+  export interface MenuItemProps {
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    /** It has a Text with `slot="label"`, which names it. */
+    hasLabel?: boolean;
+    /** It has a Text with `slot="description"`, which describes it. */
+    hasDescription?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
-  import type { Key } from './collection.ts';
   import { TextContext } from './contexts.ts';
-  import type { HoverEvent, PressEvent } from './events.ts';
   import { interact } from './interact.brm.ts';
   import { MenuContext, SubmenuContext } from './menu.ts';
 
@@ -30,18 +46,7 @@
     onAction,
     children,
     ...rest
-  } = $props<{
-    id: Key;
-    textValue?: string;
-    isDisabled?: boolean;
-    /** It has a Text with `slot="label"`, which names it. */
-    hasLabel?: boolean;
-    /** It has a Text with `slot="description"`, which describes it. */
-    hasDescription?: boolean;
-    onAction?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<MenuItemProps>();
 
   const menu = $getContext(MenuContext);
   const submenu = $getContext(SubmenuContext);

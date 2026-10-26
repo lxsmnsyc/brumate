@@ -1,6 +1,20 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface ToggleButtonGroupProps {
+    selectionMode?: 'single' | 'multiple';
+    disallowEmptySelection?: boolean;
+    isDisabled?: boolean;
+    orientation?: 'horizontal' | 'vertical';
+    onSelectionChange?: (keys: string[]) => void;
+    children?: unknown;
+    selectedKeys?: Bindable<string[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $handler, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
@@ -23,16 +37,8 @@
     onSelectionChange,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: 'single' | 'multiple';
-    disallowEmptySelection?: boolean;
-    isDisabled?: boolean;
-    orientation?: 'horizontal' | 'vertical';
-    onSelectionChange?: (keys: string[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<string[]> }>();
+  } = $props<ToggleButtonGroupProps>();
+  let { selectedKeys = [] } = $props<ToggleButtonGroupProps>();
 
   const locale = $getContext(LocaleContext);
   const nested = $getContext(ToolbarContext);

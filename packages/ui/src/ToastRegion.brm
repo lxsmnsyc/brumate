@@ -1,3 +1,15 @@
+<script module>
+  import type { QueuedToast } from './toast.ts';
+
+  export interface ToastRegionProps {
+    queue?: string;
+    toast: (item: QueuedToast<any>) => unknown;
+    transition?: boolean;
+    'aria-label'?: string;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props, $setContext, $signal } from 'brumate/signals';
   import {
@@ -8,7 +20,6 @@
     restoreFocus,
     toastQueue,
   } from './toast.ts';
-  import type { QueuedToast } from './toast.ts';
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
@@ -30,13 +41,7 @@
     transition = false,
     'aria-label': label = 'Notifications',
     ...rest
-  } = $props<{
-    queue?: string;
-    toast: (item: QueuedToast<any>) => unknown;
-    transition?: boolean;
-    'aria-label'?: string;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ToastRegionProps>();
 
   let shown = $signal<QueuedToast<unknown>[]>([]);
   let region = $signal<HTMLElement>();

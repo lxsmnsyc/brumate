@@ -1,3 +1,10 @@
+<script module>
+  export interface ColorWheelTrackProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -14,7 +21,7 @@
    *   the ring, inside the inner radius or outside the outer, does nothing.
    * - It shows `data-disabled`.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<ColorWheelTrackProps>();
 
   const wheel = $getContext(ColorWheelContext);
 

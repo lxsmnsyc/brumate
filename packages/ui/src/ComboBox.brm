@@ -1,6 +1,38 @@
-<script>
-  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+
+  export interface ComboBoxOwnProps {
+    name?: string;
+    isDisabled?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    allowsCustomValue?: boolean;
+    /** What the form gets: the key of the selection, or the text of the input. */
+    formValue?: 'key' | 'text';
+    /** What opens the list: typing (the default), focus, or only the keys and the Button. */
+    menuTrigger?: 'input' | 'focus' | 'manual';
+    /** Whether an item's text matches what was typed. By default, it contains it. */
+    defaultFilter?: (text: string, input: string) => boolean;
+    onSelectionChange?: (key: Key | null) => void;
+    onInputChange?: (value: string) => void;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    selectedKey?: Bindable<Key | null>;
+    inputValue?: Bindable<string>;
+    isOpen?: Bindable<boolean>;
+  }
+
+  /**
+   * The props of ComboBox. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ComboBoxProps<T extends AsTarget = 'div'> = AsProps<T, ComboBoxOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -10,7 +42,6 @@
     moveFrom,
     textOfItem,
   } from './collection.ts';
-  import type { Key } from './collection.ts';
   import {
     ButtonContext,
     FieldErrorContext,
@@ -58,28 +89,10 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    isDisabled?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    allowsCustomValue?: boolean;
-    /** What the form gets: the key of the selection, or the text of the input. */
-    formValue?: 'key' | 'text';
-    /** What opens the list: typing (the default), focus, or only the keys and the Button. */
-    menuTrigger?: 'input' | 'focus' | 'manual';
-    /** Whether an item's text matches what was typed. By default, it contains it. */
-    defaultFilter?: (text: string, input: string) => boolean;
-    onSelectionChange?: (key: Key | null) => void;
-    onInputChange?: (value: string) => void;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKey = null } = $props<{ selectedKey?: Bindable<Key | null> }>();
-  let { inputValue = '' } = $props<{ inputValue?: Bindable<string> }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<ComboBoxProps<T>>();
+  let { selectedKey = null } = $props<ComboBoxProps<T>>();
+  let { inputValue = '' } = $props<ComboBoxProps<T>>();
+  let { isOpen = false } = $props<ComboBoxProps<T>>();
 
   const form = $getContext(FormContext);
   const rootId = $id();

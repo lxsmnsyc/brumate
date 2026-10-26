@@ -1,3 +1,15 @@
+<script module>
+  export interface FileTriggerProps {
+    acceptedFileTypes?: string[];
+    allowsMultiple?: boolean;
+    defaultCamera?: 'user' | 'environment';
+    acceptDirectory?: boolean;
+    name?: string;
+    onSelect?: (files: FileList | null) => void;
+    children?: unknown;
+  }
+</script>
+
 <script>
   import { $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
@@ -15,15 +27,7 @@
     name,
     onSelect,
     children,
-  } = $props<{
-    acceptedFileTypes?: string[];
-    allowsMultiple?: boolean;
-    defaultCamera?: 'user' | 'environment';
-    acceptDirectory?: boolean;
-    name?: string;
-    onSelect?: (files: FileList | null) => void;
-    children?: unknown;
-  }>();
+  } = $props<FileTriggerProps>();
 
   const inputId = $id();
 

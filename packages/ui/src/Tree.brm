@@ -1,6 +1,44 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type { TreeNode } from './tree.ts';
+
+  export interface TreeProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    /**
+     * `'tab'` keeps the controls of the rows, such as links, in the order of Tab, and gives
+     * them the focus, as a NavigationTree does. The arrow keys still move between rows.
+     */
+    keyboardNavigationBehavior?: 'arrow' | 'tab';
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the Tree gives it too.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed Tree.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
+    getTextValue?: (node: any) => string;
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onExpandedChange?: (keys: Key[]) => void;
+    items: readonly TreeNode[];
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
+    item: (node: any) => unknown;
+    selectedKeys?: Bindable<Key[]>;
+    expandedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -21,12 +59,10 @@
     typeahead,
     typeaheadKey,
   } from './collection.ts';
-  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { TreeContext, visibleRows } from './tree.ts';
   import { VirtualizerContext } from './virtualizer.ts';
-  import type { TreeNode } from './tree.ts';
   import TreeRow from './TreeRow.brm';
 
   /**
@@ -62,38 +98,9 @@
     items,
     item,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    /**
-     * `'tab'` keeps the controls of the rows, such as links, in the order of Tab, and gives
-     * them the focus, as a NavigationTree does. The arrow keys still move between rows.
-     */
-    keyboardNavigationBehavior?: 'arrow' | 'tab';
-    /**
-     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
-     * A Virtualizer around the Tree gives it too.
-     */
-    rowHeight?: number;
-    /**
-     * The text that typeahead matches for an item, for the rows out of view of a windowed Tree.
-     * The rows in view use their own `textValue` or text.
-     */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
-    getTextValue?: (node: any) => string;
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onExpandedChange?: (keys: Key[]) => void;
-    items: readonly TreeNode[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
-    item: (node: any) => unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
-  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<Key[]> }>();
+  } = $props<TreeProps>();
+  let { selectedKeys = [] } = $props<TreeProps>();
+  let { expandedKeys = [] } = $props<TreeProps>();
 
   // The rows that show, in order: each item, then its children while it is open.
   const rows = $memo(visibleRows(items, expandedKeys));

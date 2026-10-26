@@ -1,9 +1,28 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
+  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+
+  export interface GridListProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onReorder?: (event: ReorderEvent) => void;
+    getItems?: (keys: Key[]) => DragItem[];
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $isPassed, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
-  import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
   import {
     ListBoxContext,
@@ -23,7 +42,6 @@
     textOfItem,
     typeahead,
   } from './collection.ts';
-  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
 
@@ -56,20 +74,8 @@
     getItems,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onReorder?: (event: ReorderEvent) => void;
-    getItems?: (keys: Key[]) => DragItem[];
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<GridListProps>();
+  let { selectedKeys = [] } = $props<GridListProps>();
 
   const locale = $getContext(LocaleContext);
   const hasAction = $isPassed(onAction);

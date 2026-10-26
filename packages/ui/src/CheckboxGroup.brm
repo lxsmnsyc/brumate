@@ -1,6 +1,21 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface CheckboxGroupProps {
+    name?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: string[]) => void;
+    children?: unknown;
+    value?: Bindable<string[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import {
     CheckboxGroupContext,
     FieldErrorContext,
@@ -32,17 +47,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    name?: string;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onChange?: (value: string[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = [] } = $props<{ value?: Bindable<string[]> }>();
+  } = $props<CheckboxGroupProps>();
+  let { value = [] } = $props<CheckboxGroupProps>();
 
   const labelId = $id();
   const descriptionId = $id();

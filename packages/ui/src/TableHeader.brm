@@ -1,3 +1,10 @@
+<script module>
+  export interface TableHeaderProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props, $setContext } from 'brumate/signals';
   import { CheckboxGroupContext } from './contexts.ts';
@@ -8,7 +15,7 @@
    * A Checkbox with `slot="selection"` in a Column selects every row, or none. It shows a mixed
    * state while some rows are selected.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<TableHeaderProps>();
 
   const table = $getContext(TableContext);
 

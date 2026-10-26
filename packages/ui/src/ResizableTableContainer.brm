@@ -1,3 +1,12 @@
+<script module>
+  export interface ResizableTableContainerProps {
+    onResize?: (widths: Map<string, number>) => void;
+    onResizeEnd?: (widths: Map<string, number>) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props, $setContext, $signal } from 'brumate/signals';
   import { TableResizeContext, clampWidth } from './table.ts';
@@ -12,12 +21,7 @@
    * - `onResize` hears of the widths as a ColumnResizer moves, and `onResizeEnd` when it stops,
    *   as a map from the key of a column to its width.
    */
-  const { onResize, onResizeEnd, children, ...rest } = $props<{
-    onResize?: (widths: Map<string, number>) => void;
-    onResizeEnd?: (widths: Map<string, number>) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { onResize, onResizeEnd, children, ...rest } = $props<ResizableTableContainerProps>();
 
   let widths = $signal<Record<string, number>>({});
   let resizing = $signal<string | null>(null);

@@ -1,3 +1,11 @@
+<script module>
+  export interface ToolbarProps {
+    orientation?: 'horizontal' | 'vertical';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $handler, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -11,11 +19,7 @@
    * item. Right to left, the arrow keys of a horizontal toolbar turn around. It shows
    * `data-orientation`. Inside another toolbar, it is a group, as in React Aria.
    */
-  const { orientation = 'horizontal', children, ...rest } = $props<{
-    orientation?: 'horizontal' | 'vertical';
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { orientation = 'horizontal', children, ...rest } = $props<ToolbarProps>();
 
   const locale = $getContext(LocaleContext);
   const nested = $getContext(ToolbarContext);

@@ -1,3 +1,10 @@
+<script module>
+  export interface NavigationTreeItemLinkProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { NavigationLinkContext } from './navigation-tree.ts';
@@ -9,7 +16,7 @@
    * item shows a span with `aria-disabled` and `data-disabled`, as a disabled Link does: it has no
    * `href` and no tab stop.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<NavigationTreeItemLinkProps>();
 
   const link = $getContext(NavigationLinkContext);
 </script>

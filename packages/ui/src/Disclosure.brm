@@ -1,6 +1,19 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DisclosureProps {
+    /** The key of the disclosure in a DisclosureGroup. */
+    id?: string;
+    isDisabled?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
+    children?: unknown;
+    isExpanded?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { ButtonContext, DisclosureGroupContext, DisclosurePanelContext } from './contexts.ts';
 
   /**
@@ -12,15 +25,8 @@
    * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it. Without
    * `id`, it takes an ID of its own, as in React Aria, so it still joins the group.
    */
-  const { id, isDisabled = false, onExpandedChange, children, ...rest } = $props<{
-    /** The key of the disclosure in a DisclosureGroup. */
-    id?: string;
-    isDisabled?: boolean;
-    onExpandedChange?: (expanded: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { isExpanded = false } = $props<{ isExpanded?: Bindable<boolean> }>();
+  const { id, isDisabled = false, onExpandedChange, children, ...rest } = $props<DisclosureProps>();
+  let { isExpanded = false } = $props<DisclosureProps>();
 
   const group = $getContext(DisclosureGroupContext);
   const triggerId = $id();

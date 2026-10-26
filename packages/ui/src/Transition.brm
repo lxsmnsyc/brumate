@@ -1,4 +1,32 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface TransitionOwnProps {
+    appear?: boolean;
+    unmount?: boolean | 'offscreen';
+    enter?: string;
+    enterFrom?: string;
+    enterTo?: string;
+    entered?: string;
+    leave?: string;
+    leaveFrom?: string;
+    leaveTo?: string;
+    beforeEnter?: () => void;
+    afterEnter?: () => void;
+    beforeLeave?: () => void;
+    afterLeave?: () => void;
+    children?: unknown;
+    show?: boolean;
+  }
+
+  /**
+   * The props of Transition. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TransitionProps<T extends AsTarget = 'div'> = AsProps<T, TransitionOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -55,25 +83,8 @@
     afterLeave,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    appear?: boolean;
-    unmount?: boolean | 'offscreen';
-    enter?: string;
-    enterFrom?: string;
-    enterTo?: string;
-    entered?: string;
-    leave?: string;
-    leaveFrom?: string;
-    leaveTo?: string;
-    beforeEnter?: () => void;
-    afterEnter?: () => void;
-    beforeLeave?: () => void;
-    afterLeave?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  const { show } = $props<{ show?: boolean }>();
+  } = $props<TransitionProps<T>>();
+  const { show } = $props<TransitionProps<T>>();
 
   // A Transition with `show`, or a TransitionChild of the one around it.
   const own = $isPassed(show);
