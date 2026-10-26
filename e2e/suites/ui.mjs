@@ -1511,7 +1511,11 @@ export async function run({ browser, url, runner }) {
     };
     assert((await page.locator('.tint-output').textContent()) === '210°', 'the output');
     assert(
-      (await page.locator('.tint').getAttribute('style')).includes('--track-background'),
+      (
+        await page
+          .locator('.tint')
+          .evaluate((slider) => getComputedStyle(slider).getPropertyValue('--track-background'))
+      ).includes('linear-gradient'),
       'the gradient of the track',
     );
     await page.locator('.tint-thumb input').focus();
