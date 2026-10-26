@@ -105,9 +105,25 @@ it('wraps the end of the circle to 0', async () => {
   press('ArrowLeft', input);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsl(359, 50%, 40%)'));
   press('ArrowDown', input);
-  // The range input steps down from 359 itself. The wrap is only at 0.
-  await wait();
-  expect(state(page)[0]).toBe('hsl(359, 50%, 40%)');
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(358, 50%, 40%)'));
+  press('ArrowUp', input);
+  press('ArrowRight', input);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(0, 50%, 40%)'));
+});
+
+it('moves a page of 15 with Shift and an arrow, as React Aria does', async () => {
+  const page = await wheels();
+  const input = range(page, '.wheel');
+  input.focus();
+  press('Home', input);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(0, 50%, 40%)'));
+  press('ArrowRight', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(15, 50%, 40%)'));
+  press('ArrowUp', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(30, 50%, 40%)'));
+  press('ArrowLeft', input, { shiftKey: true });
+  press('ArrowDown', input, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsl(0, 50%, 40%)'));
 });
 
 it('moves a page of 15 with PageUp and PageDown, to a multiple of the page', async () => {

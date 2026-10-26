@@ -38,7 +38,6 @@
       return;
     }
     if (event.key !== 'PageUp' && event.key !== 'PageDown') {
-      thumb.onInputKeyDown?.(index, event);
       return;
     }
     thumb.onInputPage(index, event.key === 'PageUp' ? 1 : -1);

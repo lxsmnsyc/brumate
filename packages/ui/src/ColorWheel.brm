@@ -32,10 +32,10 @@
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd` the
    *   color once a drag or a key ends. The color keeps its format and its saturation and
    *   lightness or brightness. A color of the rgb space is read as hsl.
-   * - The thumb has one hidden range input, from 0 to 360, named by `name`. The keys of the range
-   *   input apply: the arrows step by 1, Right and Up up, and Home and End go to 0. A hue past 359
-   *   starts over at 0, and Left or Down at 0 goes to 359. PageUp and PageDown move by 15, to a
-   *   multiple of 15.
+   * - The thumb has one hidden range input, from 0 to 360, named by `name`. The wheel takes its
+   *   keys, as React Aria does: Right and Up raise the hue by 1, and Left and Down lower it, by 15
+   *   with Shift. A hue past either end starts over, so Left at 0 goes to 359. PageUp and PageDown
+   *   move to a multiple of 15. Home goes to 0, and End to 360, which is 0.
    * - A press on the ring moves the thumb to that angle, and a drag follows it. A press on the
    *   thumb takes it where it is, so it does not jump to the pointer. A press off the ring does
    *   nothing.
@@ -111,12 +111,23 @@
     }
   }
 
-  // A key of the range input, an arrow or Home or End, comes as `inputChange`. The range input
-  // stops at 0, so Left and Down at 0 go to 359 here.
-  function inputKeyDown(_index: number, event: KeyboardEvent) {
-    if (hue === 0 && (event.key === 'ArrowLeft' || event.key === 'ArrowDown')) {
-      setHue(range.maxValue - range.step);
-      onChangeEnd?.(value);
+  // The wheel takes the keys of its input, as React Aria moves the hue: Right and Up raise it,
+  // Left and Down lower it, by a page with Shift, and a hue past either end starts over. PageUp
+  // and PageDown move to a multiple of a page. Home goes to 0, and End to 360, which is 0.
+  function inputKey(_index: number, key: string, shiftKey: boolean) {
+    const size = shiftKey ? range.pageSize : range.step;
+    if (key === 'ArrowRight' || key === 'ArrowUp') {
+      setHue(hueUp(hue, size, range.step));
+    } else if (key === 'ArrowLeft' || key === 'ArrowDown') {
+      setHue(hueDown(hue, size, range.step));
+    } else if (key === 'PageUp') {
+      setHue(hueUp(hue, range.pageSize, range.step));
+    } else if (key === 'PageDown') {
+      setHue(hueDown(hue, range.pageSize, range.step));
+    } else if (key === 'Home') {
+      setHue(range.minValue);
+    } else if (key === 'End') {
+      setHue(range.maxValue);
     }
   }
 
@@ -229,6 +240,7 @@
         valueText,
         label: ariaLabel ?? (ariaLabelledby ? undefined : channelName('hue')),
         labelledBy: ariaLabelledby,
+        keys: true,
       },
     ],
     isDragging: dragging,
@@ -237,7 +249,7 @@
     isDisabled,
     onInputChange: inputChange,
     onInputPage: inputPage,
-    onInputKeyDown: inputKeyDown,
+    onInputKey: inputKey,
     onPress: press,
     onFocusChange: focusChange,
     onChangeEnd: end,
