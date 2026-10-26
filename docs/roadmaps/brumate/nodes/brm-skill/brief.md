@@ -1,7 +1,7 @@
 ---
 id: brm-skill
 title: A skill for .brm files, with a test of its code blocks
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
