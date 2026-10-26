@@ -149,22 +149,40 @@ Cost: a few days. The change is a pass in the compiler that ranks memos, the `ta
 
 ### Worker functions
 
-Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler.
+Heavy work, such as parsing a large file, building a search index or processing an image, blocks the page when it runs in a handler. A worker function runs in a Web Worker, and returns a channel, as a socket function does:
 
 ```ts
 // search.worker.ts
-export function buildIndex(documents: Document[]) {
+import { createChannel } from 'brumate/channel';
+import type { Channel } from 'brumate/channel';
+
+export function search(documents: Document[], client: Channel<{ progress(done: number): void }>) {
   'use worker';
-  return createIndex(documents);
+  const index = createIndex(documents, (done) => client.run('progress', done));
+  return createChannel({
+    query(text: string) {
+      return index.query(text);
+    },
+    add(document: Document) {
+      index.add(document);
+    },
+  });
 }
 ```
 
-- A worker function runs in a Web Worker. The browser calls it like a server function, and gets a promise of its result.
-- It uses the calls and the serializer of server functions, and the stubs of [two-way realtime](#two-way-realtime): functions in its arguments and its result become stubs, so a worker can report its progress or return an object with methods that stay in the worker.
+```ts
+const worker = await search(documents, createChannel({ progress: (done) => (loaded = done) }));
+const results = await worker.run('query', 'resume');
+worker.close();
+```
+
+- The browser calls a worker function as a server function, and gets a promise of its channel. The index stays in the worker between calls, and `run` calls into it.
+- `close()` of the channel that it returned ends the worker. A worker function that returns a plain value, not a channel, ends its worker when it returns.
 - The worker loads on the first call, with only the code of its functions.
+- The channel is the one of [two-way realtime](#two-way-realtime), over `postMessage` in place of a connection, with the same serializer, so the worker can report its progress through a channel of the browser.
 - On the server, a worker function runs in place, or in a worker thread with an option.
 
-Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a few days for calls with values only.
+Cost: about 1 to 2 weeks, after the channels of two-way realtime. Without them, a few days for calls with values only.
 
 ### Offline pages
 
@@ -205,33 +223,36 @@ Cost: a day, with the first feature that sends calls again.
 
 Server functions can stream values to the browser, which covers updates that only go one way, such as an activity feed. Chat, presence and shared editing need calls both ways, on one connection.
 
-A socket function is a server function that keeps a connection open. Functions in what it returns, and functions in its arguments, are not serialized. Each one becomes a stub on the other side: a function that calls its counterpart over the connection, as a small server function would.
+A socket function is a server function that keeps a connection open. What it returns is a channel: an object of functions that stay on the server, which the browser calls by name.
 
 ```ts
 // chat.server.ts
+import { createChannel } from 'brumate/channel';
+import type { Channel } from 'brumate/channel';
 import { getSocket } from 'brumate/server';
 
-export async function room(name: string, client: { message(message: Message): void }) {
+export async function room(name: string, client: Channel<{ message(message: Message): void }>) {
   'use socket';
   const user = currentUser();
-  // `client.message` is a stub: calling it calls the function that the browser passed.
-  const leave = rooms.join(name, (message) => client.message(message));
+  // A call of the browser's channel, over the connection.
+  const leave = rooms.join(name, (message) => client.run('message', message));
   getSocket().onClose(leave);
-  // These functions stay on the server. The browser gets a stub of each one.
-  return {
+  return createChannel({
     send(text: string) {
       rooms.post(name, { user, text });
     },
     history(): Promise<Message[]> {
       return rooms.history(name);
     },
-  };
+  });
 }
 ```
 
-```html
+```brm
 <script>
   import { $client, $signal } from 'brumate/signals';
+  import { createChannel } from 'brumate/channel';
+  import { prevent } from 'brumate/events';
   import { room } from './chat.server';
 
   let messages = $signal<Message[]>([]);
@@ -239,44 +260,70 @@ export async function room(name: string, client: { message(message: Message): vo
   let chat = $signal<Awaited<ReturnType<typeof room>>>();
 
   $client(() => {
-    const open = room('general', { message: (message) => (messages = [...messages, message]) });
-    void open.then(async (stubs) => {
-      chat = stubs;
-      messages = await stubs.history();
+    const open = room(
+      'general',
+      createChannel({ message: (message: Message) => (messages = [...messages, message]) }),
+    );
+    void open.then(async (channel) => {
+      chat = channel;
+      messages = await channel.run('history');
     });
-    return () => void open.then((stubs) => stubs.close());
-  }, 'visible');
+    return () => void open.then((channel) => channel.close());
+  });
 </script>
 
 #for (message of messages by message.id) {
   <p><b>{message.user}</b> {message.text}</p>
 }
-<form onSubmit:prevent=(() => { void chat?.send(draft); draft = ''; })>
-  <input value=draft onInput=((event) => (draft = event.currentTarget.value))>
+<form onSubmit=(prevent(() => {
+  void chat?.run('send', draft);
+  draft = '';
+}))>
+  <input value=$bind(draft)>
 </form>
 ```
 
-Stubs:
+#### Channels
 
-- A call of a stub sends its arguments over the connection, runs the counterpart, and settles with its result. Every stub returns a promise, and the types say so: a function that returns `T` becomes a stub that returns `Promise<Awaited<T>>`.
-- Arguments and results go through the same serializer as server functions: values, promises, async iterables that stream, and functions again, which become stubs in turn. A stub can return a stub, so a socket can hand out more functions as the conversation goes on.
-- It works both ways. The server calls the browser's functions through their stubs, such as to push a message, and the browser calls the server's.
-- A stub belongs to its connection. Its ID means nothing on another connection, and a side can only call the functions that the other side gave it, so there is no route to guess, as there is for a server function.
-- A call that throws rejects the caller's promise with the error's name and message, as a server function call does.
-- Calls on one connection arrive in the order they were made. A caller can await a call, or not.
+`createChannel(functions)` from `brumate/channel` makes a channel of an object of functions, on the server, in the browser and in a worker. The side that makes it keeps the functions. The other side gets a `Channel` that calls them by name:
 
-The connection:
+```ts
+interface Channel<T extends Record<string, (...args: never[]) => unknown>> {
+  /** Calls a function of the other side, and settles with its result. */
+  run<K extends keyof T & string>(
+    name: K,
+    ...args: Parameters<T[K]>
+  ): Promise<Awaited<ReturnType<T[K]>>>;
+  /** Ends the channel. Calls in flight and later calls reject. */
+  close(): void;
+  /** Settles when the channel ends, from either side, or from the connection. */
+  readonly closed: Promise<void>;
+}
+```
+
+- The types come from the object that the other side passed to `createChannel`. A wrong name, a wrong argument or a missing one is a type error, and the result has the type of the function's result, in a promise.
+- `run` and `close` are the methods of the channel, not of the object, so a function can be called `close` or `run` without a clash.
+- A call sends its arguments over the connection, runs the function, and settles with its result. A call that throws rejects with the error's name and message, as a call of a server function does.
+- Arguments and results go through the serializer of server functions: values, promises, and async iterables that stream. A channel in an argument or a result is a channel on the other side too, so a function can hand out another channel, such as one for each document that a user opens.
+- A side can call only the functions of a channel that the other side gave it. A channel has an ID on its connection, which means nothing on another one, so there is no route to guess.
+- Calls on one channel arrive in the order they were made.
+- A channel that the other side drops, such as one that is garbage collected, is released on both sides.
+
+Both sides use the same `Channel`: the browser calls the server's with `chat.run('send', text)`, and the server calls the browser's with `client.run('message', message)`.
+
+#### The connection
 
 - The socket function runs with the event of the request that opened the connection, so it knows the user and the cookies, and middleware runs for it. `getSocket()` gives `onClose` and `close`.
 - The browser opens the connection when client code calls the socket function, not with the page, so a page that never calls it loads nothing.
-- `stubs.close()`, or the end of the connection, rejects the calls that are in flight and every later call. A stub that the other side drops, such as when it is garbage collected, is released on both sides.
-- When the connection drops, the browser does not open it again by itself: the stubs of the old connection are gone. A `reconnect` option can call the socket function again with the same arguments, and give the new stubs.
-- On the server, while a page renders, calling a socket function calls it directly, with the functions as they are. A component can render its first value without a connection.
+- The arguments of a call can have a schema, as the arguments of a server function can, and rate limits apply to each call.
+- `close()` of the channel that the socket function returned ends the connection. So does `getSocket().close()` on the server.
+- When the connection drops, a `reconnect` option calls the socket function again with the same arguments, and the channels that the browser holds go on with the new connection. Calls go by name, so a channel needs nothing of the old connection, and a component keeps the channel it has. Calls in flight when it dropped reject.
+- On the server, while a page renders, a call of a socket function calls it directly, with channels that call the functions in place. A component can render its first value without a connection.
 - The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. With Nitro, the WebSocket side uses its crossws support, which runs on Node, Bun, Deno and Cloudflare. A server of the app's own passes the upgrade to a handler that brumate exports.
 
-Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. Cap'n Proto calls them capabilities.
+Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. A channel calls by name instead, so it keeps its types without a proxy, and it survives a reconnection.
 
-Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the stubs on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
+Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the channels on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
 
 ## Tooling
 
