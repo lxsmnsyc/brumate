@@ -404,7 +404,8 @@ export function colorName(color: Color): string {
   } else if (lightness <= 3) {
     name = 'black';
   } else {
-    const base = saturation < 12 ? 'gray' : HUES.find(([end]) => hue < end)![1];
+    // A hue of 360 is past the last end, and it is red, as 0 is.
+    const base = saturation < 12 ? 'gray' : (HUES.find(([end]) => hue < end)?.[1] ?? 'red');
     let shade = '';
     if (lightness < 30) {
       shade = 'dark ';

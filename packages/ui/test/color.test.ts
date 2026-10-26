@@ -129,6 +129,7 @@ describe('channels', () => {
 describe('colorName', () => {
   it('names a color by its hue, its shade and its alpha', () => {
     expect(colorName(parseColor('#ff0000'))).toBe('red');
+    expect(colorName(parseColor('hsl(360, 100%, 50%)'))).toBe('red');
     expect(colorName(parseColor('#00008b'))).toBe('dark blue');
     expect(colorName(parseColor('#d3d3d3'))).toBe('light gray');
     expect(colorName(parseColor('#ffffff'))).toBe('white');
