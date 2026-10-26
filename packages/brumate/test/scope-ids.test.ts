@@ -63,7 +63,7 @@ describe('the table of scope IDs', () => {
     const holders = [...source.matchAll(/export class (\w+)\b[^{]*\{([^}]*?)constructor/gs)]
       .filter((match) => /readonly scope: ScopeId/.test(match[2]!))
       .map((match) => match[1]);
-    const named = SCOPE_IDS.references.map(([type]) => type.name);
+    const named = SCOPE_IDS.references.map((type) => type.name);
     expect(holders.length).toBeGreaterThan(0);
     expect(named.sort()).toEqual(holders.sort());
   });

@@ -11,7 +11,7 @@
 
 import type * as Client from './client.ts';
 import type { Scope } from './client.ts';
-import type { PageState, ScopeId, ScopeState } from './shared.ts';
+import type { FieldKind, PageState, ScopeId, ScopeState } from './shared.ts';
 
 /** The parts of the core that this module uses. */
 type Core = Pick<typeof Client, 'hooks' | 'removeScope' | 'scopeIds' | 'scopes'>;
@@ -30,14 +30,22 @@ function shiftId(id: ScopeId, by: number): ScopeId {
   return `${Number(id.slice(0, dot)) + by}${id.slice(dot)}`;
 }
 
+/** Makes an object with the same keys and the values that `map` returns. */
+function mapValues(object: object, map: (value: unknown) => unknown): object {
+  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, map(value)]));
+}
+
 /** Adds a number to the scope IDs of a state record, in the places that the table names. */
 export function shiftState(ids: Core['scopeIds'], state: PageState, by: number): PageState {
   const { fields, references } = ids;
   const seen = new Set<object>();
   const shiftValue = (value: unknown): unknown => {
-    for (const [type, shift] of references) {
+    // A reference is copied with its own fields, and its scope moved.
+    for (const type of references) {
       if (value instanceof type) {
-        return shift(value as never, by);
+        return Object.assign(Object.create(Object.getPrototypeOf(value)), value, {
+          scope: shiftId(value.scope, by),
+        });
       }
     }
     // A later record settles it, with a value whose IDs move too.
@@ -58,26 +66,25 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
     }
     return value;
   };
-  const shiftEach = (object: object, shift: (value: never) => unknown): object =>
-    Object.fromEntries(Object.entries(object).map(([key, value]) => [key, shift(value as never)]));
+  const shiftField = (field: unknown, kind: FieldKind): unknown => {
+    if (kind === 'id') {
+      return shiftId(field as ScopeId, by);
+    }
+    if (kind === 'ids') {
+      return mapValues(field as object, (id) => shiftId(id as ScopeId, by));
+    }
+    if (kind === 'values') {
+      return (field as unknown[]).map(shiftValue);
+    }
+    return kind === 'map' ? mapValues(field as object, shiftValue) : shiftValue(field);
+  };
   const result: PageState = {};
   for (const [key, record] of Object.entries(state)) {
     const moved: Record<string, unknown> = { ...record };
     for (const [name, kind] of Object.entries(fields)) {
-      const field = moved[name];
-      if (field === undefined || kind === 'none') {
-        continue;
+      if (moved[name] !== undefined && kind !== 'none') {
+        moved[name] = shiftField(moved[name], kind);
       }
-      moved[name] =
-        kind === 'id'
-          ? shiftId(field as ScopeId, by)
-          : kind === 'ids'
-            ? shiftEach(field as object, (id: ScopeId) => shiftId(id, by))
-            : kind === 'values'
-              ? (field as unknown[]).map(shiftValue)
-              : kind === 'map'
-                ? shiftEach(field as object, shiftValue)
-                : shiftValue(field);
     }
     result[shiftId(readId(key), by)] = moved as ScopeState;
   }

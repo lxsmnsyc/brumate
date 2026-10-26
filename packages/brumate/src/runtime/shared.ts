@@ -360,22 +360,16 @@ export type PackedState = PageState & { g?: unknown[][] };
  */
 export type FieldKind = 'none' | 'id' | 'ids' | 'value' | 'values' | 'map';
 
-/** A reference class that holds a scope ID, and how it makes a copy with its IDs moved. */
-export type ScopeReference = readonly [
-  type: abstract new (...args: never[]) => object,
-  shift: (value: never, by: number) => object,
-];
-
 /**
- * Every place that holds a scope ID, in one table: the fields of a state record
- * and the references in its values. Code that walks the IDs reads this table,
- * so a place that is added here is handled everywhere. A new field of
- * `ScopeState` fails to compile until it is in `fields`, and
- * `scope-ids.test.ts` fails for a new reference class that is not in `references`.
+ * A table of the fields of a state record and the reference classes that hold
+ * a scope ID, which each keep it in `scope`. Code that moves the IDs reads it.
+ * A new field of `ScopeState` fails to compile until it is in `fields`, and
+ * `scope-ids.test.ts` fails for a new reference class that is not in
+ * `references`. `Binding` is not in it yet.
  */
 export const SCOPE_IDS: {
   fields: Record<keyof ScopeState, FieldKind>;
-  references: readonly ScopeReference[];
+  references: readonly (abstract new (...args: never[]) => { scope: ScopeId })[];
 } = {
   fields: {
     k: 'none',
@@ -391,27 +385,5 @@ export const SCOPE_IDS: {
     c: 'ids',
     b: 'map',
   },
-  references: [
-    [
-      ElementReference,
-      (ref: ElementReference, by: number) =>
-        new ElementReference(shiftId(ref.scope, by), ref.anchor),
-    ],
-    [
-      FunctionReference,
-      (ref: FunctionReference, by: number) =>
-        new FunctionReference(ref.ref, shiftId(ref.scope, by), ref.args, ref.modifiers),
-    ],
-    // Children name the scope that wrote them, where they find their contexts.
-    [
-      ChildrenReference,
-      (ref: ChildrenReference, by: number) =>
-        new ChildrenReference(ref.ref, shiftId(ref.scope, by)),
-    ],
-    // The slot of a parent that a bound prop writes.
-    [
-      SlotReference,
-      (ref: SlotReference, by: number) => new SlotReference(shiftId(ref.scope, by), ref.slot),
-    ],
-  ],
+  references: [ElementReference, FunctionReference, ChildrenReference, SlotReference],
 };
