@@ -94,8 +94,8 @@ async function inspectCommand(args: string[]): Promise<number> {
 }
 
 async function skillCommand(args: string[]): Promise<number> {
-  if (args.length > 1) {
-    console.error(`brumate skill takes one folder, not ${args.length} arguments\n\n${USAGE}`);
+  if (args.length > 1 || args[0]?.startsWith('-')) {
+    console.error(`brumate skill takes one folder, not ${args.join(' ')}\n\n${USAGE}`);
     return 1;
   }
   const folder = path.resolve(args[0] ?? '.claude/skills');

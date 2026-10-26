@@ -1,6 +1,6 @@
 # The parts of @brumate/ui
 
-`@brumate/ui` has accessible, unstyled parts that follow React Aria Components, with the names and props of that library: `isDisabled`, `onPress`, `isSelected`. Each part is a `.brm` file that you import by its path, such as `@brumate/ui/Button.brm`. Read the page of a part in `website/ui` for its props and its `data-*` attributes.
+`@brumate/ui` has accessible, unstyled parts. Props are named `isDisabled`, `onPress`, `isSelected`, `onChange`. Each part is a `.brm` file that you import by its path, such as `@brumate/ui/Button.brm`. Read the page of a part in `website/ui` for its props and its `data-*` attributes.
 
 ## Use a part
 

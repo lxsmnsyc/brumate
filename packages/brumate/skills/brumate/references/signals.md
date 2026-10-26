@@ -48,7 +48,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 - `$route(path?)`: the current route, as `{ url, search, params }`. The path is the route, such as `'/posts/[id]'`, and takes at most one argument.
 - `$navigation()`: the state of a navigation, as `{ pending, from, to }`. It takes no arguments.
 - `$id()`: an ID that is unique in the page and the same on the server and in the browser. It takes no arguments.
-- `$title(value)`: sets the title of the page. Prefer `<title>` in `#head`. It takes one argument.
+- `$title(value)`: sets the title of the page. The compiler warns about it, and it will be removed: use `<title>` in `#head`. It takes one argument.
 - `$action(fn)`: the latest result of the server function `fn` of the same file, which a form of this component posts to. It is `undefined` before the first post.
 - `$optimistic(source)`: a value that follows `source`, a memo, an action or a prop, and that handlers can write to show a guess. Write it with `=`, never `++` or `--`. `source` is not a signal.
 - `$handler(fn, ...args)`: marks a function that a script makes as an event handler, so a spread passes it on. The arguments are JSON values, and the handler runs as `fn(...args, event)`.

@@ -759,8 +759,8 @@ const OUTPUT: ErrorEntry[] = [
   ),
   entry(
     'A dynamic tag that changes on the client is not supported yet',
-    'The tag of a dynamic tag changes in the browser, in a case that the compiler cannot update.',
-    '#if (level === 2) {\n  <h2>Title</h2>\n} #else {\n  <h3>Title</h3>\n}',
+    'No `.brm` file reaches it today: the parser keys every dynamic tag, and a `<{tag}>` whose tag a handler changes compiles. It is kept for a tag that the compiler could not update.',
+    '<{tag} class="title">Title</>',
   ),
   entry(
     'Code that the browser updates can await only a memo. Load the promise in a memo instead',
@@ -774,7 +774,7 @@ const OUTPUT: ErrorEntry[] = [
   ),
   entry(
     'This attribute cannot change on the client yet',
-    'An attribute whose name is computed, as in `[name]=value`, has a value that changes in the browser.',
+    'The name or the value of an attribute with a computed name, as in `[name]=value`, changes in the browser.',
     '<div class=(open ? "open" : "closed")></div>',
   ),
   entry(

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 import { CompileError, compile } from '../src/index.ts';
-import { ERRORS, findError, renderErrors } from '../src/error-catalog.ts';
+import { ERRORS, findError, matchesError, renderErrors } from '../src/error-catalog.ts';
 
 const SKILL = fileURLToPath(new URL('../skills/brumate/', import.meta.url));
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
@@ -153,8 +153,10 @@ describe('the code blocks', () => {
       // The block must fail, and its first error is the one that the skill names.
       expect(error).toBeInstanceOf(Error);
       expect(firstMessage(error)).toBe(text);
-      // The error has an entry, so errors.md explains it.
-      expect(findError(text)).toBeDefined();
+      // Exactly one entry has the form of the error, so errors.md explains it and nothing else does.
+      const entries = ERRORS.filter((entry) => matchesError(entry, text));
+      expect(entries.map((entry) => entry.message)).toHaveLength(1);
+      expect(findError(text)).toBe(entries[0]);
     },
   );
 });
@@ -190,6 +192,35 @@ describe('brumate skill with extra arguments', () => {
     } finally {
       rmSync(folder, { recursive: true });
     }
+  });
+});
+
+describe('brumate skill with an option', () => {
+  it('fails, prints the usage and makes no folder', () => {
+    const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+    const folder = mkdtempSync(join(tmpdir(), 'brumate-skill-'));
+    try {
+      let stderr = '';
+      try {
+        execFileSync('node', [cli, 'skill', '--help'], { cwd: folder, stdio: 'pipe' });
+      } catch (error) {
+        stderr = String((error as { stderr: Buffer }).stderr);
+      }
+      expect(stderr).toContain('Usage: brumate inspect');
+      expect(readdirSync(folder)).toEqual([]);
+    } finally {
+      rmSync(folder, { recursive: true });
+    }
+  });
+});
+
+describe('signals.md', () => {
+  it('lists the functions of brumate/signals', () => {
+    const source = readFileSync(new URL('../src/runtime/signals.ts', import.meta.url), 'utf8');
+    const exported = new Set([...source.matchAll(/^export function (\$\w+)/gm)].map((m) => m[1]));
+    const page = readFileSync(`${SKILL}references/signals.md`, 'utf8');
+    const rows = new Set([...page.matchAll(/^\| `(\$\w+)[(<]/gm)].map((m) => m[1]));
+    expect([...rows].toSorted()).toEqual([...exported].toSorted());
   });
 });
 
