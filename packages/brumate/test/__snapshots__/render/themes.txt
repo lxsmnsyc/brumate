@@ -25,19 +25,12 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
 Themes.brumateId = "Themes_945372";
 
 # Client entry
+export * from "./themes.brm?brumate-client&part=h3";
+export * from "./themes.brm?brumate-client&part=h4";
+export * from "./themes.brm?brumate-client&part=update";
 export const id = "Themes_945372";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
-const update = () => import("./themes.brm?brumate-client&part=update");
-const parts = {
-  "h3": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h3")),
-  "h4": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h4")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';
@@ -57,8 +50,10 @@ import { Theme } from "./theme";
 export function u2($$s) {
   $$b.updateContext($$s, Theme, $$b.get($$s, 0));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

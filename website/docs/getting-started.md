@@ -42,7 +42,7 @@ export default defineConfig({
 });
 ```
 
-The client entry only starts the loader. Nothing else runs in the browser until the first event:
+The client entry starts the loader. The loader then loads the core and the code of the components on the page:
 
 ```ts
 // src/client.ts
@@ -136,7 +136,7 @@ Run it:
 node server.ts
 ```
 
-Open `http://localhost:5173`. The page works before any script runs, and the first click loads the click handler.
+Open `http://localhost:5173`. The page shows before any script runs, and the click handler loads with the page.
 
 [Deploying](./deploying.md) describes the production build and server, and static sites.
 

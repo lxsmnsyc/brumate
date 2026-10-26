@@ -19,19 +19,12 @@ export default async function ClientElse($$props: Record<string, never>, $$ctx: 
 ClientElse.brumateId = "ClientElse_1w4g5uu";
 
 # Client entry
+export * from "./clientElse.brm?brumate-client&part=h1";
+export * from "./clientElse.brm?brumate-client&part=h4";
+export * from "./clientElse.brm?brumate-client&part=update";
 export const id = "ClientElse_1w4g5uu";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"], [2, "u3"], [3, "u5"]] } };
-const update = () => import("./clientElse.brm?brumate-client&part=update");
-const parts = {
-  "h1": () => (update().catch(() => {}), import("./clientElse.brm?brumate-client&part=h1")),
-  "h4": () => (update().catch(() => {}), import("./clientElse.brm?brumate-client&part=h4")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h1
 import * as $$b from 'brumate/client';
@@ -62,8 +55,9 @@ export function r2($$p) {
   $$html += "<p class=\"body\">Client <!--t" + $$s2 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
   return $$html;
 }
+const $$k0 = [3];
 export function k2($$s) {
-  $$b.fill($$s, 1, r2, [3]);
+  $$b.fill($$s, 1, r2, $$k0);
 }
 
 # Render module

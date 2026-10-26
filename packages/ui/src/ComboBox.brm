@@ -376,7 +376,7 @@
   <!-- The key of the selection for the form, which posts without scripts. -->
   <input
     type="hidden"
-    name=name
+    {name}
     value=(formValue === 'text' ? inputValue : selectedKey === null ? '' : String(selectedKey))
     disabled=(isDisabled || undefined)
   >

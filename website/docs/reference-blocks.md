@@ -82,20 +82,16 @@ Expressions cannot contain markup. Use a block or a `#template` instead.
 | `once(handler)`             | Runs the handler for the first event only.                   |
 | `capture(handler)`          | Runs the handler before the handlers of the elements inside. |
 
-Wrappers apply before the handler's code loads, so they work on the first event. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, still works, with a warning.
+Wrappers apply while the event dispatches, so they work before the code of the page has loaded. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, still works, with a warning.
 
 ## Reserved attributes
 
-| Attribute                    | Meaning                                                                                             |
-| ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| `ref=name`                   | Writes the element into the signal `name`, declared with `$signal` in the same file.                |
-| `prefetch="hover"`           | Loads the code of the element's handlers when the pointer is over it or it gets focus. The default. |
-| `prefetch="visible"`         | Loads it when the element enters the viewport.                                                      |
-| `prefetch="idle"`            | Loads it when the browser is idle.                                                                  |
-| `prefetch="none"`            | Loads it on the event only.                                                                         |
-| `action=fn`, `formaction=fn` | Posts a form to the server function `fn`. See [Forms](./forms.md).                                  |
+| Attribute                    | Meaning                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `ref=name`                   | Writes the element into the signal `name`, declared with `$signal` in the same file. |
+| `action=fn`, `formaction=fn` | Posts a form to the server function `fn`. See [Forms](./forms.md).                   |
 
-`ref` and `prefetch` are reserved on elements only. On components, they are ordinary props.
+`ref` is reserved on elements only. On components, it is an ordinary prop. `prefetch` on an element is a compile error, because the code of the page loads when it starts.
 
 Attribute names that start with `b-` are reserved on elements, because brumate writes them into the page. Using one is a compile error.
 

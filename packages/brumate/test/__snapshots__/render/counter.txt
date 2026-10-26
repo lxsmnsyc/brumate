@@ -16,18 +16,11 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
 Counter.brumateId = "Counter_m86gta";
 
 # Client entry
+export * from "./counter.brm?brumate-client&part=h4";
+export * from "./counter.brm?brumate-client&part=update";
 export const id = "Counter_m86gta";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
-const update = () => import("./counter.brm?brumate-client&part=update");
-const parts = {
-  "h4": () => (update().catch(() => {}), import("./counter.brm?brumate-client&part=h4")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h4
 import * as $$b from 'brumate/client';

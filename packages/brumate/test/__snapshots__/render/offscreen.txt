@@ -92,26 +92,19 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
 Offscreen.brumateId = "Offscreen_1oupne3";
 
 # Client entry
+export * from "./offscreen.brm?brumate-client&part=h7";
+export * from "./offscreen.brm?brumate-client&part=h8";
+export * from "./offscreen.brm?brumate-client&part=h9";
+export * from "./offscreen.brm?brumate-client&part=h10";
+export * from "./offscreen.brm?brumate-client&part=h11";
+export * from "./offscreen.brm?brumate-client&part=h12";
+export * from "./offscreen.brm?brumate-client&part=c16";
+export * from "./offscreen.brm?brumate-client&part=h17";
+export * from "./offscreen.brm?brumate-client&part=h19";
+export * from "./offscreen.brm?brumate-client&part=update";
 export const id = "Offscreen_1oupne3";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b13"], [1, "b29"], [7, "b32"]], 1: [[2, "e15"], [3, "u22"], [2, "u24"], [2, "b25"], [4, "u26"], [5, "u27"], [2, "u28"], [6, "u30"], [8, "e33"]], 2: [[2, "b21"]], 4: [[2, "u23"]], 3: [[1, "b31"]] }, 2: { 0: [[2, "u18"], [2, "u20"]] } };
-const update = () => import("./offscreen.brm?brumate-client&part=update");
-const parts = {
-  "h7": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h7")),
-  "h8": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h8")),
-  "h9": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h9")),
-  "h10": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h10")),
-  "h11": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h11")),
-  "h12": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h12")),
-  "c16": () => import("./offscreen.brm?brumate-client&part=c16"),
-  "h17": () => import("./offscreen.brm?brumate-client&part=h17"),
-  "h19": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h19")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h7
 import * as $$b from 'brumate/client';
@@ -197,8 +190,10 @@ export function u23($$s) {
 export function u24($$s) {
   $$b.text($$s, 6, $$b.get($$s.p, 1));
 }
+const $$k0 = [r4];
+const $$k1 = [4];
 export function b25($$s) {
-  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, [r4], [4]);
+  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, $$k0, $$k1);
 }
 export function u26($$s) {
   $$b.text($$s, 0, $$b.get($$s.p.p, 1));
@@ -215,8 +210,10 @@ export function b29($$s) {
 export function u30($$s) {
   $$b.text($$s, 0, $$b.get($$s.p, 1));
 }
+const $$k2 = [r7];
+const $$k3 = [7, 8];
 export function b31($$s) {
-  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, [r7], [7, 8]);
+  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, $$k2, $$k3);
 }
 export function b32($$s) {
   $$b.offscreen($$s, 0, $$b.get($$s.p, 0) === 'a', r8, 8);

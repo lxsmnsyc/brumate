@@ -49,7 +49,7 @@
   id=inputId
   type="file"
   hidden
-  name=name
+  {name}
   accept=(acceptedFileTypes?.join(','))
   multiple=(allowsMultiple || undefined)
   capture=defaultCamera

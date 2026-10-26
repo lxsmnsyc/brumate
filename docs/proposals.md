@@ -138,6 +138,8 @@ Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a f
 
 A resumed page needs the network only for the parts that its handlers load. The idle preload already knows which parts a page can reach.
 
+Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed.
+
 - A generated service worker caches the page, the loader, the core and those parts, so a page that was loaded once works offline, and its handlers run.
 - A server function call made offline waits in a queue with an option, and goes when the connection comes back. Its result settles the same promise.
 - `$online` is a signal of the connection, for a page that shows that it is offline.
@@ -262,6 +264,7 @@ What it should show:
 
 - **Elements.** Pick an element to see its scope, its anchor, its handlers with the size of each one's part and whether it loaded, and the values that its updates read. A link opens the `.brm` file at the line of the element in the editor, from the source maps, through the dev server, as Vite's `launch-editor` does.
 - **Loading.** A timeline of every part that loaded, with why: an event, the idle preload, an element that came into view, a hover, or navigation. Each row has its size, its time and the event that waited for it. Preloads that nothing used are marked.
+  - Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed. The devtools have no Loading tab.
 - **Page state.** The bytes of the first state record by component and by slot, and for each slot the client code that reads it, which is why it is sent. A value that is large, or sent but rarely read, stands out.
 - **Blocks.** Every `#loading`, `#defer` and `#client` block of the page with its state: fallback, waiting, streaming or rendered, its trigger, and when its body arrived and how long it took. Buttons fire a trigger now, or show a block's fallback again, to test both sides.
 - **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.

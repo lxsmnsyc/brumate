@@ -43,19 +43,12 @@ export default async function Loading($$props: Record<string, never>, $$ctx: $$b
 Loading.brumateId = "Loading_1sx8r1u";
 
 # Client entry
+export * from "./loading.brm?brumate-client&part=h2";
+export * from "./loading.brm?brumate-client&part=h5";
+export * from "./loading.brm?brumate-client&part=update";
 export const id = "Loading_1sx8r1u";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u3"], [2, "u6"]] } };
-const update = () => import("./loading.brm?brumate-client&part=update");
-const parts = {
-  "h2": () => (update().catch(() => {}), import("./loading.brm?brumate-client&part=h2")),
-  "h5": () => (update().catch(() => {}), import("./loading.brm?brumate-client&part=h5")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';

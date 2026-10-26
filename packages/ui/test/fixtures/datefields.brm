@@ -1,0 +1,39 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import DateField from '../../src/DateField.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DateSegment from '../../src/DateSegment.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import Text from '../../src/Text.brm';
+  import type { Segment } from '../../src/segments.ts';
+
+  let due = $signal<string | null>('2026-10-15');
+  let empty = $signal<string | null>(null);
+  let german = $signal<string | null>('2026-10-15');
+</script>
+
+<main>
+  <DateField class="due" name="due" value=$bind(due) minValue="2026-09-01" maxValue="2026-12-31">
+    <Label class="due-label">Due</Label>
+    <DateInput class="due-input" />
+    <Text slot="description" class="due-help">The day it is due.</Text>
+    <FieldError class="due-error">Out of range</FieldError>
+  </DateField>
+  <DateField class="empty" value=$bind(empty) placeholderValue="2026-10-25">
+    <Label>Start</Label>
+    <DateInput class="empty-input" segment=custom />
+  </DateField>
+  <I18nProvider locale="de-DE">
+    <DateField class="german" value=$bind(german)>
+      <Label>Datum</Label>
+      <DateInput class="german-input" />
+    </DateField>
+  </I18nProvider>
+  <p class="state">{JSON.stringify([due, empty, german])}</p>
+</main>
+
+#template custom(item: Segment) {
+  <DateSegment segment=item class="custom" />
+}

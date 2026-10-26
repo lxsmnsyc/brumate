@@ -143,6 +143,30 @@ class ClientGenerator {
     lines.push(code);
   }
 
+  /** The module constants of each part, by their code. */
+  private readonly constants = new Map<string, Map<string, string>>();
+  private constantCount = 0;
+
+  /**
+   * A constant of the module of the current part, such as a list of scope kinds or a key
+   * function that reads no scope, so an update does not make it again on each run.
+   */
+  private hoist(code: string): string {
+    let known = this.constants.get(this.part);
+    if (!known) {
+      known = new Map();
+      this.constants.set(this.part, known);
+    }
+    let name = known.get(code);
+    if (!name) {
+      // The parts of a small component share one module, so the names differ between parts.
+      name = `$$k${this.constantCount++}`;
+      known.set(code, name);
+      this.emit(`const ${name} = ${code};`);
+    }
+    return name;
+  }
+
   generate(): ClientOutput {
     this.collectRenders();
     this.checkSupport();
@@ -210,34 +234,15 @@ class ClientGenerator {
         diagnostics: this.diagnostics,
       };
     }
-    // A handler that writes a slot that the page shows loads the updates with its own part,
-    // so the write does not wait for another request.
-    const writers = this.liveWrites();
+    // The page loads every part of a component with it, so the entry exports them, and a bundle
+    // of the page holds them with the entry. The names of the parts' exports are their own.
     const loaders: Record<string, string[]> = {};
     for (const name of names) {
-      loaders[name] =
-        name !== 'update' && parts.update && writers.has(name) ? [name, 'update'] : [name];
+      loaders[name] = [name];
     }
-    const withUpdate = Object.values(loaders).some((list) => list.length > 1);
-    const lines = Object.entries(loaders).map(([name, [own, extra]]) => {
-      if (name === 'update' && withUpdate) {
-        return '  "update": update,';
-      }
-      const load = `import(${JSON.stringify(this.partPath(own!))})`;
-      return `  ${JSON.stringify(name)}: () => ${extra ? `(update().catch(() => {}), ${load})` : load},`;
-    });
     const entry = [
+      ...names.map((name) => `export * from ${JSON.stringify(this.partPath(name))};`),
       ...table,
-      ...(withUpdate
-        ? [`const update = () => import(${JSON.stringify(this.partPath('update'))});`]
-        : []),
-      'const parts = {',
-      ...lines,
-      '};',
-      '/** Imports a part of this module. */',
-      'export function load(part) {',
-      '  return parts[part]();',
-      '}',
       '',
     ];
     return {
@@ -248,34 +253,6 @@ class ClientGenerator {
       clientCode,
       diagnostics: this.diagnostics,
     };
-  }
-
-  /**
-   * The parts whose code can write a slot that an update reads, or that call
-   * shared code of a module function, which can write one.
-   */
-  private liveWrites(): Set<string> {
-    const live = new Set<Declaration>();
-    for (const edge of this.plan.graph.edges) {
-      const from = edge.from;
-      if ((from.kind === 'source' || from.kind === 'memo') && this.updates.has(edge.to)) {
-        live.add(from.declaration);
-      }
-    }
-    const result = new Set<string>();
-    for (const [name, sites] of this.reach) {
-      for (const site of sites) {
-        if (
-          site.writes.some((write) => live.has(write.declaration)) ||
-          site.reads.some((read) => read.declaration.kind === 'reset') ||
-          this.shared?.find(site.node) !== undefined
-        ) {
-          result.add(name);
-          break;
-        }
-      }
-    }
-    return result;
   }
 
   /** The import path of a part, relative to the component's file. */
@@ -762,6 +739,9 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
+      if (symbol.startsWith('t')) {
+        this.emitTemplateArgs(site, symbol);
+      }
       if (site.kind === 'client') {
         this.emit(
           `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,
@@ -943,7 +923,6 @@ class ClientGenerator {
       !attribute ||
       attribute.kind === 'static' ||
       attribute.kind === 'ref' ||
-      attribute.kind === 'prefetch' ||
       attribute.kind === 'computed'
     ) {
       this.error('This attribute cannot change on the client yet', site.range);
@@ -1110,7 +1089,7 @@ class ClientGenerator {
           this.renderName(body),
         );
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, [${renders.join(', ')}], [${this.kinds(blockBodies(block)).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)});\n}`,
         );
         return;
       }
@@ -1121,12 +1100,14 @@ class ClientGenerator {
             ? `$$b.listOf(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
+        // A key that reads only the item is the same function for every update.
+        const keyName = key.includes('$$s') ? key : this.hoist(key);
         const fallback = block.fallback ? this.renderName(block.fallback) : 'undefined';
         const fallbackKinds = block.fallback ? this.kinds([block.fallback]) : [];
         this.emit(
           [
             `export function ${fn}($$s) {`,
-            `  $$b.list($$s, ${anchor}, ${items}, ${key}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, [${fallbackKinds.join(', ')}]);`,
+            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)});`,
             '}',
           ].join('\n'),
         );
@@ -1154,7 +1135,7 @@ class ClientGenerator {
         const [inner] = block.body.children;
         const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)});\n}`,
         );
         return;
       }
@@ -1287,7 +1268,9 @@ class ClientGenerator {
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
         // The fallback's scopes go when the body renders in its place.
-        const fallback = block.fallback ? `, [${this.kinds([block.fallback]).join(', ')}]` : '';
+        const fallback = block.fallback
+          ? `, ${this.hoist(`[${this.kinds([block.fallback]).join(', ')}]`)}`
+          : '';
         this.emit(
           `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );
@@ -1377,6 +1360,37 @@ class ClientGenerator {
    * updates. The render module defines templates inside the component's
    * render function, so an update defines the ones that it calls itself.
    */
+  /**
+   * The slots of the arguments of a template that a prop passes, as `[slot, value]` pairs, so an
+   * insert that calls it again writes its new arguments into the scope that it rendered.
+   */
+  private emitTemplateArgs(site: Site, symbol: string): void {
+    const callee = site.reads
+      .map((read) => read.declaration)
+      .find((item) => item.kind === 'template');
+    const scope =
+      callee &&
+      this.model.scopes.find(
+        (item) => item.template?.name === callee.name && item.parent === callee.scope,
+      );
+    const template = scope?.template;
+    if (!scope || !template) {
+      return;
+    }
+    const first = template.params[0];
+    const last = template.params.at(-1);
+    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
+    const slots = [...scope.declarations.values()]
+      .filter((declaration) => declaration.kind === 'template-param')
+      .map((declaration) => [slotIndex(this.plan, declaration), declaration.name] as const);
+    // An argument without a slot is not in the scope, so the template renders again instead.
+    if (slots.some(([slot]) => slot === -1)) {
+      return;
+    }
+    const pairs = slots.map(([slot, name]) => `[${slot}, ${name}]`);
+    this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+  }
+
   private withTemplates(site: Site, code: string): string {
     const templates: Scope[] = [];
     // The templates that the code calls, and those that it passes on, such as a prop `item=option`.

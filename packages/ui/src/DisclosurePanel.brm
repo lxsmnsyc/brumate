@@ -109,7 +109,7 @@
   <div
     ref=element
     id=(state?.id)
-    role=role
+    {role}
     aria-labelledby=(state?.triggerId)
     hidden=(hiddenValue(shown, unmount === false, Boolean(state?.isDisabled)))
     inert=(leaving || undefined)

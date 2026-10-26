@@ -112,7 +112,7 @@
   <input
     id=inputId
     type="range"
-    name=name
+    {name}
     min=(range[0])
     max=(range[1])
     step=(slider?.step)

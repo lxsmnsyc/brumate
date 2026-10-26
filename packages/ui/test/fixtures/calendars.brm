@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Calendar from '../../src/Calendar.brm';
+  import CalendarCell from '../../src/CalendarCell.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import CalendarHeading from '../../src/CalendarHeading.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+
+  let date = $signal<string | null>('2026-10-15');
+  let trip = $signal<string | null>(null);
+
+  function weekend(value: string) {
+    return [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
+  }
+</script>
+
+<main class="page">
+  <Calendar class="due" aria-label="Due date" value=$bind(date) minValue="2026-09-10" maxValue="2026-11-20">
+    <header>
+      <Button slot="previous" class="previous">‹</Button>
+      <CalendarHeading class="heading" />
+      <Button slot="next" class="next">›</Button>
+    </header>
+    <CalendarGrid class="grid" />
+  </Calendar>
+  <I18nProvider locale="de-DE">
+    <Calendar class="trip" value=$bind(trip) focusedValue="2026-10-25" isDateUnavailable=weekend visibleDuration=({ months: 2 })>
+      <CalendarHeading class="trip-heading" />
+      <Button slot="next" class="trip-next">›</Button>
+      <CalendarGrid class="first" />
+      <CalendarGrid class="second" offset=({ months: 1 }) cell=day />
+    </Calendar>
+  </I18nProvider>
+  <p class="state">{JSON.stringify([date, trip])}</p>
+</main>
+
+#template day(value: string) {
+  <CalendarCell date=value class="custom">{Number(value.slice(8))}.</CalendarCell>
+}

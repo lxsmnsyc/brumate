@@ -1116,13 +1116,25 @@ export class Emitter {
     }
     const variables = this.emitVariables(node);
     const events: string[] = [];
-    let prefetch: string | undefined;
     const anchor = this.anchor(scope, node);
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
     const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
       ? ([] as string[])
       : undefined;
+    // A spread that changes in the browser names the attributes that it wrote, so its first
+    // update there removes only those, and keeps attributes that other code set.
+    const liveSpread = node.attributes.some((attribute) => {
+      const site =
+        attribute.kind === 'spread' ? this.sitesByNode.get(attribute.value.ast) : undefined;
+      return site !== undefined && this.plan.clientSites.has(site);
+    });
+    const spreadArguments = (handlers: string | undefined): string => {
+      if (liveSpread) {
+        return `, ${handlers ?? 'undefined'}, true`;
+      }
+      return handlers ? `, ${handlers}` : '';
+    };
     for (const attribute of node.attributes) {
       if (
         variables &&
@@ -1170,7 +1182,7 @@ export class Emitter {
         }
         case 'spread':
           this.code(
-            `$$b.spread(${this.expression(attribute.value)}${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+            `$$b.spread(${this.expression(attribute.value)}${spreadArguments(spreadHandlers)})`,
           );
           break;
         case 'computed':
@@ -1186,14 +1198,11 @@ export class Emitter {
             this.emitRef(attribute.target, attribute, anchor);
           }
           break;
-        case 'prefetch':
-          prefetch = attribute.strategy;
-          break;
       }
     }
     if (merged) {
       this.code(
-        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadHandlers ? `, ${spreadHandlers}` : ''})`,
+        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
       );
     }
     if (anchor) {
@@ -1209,9 +1218,6 @@ export class Emitter {
       this.code(`$$b.onAttribute(${spreadHandlers}, ${JSON.stringify(events.join(' '))})`);
     } else if (events.length > 0) {
       this.html(` b-on="${events.join(' ')}"`);
-    }
-    if (events.length > 0 && prefetch) {
-      this.html(` data-prefetch="${prefetch}"`);
     }
     this.html('>');
     if (VOID_ELEMENTS.has(node.tag)) {

@@ -423,7 +423,7 @@
               </tbody>
             </table>
             <p class="repl-note">
-              The client entry loads when a component is first used. Each part loads when its event fires or a value it updates changes.
+              The client entry and its parts load with the page, in the bundle of the page.
               The server code never reaches the browser.
             </p>
           </div>

@@ -1,0 +1,116 @@
+<script>
+  import { $getContext, $id, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { DateFieldContext, SEGMENT_NAMES, focusSegment } from './segments.ts';
+  import type { Segment, SegmentType } from './segments.ts';
+
+  /**
+   * One part of the date of a DateField, or the text between two parts, as DateSegment of React
+   * Aria Components.
+   *
+   * - A part is a spinbutton. ArrowUp and ArrowDown step it around its range, and a part that is
+   *   not set starts at the placeholder.
+   * - Digits type into it, and `a` or `p` into AM or PM. Once no other digit could follow, focus
+   *   moves to the next part.
+   *   Backspace takes the last digit away, and moves back from an empty part.
+   * - It is editable text, so a touch keyboard shows its digits. The browser does not change the
+   *   text itself.
+   * - It shows `data-type`, `data-placeholder`, `data-focused`, `data-readonly`, `data-disabled`
+   *   and `data-invalid`.
+   */
+  const { segment, ...rest } = $props<{ segment: Segment; [attribute: string]: unknown }>();
+
+  const field = $getContext(DateFieldContext);
+  const id = $id();
+
+  /** The part that this segment edits. */
+  function part(): SegmentType | undefined {
+    return segment.type === 'literal' ? undefined : segment.type;
+  }
+
+  /** Focuses the part after or before this one in the field. */
+  function move(element: HTMLElement, by: 1 | -1) {
+    const group = element.closest('[role="group"]');
+    const editable = [...(group?.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])') ?? [])];
+    focusSegment(editable[editable.indexOf(element) + by]);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const type = part();
+    if (!field || !type) {
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      field.step(type, 1);
+    } else if (event.key === 'ArrowDown') {
+      field.step(type, -1);
+    }
+  }
+
+  // The browser does not change the text. Each digit types into the part.
+  function beforeInput(event: InputEvent) {
+    const type = part();
+    const element = event.currentTarget as HTMLElement;
+    if (!field || !type) {
+      return;
+    }
+    if (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward') {
+      if (field.erase(type)) {
+        move(element, -1);
+      }
+      return;
+    }
+    for (const char of event.data ?? '') {
+      if (field.type(type, char)) {
+        move(element, 1);
+        return;
+      }
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    (event.currentTarget as HTMLElement).setAttribute('data-focused', '');
+  }
+
+  function focusOut(event: FocusEvent) {
+    (event.currentTarget as HTMLElement).removeAttribute('data-focused');
+    field?.settle();
+  }
+</script>
+
+#if (segment.type === 'literal') {
+  <span aria-hidden="true" data-segment data-type="literal" {...rest}>{segment.text}</span>
+} #else {
+  <span
+    {id}
+    role="spinbutton"
+    tabindex=(field?.isDisabled ? undefined : '0')
+    contenteditable=(field?.isDisabled || field?.isReadOnly ? undefined : 'true')
+    inputmode=(segment.type === 'dayPeriod' ? 'text' : 'numeric')
+    autocorrect="off"
+    spellcheck="false"
+    enterkeyhint="next"
+    aria-label=(SEGMENT_NAMES[segment.type])
+    aria-labelledby=(field ? `${id} ${field.labelId}` : undefined)
+    aria-describedby=(field?.describedBy)
+    aria-valuenow=(segment.value)
+    aria-valuemin=(segment.min)
+    aria-valuemax=(segment.max)
+    aria-valuetext=(segment.isPlaceholder ? 'Empty' : segment.text)
+    aria-required=(field?.isRequired || undefined)
+    aria-invalid=(field?.isInvalid || undefined)
+    aria-readonly=(field?.isReadOnly || undefined)
+    aria-disabled=(field?.isDisabled || undefined)
+    data-segment
+    data-type=(segment.type)
+    data-placeholder=(segment.isPlaceholder || undefined)
+    data-readonly=(field?.isReadOnly || undefined)
+    data-disabled=(field?.isDisabled || undefined)
+    data-invalid=(field?.isInvalid || undefined)
+    onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown'))
+    onBeforeInput=(prevent(beforeInput))
+    onFocusIn=focusIn
+    onFocusOut=focusOut
+    {...rest}
+  >{segment.text}</span>
+}

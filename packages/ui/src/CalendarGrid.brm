@@ -1,0 +1,125 @@
+<script>
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import type { DateDuration } from '@internationalized/date';
+  import {
+    CalendarContext,
+    CalendarGridContext,
+    endOfMonth,
+    rangeLabel,
+    startOfMonth,
+    toDate,
+    unitDuration,
+    weekDays,
+    weeksOf,
+  } from './calendar.ts';
+  import type { DateString } from './calendar.ts';
+  import CalendarCell from './CalendarCell.brm';
+
+  /**
+   * The days of a month in a Calendar, as a table, as CalendarGrid of React Aria Components. The
+   * first row holds the days of the week, hidden from screen readers. A CalendarCell shows each
+   * date, or `cell`, a `#template` that gets the date.
+   *
+   * - `offset` is the month that it shows after the first one that the Calendar shows, such as
+   *   `{ months: 1 }`.
+   * - The arrow keys move focus by a day and a week, PageUp and PageDown by a month, or a year
+   *   with Shift, and Home and End to the start and the end of the month. Enter and Space select
+   *   the date. Escape drops the first date of a range that is not done.
+   */
+  const { offset, cell, ...rest } = $props<{
+    offset?: DateDuration;
+    cell?: (date: DateString) => unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const calendar = $getContext(CalendarContext);
+  const start = $memo(
+    calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
+  );
+  const weeks = $memo(calendar ? weeksOf(toDate(start), calendar.locale) : []);
+  const days = $memo(calendar ? weekDays(calendar.locale) : []);
+  const label = $memo(
+    calendar
+      ? [calendar.ariaLabel, rangeLabel(toDate(start), endOfMonth(toDate(start)), calendar.locale)]
+          .filter(Boolean)
+          .join(', ')
+      : undefined,
+  );
+
+  function keyDown(event: KeyboardEvent) {
+    if (!calendar) {
+      return;
+    }
+    const unit = unitDuration(calendar.visibleDuration);
+    const back = calendar.direction === 'rtl' ? 1 : -1;
+    switch (event.key) {
+      case 'ArrowLeft':
+        calendar.moveFocus((date) => date.add({ days: back }));
+        return;
+      case 'ArrowRight':
+        calendar.moveFocus((date) => date.add({ days: -back }));
+        return;
+      case 'ArrowUp':
+        calendar.moveFocus((date) => date.subtract({ weeks: 1 }));
+        return;
+      case 'ArrowDown':
+        calendar.moveFocus((date) => date.add({ weeks: 1 }));
+        return;
+      case 'PageUp':
+        calendar.moveFocus((date) => date.subtract(event.shiftKey ? { years: 1 } : unit));
+        return;
+      case 'PageDown':
+        calendar.moveFocus((date) => date.add(event.shiftKey ? { years: 1 } : unit));
+        return;
+      case 'Home':
+        calendar.moveFocus((date) => startOfMonth(date));
+        return;
+      case 'End':
+        calendar.moveFocus((date) => endOfMonth(date));
+        return;
+      case 'Enter':
+      case ' ':
+        calendar.selectFocused();
+        return;
+      case 'Escape':
+        // A range that is not done is dropped. Escape is not prevented, so a popover around closes.
+        calendar.cancel();
+        return;
+      default:
+        return;
+    }
+  }
+
+  $setContext(CalendarGridContext, { start });
+</script>
+
+<table
+  role="grid"
+  aria-label=label
+  aria-readonly=(calendar?.isReadOnly || undefined)
+  aria-disabled=(calendar?.isDisabled || undefined)
+  onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', 'Enter', 'Space'))
+  {...rest}
+>
+  <thead aria-hidden="true">
+    <tr>
+      #for (day of days by day.name) {
+        <th>{day.short}</th>
+      }
+    </tr>
+  </thead>
+  <tbody>
+    #for (week of weeks by week[0]) {
+      <tr>
+        #for (date of week by date) {
+          #if (cell) {
+            {cell(date)}
+          } #else {
+            <CalendarCell {date} />
+          }
+        }
+      </tr>
+    }
+  </tbody>
+</table>

@@ -133,9 +133,10 @@ afterEach(() => {
 });
 
 /** Delays loading some parts, to test the order in which handlers run. */
+/** Milliseconds that the module of each component takes to load, by ID, or `all` for every one. */
 type PartDelays = Record<string, number>;
 
-/** The parts that the loader and the core loaded, as `<component>:<part>`. */
+/** The components whose modules the loader and the core loaded, by ID. */
 const loadedParts: string[] = [];
 
 async function resume(
@@ -158,15 +159,9 @@ async function startLoader(delays: PartDelays = {}, serial?: SerialEntry): Promi
   stop = start({
     ...(serial ? { serial: async () => serial } : {}),
     load: async (id) => {
-      const module = await import(modules.get(id)!);
-      return {
-        ...module,
-        load: async (part: string) => {
-          loadedParts.push(`${id}:${part}`);
-          await new Promise((done) => setTimeout(done, delays[part] ?? 0));
-          return module.load(part);
-        },
-      };
+      loadedParts.push(id);
+      await new Promise((done) => setTimeout(done, delays[id] ?? delays.all ?? 0));
+      return import(modules.get(id)!);
     },
   });
 }
@@ -239,15 +234,8 @@ async function failingHandlers(server: string): Promise<{
     stop = start({
       build: 'b1',
       onError: (error) => reported.push(String(error)),
-      load: async (id) => {
-        const module = await import(modules.get(id)!);
-        return {
-          ...module,
-          // The handlers fail to load, as a module that throws or a file that is gone does.
-          load: (part: string) =>
-            part.startsWith('h') ? Promise.reject(new Error('Top level')) : module.load(part),
-        };
-      },
+      // The code of the page fails to load, as a module that throws or a file that is gone does.
+      load: () => Promise.reject(new Error('Top level')),
     });
   };
   await restart();
@@ -478,55 +466,15 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
-  it('preloads handlers when the browser is idle', async () => {
-    await resume('prefetch', {});
-    // Without a click, the idle button's handler part loads, and the other one does not.
-    await waitFor(() => expect(loadedParts).toContain('Prefetch_okfwof:h1'));
-    expect(loadedParts).not.toContain('Prefetch_okfwof:h3');
-  });
-
-  it('preloads only the handlers in view, and loads the others when they are needed', async () => {
-    // Only the toggle is near the viewport. A `$client` callback waits for its own
-    // observer, which never reports.
-    class InView {
-      readonly callback: IntersectionObserverCallback;
-      readonly near: boolean;
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        this.callback = callback;
-        this.near = options?.rootMargin !== undefined;
-      }
-      observe(target: Element): void {
-        if (this.near && target.matches('.toggle')) {
-          queueMicrotask(() =>
-            this.callback(
-              [{ target, isIntersecting: true } as IntersectionObserverEntry],
-              this as unknown as IntersectionObserver,
-            ),
-          );
-        }
-      }
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-    vi.stubGlobal('IntersectionObserver', InView);
+  it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
-    window.dispatchEvent(new Event('load'));
     const id = 'Disclosure_104dejl';
-    // The toggle's part and the updates load while the page is idle. The `$client` part does
-    // not, and the button in the closed #if is not in the page yet.
-    await waitFor(() => expect(loadedParts.toSorted()).toEqual([`${id}:h4`, `${id}:update`]));
-
-    // The #if renders with the updates that the toggle's part loaded with it.
+    // The module loads without an event, with every part, also of the button in the closed #if.
+    await waitFor(() => expect(loadedParts).toEqual([id]));
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
-    expect(loadedParts).not.toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
-
-    // The button that the #if rendered loads its part on its first click.
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(text('.count')).toBe('1'));
-    expect(loadedParts).toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
     expect(text('.seen')).toBe('0');
   });
 
@@ -776,6 +724,31 @@ describe('resume', () => {
       expect(document.querySelector('.popover')).toBeNull();
     });
 
+    it('gives children that a component passes on the contexts of the component that inserts them', async () => {
+      const server = await import(file('spikeWrapped.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      expect(html).toMatch(/<span class="label" id="[^"]+"/);
+      expect(html).toContain('aria-expanded="false"');
+      // In the browser, the trigger opens its select through the same context.
+      await resume('spikeWrapped', {});
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
+    });
+
+    it('gives children that a component passes on its contexts in markup that the browser renders', async () => {
+      await resume('spikeWrappedLater', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.label')).not.toBeNull());
+      expect(document.querySelector('.label')!.id).not.toBe('');
+      expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('false');
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
+    });
+
     it('gives children the contexts of the component in markup that the browser renders', async () => {
       await resume('spikeLater', {});
       click(document.querySelector('.show')!);
@@ -841,7 +814,7 @@ describe('resume', () => {
 
     // The body still fails, so the fallback renders again, and its button still works.
     click(document.querySelector('.retry')!);
-    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c:update'));
+    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c'));
     await waitFor(() => expect(text('.error')).toBe('Error: Not ready'));
 
     const shared = await import(file('retry.brm.client.shared.ts'));
@@ -1045,17 +1018,16 @@ describe('resume', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
   });
 
-  it('sends the error of a handler that fails to load to #try when the build is the same', async () => {
+  it('reports the error of code that fails to load when the build is the same', async () => {
     sessionStorage.clear();
     const { reload, skews, reported } = await failingHandlers('b1');
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
-    expect(reported).toEqual(['Error: Top level']);
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).not.toHaveBeenCalled();
     expect(skews).toEqual([]);
   });
 
-  it('loads the page again once for each build when the code of a handler is gone', async () => {
+  it('loads the page again once for each build when the code of the page is gone', async () => {
     sessionStorage.clear();
     const { reload, skews, reported, restart } = await failingHandlers('b2');
     click(document.querySelector('.throw')!);
@@ -1065,9 +1037,8 @@ describe('resume', () => {
     // is gone too, and the page does not load again for the same build.
     await restart();
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(reported).toEqual(['Error: Top level']);
   });
 
   it('loads async memos again when their inputs change', async () => {
@@ -1426,8 +1397,8 @@ describe('resume', () => {
 
   it('runs handlers in the order of their events', async () => {
     vi.stubGlobal('fetch', async () => new Response(toChunkStream(undefined)));
-    // The input handler's part loads after the submit handler's part.
-    await resume('todos', { initial: [] }, { h7: 100 });
+    // The events come while the code of the page loads.
+    await resume('todos', { initial: [] }, { all: 100 });
     const field = document.querySelector('input')!;
     field.value = 'First';
     field.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2300,6 +2271,83 @@ describe('style variables with a spread', () => {
   });
 });
 
+describe('function props that return values', () => {
+  it('returns the result of a function prop in a memo, in markup and in a handler', async () => {
+    await resume('valueFilter', {});
+    const shown = document.querySelector('.shown')!;
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept', 'dropped']));
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(shown.textContent).toBe('2,4,6'));
+    expect(marks().at(-1)).toBe('kept');
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(document.querySelector('.picked')!.textContent).toBe('true'));
+  });
+});
+
+describe('spreads and attributes of other code', () => {
+  it('keeps an attribute that a $client callback set when the spread updates', async () => {
+    await resume('spreadKeeps', {});
+    const box = document.querySelector('.box')!;
+    expect(box.getAttribute('b-s')).toBe('class title');
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('templates called again', () => {
+  it('update in place with their new arguments, and keep their elements', async () => {
+    await resume('templateInPlace', {});
+    const lines = () => [...document.querySelectorAll<HTMLElement>('.line')];
+    const first = lines()[0]!;
+    expect(lines().map((item) => item.textContent)).toEqual(['a', 'b']);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(lines().map((item) => item.textContent)).toEqual(['a!', 'b!']));
+    // The server rendered the element, and it stays.
+    expect(lines()[0]).toBe(first);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(lines()).toHaveLength(3));
+    const added = lines()[2]!;
+    expect(added.dataset.index).toBe('2');
+    click(document.querySelector('.rename')!);
+    await waitFor(() =>
+      expect(lines().map((item) => item.textContent)).toEqual(['a!!', 'b!!', 'new!']),
+    );
+    // The browser rendered this one, and it stays too.
+    expect(lines()[2]).toBe(added);
+    expect(lines()[0]).toBe(first);
+  });
+});
+
+describe('function props in markup that the browser renders', () => {
+  it('return their results, in a memo, in markup and in a handler', async () => {
+    await resume('valueFilterLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4'));
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept']);
+    click(document.querySelector('.more')!);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4,6'));
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.picked')).toBe('true'));
+  });
+});
+
+describe('shorthand handlers', () => {
+  it('runs a handler that a shorthand gives an element', async () => {
+    await resume('shorthandHandler', {});
+    expect(document.querySelector('.go')!.getAttribute('b-on')).toMatch(/^click=/);
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.go')).toBe('1'));
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];
@@ -2309,6 +2357,21 @@ describe('effect order', () => {
     await waitFor(() => expect(log).toEqual(['2 3 1']));
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(log).toEqual(['2 3 1', '4 6 2']));
+  });
+});
+
+describe('effect cleanups', () => {
+  it('does not run an effect again for a value that only its cleanup reads', async () => {
+    const log: string[] = [];
+    (globalThis as { cleanupLog?: string[] }).cleanupLog = log;
+    await resume('effectCleanup', {});
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1']));
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(text('.b-value')).toBe('1'));
+    expect(log).toEqual(['run 1']);
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1', 'clean 1', 'run 2']));
   });
 });
 
@@ -2684,8 +2747,8 @@ describe('bindings', () => {
 
 describe('calls of functions of other components', () => {
   it('runs them in the order that they were made, also when the code of the first is slower', async () => {
-    // h1 is the first function of the parent, which loads after the second.
-    await resume('orderedCalls', {}, { h1: 80 });
+    // The calls come while the code of the page loads.
+    await resume('orderedCalls', {}, { all: 80 });
     click(document.querySelector('.both')!);
     await waitFor(() => expect(text('.log')).toBe('ab'));
   });
@@ -3038,6 +3101,30 @@ describe('markup that streams in after a write', () => {
     expect(document.querySelector('.plain')!.className).toBe('plain');
     // The update writes what the server rendered, so the box that the user checked stays checked.
     expect(document.querySelector<HTMLInputElement>('.late-box')!.checked).toBe(true);
+  });
+});
+
+describe('templates that stream in after a write', () => {
+  it('renders the template of a list that streams in, once its code loads', async () => {
+    const server = await import(file('lateTemplate.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    // The code of the page loads late, so the markup streams in before it.
+    await startLoader({ all: 30 });
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    server.release('apple,pear');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    const names = () =>
+      [...document.querySelectorAll('.late-list strong')].map((item) => item.textContent);
+    expect(names()).toEqual(['apple', 'pear']);
+    // The updates of the scopes that streamed in run with the code of the template.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(names()).toEqual(['apple', 'pear']);
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(names()).toEqual(['pear', 'apple']));
   });
 });
 

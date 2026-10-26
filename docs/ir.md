@@ -76,7 +76,6 @@ type Attribute =
   | { kind: 'value'; range: Range; name: string; value: Expression }
   | { kind: 'event'; range: Range; event: string; modifiers: Modifier[]; handler: Expression }
   | { kind: 'ref'; range: Range; target: string } // Names a signal.
-  | { kind: 'prefetch'; range: Range; strategy: 'hover' | 'visible' | 'idle' | 'none' }
   | { kind: 'spread'; range: Range; value: Expression }
   | { kind: 'computed'; range: Range; name: Expression; value: Expression | true };
 
@@ -240,7 +239,7 @@ A node that is not live is rendered on the server and has no client code.
 
 A component compiled alone does not know its parents, so it treats every prop as live and writes update code for bindings that read props.
 
-This costs nothing at runtime. Update code is in a separate module that loads on the first write that reaches it. If the parent passes a constant, nothing writes the prop, and the module never loads.
+This costs only the size of the update code. If the parent passes a constant, nothing writes the prop, and the update never runs.
 
 The parent decides at render time how to pass each prop:
 

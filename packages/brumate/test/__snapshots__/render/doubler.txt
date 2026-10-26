@@ -26,18 +26,11 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
 Doubler.brumateId = "Doubler_1bxsryb";
 
 # Client entry
+export * from "./doubler.brm?brumate-client&part=h2";
+export * from "./doubler.brm?brumate-client&part=update";
 export const id = "Doubler_1bxsryb";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m1"], [1, "u3"]], 1: [[1, "u4"], [1, "b5"]] } };
-const update = () => import("./doubler.brm?brumate-client&part=update");
-const parts = {
-  "h2": () => (update().catch(() => {}), import("./doubler.brm?brumate-client&part=h2")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';
@@ -57,8 +50,10 @@ export function u3($$s) {
 export function u4($$s) {
   $$b.content($$s, 1, $$b.get($$s, 1));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

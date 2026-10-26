@@ -34,7 +34,7 @@
 </script>
 
 <section
-  role=role
+  {role}
   tabindex="-1"
   aria-labelledby=(titled && rest['aria-label'] === undefined ? titleId : undefined)
   {...rest}

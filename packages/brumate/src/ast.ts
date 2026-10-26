@@ -107,8 +107,6 @@ export interface InsertNode extends Range {
 
 export type Modifier = 'prevent' | 'stop' | 'passive' | 'once' | 'capture';
 
-export type PrefetchStrategy = 'hover' | 'visible' | 'idle' | 'none';
-
 export interface StaticAttribute extends Range {
   kind: 'static';
   name: string;
@@ -139,11 +137,6 @@ export interface RefAttribute extends Range {
   targetRange: Range;
 }
 
-export interface PrefetchAttribute extends Range {
-  kind: 'prefetch';
-  strategy: PrefetchStrategy;
-}
-
 export interface SpreadAttribute extends Range {
   kind: 'spread';
   value: Expression;
@@ -160,7 +153,6 @@ export type Attribute =
   | ValueAttribute
   | EventAttribute
   | RefAttribute
-  | PrefetchAttribute
   | SpreadAttribute
   | ComputedAttribute;
 

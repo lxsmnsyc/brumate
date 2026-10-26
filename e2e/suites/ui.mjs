@@ -993,6 +993,229 @@ export async function run({ browser, url, runner }) {
   );
 
   await step(
+    'Calendar: the keys move focus, a closed day cannot be picked, and the buttons stop at the minimum',
+    async () => {
+      await page.goto(`${url}/`);
+      const cell = (date) =>
+        page.locator(`.delivery-grid [data-date="${date}"]:not([data-outside-month])`);
+      const waitState = (text) =>
+        page.waitForFunction(
+          (t) => document.querySelector('.delivery-state')?.textContent === t,
+          text,
+        );
+      const waitFocus = (date) =>
+        page.waitForFunction((d) => document.activeElement?.getAttribute('data-date') === d, date);
+      await cell('2026-10-15').focus();
+      await page.keyboard.press('ArrowRight');
+      await waitFocus('2026-10-16');
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await waitFocus('2026-10-18');
+      // October 18 is a Sunday, when the shop is closed.
+      assert(
+        (await cell('2026-10-18').getAttribute('data-unavailable')) !== null,
+        'Sunday is open',
+      );
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('ArrowLeft');
+      await waitFocus('2026-10-17');
+      await page.keyboard.press('Enter');
+      await waitState('2026-10-17');
+      await page.locator('.delivery-next').click();
+      await page.waitForFunction(
+        () => document.querySelector('.delivery-heading')?.textContent === 'November 2026',
+      );
+      await cell('2026-11-03').click();
+      await waitState('2026-11-03');
+      await page.locator('.delivery-previous').click();
+      await page.waitForFunction(
+        () => document.querySelector('.delivery-heading')?.textContent === 'October 2026',
+      );
+      // The minimum is in October, so there is no month before it.
+      await page.waitForFunction(() =>
+        document.querySelector('.delivery-previous')?.hasAttribute('disabled'),
+      );
+    },
+  );
+
+  await step(
+    'DateField: the arrow keys step a segment, digits type and move on, Backspace empties',
+    async () => {
+      await page.goto(`${url}/`);
+      const segment = (type) => page.locator(`.birthday-input [data-type="${type}"]`);
+      const waitState = (text) =>
+        page.waitForFunction(
+          (t) => document.querySelector('.birthday-state')?.textContent === t,
+          text,
+        );
+      await segment('month').focus();
+      await page.keyboard.press('ArrowUp');
+      await waitState('2026-11-15');
+      // The browser does not change the text of a segment, and the field types the digits.
+      await page.keyboard.type('03');
+      await waitState('2026-03-15');
+      await page.waitForFunction(() => document.activeElement?.getAttribute('data-type') === 'day');
+      await page.keyboard.type('9');
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-type') === 'year',
+      );
+      await waitState('2026-03-09');
+      await page.keyboard.press('Backspace');
+      await page.keyboard.press('Backspace');
+      await page.keyboard.press('Backspace');
+      await page.keyboard.press('Backspace');
+      await waitState('none');
+      assert(
+        (await segment('year').textContent()) === 'yyyy',
+        `the year shows ${await segment('year').textContent()}`,
+      );
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForFunction(() => document.activeElement?.getAttribute('data-type') === 'day');
+    },
+  );
+
+  await step(
+    'TimeField: the arrow keys step the hour, digits type the minute, and p sets PM',
+    async () => {
+      await page.goto(`${url}/`);
+      const segment = (type) => page.locator(`.pickup-input [data-type="${type}"]`);
+      const waitState = (text) =>
+        page.waitForFunction(
+          (t) => document.querySelector('.pickup-state')?.textContent === t,
+          text,
+        );
+      await segment('hour').focus();
+      await page.keyboard.press('ArrowDown');
+      await waitState('13:30');
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.type('45');
+      await waitState('13:45');
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-type') === 'dayPeriod',
+      );
+      await page.keyboard.type('a');
+      await waitState('01:45');
+      await page.keyboard.type('p');
+      await waitState('13:45');
+    },
+  );
+
+  await step(
+    'DatePicker: the button opens the calendar on the date, the keys pick one, and focus comes back',
+    async () => {
+      await page.goto(`${url}/`);
+      const waitState = (text) =>
+        page.waitForFunction(
+          (t) => document.querySelector('.departure-state')?.textContent === t,
+          text,
+        );
+      const button = page.locator('.departure-button');
+      await button.click();
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-date') === '2026-10-15',
+      );
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-date') === '2026-10-16',
+      );
+      await page.keyboard.press('Enter');
+      await waitState('2026-10-16');
+      await page.waitForFunction(() => !document.querySelector('.departure-popover'));
+      await page.waitForFunction(() =>
+        document.activeElement?.classList.contains('departure-button'),
+      );
+      assert(
+        (await page.locator('.departure-input [data-type="day"]').textContent()) === '16',
+        'the segments do not show the picked date',
+      );
+      // Escape closes it without a pick.
+      await button.click();
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-date') === '2026-10-16',
+      );
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('.departure-popover'));
+      await waitState('2026-10-16');
+    },
+  );
+
+  await step(
+    'DateRangePicker: the end field steps, and two presses in the calendar pick a range that closes it',
+    async () => {
+      await page.goto(`${url}/`);
+      const waitState = (text) =>
+        page.waitForFunction(
+          (t) => document.querySelector('.booking-state')?.textContent === t,
+          text,
+        );
+      await page.locator('.booking-end [data-type="day"]').focus();
+      await page.keyboard.press('ArrowUp');
+      await waitState('2026-10-12 2026-10-16');
+      await page.locator('.booking-button').click();
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-date') === '2026-10-12',
+      );
+      const cell = (date) =>
+        page.locator(`.booking-grid [data-date="${date}"]:not([data-outside-month])`);
+      await cell('2026-10-20').click();
+      await cell('2026-10-22').click();
+      await waitState('2026-10-20 2026-10-22');
+      await page.waitForFunction(() => !document.querySelector('.booking-popover'));
+      await page.waitForFunction(() =>
+        document.activeElement?.classList.contains('booking-button'),
+      );
+      assert(
+        (await page.locator('.booking-end [data-type="day"]').textContent()) === '22',
+        'the end field does not show the picked end',
+      );
+    },
+  );
+
+  await step(
+    'RangeCalendar: two presses pick a range, the pointer shows it, and a closed day stops it',
+    async () => {
+      await page.goto(`${url}/`);
+      const cell = (date) =>
+        page.locator(`.stay-grid [data-date="${date}"]:not([data-outside-month])`);
+      const waitState = (text) =>
+        page.waitForFunction((t) => document.querySelector('.stay-state')?.textContent === t, text);
+      const selected = () =>
+        page.evaluate(() =>
+          [
+            ...document.querySelectorAll('.stay-grid [data-selected]:not([data-outside-month])'),
+          ].map((item) => item.getAttribute('data-date')),
+        );
+      await cell('2026-10-20').click();
+      await cell('2026-10-22').hover();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('.stay-grid [data-selected]:not([data-outside-month])')
+            .length === 3,
+      );
+      assert(
+        JSON.stringify(await selected()) === '["2026-10-20","2026-10-21","2026-10-22"]',
+        `the range under the pointer is ${await selected()}`,
+      );
+      await cell('2026-10-22').click();
+      await waitState('2026-10-20 2026-10-22');
+      // October 25 is a Sunday, when the shop is closed, so a range over it is not picked.
+      await cell('2026-10-23').click();
+      await cell('2026-10-27').click();
+      await page.waitForTimeout(100);
+      assert(
+        (await page.locator('.stay-state').textContent()) === '2026-10-20 2026-10-22',
+        'a range over a closed day was picked',
+      );
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('.stay-grid [data-selected]:not([data-outside-month])')
+            .length === 3,
+      );
+    },
+  );
+
+  await step(
     'Slider: the keys, a press on the track, and a drag that stops at the other thumb',
     async () => {
       await page.goto(`${url}/`);

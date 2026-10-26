@@ -38,7 +38,6 @@ Open the page and the network panel:
 
 - Until the `load` event, the page runs only the loader, the client entry. The quote streams in about 1.5 seconds later, and `load` waits for it.
 - After `load`, when the browser is idle, the loader preloads the core and the code of the components with buttons in view. A click then needs no request.
-- Set `preload: false` in `vite.config.ts` to see the code of a button load on its first click instead.
 - The first link that you follow loads the code of client navigation. The layout and its Wide button keep their state.
 
 ## Tests

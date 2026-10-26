@@ -102,20 +102,13 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
 Blocks.brumateId = "Blocks_jlmev2";
 
 # Client entry
+export * from "./blocks.brm?brumate-client&part=c4";
+export * from "./blocks.brm?brumate-client&part=h6";
+export * from "./blocks.brm?brumate-client&part=h20";
+export * from "./blocks.brm?brumate-client&part=update";
 export const id = "Blocks_jlmev2";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
-const update = () => import("./blocks.brm?brumate-client&part=update");
-const parts = {
-  "c4": () => import("./blocks.brm?brumate-client&part=c4"),
-  "h6": () => (update().catch(() => {}), import("./blocks.brm?brumate-client&part=h6")),
-  "h20": () => (update().catch(() => {}), import("./blocks.brm?brumate-client&part=h20")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: c4
 import * as $$b from 'brumate/client';
@@ -139,11 +132,15 @@ export const h20 = ($$s) => ($$b.set($$s.p, 1, []));
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = [r3, r4];
+const $$k1 = [3, 4];
 export function b7($$s) {
-  $$b.branch($$s, 3, ($$b.get($$s, 0) === 'a') ? 0 : 1, [r3, r4], [3, 4]);
+  $$b.branch($$s, 3, ($$b.get($$s, 0) === 'a') ? 0 : 1, $$k0, $$k1);
 }
+const $$k2 = ($$item) => $$item;
+const $$k3 = [6];
 export function b8($$s) {
-  $$b.list($$s, 4, $$b.listOf($$b.get($$s, 1)), ($$item) => $$item, r5, a5, r6, [6]);
+  $$b.list($$s, 4, $$b.listOf($$b.get($$s, 1)), $$k2, r5, a5, r6, $$k3);
 }
 export function a5($$s, $$item, $$index) {
   $$s.i = $$item;

@@ -1,0 +1,249 @@
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
+  import type { DateRange, DateString } from './calendar.ts';
+  import {
+    ButtonContext,
+    FieldErrorContext,
+    FormContext,
+    GroupContext,
+    LabelContext,
+    OverlayTriggerContext,
+    TextContext,
+  } from './contexts.ts';
+  import { dateSegments } from './date-field.brm.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+  import { LocaleContext } from './locale.ts';
+  import { DateRangeFieldContext } from './segments.ts';
+
+  /**
+   * Two dates that the user types or picks as a range, as DateRangePicker of React Aria
+   * Components. It holds a Label, a Group with a DateInput with `slot="start"`, one with
+   * `slot="end"` and a Button, a Popover with a Dialog and a RangeCalendar, and a Text with
+   * `slot="description"` and a FieldError.
+   *
+   * - `value` is the range as `{ start, end }` of `YYYY-MM-DD` dates, or null until both are set.
+   *   `value=(range)` starts its own, and `value=$bind(signal)` writes the caller's. `onChange`
+   *   gets each change, typed or picked.
+   * - The Button opens the Popover. A range picked in the RangeCalendar sets both dates and closes
+   *   the Popover, unless `shouldCloseOnSelect` is false.
+   * - `minValue`, `maxValue` and `isDateUnavailable` make a range invalid, and so does a start
+   *   after the end. The RangeCalendar follows them too, unless it has its own.
+   * - `startName` and `endName` post the dates with a form, from hidden inputs.
+   * - It shows `data-open`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   */
+  const {
+    as = 'div',
+    startName,
+    endName,
+    minValue,
+    maxValue,
+    placeholderValue,
+    isDateUnavailable,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid = false,
+    shouldCloseOnSelect = true,
+    onChange,
+    onOpenChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    startName?: string;
+    endName?: string;
+    minValue?: DateString;
+    maxValue?: DateString;
+    placeholderValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onChange?: (value: DateRange | null) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<DateRange | null> }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const locale = $getContext(LocaleContext);
+  const form = $getContext(FormContext);
+  const triggerId = $id();
+  const overlayId = $id();
+  const labelId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const placeholder = $memo(
+    constrain(toDate(placeholderValue ?? todayString()), minValue, maxValue).toString(),
+  );
+  // The date of each field, which the field follows, and which the range follows once both are set.
+  let startValue = $signal<DateString | null>(value?.start ?? null);
+  let endValue = $signal<DateString | null>(value?.end ?? null);
+  const {
+    segments: startSegments,
+    date: startDate,
+    step: startStep,
+    type: startType,
+    erase: startErase,
+    settle: startSettle,
+  } = dateSegments(startValue, placeholder, locale.locale, isDisabled, isReadOnly);
+  const {
+    segments: endSegments,
+    date: endDate,
+    step: endStep,
+    type: endType,
+    erase: endErase,
+    settle: endSettle,
+  } = dateSegments(endValue, placeholder, locale.locale, isDisabled, isReadOnly);
+  let edited = $signal(false);
+  const errors = $memo(
+    edited
+      ? []
+      : messagesOf(
+          [startName, endName].flatMap((field) =>
+            field ? messagesOf(form?.validationErrors[field] as string | string[]) : [],
+          ),
+        ),
+  );
+  const invalid = $memo(
+    isInvalid ||
+      errors.length > 0 ||
+      (value !== null &&
+        (value.start > value.end ||
+          [value.start, value.end].some(
+            (date) =>
+              outOfRange(toDate(date), minValue, maxValue) || (isDateUnavailable?.(date) ?? false),
+          ))),
+  );
+
+  function rangeOf(start: DateString | null, end: DateString | null): DateRange | null {
+    return start !== null && end !== null ? { start, end } : null;
+  }
+
+  function same(a: DateRange | null, b: DateRange | null): boolean {
+    return a === b || (a !== null && b !== null && a.start === b.start && a.end === b.end);
+  }
+
+  // The range is the dates of the fields once both are set.
+  $effect(() => {
+    const from = startDate;
+    const to = endDate;
+    $untrack((startValue = from));
+    $untrack((endValue = to));
+    const next = rangeOf(from, to);
+    if (!same(next, $untrack(value))) {
+      $untrack((value = next));
+      edited = true;
+      onChange?.(next);
+    }
+  });
+
+  // A range that the caller sets, or that the RangeCalendar picks, shows in the fields. A date that
+  // is only typed so far stays.
+  $effect(() => {
+    const next = value;
+    if (!same(next, $untrack(rangeOf(startDate, endDate)))) {
+      $untrack((startValue = next?.start ?? null));
+      $untrack((endValue = next?.end ?? null));
+    }
+  });
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen && !(next && (isDisabled || isReadOnly))) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+  }
+
+  function select(picked: DateString | DateRange) {
+    if (typeof picked === 'string') {
+      return;
+    }
+    if (!same(picked, value)) {
+      value = picked;
+      edited = true;
+      onChange?.(picked);
+    }
+    if (shouldCloseOnSelect) {
+      setOpen(false);
+    }
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(DateRangeFieldContext, {
+    start: {
+      segments: startSegments,
+      labelId,
+      describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+      isDisabled,
+      isReadOnly,
+      isRequired,
+      isInvalid: invalid,
+      direction: locale.direction,
+      step: startStep,
+      type: startType,
+      erase: startErase,
+      settle: startSettle,
+    },
+    end: {
+      segments: endSegments,
+      labelId,
+      describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+      isDisabled,
+      isReadOnly,
+      isRequired,
+      isInvalid: invalid,
+      direction: locale.direction,
+      step: endStep,
+      type: endType,
+      erase: endErase,
+      settle: endSettle,
+    },
+  });
+  $setContext(ButtonContext, {
+    id: triggerId,
+    'aria-label': 'Calendar',
+    'aria-labelledby': `${triggerId} ${labelId}`,
+    'aria-haspopup': 'dialog',
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    isDisabled: isDisabled || isReadOnly,
+    onPress: () => setOpen(!isOpen),
+  });
+  $setContext(GroupContext, {
+    isDisabled,
+    'aria-disabled': isDisabled ? 'true' : undefined,
+  });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId,
+    overlayId,
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+    placement: 'bottom start',
+  });
+  $setContext(DatePickerContext, { value, select, minValue, maxValue, isDateUnavailable });
+</script>
+
+<{as}
+  data-open=(isOpen || undefined)
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  {children}
+  <!-- The dates for the form, which post without scripts. -->
+  <input type="hidden" name=startName value=(value?.start ?? '') disabled=(isDisabled || undefined)>
+  <input type="hidden" name=endName value=(value?.end ?? '') disabled=(isDisabled || undefined)>
+</>

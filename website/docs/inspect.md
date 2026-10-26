@@ -47,7 +47,7 @@ Use it when a component ships more than you expect. The "Changes on the client" 
 
 ## Devtools
 
-The dev server adds a small grip to the bottom edge of each page. On hover or focus it grows into a tab with the logo and the version of brumate, and the number of errors. The grip turns red when the page has errors. Click it, drag it up, or press Alt+Shift+D to open a panel docked at the bottom of the page. Drag the top edge of the panel to change its height, which the browser keeps. Its header shows the versions of brumate and Vite, the page, and how many components, scopes and parts of code the page has, with the size of its state. It has ten tabs:
+The dev server adds a small grip to the bottom edge of each page. On hover or focus it grows into a tab with the logo and the version of brumate, and the number of errors. The grip turns red when the page has errors. Click it, drag it up, or press Alt+Shift+D to open a panel docked at the bottom of the page. Drag the top edge of the panel to change its height, which the browser keeps. Its header shows the versions of brumate and Vite, the page, and how many components, scopes and parts of code the page has, with the size of its state. It has these tabs:
 
 - **Errors** shows errors of a render on the server, of Vite, such as a compile error after an edit, and of code in the browser. The selected error shows the lines of its file, highlighted, with the line and the word at its column marked, and its stack. Click a place of the stack to see its code, or the file to open it in your editor. An error of the server or of Vite opens the panel on it, in place of Vite's overlay. An error of the browser counts on the button.
 - **Overview** shows the page, the versions, the size of the client code and the state, the blocks, and each component on the page with its file, instances, scopes and the parts of its code that loaded.
@@ -57,7 +57,6 @@ The dev server adds a small grip to the bottom edge of each page. On hover or fo
 - **Graph** shows what changes in the browser in a component, left to right: its signals and props, its memos, and the markup and effects that read them, with the current value of each. A value that changes marks its box and every box after it in yellow for a moment, so you can see what an event updated. Click a node to see what it reads and what reads it, and its place in the file. Drag to pan, and scroll or use the buttons to zoom.
 - **Log** lists each handler that ran, each module of client code that loaded, each value that changed, and each server function call with its status and how long it took. Filter it by kind, search it, pause it, or clear it.
 - **Timeline** shows each handler that ran, on a bar of its own: the wait for its code and the handlers before it, its run, and its promise. Under it are the server functions it called, with the time on the server from the `Server-Timing` header of the dev server, and the updates that followed.
-- **Loading** lists each part of client code that loaded, in order, with a bar of when it loaded: why it loaded, how long it took and its size. The reasons are an event, a block, a write and the like, or a preload on hover, near the viewport, on idle or after the page loaded. A preload that nothing has run yet is marked, so you can see code that loads for nothing. Sizes are those of the dev server, which does not minify.
 - **Page state** lists each value that the page state sent, by the slot that holds it, largest first, with about how many bytes it takes and the code of the browser that reads it, such as a handler or an update. A value is sent because that code reads it. One over 1 kB is marked, so you can see a value that the browser needs only part of.
 - **Effects** lists each `$effect` and `$client` callback that ran, with how many times, how many in the last second, how long its runs took, and how many times its cleanup ran. One that ran 10 times or more in the last second is marked, and one whose cleanup ran without a new run is grey, such as in a scope that went.
 - **Navigation** shows each client navigation of the page, newest first: the routes that stayed, such as a layout, and the slots whose route was replaced, with the old and the new route, or that the whole page was replaced and why. It also shows how long the page took to change, and how far the IDs of the new page moved, when they did not start where the page asked, such as for a prerendered page.
@@ -116,23 +115,18 @@ A component in the workbench has no layout around it, so the styles of a layout,
 
 ```
 brumate client report (gzip)
-  Every page, before its first event: 2.7 kB
-  The core, on the first event: 13.4 kB
-  The most each route loads after its first event, with the core
+  The loader, on every page: 2.7 kB
+  The core, when the page starts: 13.4 kB
+  What each route loads when it starts, with the core
     /: 15.8 kB (4 components)
     /guestbook: 14.6 kB (2 components)
   Components, largest first
     src/App.brm: 1.3 kB
     src/routes/guestbook.brm: 847 B
-  What the first run of a handler loads, largest first
-    src/App.brm event form.submit (33:24): 1.3 kB
-    src/Counter.brm event button.click (9:18): 246 B
 ```
 
-- Before its first event, every page loads the loader only.
-- The first event loads the core.
-- A route can load the code of its page, its layouts and the components that they import. Each event loads only its own part, so a page often loads much less than this number.
-- A handler loads the entry of its component, its own part, the updates that it runs, and what they import. A small component is one module, so each of its handlers loads all of it. The report lists the ten largest handlers.
+- Every page loads the loader, and the loader imports the core at once.
+- When a page starts, it loads the bundles of its route and layouts: the code of every component that they can render. See [Bundles](./client-modules.md#bundles).
 - Navigation and server function calls load their own small modules, which the report does not count.
 
 ## Budgets
@@ -140,15 +134,14 @@ brumate client report (gzip)
 `budget` fails the client build when a size goes over it, in bytes after gzip:
 
 ```ts
-brumate({ budget: { loader: 3072, route: 20480, event: 2048, component: 4096 } });
+brumate({ budget: { loader: 3072, route: 20480, component: 4096 } });
 ```
 
-- `loader` limits what every page loads before its first event.
-- `route` limits the most that any route can load after its first event.
-- `event` limits what the first run of one handler or `$client` callback loads, besides the loader and the core. A route can stay under its budget while one handler grows past what a first click should load.
-- `component` limits the client code of one component.
-- The error lists every size over the budget. For a handler, it names the component, the handler with its place in the file, and the largest modules that it imports:
+- `loader` limits the loader, which every page loads.
+- `route` limits what any route loads when it starts, with the core.
+- `component` limits the client code of one component. A component in the bundle of a page counts its share of the bundle, by the size of its modules.
+- The error lists every size over the budget:
 
 ```
-The handler event button.click (12:5) of src/Chart.brm loads 9.4 kB, over the budget of 2.0 kB. Its largest imports are node_modules/chart.js/dist/chart.js, src/format.ts.
+The component src/Chart.brm ships 9.4 kB, over the budget of 4.0 kB.
 ```

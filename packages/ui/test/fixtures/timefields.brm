@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import DateInput from '../../src/DateInput.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import TimeField from '../../src/TimeField.brm';
+
+  let meeting = $signal<string | null>('14:30');
+  let alarm = $signal<string | null>('07:05');
+  let empty = $signal<string | null>(null);
+  let forced = $signal<string | null>('14:30');
+</script>
+
+<main>
+  <TimeField class="meeting" name="meeting" value=$bind(meeting) minValue="09:00" maxValue="17:00">
+    <Label class="meeting-label">Meeting</Label>
+    <DateInput class="meeting-input" />
+    <FieldError class="meeting-error">Outside office hours</FieldError>
+  </TimeField>
+  <I18nProvider locale="de-DE">
+    <TimeField class="alarm" value=$bind(alarm)>
+      <Label>Wecker</Label>
+      <DateInput class="alarm-input" />
+    </TimeField>
+  </I18nProvider>
+  <TimeField class="empty" value=$bind(empty) granularity="second">
+    <Label>Lap</Label>
+    <DateInput class="empty-input" />
+  </TimeField>
+  <TimeField class="forced" value=$bind(forced) hourCycle=(24)>
+    <Label>Departure</Label>
+    <DateInput class="forced-input" />
+  </TimeField>
+  <p class="state">{JSON.stringify([meeting, alarm, empty, forced])}</p>
+</main>

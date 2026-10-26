@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import Calendar from './Calendar.brm';
+  import type { DateRange } from './calendar.ts';
+
+  /**
+   * A grid of the days of a month or more, to pick a range of dates, as RangeCalendar of React
+   * Aria Components. It holds the same parts as a Calendar: a CalendarHeading, two Buttons with
+   * `slot="previous"` and `slot="next"`, and a CalendarGrid for each month that shows.
+   *
+   * - `value` is the selected range, as `{ start, end }` of `YYYY-MM-DD` dates, or null.
+   *   `value=(range)` starts its own, and `value=$bind(signal)` writes the caller's. `onChange`
+   *   gets each range.
+   * - A first press, or Enter or Space, starts a range, and a second one ends it. In between, the
+   *   dates show the range to the date under the pointer or focus. Escape drops it.
+   * - A range cannot hold a date that cannot be picked, unless `allowsNonContiguousRanges`.
+   * - The other props are those of Calendar.
+   */
+  const { allowsNonContiguousRanges = false, onChange, children, ...rest } = $props<{
+    allowsNonContiguousRanges?: boolean;
+    onChange?: (value: DateRange) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<DateRange | null> }>();
+</script>
+
+<Calendar
+  range=(true)
+  {allowsNonContiguousRanges}
+  value=$bind(value)
+  {onChange}
+  {...rest}
+>{children}</Calendar>

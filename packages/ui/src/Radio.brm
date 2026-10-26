@@ -84,15 +84,15 @@
   data-readonly=(readOnly || undefined)
   data-invalid=(group?.isInvalid || undefined)
   data-required=(group?.isRequired || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onKeyDown=onKeyDown
-  onKeyUp=onKeyUp
-  onFocusIn=onFocusIn
-  onFocusOut=onFocusOut
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onPointerUp}
+  {onPointerCancel}
+  {onKeyDown}
+  {onKeyUp}
+  {onFocusIn}
+  {onFocusOut}
   {...rest}
 >
   <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
@@ -102,7 +102,7 @@
       as="input"
       type="radio"
       name=(group?.name)
-      value=value
+      {value}
       checked=selected
       disabled=(disabled || undefined)
       required=(group?.isRequired || undefined)
@@ -116,7 +116,7 @@
       as="input"
       type="radio"
       name=(group?.name)
-      value=value
+      {value}
       checked=selected
       disabled=(disabled || undefined)
       required=(group?.isRequired || undefined)

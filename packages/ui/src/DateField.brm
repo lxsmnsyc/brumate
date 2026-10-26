@@ -1,0 +1,129 @@
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
+  import type { DateString } from './calendar.ts';
+  import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, messagesOf } from './fields.ts';
+  import { LocaleContext } from './locale.ts';
+  import { dateSegments } from './date-field.brm.ts';
+  import { DateFieldContext } from './segments.ts';
+
+  /**
+   * A date that the user edits segment by segment, as DateField of React Aria Components. It
+   * holds a Label, a DateInput of DateSegments, and a Text with `slot="description"` and a
+   * FieldError, as a TextField does.
+   *
+   * - `value` is the date as `YYYY-MM-DD`, or null until every segment is set. `value=(date)`
+   *   starts its own, and `value=$bind(signal)` writes the caller's. `onChange` gets each change.
+   * - The segments follow the order of the locale, such as month, day and year in `en-US`.
+   * - A segment that is not set shows its placeholder. The arrow keys start it at
+   *   `placeholderValue`, today by default.
+   * - `minValue`, `maxValue` and `isDateUnavailable` make a date invalid, as `isInvalid` does.
+   * - `name` posts the date with a form, from a hidden input.
+   * - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   */
+  const {
+    as = 'div',
+    name,
+    minValue,
+    maxValue,
+    placeholderValue,
+    isDateUnavailable,
+    isDisabled = false,
+    isReadOnly = false,
+    isRequired = false,
+    isInvalid = false,
+    onChange,
+    labelId: givenLabelId,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    minValue?: DateString;
+    maxValue?: DateString;
+    placeholderValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: DateString | null) => void;
+    /** The ID of the Label, from a DatePicker around the field, which names its Button too. */
+    labelId?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<DateString | null> }>();
+
+  const locale = $getContext(LocaleContext);
+  const form = $getContext(FormContext);
+  const ownLabelId = $id();
+  const labelId = $memo(givenLabelId ?? ownLabelId);
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  // The date that a segment starts at, in the range.
+  const placeholder = $memo(
+    constrain(toDate(placeholderValue ?? todayString()), minValue, maxValue).toString(),
+  );
+  const { segments, date, step, type, erase, settle } = dateSegments(
+    value,
+    placeholder,
+    locale.locale,
+    isDisabled,
+    isReadOnly,
+  );
+  let edited = $signal(false);
+  const errors = $memo(
+    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  );
+  const invalid = $memo(
+    isInvalid ||
+      errors.length > 0 ||
+      (value !== null &&
+        (outOfRange(toDate(value), minValue, maxValue) || (isDateUnavailable?.(value) ?? false))),
+  );
+
+  // The field has a value once every segment is set.
+  $effect(() => {
+    const next = date;
+    if (next !== $untrack(value)) {
+      $untrack((value = next));
+      edited = true;
+      onChange?.(next);
+    }
+  });
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(DateFieldContext, {
+    segments,
+    labelId,
+    describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid: invalid,
+    direction: locale.direction,
+    step,
+    type,
+    erase,
+    settle,
+  });
+</script>
+
+<{as}
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  {children}
+  <!-- The date for the form, which posts without scripts. -->
+  <input type="hidden" {name} value=(value ?? '') disabled=(isDisabled || undefined)>
+</>

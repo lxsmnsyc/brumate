@@ -23,18 +23,11 @@ export default async function Styled($$props: Record<string, never>, $$ctx: $$b.
 Styled.brumateId = "Styled_9wx0az";
 
 # Client entry
+export * from "./styled.brm?brumate-client&part=h3";
+export * from "./styled.brm?brumate-client&part=update";
 export const id = "Styled_9wx0az";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u1"], [1, "u2"], [1, "b4"]] } };
-const update = () => import("./styled.brm?brumate-client&part=update");
-const parts = {
-  "h3": () => (update().catch(() => {}), import("./styled.brm?brumate-client&part=h3")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';
@@ -50,8 +43,10 @@ export function u1($$s) {
 export function u2($$s) {
   $$b.setVar($$s, "--s-9wx0az-1", $$b.get($$s, 0) ? '20px' : '12px');
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b4($$s) {
-  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

@@ -33,12 +33,10 @@ describe('devtools', () => {
       set: () => {},
     });
     hooks().handler!('Counter_1#h0', document.createElement('button'), new Event('click'));
-    hooks().part!('Counter_1', 'h0');
     hooks().write!(root, 0, 2);
     root.s[0] = 2;
     expect(state.log.map((entry) => entry.text)).toEqual([
       'click on <button>: Counter_1#h0',
-      'loaded Counter_1 h0',
       'scope 0 slot 0 = 2',
     ]);
 
@@ -144,7 +142,7 @@ describe('devtools', () => {
     (shadow.querySelector('[data-tab="log"]') as HTMLElement).click();
     await expect.poll(() => body().textContent).toContain('Counter_2#save: redirect to /done');
     expect(body().textContent).toContain('Counter count = 42');
-    const [, , writeBox] = [...shadow.querySelectorAll('.filters input')] as HTMLInputElement[];
+    const [, writeBox] = [...shadow.querySelectorAll('.filters input')] as HTMLInputElement[];
     writeBox!.checked = false;
     writeBox!.dispatchEvent(new Event('change'));
     await expect.poll(() => body().textContent).not.toContain('Counter count = 42');
@@ -180,8 +178,6 @@ describe('devtools', () => {
     const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
     const root: Scope = { id: 5, k: 0, m: 'Counter_3', s: [1, 2], children: new Set() };
     hooks().attach!({ scopes: new Map([[5, root]]), set: () => {} });
-    hooks().load!('Counter_3', 'h1', 'hover', Promise.resolve());
-    await Promise.resolve();
     togglePanel(shadow, state);
 
     const pick = [...shadow.querySelectorAll('button')].find(
@@ -194,7 +190,6 @@ describe('devtools', () => {
     expect(body()).toContain('src/Counter.brm:9:1');
     expect(body()).toContain('count = 1');
     expect(body()).toContain('click:prevent');
-    expect(body()).toMatch(/loaded in \d+ ms \(hover\)/);
     // The insert inside it, which has a marker instead of `b-b`.
     expect(body()).toContain('double = 2');
     const source = [...shadow.querySelectorAll('.body button')].find(
@@ -202,40 +197,6 @@ describe('devtools', () => {
     ) as HTMLElement;
     source.click();
     expect(opened).toEqual(['/app/src/Counter.brm:9:1']);
-    togglePanel(shadow, state);
-  });
-
-  it('lists what loaded and why, and marks preloads that nothing used', async () => {
-    document.querySelector('brumate-devtools')?.remove();
-    globalThis.fetch = (async () =>
-      Response.json({ name: 'List', file: 'List.brm', scopes: {}, text: '' })) as typeof fetch;
-    const state = installDevtools('/inspect');
-    const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
-    hooks().load!('List_1', 'entry', 'event', Promise.resolve());
-    hooks().load!('List_1', 'h2', 'event', Promise.resolve());
-    hooks().load!('List_1', 'h4', 'visible', Promise.resolve());
-    hooks().load!('List_1', 'h5', 'hover', Promise.resolve());
-    let fail!: (error: Error) => void;
-    hooks().load!('List_1', 'update', 'write', new Promise((_, reject) => (fail = reject)));
-    // The core loads the preloaded part for an event, so it was used.
-    hooks().load!('List_1', 'h5', 'event', Promise.resolve());
-    fail(new Error('gone'));
-    await new Promise((resolve) => setTimeout(resolve));
-    expect(
-      [...state.loads.values()].map((load) => [load.part, load.reason, load.used, !!load.failed]),
-    ).toEqual([
-      ['entry', 'event', false, false],
-      ['h2', 'event', false, false],
-      ['h4', 'visible', false, false],
-      ['h5', 'hover', true, false],
-      ['update', 'write', false, true],
-    ]);
-    togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="loading"]') as HTMLElement).click();
-    const body = (): string => shadow.querySelector('.body')!.textContent!;
-    await expect.poll(body).toContain('Unused preloads1');
-    expect(shadow.querySelectorAll('tr.unused')).toHaveLength(1);
-    expect(shadow.querySelectorAll('tr.failed')).toHaveLength(1);
     togglePanel(shadow, state);
   });
 
@@ -504,7 +465,7 @@ describe('devtools', () => {
     const card = (): string => shadow.querySelector('.inspect-card')?.textContent ?? '';
     await expect.poll(card).toContain('src/Counter.brm:7:1');
     expect(card()).toContain('button.go');
-    expect(card()).toContain('click · not loaded');
+    expect(card()).toContain('click');
     expect(card()).toContain('count = 3');
     // Escape stops picking, and the card goes.
     dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

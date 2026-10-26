@@ -1,5 +1,5 @@
 import type * as Routes from './client-routes.ts';
-import { boot, importCore, strategy } from './boot.ts';
+import { boot, importCore } from './boot.ts';
 import { NAVIGATION_KEY, ROUTE_KEY } from './context.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
 
@@ -17,7 +17,7 @@ export function start(options: LoaderOptions): () => void {
 
 /** Starts loading the page of a link, unless the link asks not to. */
 function prefetch(link: HTMLAnchorElement | undefined): void {
-  if (link && strategy(link) !== 'none') {
+  if (link && link.getAttribute('data-prefetch') !== 'none') {
     void import('./navigate.ts').then((module) => module.prefetch(link.href));
   }
 }

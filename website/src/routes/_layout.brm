@@ -25,7 +25,7 @@
     {raw(STYLES)}
   </head>
   <body>
-    <Header section=section />
+    <Header {section} />
     {children}
     <footer class="footer">
       <p>MIT licensed. Built with brumate: this page loaded no component code until you used it.</p>

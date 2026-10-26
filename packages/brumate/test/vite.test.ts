@@ -119,8 +119,7 @@ describe('vite plugin', () => {
     const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
     const module = await load('Counter_m86gta');
     expect(module.id).toBe('Counter_m86gta');
-    const part = await module.load('h4');
-    expect(typeof part.h4).toBe('function');
+    expect(typeof module.h4).toBe('function');
   });
 
   it('answers server function calls in development', async () => {
@@ -164,7 +163,7 @@ describe('vite plugin', () => {
     expect(response.status).toBe(200);
   });
 
-  it('builds a client entry with chunks for each component and part', async () => {
+  it('builds a client entry with a chunk for each root component, which holds its parts', async () => {
     const result = (await build({
       ...config,
       build: { write: false, minify: true, rolldownOptions: { input: 'virtual:brumate/start' } },
@@ -172,10 +171,21 @@ describe('vite plugin', () => {
     const chunks = result.output.filter(
       (item): item is Rolldown.OutputChunk => item.type === 'chunk',
     );
-    const names = chunks.map((chunk) => chunk.facadeModuleId ?? '');
-    expect(names.some((name) => name.endsWith('counter.brm?brumate-client'))).toBe(true);
-    expect(names.some((name) => name.endsWith('todos.brm?brumate-client'))).toBe(true);
-    expect(names.some((name) => name.endsWith('todos.brm?brumate-client&part=h12'))).toBe(true);
+    // A component's entry and its parts are in the chunk of the bundle of a root, not in
+    // chunks of their own.
+    const holding = (module: string) =>
+      chunks.filter((chunk) => chunk.moduleIds.some((id) => id.endsWith(module)));
+    for (const module of [
+      'counter.brm?brumate-client',
+      'todos.brm?brumate-client',
+      'todos.brm?brumate-client&part=h12',
+    ]) {
+      expect(holding(module).length).toBeGreaterThan(0);
+      expect(holding(module).every((chunk) => chunk.facadeModuleId !== module)).toBe(true);
+    }
+    expect(chunks.some((chunk) => chunk.facadeModuleId?.includes('virtual:brumate/bundle/'))).toBe(
+      true,
+    );
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
   });
@@ -188,8 +198,11 @@ describe('vite plugin', () => {
     const chunks = result.output.filter(
       (item): item is Rolldown.OutputChunk => item.type === 'chunk',
     );
-    const names = chunks.map((chunk) => chunk.facadeModuleId ?? '');
-    expect(names.some((name) => name.endsWith('validated.brm?brumate-client'))).toBe(true);
+    expect(
+      chunks.some((chunk) =>
+        chunk.moduleIds.some((id) => id.endsWith('validated.brm?brumate-client')),
+      ),
+    ).toBe(true);
     const code = chunks.map((chunk) => chunk.code).join('\n');
     // The markup that the client renders ships.
     expect(code).toContain('<p class="welcome">Welcome');
@@ -702,7 +715,7 @@ describe('merged parts', () => {
       // A large component keeps one module per part.
       const sourced = await dev.transformRequest('/sourced.brm?brumate-client');
       expect(sourced?.code).toContain('part=h6');
-      expect(sourced?.code).toContain('export function load');
+      expect(sourced?.code).toContain('export * from');
     } finally {
       await dev.close();
     }

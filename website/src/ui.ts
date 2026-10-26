@@ -43,6 +43,10 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
     ],
   },
   {
+    title: 'Dates',
+    pages: ['calendar', 'range-calendar', 'date-field', 'time-field', 'date-picker'],
+  },
+  {
     title: 'Overlays',
     pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
   },
@@ -199,6 +203,42 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A value, or a range of values, on a track.',
     href: 'slider',
     demo: 'SliderDemo',
+  },
+  {
+    title: 'Calendar',
+    summary: 'The days of a month, to pick a date.',
+    href: 'calendar',
+    demo: 'CalendarDemo',
+  },
+  {
+    title: 'RangeCalendar',
+    summary: 'The days of a month, to pick a range of dates.',
+    href: 'range-calendar',
+    demo: 'RangeCalendarDemo',
+  },
+  {
+    title: 'DateField',
+    summary: 'A date that the user types segment by segment.',
+    href: 'date-field',
+    demo: 'DateFieldDemo',
+  },
+  {
+    title: 'TimeField',
+    summary: 'A time of day that the user types segment by segment.',
+    href: 'time-field',
+    demo: 'TimeFieldDemo',
+  },
+  {
+    title: 'DatePicker',
+    summary: 'A date field with a button that opens a calendar.',
+    href: 'date-picker',
+    demo: 'DatePickerDemo',
+  },
+  {
+    title: 'DateRangePicker',
+    summary: 'Two date fields and a button that opens a range calendar.',
+    href: 'date-range-picker',
+    demo: 'DateRangePickerDemo',
   },
   {
     title: 'ListBox',

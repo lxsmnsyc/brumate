@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import SpikeButton from './SpikeButton.brm';
+  import SpikeLabel from './SpikeLabel.brm';
+  import SpikeWrap from './SpikeWrap.brm';
+  import SpikeValue from './SpikeValue.brm';
+
+  let shown = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <SpikeWrap>
+    <SpikeLabel>Animal</SpikeLabel>
+    <SpikeButton><SpikeValue /></SpikeButton>
+  </SpikeWrap>
+}

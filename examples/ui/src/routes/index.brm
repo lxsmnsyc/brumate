@@ -49,6 +49,15 @@
   import GridListItem from '@brumate/ui/GridListItem.brm';
   import ComboBox from '@brumate/ui/ComboBox.brm';
   import NumberField from '@brumate/ui/NumberField.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
   import Slider from '@brumate/ui/Slider.brm';
   import SliderOutput from '@brumate/ui/SliderOutput.brm';
   import SliderThumb from '@brumate/ui/SliderThumb.brm';
@@ -98,6 +107,12 @@
   let city = $signal<Key | null>(null);
   let quantity = $signal(1);
   let span = $signal([20, 60]);
+  let delivery = $signal<string | null>('2026-10-15');
+  let birthday = $signal<string | null>('2026-10-15');
+  let pickup = $signal<string | null>('14:30');
+  let departure = $signal<string | null>('2026-10-15');
+  let booking = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
   let pickedFiles = $signal<Key[]>([]);
@@ -114,6 +129,11 @@
   }
 
   const { attrs, fields, result } = createForm(order, Order, { defaultValue: { email: '' } });
+
+  // The shop is closed on Sundays.
+  function closed(date: string) {
+    return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  }
 </script>
 
 #head {
@@ -527,6 +547,85 @@
   <p class="span-state">{span.join(' ')}</p>
 </section>
 
+<section aria-labelledby="calendar">
+  <h2 id="calendar">Calendar</h2>
+  <Calendar class="delivery" aria-label="Delivery" value=$bind(delivery) minValue="2026-10-05" isDateUnavailable=closed>
+    <Button slot="previous" class="press delivery-previous">‹</Button>
+    <CalendarHeading class="delivery-heading" />
+    <Button slot="next" class="press delivery-next">›</Button>
+    <CalendarGrid class="delivery-grid" />
+  </Calendar>
+  <p class="delivery-state">{delivery ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-field">
+  <h2 id="date-field">DateField</h2>
+  <DateField class="birthday" name="birthday" value=$bind(birthday)>
+    <Label>Birthday</Label>
+    <DateInput class="birthday-input" />
+  </DateField>
+  <p class="birthday-state">{birthday ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="time-field">
+  <h2 id="time-field">TimeField</h2>
+  <TimeField class="pickup" name="pickup" value=$bind(pickup)>
+    <Label>Pickup</Label>
+    <DateInput class="pickup-input" />
+  </TimeField>
+  <p class="pickup-state">{pickup ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-picker">
+  <h2 id="date-picker">DatePicker</h2>
+  <DatePicker class="departure" name="departure" value=$bind(departure) minValue="2026-10-05">
+    <Label>Departure</Label>
+    <Group class="departure-group">
+      <DateInput class="departure-input" />
+      <Button class="press departure-button">▾</Button>
+    </Group>
+    <Popover class="popover departure-popover">
+      <Dialog>
+        <Calendar class="departure-calendar">
+          <CalendarHeading class="departure-heading" />
+          <CalendarGrid class="departure-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="departure-state">{departure ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-range-picker">
+  <h2 id="date-range-picker">DateRangePicker</h2>
+  <DateRangePicker class="booking" startName="check-in" endName="check-out" value=$bind(booking)>
+    <Label>Booking</Label>
+    <Group class="booking-group">
+      <DateInput slot="start" class="booking-start" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="booking-end" />
+      <Button class="press booking-button">▾</Button>
+    </Group>
+    <Popover class="popover booking-popover">
+      <Dialog>
+        <RangeCalendar class="booking-calendar">
+          <CalendarGrid class="booking-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <p class="booking-state">{booking ? `${booking.start} ${booking.end}` : 'none'}</p>
+</section>
+
+<section aria-labelledby="range-calendar">
+  <h2 id="range-calendar">RangeCalendar</h2>
+  <RangeCalendar class="stay" aria-label="Stay" value=$bind(stay) isDateUnavailable=closed>
+    <CalendarHeading class="stay-heading" />
+    <CalendarGrid class="stay-grid" />
+  </RangeCalendar>
+  <p class="stay-state">{stay ? `${stay.start} ${stay.end}` : 'none'}</p>
+</section>
+
 <section aria-labelledby="tooltip">
   <h2 id="tooltip">Tooltip and Toast</h2>
   <TooltipTrigger>
@@ -554,7 +653,7 @@
 <ToastRegion class="toasts" toast=notice transition />
 
 #template notice(toast: QueuedToast<{ title: string }>) {
-  <Toast toast=toast class="toast">
+  <Toast {toast} class="toast">
     <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
     <Button slot="close" class="press toast-close">×</Button>
   </Toast>

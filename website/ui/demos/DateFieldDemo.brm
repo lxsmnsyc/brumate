@@ -1,0 +1,18 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let birthday = $signal<string | null>(null);
+</script>
+
+<DateField class="ui-field" value=$bind(birthday) maxValue="2026-12-31">
+  <Label>Birthday</Label>
+  <DateInput class="ui-input ui-date-input" />
+  <Text slot="description" class="ui-help">Type it, or use the arrow keys.</Text>
+  <FieldError class="ui-error">The date is in the future.</FieldError>
+</DateField>
+<p>{birthday ?? 'No date yet.'}</p>

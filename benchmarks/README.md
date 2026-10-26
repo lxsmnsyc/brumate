@@ -120,7 +120,7 @@ The dashboard scenario:
 - `browser`: Three sessions, each on a fresh context with the same 3 s idle wait.
   - The main session clicks the button of widget 1 (above the fold). Then it scrolls widget 30 into view, waits 1 s and clicks its button. Then it does the same with the Mode button of widget 45. The report shows the code fetched on each scroll and each click, and the total.
   - The second session scrolls to widget 30 and clicks it first, so the click on a widget below the fold runs on a page with no earlier clicks.
-  - The third session repeats the main one with the idle preload off, for the frameworks that have one. brumate gets the Save-Data flag in the page (`navigator.connection.saveData`), which makes its loader skip the preload, the same check as the plugin's `preload: false`. Qwik renders with `preloader: false`. Marko loads all code at start and has no such option.
+  - The third session repeats the main one with the idle preload off, for the frameworks that have one. Qwik renders with `preloader: false`. brumate and Marko load the code of the page when it starts and have no such option.
 - `dist`: The size of every `.js` file in the dashboard client build.
 - `ssr-size`: The UTF-8 bytes of the HTML of the page. The worker checks that it shows every widget.
 - `ssr-speed`: As for todos, with the one dashboard page.

@@ -6,7 +6,7 @@
   const { children } = $props();
 </script>
 
-<DocsShell section="ui" sections=sections label="Parts">{children}</DocsShell>
+<DocsShell section="ui" {sections} label="Parts">{children}</DocsShell>
 
 <style>
   /*
@@ -798,6 +798,87 @@
   }
 
   :global(.ui-thumb[data-focus-visible]) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* A date field: segments in a row, each shaded while it has focus. */
+  :global(.ui-date-input) {
+    display: inline-flex;
+    gap: 1px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :global(.ui-date-input [data-segment]:not([data-type='literal'])) {
+    padding: 0 2px;
+    border-radius: 3px;
+    outline: none;
+  }
+
+  :global(.ui-date-input [data-placeholder]) {
+    color: var(--muted);
+  }
+
+  :global(.ui-date-input [data-focused]) {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* A calendar: the heading between its buttons, and a grid of round days. */
+  :global(.ui-calendar) {
+    width: 16rem;
+  }
+
+  :global(.ui-calendar header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  :global(.ui-calendar table) {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  :global(.ui-calendar th) {
+    padding-bottom: 0.25rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  :global(.ui-calendar [data-date]) {
+    width: 2rem;
+    height: 2rem;
+    margin: auto;
+    border-radius: 50%;
+    line-height: 2rem;
+    cursor: default;
+  }
+
+  :global(.ui-calendar [data-today]) {
+    font-weight: 700;
+  }
+
+  :global(.ui-calendar [data-unavailable]),
+  :global(.ui-calendar [data-disabled]) {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  :global(.ui-calendar [data-selected]) {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* The days inside a range are squares, so the range reads as one band. */
+  :global(.ui-calendar [data-selected]:not([data-selection-start], [data-selection-end])) {
+    border-radius: 0;
+  }
+
+  :global(.ui-calendar [data-focus-visible]) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }

@@ -412,7 +412,7 @@
   <!-- The number for the form, which posts without scripts. -->
   <input
     type="hidden"
-    name=name
+    {name}
     value=(Number.isNaN(typedValue) ? '' : String(typedValue))
     disabled=(isDisabled || undefined)
   >

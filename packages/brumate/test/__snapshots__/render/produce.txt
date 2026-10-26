@@ -53,19 +53,12 @@ export default async function Produce($$props: Record<string, never>, $$ctx: $$b
 Produce.brumateId = "Produce_9t90yy";
 
 # Client entry
+export * from "./produce.brm?brumate-client&part=h7";
+export * from "./produce.brm?brumate-client&part=h3";
+export * from "./produce.brm?brumate-client&part=update";
 export const id = "Produce_9t90yy";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b4"], [1, "u9"]] }, 2: { 0: [[2, "u6"], [2, "u8"]] } };
-const update = () => import("./produce.brm?brumate-client&part=update");
-const parts = {
-  "h7": () => (update().catch(() => {}), import("./produce.brm?brumate-client&part=h7")),
-  "h3": () => (update().catch(() => {}), import("./produce.brm?brumate-client&part=h3")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h7
 import * as $$b from 'brumate/client';
@@ -93,8 +86,10 @@ export { add$ as h3 };
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = ($$item, $$index) => { const todo = $$item; return todo.id; };
+const $$k1 = [];
 export function b4($$s) {
-  $$b.list($$s, 1, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const todo = $$item; return todo.id; }, r2, a2, undefined, []);
+  $$b.list($$s, 1, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;

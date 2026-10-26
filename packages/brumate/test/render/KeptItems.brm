@@ -1,0 +1,22 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+
+  const { items, keep } = $props<{ items: number[]; keep: (value: number) => boolean }>();
+  let limit = $signal(4);
+  let picked = $signal('');
+  const shown = $memo(items.slice(0, limit).filter((item) => keep(item)));
+
+  function pick() {
+    picked = String(keep(limit));
+  }
+</script>
+
+<button class="more" onClick=(() => limit++)>More</button>
+<button class="pick" onClick=pick>Pick</button>
+<p class="shown">{shown.join(',')}</p>
+<p class="picked">{picked}</p>
+<ul>
+  #for (item of items.slice(0, limit) by item) {
+    <li>{keep(item) ? 'kept' : 'dropped'}</li>
+  }
+</ul>

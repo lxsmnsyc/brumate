@@ -138,6 +138,8 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /** Loads the bundle of a root component of the page, before the modules in it. */
+  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** Imports a part of a module, once for each part, as the loader preloads it. */
   loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
@@ -197,8 +199,6 @@ export interface DevtoolsHooks {
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
-  /** A part of a component's client code loaded. */
-  part?(component: string, name: string): void;
   /**
    * A handler ran: when its event came, when its code was ready and the
    * handlers before it had started, when the call returned, and what it
@@ -215,11 +215,6 @@ export interface DevtoolsHooks {
   }): void;
   /** The updates of a write ran: how many, and how long they took with their effects. */
   updated?(count: number, start: number, end: number): void;
-  /**
-   * Code of a component starts to load: its entry, or a part, and why.
-   * `done` settles when it has loaded.
-   */
-  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
   /** The loader asks the server for the body of a `#defer` block. */
   defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
@@ -338,7 +333,7 @@ function refresh(added: Scope[], memosOnly = false): void {
     }
   }
   for (const [id, list] of byModule) {
-    void loadModule(id, 'state').then(async (module) => {
+    void loadModule(id).then(async (module) => {
       // The names of the updates of each kind of scope, memos first, so the other updates read
       // their new values.
       const byKind = new Map<number, string[]>();
@@ -354,7 +349,9 @@ function refresh(added: Scope[], memosOnly = false): void {
       if (!any) {
         return;
       }
-      const updates = await loadPart(module, 'update', 'state');
+      const updates = await loadPart(module, 'update');
+      // The updates can render templates and call functions of other components.
+      await codeReady();
       refreshing = true;
       try {
         for (const scope of list) {
@@ -484,6 +481,17 @@ function addScopes(state: PageState, root: string): Scope[] {
       scope.t = scopes.get(record.t);
     }
   }
+  // The bundles of the roots first, so the components that they hold load with them.
+  for (const scope of added) {
+    if (scope.m) {
+      void options.loadBundle?.(scope.m)?.catch(() => {});
+    }
+  }
+  for (const scope of added) {
+    if (scope.m) {
+      loadComponent(scope.m);
+    }
+  }
   const seen = new Set<object>();
   for (const scope of added) {
     // A provided value can hold functions, which a component that reads the context calls.
@@ -574,6 +582,8 @@ export function forget(ids: string[]): void {
   for (const id of ids) {
     modules.delete(id);
     loading.delete(id);
+    // The new code loads when a scope of the component is read or rendered again.
+    pageComponents.delete(id);
     // Deleting the entry that a loop is at is safe for a Map.
     for (const key of parts.keys()) {
       if (key.startsWith(`${id}:`)) {
@@ -722,31 +732,33 @@ const MODIFIERS = Symbol.for('brumate.modifiers');
  * made from a reference goes into `on` as a `b-on` entry, with the scope and
  * the arguments of its reference and the modifiers of its wrappers.
  */
-export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+export function spread(
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): string {
   if (on) {
     on.push(...spreadEntries(attributes));
   }
-  return spreadText(attributes);
+  return spreadText(attributes, names);
 }
 
 /** The `b-on` entries of the handlers and bindings of an object of attributes. */
 function spreadEntries(attributes: Record<string, unknown>): string[] {
   const on: string[] = [];
-  {
-    for (const [name, value] of Object.entries(attributes)) {
-      const reference =
-        /^on[A-Z]/.test(name) && typeof value === 'function'
-          ? handlerReferences.get(value)
-          : undefined;
-      if (reference) {
-        on.push(
-          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
-        );
-      }
-      // A binding that a rest prop passed on writes its slot, or calls its setter.
-      if ((name === 'value' || name === 'checked') && isBinding(value)) {
-        on.push(bindEntry(name, value.ref, setterReference(value.set)));
-      }
+  for (const [name, value] of Object.entries(attributes)) {
+    const reference =
+      /^on[A-Z]/.test(name) && typeof value === 'function'
+        ? handlerReferences.get(value)
+        : undefined;
+    if (reference) {
+      on.push(
+        handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+      );
+    }
+    // A binding that a rest prop passed on writes its slot, or calls its setter.
+    if ((name === 'value' || name === 'checked') && isBinding(value)) {
+      on.push(bindEntry(name, value.ref, setterReference(value.set)));
     }
   }
   return on;
@@ -770,8 +782,15 @@ function callable(value: unknown, seen: Set<object>): unknown {
     if (isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
     }
-    const handler = (...args: unknown[]): unknown =>
-      call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
+    // The code of the components on the page loads with the page, and handlers and updates wait
+    // for it. So the function runs at once and returns its result, as on the server.
+    const handler = (...args: unknown[]): unknown => {
+      const fn = loadedFunction(value.ref);
+      const all = [...(value.args ?? []), ...args];
+      return fn
+        ? fn(scopes.get(value.scope), ...all)
+        : call(value.ref, scopes.get(value.scope), all);
+    };
     handlerReferences.set(handler, value);
     return handler;
   }
@@ -788,22 +807,7 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-/**
- * Why the core loads code, for the Loading tab of the devtools: an event,
- * a call of a function prop, a template, the scopes of a state record, a
- * write, an error, a reset of `#try`, or a prop of a child.
- */
-export type LoadReason =
-  | 'event'
-  | 'call'
-  | 'template'
-  | 'state'
-  | 'write'
-  | 'error'
-  | 'reset'
-  | 'prop';
-
-export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
+export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -813,18 +817,11 @@ export function loadModule(id: string, reason: LoadReason = 'write'): Promise<Cl
       return module;
     });
     loading.set(id, promise);
-    if (DEV) {
-      devtools()?.load?.(id, 'entry', reason, promise);
-    }
   }
   return promise;
 }
 
-export function loadPart(
-  module: ClientModule,
-  name: string,
-  reason: LoadReason = 'write',
-): Promise<Part> {
+export function loadPart(module: ClientModule, name: string): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -836,15 +833,9 @@ export function loadPart(
     }
     promise = loaded.then((part) => {
       loadedParts.set(key, part);
-      if (DEV) {
-        devtools()?.part?.(module.id, name);
-      }
       return part;
     });
     parts.set(key, promise);
-    if (DEV) {
-      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
-    }
   }
   return promise;
 }
@@ -854,11 +845,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
+async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id, reason);
-    const part = await loadPart(module, partOf(name), reason);
+    const module = await loadModule(id);
+    const part = await loadPart(module, partOf(name));
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -907,7 +898,8 @@ let lastCall: Promise<unknown> = Promise.resolve();
  * wrapped, so a call that its code makes does not wait for the call around it.
  */
 function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  const loaded = resolve(ref, 'call');
+  const code = codeReady();
+  const loaded = code ? Promise.all([resolve(ref), code]).then(([fn]) => fn) : resolve(ref);
   const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);
@@ -918,26 +910,59 @@ function isTemplate(ref: string): boolean {
   return /#t\d/.test(ref);
 }
 
-/** The code of templates that is still loading. Updates wait for it, since a render cannot. */
-const loadingTemplates = new Set<Promise<unknown>>();
+/**
+ * The code of the components on the page that is still loading. Handlers, updates and calls of
+ * functions of other components wait for it, so the code that they call has loaded.
+ */
+const loadingCode = new Set<Promise<unknown>>();
+
+/** The components whose code loads, or has loaded, with the page. */
+const pageComponents = new Set<string>();
+
+/** Loads the code of a component and all of its parts, as the page reads its scopes. */
+function loadComponent(id: string): void {
+  // A render module that runs before the core starts, such as in a test, has nothing to load.
+  if (options === undefined || pageComponents.has(id)) {
+    return;
+  }
+  pageComponents.add(id);
+  // The entry of a component holds all of its code. A load that fails is reported when a
+  // handler or an update needs it.
+  const code: Promise<unknown> = loadModule(id)
+    .catch(() => {})
+    .finally(() => loadingCode.delete(code));
+  loadingCode.add(code);
+}
+
+/** Resolves when the code of the components on the page has loaded. */
+function codeReady(): Promise<unknown> | undefined {
+  return loadingCode.size > 0 ? Promise.allSettled(loadingCode) : undefined;
+}
+
+/** The function of a reference, such as `Page#h3`, once its code has loaded. */
+function loadedFunction(ref: string): Handler | undefined {
+  const [id, name] = ref.split('#') as [string, string];
+  const module = modules.get(id);
+  if (!module) {
+    return undefined;
+  }
+  // A module without `load` holds every part itself.
+  const part = module.load ? loadedParts.get(`${id}:${partOf(name)}`) : (module as unknown as Part);
+  return part?.[name] as Handler | undefined;
+}
 
 /**
- * A `#template` of another component, which renders at once, as markup does.
- * Its code starts to load when the page state is read, and updates wait for it.
+ * A `#template` of another component, which renders at once, as markup does. Its code loads
+ * with the page, and updates wait for it.
  */
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
-  let render: Handler | undefined;
-  // A template that fails to load stops holding up updates too, and its error is reported.
-  const code: Promise<unknown> = resolve(ref, 'template')
-    .then((handler) => {
-      render = handler;
-    })
-    .finally(() => loadingTemplates.delete(code));
-  loadingTemplates.add(code);
   // The markup renders where the component inserts it, so it reads the contexts there, as
   // children do.
   return (...args) =>
-    new Children(scope, () => (render ? insertValue(render(scope, ...args)) : ''));
+    new TemplateCall(ref, scope, args, () => {
+      const render = loadedFunction(ref);
+      return render ? insertValue(render(scope, ...args)) : '';
+    });
 }
 
 // The handler of the previous event, once it has started.
@@ -1011,10 +1036,13 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
   // The code of the children that the handler can insert loads with it.
+  // So does the code of the page, which the handler can call.
   const children = childrenReady(scope);
-  const loaded = children
-    ? Promise.all([resolve(ref, 'event'), children]).then(([handler]) => handler)
-    : resolve(ref, 'event');
+  const code = codeReady();
+  const loaded =
+    children || code
+      ? Promise.all([resolve(ref), children, code]).then(([handler]) => handler)
+      : resolve(ref);
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1060,7 +1088,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id, 'error');
+      const module = await loadModule(id);
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -1088,7 +1116,7 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update', 'error');
+  const updates = await loadPart(module, 'update');
   const start = findComment(`b${owner.id}:${anchor}`);
   if (!start) {
     return;
@@ -1526,16 +1554,16 @@ function trigger(scope: Scope, slot: number): void {
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
   const children = childrenReady(scope);
-  if (module && updates && loadingTemplates.size === 0 && !children) {
+  if (module && updates && loadingCode.size === 0 && !children) {
     run(module, updates, scope, slot);
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and
-  // for the templates that the updates can render.
+  // for the code of the page, which the updates can render and call.
   const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.allSettled([...loadingTemplates, children]);
+      await Promise.allSettled([...loadingCode, children]);
       run(loaded, code, scope, slot);
     }
   });
@@ -2073,7 +2101,7 @@ export function portalTo(
 export function text(scope: Scope, anchor: number, value: unknown): void {
   const start = findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
   }
 }
 
@@ -2081,7 +2109,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value, scope);
+    write(element, element.firstChild, null, value, scope, element);
   }
 }
 
@@ -2114,7 +2142,24 @@ function write(
   end: Node | null,
   value: unknown,
   at?: Scope,
+  key?: Node,
 ): void {
+  // The same template again at an insert updates in place, with its new arguments, as a snippet
+  // of Svelte does. Its elements and their focus stay.
+  if (key && value instanceof TemplateCall) {
+    const known = templateInserts.get(key) ?? renderedTemplate(value, at);
+    // The template's `a` export gives the slots of its arguments, also of destructured ones.
+    const slotsOf = loadedFunction(`${value.ref}a`) as
+      | ((...args: unknown[]) => [number, unknown][])
+      | undefined;
+    if (known && slotsOf && known.ref === value.ref && scopes.has(known.scope.id)) {
+      templateInserts.set(key, known);
+      for (const [slot, next] of slotsOf(...value.args)) {
+        set(known.scope, slot, next);
+      }
+      return;
+    }
+  }
   if (
     (typeof value === 'string' || typeof value === 'number') &&
     first?.nodeType === 3 &&
@@ -2136,8 +2181,42 @@ function write(
     first.remove();
     first = next;
   }
-  // Children and templates render here, at the scope of the insert, for its contexts.
+  // Children and templates render here, at the scope of the insert, for its contexts. The first
+  // scope that a template makes is its own, which holds its arguments.
+  const made = nextId;
   insertHTML(end ?? { parent }, value instanceof Children ? value.render(at) : insertValue(value));
+  if (key) {
+    const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
+    if (scope) {
+      templateInserts.set(key, { ref: (value as TemplateCall).ref, scope });
+    } else {
+      templateInserts.delete(key);
+    }
+  }
+}
+
+/** The scope of the template that each insert shows, by the node that marks the insert. */
+const templateInserts = new WeakMap<Node, { ref: string; scope: Scope }>();
+
+/**
+ * The scope of a template that the server rendered at an insert: the scope that the template's
+ * component made, and that finds its contexts from the insert.
+ */
+function renderedTemplate(
+  call: TemplateCall,
+  at: Scope | undefined,
+): { ref: string; scope: Scope } | undefined {
+  let found: Scope | undefined;
+  for (const scope of scopes.values()) {
+    if (call.owner && scope.p === call.owner && scope.t === at) {
+      // Two templates of the same component at one insert cannot be told apart.
+      if (found) {
+        return undefined;
+      }
+      found = scope;
+    }
+  }
+  return found && { ref: call.ref, scope: found };
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */
@@ -2224,15 +2303,18 @@ export function attrs(
 ): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    // The first update in the browser takes the attributes that are not the element's own, nor
-    // those of brumate, as the ones that the server's spread wrote.
+    // The first update in the browser takes the attributes that `b-s` names as the ones that
+    // the spread wrote, so it keeps the attributes that other code set, such as an
+    // `aria-controls` that a `$client` callback added. Without `b-s`, it takes the attributes
+    // that are not the element's own, nor those of brumate.
     if (!spreadNames.has(element)) {
+      const written = element.getAttribute('b-s');
       spreadNames.set(
         element,
         new Set(
-          element
-            .getAttributeNames()
-            .filter((name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name)),
+          (written === null ? element.getAttributeNames() : written.split(' ')).filter(
+            (name) => !own.includes(name) && !name.startsWith('b-'),
+          ),
         ),
       );
     }
@@ -2363,7 +2445,7 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
+  const updates = await loadPart(await loadModule(id), 'update');
   const start = findComment(`b${scope.id}:${anchor}`);
   if (!start) {
     return;
@@ -3033,7 +3115,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m, 'prop').then(apply);
+    void loadModule(child.m).then(apply);
   }
 }
 
@@ -3127,13 +3209,37 @@ class Children {
     if (!at) {
       return this.html();
     }
-    const entry = { from: this.from, at };
+    // Children that a component passes on render where the component that gets them inserts
+    // them, so they find their contexts there too.
+    let target = at;
+    for (let index = insertedChildren.length - 1; index >= 0; index--) {
+      if (insertedChildren[index]!.from === at) {
+        target = insertedChildren[index]!.at;
+        break;
+      }
+    }
+    const entry = { from: this.from, at: target };
     insertedChildren.push(entry);
     try {
       return this.html();
     } finally {
       insertedChildren.splice(insertedChildren.indexOf(entry), 1);
     }
+  }
+}
+
+/** A call of a `#template` of another component, which an insert can update in place. */
+class TemplateCall extends Children {
+  readonly ref: string;
+  /** The scope of the component that wrote the template. */
+  readonly owner: Scope | undefined;
+  readonly args: unknown[];
+
+  constructor(ref: string, owner: Scope | undefined, args: unknown[], html: () => string) {
+    super(owner, html);
+    this.ref = ref;
+    this.owner = owner;
+    this.args = args;
   }
 }
 
@@ -3185,7 +3291,7 @@ class RenderedChildren extends Children {
   }
 
   load(): Promise<void> {
-    this.loading ??= resolve(this.ref, 'template').then((handler) => {
+    this.loading ??= resolve(this.ref).then((handler) => {
       this.code = handler;
     });
     return this.loading;
@@ -3299,6 +3405,10 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
   const parentScope = resolveScope(parent);
   const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
   rendered.push(created);
+  // A component that the browser renders loads its code, as the components of the page do.
+  if (module !== undefined) {
+    loadComponent(module);
+  }
   if (module !== undefined && owner) {
     created.o = owner;
     (owner.owned ??= new Set()).add(created);
@@ -3464,7 +3574,15 @@ export function handlerProp(
     return value;
   }
   const instance = resolveScope(scope);
-  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // The function runs at once and returns its result, as a reference in the page state does.
+  // Its export reads the current values of its scope. Before the code of its component loads,
+  // such as while the browser renders the component for the first time, the function of the
+  // render runs.
+  const handler = (...args: unknown[]): unknown => {
+    const fn = loadedFunction(ref);
+    const all = [...bound, ...args];
+    return fn ? fn(instance, ...all) : (value as (...rest: unknown[]) => unknown)(...all);
+  };
   // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
   // A scope that is not in the page yet has its ID in `scope`.
   handlerReferences.set(

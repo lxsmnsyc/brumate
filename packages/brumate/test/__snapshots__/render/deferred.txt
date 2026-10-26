@@ -38,19 +38,12 @@ export default async function Deferred($$props: Record<string, never>, $$ctx: $$
 Deferred.brumateId = "Deferred_1mbnfwf";
 
 # Client entry
+export * from "./deferred.brm?brumate-client&part=h1";
+export * from "./deferred.brm?brumate-client&part=h6";
+export * from "./deferred.brm?brumate-client&part=update";
 export const id = "Deferred_1mbnfwf";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"], [3, "u7"]] } };
-const update = () => import("./deferred.brm?brumate-client&part=update");
-const parts = {
-  "h1": () => (update().catch(() => {}), import("./deferred.brm?brumate-client&part=h1")),
-  "h6": () => (update().catch(() => {}), import("./deferred.brm?brumate-client&part=h6")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h1
 import * as $$b from 'brumate/client';

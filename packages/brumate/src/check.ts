@@ -390,7 +390,12 @@ class Generator {
     const { out } = this;
     out.text(' ');
     if (/^[A-Za-z_$][\w$]*$/.test(attribute.name)) {
-      out.copy({ start: attribute.start, end: attribute.start + attribute.name.length });
+      // A shorthand, such as `{page}`, has its name after the brace.
+      const start =
+        this.file.source[attribute.start] === '{'
+          ? this.file.source.indexOf(attribute.name, attribute.start)
+          : attribute.start;
+      out.copy({ start, end: start + attribute.name.length });
     } else {
       out.text(JSON.stringify(attribute.name));
     }

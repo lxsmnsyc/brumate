@@ -37,19 +37,12 @@ export default async function Portal($$props: Record<string, never>, $$ctx: $$b.
 Portal.brumateId = "Portal_17ywlhi";
 
 # Client entry
+export * from "./portal.brm?brumate-client&part=h1";
+export * from "./portal.brm?brumate-client&part=h3";
+export * from "./portal.brm?brumate-client&part=update";
 export const id = "Portal_17ywlhi";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b2"]] } };
-const update = () => import("./portal.brm?brumate-client&part=update");
-const parts = {
-  "h1": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h1")),
-  "h3": () => (update().catch(() => {}), import("./portal.brm?brumate-client&part=h3")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h1
 import * as $$b from 'brumate/client';
@@ -64,8 +57,10 @@ export const h3 = ($$s) => ($$b.set($$s.p, 0, false));
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = [r2];
+const $$k1 = [2, 3];
 export function b2($$s) {
-  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, [r2], [2, 3]);
+  $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, $$k0, $$k1);
 }
 export function r2($$p) {
   let $$html = '';

@@ -21,6 +21,12 @@ export interface LoaderOptions {
    * a component that has no client code.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /**
+   * Loads the bundle of a root component of the page, such as a route: the client modules of
+   * the components that it can render, in one chunk. Undefined for a component that is not a
+   * root.
+   */
+  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
   /** Imports the serial entry, which the core takes before it reads the page state. */
@@ -31,14 +37,6 @@ export interface LoaderOptions {
    * from server functions to the same origin. Defaults to true.
    */
   navigate?: boolean | NavigateOptions;
-  /**
-   * After the page loads, while the browser is idle, loads the core and the
-   * code of the handlers of elements in or near the viewport, so a first
-   * event needs no request. Elements with `data-prefetch="none"` are left
-   * out, and nothing loads when the browser asks to save data or the
-   * connection is 2G. Defaults to true.
-   */
-  preload?: boolean;
   /**
    * The ID of the build of the page, for skew protection. The Vite plugin
    * sets it. Calls send it, and a page of another build, or a call that
@@ -97,11 +95,6 @@ export function entries(element: Element): Entry[] {
           }),
       )
       .get(value))!;
-}
-
-/** The `prefetch` strategy of an element, from its `data-prefetch`. */
-export function strategy(element: Element): string {
-  return element.getAttribute('data-prefetch') ?? 'hover';
 }
 
 /** The functions of the core that the loader calls. */
@@ -211,72 +204,10 @@ export function boot(
   // The devtools panel asks for the core when it opens, so it can show the page before any event.
   listen(document, 'brumate:core', () => void loadCore());
 
-  // Starts loading the module of a handler and its part, as one step when the module holds them.
-  // The core reports an error of the load when it runs the handler.
-  // `reason` tells the devtools why: an event, a block, or a preload on hover, near the viewport,
-  // on idle or after `load`.
-  // The parts that loaded or are loading. A list of 1,000 rows names the same handlers 1,000
-  // times, and each part loads once.
-  const warmed = new Set<string>();
-  // The module and part of each ref, which repeats for each row of a list.
-  const parts = new Map<string, [id: string, part: string] | undefined>();
-  const partOf = (ref: string): [id: string, part: string] | undefined => {
-    if (parts.has(ref)) {
-      return parts.get(ref);
-    }
-    let found: [string, string] | undefined;
-    // A built-in of the core, such as `$bind`, has no code of a component to load.
-    if (!ref.startsWith('$')) {
-      // A handler that a spread passed on names its scope after `@`.
-      const [id, name] = ref.split('@')[0]!.split('#') as [string, string];
-      found = [id, /^[hct]\d/.test(name) ? name : 'update'];
-    }
-    parts.set(ref, found);
-    return found;
-  };
-  const warmedAll = (element: Element): boolean => {
-    for (const entry of entries(element)) {
-      const found = partOf(entry.ref);
-      if (found && !warmed.has(`${found[0]}#${found[1]}`)) {
-        return false;
-      }
-    }
-    return true;
-  };
-  const warm = (ref: string, reason: string): void => {
-    const found = partOf(ref);
-    if (!found) {
-      return;
-    }
-    const [id, part] = found;
-    const key = `${id}#${part}`;
-    if (warmed.has(key)) {
-      return;
-    }
-    warmed.add(key);
-    // The updates of the module too, which the handler's writes run.
-    const done = loadModule(id)?.then((module) => {
-      if (!module.load) {
-        return undefined;
-      }
-      if (part !== 'update') {
-        loadPart(module, 'update').catch(() => {});
-      }
-      return loadPart(module, part);
-    });
-    // A load that fails can start again, such as after the network comes back.
-    void done?.catch(() => warmed.delete(key));
-    if (DEV && done) {
-      devtools()?.load?.(id, part, reason, done);
-    }
-  };
-
   const run = (element: Element, ref: string, event?: Event): void => {
     if (stopped) {
       return;
     }
-    // The module loads while the core does, not after it.
-    warm(ref, event ? 'event' : 'block');
     void loadCore().then((client) => client.handle(element, ref, event));
   };
 
@@ -395,34 +326,9 @@ export function boot(
     return found;
   };
 
-  const visible =
-    typeof IntersectionObserver === 'undefined'
-      ? undefined
-      : new IntersectionObserver(
-          (records) => {
-            for (const record of records) {
-              if (record.isIntersecting) {
-                visible!.unobserve(record.target);
-                preload(record.target, eagerly.has(record.target) ? 'eager' : 'visible');
-              }
-            }
-          },
-          // Near the viewport counts too, so code loads before an element scrolls in.
-          { rootMargin: '25%' },
-        );
-  removers.push(() => visible?.disconnect());
-  // Elements that preload near the viewport because the page is idle after `load`.
-  const eagerly = new WeakSet<Element>();
-
-  // True once the page is idle after `load`, when elements with the default strategy preload
-  // as they come near the viewport. See `preload` in the options.
-  let eager = false;
-
   // The values of `b-on` whose event types the document listens to already. The rows of a
   // list repeat the same few values.
   const delegated = new Set<string>();
-  // The values of `b-on` whose parts loaded, so the elements with them have nothing to preload.
-  const ready = new Set<string>();
   const onElement = (element: Element): void => {
     const value = element.getAttribute('b-on')!;
     if (!delegated.has(value)) {
@@ -431,16 +337,6 @@ export function boot(
         delegate(entry.type, prevents(entry));
       }
     }
-    // An element whose parts loaded already, such as a new row of a list, has nothing to preload.
-    if (!eager || ready.has(value) || strategy(element) !== 'hover') {
-      return;
-    }
-    if (warmedAll(element)) {
-      ready.add(value);
-      return;
-    }
-    eagerly.add(element);
-    visible?.observe(element);
   };
   const onListener = (template: Element): void => {
     const target = template.getAttribute('b-listen') === 'window' ? window : document;
@@ -483,7 +379,7 @@ export function boot(
       template.nextElementSibling;
     if (trigger === 'idle') {
       idle(go);
-    } else if (trigger === 'visible' && next && visible) {
+    } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
       const observer = new IntersectionObserver((records) => {
         if (records.some((record) => record.isIntersecting)) {
           observer.disconnect();
@@ -495,8 +391,7 @@ export function boot(
       go();
     }
   };
-  const SCANNED =
-    '[data-prefetch=visible],[data-prefetch=idle],[b-on],template[b-listen],template[b-client],template[b-defer]';
+  const SCANNED = '[b-on],template[b-listen],template[b-client],template[b-defer]';
   // One query of the markup for everything that the loader starts. The blocks start after the
   // rest, as they did when each kind had its own query.
   const scan = (root: ParentNode): void => {
@@ -516,16 +411,6 @@ export function boot(
         }
         continue;
       }
-      if (element.hasAttribute('data-prefetch')) {
-        const prefetch = element.getAttribute('data-prefetch');
-        if (prefetch === 'visible' || prefetch === 'idle') {
-          if (strategy(element) === 'idle' || !visible) {
-            idle(() => preload(element, strategy(element) === 'idle' ? 'idle' : 'visible'));
-          } else {
-            visible.observe(element);
-          }
-        }
-      }
       if (element.hasAttribute('b-on')) {
         onElement(element);
       }
@@ -534,29 +419,6 @@ export function boot(
       onBlock(root, template);
     }
   };
-
-  // Preloads the core and the parts of an element's handlers, so its first event does not wait for them.
-  const preloaded = new WeakSet<Element>();
-  const preload = (element: Element, reason: string): void => {
-    if (preloaded.has(element)) {
-      return;
-    }
-    preloaded.add(element);
-    void importCore();
-    loadSerial()?.catch(() => {});
-    for (const entry of entries(element)) {
-      warm(entry.ref, reason);
-    }
-  };
-
-  const hover = (event: Event): void => {
-    const element = (event.target as Element).closest?.('[b-on]');
-    if (element && strategy(element) === 'hover') {
-      preload(element, 'hover');
-    }
-  };
-  listen(document, 'pointerover', hover, { passive: true });
-  listen(document, 'focusin', hover);
 
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {
@@ -600,21 +462,27 @@ export function boot(
     observer.takeRecords();
   };
 
-  // After `load`, so the page's own requests go first, and only when the browser is idle.
-  // `2g` matches `slow-2g` too.
-  const connection = (navigator as { connection?: { saveData?: boolean; effectiveType?: string } })
-    .connection;
-  if (
-    options.preload !== false &&
-    !connection?.saveData &&
-    !/2g/.test(connection?.effectiveType as string)
-  ) {
-    listen(window, 'load', () =>
-      idle(() => {
-        eager = true;
-        scan(document);
-      }),
-    );
+  // The core starts at once and loads the code of the components on the page, so a call of a
+  // function of another component, such as a function prop, runs at once and in order.
+  void loadCore().catch(() => {});
+  // The bundles of the components in the state start with it, so the code of the page comes in
+  // the same round trip as the core. The core asks for them again when it reads the state.
+  const bundled = new Set<string>();
+  const loadBundles = (): void => {
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      for (const [, id] of script.textContent?.matchAll(/\bm:"([^"]+)"/g) ?? []) {
+        if (!bundled.has(id!)) {
+          bundled.add(id!);
+          void options.loadBundle?.(id!)?.catch(() => {});
+        }
+      }
+    }
+  };
+  if (options.loadBundle) {
+    loadBundles();
+    if (document.readyState === 'loading') {
+      listen(document, 'DOMContentLoaded', loadBundles);
+    }
   }
   return () => {
     stopped = true;

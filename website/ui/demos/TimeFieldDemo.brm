@@ -1,0 +1,16 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+
+  let start = $signal<string | null>('09:30');
+</script>
+
+<TimeField class="ui-field" value=$bind(start) minValue="08:00" maxValue="18:00">
+  <Label>Start</Label>
+  <DateInput class="ui-input ui-date-input" />
+  <FieldError class="ui-error">Pick a time from 8 AM to 6 PM.</FieldError>
+</TimeField>
+<p>{start ?? 'No time yet.'}</p>
