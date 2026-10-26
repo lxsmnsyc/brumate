@@ -76,11 +76,12 @@ Each item of the proposals maps to one node, or to built work:
 ## Open questions
 
 - Are the must line and the milestones right?
-- Gates: split-client-runtime (client.ts by feature) and split-ui-examples (the ui example page and its e2e suite by part). Approve or decline each.
+- Gate: split-ui-examples (the ui example page and its e2e suite by part). Approve or decline it.
 - Should the Order section of the proposals become a link to this roadmap?
 
 ## Gates
 
-- split-client-runtime and split-ui-examples: the user approves the layout change.
+- split-client-runtime: the layout change was approved by the user on 2026-10-26. The gate stays for a review of the split before the nodes that build on it start.
+- split-ui-examples: the user approves the layout change.
 - props-table, once docs-generator freezes it: the user reviews the page format before the docs nodes start.
 - values-spike and inlining-spike: the user decides go or no-go.
