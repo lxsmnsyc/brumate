@@ -31,6 +31,11 @@ export interface Timing {
   hide: (id: string, closeDelay: number, immediate: boolean, hide: () => void) => void;
   /** Cancels the hide of an overlay that waits for its close delay. */
   keep: (id: string) => void;
+  /**
+   * Forgets an overlay whose trigger left the page: its timers stop, and an overlay that showed
+   * starts the cooldown, as if it hid.
+   */
+  forget: (id: string) => void;
 }
 
 /**
@@ -115,11 +120,27 @@ export function timing(): Timing {
       clearTimeout(own.close);
       own.close = undefined;
     },
+    forget(id) {
+      const own = timers.get(id);
+      clearTimeout(own?.warm);
+      clearTimeout(own?.close);
+      timers.delete(id);
+      if (current?.id === id) {
+        current = undefined;
+        clearTimeout(cooldown);
+        cooldown = setTimeout(() => {
+          warmedUp = false;
+        }, COOLDOWN);
+      }
+    },
   };
 }
 
 /** The timing of tooltips. */
 export const tooltips: Timing = timing();
+
+/** The triggers that a press holds down. The focus that a press gives them shows no tooltip. */
+export const pressedTriggers: WeakSet<Element> = new WeakSet();
 
 /** The timing of previews, apart from tooltips, as in React Aria. */
 export const previews: Timing = timing();

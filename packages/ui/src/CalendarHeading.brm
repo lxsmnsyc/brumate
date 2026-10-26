@@ -1,0 +1,14 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { CalendarContext, rangeLabel, toDate } from './calendar.ts';
+
+  /**
+   * The months that a Calendar shows, such as `October 2026`, as CalendarHeading of React Aria
+   * Components. It is hidden from screen readers, which read the name of the Calendar.
+   */
+  const { as = 'h2', ...rest } = $props<{ as?: string; [attribute: string]: unknown }>();
+
+  const calendar = $getContext(CalendarContext);
+</script>
+
+<{as} aria-hidden="true" {...rest}>{calendar ? rangeLabel(toDate(calendar.start), toDate(calendar.end), calendar.locale, false) : ''}</>

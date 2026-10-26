@@ -16,18 +16,11 @@ export default async function Counter($$props: Record<string, never>, $$ctx: $$b
 Counter.brumateId = "Counter_m86gta";
 
 # Client entry
+export * from "./counter.brm?brumate-client&part=h4";
+export * from "./counter.brm?brumate-client&part=update";
 export const id = "Counter_m86gta";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
-const update = () => import("./counter.brm?brumate-client&part=update");
-const parts = {
-  "h4": () => (update().catch(() => {}), import("./counter.brm?brumate-client&part=h4")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h4
 import * as $$b from 'brumate/client';
@@ -49,16 +42,21 @@ export function u6($$s) {
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("<h1 b-x=\"0\"></h1><button b-x=\"1\" b-on=\"click=Counter_m86gta#h4\">+</button><p b-x=\"3\"><!--x2--> / </p>", 4);
 
-export default function Counter($$props: Record<string, never>): string {
+export default function Counter($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Counter_m86gta");
   const label = 'Clicks';
   let count = (0);
   const double = (count * 2);
-  $$html += "<h1>" + $$b.insert((label)) + "</h1><button b-b=\"" + $$s1 + ":0\" b-on=\"click=Counter_m86gta#h4\">+</button><p><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> / <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></p>";
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  $$b.setContent($$e[0], (label));
+  $$b.keep($$s1, 0, $$e[1]);
+  $$b.keepText($$s1, 1, $$e[2], (count));
+  $$b.appendText($$s1, 2, $$e[3], (double));
   $$b.setSlots($$s1, [count, double]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

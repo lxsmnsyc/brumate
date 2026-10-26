@@ -1,6 +1,7 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
+import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
@@ -94,6 +95,7 @@ export interface InputContextProps extends AttributeProps {
   onChange?: (value: string) => void;
   onInvalid?: (message: string, first: boolean) => void;
   onKeyDown?: (key: string, event: KeyboardEvent) => void;
+  onFocus?: () => void;
   onBlur?: () => void;
   /** Enter keeps no default, so it sends no form, as in a search field. */
   isEnterPrevented?: boolean;
@@ -106,6 +108,16 @@ export const InputContext: Context<ContextValue<InputContextProps> | null> =
 
 export const TextAreaContext: Context<ContextValue<InputContextProps> | null> =
   createContext<ContextValue<InputContextProps> | null>('brumate-ui:textarea', null);
+
+/**
+ * Attributes that a part around a field gives the input of the field, such as an Autocomplete
+ * that names its collection. A TextField or a SearchField passes them on, and the Input or the
+ * TextArea renders them under those of the field.
+ */
+export const FieldInputContext: Context<Record<string, unknown> | null> = createContext<Record<
+  string,
+  unknown
+> | null>('brumate-ui:field-input', null);
 
 /** The state of the validation of a field, which its FieldError shows. */
 export interface FieldErrorState {
@@ -183,6 +195,8 @@ export interface DisclosurePanelState {
   id: string;
   triggerId: string;
   isExpanded: boolean;
+  /** A disabled disclosure keeps its panel closed, also for find in page. */
+  isDisabled: boolean;
   expand: () => void;
 }
 
@@ -211,6 +225,19 @@ export interface OverlayTriggerState {
    * is when it opens.
    */
   isPreview?: boolean;
+  /** The overlay is not modal, such as a submenu, whose parent menu stays usable. */
+  isNonModal?: boolean;
+  /** The placement that the trigger asks for, such as `end top` for a submenu. */
+  placement?: Placement;
+  /** False when focus stays where it is as the overlay opens, such as a submenu opened by hover. */
+  autoFocus?: boolean;
+  /**
+   * The content stays in the page while the overlay is closed, out of sight, in an element with
+   * the ID `${overlayId}-closed`. A Select reads its items there, for the keys of its Button.
+   */
+  keepsContent?: boolean;
+  /** The IDs that name a Dialog in the overlay with no Heading of its own, such as of a DatePicker. */
+  labelledBy?: string;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
@@ -219,6 +246,8 @@ export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
 /** What an overlay gives the Dialog inside it: the function that closes the overlay. */
 export interface DialogState {
   close: () => void;
+  /** The IDs that name the Dialog when it has no Heading, from the trigger of the overlay. */
+  labelledBy?: string;
 }
 
 export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(

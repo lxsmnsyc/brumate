@@ -1,0 +1,53 @@
+<script>
+  import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
+  import { tabbables } from './overlay.ts';
+  import type { Key } from './collection.ts';
+  import { TabsContext, selectedOf, tabId } from './tabs.ts';
+
+  /**
+   * The panel of a tab, as TabPanel of React Aria Components. `id` is the key of its Tab.
+   *
+   * - Only the panel of the selected tab renders its content. Showing it again renders it anew,
+   *   with new state. `shouldForceMount` keeps it on the page, hidden.
+   * - It takes Tab when it has no content that does, so it can be reached, as in React Aria.
+   */
+  const {
+    id,
+    shouldForceMount = false,
+    children,
+    ...rest
+  } = $props<{
+    id: Key;
+    shouldForceMount?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const tabs = $getContext(TabsContext);
+  const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
+  // Whether the content takes Tab, which the browser checks. The server renders the panel as one
+  // that takes Tab itself.
+  let hasTabbable = $signal(false);
+  let panel = $signal<HTMLElement>();
+  function measure() {
+    const element = panel;
+    hasTabbable = Boolean(element && tabbables(element).length > 0);
+  }
+  $client(() => measure(), 'load');
+  $effect(() => {
+    void selected;
+    queueMicrotask(() => $untrack(measure()));
+  });
+</script>
+
+#if (selected || shouldForceMount) {
+  <div
+    id=(tabs ? tabId(tabs, id, 'panel') : undefined)
+    ref=panel
+    role="tabpanel"
+    tabindex=(hasTabbable ? undefined : '0')
+    aria-labelledby=(tabs ? tabId(tabs, id, 'tab') : undefined)
+    hidden=(!selected || undefined)
+    {...rest}
+  >{children}</div>
+}

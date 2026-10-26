@@ -80,6 +80,8 @@ export default defineConfig({
     ),
     // Every page is written as a static file, with readable names for the scripts.
     brumate({
+      // The live samples and the REPL compile components in the browser, with any feature.
+      features: 'all',
       navigate: { transition: true },
       prerender: { paths: ['/', '/repl', '/ui'], head: scriptNames },
     }),

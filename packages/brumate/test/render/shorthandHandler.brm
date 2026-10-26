@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // `{onClick}` is a handler, as `onClick=onClick` is.
+  let count = $signal(0);
+
+  function onClick() {
+    count++;
+  }
+</script>
+
+<button class="go" {onClick}>{count}</button>

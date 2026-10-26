@@ -1,0 +1,14 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { rows, row } = $props<{
+    rows: { id: number; label: string }[];
+    row: (entry: { id: number; label: string }, index: number) => unknown;
+  }>();
+</script>
+
+<ul>
+  #for (entry, index of rows by entry.id) {
+    <li>{row(entry, index)}</li>
+  }
+</ul>

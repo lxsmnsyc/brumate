@@ -1,0 +1,125 @@
+<script>
+  import { $bind, $id, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { DatePickerContext } from './calendar.ts';
+  import type { DateRange, DateString } from './calendar.ts';
+  import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import DateField from './DateField.brm';
+
+  /**
+   * A DateField with a Button that opens a Calendar in a Popover, as DatePicker of React Aria
+   * Components. It holds a Label, a Group with a DateInput and a Button, a Popover with a Dialog
+   * and a Calendar, and a Text with `slot="description"` and a FieldError.
+   *
+   * - `value` is the date as `YYYY-MM-DD`, or null. `value=(date)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, typed or picked.
+   * - The Button opens the Popover, and the Calendar takes focus on the selected date, or on
+   *   `placeholderValue`. A pick sets the date and closes the Popover, unless
+   *   `shouldCloseOnSelect` is false. A Dialog with no Heading is named by the Button and the
+   *   Label.
+   * - `isOpen` is whether the Popover shows, and `onOpenChange` gets each change.
+   * - The other props are those of DateField. The Calendar follows `minValue`, `maxValue` and
+   *   `isDateUnavailable` too, unless it has its own.
+   * - It shows `data-open`, and the states of a DateField.
+   */
+  const {
+    minValue,
+    maxValue,
+    isDateUnavailable,
+    placeholderValue,
+    isDisabled = false,
+    isReadOnly = false,
+    shouldCloseOnSelect = true,
+    onChange,
+    onOpenChange,
+    children,
+    ...rest
+  } = $props<{
+    minValue?: DateString;
+    maxValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    placeholderValue?: DateString;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onChange?: (value: DateString | null) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<DateString | null> }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const triggerId = $id();
+  const overlayId = $id();
+  const labelId = $id();
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen && !(next && (isDisabled || isReadOnly))) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+  }
+
+  function select(picked: DateString | DateRange) {
+    if (typeof picked !== 'string') {
+      return;
+    }
+    if (picked !== value) {
+      value = picked;
+      onChange?.(picked);
+    }
+    if (shouldCloseOnSelect) {
+      setOpen(false);
+    }
+  }
+
+  $setContext(ButtonContext, {
+    id: triggerId,
+    'aria-label': 'Calendar',
+    'aria-labelledby': `${triggerId} ${labelId}`,
+    'aria-haspopup': 'dialog',
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    isDisabled: isDisabled || isReadOnly,
+    onPress: () => setOpen(true),
+  });
+  $setContext(GroupContext, {
+    isDisabled,
+    'aria-disabled': isDisabled ? 'true' : undefined,
+    'aria-labelledby': labelId,
+  });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId,
+    overlayId,
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+    placement: 'bottom start',
+    labelledBy: `${triggerId} ${labelId}`,
+  });
+  $setContext(DatePickerContext, {
+    value,
+    select,
+    minValue,
+    maxValue,
+    isDateUnavailable,
+    placeholderValue,
+    isDisabled,
+    isReadOnly,
+  });
+</script>
+
+<DateField
+  value=$bind(value)
+  {minValue}
+  {maxValue}
+  {isDateUnavailable}
+  {placeholderValue}
+  {isDisabled}
+  {isReadOnly}
+  {onChange}
+  {labelId}
+  data-open=(isOpen || undefined)
+  {...rest}
+>{children}</DateField>

@@ -35,6 +35,18 @@ it('gives a form with the aria behavior novalidate, so the browser never blocks 
   expect((page.get('.native-form') as HTMLFormElement).noValidate).toBe(false);
 });
 
+it('blocks a form from the first value with validate, the errors of the server and isInvalid', async () => {
+  const page = await validation();
+  // The user never typed in these fields.
+  const code = page.get('.code-input') as HTMLInputElement;
+  const handle = page.get('.handle-input') as HTMLInputElement;
+  const flagged = page.get('.flagged-input') as HTMLInputElement;
+  await page.waitFor(() => expect(code.validationMessage).toBe('At least 3 letters'));
+  await page.waitFor(() => expect(handle.validationMessage).toBe('That handle is taken'));
+  await page.waitFor(() => expect(flagged.validationMessage).toBe('Invalid value.'));
+  expect((page.get('.native-form') as HTMLFormElement).checkValidity()).toBe(false);
+});
+
 it('blocks a form with isInvalid in the native behavior, as the browser checks it', async () => {
   const page = await validation();
   const input = page.get('.flagged-input') as HTMLInputElement;

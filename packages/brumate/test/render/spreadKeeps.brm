@@ -1,0 +1,15 @@
+<script>
+  import { $client, $memo, $signal } from 'brumate/signals';
+
+  // A spread that changes, on an element that a `$client` callback gives an attribute.
+  let count = $signal(0);
+  const extra = $memo({ title: `count ${count}` });
+  let box = $signal<HTMLElement>();
+
+  $client(() => {
+    box?.setAttribute('aria-controls', 'menu');
+  }, 'load');
+</script>
+
+<button class="inc" onClick=(() => count++)>More</button>
+<p class="box" ref=box {...extra}>Box</p>

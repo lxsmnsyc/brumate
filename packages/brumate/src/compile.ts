@@ -393,7 +393,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   const parts = Object.fromEntries(
     Object.entries(client.parts).map(([name, code]) => [name, done(code)]),
   );
-  const render = done(generateRender(file, plan));
+  const render = done(generateRender(file, plan, client.fillOf));
   return {
     server: server.code,
     client: entry.code,

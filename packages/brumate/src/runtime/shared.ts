@@ -2,6 +2,7 @@
 // seroval, so the core, which reads the page state without it, stays small.
 // The plugins that write and read these values are in `serial.ts`.
 
+import { HAS_BINDINGS, HAS_CHILDREN } from './features.ts';
 import { raw } from './html.ts';
 import type { Raw } from './html.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
@@ -90,6 +91,24 @@ export class ElementReference {
 }
 
 /** A client function: an export of a client module, and the scope it reads. */
+/** The key of the reference of children on the server, which the page state sends. */
+export const CHILDREN_REF: unique symbol = Symbol.for('brumate.children') as never;
+
+/**
+ * The children of a component in the page state: the export that renders them in the browser,
+ * such as `Page_1a2b#n0`, and the scope that they were written in. Each insert renders them
+ * again, with new scopes, as the body of a block does.
+ */
+export class ChildrenReference {
+  readonly ref: string;
+  readonly scope: ScopeId;
+
+  constructor(ref: string, scope: ScopeId) {
+    this.ref = ref;
+    this.scope = scope;
+  }
+}
+
 export class FunctionReference {
   /** `<component id>#<export name>`. */
   readonly ref: string;
@@ -193,6 +212,11 @@ export function unbind(
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
+/** The value of a feature that the build turned off, which no page state of it holds. */
+function unused(): never {
+  throw new Error('The page state holds a value of a feature that no component of the build uses');
+}
+
 /**
  * Makes the values of brumate's plugins. A state record calls them as `$b`,
  * with one letter each, and the plugins read nodes of server function calls
@@ -210,6 +234,8 @@ export const stateValues: {
   ) => FunctionReference;
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
+  /** Children, by the export that renders them and their scope. */
+  n: (ref: string, scope: ScopeId) => ChildrenReference;
   /**
    * A component, such as the value of a dynamic tag. The client gets a
    * function with the same ID that renders nothing. The client code that
@@ -226,9 +252,12 @@ export const stateValues: {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
+  n: HAS_CHILDREN ? (ref, scope) => new ChildrenReference(ref, scope) : unused,
   c: (id) => Object.assign(() => '', { brumateId: id }),
   l: (scope, slot) => new SlotReference(scope, slot),
-  b: (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set),
+  b: HAS_BINDINGS
+    ? (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set)
+    : unused,
   u: (tag, data) => {
     const plugin = valuePlugins.get(tag);
     if (!plugin) {

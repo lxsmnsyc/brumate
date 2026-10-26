@@ -94,15 +94,24 @@
   function found() {
     state?.expand();
   }
+
+  // A closed panel that stays in the page is hidden until find in page finds something in it.
+  // A disabled one stays closed, so it is plainly hidden.
+  function hiddenValue(open: boolean, kept: boolean, off: boolean) {
+    if (open || !kept) {
+      return undefined;
+    }
+    return off ? true : 'until-found';
+  }
 </script>
 
 #template content() {
   <div
     ref=element
     id=(state?.id)
-    role=role
+    {role}
     aria-labelledby=(state?.triggerId)
-    hidden=(!shown && unmount === false ? 'until-found' : undefined)
+    hidden=(hiddenValue(shown, unmount === false, Boolean(state?.isDisabled)))
     inert=(leaving || undefined)
     data-expanded=(state?.isExpanded || undefined)
     data-closed=($untrack(transition && !rested) || undefined)

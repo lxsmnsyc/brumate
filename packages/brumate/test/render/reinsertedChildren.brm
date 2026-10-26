@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ReinsertLabel from './ReinsertLabel.brm';
+  import ReinsertProbe from './ReinsertProbe.brm';
+  import ReinsertShell from './ReinsertShell.brm';
+
+  // Children that the server renders open in place, and children that it renders closed in a
+  // portal, in blocks that the browser closes and opens again.
+  let inline = $signal(true);
+  let portal = $signal(false);
+</script>
+
+<button class="toggle-inline" onClick=(() => (inline = !inline))>Inline</button>
+<button class="toggle-portal" onClick=(() => (portal = !portal))>Portal</button>
+<ReinsertShell open=inline>
+  <ReinsertProbe name="inline-probe" />
+  <ReinsertLabel render=label />
+</ReinsertShell>
+<ReinsertShell open=portal portal><ReinsertProbe name="portal-probe" /></ReinsertShell>
+
+#template label(text: string) {
+  <i>{text}</i>
+}

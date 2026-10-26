@@ -1,0 +1,6 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { label } = $props();
+</script>
+
+<label class="check"><input type="checkbox">{label}</label>

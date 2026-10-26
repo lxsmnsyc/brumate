@@ -41,7 +41,7 @@ it('counts', async () => {
 ```
 
 - `mount(component, props)` renders the component on the server, puts the HTML into the document, and starts the loader.
-- The first event loads the client code of the component, as in a browser. Its effect arrives a moment later, so check it with `waitFor`.
+- The loader loads the client code of the component, as in a browser. An event before that waits for it, so its effect arrives a moment later. Check it with `waitFor`.
 - Call `unmount()` at the end, so the next test starts with an empty document.
 - A test can mount several components, one after another or at the same time. Each mount gets scope IDs of its own, and they share one loader, as the components of a page do.
 

@@ -1,0 +1,59 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Popover from '../../src/Popover.brm';
+  import Select from '../../src/Select.brm';
+  import SelectValue from '../../src/SelectValue.brm';
+  import Text from '../../src/Text.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let animal = $signal<Key | null>(null);
+  let changes = $signal<(Key | null)[]>([]);
+  let size = $signal<Key | null>(2);
+  const sizes = [
+    { id: 1, name: 'Small' },
+    { id: 2, name: 'Medium' },
+    { id: 3, name: 'Large' },
+  ];
+</script>
+
+<main class="page">
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <Select class="animal" name="animal" isRequired selectedKey=$bind(animal) onSelectionChange=((key) => (changes = [...changes, key]))>
+      <Label class="animal-label">Favorite animal</Label>
+      <Button class="trigger"><SelectValue class="value" /></Button>
+      <Text slot="description" class="animal-description">Pick one.</Text>
+      <FieldError class="animal-error" />
+      <Popover class="popover">
+        <ListBox class="list">
+          <ListBoxItem id="cat" class="cat">Cat</ListBoxItem>
+          <ListBoxItem id="dog" class="dog">Dog</ListBoxItem>
+          <ListBoxItem id="kangaroo" class="kangaroo" isDisabled>Kangaroo</ListBoxItem>
+        </ListBox>
+      </Popover>
+    </Select>
+    <button class="submit" type="submit">Send</button>
+    <button class="reset" type="reset">Reset</button>
+    <button class="set-dog" type="button" onClick=(() => (animal = 'dog'))>Dog</button>
+  </form>
+  <Select class="size" name="size" selectedKey=$bind(size)>
+    <Label>Size</Label>
+    <Button class="size-trigger"><SelectValue class="size-value" render=sizeName /></Button>
+    <Popover class="size-popover">
+      <ListBox class="size-list">
+        #for (item of sizes by item.id) {
+          <ListBoxItem id=(item.id) class=(`size-${item.id}`)>{item.name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+  <p class="state">{JSON.stringify([animal, changes, size])}</p>
+</main>
+
+#template sizeName(state: { selectedKey: Key | null }) {
+  {sizes.find((item) => item.id === state.selectedKey)?.name ?? 'None'}
+}

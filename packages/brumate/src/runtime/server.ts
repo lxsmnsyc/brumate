@@ -22,6 +22,8 @@ import { serverSecrets } from './secrets.ts';
 import {
   Binding,
   CHILDREN,
+  CHILDREN_REF,
+  ChildrenReference,
   ElementReference,
   FunctionReference,
   ITEM,
@@ -561,8 +563,11 @@ export class Context {
    * and find their contexts from `at`.
    */
   async children(from: ScopeId, at: ScopeId, renderBody: () => Promise<string>): Promise<string> {
-    const entry = { from, at };
     const { inserted } = this.root;
+    // Children that a component passes on, as `<Select>{children}</Select>`, render where the
+    // component that gets them inserts them, so they find their contexts there too.
+    const outer = inserted.findLast((item) => item.from === at);
+    const entry = { from, at: outer ? outer.at : at };
     inserted.push(entry);
     try {
       return await renderBody();
@@ -1233,8 +1238,12 @@ export interface Lazy {
  * them, so they read the contexts that the component provides. `from` is the
  * scope of the markup that wrote them.
  */
-export function children(from: ScopeId, renderBody: (ctx: Context) => Promise<string>): Lazy {
-  return new Children(from, renderBody);
+export function children(
+  from: ScopeId,
+  renderBody: (ctx: Context) => Promise<string>,
+  ref?: string,
+): Lazy {
+  return new Children(from, renderBody, ref);
 }
 
 /** The symbol of raw HTML. See `html.ts`. */
@@ -1250,13 +1259,23 @@ class Children implements Lazy {
   readonly [LAZY]: (ctx: Context, at: ScopeId | undefined) => Promise<string>;
   /** The HTML of the first render, under the symbol of raw HTML. */
   [RAW]?: string;
+  /**
+   * The export that renders the children in the browser, which the page state sends in place of
+   * their HTML. Each insert in the browser then renders them with new scopes.
+   */
+  [CHILDREN_REF]?: ChildrenReference;
 
-  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>) {
+  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>, ref?: string) {
+    if (ref !== undefined) {
+      this[CHILDREN_REF] = new ChildrenReference(ref, from);
+    }
     this[LAZY] = async (ctx, at) => {
       const html = await (at === undefined
         ? renderBody(ctx)
         : ctx.children(from, at, () => renderBody(ctx)));
-      this[RAW] ??= html;
+      if (ref === undefined) {
+        this[RAW] ??= html;
+      }
       return html;
     };
   }
@@ -1349,7 +1368,8 @@ export function component<P>(
     ctx.own(scope);
   }
   const given = (props as { children?: unknown } | undefined)?.children;
-  if (!(given instanceof Children)) {
+  // Children that the browser renders itself need no HTML from the server.
+  if (!(given instanceof Children) || given[CHILDREN_REF]) {
     return Child(props, ctx);
   }
   // Children that the component did not insert render after it, inside its root scope, so the
@@ -3011,6 +3031,15 @@ async function renderView(
  * A component that renders a route, with its slots rendering where the
  * layout inserts them. `props` go to every view, such as `params`.
  */
+/** The component IDs of a view and of the views in its slots. */
+function viewIds(view: ResolvedView): string[] {
+  const id = (view.component as { brumateId?: string }).brumateId;
+  return [
+    ...(id === undefined ? [] : [id]),
+    ...Object.values(view.slots).flatMap((slot) => viewIds(slot)),
+  ];
+}
+
 function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
   return (_props, ctx) => {
     const own: Record<string, unknown> = { ...props };
@@ -3059,6 +3088,12 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
    * passes them from the client build.
    */
   hints?: string[];
+  /**
+   * The URLs of the bundle of each root component, such as a route or a layout, by component ID:
+   * its chunk and the chunks that it imports. A page adds those of its views to `hints`, so the
+   * code of the page loads with the HTML. `virtual:brumate/routes` passes them.
+   */
+  bundleHints?: Record<string, string[]>;
   /**
    * Receives the `Link` values of `hints` before the page renders, so a
    * server can send them as `103 Early Hints`, such as with Node's
@@ -3143,7 +3178,14 @@ async function renderPage(
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
-  const hints = request.headers.has('x-brumate-base') ? [] : (options.hints ?? []);
+  const hints = request.headers.has('x-brumate-base')
+    ? []
+    : [
+        ...new Set([
+          ...(options.hints ?? []),
+          ...viewIds(view).flatMap((id) => options.bundleHints?.[id] ?? []),
+        ]),
+      ];
   // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
   // header cannot, so the links are in the head only.
   const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
@@ -3622,14 +3664,18 @@ async function renderRoute(
  * function belongs to and the modifiers of its wrappers. A function that
  * refers to nothing in the browser is left out.
  */
-export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+export function spread(
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): string {
   // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
   // its handlers come first, as the element's own.
   const entries = on && attributes['b-on'];
   if (typeof entries === 'string') {
     on!.unshift(entries);
     const { 'b-on': _, ...rest } = attributes;
-    return spread(rest, on);
+    return spread(rest, on, names);
   }
   for (const [name, value] of Object.entries(attributes)) {
     const reference =
@@ -3647,7 +3693,7 @@ export function spread(attributes: Record<string, unknown>, on?: string[]): stri
       on.push(bindEntry(name, value.ref, setter));
     }
   }
-  return spreadAttributes(attributes);
+  return spreadAttributes(attributes, names);
 }
 
 export { onAttribute };

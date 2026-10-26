@@ -1,0 +1,13 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { items, item } = $props<{ items: string[]; item: (name: string) => unknown }>();
+  let reversed = $signal(false);
+</script>
+
+<button class="flip" onClick=(() => (reversed = !reversed))>Flip</button>
+<ul class="late-list">
+  #for (name of reversed ? items.toReversed() : items by name) {
+    <li>{item(name)}</li>
+  }
+</ul>

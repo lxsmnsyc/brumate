@@ -1,0 +1,20 @@
+<script>
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+
+  const views = ['Overview', 'Activity', 'Settings and privacy'];
+</script>
+
+<Tabs>
+  <TabList class="ui-tablist ui-tablist-sliding" aria-label="Views">
+    #for (view of views by view) {
+      <Tab id=view class="ui-tab">{view}<SelectionIndicator class="ui-indicator" /></Tab>
+    }
+  </TabList>
+  #for (view of views by view) {
+    <TabPanel id=view class="ui-tabpanel">The {view.toLowerCase()} view.</TabPanel>
+  }
+</Tabs>

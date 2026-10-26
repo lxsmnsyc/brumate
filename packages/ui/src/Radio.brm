@@ -1,5 +1,6 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -69,6 +70,8 @@
       input.focus();
     }
   }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
 <label
@@ -81,15 +84,15 @@
   data-readonly=(readOnly || undefined)
   data-invalid=(group?.isInvalid || undefined)
   data-required=(group?.isRequired || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onPointerUp=onPointerUp
-  onPointerCancel=onPointerCancel
-  onKeyDown=onKeyDown
-  onKeyUp=onKeyUp
-  onFocusIn=onFocusIn
-  onFocusOut=onFocusOut
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onPointerUp}
+  {onPointerCancel}
+  {onKeyDown}
+  {onKeyUp}
+  {onFocusIn}
+  {onFocusOut}
   {...rest}
 >
   <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
@@ -99,7 +102,7 @@
       as="input"
       type="radio"
       name=(group?.name)
-      value=value
+      {value}
       checked=selected
       disabled=(disabled || undefined)
       required=(group?.isRequired || undefined)
@@ -113,7 +116,7 @@
       as="input"
       type="radio"
       name=(group?.name)
-      value=value
+      {value}
       checked=selected
       disabled=(disabled || undefined)
       required=(group?.isRequired || undefined)

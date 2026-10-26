@@ -1,0 +1,27 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let tags = $signal(['News', 'Travel', 'Gaming', 'Shopping', 'Music']);
+  let picked = $signal<Key[]>(['Travel']);
+</script>
+
+<TagGroup
+  class="ui-field"
+  selectionMode="multiple"
+  selectedKeys=$bind(picked)
+  onRemove=((keys) => (tags = tags.filter((tag) => !keys.includes(tag))))
+>
+  <Label>Categories</Label>
+  <TagList class="ui-taglist">
+    #for (tag of tags by tag) {
+      <Tag id=tag class="ui-tag">{tag}<Button slot="remove" class="ui-tag-remove">×</Button></Tag>
+    }
+  </TagList>
+</TagGroup>
+<p>Selected: {picked.join(', ') || 'none'}.</p>

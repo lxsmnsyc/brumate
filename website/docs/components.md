@@ -203,6 +203,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
+- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. The same holds for a function in a [context](./context.md).
 
 ### Handlers in a spread
 
@@ -333,7 +334,8 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 </ul>
 ```
 
-- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The browser renders the template again with the new arguments, with the code of the component that wrote it.
+- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The template renders with the code of the component that wrote it.
+- A call again at the same place, with new arguments, updates the markup in place, as a snippet of Svelte does. Its elements stay, and so does focus in them.
 - The template reads the values of the component that wrote it, and its markup updates when they change.
 - Its code loads in the browser with the page state, before an update needs it.
 

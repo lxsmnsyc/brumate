@@ -13,7 +13,7 @@ const DEVTOOLS = Symbol.for('brumate.devtools');
 /** Something that happened on the page, for the log of the panel. */
 export interface DevtoolsEntry {
   time: number;
-  kind: 'handler' | 'part' | 'write' | 'call';
+  kind: 'handler' | 'write' | 'call';
   text: string;
   /** The scope of a write, so the panel can mark it. */
   scope?: ScopeId;
@@ -54,23 +54,6 @@ export interface ErrorPayload {
 /** The part of `import.meta.hot` that the devtools listen to. */
 interface HotContext {
   on(event: string, listener: (payload: never) => void): void;
-}
-
-/** Code of a component that loaded, or is loading, for the Loading tab. */
-export interface LoadEntry {
-  component: string;
-  /** The part, such as `h3` or `update`, `entry` for the module, or `all` for a merged module. */
-  part: string;
-  /**
-   * Why it loaded: `event`, `block`, `call`, `template`, `state`, `write`, `error`, `reset` or
-   * `prop`, or a preload: `hover`, `visible`, `idle` or `eager`.
-   */
-  reason: string;
-  start: number;
-  end?: number;
-  failed?: boolean;
-  /** For a preload: true once something ran the code, such as a handler. */
-  used: boolean;
 }
 
 /** A server function call, for the Timeline tab. */
@@ -130,9 +113,6 @@ export interface BlockEntry {
   fallback?: boolean;
 }
 
-/** The loads that are preloads, which the Loading tab marks when nothing used them. */
-export const PRELOADS: ReadonlySet<string> = new Set(['hover', 'visible', 'idle', 'eager']);
-
 /** An effect or a `$client` callback of a scope, with how it ran. */
 export interface EffectEntry {
   scope: ScopeId;
@@ -159,8 +139,6 @@ export interface DevtoolsState {
   /** Runs a reference for an element, as the loader does for a trigger. */
   handle?: (element: Element, ref: string, event?: Event) => Promise<unknown>;
   log: DevtoolsEntry[];
-  /** The code that loaded, by `component:part`, in the order it started. */
-  loads: Map<string, LoadEntry>;
   /** The blocks of the page, by kind and ID. */
   blocks: Map<string, BlockEntry>;
   /** Asks the server for the body of a `#defer` block now. */
@@ -522,7 +500,6 @@ export function installDevtools(
 ): DevtoolsState {
   const state: DevtoolsState = {
     log: [],
-    loads: new Map(),
     blocks: new Map(),
     written: new Set(),
     endpoint,
@@ -544,31 +521,6 @@ export function installDevtools(
     }
     return undefined;
   };
-  const load = (component: string, part: string, reason: string, done: Promise<unknown>): void => {
-    const key = `${component}:${part}`;
-    const known = state.loads.get(key);
-    if (known) {
-      // The same code again, for a reason that is not a preload: the preload was used.
-      if (!PRELOADS.has(reason)) {
-        known.used = true;
-      }
-      return;
-    }
-    const entry: LoadEntry = { component, part, reason, start: performance.now(), used: false };
-    state.loads.set(key, entry);
-    done.then(
-      () => {
-        entry.end = performance.now();
-        state.changed?.();
-      },
-      () => {
-        entry.end = performance.now();
-        entry.failed = true;
-        state.changed?.();
-      },
-    );
-    state.changed?.();
-  };
   const add = (entry: Omit<DevtoolsEntry, 'time'>): void => {
     state.log.push({ ...entry, time: performance.now() });
     if (state.log.length > MAX_LOG) {
@@ -583,7 +535,6 @@ export function installDevtools(
       state.handle = core.handle;
       state.changed?.();
     },
-    load,
     handled(run) {
       const entry: Interaction = {
         ref: run.ref,
@@ -624,12 +575,6 @@ export function installDevtools(
       deferred(template, done);
     },
     handler(ref, element, event) {
-      // The code of a handler runs, so a preload of its part was used.
-      const [component, name] = ref.split('@')[0]!.split('#') as [string, string];
-      const part = state.loads.get(`${component}:${/^[hct]\d/.test(name) ? name : 'update'}`);
-      if (part) {
-        part.used = true;
-      }
       if (element.tagName === 'TEMPLATE') {
         const block = [...state.blocks.values()].find((item) => item.template === element);
         if (block && block.fired === undefined) {
@@ -644,9 +589,6 @@ export function installDevtools(
         kind: 'handler',
         text: `${event?.type ?? 'call'} on <${element.tagName.toLowerCase()}>: ${ref}`,
       });
-    },
-    part(component, name) {
-      add({ kind: 'part', text: `loaded ${component} ${name}` });
     },
     effect(scope, name, kind, time) {
       const key = `${scope.id}:${name}`;

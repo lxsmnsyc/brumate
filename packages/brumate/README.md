@@ -2,7 +2,7 @@
 
 > A component language and compiler for resumable web apps.
 
-`brumate` compiles single-file `.brm` components into server-rendered HTML and small client modules. The browser does not hydrate. It reads the state that the server wrote into the page, and loads the code of an event handler only when that event fires.
+`brumate` compiles single-file `.brm` components into server-rendered HTML and small client modules. The browser does not hydrate. It reads the state that the server wrote into the page, and loads the code of the components on the page when it starts.
 
 ## Install
 
@@ -46,7 +46,7 @@ import 'virtual:brumate/start';
 <p>Double: {double}</p>
 ```
 
-The server renders the button and the text. The browser loads the code of the click handler, and of the updates it causes, the first time the button is clicked.
+The server renders the button and the text. The browser loads the code of the click handler, and of the updates it causes, when the page starts. It does not render the page again.
 
 ## What it includes
 

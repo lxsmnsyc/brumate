@@ -237,7 +237,10 @@ export function styleElement(id: string, css: string): string {
  * Merges the attributes of an element that has spreads, in their order: a
  * later value wins, except `class`, whose values all apply.
  */
-export function mergeAttributes(parts: Record<string, unknown>[]): Record<string, unknown> {
+export function mergeAttributes(
+  parts: Record<string, unknown>[],
+  variables?: Record<string, unknown>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const part of parts) {
     for (const [name, value] of Object.entries(part ?? {})) {
@@ -246,6 +249,10 @@ export function mergeAttributes(parts: Record<string, unknown>[]): Record<string
           ? [result.class, value]
           : value;
     }
+  }
+  // The style variables of the component come before the style that won, whoever gave it.
+  if (variables) {
+    result.style = vars(variables, result.style);
   }
   return result;
 }
@@ -302,14 +309,21 @@ export function onValue(on: string[], own: string): string {
 }
 
 /** Renders an object of attributes. */
-export function spread(attributes: Record<string, unknown>): string {
+export function spread(attributes: Record<string, unknown>, names = false): string {
   let result = '';
+  const written: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
     if (name !== 'children' && !/^on[A-Z]/.test(name)) {
-      result += attribute(name, value);
+      const text = attribute(name, value);
+      if (text) {
+        result += text;
+        written.push(name);
+      }
     }
   }
-  return result;
+  // `b-s` names the attributes of a spread that changes in the browser. Its first update there
+  // removes only those, so a spread that wrote none still writes it, empty.
+  return names ? `${result} b-s="${written.join(' ')}"` : result;
 }
 
 export const VOID_ELEMENTS: Set<string> = new Set([

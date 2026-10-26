@@ -11,11 +11,19 @@
   "exports": {
     "./*.brm": "./src/*.brm",
     "./*.brm.ts": "./src/*.brm.ts",
-    "./toast.ts": "./src/toast.ts"
+    "./toast.ts": "./src/toast.ts",
+    "./collection.ts": "./src/collection.ts",
+    "./menu.ts": "./src/menu.ts",
+    "./calendar.ts": "./src/calendar.ts",
+    "./segments.ts": "./src/segments.ts"
   },
   "scripts": {
     "typecheck": "brumate-tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.4",
+    "@internationalized/number": "^3.6.9"
   },
   "devDependencies": {
     "@brumate/tsc": "workspace:*",

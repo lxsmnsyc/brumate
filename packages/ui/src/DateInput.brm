@@ -1,0 +1,75 @@
+<script>
+  import { $getContext, $props, $setContext } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
+  import type { DateFieldState, Segment } from './segments.ts';
+  import DateSegment from './DateSegment.brm';
+
+  /**
+   * The segments of a DateField, as DateInput of React Aria Components: a group that its Label
+   * names, with a DateSegment for each part of the date and the text between them.
+   *
+   * - `segment` is a `#template` that gets each segment, to render your own DateSegment.
+   * - In a DateRangePicker, `slot="start"` and `slot="end"` pick the date that it edits.
+   * - ArrowLeft and ArrowRight move focus between the segments, the other way right to left.
+   * - A press of the pointer on the group, or on the text between two segments, focuses the last
+   *   segment, as useDatePickerGroup of React Aria does.
+   * - It shows `data-disabled` and `data-invalid`.
+   */
+  const { segment, slot, ...rest } = $props<{
+    segment?: (segment: Segment) => unknown;
+    slot?: 'start' | 'end';
+    [attribute: string]: unknown;
+  }>();
+
+  const range = $getContext(DateRangeFieldContext);
+  const single = $getContext(DateFieldContext);
+  /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
+  function picked(): DateFieldState | null {
+    return slot && range ? range[slot] : single;
+  }
+
+  // The segments edit the date of this input.
+  $setContext(DateFieldContext, picked());
+
+  function keyDown(event: KeyboardEvent) {
+    const field = picked();
+    if (!field || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+      return;
+    }
+    const group = event.currentTarget as HTMLElement;
+    const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
+    const at = editable.indexOf(document.activeElement as HTMLElement);
+    const forward = (event.key === 'ArrowRight') !== (field.direction === 'rtl');
+    focusSegment(editable[at + (forward ? 1 : -1)]);
+  }
+
+  function pointerDown(event: PointerEvent) {
+    const group = event.currentTarget as HTMLElement;
+    const target = event.target as HTMLElement;
+    if (event.button !== 0 || target.closest('[role="spinbutton"]')) {
+      return;
+    }
+    const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
+    focusSegment(editable.at(-1));
+  }
+</script>
+
+<div
+  role="group"
+  aria-labelledby=(picked()?.labelId)
+  aria-describedby=(picked()?.describedBy)
+  data-disabled=(picked()?.isDisabled || undefined)
+  data-invalid=(picked()?.isInvalid || undefined)
+  onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight'))
+  onPointerDown=pointerDown
+  {...rest}
+>
+  #for (item of picked()?.segments ?? [] by item.index) {
+    #if (segment) {
+      {segment(item)}
+    } #else {
+      <DateSegment segment=item />
+    }
+  }
+</div>

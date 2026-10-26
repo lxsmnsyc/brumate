@@ -14,12 +14,13 @@
   const current = $memo(controlled ? open : own);
 
   function toggle() {
+    const next = !current;
     if (!controlled) {
-      own = !current;
+      own = next;
     } else if ($isBound(open)) {
-      open = !current;
+      open = next;
     }
-    onChange?.(!current);
+    onChange?.(next);
   }
 </script>
 

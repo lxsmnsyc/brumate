@@ -13,27 +13,20 @@ export default async function Parent($$props: Record<string, never>, $$ctx: $$b.
     let $$html = '';
     $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</em>";
     return $$html;
-  });
+  }, "Parent_4bs4t8#n0");
   $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
-  $$ctx.slots($$s1, [count], ["count"]);
+  $$ctx.slots($$s1, [count, label], ["count","label"]);
   return $$html;
 }
 Parent.brumateId = "Parent_4bs4t8";
 
 # Client entry
+export * from "./parent.brm?brumate-client&part=h3";
+export * from "./parent.brm?brumate-client&part=h6";
+export * from "./parent.brm?brumate-client&part=update";
 export const id = "Parent_4bs4t8";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]] } };
-const update = () => import("./parent.brm?brumate-client&part=update");
-const parts = {
-  "h3": () => (update().catch(() => {}), import("./parent.brm?brumate-client&part=h3")),
-  "h6": () => import("./parent.brm?brumate-client&part=h6"),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';
@@ -51,24 +44,37 @@ import * as $$b from 'brumate/client';
 export function u2($$s) {
   $$b.prop($$s, 0, "value", $$b.get($$s, 0));
 }
+const $$k0 = $$b.template("<em b-x=\"0\"></em>", 1);
+export function n0($$p) {
+  let $$html = '';
+  let label = $$b.get($$p, 1);
+  const $$e = $$b.clone($$k0), $$f = $$e[1];
+  $$b.setContent($$e[0], (label));
+  return $$f;
+}
 
 # Render module
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
+const $$t0 = $$b.template("<em b-x=\"0\"></em>", 1);
+const $$t1 = $$b.template("<!--x0--><!--x1-->", 2);
 
-export default function Parent($$props: Record<string, never>): string {
+export default function Parent($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Parent_4bs4t8");
   let count = (1);
   const label = 'Count';
   const $$children0 = $$b.children($$s1, () => {
     let $$html = '';
-    $$html += "<em>" + $$b.insert((label)) + "</em>";
-    return $$html;
+    const $$e = $$b.clone($$t0), $$f = $$e[1];
+    $$b.setContent($$e[0], (label));
+    return $$f;
   });
-  $$html += $$b.component(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0) + $$b.component(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1);
-  $$b.setSlots($$s1, [count]);
-  return $$html;
+  const $$e = $$b.clone($$t1), $$f = $$e[2];
+  $$b.place($$e[0], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, undefined, $$s1, 0));
+  $$b.place($$e[1], $$b.componentNodes(Child, { "value": (5), "onChange": $$b.handlerProp(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, undefined, $$s1));
+  $$b.setSlots($$s1, [count, label]);
+  return $$f;
 }
 
 # HTML
@@ -81,4 +87,4 @@ export default function Parent($$props: Record<string, never>): string {
 </div>
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Parent_4bs4t8",c:{0:1},s:[1]},1:{k:1,m:"Child_108vasc",o:0,s:[1,$b.f("Parent_4bs4t8#h3",0)]},2:{k:1,m:"Child_108vasc",o:0,s:[5,$b.f("Parent_4bs4t8#h6",0)]}})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Parent_4bs4t8",c:{0:1},s:[1,"Count"]},1:{k:1,m:"Child_108vasc",o:0,s:[1,$b.f("Parent_4bs4t8#h3",0)]},2:{k:1,m:"Child_108vasc",o:0,s:[5,$b.f("Parent_4bs4t8#h6",0)]}})))</script>

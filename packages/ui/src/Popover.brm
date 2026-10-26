@@ -16,11 +16,13 @@
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import {
+    blurOutside,
     containTab,
     focusInto,
     hold,
     inertOutside,
     keepFocus,
+    lockScroll,
     pressOutside,
     release,
   } from './overlay.ts';
@@ -44,6 +46,8 @@
    *   as it is, and Tab can leave the popover.
    * - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`. It
    *   waits for its leave before it leaves the page, and is inert while it leaves.
+   * - In a Select, its content stays in the page while it is closed, out of sight, so the
+   *   Select knows its items.
    */
   const {
     placement = 'bottom',
@@ -74,6 +78,7 @@
   const parentLayer = $getContext(LayerContext);
   const locale = $getContext(LocaleContext);
   const own = $isPassed(isOpen);
+  const placementPassed = $isPassed(placement);
   const layerId = $id();
   const ownId = $id();
   const wanted = $memo(own ? Boolean(isOpen) : Boolean(trigger?.isOpen));
@@ -88,7 +93,7 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
-  $setContext(DialogContext, { close });
+  $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
   $setContext(TransitionContext, { show: wanted, entered: rested });
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
   $setContext(OverlayTriggerContext, null);
@@ -98,6 +103,10 @@
 
   function close() {
     if (own) {
+      // A press outside during the leave closes nothing again.
+      if (!isOpen) {
+        return;
+      }
       isOpen = false;
       onOpenChange?.(false);
     } else {
@@ -111,7 +120,8 @@
     await nextFrame();
     const element = panel;
     const holder = layer;
-    if (token !== run || !element || !holder) {
+    // The popover can leave the page within the frame, such as on a route change.
+    if (token !== run || !element?.isConnected || !holder) {
       return;
     }
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
@@ -122,7 +132,14 @@
         followTrigger(
           anchor,
           element,
-          { placement, offset, crossOffset, shouldFlip, containerPadding, direction: locale.direction },
+          {
+            placement: placementOf(),
+            offset,
+            crossOffset,
+            shouldFlip,
+            containerPadding,
+            direction: locale.direction,
+          },
           (position) => {
             element.dataset.placement = position.side;
             for (const arrow of element.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
@@ -135,19 +152,31 @@
         ),
       );
     }
-    // A preview is never modal.
-    if (!isNonModal && !trigger?.isPreview) {
-      stops.push(inertOutside(holder), keepFocus(holder, element));
+    // A preview is never modal, and a submenu is not either. A modal popover makes the page inert
+    // and locks its scroll, and closes on a press outside, as usePopover of React Aria. One that
+    // is not modal closes when focus leaves it.
+    const modal = !isNonModal && !trigger?.isNonModal;
+    if (modal && !trigger?.isPreview) {
+      stops.push(inertOutside(holder), keepFocus(holder, element), lockScroll());
     }
-    stops.push(pressOutside(holder, anchor, close));
+    if (modal) {
+      stops.push(pressOutside(holder, anchor, close));
+    } else {
+      stops.push(blurOutside(holder, anchor, close));
+    }
     if (transition && !(await enterSteps(element, stepClasses(), { current: () => token === run }))) {
       return;
     }
     rested = true;
     // Focus moves in once it has entered, so it lands on a popover that has settled. A preview
-    // leaves focus where it is, and Tab moves into it.
-    if (!trigger?.isPreview) {
-      focusInto(element.querySelector<HTMLElement>('[role=dialog], [role=alertdialog]') ?? element);
+    // leaves focus where it is, and Tab moves into it, and so does a submenu opened by hover.
+    if (!trigger?.isPreview && trigger?.autoFocus !== false) {
+      focusInto(
+        element.querySelector<HTMLElement>(
+          '[role=dialog], [role=alertdialog], [role=menu], [role=listbox]',
+        ) ??
+          element,
+      );
     }
   }
 
@@ -192,8 +221,14 @@
     }
   }
 
+  /** The placement: the popover's own, or else the one that its trigger asks for. */
+  function placementOf(): Placement {
+    return placementPassed ? placement : (trigger?.placement ?? placement);
+  }
+
+  // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !event.defaultPrevented) {
       close();
     }
   }
@@ -225,7 +260,7 @@
       It has no box of its own, so it clips, moves and contains nothing.
     -->
     <div ref=layer id=layerId data-layer style="display: contents">
-      #if (isNonModal || trigger?.isPreview) {
+      #if (isNonModal || trigger?.isPreview || trigger?.isNonModal) {
         {content()}
       } #else {
         <!-- Tab stays in a modal popover. The wrapper prevents it, and the handler moves focus. -->
@@ -233,4 +268,7 @@
       }
     </div>
   }
+} #else if (trigger?.keepsContent) {
+  <!-- Out of sight, and out of the tree of accessibility and of the order of Tab. -->
+  <div id=(`${trigger.overlayId}-closed`) style="display: none">{children}</div>
 }

@@ -208,16 +208,39 @@ describe('client entries and handlers', () => {
     expect(code).not.toContain('.bind(');
   });
 
-  it('starts loading the updates with a handler that writes a slot that they read', () => {
+  it('exports the parts of a component from its entry, so they load with the page', () => {
     const { client } = compile(
       counterSource(
         '<button onClick=(() => bump(1))>A</button><button onClick=(() => hidden++)>B</button>',
       ),
       { filename: 'T.brm' },
     );
-    expect(client).toMatch(/"h\d+": \(\) => \(update\(\)\.catch\(\(\) => \{\}\), import\(/);
-    // `hidden` has no update, so its handler loads its own part only.
-    expect(client).toMatch(/"h\d+": \(\) => import\("\.\/T\.brm\?brumate-client&part=h\d+"\),/);
+    expect(client).toMatch(/export \* from "\.\/T\.brm\?brumate-client&part=h\d+";/);
+    expect(client).toContain('export * from "./T.brm?brumate-client&part=update";');
+    expect(client).not.toContain('import(');
+    expect(client).not.toContain('export function load');
+  });
+
+  it('keeps the constants of updates at the top of their module', () => {
+    const { parts } = compile(
+      [
+        '<script>',
+        "  import { $signal } from 'brumate/signals';",
+        '  let items = $signal([1, 2]);',
+        '  let open = $signal(true);',
+        '</script>',
+        '<button onClick=(() => (items = [...items, 3]))>Add</button>',
+        '<button onClick=(() => (open = !open))>Toggle</button>',
+        '<ul>#for (item of items by item) {<li>{item}</li>}</ul>',
+        '#if (open) {<p>Open</p>}',
+      ].join('\n'),
+      { filename: 'T.brm' },
+    );
+    const update = parts.update!;
+    // The key reads only the item, and the kinds and the renders never change.
+    expect(update).toMatch(/const \$\$k\d+ = \(\$\$item, \$\$index\) => \{/);
+    expect(update).toMatch(/, \$\$k\d+, r\d+, a\d+, undefined, \$\$k\d+\);/);
+    expect(update).toMatch(/\$\$b\.branch\(\$\$s, \d+, .+, \$\$k\d+, \$\$k\d+\)/);
   });
 
   it('puts the code of a small component into its entry', () => {
@@ -260,11 +283,11 @@ describe('client entries and handlers', () => {
     expect(small.parts).toEqual({});
     expect(small.client).not.toContain('export function load');
     expect(Object.keys(small.loaders)).toHaveLength(3);
-    // Eight handlers keep one module per part, so an event loads only its own.
+    // Eight handlers keep one module per part, which the entry exports.
     expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
     const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });
     expect(Object.keys(large.parts)).toHaveLength(9);
-    expect(large.client).toContain('export function load');
+    expect(large.client).toContain('export * from');
   });
 });
 
@@ -542,7 +565,7 @@ describe('await', () => {
     expect(modules.h5).toContain(
       'console.log(($$b.get($$s, 1)).name, $$b.update($$s, 0, 1, false))',
     );
-    expect(render).toContain('$$b.insert(((user).name))');
+    expect(render).toContain('$$b.keepText($$s1, 0, $$e[0], ((user).name));');
     for (const code of [...Object.values(modules), render]) {
       expect(parseSync('code.ts', code).errors).toEqual([]);
     }
@@ -615,7 +638,7 @@ describe('await', () => {
     );
     expect(server).toContain('const settings = await load(0);');
     expect(render).toMatch(
-      /export default function T\(\$\$props: [^)]*\): string \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
+      /export default function T\(\$\$props: [^)]*\): string \| DocumentFragment \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
     );
     expect(parseSync('render.ts', render).errors).toEqual([]);
   });
@@ -653,7 +676,7 @@ describe('await', () => {
       `${header}  const user = $memo(load(id));\n</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <p>{(await user).name}</p>\n}`,
       { filename: 'T.brm' },
     );
-    expect(modules.update).toContain('$$b.insert(((user).name))');
+    expect(modules.update).toContain('$$b.setContent($$e[0], ((user).name), $$s2)');
     expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
   });
 

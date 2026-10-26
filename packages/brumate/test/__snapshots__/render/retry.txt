@@ -38,18 +38,11 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
 Retry.brumateId = "Retry_pyus3c";
 
 # Client entry
+export * from "./retry.brm?brumate-client&part=h2";
+export * from "./retry.brm?brumate-client&part=update";
 export const id = "Retry_pyus3c";
 export const props = {  };
 export const g = { 3: { 0: [[3, "u1"]] } };
-const update = () => import("./retry.brm?brumate-client&part=update");
-const parts = {
-  "h2": () => (update().catch(() => {}), import("./retry.brm?brumate-client&part=h2")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';
@@ -106,7 +99,7 @@ export function check(): string {
     return 'Ready';
   }
 
-export default function Retry($$props: Record<string, never>): string {
+export default function Retry($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Retry_pyus3c");
   $$html += "<!--b" + $$s1 + ":0-->";

@@ -1,0 +1,41 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import CalendarHeading from '../../src/CalendarHeading.brm';
+  import RangeCalendar from '../../src/RangeCalendar.brm';
+  import Text from '../../src/Text.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let trip = $signal<{ start: string; end: string } | null>(null);
+  let loose = $signal<{ start: string; end: string } | null>(null);
+
+  function weekend(value: string) {
+    return [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
+  }
+</script>
+
+<main>
+  <RangeCalendar class="stay" aria-label="Stay" value=$bind(stay)>
+    <header>
+      <Button slot="previous" class="previous">‹</Button>
+      <CalendarHeading class="heading" />
+      <Button slot="next" class="next">›</Button>
+    </header>
+    <CalendarGrid class="stay-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="trip" aria-label="Trip" value=$bind(trip) focusedValue="2026-10-20" isDateUnavailable=weekend>
+    <CalendarGrid class="trip-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="loose" aria-label="Loose" value=$bind(loose) focusedValue="2026-10-20" isDateUnavailable=weekend allowsNonContiguousRanges>
+    <CalendarGrid class="loose-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="week" aria-label="Week" focusedValue="2026-10-20" firstDayOfWeek="mon">
+    <CalendarGrid class="week-grid" />
+  </RangeCalendar>
+  <RangeCalendar class="bad" aria-label="Bad" isInvalid value=({ start: '2026-10-05', end: '2026-10-06' })>
+    <CalendarGrid class="bad-grid" />
+    <Text slot="errorMessage" class="bad-error">Pick again.</Text>
+  </RangeCalendar>
+  <p class="state">{JSON.stringify([stay, trip, loose])}</p>
+</main>

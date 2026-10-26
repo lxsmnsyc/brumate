@@ -1,0 +1,73 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Header from '../../src/Header.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import ListBoxSection from '../../src/ListBoxSection.brm';
+  import Text from '../../src/Text.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let fruit = $signal<Key[]>(['banana']);
+  let toppings = $signal<Key[]>([]);
+  let files = $signal<Key[]>([]);
+  let acted = $signal<Key[]>([]);
+  const sizes = [
+    { id: 1, name: 'Small' },
+    { id: 2, name: 'Medium' },
+    { id: 3, name: 'Large' },
+  ];
+  let size = $signal<Key[]>([]);
+  let picks = $signal<Key[]>([]);
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <ListBox class="single" aria-label="Fruit" selectionMode="single" selectedKeys=$bind(fruit) disabledKeys=(['cherry'])>
+    <ListBoxItem id="apple" class="apple">Apple</ListBoxItem>
+    <ListBoxItem id="banana" class="banana">Banana</ListBoxItem>
+    <ListBoxItem id="cherry" class="cherry">Cherry</ListBoxItem>
+    <ListBoxItem id="date" class="date" hasLabel hasDescription textValue="Date">
+      <Text slot="label" class="date-label">Date</Text>
+      <Text slot="description" class="date-description">Sweet and sticky</Text>
+    </ListBoxItem>
+  </ListBox>
+  <ListBox class="multi" aria-label="Toppings" selectionMode="multiple" selectedKeys=$bind(toppings)>
+    <ListBoxSection class="sauces">
+      <Header class="sauces-header">Sauces</Header>
+      <ListBoxItem id="tomato" class="tomato">Tomato</ListBoxItem>
+      <ListBoxItem id="pesto" class="pesto">Pesto</ListBoxItem>
+    </ListBoxSection>
+    <ListBoxSection aria-label="Cheese" class="cheeses">
+      <ListBoxItem id="mozzarella" class="mozzarella">Mozzarella</ListBoxItem>
+      <ListBoxItem id="feta" class="feta">Feta</ListBoxItem>
+    </ListBoxSection>
+  </ListBox>
+  <ListBox class="replace" aria-label="Files" selectionMode="multiple" selectionBehavior="replace" selectedKeys=$bind(files)>
+    <ListBoxItem id="a" class="file-a">a.txt</ListBoxItem>
+    <ListBoxItem id="b" class="file-b">b.txt</ListBoxItem>
+    <ListBoxItem id="c" class="file-c">c.txt</ListBoxItem>
+    <ListBoxItem id="d" class="file-d">d.txt</ListBoxItem>
+  </ListBox>
+  <ListBox class="actions" aria-label="Actions" onAction=((key) => (acted = [...acted, key]))>
+    <ListBoxItem id="copy" class="copy">Copy</ListBoxItem>
+    <ListBoxItem id="paste" class="paste">Paste</ListBoxItem>
+  </ListBox>
+  <ListBox class="own" aria-label="Own actions">
+    <ListBoxItem id="cut" class="cut" onAction=(() => (acted = [...acted, 'cut item']))>Cut</ListBoxItem>
+  </ListBox>
+  <ListBox class="picks" aria-label="Picks" selectionMode="multiple" selectedKeys=$bind(picks)>
+    <ListBoxItem id="p1" class="p1">One</ListBoxItem>
+    <ListBoxItem id="p2" class="p2" isDisabled>Two</ListBoxItem>
+    <ListBoxItem id="p3" class="p3">Three</ListBoxItem>
+  </ListBox>
+  <ListBox class="sizes" aria-label="Size" selectionMode="single" selectedKeys=$bind(size)>
+    #for (item of sizes by item.id) {
+      <ListBoxItem id=(item.id) class=(`size size-${item.id}`)>{item.name}</ListBoxItem>
+    }
+  </ListBox>
+  <ListBox class="row" aria-label="Row" orientation="horizontal">
+    <ListBoxItem id="r1" class="r1">R1</ListBoxItem>
+    <ListBoxItem id="r2" class="r2">R2</ListBoxItem>
+  </ListBox>
+  <p class="state">{JSON.stringify([fruit, toppings, files, acted, size, picks])}</p>
+</main>

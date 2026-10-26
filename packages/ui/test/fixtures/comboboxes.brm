@@ -1,0 +1,45 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import ComboBox from '../../src/ComboBox.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Popover from '../../src/Popover.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let fruit = $signal<Key | null>(null);
+  let text = $signal('');
+  let tag = $signal<Key | null>(null);
+  const fruits = ['Apple', 'Apricot', 'Banana', 'Cherry'];
+</script>
+
+<main class="page">
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <ComboBox class="fruit" name="fruit" selectedKey=$bind(fruit) inputValue=$bind(text)>
+      <Label class="label">Fruit</Label>
+      <Input class="input" />
+      <Button class="toggle">▾</Button>
+      <Popover class="popover">
+        <ListBox class="list">
+          #for (name of fruits by name) {
+            <ListBoxItem id=(name.toLowerCase()) class=(`item-${name.toLowerCase()}`)>{name}</ListBoxItem>
+          }
+        </ListBox>
+      </Popover>
+    </ComboBox>
+    <ComboBox class="tag" name="tag" allowsCustomValue isRequired selectedKey=$bind(tag)>
+      <Label>Tag</Label>
+      <Input class="tag-input" />
+      <Popover>
+        <ListBox class="tag-list">
+          <ListBoxItem id="red" class="tag-red">Red</ListBoxItem>
+          <ListBoxItem id="green" class="tag-green">Green</ListBoxItem>
+        </ListBox>
+      </Popover>
+    </ComboBox>
+  </form>
+  <button class="after" type="button">After</button>
+  <p class="state">{JSON.stringify([fruit, text, tag])}</p>
+</main>

@@ -1,0 +1,79 @@
+<script>
+  import { $id, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
+  import type { PressEvent } from './events.ts';
+  import { MenuTriggerContext } from './menu.ts';
+  import type { FocusStrategy } from './menu.ts';
+
+  /**
+   * Opens a Menu in a Popover from a Button inside it, as MenuTrigger of React Aria Components.
+   * The Button gets aria-haspopup="menu", aria-expanded and aria-controls. It renders its
+   * children in an element with no box of its own.
+   *
+   * - A press opens the menu. From a key, focus goes to its first item. From a pointer, it goes
+   *   to the menu, and the arrow keys move to an item.
+   * - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
+   * - `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
+   */
+  const { onOpenChange, children } = $props<{
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+  }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const triggerId = $id();
+  const overlayId = $id();
+  let focusStrategy = $signal<FocusStrategy>('first');
+
+  function setOpen(next: boolean) {
+    if (next === isOpen) {
+      return;
+    }
+    isOpen = next;
+    onOpenChange?.(next);
+  }
+
+  function open() {
+    setOpen(true);
+  }
+
+  function close() {
+    setOpen(false);
+  }
+
+  function pressed(event: PressEvent) {
+    focusStrategy =
+      event.pointerType === 'keyboard' || event.pointerType === 'virtual' ? 'first' : 'none';
+    setOpen(!isOpen);
+  }
+
+  // A Button cannot prevent the keys that a context gives it, so the element around it does.
+  function keyDown(event: KeyboardEvent) {
+    if ((event.target as Element).id !== triggerId) {
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      focusStrategy = event.key === 'ArrowDown' ? 'first' : 'last';
+      setOpen(true);
+    }
+  }
+
+  $setContext(ButtonContext, {
+    id: triggerId,
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-haspopup': 'menu',
+    'aria-controls': isOpen ? overlayId : undefined,
+    onPress: pressed,
+  });
+  $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
+  $setContext(MenuTriggerContext, {
+    triggerId,
+    focusStrategy,
+    closeAll: close,
+    isSubmenu: false,
+  });
+</script>
+
+<div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>

@@ -12,8 +12,7 @@
 //   the file, its handlers with their parts, and the values its updates read.
 // - Graph: the values and markup of a component that change in the browser,
 //   and what reads what. A write marks its node and the nodes after it.
-// - Log: handlers, loaded parts, writes and server function calls.
-// - Loading: each part of client code that loaded, why, and when.
+// - Log: handlers, writes and server function calls.
 // - Blocks: the `#loading`, `#defer`, `#client` blocks and `$client`
 //   callbacks of the page, with their state. A trigger can fire now.
 // - Report: the inspect report of a component.
@@ -22,14 +21,13 @@ import type { TraceEntry } from './request.ts';
 import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
-import { LOGO, PRELOADS, preview, rootOf } from './devtools.ts';
+import { LOGO, preview, rootOf } from './devtools.ts';
 import type {
   BlockEntry,
   DevtoolsEntry,
   DevtoolsState,
   ErrorEntry,
   Interaction,
-  LoadEntry,
 } from './devtools.ts';
 
 /** What the dev server tells about a component: see the inspect endpoint of the plugin. */
@@ -183,11 +181,8 @@ tr.large td, tr.busy td { color: var(--yellow); }
 tr.ended td { color: var(--faint); }
 .bar-track { position: relative; height: 12px; }
 .bar { position: absolute; top: 2px; height: 8px; min-width: 3px; border-radius: 3px; background: var(--blue); }
-.bar.preload { background: var(--purple); } .bar.other { background: var(--faint); }
-.bar.unused { background: repeating-linear-gradient(45deg, var(--purple) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--purple); }
 .bar.failed { background: var(--red); }
 .bar.render { background: var(--accent); } .bar.memo { background: var(--green); } .bar.body { background: var(--purple); } .bar.stream { background: var(--faint); }
-tr.unused td:not(.bar-cell) { color: var(--yellow); }
 tr.failed td:not(.bar-cell) { color: var(--red); }
 .interaction { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .run-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -251,7 +246,6 @@ type Tab =
   | 'graph'
   | 'log'
   | 'timeline'
-  | 'loading'
   | 'state'
   | 'effects'
   | 'navigation'
@@ -266,7 +260,6 @@ const TABS: [Tab, string][] = [
   ['graph', 'Graph'],
   ['log', 'Log'],
   ['timeline', 'Timeline'],
-  ['loading', 'Loading'],
   ['state', 'Page state'],
   ['effects', 'Effects'],
   ['navigation', 'Navigation'],
@@ -274,7 +267,7 @@ const TABS: [Tab, string][] = [
   ['blocks', 'Blocks'],
   ['report', 'Report'],
 ];
-const KINDS: DevtoolsEntry['kind'][] = ['handler', 'part', 'write', 'call'];
+const KINDS: DevtoolsEntry['kind'][] = ['handler', 'write', 'call'];
 /** How long a write marks the nodes of the graph. */
 const HOT_MS = 1500;
 /** The height of the panel, kept between pages. */
@@ -465,35 +458,6 @@ const ms = (time: number): string => `${Math.round(time)} ms`;
 const seconds = (time: number): string => `${(time / 1000).toFixed(2)} s`;
 const kilobytes = (bytes: number): string => `${(bytes / 1024).toFixed(1)} kB`;
 
-/** The bytes of the code of a part, as the dev server sent it, from the timing of its request. */
-function bytesOf(info: ComponentInfo | undefined, part: string): number {
-  if (!info?.url || typeof performance.getEntriesByType !== 'function') {
-    return 0;
-  }
-  const entry = (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).find(
-    (item) => {
-      const url = new URL(item.name, location.href);
-      return (
-        url.pathname === info.url &&
-        url.searchParams.has('brumate-client') &&
-        (part === 'entry' || part === 'all'
-          ? !url.searchParams.has('part')
-          : url.searchParams.get('part') === part)
-      );
-    },
-  );
-  return entry ? entry.encodedBodySize || entry.transferSize : 0;
-}
-
-/** The bytes of the code that loaded. */
-function codeBytes(state: DevtoolsState): number {
-  let bytes = 0;
-  for (const load of state.loads.values()) {
-    bytes += bytesOf(known.get(load.component), load.part);
-  }
-  return bytes;
-}
-
 /** The keys and values of an object, a map or a set, or the items of an array, in a row. */
 function entriesOf(value: object): unknown[] {
   if (value instanceof Map) {
@@ -566,14 +530,6 @@ function valueOf(scope: Scope, name: string): string | undefined {
     }
   }
   return undefined;
-}
-
-/** The colour of the pill of a reason to load. */
-function reasonColor(reason: string): string {
-  if (PRELOADS.has(reason)) {
-    return 'purple';
-  }
-  return reason === 'event' || reason === 'block' ? 'blue' : '';
 }
 
 const STATE_COLORS: Record<BlockEntry['state'], string> = {
@@ -722,7 +678,7 @@ export function layoutGraph(
 /** The scopes of a component instance, without the components inside it. */
 function countScopes(scope: Scope): number {
   let count = 1;
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.m === undefined) {
       count += countScopes(child);
     }
@@ -736,17 +692,6 @@ const clip = (text: string): string => (text.length > 34 ? `${text.slice(0, 33)}
 /** The text of an entry of the log. */
 const textOf = (entry: DevtoolsEntry): string =>
   entry.kind === 'write' ? describe(entry) : entry.text;
-
-/** The class of the bar of a load: its reason, and whether it was used or failed. */
-function barClass(load: LoadEntry): string {
-  if (load.failed) {
-    return 'failed';
-  }
-  if (PRELOADS.has(load.reason)) {
-    return load.used ? 'preload' : 'unused';
-  }
-  return load.reason === 'event' || load.reason === 'block' ? '' : 'other';
-}
 
 /** A place in a file that a stack names. */
 interface Frame {
@@ -1249,18 +1194,8 @@ export function togglePanel(
       if (handled && anchored!.contains(handled)) {
         const handlers = element('div', { class: 'card-pills' });
         for (const raw of (handled.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
-          const [head, ref = ''] = raw.split('=') as [string, string];
-          const [handlerComponent, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
-          const part = /^[hct]\d/.test(name) ? name : 'update';
-          const load =
-            state.loads.get(`${handlerComponent}:${part}`) ??
-            state.loads.get(`${handlerComponent}:all`);
-          handlers.append(
-            pill(
-              `${head} · ${load?.end === undefined ? 'not loaded' : 'loaded'}`,
-              load?.end === undefined ? '' : 'green',
-            ),
-          );
+          const [head] = raw.split('=') as [string];
+          handlers.append(pill(head));
         }
         rows.push(handlers);
       }
@@ -1324,22 +1259,17 @@ export function togglePanel(
       button.setAttribute('aria-selected', String((button as HTMLElement).dataset.tab === tab));
     }
     const list = roots();
-    const loads = [...state.loads.values()];
-    const code = codeBytes(state);
     routeText.textContent = location.pathname + location.search;
     stats.textContent = [
       `${new Set(list.map((scope) => scope.m)).size} components`,
       `${state.scopes?.size ?? 0} scopes`,
-      `${loads.length} parts${code ? ` (${kilobytes(code)})` : ''}`,
       `state ${kilobytes(stateBytes())}`,
     ].join(' · ');
-    const unused = loads.filter((load) => PRELOADS.has(load.reason) && !load.used).length;
     const waiting = [...state.blocks.values()].filter((block) => block.state === 'waiting').length;
     const counts: Partial<Record<Tab, [number, string?]>> = {
       errors: [state.errors.length, 'Errors'],
       scopes: [new Set(list.map((scope) => scope.m)).size],
       log: [state.log.length],
-      loading: unused > 0 ? [unused, 'Preloads that nothing used'] : [loads.length],
       blocks: waiting > 0 ? [waiting, 'Blocks that wait for their trigger'] : [state.blocks.size],
     };
     for (const [name, badge] of badges) {
@@ -1483,16 +1413,13 @@ export function togglePanel(
     const list = roots();
     const ids = [...new Set(list.map((scope) => scope.m!))];
     const infos = await Promise.all(ids.map((id) => componentInfo(state, id)));
-    const loads = [...state.loads.values()];
-    const code = codeBytes(state);
-    const unused = loads.filter((load) => PRELOADS.has(load.reason) && !load.used).length;
     const blocks = [...state.blocks.values()];
     const handlers = state.log.filter((entry) => entry.kind === 'handler').length;
     const calls = state.log.filter((entry) => entry.kind === 'call').length;
     const table = element(
       'table',
       { class: 'rows' },
-      row(['component', 'file', 'instances', 'scopes', 'parts loaded'], 'th'),
+      row(['component', 'file', 'instances', 'scopes'], 'th'),
     );
     ids.forEach((id, index) => {
       const info = infos[index];
@@ -1504,14 +1431,12 @@ export function togglePanel(
         tab = 'scopes';
         draw();
       });
-      const parts = loads.filter((load) => load.component === id).map((load) => load.part);
       table.append(
         row([
           name,
           source(info),
           String(instances.length),
           String(instances.reduce((sum, scope) => sum + countScopes(scope), 0)),
-          element('span', { class: 'mono' }, parts.join(', ') || '—'),
         ]),
       );
     });
@@ -1532,11 +1457,6 @@ export function togglePanel(
         'div',
         { class: 'cards' },
         card('Components', String(ids.length), `${state.scopes?.size ?? 0} scopes in the browser`),
-        card(
-          'Client code',
-          code ? kilobytes(code) : String(loads.length),
-          `${loads.length} parts loaded${unused ? `, ${unused} preloads unused` : ''}`,
-        ),
         card('Page state', kilobytes(stateBytes()), 'state records from the server'),
         card(
           'Blocks',
@@ -1652,7 +1572,7 @@ export function togglePanel(
       button.addEventListener('mouseenter', () => outline(scope.id));
       button.addEventListener('mouseleave', () => outline());
       tree.append(button);
-      for (const child of scope.children) {
+      for (const child of scope.children ?? []) {
         if (child.m === undefined) {
           visit(child, info, depth + 1);
         }
@@ -1730,37 +1650,18 @@ export function togglePanel(
       );
     });
 
-  /** The handlers of an element, from its `b-on`, with the state of the code of each one. */
+  /** The handlers of an element, from its `b-on`. */
   const drawHandlers = (target: Element): HTMLElement => {
-    const table = element(
-      'table',
-      { class: 'rows' },
-      row(['event', 'handler', 'part', 'code', 'size'], 'th'),
-    );
+    const table = element('table', { class: 'rows' }, row(['event', 'handler'], 'th'));
     for (const raw of (target.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
       const [head, ref = ''] = raw.split('=') as [string, string];
       const [type, ...modifiers] = head.split(':');
       const [component, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
-      const part = /^[hct]\d/.test(name) ? name : 'update';
-      const load = state.loads.get(`${component}:${part}`) ?? state.loads.get(`${component}:all`);
       const info = known.get(component);
-      let status = pill('not loaded');
-      if (load && load.end === undefined) {
-        status = pill('loading', 'blue');
-      } else if (load && load.end !== undefined) {
-        status = pill(
-          `${load.failed ? 'failed' : 'loaded'} in ${ms(load.end - load.start)} (${load.reason})`,
-          load.failed ? 'red' : 'green',
-        );
-      }
-      const bytes = bytesOf(info, load?.part ?? part);
       table.append(
         row([
           element('span', { class: 'mono' }, [type, ...modifiers].join(':')),
           element('span', { class: 'mono' }, `${info?.name ?? component} ${name}`),
-          element('span', { class: 'mono' }, part),
-          status,
-          bytes ? kilobytes(bytes) : '',
         ]),
       );
     }
@@ -1899,7 +1800,7 @@ export function togglePanel(
       if (!scopeOfNode.has(scope.k)) {
         scopeOfNode.set(scope.k, scope);
       }
-      for (const child of scope.children) {
+      for (const child of scope.children ?? []) {
         if (child.m === undefined) {
           visit(child);
         }
@@ -2275,93 +2176,6 @@ export function togglePanel(
     );
   };
 
-  const drawLoading = async (): Promise<void> => {
-    const loads = [...state.loads.values()].toSorted((a, b) => a.start - b.start);
-    await Promise.all(
-      [...new Set(loads.map((load) => load.component))].map((id) => componentInfo(state, id)),
-    );
-    const unused = loads.filter((load) => PRELOADS.has(load.reason) && !load.used).length;
-    const end = Math.max(1, ...loads.map((load) => load.end ?? performance.now()));
-    const total = codeBytes(state);
-    const table = element(
-      'table',
-      { class: 'rows' },
-      row(['component', 'part', 'why', 'took', 'size', `when, 0 to ${seconds(end)}`], 'th'),
-    );
-    for (const load of loads) {
-      const info = known.get(load.component);
-      let marks = PRELOADS.has(load.reason) && !load.used ? 'unused' : '';
-      if (load.failed) {
-        marks = 'failed';
-      }
-      const stop = load.end ?? performance.now();
-      const bytes = bytesOf(info, load.part);
-      const tr = element(
-        'tr',
-        {},
-        element('td', {}, info?.name ?? load.component),
-        element('td', { class: 'mono' }, load.part),
-        element('td', {}, pill(load.reason, reasonColor(load.reason))),
-        element('td', { class: 'mono' }, load.end === undefined ? '…' : ms(load.end - load.start)),
-        element('td', { class: 'mono' }, bytes ? kilobytes(bytes) : ''),
-        element(
-          'td',
-          { class: 'bar-cell' },
-          element(
-            'div',
-            { class: 'bar-track' },
-            element('span', {
-              class: `bar ${barClass(load)}`,
-              style: `left:${(load.start / end) * 100}%;width:${((stop - load.start) / end) * 100}%`,
-              title: `${seconds(load.start)} to ${seconds(stop)}`,
-            }),
-          ),
-        ),
-      );
-      if (marks) {
-        tr.className = marks;
-        tr.title =
-          marks === 'unused' ? 'Preloaded, and nothing has run it yet' : 'It failed to load';
-      }
-      table.append(tr);
-    }
-    body.replaceChildren(
-      element(
-        'div',
-        { class: 'cards' },
-        card(
-          'Parts loaded',
-          String(loads.length),
-          total ? `${kilobytes(total)} from the dev server` : 'sizes come with the requests',
-        ),
-        card('Unused preloads', String(unused), 'loaded, and nothing ran them yet'),
-      ),
-      element(
-        'div',
-        { class: 'legend', style: 'margin: 10px 0 6px' },
-        key('var(--blue)', 'event or block'),
-        key('var(--purple)', 'preload'),
-        element(
-          'span',
-          {},
-          element('i', {
-            style:
-              'background: repeating-linear-gradient(45deg, var(--purple) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--purple)',
-          }),
-          'unused preload',
-        ),
-        key('var(--faint)', 'a write, state and others'),
-        element('span', { class: 'sub' }, 'Sizes are of the dev server, which does not minify.'),
-      ),
-      loads.length > 0 ? table : element('div', { class: 'empty' }, 'No code loaded yet.'),
-    );
-  };
-
-  /**
-   * The values that the page state sends, by the slot that holds them, with
-   * about how many bytes each takes and the client code that reads it, which
-   * is why it is sent.
-   */
   const drawState = async (): Promise<void> => {
     const scopes = [...(state.scopes?.values() ?? [])].filter(
       // The scopes that the browser made are not in the state that the server sent.
@@ -3000,7 +2814,6 @@ export function togglePanel(
     errors: drawErrors,
     scopes: drawScopes,
     elements: drawElements,
-    loading: drawLoading,
     state: drawState,
     effects: drawEffects,
     navigation: drawNavigation,

@@ -1,0 +1,155 @@
+<script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { enabledItems, focusItem, keyAttribute } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import { ButtonContext } from './contexts.ts';
+  import { interact } from './interact.brm.ts';
+  import { TagGroupContext } from './tags.ts';
+
+  /**
+   * A tag of a TagList, as Tag of React Aria Components. `id` is its key.
+   *
+   * - A press and Space toggle it, when the TagGroup selects.
+   * - Delete and Backspace remove it, or the selected tags when it is one of them, and a Button
+   *   with `slot="remove"` inside removes it. Focus moves to the next tag, or the one before.
+   * - `textValue` is its text, when its content is more than text.
+   * - It shows `data-selected`, `data-disabled`, `data-allows-removing`, `data-pressed`,
+   *   `data-hovered`, `data-focused` and `data-focus-visible`.
+   */
+  const {
+    id,
+    textValue,
+    isDisabled = false,
+    children,
+    ...rest
+  } = $props<{
+    id: Key;
+    textValue?: string;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const group = $getContext(TagGroupContext);
+  const rowId = $id();
+  const mode = $memo(group?.selectionMode ?? 'none');
+  const selected = $memo(Boolean(group?.selectedKeys.includes(id)));
+  const disabled = $memo(isDisabled || Boolean(group?.disabledKeys.includes(id)));
+  const removable = $memo(Boolean(group?.canRemove) && !disabled);
+
+  function pressed() {
+    if (mode !== 'none') {
+      group?.select(id);
+    }
+  }
+
+  /** Removes this tag, or the selected tags with it, and moves focus to a tag that stays. */
+  function remove(all: boolean) {
+    if (!group?.canRemove || disabled) {
+      return;
+    }
+    const keys = all && selected ? group.selectedKeys : [id];
+    const row = document.getElementById(rowId);
+    const list = row?.closest('[data-collection]');
+    const items = list ? enabledItems(list, 'row') : [];
+    const at = row ? items.indexOf(row) : -1;
+    const next = [...items.slice(at + 1), ...items.slice(0, Math.max(at, 0)).reverse()].find(
+      (item) => !keys.some((key) => keyAttribute(key) === item.dataset.key),
+    );
+    group.remove(keys);
+    // The tag leaves once the caller's list updates, so focus moves after that. With no tag
+    // left, the list takes focus.
+    setTimeout(() => (next ? focusItem(next) : (list as HTMLElement | null)?.focus()), 0);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      remove(true);
+    }
+  }
+
+  $setContext(ButtonContext, {
+    slots: {
+      remove: {
+        'aria-label': 'Remove',
+        'aria-labelledby': `${rowId}-remove ${rowId}`,
+        id: `${rowId}-remove`,
+        tabindex: '-1',
+        isDisabled: disabled,
+        onPress: () => remove(false),
+      },
+    },
+  });
+
+  // A press and Space select the tag, as a button does.
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onPointerEnter,
+    onPointerLeave,
+    onKeyDown: pressKeyDown,
+    onKeyUp,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled || mode === 'none',
+    pressed,
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+    () => {},
+  );
+
+  function keyDownAll(event: KeyboardEvent) {
+    pressKeyDown(event);
+    keyDown(event);
+  }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
+</script>
+
+<div
+  id=rowId
+  role="row"
+  tabindex="-1"
+  data-key=(keyAttribute(id))
+  data-text-value=textValue
+  aria-selected=(mode === 'none' ? undefined : String(selected))
+  aria-disabled=(disabled ? 'true' : undefined)
+  data-selected=(selected || undefined)
+  data-disabled=(disabled || undefined)
+  data-allows-removing=(removable || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onPointerEnter}
+  {onPointerLeave}
+  onKeyDown=(prevent(keyDownAll, 'Backspace'))
+  {onKeyUp}
+  {onClick}
+  {onFocus}
+  {onBlur}
+  {...rest}
+><div role="gridcell" style="display: contents">{children}</div></div>

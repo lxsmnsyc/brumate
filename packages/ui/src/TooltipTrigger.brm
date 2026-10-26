@@ -1,12 +1,12 @@
 <script>
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import type { ButtonContextProps } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
   import { isFocusVisible } from './interactions.ts';
   import type { ContextValue } from './slots.ts';
-  import { TooltipTriggerContext, tooltips } from './tooltip.ts';
+  import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
 
   /**
    * Shows a Tooltip for the Button inside it, as TooltipTrigger of React Aria Components.
@@ -68,6 +68,10 @@
     tooltips.keep(tooltipId);
   }
 
+  // A trigger that leaves the page, such as in an #if or on a route change, stops its timers, so
+  // they open nothing later and the next tooltip still waits for its delay.
+  $client(() => () => tooltips.forget(tooltipId), 'load');
+
   function hoverStarted(event: HoverEvent) {
     plain()?.onHoverStart?.(event);
     if (trigger !== 'focus') {
@@ -77,13 +81,17 @@
 
   function hoverEnded(event: HoverEvent) {
     plain()?.onHoverEnd?.(event);
-    close(false);
+    // A tooltip that only focus shows stays while the trigger has focus, as in React Aria.
+    if (trigger !== 'focus') {
+      close(false);
+    }
   }
 
   function focusChanged(focused: boolean) {
     plain()?.onFocusChange?.(focused);
     const active = document.activeElement;
-    if (focused && active && isFocusVisible(active)) {
+    // A press focuses the button, and the press hides the tooltip, as in React Aria.
+    if (focused && active && isFocusVisible(active) && !pressedTriggers.has(active)) {
       open(true);
     } else if (!focused) {
       close(true);
@@ -92,7 +100,13 @@
 
   function pressStarted(event: PressEvent) {
     plain()?.onPressStart?.(event);
+    pressedTriggers.add(event.target);
     close(true);
+  }
+
+  function pressEnded(event: PressEvent) {
+    plain()?.onPressEnd?.(event);
+    pressedTriggers.delete(event.target);
   }
 
   /** The props of the context around it, when it gives one Button its props. */
@@ -109,6 +123,7 @@
     onHoverEnd: hoverEnded,
     onFocusChange: focusChanged,
     onPressStart: pressStarted,
+    onPressEnd: pressEnded,
   });
   $setContext(TooltipTriggerContext, { isOpen, triggerId, tooltipId, keep, close });
 </script>

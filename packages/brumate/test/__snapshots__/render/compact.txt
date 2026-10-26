@@ -63,23 +63,16 @@ export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Co
 Compact.brumateId = "Compact_omhyaj";
 
 # Client entry
+export * from "./compact.brm?brumate-client&part=h13";
+export * from "./compact.brm?brumate-client&part=h2";
+export * from "./compact.brm?brumate-client&part=h3";
+export * from "./compact.brm?brumate-client&part=h4";
+export * from "./compact.brm?brumate-client&part=h5";
+export * from "./compact.brm?brumate-client&part=h6";
+export * from "./compact.brm?brumate-client&part=update";
 export const id = "Compact_omhyaj";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [1, "b15"]], 1: [[3, "u14"]] }, 2: { 0: [[2, "u10"], [2, "u11"], [2, "u12"]] }, 4: { 0: [[4, "u17"], [4, "u18"]] } };
-const update = () => import("./compact.brm?brumate-client&part=update");
-const parts = {
-  "h13": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h13")),
-  "h2": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h2")),
-  "h3": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h3")),
-  "h4": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h4")),
-  "h5": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h5")),
-  "h6": () => (update().catch(() => {}), import("./compact.brm?brumate-client&part=h6")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h13
 import * as $$b from 'brumate/client';
@@ -119,8 +112,10 @@ export const h6 = ($$s) => $$b.update($$s, 1, 1, false);
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = ($$item, $$index) => { const row = $$item; return row.id; };
+const $$k1 = [3];
 export function b7($$s) {
-  $$b.list($$s, 5, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r2, a2, r3, [3]);
+  $$b.list($$s, 5, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, r3, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -139,8 +134,10 @@ export function u12($$s) {
 export function u14($$s) {
   $$b.attr($$s, 0, "class", (" empty" + (($$b.get($$s.p, 1) % 2 === 1) ? " odd" : "")).slice(1));
 }
+const $$k2 = ($$item, $$index) => { const row = $$item; return row.id; };
+const $$k3 = [];
 export function b15($$s) {
-  $$b.list($$s, 6, $$b.listOf($$b.get($$s, 0)), ($$item, $$index) => { const row = $$item; return row.id; }, r4, a4, undefined, []);
+  $$b.list($$s, 6, $$b.listOf($$b.get($$s, 0)), $$k2, r4, a4, undefined, $$k3);
 }
 export function a4($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -153,86 +150,100 @@ export function u17($$s) {
 export function u18($$s) {
   $$b.content($$s, 1, $$b.get($$s, 0).label);
 }
+const $$k4 = $$b.template("<li b-x=\"0\"><span b-x=\"1\" class=\"label\"></span><i b-x=\"2\" class=\"note\"></i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>", 3);
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
+  const $$s2 = $$b.createScope(2, $$p, undefined, 3);
+  const $$e = $$b.clone($$k4), $$f = $$e[3];
+  (row.label.endsWith('!')) && $$e[0].setAttribute("class", "marked");
+  $$b.keep($$s2, 0, $$e[0]);
+  $$b.keep($$s2, 1, $$e[1]);
+  $$b.setContent($$e[1], (row.label), $$s2);
+  $$b.keep($$s2, 2, $$e[2]);
+  $$b.setContent($$e[2], (row.note), $$s2);
   $$b.setSlots($$s2, [row]);
   $$b.setItem($$s2, $$item);
-  return $$html;
+  return $$f;
 }
+const $$k5 = $$b.template("<li b-x=\"0\" class=\"empty\">Nothing</li>", 1);
 export function r3($$p) {
   let $$html = '';
   let picks = $$b.get($$p, 1);
-  const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
-  return $$html;
+  const $$s3 = $$b.createScope(3, $$p, undefined, 1);
+  const $$e = $$b.clone($$k5), $$f = $$e[1];
+  (picks % 2 === 1) && $$e[0].classList.add("odd");
+  $$b.keep($$s3, 0, $$e[0]);
+  return $$f;
 }
+const $$k6 = $$b.template("<!--x0--><dt b-x=\"1\"></dt><dd b-x=\"2\"></dd><!--/i-->", 3);
 export function r4($$p, $$item, $$index) {
   let $$html = '';
   const row = $$item;
-  const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
+  const $$s4 = $$b.createScope(4, $$p, undefined, 2);
   $$b.setSlots($$s4, [row]);
   $$b.setItem($$s4, $$item);
-  $$html += "<!--/i-->";
-  return $$html;
+  const $$e = $$b.clone($$k6), $$f = $$e[3];
+  $$b.nameComment($$e[0], "i" + $$s4);
+  $$b.keep($$s4, 0, $$e[1]);
+  $$b.setContent($$e[1], (row.id), $$s4);
+  $$b.keep($$s4, 1, $$e[2]);
+  $$b.setContent($$e[2], (row.label), $$s4);
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r4 as $$r4 } from "./compact.brm?brumate-client";
 interface Row { id: string; label: string; note: string | number }
+const $$t0 = $$b.template("<li b-x=\"0\"><span b-x=\"1\" class=\"label\"></span><i b-x=\"2\" class=\"note\"></i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>", 3);
+const $$t1 = $$b.template("<li b-x=\"0\" class=\"empty\">Nothing</li>", 1);
+const $$t2 = $$b.template("<button b-x=\"0\" class=\"reverse\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button b-x=\"1\" class=\"drop\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button b-x=\"2\" class=\"clear\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button b-x=\"3\" class=\"add\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button b-x=\"4\" class=\"pick\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul><!--x5--></ul><ol><!--x6--><!--/b--></ol>", 7);
 
-export default function Compact($$props: { initial: Row[] }): string {
+export default function Compact($$props: { initial: Row[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Compact_omhyaj");
   const { initial } = $$b.unbind($$props, ["initial"]);
   let rows = (initial);
   let picks = (0);
-  $$html += "<button class=\"reverse\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
-  {
-    const $$list0v = ( rows );
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":5-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const row = $$item1;
-      const $$s2 = $$b.createScope(2, $$s1);
-      function rename() {
-        rows = rows.map((item) =>
-          item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
-        );
-      }
-      $$html += "<li" + ((row.label.endsWith('!')) ? " class=\"marked\"" : "") + " b-b=\"" + $$s2 + ":0\"><span class=\"label\" b-b=\"" + $$s2 + ":1\">" + $$b.insert((row.label)) + "</span><i class=\"note\" b-b=\"" + $$s2 + ":2\">" + $$b.insert((row.note)) + "</i><button class=\"rename\" b-on=\"click=Compact_omhyaj#h13\">Rename</button></li>";
-      $$b.setSlots($$s2, [row]);
-      $$b.setItem($$s2, $$item1);
+  const $$body2 = ($$item0, $$index1) => {
+    let $$html = '';
+    const row = $$item0;
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 3);
+    function rename() {
+      rows = rows.map((item) =>
+        item.id === row.id ? { ...item, label: `${item.label}!`, note: item.note === '' ? 1 : '' } : item,
+      );
     }
-    if ($$list0.length === 0) {
-      const $$s3 = $$b.createScope(3, $$s1);
-      $$html += "<li class=\"empty" + ((picks % 2 === 1) ? " odd" : "") + "\" b-b=\"" + $$s3 + ":0\">Nothing</li>";
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul><ol>";
-  {
-    const $$list3v = ( rows );
-    const $$list3 = Array.isArray($$list3v) ? $$list3v : Array.from($$list3v);
-    $$html += "<!--b" + $$s1 + ":6-->";
-    for (let $$index5 = 0; $$index5 < $$list3.length; $$index5++) {
-      const $$item4 = $$list3[$$index5];
-      const row = $$item4;
-      const $$s4 = $$b.createScope(4, $$s1);
-      $$html += "<!--i" + $$s4 + "--><dt b-b=\"" + $$s4 + ":0\">" + $$b.insert((row.id)) + "</dt><dd b-b=\"" + $$s4 + ":1\">" + $$b.insert((row.label)) + "</dd>";
-      $$b.setSlots($$s4, [row]);
-      $$b.setItem($$s4, $$item4);
-      $$html += "<!--/i-->";
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ol>";
+    const $$e = $$b.clone($$t0), $$f = $$e[3];
+    (row.label.endsWith('!')) && $$e[0].setAttribute("class", "marked");
+    $$b.keep($$s2, 0, $$e[0]);
+    $$b.keep($$s2, 1, $$e[1]);
+    $$b.setContent($$e[1], (row.label), $$s2);
+    $$b.keep($$s2, 2, $$e[2]);
+    $$b.setContent($$e[2], (row.note), $$s2);
+    $$b.setSlots($$s2, [row]);
+    $$b.setItem($$s2, $$item0);
+    return $$f;
+  };
+  const $$body3 = () => {
+    let $$html = '';
+    const $$s3 = $$b.createScope(3, $$s1, undefined, 1);
+    const $$e = $$b.clone($$t1), $$f = $$e[1];
+    (picks % 2 === 1) && $$e[0].classList.add("odd");
+    $$b.keep($$s3, 0, $$e[0]);
+    return $$f;
+  };
+  const $$e = $$b.clone($$t2), $$f = $$e[7];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.keep($$s1, 2, $$e[2]);
+  $$b.keep($$s1, 3, $$e[3]);
+  $$b.keep($$s1, 4, $$e[4]);
+  $$b.place($$e[5], $$b.listNodes($$s1, 5, $$b.listOf(( rows )), $$body2, $$body3));
   $$b.setSlots($$s1, [rows, picks]);
-  return $$html;
+  $$b.fillList($$e[6], $$s1, 6, $$b.listOf(( rows )), $$r4);
+  return $$f;
 }
 
 # HTML

@@ -1,0 +1,68 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { SliderContext, closestThumb, startDrag, thumbId, valueAt } from './slider.ts';
+
+  /**
+   * The track of a Slider, as SliderTrack of React Aria Components. It holds the SliderThumbs. A
+   * press on it moves the nearest thumb there, and a drag moves it on. It shows
+   * `data-orientation` and `data-disabled`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+
+  const slider = $getContext(SliderContext);
+  const locale = $getContext(LocaleContext);
+
+  function pressed(event: PointerEvent) {
+    const track = event.currentTarget as HTMLElement;
+    // A press on a thumb is the thumb's own. A press with a modifier, or while a thumb is dragged,
+    // moves nothing, as in React Aria.
+    if (
+      !slider ||
+      slider.isDisabled ||
+      event.button !== 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      slider.dragging.length > 0 ||
+      (event.target as Element).closest?.('[data-slider-thumb]')
+    ) {
+      return;
+    }
+    const rtl = locale.direction === 'rtl';
+    const value = valueAt(slider, track, event.clientX, event.clientY, rtl);
+    const index = closestThumb(slider.values, value);
+    const thumb = document.getElementById(thumbId(slider, index)) as HTMLInputElement | null;
+    // The nearest thumb is disabled, so the press moves nothing.
+    if (thumb?.disabled) {
+      return;
+    }
+    thumb?.focus({ preventScroll: true });
+    slider.setThumb(index, value);
+    slider.setDragging(index, true);
+    startDrag(
+      event.pointerId,
+      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => slider.setDragging(index, false),
+    );
+  }
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  class="track"
+  data-slider-track
+  data-orientation=(slider?.orientation)
+  data-disabled=(slider?.isDisabled || undefined)
+  onPointerDown=(prevent(pressed))
+  {...rest}
+>{children}</div>
+
+<style>
+  /* The thumbs sit on the track, and a drag on it does not scroll the page. */
+  .track {
+    position: relative;
+    touch-action: none;
+  }
+</style>

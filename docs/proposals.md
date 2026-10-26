@@ -11,24 +11,26 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
 - The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
-| Proposal                                                              | Area    | Value  | Cost   |
-| --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
-| [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
-| [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
-| [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
-| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
-| [Devtools](#devtools)                                                 | Tooling | High   | Medium |
-| [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
-| [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
-| [Observability](#observability)                                       | Runtime | Medium | Medium |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
-| [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
-| [Ordered updates](#ordered-updates)                                   | Runtime | Medium | Medium |
+| Proposal                                                              | Area     | Value  | Cost   |
+| --------------------------------------------------------------------- | -------- | ------ | ------ |
+| [Idempotent calls](#idempotent-calls)                                 | Server   | Low    | Small  |
+| [Two-way realtime](#two-way-realtime)                                 | Server   | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                 | Build    | Medium | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
+| [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
+| [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
+| [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
+| [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
+| [Worker functions](#worker-functions)                                 | Runtime  | Medium | Medium |
+| [Offline pages](#offline-pages)                                       | Runtime  | Medium | Medium |
+| [Observability](#observability)                                       | Runtime  | Medium | Medium |
+| [Ordered updates](#ordered-updates)                                   | Runtime  | Medium | Medium |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
+| [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
+| [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
+| [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
 
 ## Syntax
 
@@ -103,6 +105,16 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 
 Cost: a day or two, when a page needs it.
 
+### Server-only markup
+
+Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+
+- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
+- Markup that reads values the page state should not carry, so they are not serialized.
+- Whether a block that never updates can drop its markers and scope IDs.
+
+To study before any design.
+
 ## Reactivity
 
 ### Ordered updates
@@ -157,6 +169,8 @@ Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a f
 ### Offline pages
 
 A resumed page needs the network only for the parts that its handlers load. The idle preload already knows which parts a page can reach.
+
+Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed.
 
 - A generated service worker caches the page, the loader, the core and those parts, so a page that was loaded once works offline, and its handlers run.
 - A server function call made offline waits in a queue with an option, and goes when the connection comes back. Its result settles the same promise.
@@ -282,6 +296,7 @@ What it should show:
 
 - **Elements.** Pick an element to see its scope, its anchor, its handlers with the size of each one's part and whether it loaded, and the values that its updates read. A link opens the `.brm` file at the line of the element in the editor, from the source maps, through the dev server, as Vite's `launch-editor` does.
 - **Loading.** A timeline of every part that loaded, with why: an event, the idle preload, an element that came into view, a hover, or navigation. Each row has its size, its time and the event that waited for it. Preloads that nothing used are marked.
+  - Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed. The devtools have no Loading tab.
 - **Page state.** The bytes of the first state record by component and by slot, and for each slot the client code that reads it, which is why it is sent. A value that is large, or sent but rarely read, stands out.
 - **Blocks.** Every `#loading`, `#defer` and `#client` block of the page with its state: fallback, waiting, streaming or rendered, its trigger, and when its body arrived and how long it took. Buttons fire a trigger now, or show a block's fallback again, to test both sides.
 - **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.
@@ -333,6 +348,82 @@ The project analysis classifies each component by what it depends on, itself and
 
 The first user is `@brumate/ui`, whose parts are almost all self-contained, so the workbench grows with the `Select` spike.
 
+### Agent support
+
+Coding agents write `.brm` files from what they know of Svelte, Vue and JSX, and brumate differs from each in small ways. An agent writes `minValue=minValue` where brumate has `{minValue}`, `} else {` where it needs `} #else {`, or an arrow in `let` where a value of the page state must be a function declaration. The compiler catches some of these, and the rest compile into code that works but reads badly. Agents also read the docs one page at a time, and the devtools show a problem to a person but give an agent nothing to read.
+
+What brumate has today:
+
+- Compile errors that say what to write instead, such as `Import $memo from 'brumate/signals'`.
+- `brumate inspect`, with `--json`, which reports what each component ships and why.
+- The search index of the website, which already turns the docs and the pages of `@brumate/ui` into plain text.
+- No skill, no `llms.txt`, and no way to copy what the devtools show.
+
+#### A skill for `.brm` files
+
+A skill in the [Agent Skills](https://agentskills.io) format, `SKILL.md` with a name, a description and the instructions, that an agent loads when it works on `.brm` files.
+
+- It ships in the `brumate` package as `skills/brumate/`, so an app has the version that matches its brumate. `npx brumate skill` copies it into `.claude/skills/brumate/`, or prints where it is for other agents.
+- The repository links the same files from `.claude/skills/brumate/`, so work on brumate itself uses it too.
+- `SKILL.md` stays short: the layout of a file, the rules below, and the checks to run. Longer references sit next to it, for an agent to read when it needs them:
+  - `syntax.md`: markup, attributes, blocks and templates, one example each.
+  - `state.md`: signals, memos, props, `$bind`, contexts and module functions.
+  - `events.md`: handlers, the wrappers of `brumate/events`, and why handlers are passive.
+  - `ui.md`: how the parts of `@brumate/ui` fit together, such as a Label, a field and a FieldError.
+  - `errors.md`: each compile error, with what causes it and the fix.
+- The rules are the mistakes that agents make, with the right form:
+  - Attributes: `{name}` for `name=name`, and `{onClick}` for a handler.
+  - Blocks: `} #else {`, `} #else if (…) {` and `} #catch (error) {`.
+  - Handlers: `prevent(handler, 'Enter')` from `brumate/events` for `preventDefault`, because delegated handlers are passive and run after the event.
+  - State: a function in the page state is a function declaration. Signals never leave the file, so a child gets a value and a function that writes it.
+  - Props: `let` props for values that a parent binds with `$bind`, and `Bindable<T>` in their types.
+  - Markup as a value: a `#template`, never markup in an expression.
+  - Module functions: called at the top level and destructured. A plain helper of a `.brm.ts` file goes in a `.ts` file.
+- It ends with the checks, in order: `brumate-tsc --noEmit`, the tests, and `brumate inspect` for what a component ships.
+
+So the skill does not drift from the compiler:
+
+- A test compiles every `brm` code block of the skill, and a block marked as wrong must fail with the error that the skill names.
+- `errors.md` is generated from the messages of the compiler, so a new error gets an entry.
+- A small set of tasks, such as a counter, a keyed list, a form with a server function and a Select, checks what an agent writes with the skill: each task must compile, pass `brumate-tsc`, and pass its test. It runs by hand before a release, not in CI.
+
+#### Docs for agents on the website
+
+- `/llms.txt` lists the pages of the docs and of `@brumate/ui`, each with its title, one line about it, and a link to its Markdown, as [llms.txt](https://llmstxt.org) describes.
+- `/llms-full.txt` holds every page in one file, for an agent that reads the docs at once.
+- Each page has its Markdown at the same path with `.md`, such as `/docs/components.md`, with the live examples as code blocks.
+- A button on each page copies its Markdown, for a person who pastes it into a chat.
+- A Vite plugin of the website builds all three from the same files as the search index, so they stay in step with the pages.
+
+#### Copy for an agent in the devtools
+
+A button copies what a part of the devtools shows, as Markdown that an agent can read:
+
+- **An error:** the message, the component and its file and line, the source around the line, the scope with its values, and the versions of brumate and Vite.
+- **A component:** its file, its props and the value of each slot by name, its contexts, and the report of `brumate inspect` for it.
+- **A handler run of the timeline:** the event, the writes that it made, the updates that ran, and the server calls with their times.
+
+Values are cut at a length, and the devtools copy nothing from cookies or headers. The devtools run only on the dev server, so a production page copies nothing.
+
+#### A command for agents
+
+- `brumate check` runs the compiler and the type checker on the project, and prints each problem as JSON with its file, its range, its message and a link to the docs. An agent runs one command and reads one answer, instead of parsing the output of two tools.
+- Each compile error gets a code, such as `BRM012`, and a link to the section of the docs that explains it. The link is in the message, so a person sees it too.
+
+#### Later
+
+- A server of the [Model Context Protocol](https://modelcontextprotocol.io) in the dev server, with tools that search the docs, inspect a component, check a file, and read the state of the open page. It waits until the pieces above show which tools agents use.
+
+#### Order
+
+1. The skill, its references, and the test of its code blocks. About 3 days.
+2. `llms.txt`, `llms-full.txt`, the Markdown of each page, and the copy button. About 2 days.
+3. Copy for an agent in the devtools. About 3 days.
+4. `brumate check` with JSON, codes for compile errors, and links to the docs. About 4 days.
+5. The tasks that check the skill, run by hand.
+
+Each step is its own pull request.
+
 ### Embedding in other sites
 
 A brumate component cannot go into a page that brumate did not render, such as a widget on a marketing site or a component in an app of another framework.
@@ -344,6 +435,56 @@ A brumate component cannot go into a page that brumate did not render, such as a
 - Server functions answer from the brumate server, so the element works across origins with the `origins` option and CORS.
 
 Cost: about 2 weeks. The request for markup reuses `#defer`, and most of the work is the build target and the cross-origin rules.
+
+## Compiler
+
+### A smaller and faster client
+
+The page code loads at the start since #113, so speed is close to Marko's and size is the gap. A run of `pnpm bench` on 2026-10-25, at the tip of the stack of the UI components:
+
+| Metric                  | brumate                | Marko 6              |
+| ----------------------- | ---------------------- | -------------------- |
+| Create 1,000 rows       | 35 ms                  | 33 ms                |
+| Replace 1,000 rows      | 31 ms                  | 26 ms                |
+| Append 1,000 rows       | 32 ms                  | 40 ms                |
+| JS before `load`, todos | 30.6 kB / 13.0 kB gzip | 9.1 kB / 4.4 kB gzip |
+
+Of the 13.0 kB, the core is 9.2 kB, the loader 2.9 kB and the app 0.9 kB. The bytes of the core are spread over many functions. Part of them is code for features that a page does not use, which the bundler keeps because the core reaches it through runtime branches.
+
+What Marko's compiler does that brumate's core does at runtime:
+
+| Work                            | Marko 6                                                                         | Brumate now                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Markup that the browser renders | A template that it clones, and a walk string that picks the nodes to update     | An HTML string, inserted and then scanned for its markers                                       |
+| The nodes that an update writes | Kept on the scope when the markup is cloned or resumed                          | Found by a marker or a `b-b` anchor, through an index that a MutationObserver keeps, or a query |
+| What a change runs              | A function for each value, which calls the functions of the values that read it | Tables of updates by slot (`g`), which `run` reads, with the order of the graph at runtime      |
+
+#### Steps
+
+Each step is a PR of its own, measured with `pnpm bench` before and after: the gzip size of the JS before `load`, the rows scenario, and the first click. Size comes first.
+
+1. **Features of the build.** The Vite plugin reads which features of the core the components of a build use, and the client build leaves out the code of the others, such as children that the browser renders, templates, titles and bindings. Done in #147: the core of todos goes from 9.2 kB to 8.3 kB gzip.
+2. **More features of the build**, with the same switches: what a page without `#loading`, `#defer` or client navigation never needs, such as the index of markup that arrives later.
+3. **Nodes on the scope, and cloned templates.** The resume scan and each client render store the nodes that updates write on their scope. A body that the browser renders compiles to a `<template>` and a walk string. The index, its MutationObserver, the HTML strings and their scans go.
+4. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values that read it. The update tables and the code that reads them go.
+
+#### Later: fixed walks
+
+A clone finds the elements that its render writes with a walk of paths at runtime, which the browser reads from `b-x` marks in the parsed template. Solid and Svelte emit the walk as code instead, each node into a variable. The branch `exp/fixed-walk` tries it on the rows of the benchmark, on 2026-10-25:
+
+| Script of each operation |  Runtime walk |    Fixed walk | Marko 6 |
+| ------------------------ | ------------: | ------------: | ------: |
+| Create 1,000 rows        |  about 6.1 ms |  about 5.2 ms |  5.0 ms |
+| Replace 1,000 rows       | about 11.6 ms | about 11.4 ms | 10.8 ms |
+
+Creating rows takes about 0.9 ms less, and replacing them about the same. Both take about 28 ms from the click to the paint, so the gain is 2 to 3% of it. The walk is a line of code for each node on the path to an element, in each component, and the compiler must know that the parser keeps the markup as it is written, as Solid checks the nesting of elements. It waits until speed matters more than size.
+
+#### Risks
+
+- Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.
+- `#offscreen` and `#defer` rely on the markers of a body as they are now. Each step keeps their tests passing.
+- The devtools read the update tables and the index. They need the same facts from the new places.
+- A feature that the build turns off must never be needed. The plugin reads it from the compiled code, and a page state that holds a value of it throws an error that says so.
 
 ## Library
 
@@ -538,7 +679,7 @@ Notes for each phase:
   - closing on Escape and on a click outside, with listeners that are added when the overlay opens, as React Aria's `useInteractOutside` does;
   - hiding the rest of the page behind a `Modal` with `aria-hidden`, as React Aria's `ariaHideOutside` does, and locking its scroll, as its `usePreventScroll` does.
 - Phase 2 animates with `Transition`, for overlays and for other content that is removed. `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
-- Phase 3 is the largest. Collections take `items` and an item `#template`, because brumate cannot read the structure of markup the way React Aria reads its children. Keyboard movement and typeahead go in a `.brm.ts` module that every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
+- Phase 3 is the largest. Brumate cannot read the structure of markup the way React Aria reads its children, so a collection reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. Items can then come from any markup, such as a `#for` or sections, with no `items` prop. Keyboard movement, ranges and typeahead go in `collection.ts`, which every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
 - Phase 4 parses and formats numbers by locale on the server and in the browser with the same code.
 - Phase 5 keeps dates in signals as ISO strings, because the page state cannot hold `CalendarDate` class instances.
 - Phase 6 renders rows on the server. `Virtualizer` and drag and drop run only in the browser, from `$client` and handlers, so they load when used.
@@ -563,15 +704,33 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Order
+## Website
+
+### The home link
+
+The home link in the header, on the docs and on `/ui`, shows a circle with a gradient where the site needs an icon. Draw a mark for brumate, and use it in the header, as the favicon, and on the home page.
+
+### A landing page for @brumate/ui
+
+`/ui` opens on the introduction and the grid of cards. It needs a landing page of its own, as the home page of brumate has:
+
+- What the parts are, and what makes them different: they resume, ship no code until used, and work without scripts where the platform allows.
+- A few parts that people can use on the page.
+- The links to start, to the parts, and to the design influences.
+
+The introduction and the grid move to pages of their own.
+
+## Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
-5. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
+5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
+6. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
+7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
 

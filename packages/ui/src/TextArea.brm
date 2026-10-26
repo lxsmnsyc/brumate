@@ -1,7 +1,7 @@
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { TextAreaContext } from './contexts.ts';
+  import { FieldInputContext, TextAreaContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
   import { hover } from './hover.brm.ts';
   import { isFirstInvalid } from './fields.ts';
@@ -15,6 +15,9 @@
   const { slot, ...rest } = $props<{ slot?: string | null; [attribute: string]: unknown }>();
 
   const context = $getContext(TextAreaContext);
+  // The attributes of a part around the field, such as an Autocomplete.
+  const outer = $getContext(FieldInputContext);
+  const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
   const invalid = $memo(attributes['aria-invalid'] === 'true' || attributes['aria-invalid'] === true);
@@ -54,14 +57,15 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(disabled || undefined)
   data-invalid=(invalid || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onFocus=onFocus
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onFocus}
   onBlur=blur
   onKeyDown=keyDown
   onInput=input
   onInvalid=(prevent(invalidated))
+  {...outerAttributes}
   {...attributes}
   {...rest}
 >{attributes.value ?? ''}</textarea>

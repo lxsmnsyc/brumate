@@ -20,7 +20,7 @@
 
 <Meta
   title="brumate: web apps that resume"
-  description="A component language and compiler. Components render on the server, and the browser loads each handler only when it's needed. No hydration."
+  description="A component language and compiler. Components render on the server, and the browser picks up where the server left off. No hydration, and code only for what responds to the user."
   path=""
 />
 <main class="home">
@@ -29,8 +29,8 @@
     <p class="eyebrow">A component language and compiler</p>
     <h1>Web apps that <span class="gradient-text">resume</span>, not hydrate.</h1>
     <p class="lead">
-      Components render on the server. The browser keeps their state and loads each handler
-      only when it's needed. Pages work at once, and nothing runs twice.
+      Components render on the server. The browser keeps their state and gets code only for
+      what responds to the user, in one bundle per page. Nothing renders twice.
     </p>
     <div class="actions">
       <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
@@ -44,7 +44,7 @@
       <h2>What ships to the browser</h2>
       <p class="section-lead">
         The server renders the whole page as HTML. The browser gets code only for the parts that respond to the user,
-        and each part loads when its event fires.
+        and it comes with the page, so the first click needs no request.
       </p>
       <p class="section-lead">Switch to hydration to compare.</p>
     </div>
@@ -64,7 +64,7 @@
     <h2>Try it on this page</h2>
     <p class="section-lead">
       This shop page is a brumate component, rendered when this page was built. The list on the right shows every script the page has loaded.
-      Before you touch it, the page holds only the loader. Pick a color or add to the cart, and watch its code arrive.
+      The code of the page came with it, so a color or a cart update runs at once, with no request.
       Turn on X-ray to see which parts ship code and which ship as HTML only.
     </p>
     <div class="playground">
@@ -79,11 +79,11 @@
         </div>
         <ul class="xray-legend">
           <li class="html">HTML only. No code ships for it.</li>
-          <li class="handler">A handler. Its code loads when its event fires.</li>
+          <li class="handler">A handler. Its code comes with the page.</li>
           <li class="update">Updates when a value it reads changes.</li>
         </ul>
         <p class="xray-sum">
-          The whole component is <strong>{shopKb} KB</strong> gzip, and none of it loads before the first click.{' '}
+          The whole component is <strong>{shopKb} KB</strong> gzip, in the bundle of this page.{' '}
           {shop.report.staticMarkup.elements} of its elements ship as HTML only. The X-ray switch is CSS, with no script.
         </p>
       </div>
@@ -94,8 +94,8 @@
   <section class="section">
     <h2>What the compiler ships</h2>
     <p class="section-lead">
-      The compiler builds the graph of what reads what once, when it compiles. Each handler is its own module.
-      Markup that cannot change ships as HTML only. These tables come from <code>brumate inspect</code>, run when this site was built.
+      The compiler builds the graph of what reads what once, when it compiles. Only what can change in the browser
+      ships code. Markup that cannot change ships as HTML only. These tables come from <code>brumate inspect</code>, run when this site was built.
     </p>
     <div class="showcase">
       <article class="showcase-item">
@@ -528,7 +528,7 @@
   }
 
   .xray:has(.xray-toggle input:checked) :global([data-xray='handler'])::after {
-    content: 'loads on click';
+    content: 'ships code';
     background: var(--accent);
     color: #fff;
   }

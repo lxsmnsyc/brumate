@@ -1,0 +1,90 @@
+<script>
+  import { $client, $effect, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { enabledItems, keyOf } from './collection.ts';
+  import type { Bindable } from 'brumate/signals';
+  import type { Key } from './collection.ts';
+  import { TabsContext } from './tabs.ts';
+
+  /**
+   * Tabs that show one panel at a time, as Tabs of React Aria Components. It holds a TabList with
+   * Tab elements, and a TabPanel for each tab, with the same `id`.
+   *
+   * - `selectedKey` is the key of the selected tab. With none, the first tab is selected. A key
+   *   of a tab that is not there, or is disabled, selects the first tab that is enabled.
+   *   `selectedKey=(key)` starts its own, and `selectedKey=$bind(signal)` writes the caller's.
+   * - `keyboardActivation="automatic"`, the default, selects a tab when the arrow keys move to it.
+   *   `"manual"` selects it with Enter or Space.
+   * - `orientation` is `horizontal` (the default) or `vertical`.
+   * - It shows `data-orientation`.
+   */
+  const {
+    as = 'div',
+    disabledKeys = [],
+    isDisabled = false,
+    orientation = 'horizontal',
+    keyboardActivation = 'automatic',
+    onSelectionChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    disabledKeys?: Key[];
+    isDisabled?: boolean;
+    orientation?: 'horizontal' | 'vertical';
+    keyboardActivation?: 'automatic' | 'manual';
+    onSelectionChange?: (key: Key) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKey = null } = $props<{ selectedKey?: Bindable<Key | null> }>();
+
+  const id = $id();
+  // The Tabs write the key of the first one here as they render. See `TabsState`.
+  const registry: { first?: Key } = {};
+
+  let root = $signal<HTMLElement>();
+
+  /**
+   * In the browser, a selection that no tab shows, such as of a key that has no tab or of a
+   * disabled tab, goes to the first tab that is enabled, as React Aria does.
+   */
+  function check() {
+    const element = root;
+    if (!element || element.querySelector('[role=tab][aria-selected=true]:not([aria-disabled=true])')) {
+      return;
+    }
+    const list = element.querySelector<HTMLElement>('[role=tablist][data-collection]');
+    const first = list ? enabledItems(list, 'tab')[0] : undefined;
+    const key = first ? keyOf(first) : undefined;
+    if (key !== undefined) {
+      selectedKey = key;
+      onSelectionChange?.(key);
+    }
+  }
+  $client(() => check(), 'load');
+  $effect(() => {
+    void selectedKey;
+    // The tabs update after the key does.
+    queueMicrotask(() => $untrack(check()));
+  });
+
+  function select(key: Key) {
+    if (key !== selectedKey && !isDisabled && !disabledKeys.includes(key)) {
+      selectedKey = key;
+      onSelectionChange?.(key);
+    }
+  }
+
+  $setContext(TabsContext, {
+    selectedKey,
+    registry,
+    disabledKeys,
+    isDisabled,
+    orientation,
+    keyboardActivation,
+    id,
+    select,
+  });
+</script>
+
+<{as} ref=root data-orientation=orientation {...rest}>{children}</>

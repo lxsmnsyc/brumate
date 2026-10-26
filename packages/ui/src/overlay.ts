@@ -47,54 +47,155 @@ export function containTab(overlay: HTMLElement, event: KeyboardEvent): void {
   next?.focus();
 }
 
+/** How many open overlays made each element inert, so the last one to close gives it back. */
+const inertCounts = new Map<Element, number>();
+
+/** True for an element that a modal leaves alone. The toasts stay usable, as in React Aria. */
+function keepsUsable(element: Element): boolean {
+  return (
+    element.hasAttribute('data-toast-region') ||
+    /^(SCRIPT|STYLE|TEMPLATE|LINK)$/.test(element.tagName)
+  );
+}
+
+/** Makes an element inert for one more overlay. An element that was inert before stays as it was. */
+function addInert(element: Element, changed: Element[]): void {
+  const count = inertCounts.get(element) ?? 0;
+  if (count === 0 && element.hasAttribute('inert')) {
+    return;
+  }
+  inertCounts.set(element, count + 1);
+  element.setAttribute('inert', '');
+  changed.push(element);
+}
+
+function removeInert(element: Element): void {
+  const count = (inertCounts.get(element) ?? 1) - 1;
+  if (count > 0) {
+    inertCounts.set(element, count);
+    return;
+  }
+  inertCounts.delete(element);
+  element.removeAttribute('inert');
+}
+
 /**
  * Makes every element of the page inert except the layer of the overlay and the elements that
- * hold it. Returns the function that gives them back what they had.
+ * hold it, as ariaHideOutside of React Aria does. Each element counts the overlays that made it
+ * inert, so overlays can close in any order. Elements that come into the page while it is open
+ * become inert too. Returns the function that gives them back what they had.
  */
 export function inertOutside(layer: Element): () => void {
   const changed: Element[] = [];
+  const holders: Element[] = [];
   for (let current: Element | null = layer; current && current !== document.body;) {
     const parent: Element | null = current.parentElement;
+    if (parent) {
+      holders.push(parent);
+    }
     for (const sibling of parent?.children ?? []) {
-      // The toasts stay usable over a modal, as in React Aria.
-      if (
-        sibling !== current &&
-        !sibling.hasAttribute('inert') &&
-        !sibling.hasAttribute('data-toast-region') &&
-        !/^(SCRIPT|STYLE|TEMPLATE|LINK)$/.test(sibling.tagName)
-      ) {
-        sibling.setAttribute('inert', '');
-        changed.push(sibling);
+      if (sibling !== current && !keepsUsable(sibling)) {
+        addInert(sibling, changed);
       }
     }
     current = parent;
   }
+  const observer =
+    typeof MutationObserver === 'function'
+      ? new MutationObserver((records) => {
+          for (const record of records) {
+            for (const node of record.addedNodes) {
+              // The layer of an overlay that opens later is above this one.
+              if (
+                node instanceof Element &&
+                !node.contains(layer) &&
+                !node.hasAttribute('data-layer') &&
+                !keepsUsable(node)
+              ) {
+                addInert(node, changed);
+              }
+            }
+          }
+        })
+      : undefined;
+  for (const holder of holders) {
+    observer?.observe(holder, { childList: true });
+  }
   return () => {
+    observer?.disconnect();
     for (const element of changed) {
-      element.removeAttribute('inert');
+      removeInert(element);
     }
   };
 }
 
+/** The layers of the overlays that close on a press outside, the topmost last. */
+const dismissable: Element[] = [];
+
 /**
- * Calls `close` on a press that starts outside the layer, except on the trigger, which toggles
- * the overlay itself. A layer holds the layers of the overlays that open inside it, so a press
- * in one of them is inside. Returns the function that stops it.
+ * Calls `close` on a press outside the layer, except on the trigger, which toggles the overlay
+ * itself. As useInteractOutside of React Aria, the press is a pointerdown and a pointerup of the
+ * first button, and only the topmost overlay closes. A layer holds the layers of the overlays
+ * that open inside it, so a press in one of them is inside. Returns the function that stops it.
  */
 export function pressOutside(
   layer: Element,
   trigger: Element | null,
   close: () => void,
 ): () => void {
-  const listener = (event: PointerEvent): void => {
+  dismissable.push(layer);
+  let started = false;
+  const outside = (event: PointerEvent): boolean => {
     const target = event.target as Node | null;
-    if (!target || layer.contains(target) || trigger?.contains(target)) {
-      return;
-    }
-    close();
+    return (
+      event.button === 0 &&
+      dismissable.at(-1) === layer &&
+      target !== null &&
+      !layer.contains(target) &&
+      !trigger?.contains(target)
+    );
   };
-  document.addEventListener('pointerdown', listener, true);
-  return () => document.removeEventListener('pointerdown', listener, true);
+  const down = (event: PointerEvent): void => {
+    started = outside(event);
+  };
+  const up = (event: PointerEvent): void => {
+    if (started && outside(event)) {
+      close();
+    }
+    started = false;
+  };
+  // A pointer that the browser takes over, such as a touch that scrolls the page, is no press.
+  const cancel = (): void => {
+    started = false;
+  };
+  document.addEventListener('pointerdown', down, true);
+  document.addEventListener('pointerup', up, true);
+  document.addEventListener('pointercancel', cancel, true);
+  return () => {
+    dismissable.splice(dismissable.indexOf(layer), 1);
+    document.removeEventListener('pointerdown', down, true);
+    document.removeEventListener('pointerup', up, true);
+    document.removeEventListener('pointercancel', cancel, true);
+  };
+}
+
+/**
+ * Calls `close` when focus moves outside the layer and the trigger, as shouldCloseOnBlur of
+ * React Aria does for an overlay that is not modal. Returns the function that stops it.
+ */
+export function blurOutside(
+  layer: Element,
+  trigger: Element | null,
+  close: () => void,
+): () => void {
+  const listener = (event: FocusEvent): void => {
+    const target = event.target as Node | null;
+    if (target && !layer.contains(target) && !trigger?.contains(target)) {
+      close();
+    }
+  };
+  document.addEventListener('focusin', listener, true);
+  return () => document.removeEventListener('focusin', listener, true);
 }
 
 /** What an open overlay holds on the page, which closing gives back, by its element. */
@@ -151,7 +252,9 @@ function canFocus(element: Element | null | undefined): element is HTMLElement {
 
 /**
  * Keeps what an open overlay holds: the functions that stop what it started, and where focus
- * was before it opened.
+ * was before it opened. An overlay that shows again while it is open first gives back what it
+ * held, so the page that it made inert is not taken as the page before it opened. It keeps
+ * where focus was before the first.
  */
 export function hold(
   overlay: Element,
@@ -160,7 +263,16 @@ export function hold(
   triggerId?: string,
   fromInside = false,
 ): void {
-  held.set(overlay, { stops, returnTo, startPoint: selectionPoint(), triggerId, fromInside });
+  const before = held.get(overlay);
+  for (const stop of before?.stops ?? []) {
+    stop();
+  }
+  held.set(
+    overlay,
+    before
+      ? { ...before, stops, triggerId }
+      : { stops, returnTo, startPoint: selectionPoint(), triggerId, fromInside },
+  );
 }
 
 /**

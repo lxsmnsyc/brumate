@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let volume = $signal(40);
+  let price = $signal([200, 800]);
+</script>
+
+<div class="ui-stack">
+  <Slider class="ui-slider" value=$bind(volume)>
+    <Label>Volume</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-track">
+      <SliderThumb class="ui-thumb" />
+    </SliderTrack>
+  </Slider>
+  <Slider
+    class="ui-slider"
+    maxValue=(1000)
+    step=(50)
+    value=$bind(price)
+    formatOptions=({ style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  >
+    <Label>Price</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-track">
+      <SliderThumb class="ui-thumb" index=(0) aria-label="Minimum" />
+      <SliderThumb class="ui-thumb" index=(1) aria-label="Maximum" />
+    </SliderTrack>
+  </Slider>
+</div>
+<p>Volume {volume}, from {price[0]} to {price[1]}.</p>

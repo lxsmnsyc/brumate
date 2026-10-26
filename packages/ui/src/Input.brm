@@ -1,7 +1,7 @@
 <script>
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { InputContext } from './contexts.ts';
+  import { FieldInputContext, InputContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
   import { hover } from './hover.brm.ts';
   import { isFirstInvalid } from './fields.ts';
@@ -15,6 +15,9 @@
   const { slot, ...rest } = $props<{ slot?: string | null; [attribute: string]: unknown }>();
 
   const context = $getContext(InputContext);
+  // The attributes of a part around the field, such as an Autocomplete.
+  const outer = $getContext(FieldInputContext);
+  const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
   const invalid = $memo(attributes['aria-invalid'] === 'true' || attributes['aria-invalid'] === true);
@@ -57,6 +60,11 @@
     return { onKeyDown: $handler(keyDown) };
   }
 
+  function focus(event: FocusEvent) {
+    onFocus(event);
+    given().onFocus?.();
+  }
+
   function blur(event: FocusEvent) {
     ringBlur(event);
     given().onBlur?.();
@@ -69,14 +77,15 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(disabled || undefined)
   data-invalid=(invalid || undefined)
-  onPointerEnter=onPointerEnter
-  onPointerLeave=onPointerLeave
-  onPointerDown=onPointerDown
-  onFocus=onFocus
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  onFocus=focus
   onBlur=blur
   {...keys(enterPrevented, escapePrevented)}
   onInput=input
   onInvalid=(prevent(invalidated))
+  {...outerAttributes}
   {...attributes}
   {...rest}
 >

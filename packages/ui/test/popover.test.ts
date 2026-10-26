@@ -34,7 +34,8 @@ async function open(page: Awaited<ReturnType<typeof popovers>>) {
 it('links the trigger to the popover, and renders nothing while it is closed', async () => {
   const page = await popovers();
   const trigger = page.get('.trigger');
-  expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+  // As in React Aria, a dialog trigger is no popup button, which screen readers read as a menu.
+  expect(trigger.hasAttribute('aria-haspopup')).toBe(false);
   expect(trigger.getAttribute('aria-expanded')).toBe('false');
   expect(find('.popover')).toBeNull();
 });
@@ -77,6 +78,23 @@ it('closes on Escape and gives focus back to its trigger', async () => {
   expect(page.text('.state')).toBe('false');
 });
 
+it('stays open on an Escape that a search field inside used to clear its text', async () => {
+  const page = await popovers();
+  pressWith(page.get('.find-trigger'));
+  await page.waitFor(() => expect(find('.find-input')).not.toBeNull());
+  const input = find('.find-input') as HTMLInputElement;
+  input.value = 'dogs';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.waitFor(() => expect(input.getAttribute('b-on')).toContain('Escape'));
+  press('Escape', input);
+  await page.waitFor(() => expect(input.value).toBe(''));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.find-popover')).not.toBeNull();
+  // The field is empty, so the next Escape closes the popover.
+  press('Escape', input);
+  await page.waitFor(() => expect(find('.find-popover')).toBeNull());
+});
+
 it('closes with a Button of the close slot', async () => {
   const page = await popovers();
   await open(page);
@@ -87,14 +105,63 @@ it('closes with a Button of the close slot', async () => {
 it('closes on a press outside, and a press on its trigger toggles it once', async () => {
   const page = await popovers();
   await open(page);
+  // A press is a pointerdown and a pointerup of the first button.
   pointer('pointerdown', document.body);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.popover')).not.toBeNull();
+  pointer('pointerup', document.body);
   await page.waitFor(() => expect(find('.popover')).toBeNull());
   await open(page);
+  // Another button, and a pointer that the browser cancels, such as a touch that scrolls, close
+  // nothing.
+  pointer('pointerdown', document.body, { button: 2 });
+  pointer('pointerup', document.body, { button: 2 });
+  pointer('pointerdown', document.body, { pointerType: 'touch' });
+  pointer('pointercancel', document.body, { pointerType: 'touch' });
+  pointer('pointerup', document.body, { pointerType: 'touch' });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.popover')).not.toBeNull();
   // The trigger is not outside, so its press closes the popover and does not open it again.
   pressWith(page.get('.trigger'));
   await page.waitFor(() => expect(find('.popover')).toBeNull());
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(find('.popover')).toBeNull();
+});
+
+it('closes only the inner popover on a press on the outer one', async () => {
+  const page = await popovers();
+  await open(page);
+  pressWith(find('.inner-trigger')!);
+  await page.waitFor(() => expect(find('.inner-popover')).not.toBeNull());
+  // The outer popover is inert behind the inner one, so the browser sends the press to the body.
+  pointer('pointerdown', document.body);
+  pointer('pointerup', document.body);
+  await page.waitFor(() => expect(find('.inner-popover')).toBeNull());
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.popover')).not.toBeNull();
+});
+
+it('keeps a popover that is not modal open on a press outside, and closes it when focus leaves', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  // aria-label names the dialog in place of its Heading.
+  expect(find('.loose-dialog')!.hasAttribute('aria-labelledby')).toBe(false);
+  pointer('pointerdown', document.body);
+  pointer('pointerup', document.body);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(find('.loose-popover')).not.toBeNull();
+  page.get('.elsewhere').focus();
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('locks the scroll of the page while a modal popover is open', async () => {
+  const page = await popovers();
+  await open(page);
+  await page.waitFor(() => expect(document.documentElement.style.overflow).toBe('hidden'));
+  press('Escape', find('.dialog')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
+  expect(document.documentElement.style.overflow).toBe('');
 });
 
 it('keeps Tab inside, and prevents it before the code loads', async () => {
@@ -208,4 +275,14 @@ it('moves the start of Tab to where the selection was, when nothing had focus', 
   expect(focused).toEqual([text]);
   expect(text.hasAttribute('tabindex')).toBe(false);
   expect(document.activeElement).not.toBe(text);
+});
+
+it('closes with a Button of the close slot each time it opens', async () => {
+  const page = await popovers();
+  await open(page);
+  pressWith(find('.close')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
+  await open(page);
+  pressWith(find('.close')!);
+  await page.waitFor(() => expect(find('.popover')).toBeNull());
 });

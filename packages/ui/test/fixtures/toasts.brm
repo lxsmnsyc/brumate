@@ -13,19 +13,27 @@
     count += 1;
     toastQueue<{ title: string }>('tests').add({ title: `Saved ${count}` });
   }
+
+  // A toast with no description.
+  function addQuiet() {
+    toastQueue<{ title: string }>('tests').add({ title: 'Quiet' });
+  }
 </script>
 
 <main class="page">
   <Button class="add" onPress=add>Save</Button>
+  <Button class="add-quiet" onPress=addQuiet>Quiet</Button>
   <input class="field" aria-label="Field">
 </main>
 <ToastRegion queue="tests" class="region" toast=item transition />
 
 #template item(toast: QueuedToast<{ title: string }>) {
-  <Toast toast=toast class="toast">
+  <Toast {toast} class="toast">
     <ToastContent class="content">
       <Text slot="title" class="title">{toast.content.title}</Text>
-      <Text slot="description" class="description">The draft is safe.</Text>
+      #if (toast.content.title !== 'Quiet') {
+        <Text slot="description" class="description">The draft is safe.</Text>
+      }
     </ToastContent>
     <Button slot="close" class="close">×</Button>
   </Toast>
