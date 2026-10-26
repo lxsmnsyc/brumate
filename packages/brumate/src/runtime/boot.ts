@@ -396,11 +396,16 @@ export function boot(
       }
     };
     // The element that a `$client` callback reads through `ref`, or the one after the marker.
+    // Other markers can follow it, and a template has no box, so it is never in view.
     const near = template.getAttribute('b-near');
+    let after = template.nextElementSibling;
+    while (after?.tagName === 'TEMPLATE') {
+      after = after.nextElementSibling;
+    }
     const next =
       (near &&
         (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
-      template.nextElementSibling;
+      after;
     if (trigger === 'idle') {
       idle(go);
     } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {

@@ -1,0 +1,16 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let first = $signal(false);
+  let second = $signal(false);
+
+  // Two callbacks without ref put two markers in a row, before the first element.
+  $client(() => {
+    first = true;
+  });
+  $client(() => {
+    second = true;
+  });
+</script>
+
+<p class="status">{first ? 'first' : 'waiting'} {second ? 'second' : 'waiting'}</p>
