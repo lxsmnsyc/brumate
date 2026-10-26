@@ -348,3 +348,42 @@ export const PREFIX = 64;
  * slots, and then its item and its child components, as `flags` says.
  */
 export type PackedState = PageState & { g?: unknown[][] };
+
+/**
+ * How a field of a state record holds scope IDs:
+ * - `none`: no ID.
+ * - `id`: the value is an ID.
+ * - `ids`: an object whose values are IDs.
+ * - `value`: a value that may hold references, such as an item.
+ * - `values`: an array of such values.
+ * - `map`: an object whose values are such values.
+ */
+export type FieldKind = 'none' | 'id' | 'ids' | 'value' | 'values' | 'map';
+
+/**
+ * A table of the fields of a state record and the reference classes that hold
+ * a scope ID, which each keep it in `scope`. Code that moves the IDs reads it.
+ * A new field of `ScopeState` fails to compile until it is in `fields`, and
+ * `scope-ids.test.ts` fails for a new reference class that is not in
+ * `references`. `Binding` is not in it yet.
+ */
+export const SCOPE_IDS: {
+  fields: Record<keyof ScopeState, FieldKind>;
+  references: readonly (abstract new (...args: never[]) => { scope: ScopeId })[];
+} = {
+  fields: {
+    k: 'none',
+    p: 'id',
+    m: 'none',
+    i: 'value',
+    o: 'id',
+    t: 'id',
+    f: 'id',
+    v: 'map',
+    x: 'none',
+    s: 'values',
+    c: 'ids',
+    b: 'map',
+  },
+  references: [ElementReference, FunctionReference, ChildrenReference, SlotReference],
+};

@@ -11,19 +11,10 @@
 
 import type * as Client from './client.ts';
 import type { Scope } from './client.ts';
-import type { PageState, ScopeId, ScopeState } from './shared.ts';
+import type { FieldKind, PageState, ScopeId, ScopeState } from './shared.ts';
 
 /** The parts of the core that this module uses. */
-type Core = Pick<
-  typeof Client,
-  | 'ChildrenReference'
-  | 'ElementReference'
-  | 'FunctionReference'
-  | 'SlotReference'
-  | 'hooks'
-  | 'removeScope'
-  | 'scopes'
->;
+type Core = Pick<typeof Client, 'hooks' | 'removeScope' | 'scopeIds' | 'scopes'>;
 
 /** Reads an ID, as `parseId` in `shared.ts` does. This module imports no code of its own. */
 function readId(text: string): ScopeId {
@@ -39,30 +30,23 @@ function shiftId(id: ScopeId, by: number): ScopeId {
   return `${Number(id.slice(0, dot)) + by}${id.slice(dot)}`;
 }
 
-/** Adds a number to the scope IDs of a state record. */
-function shiftState(core: Core, state: PageState, by: number): PageState {
-  const { ChildrenReference, ElementReference, FunctionReference, SlotReference } = core;
+/** Makes an object with the same keys and the values that `map` returns. */
+function mapValues(object: object, map: (value: unknown) => unknown): object {
+  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, map(value)]));
+}
+
+/** Adds a number to the scope IDs of a state record, in the places that the table names. */
+export function shiftState(ids: Core['scopeIds'], state: PageState, by: number): PageState {
+  const { fields, references } = ids;
   const seen = new Set<object>();
-  // References to elements and client functions name the scope of their markup.
   const shiftValue = (value: unknown): unknown => {
-    if (value instanceof ElementReference) {
-      return new ElementReference(shiftId(value.scope, by), value.anchor);
-    }
-    if (value instanceof FunctionReference) {
-      return new FunctionReference(
-        value.ref,
-        shiftId(value.scope, by),
-        value.args,
-        value.modifiers,
-      );
-    }
-    // Children name the scope that wrote them, where they find their contexts.
-    if (value instanceof ChildrenReference) {
-      return new ChildrenReference(value.ref, shiftId(value.scope, by));
-    }
-    // The slot of a parent that a bound prop writes.
-    if (value instanceof SlotReference) {
-      return new SlotReference(shiftId(value.scope, by), value.slot);
+    // A reference is copied with its own fields, and its scope moved.
+    for (const type of references) {
+      if (value instanceof type) {
+        return Object.assign(Object.create(Object.getPrototypeOf(value)), value, {
+          scope: shiftId(value.scope, by),
+        });
+      }
     }
     // A later record settles it, with a value whose IDs move too.
     if (value instanceof Promise) {
@@ -82,32 +66,27 @@ function shiftState(core: Core, state: PageState, by: number): PageState {
     }
     return value;
   };
+  const shiftField = (field: unknown, kind: FieldKind): unknown => {
+    if (kind === 'id') {
+      return shiftId(field as ScopeId, by);
+    }
+    if (kind === 'ids') {
+      return mapValues(field as object, (id) => shiftId(id as ScopeId, by));
+    }
+    if (kind === 'values') {
+      return (field as unknown[]).map(shiftValue);
+    }
+    return kind === 'map' ? mapValues(field as object, shiftValue) : shiftValue(field);
+  };
   const result: PageState = {};
   for (const [key, record] of Object.entries(state)) {
-    result[shiftId(readId(key), by)] = {
-      ...record,
-      p: record.p === undefined ? undefined : shiftId(record.p, by),
-      o: record.o === undefined ? undefined : shiftId(record.o, by),
-      t: record.t === undefined ? undefined : shiftId(record.t, by),
-      f: record.f === undefined ? undefined : shiftId(record.f, by),
-      c:
-        record.c &&
-        Object.fromEntries(
-          Object.entries(record.c).map(([anchor, id]) => [anchor, shiftId(id, by)]),
-        ),
-      s: record.s?.map(shiftValue),
-      i: shiftValue(record.i),
-      v:
-        record.v &&
-        Object.fromEntries(
-          Object.entries(record.v).map(([key, value]) => [key, shiftValue(value)]),
-        ),
-      b:
-        record.b &&
-        Object.fromEntries(
-          Object.entries(record.b).map(([slot, value]) => [slot, shiftValue(value)]),
-        ),
-    };
+    const moved: Record<string, unknown> = { ...record };
+    for (const [name, kind] of Object.entries(fields)) {
+      if (moved[name] !== undefined && kind !== 'none') {
+        moved[name] = shiftField(moved[name], kind);
+      }
+    }
+    result[shiftId(readId(key), by)] = moved as ScopeState;
   }
   return result;
 }
@@ -141,7 +120,7 @@ function dropScopes(core: Core, roots: Set<ScopeId>): void {
 function routeRecord(core: Core, script: Element, state: PageState): PageState {
   // Only records with scopes hold IDs. Later records settle promises, which `shiftState` wraps.
   const offset = Number(script.getAttribute('b-offset') ?? 0);
-  const value = offset ? shiftState(core, state, offset) : state;
+  const value = offset ? shiftState(core.scopeIds, state, offset) : state;
   const drop = script.getAttribute('b-drop');
   if (drop) {
     dropScopes(core, new Set(drop.split(',').map(readId)));
@@ -185,24 +164,11 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
  * when layouts stay.
  */
 export const ready: Promise<(partial: boolean) => void> = import('./client.ts').then(
-  ({
-    ChildrenReference,
-    ElementReference,
-    FunctionReference,
-    SlotReference,
-    hooks,
-    leavePage,
-    leaveRoutes,
-    removeScope,
-    scopes,
-  }) => {
+  ({ hooks, leavePage, leaveRoutes, removeScope, scopeIds, scopes }) => {
     const core = {
-      ChildrenReference,
-      ElementReference,
-      FunctionReference,
-      SlotReference,
       hooks,
       removeScope,
+      scopeIds,
       scopes,
     };
     hooks.record = (script, state) => routeRecord(core, script, state);
