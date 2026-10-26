@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsLink from './AsLink.brm';
+  import TplDynamic from './TplDynamic.brm';
+
+  let on = $signal(false);
+  const rows = ['a', 'b'];
+</script>
+
+<TplDynamic class="plain">Plain</TplDynamic>
+<button class="on" onClick=(() => (on = true))>On</button>
+#for (row of rows by row) {
+  #if (on) {
+    #template item() {
+      <TplDynamic as=AsLink class="row">{row}</TplDynamic>
+    }
+    {item()}
+  }
+}

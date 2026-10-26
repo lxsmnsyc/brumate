@@ -2194,6 +2194,51 @@ describe('templates with components', () => {
   });
 });
 
+describe('templates inside blocks', () => {
+  /** The names of the functions that each render function of the update part declares inside it. */
+  function declared(name: string): string[][] {
+    const code = readFileSync(join(output, `${name}.brm.client.update.ts`), 'utf8');
+    const renders = code.split(/^export function /m).slice(1);
+    return renders.map((render) =>
+      [...render.matchAll(/^ {2}function (\w+)\(/gm)].map((m) => m[1]!),
+    );
+  }
+
+  it('a component used in a template that sits inside a block is imported', async () => {
+    await resume('templateNested', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.tpl')).not.toBeNull());
+    expect(declared('templateNested').flat()).toEqual(['item']);
+  });
+
+  it('a component used in a template that sits inside a block two blocks deep is imported', async () => {
+    await resume('templateNestedDeep', {});
+    click(document.querySelector('.outer')!);
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(document.querySelector('a.deep')).not.toBeNull());
+    expect(declared('templateNestedDeep').flat()).toEqual(['item']);
+  });
+
+  it('a component used in a template that sits inside a block and in another template is imported', async () => {
+    await resume('templateNestedTwice', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('b.outer a.inner').length).toBe(2));
+    expect(text('b.outer a.inner')).toBe('one');
+    expect(declared('templateNestedTwice').flat().toSorted()).toEqual(['inner', 'outer']);
+  });
+
+  it('a template that sits inside a block in a loop reads the value of the loop', async () => {
+    await resume('templateNestedLoop', {});
+    click(document.querySelector('.on')!);
+    await waitFor(() => expect(document.querySelectorAll('a.row').length).toBe(2));
+    expect([...document.querySelectorAll('a.row')].map((node) => node.textContent)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(declared('templateNestedLoop').flat()).toEqual(['item']);
+  });
+});
+
 describe('conditions that never change', () => {
   it('reads a condition of #else if that never changes, after one that does', async () => {
     await resume('elseIfPage', {});
