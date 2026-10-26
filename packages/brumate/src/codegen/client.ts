@@ -78,6 +78,8 @@ export function partOf(name: string): string {
 }
 
 // Sites whose code does not run while a body renders.
+// Sites that run only in the browser, where a component is its render function already.
+const SERVER_ONLY_SKIPPED = new Set(['server-function', 'event', 'effect', 'client']);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
 /**
@@ -227,14 +229,25 @@ class ClientGenerator {
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
       ...(tries ? [`export const t = ${tries};`] : []),
     ];
-    const clientCode = names.length > 0;
-    if (merged || !clientCode) {
+    // The state holds a component that a prop gets as its ID, so the core finds its render
+    // function in the entry of the component that sent it.
+    const values = this.valueComponents();
+    const sent = values.map((_, index) => `$$v${index}`);
+    const registered =
+      values.length > 0
+        ? [
+            ...values.map((code, index) => code.replace('$$v', () => sent[index]!)),
+            `export const components = [${sent.join(', ')}];`,
+          ]
+        : [];
+    const clientCode = names.length > 0 || values.length > 0;
+    if (merged || names.length === 0) {
       // The entry holds the code itself, so the first event loads one module. An entry
       // without `load` is its own only part.
       const code = parts.all ?? '';
       delete parts.all;
       return {
-        code: [code, ...table, ''].join('\n'),
+        code: [code, ...registered, ...table, ''].join('\n'),
         table: table.join('\n'),
         parts,
         loaders: Object.fromEntries(names.map((name) => [name, []])),
@@ -251,6 +264,7 @@ class ClientGenerator {
     }
     const entry = [
       ...names.map((name) => `export * from ${JSON.stringify(this.partPath(name))};`),
+      ...registered,
       ...table,
       '',
     ];
@@ -263,6 +277,27 @@ class ClientGenerator {
       fillOf: (block) => this.fillOf(block),
       diagnostics: this.diagnostics,
     };
+  }
+
+  /**
+   * The imports, as `import $$v from …`, of the components that markup or script reads as values,
+   * such as `as=Link`. A server render can send one in the page state, as its ID.
+   */
+  private valueComponents(): string[] {
+    const result: string[] = [];
+    for (const declaration of this.model.declarations) {
+      const imported = declaration.imported;
+      if (
+        declaration.kind !== 'import' ||
+        !imported?.source.endsWith('.brm') ||
+        !declaration.reads.some((read) => !SERVER_ONLY_SKIPPED.has(read.site.kind))
+      ) {
+        continue;
+      }
+      const name = imported.name === 'default' ? '$$v' : `{ ${imported.name} as $$v }`;
+      result.push(`import ${name} from ${JSON.stringify(`${imported.source}?brumate-render`)};`);
+    }
+    return result;
   }
 
   /** The import path of a part, relative to the component's file. */

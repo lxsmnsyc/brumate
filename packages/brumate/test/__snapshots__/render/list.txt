@@ -213,6 +213,7 @@ export default function List($$props: Record<string, never>): string | DocumentF
   $$b.fillBranch($$e[3], $$s1, 3, (show) ? 0 : -1, [$$r4]);
   return $$f;
 }
+List.brumateId = "List_12rwm68";
 
 # HTML
 <button class="add" b-b="0:0" b-on="click=List_12rwm68#h6">Add</button>

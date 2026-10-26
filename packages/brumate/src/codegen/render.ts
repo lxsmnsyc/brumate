@@ -234,6 +234,8 @@ export function generateRender(
   const generics = file.generics ? `<${file.generics}>` : '';
   // The script can import a name that is the name of the component.
   const fn = componentFunctionName(file, plan.name);
+  // A parent that sends the component as a value registers it, and the core finds it by this ID.
+  const markWithId = `${fn}.brumateId = ${JSON.stringify(plan.id)};`;
   const signature = `export default function ${fn}${generics}($$props: ${propsType(file)}): string | DocumentFragment {`;
   // A render function cannot wait, so a component whose render awaits a promise renders only
   // on the server. Its memos can await: they load in the browser.
@@ -244,7 +246,7 @@ export function generateRender(
       `throw new Error(${JSON.stringify(`${plan.name} awaits a promise in its script or markup, so only the server can render it`)});`,
     );
     emitter.close();
-    return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
+    return [...header, ...moduleBody, '', ...emitter.lines, markWithId, ''].join('\n');
   }
   // The templates of the module, for the markup and the children that clone.
   const constants = new Map<string, string>();
@@ -293,5 +295,5 @@ export function generateRender(
   moduleBody.push(...templates);
   const { emitter } = emitted;
 
-  return [...header, ...moduleBody, '', ...emitter.lines, ''].join('\n');
+  return [...header, ...moduleBody, '', ...emitter.lines, markWithId, ''].join('\n');
 }

@@ -1,0 +1,6 @@
+<script>
+  import AsLink from './AsLink.brm';
+  import LateEach from './LateEach.brm';
+</script>
+
+<LateEach as=AsLink />

@@ -91,6 +91,7 @@ export default function Doubler($$props: Record<string, never>): string | Docume
   $$b.fillBranch($$e[2], $$s1, 2, (false) ? 0 : -1, [$$r2]);
   return $$f;
 }
+Doubler.brumateId = "Doubler_1bxsryb";
 
 # HTML
 <button b-b="0:0" b-on="click=Doubler_1bxsryb#h2">1</button>

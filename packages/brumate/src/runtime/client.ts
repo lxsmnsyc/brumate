@@ -42,7 +42,7 @@ import {
   parseId,
   stateValues,
 } from './shared.ts';
-import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
+import type { ComponentValue, PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
 import { ROUTE_KEY } from './context.ts';
 export { navigationContext, routeContext } from './context.ts';
 import type { Context as ContextValue, Route } from './context.ts';
@@ -78,6 +78,11 @@ export interface ClientModule {
    * itself, as a small component's module does.
    */
   load?: (part: string) => Promise<Part>;
+  /**
+   * The render functions of components that this component sends as values, such as in a
+   * prop. The state holds only their IDs, so `dynamic` finds them here.
+   */
+  components?: (Component & { brumateId: string })[];
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
   /**
@@ -268,6 +273,7 @@ function devtools(): DevtoolsHooks | undefined {
 }
 const modules = new Map<string, ClientModule>();
 const loading = new Map<string, Promise<ClientModule>>();
+const valueRenders: Record<string, Component> = {};
 const parts = new Map<string, Promise<Part>>();
 const loadedParts = new Map<string, Part>();
 const comments = new Map<string, Comment>();
@@ -851,6 +857,9 @@ export function loadModule(id: string): Promise<ClientModule> {
     promise = Promise.resolve(options.load(id)).then((loaded) => {
       const module = loaded ?? { id, props: {}, g: {} };
       modules.set(id, module);
+      for (const render of module.components ?? []) {
+        valueRenders[render.brumateId] = render;
+      }
       return module;
     });
     loading.set(id, promise);
@@ -4401,7 +4410,7 @@ export function dynamicNodes(
       attributes = { ...attributes, ref };
     }
     return componentNodes(
-      tag as Component,
+      valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
       inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,
@@ -4455,7 +4464,7 @@ export function dynamic(
       attributes = { ...attributes, ref };
     }
     return component(
-      tag as Component,
+      valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
       inner ? { ...attributes, children: inner } : attributes,
       undefined,
       scope,

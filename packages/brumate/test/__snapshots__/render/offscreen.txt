@@ -392,6 +392,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
   $$b.setSlots($$s1, [tab, count, inner, exists, look]);
   return $$html;
 }
+Offscreen.brumateId = "Offscreen_1oupne3";
 
 # HTML
 <style b-style="Offscreen_1oupne3">.flex[b-c-1oupne3] {

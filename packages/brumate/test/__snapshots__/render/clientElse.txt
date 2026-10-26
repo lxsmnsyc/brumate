@@ -76,6 +76,7 @@ export default function ClientElse($$props: Record<string, never>): string | Doc
   $$b.setSlots($$s1, [count]);
   return $$html;
 }
+ClientElse.brumateId = "ClientElse_1w4g5uu";
 
 # HTML
 <button class="outer" b-b="0:0" b-on="click=ClientElse_1w4g5uu#h1">0</button>

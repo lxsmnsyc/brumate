@@ -42,6 +42,7 @@ export default function Themed($$props: Record<string, never>): string | Documen
   $$b.setSlots($$s1, [theme]);
   return $$f;
 }
+Themed.brumateId = "Themed_qy9qd3";
 
 # HTML
 <span class="themed" b-b="0:0">light</span>

@@ -299,6 +299,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$b.setSlots($$s1, [tab, list, input]);
   return $$html;
 }
+Blocks.brumateId = "Blocks_jlmev2";
 
 # HTML
 <template b-b="0:0" b-client="idle=Blocks_jlmev2#c4">

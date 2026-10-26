@@ -90,6 +90,7 @@ export default function Deferred($$props: Record<string, never>): string | Docum
   $$b.setSlots($$s1, [count]);
   return $$f;
 }
+Deferred.brumateId = "Deferred_1mbnfwf";
 
 # HTML
 <button class="count" b-b="0:0" b-on="click=Deferred_1mbnfwf#h1">1</button>

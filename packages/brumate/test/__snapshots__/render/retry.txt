@@ -117,6 +117,7 @@ export default function Retry($$props: Record<string, never>): string | Document
   $$html += "<!--/b-->";
   return $$html;
 }
+Retry.brumateId = "Retry_pyus3c";
 
 # HTML
 <!--b0:0-->

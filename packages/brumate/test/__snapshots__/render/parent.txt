@@ -76,6 +76,7 @@ export default function Parent($$props: Record<string, never>): string | Documen
   $$b.setSlots($$s1, [count, label]);
   return $$f;
 }
+Parent.brumateId = "Parent_4bs4t8";
 
 # HTML
 <button b-b="1:0" b-on="click=Child_108vasc#h0">1</button>

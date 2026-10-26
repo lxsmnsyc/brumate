@@ -170,6 +170,7 @@ export default function Todos($$props: { initial: Todo[] }): string | DocumentFr
   $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( todos )), $$r2);
   return $$f;
 }
+Todos.brumateId = "Todos_t3g9lr";
 
 # HTML
 <h1>Todos</h1>

@@ -2194,6 +2194,27 @@ describe('templates with components', () => {
   });
 });
 
+describe('a component in a prop', () => {
+  it('renders in a block that the browser renders later', async () => {
+    await resume('lateAsPage', {});
+    expect(document.querySelector('.late')).toBeNull();
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders in a new item of a list', async () => {
+    await resume('lateEachPage', {});
+    expect(document.querySelector('.item')).toBeNull();
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelector('a.item')).not.toBeNull());
+    expect(text('a.item')).toBe('Item 1');
+    click(document.querySelector('a.item')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+});
+
 describe('conditions that never change', () => {
   it('reads a condition of #else if that never changes, after one that does', async () => {
     await resume('elseIfPage', {});

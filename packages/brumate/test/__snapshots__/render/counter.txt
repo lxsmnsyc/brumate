@@ -58,6 +58,7 @@ export default function Counter($$props: Record<string, never>): string | Docume
   $$b.setSlots($$s1, [count, double]);
   return $$f;
 }
+Counter.brumateId = "Counter_m86gta";
 
 # HTML
 <h1>Clicks</h1>
