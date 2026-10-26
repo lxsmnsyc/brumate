@@ -5,7 +5,8 @@ import type { Emitter, Level, Part } from './markup.ts';
 
 /** What a render writes on an element of its clone. */
 export type Write =
-  | { kind: 'anchor'; scope: string; anchor: number }
+  /** `named`: an element inside it has handlers and no anchor, and finds the scope from it. */
+  | { kind: 'anchor'; scope: string; anchor: number; named?: boolean }
   | { kind: 'attribute'; name: string; value: string }
   | { kind: 'content'; value: string; at?: string }
   /** A text insert, whose place in the clone a marked comment holds. */
@@ -112,6 +113,12 @@ class Reader {
   raw = false;
   /** The elements that are open, innermost last. */
   readonly open: number[] = [];
+  /** The element around each element, by their numbers. */
+  readonly parents = new Map<number, number | undefined>();
+  /** The elements whose start tags have a `b-on`. */
+  readonly handled = new Set<number>();
+  /** The name of the attribute that the start tag is in. */
+  private attribute = '';
   /** Where the start tag of each element can take another attribute, by its number. */
   private readonly ends = new Map<number, number>();
   private state: 'text' | 'open' | 'name' | 'tag' | 'quote' | 'close' | 'comment' = 'text';
@@ -142,6 +149,8 @@ class Reader {
             this.nameEnd = at + 1;
             this.raw = false;
             this.element++;
+            this.parents.set(this.element, this.open.at(-1));
+            this.attribute = '';
             this.inTag = true;
             this.justOpened = false;
           } else if (char === '/') {
@@ -190,7 +199,18 @@ class Reader {
     if (char === '"' || char === "'") {
       this.quote = char;
       this.state = 'quote';
-    } else if (char === '>') {
+      this.attribute = '';
+    } else if (char === '=') {
+      if (this.attribute === 'b-on') {
+        this.handled.add(this.element);
+      }
+      this.attribute = '';
+    } else if (/[\s/]/.test(char)) {
+      this.attribute = '';
+    } else if (char !== '>') {
+      this.attribute += char;
+    }
+    if (char === '>') {
       this.state = 'text';
       this.inTag = false;
       this.justOpened = true;
@@ -260,6 +280,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     if (spread && reader.inTag) {
       const helper = spread[1] === 'spread' ? 'setSpread' : 'setOn';
       add({ kind: 'call', call: `$$b.${helper}($$m, ${spread[2]})` });
+      reader.handled.add(reader.element);
       continue;
     }
     const insert = INSERT.exec(code);
@@ -462,6 +483,24 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
     return undefined;
   }
+  // An element with handlers and no anchor finds its scope with `closest`, from the anchor of an
+  // element around it. The clone writes `b-b` only where it is asked to.
+  const anchorOf = (element: number) =>
+    writes[marks.get(element) ?? -1]?.find((write) => write.kind === 'anchor');
+  for (const element of reader.handled) {
+    if (anchorOf(element)) {
+      continue;
+    }
+    for (let around = reader.parents.get(element); around !== undefined; ) {
+      const anchor = anchorOf(around);
+      if (anchor?.kind === 'anchor') {
+        // An element at the top of the clone gets its `b-b` anyway.
+        anchor.named = reader.parents.get(around) !== undefined || undefined;
+        break;
+      }
+      around = reader.parents.get(around);
+    }
+  }
   return { html: reader.html, writes };
 }
 
@@ -551,7 +590,9 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
     ];
     for (const write of ordered) {
       if (write.kind === 'anchor') {
-        lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
+        lines.push(
+          `${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]${write.named ? ', true' : ''});`,
+        );
       } else if (write.kind === 'last') {
         lines.push(
           `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,

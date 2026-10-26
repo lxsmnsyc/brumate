@@ -2356,6 +2356,20 @@ describe('cloned markup', () => {
   });
 });
 
+describe('cloned handlers', () => {
+  it('find their scope from an element around them that has an anchor', async () => {
+    await resume('clonedHandlers', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('section.on')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('2'));
+  });
+});
+
 describe('templates called again', () => {
   it('update in place with their new arguments, and keep their elements', async () => {
     await resume('templateInPlace', {});

@@ -3585,12 +3585,13 @@ export function clone(source: Template): ClonedNode[] {
  * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to
  * find the scope.
  */
-export function keep(scope: ScopeId, anchor: number, element: Element): void {
+export function keep(scope: ScopeId, anchor: number, element: Element, named?: boolean): void {
   const found = scopes.get(scope);
   if (found) {
     (found.n ??= [])[anchor] = element;
   }
-  if (element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+  // `named`: elements inside it have handlers and find their scope from it with `closest`.
+  if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
   }
 }

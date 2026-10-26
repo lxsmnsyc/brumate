@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let hits = $signal(0);
+  let on = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+<button class="toggle" onClick=(() => (on = !on))>Toggle</button>
+<output class="hits">{hits}</output>
+#if (open) {
+  <div>
+    <section class=(on ? 'on' : 'off')>
+      <button class="go" onClick=(() => (hits += 1))>Go</button>
+    </section>
+  </div>
+}
