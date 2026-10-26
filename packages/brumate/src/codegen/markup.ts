@@ -1224,9 +1224,16 @@ export class Emitter {
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
     }
+    const anchor = this.anchor(scope, node);
+    // With a spread, the anchor comes first: a spread can bring the anchor of a dynamic tag, and
+    // the browser keeps the first `b-b`, so the element's own must win.
+    if (anchor && spreadHandlers) {
+      this.html(' b-b="');
+      this.code(anchor.scope);
+      this.html(`:${anchor.index}"`);
+    }
     const variables = this.emitVariables(node);
     const events: string[] = [];
-    const anchor = this.anchor(scope, node);
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
     const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
@@ -1315,7 +1322,7 @@ export class Emitter {
         `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
       );
     }
-    if (anchor) {
+    if (anchor && !spreadHandlers) {
       this.html(' b-b="');
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
