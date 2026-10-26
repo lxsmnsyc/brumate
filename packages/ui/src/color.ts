@@ -607,23 +607,27 @@ export function areaGradient(
 
 /**
  * The space and the two channels of an area, as React Aria picks them. Without a space, it is the
- * first of hsb, hsl and rgb that has the channels given, or hsb. A channel that is not given is
- * one of the others, so hsb gives saturation on x and brightness on y.
+ * space of the value when that has the channels given, else the first of hsb, hsl and rgb that
+ * has them. A channel that is not given is the first channel of the space that the other is not,
+ * so hsb gives hue on x and saturation on y, and rgb gives red and green. The value is white
+ * when the area has none, which is rgb.
  */
 export function areaChannels(
   xChannel?: ColorChannel,
   yChannel?: ColorChannel,
   colorSpace?: ColorSpace,
+  valueSpace: ColorSpace = 'rgb',
 ): { space: ColorSpace; x: ColorChannel; y: ColorChannel } {
   const given = [xChannel, yChannel].filter(Boolean) as ColorChannel[];
+  const has = (candidate: ColorSpace) =>
+    given.every((channel) => SPACE_CHANNELS[candidate].includes(channel));
   const space =
     colorSpace ??
-    (['hsb', 'hsl', 'rgb'] as const).find((candidate) =>
-      given.every((channel) => SPACE_CHANNELS[candidate].includes(channel)),
-    ) ??
-    'hsb';
+    (has(valueSpace) ? valueSpace : undefined) ??
+    (['hsb', 'hsl', 'rgb'] as const).find(has) ??
+    valueSpace;
   const channels = SPACE_CHANNELS[space];
-  const x = xChannel ?? (yChannel === channels[1] ? channels[2] : channels[1]);
-  const y = yChannel ?? (x === channels[2] ? channels[1] : channels[2]);
+  const x = xChannel ?? channels.find((channel) => channel !== yChannel)!;
+  const y = yChannel ?? channels.find((channel) => channel !== x)!;
   return { space, x, y };
 }

@@ -288,29 +288,39 @@ describe('channelGradient', () => {
   });
 
   describe('areaChannels', () => {
-    it('is saturation and brightness in hsb without channels', () => {
-      expect(areaChannels()).toEqual({ space: 'hsb', x: 'saturation', y: 'brightness' });
+    it('is the first two channels of the space without channels', () => {
+      expect(areaChannels(undefined, undefined, 'hsb')).toEqual({
+        space: 'hsb',
+        x: 'hue',
+        y: 'saturation',
+      });
       expect(areaChannels(undefined, undefined, 'hsl')).toEqual({
         space: 'hsl',
-        x: 'saturation',
-        y: 'lightness',
+        x: 'hue',
+        y: 'saturation',
       });
       expect(areaChannels(undefined, undefined, 'rgb')).toEqual({
         space: 'rgb',
-        x: 'green',
-        y: 'blue',
+        x: 'red',
+        y: 'green',
       });
+      // The space of the value is the default, and rgb is the space of white.
+      expect(areaChannels(undefined, undefined, undefined, 'hsl').space).toBe('hsl');
+      expect(areaChannels()).toEqual({ space: 'rgb', x: 'red', y: 'green' });
     });
 
     it('finds the space of the channels, and fills in the one that is missing', () => {
       expect(areaChannels('red', 'green').space).toBe('rgb');
       expect(areaChannels('saturation', 'lightness').space).toBe('hsl');
       expect(areaChannels('hue', 'brightness').space).toBe('hsb');
-      expect(areaChannels('brightness')).toMatchObject({ x: 'brightness', y: 'saturation' });
-      expect(areaChannels(undefined, 'saturation')).toMatchObject({
-        x: 'brightness',
-        y: 'saturation',
+      expect(areaChannels('brightness')).toMatchObject({ x: 'brightness', y: 'hue' });
+      expect(areaChannels(undefined, 'hue', undefined, 'hsb')).toMatchObject({
+        x: 'saturation',
+        y: 'hue',
       });
+      // The space of the value wins when it has the channels, and else the first that does.
+      expect(areaChannels('hue', 'saturation', undefined, 'hsl').space).toBe('hsl');
+      expect(areaChannels('hue', 'saturation', undefined, 'rgb').space).toBe('hsb');
     });
   });
 });

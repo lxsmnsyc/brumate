@@ -42,7 +42,9 @@
    *   the hue of a gray, so the thumb of a hue keeps where the user put it, and `value` and
    *   `onChange` are left alone while the edit makes no other color. When `value` changes from
    *   outside, such as from a reset of the form, the color follows it.
-   * - The range, the step and the page of PageUp and PageDown are those of the channel.
+   * - The range, the step and the page of PageUp and PageDown are those of the channel. The arrows
+   *   move a step, and a page with Shift. Home and End go to the ends. Right to left, Left raises
+   *   the value. Up raises it and Down lowers it, also on a horizontal slider.
    * - The element has `--track-background`, the gradient of the channel, for the style of the
    *   SliderTrack: `background: var(--track-background)`. The ColorThumb has `--color`.
    * - It is a group that the Label names. Without a Label, the name of the channel names it.
@@ -130,11 +132,10 @@
     ),
   );
   const label = $memo(formatChannelValue(color, channel, locale.locale));
-  // Screen readers get the value and what color it makes, as in React Aria.
+  // Screen readers get the value and what color it makes, as in React Aria. The color is named
+  // without its alpha, so that it does not say `50% transparent`.
   const valueText = $memo(
-    channel === 'alpha'
-      ? label
-      : `${label}, ${colorName(channel === 'hue' ? displayColor(color, channel) : color)}`,
+    channel === 'alpha' ? label : `${label}, ${colorName(displayColor(color, channel))}`,
   );
   const percent = $memo(
     ((current - range.minValue) / (range.maxValue - range.minValue)) * 100,
@@ -193,8 +194,38 @@
     setThumb(0, next);
   }
 
-  function inputPage(_index: number, direction: 1 | -1) {
-    setThumb(0, current + direction * range.pageSize);
+  // The arrows move a step, or a page with Shift. Right to left, Left raises the value, and Right
+  // lowers it. Up raises it and Down lowers it. PageUp and PageDown move a page, and Home and End
+  // go to the ends, as in React Aria.
+  function inputKey(_index: number, key: string, shiftKey: boolean) {
+    const size = shiftKey ? range.pageSize : range.step;
+    const sign = rtl ? -1 : 1;
+    switch (key) {
+      case 'ArrowRight':
+        setThumb(0, current + sign * size);
+        break;
+      case 'ArrowLeft':
+        setThumb(0, current - sign * size);
+        break;
+      case 'ArrowUp':
+        setThumb(0, current + size);
+        break;
+      case 'ArrowDown':
+        setThumb(0, current - size);
+        break;
+      case 'PageUp':
+        setThumb(0, current + range.pageSize);
+        break;
+      case 'PageDown':
+        setThumb(0, current - range.pageSize);
+        break;
+      case 'Home':
+        setThumb(0, range.minValue);
+        break;
+      case 'End':
+        setThumb(0, range.maxValue);
+        break;
+    }
   }
 
   function focusChange(isFocused: boolean, isFocusVisible: boolean) {
@@ -259,7 +290,7 @@
     isFocusVisible: focusVisible,
     isDisabled,
     onInputChange: inputChange,
-    onInputPage: inputPage,
+    onInputKey: inputKey,
     onPress: press,
     onFocusChange: focusChange,
     onChangeEnd: end,

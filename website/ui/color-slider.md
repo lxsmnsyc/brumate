@@ -29,9 +29,10 @@ A slider for one channel of a color.
 
 ## Channel
 
+- The arrows move a step, and a page with Shift, as in React Aria. Up raises the value and Down lowers it. Left and Right do the same on a slider of either orientation, and right to left they are mirrored. Home and End go to the ends. A key with Ctrl, Meta or Alt moves nothing.
 - The range, the step and the page of PageUp and PageDown are those of the channel: hue goes to 360 in steps of 1 and pages of 15, and alpha goes to 1 in steps of 0.01 and pages of 0.1.
 - The SliderOutput shows the channel in the format of the locale, such as `210°`, `50%` or `128`. Alpha shows as a percent.
-- A screen reader hears the value and a name of the color it makes, such as `210°, blue`.
+- A screen reader hears the value and a name of the color it makes, such as `210°, blue`. The color is named without its alpha.
 
 ## Track
 
@@ -46,7 +47,8 @@ A ColorThumb has no page of its own, since it works only inside a ColorSlider, a
 
 - It has `--color`, the color it shows, and a background of that color over a checkerboard. On a ColorSlider, a hue shows at full saturation, and a channel shows without its alpha.
 - It is placed in the middle of its position on the parent with `position: absolute`. Give it a size, and a border if you like.
-- It holds a hidden `<input type="range">` for each axis it moves, one for a slider and two for an area. A screen reader reads them, and the keys move them.
+- It holds a hidden `<input type="range">` for each axis it moves, one for a slider and two for an area. A screen reader reads them, and the keys move them: the part takes all the keys of the input.
+- A press with Alt, Ctrl or Meta does not start a drag.
 - A drag moves it from where the pointer took it, so it does not jump to the pointer.
 - It shows `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
 
@@ -56,8 +58,7 @@ A part that has a thumb of color provides a `ColorThumbState` in `ColorThumbCont
 
 - `color` is the color to show, as a color of CSS.
 - `left` and `top` are the position of the center of the thumb, in percents of its parent. The part computes them, and flips them for a track that grows upward or right to left.
-- `inputs` lists the hidden inputs as data: `id`, `name`, `min`, `max`, `step`, `value`, `valueText`, `label`, `labelledBy` and `orientation`.
+- `inputs` lists the hidden inputs as data: `id`, `name`, `min`, `max`, `step`, `value`, `valueText`, `label`, `labelledBy`, `orientation`, `roleDescription`, `tabIndex` and `hidden`.
 - `isDragging`, `isFocused`, `isFocusVisible` and `isDisabled` are the states.
-- `onInputChange(index, value)` and `onInputPage(index, direction)` get what the user does to an input. `onPress(event)` gets the press on the thumb, to start a drag. `onFocusChange(focused, focusVisible)` and `onChangeEnd()` follow the focus and the end of a change.
-- An input with `keys: true` gets all its keys: the arrows, PageUp, PageDown, Home and End go to `onInputKey(index, key, shiftKey)`, and the range input does not move. A [ColorArea](./color-area.md) needs it, since Up on the input of x moves y.
+- `onInputChange(index, value)` gets a value that a screen reader sets on an input. `onInputKey(index, key, shiftKey)` gets the arrows, PageUp, PageDown, Home and End, and the range input does not move by itself. A [ColorArea](./color-area.md) needs it, since Up on the input of x moves y. `onPress(event)` gets the press on the thumb, to start a drag. `onFocusChange(focused, focusVisible, index)` and `onChangeEnd()` follow the focus and the end of a change.
 - The functions are declared in the part and not inside the lists, since the state of the page can hold a function only where the compiler can name it.

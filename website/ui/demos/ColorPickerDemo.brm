@@ -15,7 +15,7 @@
 
 <ColorPicker value=$bind(color)>
   <div class="ui-stack">
-    <ColorArea class="ui-color-area" aria-label="Saturation and brightness">
+    <ColorArea class="ui-color-area" xChannel="saturation" yChannel="brightness" aria-label="Saturation and brightness">
       <ColorThumb class="ui-color-thumb" />
     </ColorArea>
     <ColorSlider class="ui-color-slider" channel="hue">

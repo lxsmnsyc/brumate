@@ -6,7 +6,7 @@
   let color = $signal('hsb(210, 80%, 90%)');
 </script>
 
-<ColorArea class="ui-color-area" value=$bind(color) aria-label="Saturation and brightness">
+<ColorArea class="ui-color-area" xChannel="saturation" yChannel="brightness" value=$bind(color) aria-label="Saturation and brightness">
   <ColorThumb class="ui-color-thumb" />
 </ColorArea>
 <p>The color is {color}.</p>

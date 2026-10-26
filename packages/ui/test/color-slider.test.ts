@@ -191,7 +191,6 @@ it('moves a step with the arrows, a page with Shift, and to the ends with Home a
   await page.waitFor(() => expect(state(page)[1]).toBe('#356699'));
   press('ArrowLeft', input);
   press('ArrowDown', input);
-  press('ArrowDown', input);
   await page.waitFor(() => expect(state(page)[1]).toBe('#336699'));
   // Shift moves a page, as in React Aria.
   press('ArrowRight', input, { shiftKey: true });

@@ -1523,6 +1523,9 @@ export async function run({ browser, url, runner }) {
     await waitState('hsl(211, 100%, 50%)');
     await page.keyboard.press('PageDown');
     await waitState('hsl(196, 100%, 50%)');
+    // Shift with an arrow moves a page, as in React Aria.
+    await page.keyboard.press('Shift+ArrowLeft');
+    await waitState('hsl(181, 100%, 50%)');
     await page.keyboard.press('End');
     await waitState('hsl(360, 100%, 50%)');
     // A press at half of the track is 180 degrees.
@@ -1560,12 +1563,20 @@ export async function run({ browser, url, runner }) {
     );
     const inputs = page.locator('.plane-thumb input');
     assert((await inputs.count()) === 2, 'an input for each axis');
+    // One tab stop: the input of y is out of the tab order and hidden from screen readers.
+    assert((await inputs.nth(1).getAttribute('tabindex')) === '-1', 'y is out of the tab order');
+    assert((await inputs.nth(1).getAttribute('aria-hidden')) === 'true', 'y is hidden');
+    assert((await inputs.first().getAttribute('aria-hidden')) === null, 'x is not hidden');
     await inputs.first().focus();
     await page.keyboard.press('ArrowRight');
     await waitState('hsb(210, 51%, 80%)');
-    // Up on the input of x moves y.
+    // Up on the input of x moves y, and the focus follows it.
     await page.keyboard.press('ArrowUp');
     await waitState('hsb(210, 51%, 81%)');
+    assert(
+      await inputs.nth(1).evaluate((input) => document.activeElement === input),
+      'the focus follows y',
+    );
     await page.keyboard.press('PageDown');
     await waitState('hsb(210, 51%, 71%)');
     await page.keyboard.press('Shift+ArrowRight');

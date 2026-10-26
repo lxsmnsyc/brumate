@@ -12,7 +12,9 @@
    * - It is placed at the position that its parent gives, and has `--color` and a background of
    *   the color over a checkerboard, so its alpha shows.
    * - It holds the hidden range inputs that its parent gives, one or two, for screen readers and
-   *   keys, and for a form with `name`, also before the code loads.
+   *   keys, and for a form with `name`, also before the code loads. The part takes all their keys:
+   *   the arrows, PageUp, PageDown, Home and End.
+   * - A press with Alt, Ctrl or Meta does not start a drag.
    * - A drag takes the thumb from where the pointer was, so it does not jump to the pointer.
    * - It shows `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
    */
@@ -32,19 +34,8 @@
     thumb.onInputChange(index, Number((event.currentTarget as HTMLInputElement).value));
   }
 
-  // PageUp and PageDown move by a page, which the range input does not know.
-  function keyDown(event: KeyboardEvent, index: number) {
-    if (!thumb || thumb.isDisabled) {
-      return;
-    }
-    if (event.key !== 'PageUp' && event.key !== 'PageDown') {
-      return;
-    }
-    thumb.onInputPage(index, event.key === 'PageUp' ? 1 : -1);
-    thumb.onChangeEnd();
-  }
-
-  // An input that has `keys` gets all its keys, which the part turns into moves.
+  // The input gets all its keys, which the part turns into moves. A key with a modifier is left
+  // to the browser.
   function keyAll(event: KeyboardEvent, index: number) {
     if (
       !thumb ||
@@ -60,18 +51,36 @@
     thumb.onChangeEnd();
   }
 
+  // A press with Alt, Ctrl or Meta moves nothing, as in React Aria.
   function pressed(event: PointerEvent) {
-    if (thumb && !thumb.isDisabled && event.button === 0) {
+    if (
+      thumb &&
+      !thumb.isDisabled &&
+      event.button === 0 &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
       thumb.onPress(event);
     }
   }
 
   function focusIn(event: FocusEvent) {
-    thumb?.onFocusChange(true, (event.target as Element).matches?.(':focus-visible') ?? false);
+    const target = event.target as Element;
+    thumb?.onFocusChange(
+      true,
+      target.matches?.(':focus-visible') ?? false,
+      (thumb.inputs ?? []).findIndex((item) => item.id === target.id),
+    );
   }
 
-  function focusOut() {
-    thumb?.onFocusChange(false, false);
+  // The focus that moves from one input of the thumb to the other is not leaving it.
+  function focusOut(event: FocusEvent) {
+    const next = event.relatedTarget as Node | null;
+    if (next && (event.currentTarget as Element).contains(next)) {
+      return;
+    }
+    thumb?.onFocusChange(false, false, -1);
   }
 </script>
 
@@ -90,49 +99,28 @@
 >
   {children}
   #for (item, index of (thumb?.inputs ?? []) by item.id) {
-    #if (item.keys) {
-      <input
-        id=(item.id)
-        type="range"
-        name=(item.name)
-        min=(item.min)
-        max=(item.max)
-        step=(item.step)
-        value=(String(item.value))
-        disabled=(thumb?.isDisabled || undefined)
-        dir=(thumb?.direction)
-        aria-label=(item.label)
-        aria-labelledby=(item.labelledBy)
-        aria-orientation=(item.orientation ?? 'horizontal')
-        aria-roledescription=(item.roleDescription)
-        aria-valuetext=(item.valueText)
-        class="input"
-        onInput=((event: Event) => input(event, index))
-        onChange=(() => thumb?.onChangeEnd())
-        onKeyDown=(prevent((event: KeyboardEvent) => keyAll(event, index), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'))
-      >
-    } #else {
-      <input
-        id=(item.id)
-        type="range"
-        name=(item.name)
-        min=(item.min)
-        max=(item.max)
-        step=(item.step)
-        value=(String(item.value))
-        disabled=(thumb?.isDisabled || undefined)
-        dir=(thumb?.direction)
-        aria-label=(item.label)
-        aria-labelledby=(item.labelledBy)
-        aria-orientation=(item.orientation ?? 'horizontal')
-        aria-roledescription=(item.roleDescription)
-        aria-valuetext=(item.valueText)
-        class="input"
-        onInput=((event: Event) => input(event, index))
-        onChange=(() => thumb?.onChangeEnd())
-        onKeyDown=(prevent((event: KeyboardEvent) => keyDown(event, index), 'PageUp', 'PageDown'))
-      >
-    }
+    <input
+      id=(item.id)
+      type="range"
+      name=(item.name)
+      min=(item.min)
+      max=(item.max)
+      step=(item.step)
+      value=(String(item.value))
+      disabled=(thumb?.isDisabled || undefined)
+      dir=(thumb?.direction)
+      tabindex=(item.tabIndex)
+      aria-hidden=(item.hidden ? 'true' : undefined)
+      aria-label=(item.label)
+      aria-labelledby=(item.labelledBy)
+      aria-orientation=(item.orientation ?? 'horizontal')
+      aria-roledescription=(item.roleDescription)
+      aria-valuetext=(item.valueText)
+      class="input"
+      onInput=((event: Event) => input(event, index))
+      onChange=(() => thumb?.onChangeEnd())
+      onKeyDown=(prevent((event: KeyboardEvent) => keyAll(event, index), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'))
+    >
   }
 </div>
 

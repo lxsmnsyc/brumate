@@ -722,7 +722,7 @@
 <section aria-labelledby="color-picker">
   <h2 id="color-picker">ColorPicker</h2>
   <ColorPicker value=$bind(mix)>
-    <ColorArea class="mix-area" style="width: 200px; height: 100px; background: var(--area-background)">
+    <ColorArea class="mix-area" xChannel="saturation" yChannel="brightness" style="width: 200px; height: 100px; background: var(--area-background)">
       <ColorThumb style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
     </ColorArea>
     <ColorField class="mix-field">
@@ -778,7 +778,7 @@
 
 <section aria-labelledby="color-area">
   <h2 id="color-area">ColorArea</h2>
-  <ColorArea class="plane" value=$bind(plane) style="width: 200px; height: 100px; background: var(--area-background)">
+  <ColorArea class="plane" xChannel="saturation" yChannel="brightness" value=$bind(plane) style="width: 200px; height: 100px; background: var(--area-background)">
     <ColorThumb class="plane-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
   </ColorArea>
   <p class="plane-state">{plane}</p>

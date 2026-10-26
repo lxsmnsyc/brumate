@@ -178,15 +178,6 @@
     setHue(next);
   }
 
-  // PageUp and PageDown start and end a drag in React Aria, so each one ends a change.
-  function inputPage(_index: number, direction: 1 | -1) {
-    setHue(
-      direction === 1
-        ? hueUp(hue, range.pageSize, range.step)
-        : hueDown(hue, range.pageSize, range.step),
-    );
-  }
-
   function focusInput() {
     document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
   }
@@ -283,7 +274,6 @@
         valueText,
         label: ariaLabel ?? (ariaLabelledby ? undefined : channelName('hue')),
         labelledBy: ariaLabelledby,
-        keys: true,
       },
     ],
     isDragging: dragging,
@@ -291,7 +281,6 @@
     isFocusVisible: focusVisible,
     isDisabled,
     onInputChange: inputChange,
-    onInputPage: inputPage,
     onInputKey: inputKey,
     onPress: press,
     onFocusChange: focusChange,

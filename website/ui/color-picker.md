@@ -8,7 +8,7 @@ Holds one color for the color parts inside it.
 
 ```html
 <ColorPicker value=$bind(color)>
-  <ColorArea><ColorThumb /></ColorArea>
+  <ColorArea xChannel="saturation" yChannel="brightness"><ColorThumb /></ColorArea>
   <ColorField><Input /></ColorField>
   <ColorSwatch />
 </ColorPicker>

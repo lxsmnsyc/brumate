@@ -15,9 +15,9 @@ import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 
 /**
- * A hidden `<input type="range">` of a thumb. It gives a screen reader the value, and the keys
- * their steps. A slider or a wheel gives the thumb one, and an area gives it two: x, then y. It
- * holds data only: what the user does to it goes to `onInputChange` and `onInputPage` of the
+ * A hidden `<input type="range">` of a thumb. It gives a screen reader the value, and the part
+ * the keys. A slider or a wheel gives the thumb one, and an area gives it two: x, then y. It
+ * holds data only: what the user does to it goes to `onInputChange` and `onInputKey` of the
  * state, with its index, since page state can hold a function there but not inside a list.
  */
 export interface ColorThumbInput {
@@ -36,12 +36,10 @@ export interface ColorThumbInput {
   /** The IDs of the elements that name it, for `aria-labelledby`. It wins over `label`. */
   labelledBy?: string;
   orientation?: 'horizontal' | 'vertical';
-  /**
-   * The part takes all the keys of this input: the arrows, PageUp, PageDown, Home and End go to
-   * `onInputKey`, and the range input does not move. An area needs it, since Up on the input of
-   * x moves y. Without it, the arrows and Home and End move the input as a range input does.
-   */
-  keys?: boolean;
+  /** `tabindex` of the input. An area takes its second input out of the tab order with `-1`. */
+  tabIndex?: number;
+  /** The input is hidden from screen readers, with `aria-hidden`. */
+  hidden?: boolean;
   /** The role description of the input, such as `2D slider` for an area. */
   roleDescription?: string;
 }
@@ -72,21 +70,24 @@ export interface ColorThumbState {
    * in `inputs`. Not called while the thumb is disabled.
    */
   onInputChange: (index: number, value: number) => void;
-  /** PageUp (`1`) or PageDown (`-1`) was pressed on an input. The range input has no page. */
-  onInputPage: (index: number, direction: 1 | -1) => void;
   /**
-   * A key was pressed on an input that has `keys`: `key` is an arrow, `PageUp`, `PageDown`, `Home`
-   * or `End`, and `shiftKey` tells whether Shift was down. Not called while the thumb is disabled.
+   * A key was pressed on an input: `key` is an arrow, `PageUp`, `PageDown`, `Home` or `End`, and
+   * `shiftKey` tells whether Shift was down. The range input does not move by itself. Not called
+   * while the thumb is disabled, nor for a key with Ctrl, Meta or Alt.
    */
-  onInputKey?: (index: number, key: string, shiftKey: boolean) => void;
+  onInputKey: (index: number, key: string, shiftKey: boolean) => void;
   /**
    * The primary pointer went down on the thumb. The part focuses the first input and starts the
    * drag. It keeps the distance from the pointer to the center of the thumb, so the thumb does
    * not jump to the pointer, as a SliderThumb does. Not called while the thumb is disabled.
    */
   onPress: (event: PointerEvent) => void;
-  /** An input got or lost the focus. The part keeps `isFocused` and `isFocusVisible`. */
-  onFocusChange: (focused: boolean, focusVisible: boolean) => void;
+  /**
+   * An input got or lost the focus. The part keeps `isFocused` and `isFocusVisible`. `index` is
+   * the input that got it, or `-1` when the focus left the thumb. A move between two inputs of the
+   * thumb tells only the one that got it.
+   */
+  onFocusChange: (focused: boolean, focusVisible: boolean, index: number) => void;
   /** The change of an input ended: the user let go of the key or the value was committed. */
   onChangeEnd: () => void;
   /** `rtl` for the direction of the locale, which the inputs use. */
