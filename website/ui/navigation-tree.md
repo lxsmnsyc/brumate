@@ -28,6 +28,7 @@ A tree of links, such as the pages of a site or of a guide, which shows the page
 ## Keyboard
 
 - The links are in the order of Tab, as the links of a page are.
+- A disabled item, by `isDisabled` on it or `disabledKeys` on the tree, has a link that is a `span` with `role="link"`, `aria-disabled` and `data-disabled`, and no `href`. It does not navigate and is not a tab stop, as a disabled [Link](./link.md).
 - Up and Down move to the link of the next or the previous row that shows, and Home and End to the first and the last.
 - Right opens a closed row. Left closes an open row, or else moves to the row that holds it. Right to left, they turn around.
 - Enter follows a link. Letters move to the row whose text starts with them.

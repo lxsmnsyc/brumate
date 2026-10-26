@@ -5,14 +5,16 @@
   /**
    * The link of a NavigationTreeItem, as NavigationTreeItemLink of React Aria Components. It
    * links to the `href` of its item, and has `aria-current="page"` and `data-current` when that
-   * is the route of the tree. An item without an `href` shows its text, with no link.
+   * is the route of the tree. An item without an `href` shows its text, with no link. A disabled
+   * item shows a span with `aria-disabled` and `data-disabled`, as a disabled Link does: it has no
+   * `href` and no tab stop.
    */
   const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
 
   const link = $getContext(NavigationLinkContext);
 </script>
 
-#if (link?.href) {
+#if (link?.href && !link.isDisabled) {
   <a
     href=(link.href)
     aria-current=(link.isCurrent ? 'page' : undefined)
@@ -20,5 +22,10 @@
     {...rest}
   >{children}</a>
 } #else {
-  <span {...rest}>{children}</span>
+  <span
+    role=(link?.href ? 'link' : undefined)
+    aria-disabled=(link?.isDisabled ? 'true' : undefined)
+    data-disabled=(link?.isDisabled || undefined)
+    {...rest}
+  >{children}</span>
 }
