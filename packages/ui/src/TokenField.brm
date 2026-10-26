@@ -15,7 +15,7 @@
    * - `pattern` is a regular expression, as a string, whose matches become tokens once a space
    *   follows them, such as `'[#@]\\S+'` for tags and mentions.
    * - `placeholder`, `allowsNewlines`, `isDisabled`, `isReadOnly`, and `role`: `textbox`, or
-   *   `searchbox` or `combobox`.
+   *   `searchbox`.
    * - With `name`, a form sends the text of the value.
    */
   const {
@@ -35,7 +35,7 @@
     allowsNewlines?: boolean;
     isDisabled?: boolean;
     isReadOnly?: boolean;
-    role?: 'textbox' | 'searchbox' | 'combobox';
+    role?: 'textbox' | 'searchbox';
     name?: string;
     onChange?: (value: TokenSegment[]) => void;
     children?: unknown;
@@ -66,7 +66,8 @@
     allowsNewlines,
     isDisabled,
     isReadOnly,
-    role,
+    // The box has no popup, so it is no combobox.
+    role: role === 'searchbox' ? 'searchbox' : 'textbox',
     labelId,
     descriptionId: hasDescription ? descriptionId : undefined,
   });

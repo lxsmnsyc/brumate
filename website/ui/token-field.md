@@ -23,7 +23,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 - `pattern` is a regular expression, as a string. Text that matches it becomes a token once a space follows it, so a word that the user is still typing stays text.
 - `token` is a `#template` that renders a `Token` for each token. Without it, a token is a Token with its text.
 - With `name`, a form sends the text of the value, with each token as its text.
-- `placeholder`, `allowsNewlines`, `isDisabled` and `isReadOnly`. `role` is `textbox`, or `searchbox` or `combobox` for a field that searches or that an Autocomplete completes.
+- `placeholder`, `allowsNewlines`, `isDisabled` and `isReadOnly`. `role` is `textbox`, or `searchbox` for a field that searches. The box has no popup, so it is never a `combobox`.
 
 ## Editing
 

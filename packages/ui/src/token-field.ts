@@ -54,6 +54,10 @@ export function tokenize(
     const matcher = new RegExp(`(?<=^|\\s)(?:${pattern})(?=\\s)`, 'g');
     let at = 0;
     for (const match of segment.text.matchAll(matcher)) {
+      // A pattern that matches nothing would make empty tokens.
+      if (match[0] === '') {
+        continue;
+      }
       result.push({ type: 'text', text: segment.text.slice(at, match.index) });
       result.push({ type: 'token', text: match[0] });
       at = match.index! + match[0].length;
@@ -80,7 +84,7 @@ export interface TokenFieldState {
   allowsNewlines: boolean;
   isDisabled: boolean;
   isReadOnly: boolean;
-  role: string;
+  role: 'textbox' | 'searchbox';
   labelId: string;
   descriptionId: string | undefined;
 }
@@ -98,7 +102,10 @@ export const EDGE = '​';
 
 /**
  * The value that the nodes of a TokenInput hold: text nodes are text, an element with
- * `data-token` is a token whose text is in it, and a line break is a newline.
+ * `data-token` is a token whose text is in it, and a line break is a newline. A line break that
+ * ends its line or the box is no text: browsers keep one in a box that the user emptied, and
+ * `write` adds one to show a newline that ends the value. A `div` is a line, as the `innerText`
+ * of browsers reads it.
  */
 export function readSegments(root: Node): TokenSegment[] {
   const segments: TokenSegment[] = [];
@@ -112,7 +119,9 @@ export function readSegments(root: Node): TokenSegment[] {
         if (token !== null) {
           segments.push({ type: 'token', text: token });
         } else if (element.tagName === 'BR') {
-          segments.push({ type: 'text', text: '\n' });
+          if (element.nextSibling !== null) {
+            segments.push({ type: 'text', text: '\n' });
+          }
         } else {
           // A block that the browser adds for a new line, such as a `div`.
           if (element.tagName === 'DIV' && segments.length > 0) {
