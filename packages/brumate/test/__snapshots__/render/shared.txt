@@ -76,6 +76,7 @@ export default function Shared($$props: Record<string, never>): string | Documen
   $$b.setSlots($$s1, [count]);
   return $$f;
 }
+Shared.brumateId = "Shared_1xpln25";
 
 # HTML
 <button class="one" b-b="0:0" b-on="click=Shared_1xpln25#h2">One</button>

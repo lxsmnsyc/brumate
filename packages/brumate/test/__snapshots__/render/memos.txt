@@ -202,6 +202,7 @@ export default function Memos($$props: Record<string, never>): string | Document
   $$b.setSlots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, late]);
   return $$f;
 }
+Memos.brumateId = "Memos_1khoa0p";
 
 # HTML
 <button b-b="0:0" b-on="click=Memos_1khoa0p#h15">3</button>

@@ -84,6 +84,7 @@ export default function Themes($$props: Record<string, never>): string | Documen
   $$b.fillBranch($$e[3], $$s1, 2, (show) ? 0 : -1, [$$r2]);
   return $$f;
 }
+Themes.brumateId = "Themes_945372";
 
 # HTML
 <button class="toggle" b-b="0:0" b-on="click=Themes_945372#h3">Toggle</button>

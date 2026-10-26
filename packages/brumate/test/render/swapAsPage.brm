@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsItalic from './AsItalic.brm';
+  import AsLink from './AsLink.brm';
+
+  // A handler sets another component, which the browser has as its render function.
+  let as = $signal<any>(AsLink);
+  let count = $signal(0);
+</script>
+
+<button class="swap" onClick=(() => (as = AsItalic))>Swap</button>
+<button class="inc" onClick=(() => count++)>Inc</button>
+<{as} class="t">T{count}</>

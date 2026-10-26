@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import LateAs from './LateAs.brm';
+
+  // Passes its `as` on, so the value goes through two components.
+  const { as } = $props<{ as: any }>();
+</script>
+
+<LateAs {as} />

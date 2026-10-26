@@ -1,0 +1,6 @@
+<script>
+  import AsLink from './AsLink.brm';
+  import LateAs from './LateAs.brm';
+</script>
+
+<LateAs as=AsLink />

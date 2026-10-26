@@ -114,6 +114,7 @@ export default function UsesCounter($$props: Record<string, never>): string | Do
   $$b.setSlots($$s1, [base, count, double, other]);
   return $$f;
 }
+UsesCounter.brumateId = "UsesCounter_1euyiut";
 
 # HTML
 <button class="a" b-b="0:0" b-on="click=UsesCounter_1euyiut#h8">

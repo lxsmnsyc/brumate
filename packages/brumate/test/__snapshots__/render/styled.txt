@@ -79,6 +79,7 @@ export default function Styled($$props: Record<string, never>): string | Documen
   $$b.fillBranch($$e[2], $$s1, 1, (big) ? 0 : -1, [$$r2]);
   return $$f;
 }
+Styled.brumateId = "Styled_9wx0az";
 
 # HTML
 <style b-style="Styled_9wx0az">p[b-c-9wx0az] {

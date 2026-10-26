@@ -1,0 +1,14 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Renders its `as` in a block that opens after resume.
+  const { as } = $props<{ as: any }>();
+  let open = $signal(false);
+  let clicks = $signal(0);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <{as} class="late" onClick=(() => clicks += 1)>Late</>
+}
+<p class="clicks">{clicks}</p>

@@ -122,6 +122,7 @@ export default function Portal($$props: Record<string, never>): string | Documen
   $$b.setSlots($$s1, [open]);
   return $$html;
 }
+Portal.brumateId = "Portal_17ywlhi";
 
 # HTML
 <button class="toggle" b-b="0:0" b-on="click=Portal_17ywlhi#h1">Toggle</button>

@@ -1,0 +1,16 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Renders a component of each new item of a list.
+  const { as } = $props<{ as: any }>();
+  let items = $signal<number[]>([]);
+  let clicks = $signal(0);
+</script>
+
+<button class="add" onClick=(() => (items = [...items, items.length + 1]))>Add</button>
+<ul>
+  #for (item of items by item) {
+    <li><{as} class="item" onClick=(() => clicks += 1)>Item {item}</></li>
+  }
+</ul>
+<p class="clicks">{clicks}</p>

@@ -98,6 +98,7 @@ export default function Fields($$props: Record<string, never>): string | Documen
   $$b.fillList($$e[3], $$s1, 0, $$b.listOf(( names)), $$r2);
   return $$f;
 }
+Fields.brumateId = "Fields_1cs3w3p";
 
 # HTML
 <label for="b0-0">Email</label>

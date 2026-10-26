@@ -96,6 +96,7 @@ export default function Loading($$props: Record<string, never>): string | Docume
   $$b.setSlots($$s1, [count]);
   return $$f;
 }
+Loading.brumateId = "Loading_1sx8r1u";
 
 # HTML
 <button class="outer" b-b="0:0" b-on="click=Loading_1sx8r1u#h2">0</button>

@@ -156,6 +156,7 @@ export default function Produce($$props: Record<string, never>): string | Docume
   $$b.fillList($$e[1], $$s1, 1, $$b.listOf(( todos )), $$r2);
   return $$f;
 }
+Produce.brumateId = "Produce_9t90yy";
 
 # HTML
 <button class="add" b-b="0:0" b-on="click=Produce_9t90yy#h3">Add</button>

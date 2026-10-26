@@ -245,6 +245,7 @@ export default function Compact($$props: { initial: Row[] }): string | DocumentF
   $$b.fillList($$e[6], $$s1, 6, $$b.listOf(( rows )), $$r4);
   return $$f;
 }
+Compact.brumateId = "Compact_omhyaj";
 
 # HTML
 <button class="reverse" b-b="0:0" b-on="click=Compact_omhyaj#h2">Reverse</button>

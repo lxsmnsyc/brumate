@@ -126,6 +126,7 @@ export default function Search($$props: Record<string, never>): string | Documen
   $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( results)), $$r3);
   return $$f;
 }
+Search.brumateId = "Search_s4k9u0";
 
 # HTML
 <input value="" b-b="0:0" b-on="input=Search_s4k9u0#h4">

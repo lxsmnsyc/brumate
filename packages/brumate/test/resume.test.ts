@@ -2248,6 +2248,68 @@ describe('templates with components', () => {
   });
 });
 
+describe('a component in a prop', () => {
+  it('renders in a block that the browser renders later', async () => {
+    await resume('lateAsPage', {});
+    expect(document.querySelector('.late')).toBeNull();
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders in a new item of a list', async () => {
+    await resume('lateEachPage', {});
+    expect(document.querySelector('.item')).toBeNull();
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelector('a.item')).not.toBeNull());
+    expect(text('a.item')).toBe('Item 1');
+    click(document.querySelector('a.item')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders when it goes through two components', async () => {
+    await resume('twoLevelAsPage', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('renders when a context holds it', async () => {
+    await resume('contextAsPage', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.late')).not.toBeNull());
+    click(document.querySelector('a.late')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+  });
+
+  it('keeps the items of the server and of the browser through a reverse', async () => {
+    await resume('hydratedEachPage', {});
+    expect(document.querySelectorAll('a.item')).toHaveLength(1);
+    click(document.querySelector('a.item')!);
+    await waitFor(() => expect(text('.clicks')).toBe('1'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('a.item')).toHaveLength(2));
+    click(document.querySelector('.rev')!);
+    await waitFor(() => expect(text('a.item')).toBe('Item 2'));
+    expect(document.querySelectorAll('a.item')).toHaveLength(2);
+    expect(document.querySelectorAll('div.item')).toHaveLength(0);
+    click(document.querySelectorAll('a.item')[1]!);
+    await waitFor(() => expect(text('.clicks')).toBe('2'));
+  });
+
+  it('renders the component that a handler sets', async () => {
+    await resume('swapAsPage', {});
+    expect(document.querySelector('a.t')).not.toBeNull();
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('i.t')).not.toBeNull());
+    expect(text('i.t')).toBe('T0');
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('i.t')).toBe('T1'));
+  });
+});
+
 describe('templates inside blocks', () => {
   /** The names of the functions that each render function of the update part declares inside it. */
   function declared(name: string): string[][] {

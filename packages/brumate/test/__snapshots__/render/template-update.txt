@@ -76,6 +76,7 @@ export default function TemplateUpdate($$props: Record<string, never>): string |
   $$b.setSlots($$s1, [total]);
   return $$f;
 }
+TemplateUpdate.brumateId = "TemplateUpdate_kx4ubq";
 
 # HTML
 <button b-b="0:0" b-on="click=TemplateUpdate_kx4ubq#h3">Add</button>
