@@ -8,6 +8,7 @@
    * `slot="title"` names it, and a Button with `slot="close"` closes it. The overlay around it
    * moves focus into it when it opens. `aria-label` names it in place of the Heading, as in
    * React Aria, and a dialog without a Heading leaves out aria-labelledby once the browser is idle.
+   * In the overlay of a DatePicker, its Button and Label name it then.
    */
   const { role = 'dialog', children, ...rest } = $props<{
     role?: 'dialog' | 'alertdialog';
@@ -36,6 +37,6 @@
 <section
   {role}
   tabindex="-1"
-  aria-labelledby=(titled && rest['aria-label'] === undefined ? titleId : undefined)
+  aria-labelledby=(rest['aria-label'] !== undefined ? undefined : titled ? titleId : overlay?.labelledBy)
   {...rest}
 >{children}</section>

@@ -1,7 +1,7 @@
 <script>
   import { $getContext, $id, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { DateFieldContext, SEGMENT_NAMES, focusSegment } from './segments.ts';
+  import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
   import type { Segment, SegmentType } from './segments.ts';
 
   /**
@@ -9,7 +9,8 @@
    * Aria Components.
    *
    * - A part is a spinbutton. ArrowUp and ArrowDown step it around its range, and a part that is
-   *   not set starts at the placeholder.
+   *   not set starts at the placeholder. PageUp and PageDown step it further, such as by 5 years
+   *   or 15 minutes, and Home and End go to the ends of its range.
    * - Digits type into it, and `a` or `p` into AM or PM. Once no other digit could follow, focus
    *   moves to the next part.
    *   Backspace takes the last digit away, and moves back from an empty part.
@@ -40,10 +41,30 @@
     if (!field || !type) {
       return;
     }
-    if (event.key === 'ArrowUp') {
-      field.step(type, 1);
-    } else if (event.key === 'ArrowDown') {
-      field.step(type, -1);
+    if (event.ctrlKey || event.altKey || event.metaKey) {
+      return;
+    }
+    switch (event.key) {
+      case 'ArrowUp':
+        field.step(type, 1);
+        return;
+      case 'ArrowDown':
+        field.step(type, -1);
+        return;
+      case 'PageUp':
+        field.step(type, PAGE_STEP[type]);
+        return;
+      case 'PageDown':
+        field.step(type, -PAGE_STEP[type]);
+        return;
+      case 'Home':
+        field.jump(type, 'min');
+        return;
+      case 'End':
+        field.jump(type, 'max');
+        return;
+      default:
+        return;
     }
   }
 
@@ -107,7 +128,7 @@
     data-readonly=(field?.isReadOnly || undefined)
     data-disabled=(field?.isDisabled || undefined)
     data-invalid=(field?.isInvalid || undefined)
-    onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown'))
+    onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'))
     onBeforeInput=(prevent(beforeInput))
     onFocusIn=focusIn
     onFocusOut=focusOut

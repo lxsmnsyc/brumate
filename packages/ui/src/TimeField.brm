@@ -3,11 +3,15 @@
   import type { Bindable } from 'brumate/signals';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
+  import { formField } from './date-field.brm.ts';
+  import { prevent } from 'brumate/events';
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
     erasePart,
+    jumpTime,
+    secondsOf,
     stepTime,
     timeOf,
     timePartsOf,
@@ -30,7 +34,10 @@
    *   or as `hourCycle` says.
    * - An empty segment starts at `placeholderValue`, midnight by default.
    * - `minValue` and `maxValue` make a time invalid, as `isInvalid` does.
-   * - `name` posts the time with a form, from a hidden input.
+   * - `name` posts the time with a form, from a hidden input. `isRequired` asks the browser to check
+   *   it on a submit, and the FieldError shows the message. A reset of the form gives back the
+   *   first time.
+   * - On a 12-hour clock, AM and PM are a segment of their own, which must be set too.
    * - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    */
   const {
@@ -73,35 +80,46 @@
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
+  const inputId = $id();
   let parts = $signal<DateParts>(timePartsOf(value));
   let typed = $signal('');
   let edited = $signal(false);
+  // The time that a reset of the form gives back.
+  let initialValue = $signal(value);
+  const { committed, nativeErrors, invalidated, changed } = formField(inputId, () => {
+    value = initialValue;
+    parts = timePartsOf(initialValue);
+    edited = false;
+  });
   const segments = $memo(timeSegmentsOf(parts, placeholderValue, locale.locale, granularity, hourCycle));
-  const errors = $memo(
-    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
-  );
-  // Times of the same length compare as text, such as `09:30` and `14:00`.
+  const errors = $memo([
+    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(committed ? nativeErrors : []),
+  ]);
+  // Times compare by their seconds, so `09:30:00` is not past `09:30`.
   const invalid = $memo(
     isInvalid ||
       errors.length > 0 ||
       (value !== null &&
-        ((minValue !== undefined && value < minValue) || (maxValue !== undefined && value > maxValue))),
+        ((minValue !== undefined && secondsOf(value) < secondsOf(minValue)) ||
+          (maxValue !== undefined && secondsOf(value) > secondsOf(maxValue)))),
   );
 
   // A time that the caller sets shows in the segments.
   $effect(() => {
     const next = value;
-    if ($untrack(timeOf(parts, granularity)) !== next) {
+    if ($untrack(timeOf(parts, granularity, twelve)) !== next) {
       $untrack((parts = timePartsOf(next)));
     }
   });
 
   function update(next: DateParts) {
     parts = next;
-    const time = timeOf(next, granularity);
+    const time = timeOf(next, granularity, twelve);
     if (time !== value) {
       value = time;
       edited = true;
+      changed();
       onChange?.(time);
     }
   }
@@ -129,14 +147,20 @@
     step: (type: SegmentType, delta: number) => {
       if (!locked() && isTimePart(type)) {
         typed = '';
-        update(stepTime(parts, type, delta, placeholderValue));
+        update(stepTime(parts, type, delta, placeholderValue, twelve));
+      }
+    },
+    jump: (type: SegmentType, to: 'min' | 'max') => {
+      if (!locked() && isTimePart(type)) {
+        typed = '';
+        update(jumpTime(parts, type, to, placeholderValue, twelve));
       }
     },
     type: (type: SegmentType, char: string) => {
       if (locked() || !isTimePart(type)) {
         return false;
       }
-      const next = typeTime(parts, type, typed, char, placeholderValue, twelve);
+      const next = typeTime(parts, type, typed, char, placeholderValue, twelve, locale.locale);
       typed = next.typed;
       update(next.parts);
       return next.full;
@@ -146,9 +170,15 @@
         return false;
       }
       typed = '';
-      // AM and PM are not typed digits, so Backspace moves back from them.
+      // Backspace empties AM or PM, and moves back from it once it is empty.
       if (type === 'dayPeriod') {
-        return true;
+        if (parts.dayPeriod === undefined) {
+          return true;
+        }
+        const next = { ...parts };
+        delete next.dayPeriod;
+        update(next);
+        return false;
       }
       const empty = parts[type] === undefined;
       // An hour on a 12-hour clock is not its digits, so it empties.
@@ -176,5 +206,15 @@
 >
   {children}
   <!-- The time for the form, which posts without scripts. -->
-  <input type="hidden" {name} value=(value ?? '') disabled=(isDisabled || undefined)>
+  <input
+    id=inputId
+    {name}
+    value=(value ?? '')
+    required=(isRequired || undefined)
+    disabled=(isDisabled || undefined)
+    tabindex="-1"
+    aria-hidden="true"
+    style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0"
+    onInvalid=(prevent(invalidated))
+  >
 </>

@@ -700,6 +700,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    * The bundles of a build: for each component that no other component imports, such as a
    * route or a page, the components with client code that it can render. The page loads the
    * bundles of its roots at once, as one chunk each, so its code comes in one request.
+   * Components that only import each other get a bundle too.
    */
   const bundles = async (kept: Set<string>): Promise<Map<string, string[]>> => {
     const imports = new Map<string, string[]>();
@@ -714,16 +715,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     );
     const imported = new Set([...imports.values()].flat());
     const result = new Map<string, string[]>();
-    for (const [id, file] of files) {
-      if (imported.has(file)) {
-        continue;
-      }
+    // The components that a bundle holds so far.
+    const reached = new Set<string>();
+    const addRoot = (id: string, file: string): void => {
       const seen = new Set<string>();
       const walk = (current: string): void => {
         if (seen.has(current)) {
           return;
         }
         seen.add(current);
+        reached.add(current);
         for (const next of imports.get(current) ?? []) {
           walk(next);
         }
@@ -732,6 +733,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const members = [...seen].filter((member) => kept.has(member));
       if (members.length > 0) {
         result.set(id, members);
+      }
+    };
+    for (const [id, file] of files) {
+      if (!imported.has(file)) {
+        addRoot(id, file);
+      }
+    }
+    // Components that import each other, with no other component that imports them, have no
+    // root of their own, so the first of them is the root of their bundle.
+    for (const [id, file] of files) {
+      if (!reached.has(file) && kept.has(file)) {
+        addRoot(id, file);
       }
     }
     return result;

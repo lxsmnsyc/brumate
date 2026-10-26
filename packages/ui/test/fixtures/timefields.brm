@@ -10,6 +10,8 @@
   let alarm = $signal<string | null>('07:05');
   let empty = $signal<string | null>(null);
   let forced = $signal<string | null>('14:30');
+  let late = $signal<string | null>('11:00');
+  let need = $signal<string | null>(null);
 </script>
 
 <main>
@@ -32,5 +34,20 @@
     <Label>Departure</Label>
     <DateInput class="forced-input" />
   </TimeField>
-  <p class="state">{JSON.stringify([meeting, alarm, empty, forced])}</p>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <TimeField class="late" name="late" value=$bind(late) hourCycle=(12)>
+      <Label>Late</Label>
+      <DateInput class="late-input" />
+    </TimeField>
+    <TimeField class="need" name="need" value=$bind(need) isRequired>
+      <Label>Need</Label>
+      <DateInput class="need-input" />
+      <FieldError class="need-error" />
+    </TimeField>
+  </form>
+  <TimeField class="exact" value=("17:00:00") granularity="second" maxValue="17:00">
+    <Label>Exact</Label>
+    <DateInput class="exact-input" />
+  </TimeField>
+  <p class="state">{JSON.stringify([meeting, alarm, empty, forced, late, need])}</p>
 </main>

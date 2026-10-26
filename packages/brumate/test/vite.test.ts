@@ -188,6 +188,9 @@ describe('vite plugin', () => {
     );
     const entry = chunks.find((chunk) => chunk.isEntry)!;
     expect(entry.code).not.toContain('fromJSON');
+    // Components that import each other, which no other component imports, get a bundle too.
+    expect(holding('CycleLeft.brm?brumate-client').length).toBeGreaterThan(0);
+    expect(holding('CycleRight.brm?brumate-client').length).toBeGreaterThan(0);
   });
 
   it('keeps validation helpers and schemas of server functions out of the client build', async () => {

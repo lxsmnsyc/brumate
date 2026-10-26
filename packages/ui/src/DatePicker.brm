@@ -13,8 +13,10 @@
    *
    * - `value` is the date as `YYYY-MM-DD`, or null. `value=(date)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, typed or picked.
-   * - The Button opens the Popover, and the Calendar takes focus on the selected date. A pick
-   *   sets the date and closes the Popover, unless `shouldCloseOnSelect` is false.
+   * - The Button opens the Popover, and the Calendar takes focus on the selected date, or on
+   *   `placeholderValue`. A pick sets the date and closes the Popover, unless
+   *   `shouldCloseOnSelect` is false. A Dialog with no Heading is named by the Button and the
+   *   Label.
    * - `isOpen` is whether the Popover shows, and `onOpenChange` gets each change.
    * - The other props are those of DateField. The Calendar follows `minValue`, `maxValue` and
    *   `isDateUnavailable` too, unless it has its own.
@@ -24,6 +26,7 @@
     minValue,
     maxValue,
     isDateUnavailable,
+    placeholderValue,
     isDisabled = false,
     isReadOnly = false,
     shouldCloseOnSelect = true,
@@ -35,6 +38,7 @@
     minValue?: DateString;
     maxValue?: DateString;
     isDateUnavailable?: (date: DateString) => boolean;
+    placeholderValue?: DateString;
     isDisabled?: boolean;
     isReadOnly?: boolean;
     shouldCloseOnSelect?: boolean;
@@ -78,11 +82,12 @@
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
     isDisabled: isDisabled || isReadOnly,
-    onPress: () => setOpen(!isOpen),
+    onPress: () => setOpen(true),
   });
   $setContext(GroupContext, {
     isDisabled,
     'aria-disabled': isDisabled ? 'true' : undefined,
+    'aria-labelledby': labelId,
   });
   $setContext(OverlayTriggerContext, {
     isOpen,
@@ -91,8 +96,18 @@
     open: () => setOpen(true),
     close: () => setOpen(false),
     placement: 'bottom start',
+    labelledBy: `${triggerId} ${labelId}`,
   });
-  $setContext(DatePickerContext, { value, select, minValue, maxValue, isDateUnavailable });
+  $setContext(DatePickerContext, {
+    value,
+    select,
+    minValue,
+    maxValue,
+    isDateUnavailable,
+    placeholderValue,
+    isDisabled,
+    isReadOnly,
+  });
 </script>
 
 <DateField
@@ -100,6 +115,7 @@
   {minValue}
   {maxValue}
   {isDateUnavailable}
+  {placeholderValue}
   {isDisabled}
   {isReadOnly}
   {onChange}

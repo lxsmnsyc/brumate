@@ -1,0 +1,12 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let props = $signal<Record<string, string>>({});
+  let box = $signal<HTMLElement>();
+
+  // Other code names the box, before the spread writes anything.
+  $client(() => box?.setAttribute('aria-controls', 'menu'), 'load');
+</script>
+
+<section class="wrap"><div ref=box {...props}>Box</div></section>
+<button class="fill" onClick=(() => (props = { title: 'Full' }))>Fill</button>

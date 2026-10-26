@@ -25,7 +25,10 @@ A grid of the days of a month, to pick a range of dates.
 ## Picking a range
 
 - A first press, or Enter or Space, starts a range at a date. A second one ends it, before or after the first.
-- In between, the dates show the range to the date under the pointer, or to the date that has focus.
+- A press of the pointer on a date and a release on another one select the range between them.
+- After Enter or Space starts a range, focus moves to the next date, or the one before.
+- In between, the dates show the range to the date under the pointer, or to the date that has focus. The date under the pointer takes the focus.
+- The range reaches up to the nearest dates that cannot be picked. The dates past them show `data-invalid` and cannot be picked or focused, and the Calendar is not invalid until the range is done. `isDateUnavailable` gets the first date of the range as its second argument.
 - Escape drops a range that is not done, and the range that was selected shows again.
 - A range cannot hold a date that `isDateUnavailable` marks. `allowsNonContiguousRanges` lets it, and those dates do not show as selected.
 

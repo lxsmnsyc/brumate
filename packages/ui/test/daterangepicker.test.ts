@@ -102,3 +102,21 @@ it('opens a RangeCalendar on the range, and a range picked there sets both dates
   expect(segments(page, '.stay-start')).toEqual(['10', '/', '20', '/', '2026']);
   expect(segments(page, '.stay-end')).toEqual(['10', '/', '23', '/', '2026']);
 });
+
+it('checks isRequired on a submit, and gives back the first range on a reset', async () => {
+  const page = await pickers();
+  const form = page.get('.form') as HTMLFormElement;
+  expect(form.checkValidity()).toBe(false);
+  await page.waitFor(() => expect(page.get('.need').hasAttribute('data-invalid')).toBe(true));
+  const day = page.get('.trip-end [data-type="day"]');
+  day.focus();
+  press('ArrowUp', day);
+  await page.waitFor(() =>
+    expect(state(page)[1]).toEqual({ start: '2026-11-02', end: '2026-11-05' }),
+  );
+  form.reset();
+  await page.waitFor(() =>
+    expect(state(page)[1]).toEqual({ start: '2026-11-02', end: '2026-11-04' }),
+  );
+  expect(page.get('.trip-end [data-type="day"]').textContent).toBe('4');
+});

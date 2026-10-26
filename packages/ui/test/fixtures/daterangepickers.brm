@@ -12,6 +12,8 @@
   import RangeCalendar from '../../src/RangeCalendar.brm';
 
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let trip = $signal<{ start: string; end: string } | null>({ start: '2026-11-02', end: '2026-11-04' });
+  let need = $signal<{ start: string; end: string } | null>(null);
 </script>
 
 <main>
@@ -32,5 +34,22 @@
       </Dialog>
     </Popover>
   </DateRangePicker>
-  <p class="state">{JSON.stringify([stay])}</p>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <DateRangePicker class="trip" startName="tripFrom" endName="tripTo" value=$bind(trip)>
+      <Label>Trip</Label>
+      <Group>
+        <DateInput slot="start" class="trip-start" />
+        <DateInput slot="end" class="trip-end" />
+      </Group>
+    </DateRangePicker>
+    <DateRangePicker class="need" startName="needFrom" endName="needTo" value=$bind(need) isRequired>
+      <Label>Need</Label>
+      <Group>
+        <DateInput slot="start" />
+        <DateInput slot="end" />
+      </Group>
+      <FieldError class="need-error" />
+    </DateRangePicker>
+  </form>
+  <p class="state">{JSON.stringify([stay, trip, need])}</p>
 </main>

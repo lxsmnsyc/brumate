@@ -37,7 +37,7 @@ pnpm --filter example-todos start
 Open the page and the network panel:
 
 - Until the `load` event, the page runs only the loader, the client entry. The quote streams in about 1.5 seconds later, and `load` waits for it.
-- After `load`, when the browser is idle, the loader preloads the core and the code of the components with buttons in view. A click then needs no request.
+- The code of the page loads with the HTML, as one bundle for each root component, so a click needs no request of its own.
 - The first link that you follow loads the code of client navigation. The layout and its Wide button keep their state.
 
 ## Tests
