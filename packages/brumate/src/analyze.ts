@@ -468,7 +468,9 @@ class Analyzer {
         );
         const wrong = rest.find((_, index) => {
           const key = keys[index];
-          return key === undefined || !(KEY_NAMES.includes(key) || /^[A-Za-z0-9]$/.test(key));
+          // A key can name a modifier that must be held, such as `Mod+ArrowDown`.
+          const base = key?.replace(/^(?:Mod|Ctrl|Meta|Alt)\+/, '');
+          return base === undefined || !(KEY_NAMES.includes(base) || /^[A-Za-z0-9]$/.test(base));
         });
         if (!KEY_EVENTS.has(attribute.event)) {
           this.report(
@@ -479,7 +481,7 @@ class Analyzer {
         } else if (wrong) {
           this.report(
             'error',
-            "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a'",
+            "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a', with a modifier to hold if it needs one, such as 'Mod+ArrowDown'",
             wrong,
           );
         }

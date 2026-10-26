@@ -212,6 +212,31 @@ export function boot(
     void loadCore().then((client) => client.handle(element, ref, event));
   };
 
+  /**
+   * A key of `prevent` matches its `event.key` while only the modifier that it names is held. A
+   * key alone matches while Ctrl, Meta and Alt are up, so the shortcuts of the browser, such as
+   * Cmd+Left or Alt+Left, keep their default. `Mod+` is Ctrl or Meta. Shift does not count.
+   */
+  const keyMatches = (key: string, event: KeyboardEvent): boolean => {
+    const plus = key.indexOf('+', 1);
+    const modifier = plus > 0 ? key.slice(0, plus) : '';
+    if ((event.key === ' ' ? 'Space' : event.key) !== (plus > 0 ? key.slice(plus + 1) : key)) {
+      return false;
+    }
+    switch (modifier) {
+      case 'Mod':
+        return (event.ctrlKey || event.metaKey) && !event.altKey;
+      case 'Ctrl':
+        return event.ctrlKey && !event.metaKey && !event.altKey;
+      case 'Meta':
+        return event.metaKey && !event.ctrlKey && !event.altKey;
+      case 'Alt':
+        return event.altKey && !event.ctrlKey && !event.metaKey;
+      default:
+        return !event.ctrlKey && !event.metaKey && !event.altKey;
+    }
+  };
+
   const apply = (event: Event, element: Element, entry: Entry): boolean => {
     for (const modifier of entry.modifiers) {
       // `prevent(ArrowDown,Enter)` prevents only these keys, by `event.key`. A key that commits
@@ -224,9 +249,7 @@ export function boot(
           modifier
             .slice(8, -1)
             .split(',')
-            .includes(
-              (event as KeyboardEvent).key === ' ' ? 'Space' : (event as KeyboardEvent).key,
-            ))
+            .some((key) => keyMatches(key, event as KeyboardEvent)))
       ) {
         event.preventDefault();
       }

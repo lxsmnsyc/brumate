@@ -179,6 +179,7 @@ Handlers run as if each element had its own listener. Those wrapped by `capture`
 - Keys are strings of their `event.key`: a named key such as `'Enter'`, `'Escape'`, `'ArrowDown'` or `'F1'`, a letter or a digit, and `'Space'` for the space bar. TypeScript completes them, and the compiler reports a key that is not one. Only `prevent` of `onKeyDown`, `onKeyUp` and `onKeyPress` takes keys.
 - Write the wrapper in the attribute, with keys as string literals, so the compiler can read it.
 - A key that an input method gets while it composes text, such as the Enter that ends a word in Japanese, is never prevented, because it belongs to the input method.
+- A key alone is prevented only while Ctrl, Meta and Alt are up, so the shortcuts of the browser, such as Cmd+Left or Alt+Left to go back, keep working. Shift does not count. To prevent a key with a modifier held, name the modifier: `'Mod+ArrowDown'` for Ctrl or Meta, or `'Ctrl+…'`, `'Meta+…'` or `'Alt+…'`. A list that moves focus with Ctrl and an arrow prevents `'Mod+ArrowDown'` too.
 
 A modifier after the event name, as in `onSubmit:prevent=send`, does the same, with a warning that points to the wrapper. It goes in a later version. A modifier on a component is a compile error: the component puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
 

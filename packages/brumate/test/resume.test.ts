@@ -652,7 +652,7 @@ describe('resume', () => {
   it('prevents only the keys that :prevent names, before the handler loads', async () => {
     const server = await import(file('preventKeys.brm.ts'));
     const { html } = await renderParts(server.default, {});
-    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space)=');
+    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space,Mod+ArrowUp)=');
     await resume('preventKeys', {});
     // The first press is prevented at once, while the handler's code still loads.
     expect(press('ArrowDown').defaultPrevented).toBe(true);
@@ -661,8 +661,18 @@ describe('resume', () => {
     // A key of an input method that composes text keeps its default.
     expect(press('ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
     expect(press('a').defaultPrevented).toBe(false);
-    // The handler still runs for every key.
-    await waitFor(() => expect(text('.last')).toBe('a'));
+    // A key alone leaves the shortcuts of the browser, such as Cmd+Left or Alt+Left, to it. Shift
+    // does not count.
+    expect(press('ArrowDown', { metaKey: true }).defaultPrevented).toBe(false);
+    expect(press('ArrowDown', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(press('ArrowDown', { altKey: true }).defaultPrevented).toBe(false);
+    expect(press('ArrowDown', { shiftKey: true }).defaultPrevented).toBe(true);
+    // `Mod+` names a key with Ctrl or Meta held, and only then.
+    expect(press('ArrowUp', { metaKey: true }).defaultPrevented).toBe(true);
+    expect(press('ArrowUp', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(press('ArrowUp', { altKey: true }).defaultPrevented).toBe(false);
+    // The handler still runs for every key, the last of which is ArrowUp with Alt.
+    await waitFor(() => expect(text('.last')).toBe('ArrowUp'));
   });
 
   it('runs a handler that a component passes on with a spread, in the scope of its owner', async () => {

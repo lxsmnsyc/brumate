@@ -192,6 +192,12 @@ describe('wrappers of event handlers', () => {
   });
 
   it('reports keys that are not literal names, and keys on other events', () => {
+    expect(bOn("<ul onKeyDown=(prevent(save, 'ArrowDown', 'Mod+ArrowDown', 'Alt+a'))></ul>")[0]).toMatch(
+      /^keydown:prevent\(ArrowDown,Mod\+ArrowDown,Alt\+a\)=/,
+    );
+    expect(() => compileMarkup("<ul onKeyDown=(prevent(save, 'Shift+ArrowDown'))></ul>")).toThrow(
+      'Name each key of prevent',
+    );
     expect(() => compileMarkup("<ul onKeyDown=(prevent(save, 'ArowDown'))></ul>")).toThrow(
       "Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a'",
     );

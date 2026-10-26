@@ -55,8 +55,16 @@ type Letter =
 type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 type FunctionKey = `F${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12}`;
 
+/**
+ * A key of `prevent`: a key by its `event.key`, or that key with a modifier that must be held,
+ * such as `Mod+ArrowDown`. A key alone matches only while Ctrl, Meta and Alt are up, so the
+ * shortcuts of the browser, such as Cmd+Left or Alt+Left, keep their default. `Mod` is Ctrl or
+ * Meta.
+ */
+export type KeyName = Key | `${'Mod' | 'Ctrl' | 'Meta' | 'Alt'}+${Key}`;
+
 /** A key by its `event.key`: a named key, a letter or a digit. */
-export type KeyName =
+type Key =
   | 'Enter'
   | 'Escape'
   | 'Tab'
