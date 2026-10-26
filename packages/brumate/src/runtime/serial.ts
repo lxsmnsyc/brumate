@@ -26,6 +26,7 @@ import type {
   SyncParsePluginContext,
 } from 'seroval';
 import { isRaw, rawHTML } from './html.ts';
+import type { Internal } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
@@ -193,6 +194,21 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
 });
 
 /**
+ * A `b-` attribute that brumate writes, which a component can hold in its rest props. It is
+ * for the markup of the server, and the browser writes its own, so the state leaves it out.
+ */
+const InternalPlugin = createPlugin<Internal, Record<string, never>>({
+  tag: 'brumate/internal',
+  skipPlainObjects: true,
+  // By name, because a page can render with another copy of html.ts than this one.
+  test: (value) =>
+    typeof value === 'object' && value !== null && value.constructor?.name === 'Internal',
+  parse: parsers(() => ({})),
+  serialize: () => 'void 0',
+  deserialize: () => undefined as never,
+});
+
+/**
  * Files and blobs, which go only in the arguments of a call, as parts of
  * multipart form data named `file<index>`. The node holds the index. The
  * call passes `sent`, which gets each blob, and the server passes the form
@@ -267,6 +283,7 @@ const valuePlugins: Plugin<any, any>[] = [
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,
+  InternalPlugin,
   // The web values of seroval-plugins. Requests and responses need the async or stream modes,
   // so a page state or a call result that holds one streams. The plugin of uploads takes files
   // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.

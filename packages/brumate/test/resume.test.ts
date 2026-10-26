@@ -5123,6 +5123,67 @@ describe('a dynamic tag that names a component', () => {
     await waitFor(() => expect(text('em.tag')).toBe('b'));
   });
 
+  it('updates the live props of a component that spreads its rest', async () => {
+    await resume('restTagLiveProps', {});
+    const link = () => document.querySelector('a')!;
+    expect(link().getAttribute('title')).toBe('true');
+    expect(link().classList.contains('on')).toBe(true);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    expect(link().classList.contains('on')).toBe(false);
+    expect(link().classList.contains('base')).toBe(true);
+    expect(link().getAttribute('href')).toBe('/x');
+  });
+
+  it('updates the live props of a component that spreads its rest, in a block', async () => {
+    await resume('restTagLivePropsLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a')!.getAttribute('title')).toBe('true'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('a')!.getAttribute('title')).toBe('false'));
+    expect(document.querySelector('a')!.classList.contains('on')).toBe(false);
+  });
+
+  it('gives the live props only to the components that declare them', () => {
+    const props = analyzeProject(
+      new Map([
+        [
+          'Page.brm',
+          `<script>
+  import { $signal } from 'brumate/signals';
+  import TagY from './TagY.brm';
+  import Other from './Other.brm';
+  let as = $signal<any>(TagY);
+  let label = $signal('a');
+  const choices = [TagY, Other];
+</script>
+<button onClick=(() => (label = 'b'))>Set</button>
+<{as} label=(label) />
+<Other label="static" size=(3) />`,
+        ],
+        [
+          'TagY.brm',
+          `<script>
+  import { $props } from 'brumate/signals';
+  const { label } = $props<{ label: string }>();
+</script>
+<em>{label}</em>`,
+        ],
+        [
+          'Other.brm',
+          `<script>
+  import { $props } from 'brumate/signals';
+  const { size } = $props<{ size: number }>();
+</script>
+<i>{size}</i>`,
+        ],
+      ]),
+      (specifier) => `${specifier.slice(2)}`,
+    );
+    expect([...props.get('TagY.brm')!]).toEqual(['label']);
+    expect([...(props.get('Other.brm') ?? [])]).toEqual([]);
+  });
+
   it('updates its live props in a block that the browser opens', async () => {
     await resume('componentTagLivePropsLate', {});
     click(document.querySelector('.open')!);

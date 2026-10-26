@@ -1486,14 +1486,14 @@ export function dynamic(
             ),
           }
         : attributes;
-    // The anchor of the tag, so that updates reach the props of the component.
-    const bound = ownValue('b-b', attributes['b-b']) as string | undefined;
+    // The anchor links the component to the tag, so updates reach its props. It is no prop.
+    const { 'b-b': bound, ...passed } = props;
     return component(
       tag,
-      content ? { ...props, children: content } : props,
+      content ? { ...passed, children: content } : passed,
       ctx,
       scope,
-      bound === undefined ? undefined : Number(bound.split(':')[1]),
+      bound === undefined ? undefined : Number((ownValue('b-b', bound) as string).split(':')[1]),
     );
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
