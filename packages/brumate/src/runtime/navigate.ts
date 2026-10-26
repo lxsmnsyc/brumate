@@ -157,8 +157,8 @@ function between(start: Node, end: Node): Node[] {
 function keepStyles(removed: HTMLStyleElement[]): void {
   for (const style of removed) {
     const id = style.getAttribute('b-style')!;
-    // The component ID ends with the hash that scopes its elements, as `s-<hash>`.
-    const attribute = `s-${id.slice(id.lastIndexOf('_') + 1)}`;
+    // The component ID ends with the hash that scopes its elements, as `b-c-<hash>`.
+    const attribute = `b-c-${id.slice(id.lastIndexOf('_') + 1)}`;
     const present = document.querySelector(`style[b-style="${CSS.escape(id)}"]`);
     if (!present && document.querySelector(`[${attribute}]`)) {
       document.head.append(style);

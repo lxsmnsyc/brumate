@@ -52,6 +52,7 @@ export {
   attribute,
   classAttribute,
   escape,
+  internal,
   mergeAttributes,
   onAttribute,
   raw,
@@ -60,7 +61,13 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference, SlotReference, unbind } from './shared.ts';
+export {
+  ChildrenReference,
+  ElementReference,
+  FunctionReference,
+  SlotReference,
+  unbind,
+} from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -2437,7 +2444,8 @@ export function attrs(
     }
     const names = new Set<string>();
     for (const [name, value] of Object.entries(values)) {
-      if (name !== 'children' && !/^on[A-Z]/.test(name)) {
+      // Brumate writes its own `b-` attributes apart, and data cannot write them.
+      if (name !== 'children' && !/^on[A-Z]/.test(name) && !name.startsWith('b-')) {
         names.add(name);
         setAttribute(element, name, value, true);
       }
