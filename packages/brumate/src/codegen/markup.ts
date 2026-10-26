@@ -1558,8 +1558,26 @@ export class Emitter {
         ? `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`
         : undefined;
     };
-    // The functions can be the values of keys of objects inside the value too.
+    // The functions can be the values of keys of objects, or items of lists, inside the value too.
+    const nested = (node: oxc.Node): boolean =>
+      node.type === 'ObjectExpression' || node.type === 'ArrayExpression';
     const visit = (node: oxc.Node): string => {
+      if (node.type === 'ArrayExpression') {
+        let code = '';
+        let position = node.start;
+        for (const element of node.elements) {
+          if (!element || element.type === 'SpreadElement') {
+            continue;
+          }
+          const marked = nested(element) ? visit(element) : mark(element);
+          if (!marked) {
+            continue;
+          }
+          code += this.patch.slice(position, element.start) + marked;
+          position = element.end;
+        }
+        return code + this.patch.slice(position, node.end);
+      }
       if (node.type !== 'ObjectExpression') {
         return mark(node) ?? this.source(node);
       }
@@ -1569,10 +1587,9 @@ export class Emitter {
         if (property.type !== 'Property' || property.computed) {
           continue;
         }
-        const marked =
-          property.value.type === 'ObjectExpression'
-            ? visit(property.value)
-            : mark(property.value, property.method);
+        const marked = nested(property.value)
+          ? visit(property.value)
+          : mark(property.value, property.method);
         if (!marked) {
           continue;
         }

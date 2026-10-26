@@ -1225,6 +1225,11 @@ describe('resume', () => {
     await waitFor(() => expect(text('.count')).toBe('11'));
     click(document.querySelector('.double')!);
     await waitFor(() => expect(text('.count')).toBe('22'));
+    // Functions in a list of the value.
+    click(document.querySelector('.hundred')!);
+    await waitFor(() => expect(text('.count')).toBe('122'));
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(text('.count')).toBe('121'));
     click(document.querySelector('.reset')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
   });
