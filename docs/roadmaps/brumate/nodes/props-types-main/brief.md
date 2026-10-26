@@ -1,7 +1,7 @@
 ---
 id: props-types-main
 title: Props types and typed as on main
-status: active
+status: done
 priority: should
 type: feature
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter @brumate/ui typecheck
 exclusive: []
-fulfilled_by: 
+fulfilled_by: "#245"
 gate: false
 added: 
 owns:
