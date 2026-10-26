@@ -15,13 +15,13 @@
       <Label>Accent</Label>
       <Input class="ui-input" />
     </ColorField>
-    <ColorSwatch class="ui-swatch" color={accent ?? 'transparent'} />
+    <ColorSwatch class="ui-swatch" color=(accent ?? 'transparent') />
   </div>
   <div class="ui-row ui-color-row">
     <ColorField class="ui-field" channel="hue" colorSpace="hsl" value=$bind(hue)>
       <Label>Hue</Label>
       <Input class="ui-input" />
     </ColorField>
-    <ColorSwatch class="ui-swatch" color={hue ?? 'transparent'} />
+    <ColorSwatch class="ui-swatch" color=(hue ?? 'transparent') />
   </div>
 </div>
