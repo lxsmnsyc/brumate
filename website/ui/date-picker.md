@@ -36,7 +36,9 @@ A DateField with a button that opens a Calendar.
 
 ## The Calendar
 
-- The Button opens the Popover. The Calendar shows the date of the field, and that date takes focus.
+- The Button opens the Popover. The Calendar shows the date of the field, or `placeholderValue` when the field is empty, and that date takes focus.
+- A Dialog with no Heading is named by the Button and the Label. The Group is named by the Label.
+- The Calendar follows `isDisabled` and `isReadOnly` of the DatePicker, unless it has its own.
 - A pick sets the date and closes the Popover, and focus goes back to the Button. `shouldCloseOnSelect={false}` keeps it open.
 - The Calendar follows `minValue`, `maxValue` and `isDateUnavailable` of the DatePicker, unless it has its own.
 - Escape closes the Popover.

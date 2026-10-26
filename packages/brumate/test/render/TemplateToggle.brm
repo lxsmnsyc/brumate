@@ -1,0 +1,7 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  const { row, value } = $props<{ row: (v: number) => unknown; value: number }>();
+  let show = $signal(true);
+</script>
+<button class="tg" onClick=(() => (show = !show))>T</button>
+<p class="slot">{show ? row(value) : 'none'}</p>

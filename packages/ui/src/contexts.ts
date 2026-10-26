@@ -236,6 +236,8 @@ export interface OverlayTriggerState {
    * the ID `${overlayId}-closed`. A Select reads its items there, for the keys of its Button.
    */
   keepsContent?: boolean;
+  /** The IDs that name a Dialog in the overlay with no Heading of its own, such as of a DatePicker. */
+  labelledBy?: string;
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
@@ -244,6 +246,8 @@ export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
 /** What an overlay gives the Dialog inside it: the function that closes the overlay. */
 export interface DialogState {
   close: () => void;
+  /** The IDs that name the Dialog when it has no Heading, from the trigger of the overlay. */
+  labelledBy?: string;
 }
 
 export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(

@@ -34,7 +34,7 @@ export function counter(start: number) {
 The compiler copies the body of the function into the component, in place of the call. Its signals and memos become values of the component, as if the component declared them itself.
 
 - Each call has its own values. Two calls of `counter` make two counts.
-- Code that runs in the browser, such as `increment` and the memo of `double`, ships once for the module, however many components call it. Each call passes the values that the code works on, so a handler still loads on its own event.
+- Code that runs in the browser, such as `increment` and the memo of `double`, ships once for the module, however many components call it. Each call passes the values that the code works on.
 - A literal argument, such as `1`, is written into the code. It does not become a value in the state of the page.
 - What the component destructures takes the names it gives. `const { count: clicks } = counter(1)` names the signal `clicks`.
 - The other locals of the function get names of their own, so they never clash with the names of the component.

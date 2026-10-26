@@ -40,7 +40,7 @@
     <text x="750" y="200" class="wf-axis end">time → · not to scale</text>
   </svg>
   <figcaption>
-    While the browser is idle, brumate preloads the core and the handlers near the viewport. A click before that waits one round trip for them.
+    The code of the page starts to load with the HTML, as one bundle for each root component. A click that comes before it arrives runs once it does.
   </figcaption>
 </figure>
 
