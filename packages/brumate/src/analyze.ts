@@ -975,19 +975,26 @@ class Analyzer {
   /**
    * Functions in a provided value run in the browser, where a component that
    * reads the context calls them. Each one is a client root, as a function
-   * prop is: the value itself, or the value of a key of an object, such as
+   * prop is: the value itself, or the value of a key of an object or an item of a list, such as
    * `toggle` in `$setContext(Theme, { theme, toggle })`, at any depth.
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites.filter((item) => item.kind === 'provide')) {
-      // The value, or the values of the keys of an object, also of objects inside it, such as
-      // `{ slots: { increment: { onPress } } }`.
-      const valuesOf = (value: oxc.Node): oxc.Node[] =>
-        value.type === 'ObjectExpression'
-          ? value.properties.flatMap((property) =>
-              property.type === 'Property' && !property.computed ? valuesOf(property.value) : [],
-            )
-          : [value];
+      // The value, or the values of the keys of an object and the items of a list, also inside
+      // each other, such as `{ slots: { increment: { onPress } } }` or `{ items: [{ run }] }`.
+      const valuesOf = (value: oxc.Node): oxc.Node[] => {
+        if (value.type === 'ObjectExpression') {
+          return value.properties.flatMap((property) =>
+            property.type === 'Property' && !property.computed ? valuesOf(property.value) : [],
+          );
+        }
+        if (value.type === 'ArrayExpression') {
+          return value.elements.flatMap((element) =>
+            element && element.type !== 'SpreadElement' ? valuesOf(element) : [],
+          );
+        }
+        return [value];
+      };
       for (const part of valuesOf(site.node)) {
         const isFunctionPart =
           isFunction(part) ||

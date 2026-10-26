@@ -237,6 +237,32 @@ export function styleElement(id: string, css: string): string {
  * Merges the attributes of an element that has spreads, in their order: a
  * later value wins, except `class`, whose values all apply.
  */
+/**
+ * A value of an attribute that brumate writes, such as the `b-on` of a dynamic tag, which the
+ * compiler wraps. An object of attributes, such as a spread, writes a `b-` attribute only with
+ * one, so data from outside the app cannot name handlers or scopes.
+ */
+export class Internal {
+  readonly value: unknown;
+
+  constructor(value: unknown) {
+    this.value = value;
+  }
+}
+
+/** Wraps the value of an attribute that brumate writes. See `Internal`. */
+export function internal(value: unknown): Internal {
+  return new Internal(value);
+}
+
+/** The value of an attribute of an object, or undefined for a `b-` attribute from outside. */
+export function ownValue(name: string, value: unknown): unknown {
+  if (value instanceof Internal) {
+    return value.value;
+  }
+  return name.startsWith('b-') ? undefined : value;
+}
+
 export function mergeAttributes(
   parts: Record<string, unknown>[],
   variables?: Record<string, unknown>,
@@ -244,6 +270,10 @@ export function mergeAttributes(
   const result: Record<string, unknown> = {};
   for (const part of parts) {
     for (const [name, value] of Object.entries(part ?? {})) {
+      // A `b-` attribute from outside the app does not take the place of brumate's own.
+      if (name.startsWith('b-') && !(value instanceof Internal)) {
+        continue;
+      }
       result[name] =
         name === 'class' && result.class !== undefined && value !== undefined
           ? [result.class, value]
@@ -314,7 +344,7 @@ export function spread(attributes: Record<string, unknown>, names = false): stri
   const written: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
     if (name !== 'children' && !/^on[A-Z]/.test(name)) {
-      const text = attribute(name, value);
+      const text = attribute(name, ownValue(name, value));
       if (text) {
         result += text;
         written.push(name);

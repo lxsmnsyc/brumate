@@ -130,6 +130,6 @@ export const Counter = createContext('counter', {
 });
 ```
 
-- A provided function can be the value itself, or the value of a key, also of an object inside the value, such as `{ slots: { increment: { onPress } } }`. It is a function of the component, an arrow, or a method.
+- A provided function can be the value itself, the value of a key, or an item of a list, also inside other objects and lists of the value, such as `{ slots: { increment: { onPress } } }` or `{ items: [{ run }] }`. It is a function of the component, an arrow, or a method, written in the value. A list that code builds, such as with `map`, holds functions that the compiler cannot see, so it cannot send them.
 - The function runs in the component that provides it, with its values. The browser loads it the first time a component calls it.
 - A function prop does the same for one child: `<ThemeSwitch onChange=((next) => (theme = next)) />`.

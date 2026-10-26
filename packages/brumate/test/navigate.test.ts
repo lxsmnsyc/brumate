@@ -352,12 +352,12 @@ describe('navigate', () => {
         0,
         '/a',
         '<style b-style="Badge_b1">b{}</style><style b-style="Card_c1">c{}</style><p>a</p>',
-      ) + `<aside><b s-b1>Badge</b></aside>${pageState(2)}`;
+      ) + `<aside><b b-c-b1>Badge</b></aside>${pageState(2)}`;
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
         const { response, next } = respond([
-          `<!doctype html><html><head><title>B</title></head><body>${region(2, '/b', '<p>b</p>')}<aside><b s-b1>Badge</b></aside>${pageState(4, 2)}</body></html>`,
+          `<!doctype html><html><head><title>B</title></head><body>${region(2, '/b', '<p>b</p>')}<aside><b b-c-b1>Badge</b></aside>${pageState(4, 2)}</body></html>`,
         ]);
         next();
         next();

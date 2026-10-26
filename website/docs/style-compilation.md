@@ -4,8 +4,8 @@ How the compiler scopes the CSS of a component, turns `${}` values into custom p
 
 ## Scoping
 
-- Every native element of the component gets an attribute, `s-<hash>`, where the hash comes from the file name.
-- Every compound selector gets `[s-<hash>]`, before any pseudo-element. `p` becomes `p[s-<hash>]`, and `.a > .b::before` becomes `.a[s-<hash>] > .b[s-<hash>]::before`.
+- Every native element of the component gets an attribute, `b-c-<hash>`, where the hash comes from the file name.
+- Every compound selector gets `[b-c-<hash>]`, before any pseudo-element. `p` becomes `p[b-c-<hash>]`, and `.a > .b::before` becomes `.a[b-c-<hash>] > .b[b-c-<hash>]::before`.
 - `:global(…)` leaves its selector as it is.
 - Keyframe steps, such as `from` and `50%`, are not scoped.
 - Elements that other components render do not get the attribute, so a component's styles do not reach into its children. `:global(…)` does.

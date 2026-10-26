@@ -109,15 +109,15 @@ describe('#offscreen', () => {
     const hidden = (await renderParts(module.default, { first: 'b' })).html;
     // The marker of the block says whether the body rendered: 1 when it did, -1 when it did not.
     expect(shown).toContain('<!--b0:6:1--><template');
-    expect(shown).toContain('<section s-1oupne3 class="panel-a flex">');
+    expect(shown).toContain('<section b-c-1oupne3 class="panel-a flex">');
     expect(shown).toContain('<!--b0:7:-1--><!--/b-->');
-    expect(shown).toContain('<aside s-1oupne3 class="portal-a">');
+    expect(shown).toContain('<aside b-c-1oupne3 class="portal-a">');
     // Nothing of the hidden body is in the page, not even its portal or its components.
     expect(hidden).toContain('<!--b0:6:-1--><!--/b-->');
     expect(hidden).not.toContain('panel-a');
     expect(hidden).not.toContain('portal-a');
     expect(hidden).not.toContain('class="child"');
-    expect(hidden).toContain('<!--b0:7:1--><section s-1oupne3 class="panel-b">');
+    expect(hidden).toContain('<!--b0:7:1--><section b-c-1oupne3 class="panel-b">');
     // Neither has a hidden element: the server renders only what shows.
     expect(shown).not.toContain('display: none');
     expect(hidden).not.toContain('display: none');
