@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 import { shiftState } from '../src/runtime/client-routes.ts';
 import {
@@ -64,25 +65,38 @@ describe('the table of scope IDs', () => {
     expect(Object.keys(SCOPE_IDS.fields).sort()).toEqual(Object.keys(fullRecord()).sort());
   });
 
-  it('names every reference class that holds a scope ID', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/runtime/shared.ts'), 'utf8');
-    const holders = [...source.matchAll(/export class (\w+)\b[^{]*\{([^}]*?)constructor/gs)]
-      .filter((match) => /readonly scope: ScopeId/.test(match[2]!))
-      .map((match) => match[1]);
-    const named = SCOPE_IDS.references.map((type) => type.name);
-    expect(holders.length).toBeGreaterThan(0);
-    expect(named.sort()).toEqual(holders.sort());
-  });
-
-  it('names every class that holds a reference with an ID', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/runtime/shared.ts'), 'utf8');
-    const named = SCOPE_IDS.references.map((type) => type.name);
-    const typed = new RegExp(`\\b(${named.join('|')})\\b`);
-    const holders = [...source.matchAll(/export class (\w+)\b[^{]*\{([^}]*?)constructor/gs)]
-      .filter((match) => !named.includes(match[1]!) && typed.test(match[2]!))
-      .map((match) => match[1]);
-    expect(holders).toContain('Binding');
-    expect(SCOPE_IDS.holders.map((type) => type.name).sort()).toEqual(holders.sort());
+  it('lists every class of shared.ts as a reference, a holder or a class without IDs', () => {
+    // The rule: a class may hold a reference with an ID in any field, typed or `unknown`, in a
+    // declared field or a constructor parameter. So each class of the file, found in its syntax
+    // tree, must be in `references` (its ID is its `scope`), in `holders` (its fields are
+    // walked), or in `withoutIds` below, which a person adds to after checking that it holds none.
+    const file = resolve(process.cwd(), 'src/runtime/shared.ts');
+    const { program } = parseSync(file, readFileSync(file, 'utf8'));
+    const classes: string[] = [];
+    const visit = (node: unknown): void => {
+      if (typeof node !== 'object' || node === null) {
+        return;
+      }
+      const { type, id } = node as { type?: string; id?: { name: string } | null };
+      if (type === 'ClassDeclaration' || type === 'ClassExpression') {
+        classes.push(id ? id.name : '(anonymous)');
+      }
+      for (const [key, child] of Object.entries(node)) {
+        if (key !== 'parent') {
+          visit(child);
+        }
+      }
+    };
+    visit(program);
+    const withoutIds: string[] = [];
+    const listed = [
+      ...SCOPE_IDS.references.map((type) => type.name),
+      ...SCOPE_IDS.holders.map((type) => type.name),
+      ...withoutIds,
+    ];
+    expect(classes).toContain('Binding');
+    expect(classes.filter((name) => !listed.includes(name))).toEqual([]);
+    expect(listed.filter((name) => !classes.includes(name))).toEqual([]);
   });
 
   it('moves the IDs of a binding', () => {

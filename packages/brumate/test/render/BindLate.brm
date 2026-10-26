@@ -1,0 +1,13 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import BindChild from './BindChild.brm';
+
+  // The rest keeps the binding, and the client builds the child later from it.
+  const { ...rest } = $props();
+  let shown = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <BindChild label="later" {...rest} />
+}

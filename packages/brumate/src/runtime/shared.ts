@@ -364,10 +364,12 @@ export type FieldKind = 'none' | 'id' | 'ids' | 'value' | 'values' | 'map';
  * A table of the fields of a state record and the reference classes that hold
  * a scope ID, which each keep it in `scope`. Code that moves the IDs reads it.
  * A new field of `ScopeState` fails to compile until it is in `fields`, and
- * `scope-ids.test.ts` fails for a new reference class that is not in
- * `references`. `holders` are the classes that keep references in their own
- * fields, such as `Binding`, whose `ref` and `set` hold IDs. The test fails
- * for a class with a field of a reference class that is not in `holders`.
+ * `holders` are the classes that keep references in their own fields, such as
+ * `Binding`, whose `ref` and `set` hold IDs. `scope-ids.test.ts` parses this
+ * file and fails for any class in it, of any shape, that is not in
+ * `references` or `holders` or in the test's list of classes without IDs.
+ * It checks class names only, so a person decides which list a new class
+ * belongs in.
  */
 export const SCOPE_IDS: {
   fields: Record<keyof ScopeState, FieldKind>;

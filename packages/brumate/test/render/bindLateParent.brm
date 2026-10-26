@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import BindLate from './BindLate.brm';
+
+  let open = $signal(false);
+</script>
+
+<p class="parent">{open ? 'open' : 'closed'}</p>
+<BindLate open=$bind(open) />
