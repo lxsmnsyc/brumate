@@ -45,7 +45,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Colors',
-    pages: ['color-swatch', 'color-slider', 'color-area'],
+    pages: ['color-swatch', 'color-slider', 'color-area', 'color-wheel'],
   },
   {
     title: 'Dates',
@@ -233,6 +233,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'Two channels of a color on a plane.',
     href: 'color-area',
     demo: 'ColorAreaDemo',
+  },
+  {
+    title: 'ColorWheel',
+    summary: 'A circular track for the hue of a color.',
+    href: 'color-wheel',
+    demo: 'ColorWheelDemo',
   },
   {
     title: 'Calendar',

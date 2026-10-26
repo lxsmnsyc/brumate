@@ -1,0 +1,14 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+
+  let color = $signal('hsl(210, 80%, 50%)');
+</script>
+
+<ColorWheel class="ui-color-wheel" value=$bind(color) outerRadius=(90) innerRadius=(66)>
+  <ColorWheelTrack />
+  <ColorThumb class="ui-color-thumb" />
+</ColorWheel>
+<p>The color is {color}.</p>

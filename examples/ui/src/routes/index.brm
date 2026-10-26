@@ -84,6 +84,8 @@
   import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
   import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
   import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
   import ColorSlider from '@brumate/ui/ColorSlider.brm';
   import ColorThumb from '@brumate/ui/ColorThumb.brm';
   import Slider from '@brumate/ui/Slider.brm';
@@ -138,6 +140,7 @@
   let span = $signal([20, 60]);
   let tint = $signal('hsl(210, 100%, 50%)');
   let plane = $signal('hsb(210, 50%, 80%)');
+  let dial = $signal('hsl(210, 100%, 50%)');
   let delivery = $signal<string | null>('2026-10-15');
   let birthday = $signal<string | null>('2026-10-15');
   let pickup = $signal<string | null>('14:30');
@@ -732,6 +735,15 @@
     <ColorThumb class="plane-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
   </ColorArea>
   <p class="plane-state">{plane}</p>
+</section>
+
+<section aria-labelledby="color-wheel">
+  <h2 id="color-wheel">ColorWheel</h2>
+  <ColorWheel class="dial" value=$bind(dial) outerRadius=(100) innerRadius=(70)>
+    <ColorWheelTrack class="dial-track" />
+    <ColorThumb class="dial-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+  </ColorWheel>
+  <p class="dial-state">{dial}</p>
 </section>
 
 <section aria-labelledby="calendar">

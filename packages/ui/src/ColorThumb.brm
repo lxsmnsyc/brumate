@@ -34,7 +34,11 @@
 
   // PageUp and PageDown move by a page, which the range input does not know.
   function keyDown(event: KeyboardEvent, index: number) {
-    if (!thumb || thumb.isDisabled || (event.key !== 'PageUp' && event.key !== 'PageDown')) {
+    if (!thumb || thumb.isDisabled) {
+      return;
+    }
+    if (event.key !== 'PageUp' && event.key !== 'PageDown') {
+      thumb.onInputKeyDown?.(index, event);
       return;
     }
     thumb.onInputPage(index, event.key === 'PageUp' ? 1 : -1);

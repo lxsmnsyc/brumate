@@ -87,6 +87,11 @@ export interface ColorThumbState {
   onPress: (event: PointerEvent) => void;
   /** An input got or lost the focus. The part keeps `isFocused` and `isFocusVisible`. */
   onFocusChange: (focused: boolean, focusVisible: boolean) => void;
+  /**
+   * A key other than PageUp and PageDown went down on an input. Optional: a part that needs a key
+   * that the range input does not handle, such as a wheel that wraps at 0, takes it here.
+   */
+  onInputKeyDown?: (index: number, event: KeyboardEvent) => void;
   /** The change of an input ended: the user let go of the key or the value was committed. */
   onChangeEnd: () => void;
   /** `rtl` for the direction of the locale, which the inputs use. */

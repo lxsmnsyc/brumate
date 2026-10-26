@@ -1,0 +1,33 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import ColorWheel from '../../src/ColorWheel.brm';
+  import ColorWheelTrack from '../../src/ColorWheelTrack.brm';
+
+  let hue = $signal('hsl(120, 50%, 40%)');
+  let hex = $signal('#336699');
+  let brightness = $signal('hsb(200, 50%, 80%)');
+  let ended = $signal<unknown>(null);
+</script>
+
+<main class="page">
+  <ColorWheel class="wheel" value=$bind(hue) outerRadius=(100) innerRadius=(60) name="hue" onChangeEnd=((next: unknown) => (ended = next))>
+    <ColorWheelTrack class="track" />
+    <ColorThumb class="thumb" />
+  </ColorWheel>
+  <ColorWheel class="hex" value=$bind(hex) outerRadius=(100) innerRadius=(60)>
+    <ColorWheelTrack class="hex-track" />
+    <ColorThumb class="hex-thumb" />
+  </ColorWheel>
+  <ColorWheel class="off" value=(hex) outerRadius=(100) innerRadius=(60) isDisabled>
+    <ColorWheelTrack class="off-track" />
+    <ColorThumb class="off-thumb" />
+  </ColorWheel>
+  <form class="form">
+    <ColorWheel class="reset" value=$bind(brightness) outerRadius=(100) innerRadius=(60) name="reset">
+      <ColorWheelTrack class="reset-track" />
+      <ColorThumb class="reset-thumb" />
+    </ColorWheel>
+  </form>
+  <p class="state">{JSON.stringify([hue, hex, ended, brightness])}</p>
+</main>

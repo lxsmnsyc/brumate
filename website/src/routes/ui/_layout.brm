@@ -1103,6 +1103,11 @@
     background-blend-mode: var(--area-background-blend-mode);
   }
 
+  /* A wheel of hues: the ring is drawn by the track, and the thumb sits on it. */
+  :global(.ui-color-wheel) {
+    margin-inline: auto;
+  }
+
   /* A date field: segments in a row, each shaded while it has focus. */
   :global(.ui-date-input) {
     display: inline-flex;
