@@ -22,8 +22,12 @@ export interface BindableMark<T> {
  * assignable to `T`, as a signal of `HTMLElement | undefined` takes the ref of a `div`.
  */
 export interface WritableMark<W> {
-  readonly [WRITES]?: (value: W) => void;
+  readonly [WRITES]: (value: W) => void;
 }
+
+/** What `$bind` returns: the mark of a prop, and the write side that checks the type of a ref. */
+// oxlint-disable-next-line typescript/no-empty-object-type, typescript/no-empty-interface -- An interface keeps its name in messages.
+export interface BoundSignal<T> extends BindableMark<T>, WritableMark<T> {}
 
 /**
  * Marks a prop that a parent can bind with `$bind`, such as
@@ -187,7 +191,7 @@ export function $action<F extends (...args: never[]) => unknown>(
  * - Only a prop of type `Bindable<T>` takes it.
  * - With `set`, a write calls `set(next)` in place of writing the signal.
  */
-export function $bind<T>(signal: T, set?: (next: T) => unknown): BindableMark<T> & WritableMark<T>;
+export function $bind<T>(signal: T, set?: (next: T) => unknown): BoundSignal<T>;
 export function $bind(): never {
   return compileTimeOnly('$bind');
 }

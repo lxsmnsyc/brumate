@@ -48,7 +48,7 @@ export type Handlers<E> = ...;
 export interface ElementEvents extends HTMLElementEventMap {}
 ```
 
-`brumate/signals` also exports `WritableMark<W>`, and `$bind` returns `BindableMark<T> & WritableMark<T>`.
+`brumate/signals` also exports `WritableMark<W>` and `BoundSignal<T>`, and `$bind` returns `BoundSignal<T>`.
 
 ## Behavior
 
@@ -62,9 +62,10 @@ export interface ElementEvents extends HTMLElementEventMap {}
 
 ### `ref`
 
-- `ref` takes `$bind(name)`, as `ref=$bind(name)` in markup. Its type is `BindableMark<unknown> & WritableMark<E>`. A binding is accepted when the element `E` is assignable to the type of the signal, because the binding writes the element into the signal.
+- `ref` takes `$bind(name)`, as `ref=$bind(name)` in markup. Its type is `BindableMark<unknown> & WritableMark<E>`, where the write side is required. A binding is accepted when the element `E` is assignable to the type of the signal, because the binding writes the element into the signal.
 - So `$signal<HTMLElement>()` (a signal of `HTMLElement | undefined`), `$signal<Element>()`, `$signal<HTMLDivElement | null>(null)` and `any` bind the ref of a `div`. `$signal<HTMLButtonElement>()` does not: a div is not a button. A part with a generic `as` binds `HTMLElement` or `Element`.
-- `BindableMark<T>` alone is covariant and cannot say this, so `$bind` also returns `WritableMark<T>`, a property that is a function of `T`. It is contravariant. A `Bindable<T>` prop still takes `$bind(x)` as before.
+- `BindableMark<T>` alone is covariant and cannot say this, so `$bind` returns `BoundSignal<T>`, which also has `WritableMark<T>`: a required property that is a function of `T`, so it is contravariant. A bare `BindableMark` of any type, such as `BindableMark<HTMLButtonElement>`, has no write side and is not a `ref`. A `Bindable<T>` prop still takes `$bind(x)` as before, and a type error names `BoundSignal<T>`.
+- A part forwards its own ref: `let { ref } = $props<{ ref?: Bindable<HTMLElement> }>()`, then `ref=$bind(ref)`. A part that holds a `Bindable<HTMLButtonElement>` cannot forward it to a `div`.
 - check.ts does not check `ref` yet: it writes `$$use(name)` for it (check.ts, `elementAttributes`). element-checks must emit `{ ref: $bind(name) }` against `ElementProps<tag>` to check it.
 
 ### Components and templates
@@ -85,9 +86,10 @@ None. The nodes after it start from the names above.
 
 ## Contract tests
 
-packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packages/brumate. It has 19 `@ts-expect-error` lines, and each one fails when its comment is removed. It covers `ref` (a supertype binds, a wrong subtype does not), templates (sync, async, inferred argument), `brumateId`, and the `never` default.
+packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packages/brumate. It has 22 `@ts-expect-error` lines, and each one fails when its comment is removed. It covers `ref` (a supertype binds, a wrong subtype and a bare mark do not, a part forwards its prop), templates (sync, async, inferred argument), `brumateId`, and the `never` default.
 
 ## Changes
 
+- v1, second review: the write side of `ref` is required, `BoundSignal<T>` is the return type of `$bind`.
 - v1, review fixes: `ref` is `BindableMark<unknown> & WritableMark<E>`; added `Template`; `Component` has `brumateId` and defaults to `never`; check.ts, types.d.ts and the typecheck script changed as above; added the camel events `onContextLost`, `onContextRestored` and `onPointerRawUpdate`.
 - v1: frozen by element-types. From the proposal it changes: `Component<P>` answers `Promise<Markup>` and defaults to `never`; `Elements` has the SVG tags; added `ElementOf`, `ElementEvents`, `Handlers` and `GlobalAttributes`; `Markup` and `Component` names are kept.

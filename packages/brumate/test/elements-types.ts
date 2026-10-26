@@ -1,5 +1,6 @@
 // Type-checked with the package. It fails to compile if the declarations of brumate/elements are wrong.
 import { $bind, $signal } from 'brumate/signals';
+import type { Bindable, BindableMark, Unbound } from 'brumate/signals';
 import type {
   Component,
   ElementEvents,
@@ -48,6 +49,25 @@ export const nullable: ElementProps<'div'> = { ref: $bind($signal<HTMLDivElement
 export const anyElement: ElementProps<'div'> = { ref: $bind($signal<Element>()) };
 // @ts-expect-error A signal of a button does not take the ref of a div.
 export const subtype: ElementProps<'div'> = { ref: $bind($signal<HTMLButtonElement>()) };
+
+// A part forwards its own `ref` prop: `let { ref } = $props()`, then `ref=$bind(ref)`.
+interface PartProps {
+  ref?: Bindable<HTMLElement>;
+  buttonRef?: Bindable<HTMLButtonElement>;
+}
+export function forward(props: Unbound<PartProps>): ElementProps<'div'> {
+  return { ref: $bind(props.ref) };
+}
+export function forwardWrong(props: Unbound<PartProps>): ElementProps<'div'> {
+  // @ts-expect-error A part that holds a button does not forward it to a div.
+  return { ref: $bind(props.buttonRef) };
+}
+declare const bareButton: BindableMark<HTMLButtonElement>;
+declare const bareNumber: BindableMark<number>;
+// @ts-expect-error A bare mark has no write side, so its type is not checked and not accepted.
+export const bareRef: ElementProps<'div'> = { ref: bareButton };
+// @ts-expect-error A mark of a number is not a ref.
+export const numberRef: ElementProps<'div'> = { ref: bareNumber };
 
 // An app adds an event or a custom element by merging into the interfaces.
 declare module '../elements' {
@@ -151,6 +171,6 @@ export const noId: Component = async () => markup;
 // @ts-expect-error A call through the default `Component` takes no props.
 export const anyCall: Promise<Markup> = Any({ nonsense: 1 });
 // @ts-expect-error A component answers `Markup`, not a string.
-export const stringComponent: Component = async () => 'text';
+export const stringComponent: Component = Object.assign(async () => 'text', { brumateId: '' });
 // @ts-expect-error A tag that is not an element.
 export const noTag: ElementProps<'nope'> = {};
