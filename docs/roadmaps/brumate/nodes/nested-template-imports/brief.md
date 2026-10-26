@@ -1,7 +1,7 @@
 ---
 id: nested-template-imports
 title: A component in a template inside a block is imported
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

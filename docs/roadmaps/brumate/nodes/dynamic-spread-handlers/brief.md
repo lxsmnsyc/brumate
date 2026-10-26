@@ -1,7 +1,7 @@
 ---
 id: dynamic-spread-handlers
 title: A dynamic tag keeps the handlers of a spread in the browser
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: component-prop-render
 title: A component in a prop renders in markup that the browser renders
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

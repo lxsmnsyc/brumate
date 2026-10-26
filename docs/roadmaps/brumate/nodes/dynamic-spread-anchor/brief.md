@@ -1,7 +1,7 @@
 ---
 id: dynamic-spread-anchor
 title: A forwarded ref survives a spread on a component
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
