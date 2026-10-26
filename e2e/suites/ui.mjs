@@ -1201,11 +1201,10 @@ export async function run({ browser, url, runner }) {
       // October 25 is a Sunday, when the shop is closed, so a range over it is not picked. The
       // dates past it are out of reach once the range starts.
       await cell('2026-10-23').click();
-      await page.waitForFunction(
-        () =>
-          document
-            .querySelector('.stay-grid [data-date="2026-10-27"]:not([data-outside-month])')
-            ?.hasAttribute('data-invalid'),
+      await page.waitForFunction(() =>
+        document
+          .querySelector('.stay-grid [data-date="2026-10-27"]:not([data-outside-month])')
+          ?.hasAttribute('data-invalid'),
       );
       await cell('2026-10-27').click({ force: true });
       await page.waitForTimeout(100);

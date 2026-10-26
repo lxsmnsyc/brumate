@@ -271,7 +271,10 @@ export function weeksOf(
 }
 
 /** The days of the week of the locale, as a full name and as one or two letters. */
-export function weekDays(locale: string, firstDayOfWeek?: DayOfWeek): { name: string; short: string }[] {
+export function weekDays(
+  locale: string,
+  firstDayOfWeek?: DayOfWeek,
+): { name: string; short: string }[] {
   const first = startOfWeek(today(getLocalTimeZone()), locale, firstDayOfWeek);
   const long = new DateFormatter(locale, { weekday: 'long', timeZone: 'UTC' });
   const narrow = new DateFormatter(locale, { weekday: 'narrow', timeZone: 'UTC' });
