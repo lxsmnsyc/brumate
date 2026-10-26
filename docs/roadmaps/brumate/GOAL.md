@@ -1,5 +1,12 @@
 ---
 milestones: [core-correct, agent-skill, ui-0.1, smaller-client, features, backlog]
+merge:
+  # The user chose auto-merge on 2026-10-26. The orchestrator merges the pull requests that pass
+  # plan.py can-merge, and the rest wait for the user.
+  mode: auto
+  method: merge
+  max_size: M
+  exclude: [release, hotfix, contract, gate]
 branches:
 ---
 

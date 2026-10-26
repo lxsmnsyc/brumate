@@ -31,6 +31,7 @@ owns:
   - packages/ui/src/Tag.brm
   - packages/ui/test/as-collections.test.ts
 shared:
+  - .changeset/*.md
   - packages/ui/test/props-types.ts
   - packages/ui/test/fixtures/AsTarget.brm
 reserves: []

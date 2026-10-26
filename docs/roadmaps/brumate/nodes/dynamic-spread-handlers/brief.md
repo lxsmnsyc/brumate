@@ -17,7 +17,9 @@ gate: false
 added: 2026-10-26
 owns:
   - packages/brumate/test/render/dynamicKeys.brm
+  - packages/brumate/test/render/dynamicKeys*.brm
 shared:
+  - .changeset/*.md
   - packages/brumate/test/resume.test.ts
   - packages/brumate/src/runtime/client.ts
 reserves: []
@@ -45,3 +47,7 @@ A dynamic tag that the browser renders writes the attributes of a spread without
 ## Sizing
 
 S: one change in two functions of the client runtime.
+
+## Log
+
+- 2026-10-26: owned paths corrected at review: the review of #256 checked the extra args, each and swap fixtures. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.

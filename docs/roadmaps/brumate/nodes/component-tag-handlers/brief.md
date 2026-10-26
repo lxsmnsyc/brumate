@@ -19,6 +19,7 @@ owns:
   - packages/brumate/test/render/ScopeWrap.brm
   - packages/brumate/test/render/componentTagHandlers.brm
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/test/resume.test.ts
 reserves: []

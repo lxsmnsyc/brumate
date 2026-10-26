@@ -20,6 +20,7 @@ owns:
   - packages/brumate/src/codegen/client.ts
   - packages/brumate/src/runtime/client/updates.ts
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/test/resume.test.ts
 reserves: []

@@ -19,7 +19,8 @@ owns:
   - packages/ui/**
   - website/ui/**
   - docs/proposals.md
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

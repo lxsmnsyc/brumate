@@ -19,7 +19,8 @@ owns:
   - packages/ui/skills/**
   - packages/ui/test/skill.test.ts
   - packages/ui/package.json
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

@@ -16,8 +16,17 @@ fulfilled_by:
 gate: false
 added: 2026-10-26
 owns:
-  - packages/brumate/src/runtime/shared.ts packages/brumate/src/codegen/client.ts packages/brumate/src/codegen/render.ts packages/brumate/test/render/LateAs.brm packages/brumate/test/render/lateAsPage.brm packages/brumate/test/render/AsLink.brm
+  - packages/brumate/src/runtime/shared.ts
+  - packages/brumate/src/codegen/client.ts
+  - packages/brumate/src/codegen/render.ts
+  - packages/brumate/test/render/LateAs.brm
+  - packages/brumate/test/render/lateAsPage.brm
+  - packages/brumate/test/render/AsLink.brm
+  - packages/brumate/test/render/LateEach.brm
+  - packages/brumate/test/render/lateEachPage.brm
+  - packages/brumate/test/__snapshots__/render/**
 shared:
+  - .changeset/*.md
   - packages/brumate/test/resume.test.ts
   - packages/brumate/src/runtime/client.ts
 reserves: []
@@ -45,3 +54,7 @@ In the browser a component value is a stub that renders nothing, so a component 
 ## Sizing
 
 M: the compiler and the core both change, and the choice of how the render module is found is new.
+
+## Log
+
+- 2026-10-26: owned paths corrected at review: the new #for test of the brief, and the render snapshots that gain a brumateId line. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.

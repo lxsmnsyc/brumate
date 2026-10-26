@@ -16,8 +16,12 @@ fulfilled_by:
 gate: false
 added: 2026-10-26
 owns:
-  - packages/brumate/src/codegen/client.ts packages/brumate/test/render/templateNested.brm packages/brumate/test/render/TplDynamic.brm
+  - packages/brumate/src/codegen/client.ts
+  - packages/brumate/test/render/templateNested.brm
+  - packages/brumate/test/render/TplDynamic.brm
+  - packages/brumate/test/render/templateNested*.brm
 shared:
+  - .changeset/*.md
   - packages/brumate/test/resume.test.ts
 reserves: []
 provides: []
@@ -44,3 +48,7 @@ A component used as a tag in a `#template` declared inside a block is not import
 ## Sizing
 
 S: one condition in the codegen.
+
+## Log
+
+- 2026-10-26: owned paths corrected at review: the reviews of #254 asked for the deep, twice and loop fixtures. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.

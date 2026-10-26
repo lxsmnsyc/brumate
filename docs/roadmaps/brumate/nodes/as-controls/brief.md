@@ -34,6 +34,7 @@ owns:
   - packages/ui/test/as-controls.test.ts
   - packages/ui/test/fixtures/AsTarget.brm
 shared:
+  - .changeset/*.md
   - packages/ui/test/props-types.ts
 reserves: []
 provides: []

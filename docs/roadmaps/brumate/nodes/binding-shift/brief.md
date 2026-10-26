@@ -19,7 +19,8 @@ owns:
   - packages/brumate/src/runtime/shared.ts
   - packages/brumate/src/runtime/client-routes.ts
   - packages/brumate/test/scope-ids.test.ts
-shared: []
+shared:
+  - .changeset/*.md
 reserves: []
 provides: []
 depends_on:

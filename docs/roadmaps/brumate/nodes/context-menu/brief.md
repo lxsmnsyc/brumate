@@ -24,6 +24,7 @@ owns:
   - website/ui/demos/CommandPaletteDemo.brm
   - website/ui/demos/ContextMenuDemo.brm
 shared:
+  - .changeset/*.md
   - packages/ui/src/position.ts
   - website/src/ui.ts
   - examples/ui/src/**

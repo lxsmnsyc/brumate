@@ -16,8 +16,13 @@ fulfilled_by:
 gate: false
 added: 2026-10-26
 owns:
-  - packages/brumate/src/runtime/server.ts packages/brumate/src/runtime/html.ts packages/brumate/test/render/RefSpread.brm packages/brumate/test/render/refForwardSpread.brm
+  - packages/brumate/src/runtime/server.ts
+  - packages/brumate/src/runtime/html.ts
+  - packages/brumate/test/render/RefSpread.brm
+  - packages/brumate/test/render/refForwardSpread.brm
+  - packages/brumate/src/codegen/markup.ts
 shared:
+  - .changeset/*.md
   - packages/brumate/test/resume.test.ts
   - packages/brumate/src/runtime/client.ts
 reserves: []
@@ -45,3 +50,7 @@ A component in a dynamic tag that spreads its props onto its root gets the dynam
 ## Sizing
 
 S: one rule in the server spread, and a check of the client path.
+
+## Log
+
+- 2026-10-26: owned paths corrected at review: the fix is in the codegen, which the review of #255 found right, and it asked to record it. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.

@@ -18,6 +18,7 @@ added: 2026-10-26
 owns:
   - packages/brumate/test/render/componentTagLiveProps.brm
 shared:
+  - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
   - packages/brumate/src/codegen/client.ts
   - packages/brumate/test/resume.test.ts
