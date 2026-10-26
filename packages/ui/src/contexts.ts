@@ -264,3 +264,11 @@ export interface ModalOverlayState {
 
 export const ModalOverlayContext: Context<ModalOverlayState | null> =
   createContext<ModalOverlayState | null>('brumate-ui:modal-overlay', null);
+
+/** What a ColorSwatchPickerItem gives the ColorSwatch inside it: the color of the item. */
+export interface ColorSwatchState {
+  color: string;
+}
+
+export const ColorSwatchContext: Context<ColorSwatchState | null> =
+  createContext<ColorSwatchState | null>('brumate-ui:color-swatch', null);

@@ -1677,6 +1677,37 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step('ColorSwatchPicker: the keys select, and a press selects', async () => {
+    await page.goto(`${url}/`);
+    const waitPaint = async (text) => {
+      try {
+        await page.waitForFunction(
+          (t) => document.querySelector('.paint-state')?.textContent === t,
+          text,
+          { timeout: 5000 },
+        );
+      } catch {
+        throw new Error(
+          `expected ${text}, got ${await page.locator('.paint-state').textContent()}`,
+        );
+      }
+    };
+    // Focus goes to the selected item, and the arrow keys select the next.
+    await page.locator('.paint').focus();
+    await page.waitForFunction(() => document.activeElement?.classList.contains('paint-red'));
+    await page.keyboard.press('ArrowRight');
+    await waitPaint('rgb(46, 160, 67)');
+    await page.keyboard.press('End');
+    await waitPaint('hsl(217, 91%, 53%)');
+    // A press selects the item with its own format.
+    await page.locator('.paint-red').click();
+    await waitPaint('#e2445a');
+    assert(
+      (await page.locator('.paint-red').getAttribute('aria-selected')) === 'true',
+      'the pressed item is not selected',
+    );
+  });
+
   await step('axe-core: an open menu has no violations', async () => {
     await page.goto(`${url}/`);
     await page.locator('.edit-trigger').focus();

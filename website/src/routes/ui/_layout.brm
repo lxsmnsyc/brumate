@@ -1113,6 +1113,40 @@
     align-items: end;
   }
 
+  /* A picker of swatches: a grid or a stack, with a ring on the selected one. */
+  :global(.ui-swatch-picker) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    max-width: 14rem;
+    outline: none;
+  }
+
+  :global(.ui-swatch-picker[data-layout='stack']) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: max-content;
+  }
+
+  :global(.ui-swatch-option) {
+    border-radius: 0.5rem;
+    padding: 2px;
+    outline: none;
+  }
+
+  :global(.ui-swatch-option[data-selected]) {
+    box-shadow: 0 0 0 2px var(--accent, #2563eb);
+  }
+
+  :global(.ui-swatch-option[data-focus-visible]) {
+    outline: 2px solid var(--accent, #2563eb);
+    outline-offset: 2px;
+  }
+
+  :global(.ui-swatch-option[data-disabled]) {
+    opacity: 0.4;
+  }
+
   /* A date field: segments in a row, each shaded while it has focus. */
   :global(.ui-date-input) {
     display: inline-flex;

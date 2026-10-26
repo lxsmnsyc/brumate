@@ -45,7 +45,14 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   },
   {
     title: 'Colors',
-    pages: ['color-swatch', 'color-slider', 'color-area', 'color-wheel', 'color-field'],
+    pages: [
+      'color-swatch',
+      'color-slider',
+      'color-area',
+      'color-wheel',
+      'color-field',
+      'color-swatch-picker',
+    ],
   },
   {
     title: 'Dates',
@@ -245,6 +252,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A field for a color, as hex or as one channel.',
     href: 'color-field',
     demo: 'ColorFieldDemo',
+  },
+  {
+    title: 'ColorSwatchPicker',
+    summary: 'A list of color swatches, to pick one.',
+    href: 'color-swatch-picker',
+    demo: 'ColorSwatchPickerDemo',
   },
   {
     title: 'Calendar',

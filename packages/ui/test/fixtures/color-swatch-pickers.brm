@@ -1,0 +1,30 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSwatch from '../../src/ColorSwatch.brm';
+  import ColorSwatchPicker from '../../src/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '../../src/ColorSwatchPickerItem.brm';
+
+  let grid = $signal('rgb(255, 0, 0)');
+  let stack = $signal('#0000ff');
+  let changes = $signal<string[]>([]);
+</script>
+
+<main class="page">
+  <button class="before" type="button">Before</button>
+  <ColorSwatchPicker class="grid" aria-label="Palette" value=$bind(grid) onChange=((value) => (changes = [...changes, value]))>
+    <ColorSwatchPickerItem class="red" color="#f00"><ColorSwatch class="red-swatch" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="green" color="rgb(0, 255, 0)"><ColorSwatch class="green-swatch" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="blue" color="#00f"><ColorSwatch class="blue-swatch" /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="yellow" color="hsl(60, 100%, 50%)"><ColorSwatch class="yellow-swatch" /></ColorSwatchPickerItem>
+  </ColorSwatchPicker>
+  <ColorSwatchPicker class="stack" layout="stack" value=$bind(stack)>
+    <ColorSwatchPickerItem class="s-red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="s-gray" color="#888888" isDisabled><ColorSwatch /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="s-blue" color="#0000ff"><ColorSwatch /></ColorSwatchPickerItem>
+  </ColorSwatchPicker>
+  <ColorSwatchPicker class="own" value=("#00ff00")>
+    <ColorSwatchPickerItem class="o-red" color="#ff0000"><ColorSwatch /></ColorSwatchPickerItem>
+    <ColorSwatchPickerItem class="o-green" color="#00ff00"><ColorSwatch /></ColorSwatchPickerItem>
+  </ColorSwatchPicker>
+  <output class="state">{JSON.stringify([grid, stack, changes])}</output>
+</main>
