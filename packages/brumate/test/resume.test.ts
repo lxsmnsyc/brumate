@@ -5158,6 +5158,32 @@ describe('a dynamic tag that names a component', () => {
     expect(link().getAttribute('href')).toBe('/x');
   });
 
+  it('keeps the handler of the tag through a live prop', async () => {
+    await resume('restTagHandler', {});
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('2'));
+    // The own anchor of the element stays out of the attributes that a spread wrote.
+    expect(link().getAttribute('b-s')).not.toContain('b-b');
+  });
+
+  it('keeps the handler of the tag through a live prop, in a block', async () => {
+    await resume('restTagHandlerLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
   it('updates the live props of a component that spreads its rest, in a block', async () => {
     await resume('restTagLivePropsLate', {});
     click(document.querySelector('.open')!);

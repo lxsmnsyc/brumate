@@ -4424,18 +4424,17 @@ export function dynamicNodes(
   foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
+    // The anchor links the component to the tag, so updates reach its props. It is no prop.
+    const { 'b-b': bound, ...props } = ref === undefined ? attributes : { ...attributes, ref };
+    if (inner) {
+      props.children = inner;
     }
-    // The anchor links the component to the tag, so updates reach its props. The element of the
-    // component gets it too, which the handlers of the tag find their scope by.
-    const bound = ownValue('b-b', attributes['b-b']) as string | undefined;
     return componentNodes(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
+      props,
       undefined,
       scope,
-      bound === undefined ? undefined : Number(bound.split(':')[1]),
+      bound ? Number((ownValue('b-b', bound) as string).split(':')[1]) : undefined,
     );
   }
   const name = String(tag);

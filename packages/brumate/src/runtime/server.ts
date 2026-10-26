@@ -1471,7 +1471,30 @@ export function dynamic(
       attributes = { ...attributes, ref };
     }
     // The anchor links the component to the tag, so updates reach its props. It is no prop.
-    const { 'b-b': bound, ...passed } = attributes;
+    const { 'b-b': bound, 'b-on': entries, ...passed } = attributes;
+    // The handlers of the tag reach the component as `onClick` props that refer to the client
+    // functions, as those of a component written by name do. A `b-on` that a live rest held
+    // would not go to the browser.
+    for (const entry of (ownValue('b-on', entries) as string | undefined)?.split(' ') ?? []) {
+      const [event, target] = entry.split('=') as [string, string];
+      const [name, ...modifiers] = event.split(':') as [string, ...string[]];
+      const [ref, at] = target.split('@') as [string, string?];
+      const handler = Object.assign(
+        () => {},
+        modifiers.length > 0 ? { [MODIFIERS]: modifiers } : {},
+      );
+      functionReferences.set(
+        handler,
+        new FunctionReference(
+          ref,
+          at === undefined || !/^\d+$/.test(at) ? (at ?? scope!) : Number(at),
+        ),
+      );
+      // A handler of the same event that a rest prop passed on keeps its name. The name of the
+      // handler of the tag is the event in capitals, which a spread writes as the same event.
+      const key = `on${name[0]!.toUpperCase()}${name.slice(1)}`;
+      passed[key in passed ? `on${name.toUpperCase()}` : key] = handler;
+    }
     return component(
       tag,
       content ? { ...passed, children: content } : passed,
