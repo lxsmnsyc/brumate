@@ -8,7 +8,7 @@
 <ul
   class="list"
   tabindex="0"
-  onKeyDown=(prevent((event: KeyboardEvent) => (last = event.key), 'ArrowDown', 'ArrowUp', 'Space'))
+  onKeyDown=(prevent((event: KeyboardEvent) => (last = event.key), 'ArrowDown', 'ArrowUp', 'Space', 'Mod+ArrowUp'))
 >
   <li>One</li>
 </ul>
