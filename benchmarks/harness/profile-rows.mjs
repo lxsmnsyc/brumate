@@ -18,7 +18,6 @@ const page = await browser.newPage();
 await page.goto(`http://127.0.0.1:${port}/`);
 await page.waitForLoadState('load');
 await page.waitForTimeout(500);
-const rows = () => page.evaluate(() => document.querySelectorAll('tbody tr').length);
 const click = async (selector, until) => {
   await page.click(selector);
   await page.waitForFunction(until);
