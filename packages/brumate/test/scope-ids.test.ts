@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { shiftState } from '../src/runtime/client-routes.ts';
 import {
+  Binding,
   ChildrenReference,
   ElementReference,
   FunctionReference,
@@ -31,6 +32,11 @@ function fullRecord(): Required<ScopeState> {
     c: { 0: 8, 1: '9.1' },
     b: { 0: new SlotReference(10, 2), 1: new FunctionReference('Card_x1#h1', '11.0') },
   };
+}
+
+/** A binding of a rest prop, whose slot and setter hold IDs. */
+function binding(): Binding {
+  return new Binding(1, new SlotReference(2, 3), new FunctionReference('X#h', 2));
 }
 
 /** Every scope ID that a reference holds in a value, found by walking it. */
@@ -66,6 +72,29 @@ describe('the table of scope IDs', () => {
     const named = SCOPE_IDS.references.map((type) => type.name);
     expect(holders.length).toBeGreaterThan(0);
     expect(named.sort()).toEqual(holders.sort());
+  });
+
+  it('names every class that holds a reference with an ID', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/runtime/shared.ts'), 'utf8');
+    const named = SCOPE_IDS.references.map((type) => type.name);
+    const typed = new RegExp(`\\b(${named.join('|')})\\b`);
+    const holders = [...source.matchAll(/export class (\w+)\b[^{]*\{([^}]*?)constructor/gs)]
+      .filter((match) => !named.includes(match[1]!) && typed.test(match[2]!))
+      .map((match) => match[1]);
+    expect(holders).toContain('Binding');
+    expect(SCOPE_IDS.holders.map((type) => type.name).sort()).toEqual(holders.sort());
+  });
+
+  it('moves the IDs of a binding', () => {
+    const state: PageState = { 1: { s: [binding()], b: { 0: binding() } } };
+    const record = shiftState(SCOPE_IDS, state, by)[101]!;
+    for (const item of [record.s![0], record.b![0]] as Binding[]) {
+      expect(item).toBeInstanceOf(Binding);
+      expect((item.ref as SlotReference).scope).toBe(102);
+      expect((item.set as FunctionReference).scope).toBe(102);
+      expect(item.ref.slot).toBe(3);
+      expect(item.value).toBe(1);
+    }
   });
 
   it('moves every ID of a record', async () => {

@@ -365,11 +365,14 @@ export type FieldKind = 'none' | 'id' | 'ids' | 'value' | 'values' | 'map';
  * a scope ID, which each keep it in `scope`. Code that moves the IDs reads it.
  * A new field of `ScopeState` fails to compile until it is in `fields`, and
  * `scope-ids.test.ts` fails for a new reference class that is not in
- * `references`. `Binding` is not in it yet.
+ * `references`. `holders` are the classes that keep references in their own
+ * fields, such as `Binding`, whose `ref` and `set` hold IDs. The test fails
+ * for a class with a field of a reference class that is not in `holders`.
  */
 export const SCOPE_IDS: {
   fields: Record<keyof ScopeState, FieldKind>;
   references: readonly (abstract new (...args: never[]) => { scope: ScopeId })[];
+  holders: readonly (abstract new (...args: never[]) => object)[];
 } = {
   fields: {
     k: 'none',
@@ -386,4 +389,5 @@ export const SCOPE_IDS: {
     b: 'map',
   },
   references: [ElementReference, FunctionReference, ChildrenReference, SlotReference],
+  holders: [Binding],
 };
