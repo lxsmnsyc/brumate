@@ -11,31 +11,36 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
 - The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
-| Proposal                                                              | Area     | Value  | Cost   |
-| --------------------------------------------------------------------- | -------- | ------ | ------ |
-| [Idempotent calls](#idempotent-calls)                                 | Server   | Low    | Small  |
-| [Two-way realtime](#two-way-realtime)                                 | Server   | Medium | Medium |
-| [Embedding in other sites](#embedding-in-other-sites)                 | Build    | Medium | Medium |
-| [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
-| [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
-| [Styles in blocks](#styles-in-blocks)                                 | Syntax   | Medium | Medium |
-| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
-| [Server components](#server-components)                               | Syntax   | High   | Large  |
-| [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
-| [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
-| [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
-| [Worker functions](#worker-functions)                                 | Runtime  | Medium | Medium |
-| [Offline pages](#offline-pages)                                       | Runtime  | Medium | Medium |
-| [Observability](#observability)                                       | Runtime  | Medium | Medium |
-| [Ordered updates](#ordered-updates)                                   | Runtime  | Medium | Medium |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
-| [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
-| [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
-| [Internationalization](#internationalization)                         | Library  | High   | Large  |
-| [Images](#images)                                                     | Build    | Medium | Medium |
-| [State in the URL](#state-in-the-url)                                 | Routing  | High   | Small  |
-| [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
+| Proposal                                                                          | Area     | Value  | Cost   |
+| --------------------------------------------------------------------------------- | -------- | ------ | ------ |
+| [Idempotent calls](#idempotent-calls)                                             | Server   | Low    | Small  |
+| [Two-way realtime](#two-way-realtime)                                             | Server   | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                             | Build    | Medium | Medium |
+| [Named view transitions](#named-view-transitions)                                 | Syntax   | Low    | Small  |
+| [Long lists](#long-lists)                                                         | Syntax   | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                               | Syntax   | Low    | Medium |
+| [Styles in blocks](#styles-in-blocks)                                             | Syntax   | Medium | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)                  | Syntax   | Low    | Small  |
+| [Server components](#server-components)                                           | Syntax   | High   | Large  |
+| [Devtools](#devtools)                                                             | Tooling  | High   | Medium |
+| [Component workbench](#component-workbench)                                       | Tooling  | Medium | Medium |
+| [Agent support](#agent-support)                                                   | Tooling  | High   | Medium |
+| [Worker functions](#worker-functions)                                             | Runtime  | Medium | Medium |
+| [Offline pages](#offline-pages)                                                   | Runtime  | Medium | Medium |
+| [Observability](#observability)                                                   | Runtime  | Medium | Medium |
+| [Ordered updates](#ordered-updates)                                               | Runtime  | Medium | Medium |
+| [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids) | Runtime  | High   | Small  |
+| [Fields typed before the code loads](#fields-typed-before-the-code-loads)         | Runtime  | High   | Medium |
+| [Triggers in tests](#triggers-in-tests)                                           | Tooling  | Medium | Small  |
+| [Tests against the current build](#tests-against-the-current-build)               | Tooling  | Medium | Small  |
+| [Keys of collections from their data](#keys-of-collections-from-their-data)       | Library  | Medium | Medium |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7)             | Tooling  | High   | Medium |
+| [Headless UI components](#headless-ui-components)                                 | Library  | High   | Large  |
+| [Markdown with components](#markdown-with-components)                             | Library  | Medium | Medium |
+| [Internationalization](#internationalization)                                     | Library  | High   | Large  |
+| [Images](#images)                                                                 | Build    | Medium | Medium |
+| [State in the URL](#state-in-the-url)                                             | Routing  | High   | Small  |
+| [A smaller and faster client](#a-smaller-and-faster-client)                       | Compiler | High   | Large  |
 
 ## Syntax
 
@@ -307,6 +312,34 @@ The tests mark each case with `it.fails`. The fix turns them into `it`.
 
 Cost: a few days for the order, and a day or two more for batching, since it uses the queue of bindings that the order adds. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo`, `writeSlot` and `handle` of the core.
 
+### One table of the fields with scope IDs
+
+Values in the page state name scopes: references to elements, functions, slots and children, and the fields `p`, `o`, `t`, `f` and `c` of a record. Code in several places walks them: navigation moves them in `shiftState`, and serialization, the devtools and disposal read them. Each place lists the fields by hand, and a new field or reference must be added to each one.
+
+Three bugs in a week came from a place that missed one: contexts of blocks in children (#168, #203), and `shiftState`, which did not move `ChildrenReference` or `f`, so children stayed empty after navigation (#212).
+
+- `shared.ts` holds one table of the record fields and the reference classes that hold a `ScopeId`, with how to read and write the ID of each.
+- `shiftState` and the other places read the table, not a list of their own.
+- A test builds a record with every field and reference, moves it, and fails when one keeps its old ID. A new field that holds an ID and is not in the table fails it too.
+
+Cost: a day or two.
+
+### Fields typed before the code loads
+
+The page shows and takes input before its code loads. Text typed into a field in that time is in the DOM, but not in the signal that the field is bound to, so the first update writes the old value back, or the value is lost:
+
+- The ui e2e step "SearchField: Enter submits" was flaky for this reason.
+- TokenField reads its box once when its code starts, in #206, a fix for one part.
+- Any `<input value=$bind(x)>` that someone types into early has the same problem.
+
+The core can do it once, for every part:
+
+- When the core resumes a field whose `value` or `checked` is bound, with `$bind` or a binding of the field, it reads the field from the DOM. When it differs from the state, the DOM wins, and the core writes the signal, as an `input` event would.
+- The same goes for `<select>` and `<textarea>`. A part with its own field, such as a `contenteditable`, uses a hook of the core to say how to read it.
+- Only a field that the user changed counts, so a field that the server rendered with a value the page has since changed is not read back. The core can compare the field with the value that the server rendered.
+
+Cost: a few days, with tests for each kind of field.
+
 ## Data
 
 ### Worker functions
@@ -541,6 +574,27 @@ TypeScript 7 does not load plugins, so `.brm` files get types only from TypeScri
 - A content mapper from `toTypeScript` would let `tsc` and the editor of TypeScript 7 check `.brm` files.
 - It would replace `@brumate/tsc`, and the TypeScript plugin in the extension.
 - This waits for the API to be stable, and for its documentation.
+
+### Triggers in tests
+
+happy-dom has no IntersectionObserver that reports, so `$client(fn, 'visible')`, the default, never runs in a test, and neither does `#client` or `#defer` with `'visible'`. The parts of `@brumate/ui` use `'load'` for this reason, which the compiler warns about, so code for the page bends to the tests.
+
+`brumate/testing` can fire the triggers:
+
+- `mount` and `visit` install an IntersectionObserver that reports each element it observes as visible. An option keeps an element out of view, for a test of what waits for it.
+- An action fires `'idle'` at once, or each `'idle'` fires after the event that starts the page.
+- The parts of `@brumate/ui` then use the trigger that the page needs, and their tests still pass.
+
+Cost: a day.
+
+### Tests against the current build
+
+The tests of `@brumate/ui` and of the website compile components with `brumate` from `packages/brumate/dist`, not from its source. After a change of branch, `dist` can be older than `src`, and the tests compile with an old compiler. On 2026-10-26 this failed Tree with "Expected { after #for" and Table with a row header, before anyone saw that `dist` was old.
+
+- The configs of those tests resolve `brumate` to its source, as the tests of `packages/brumate` do.
+- Or a check before the tests fails when a file of `src` is newer than `dist`, and says to build.
+
+Cost: a few hours.
 
 ### Devtools
 
@@ -1079,6 +1133,17 @@ The default preview is an image about 20 pixels wide, inlined as a data URL, and
 
 Cost: about a week, with most of the plugin taken from `@solidjs/image`.
 
+### Keys of collections from their data
+
+The keyboard helpers of `collection.ts` read the rows from the DOM. A collection whose rows are windowed renders only some of them, so Home, End, select all, typeahead and ranges with Shift see only the rows in the page. Tree reads its rows from its data since #204, a fix for one part. GridList, ListBox and Table in a Virtualizer still have the problem.
+
+- The model of a collection gives its keys in order, which are disabled, and the text of each, from its items, as Tree's `visibleRows` does.
+- The keyboard helpers read the model when the collection is windowed, and the DOM otherwise.
+- A move to a row that is not rendered scrolls it into view, then focuses it, as Tree does.
+- `getTextValue` names the text of an item for typeahead, as on Tree.
+
+Cost: a few days, with the tests of Tree moved to each collection.
+
 ### Markdown with components
 
 Markdown pages that can use brumate components and expressions, as mdsvex does for Svelte and MDX does for React. Content sites are mostly static, which is where resuming pays off most: a docs page ships no code unless a component on it has handlers.
@@ -1195,4 +1260,4 @@ Each step lists what it holds and why it comes there. A step can start before th
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.
 
-Ordered updates come before other work on the core. The tests show the cases.
+Ordered updates come before other work on the core. The tests show the cases. The table of the fields with scope IDs and the tests against the current build come first of all, since they are small and keep the next changes of the core safe. Fields typed before the code loads follow, and the triggers in tests and the keys of collections go with the work on `@brumate/ui`.
