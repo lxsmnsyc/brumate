@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Puts every prop it gets on its element, as a part that forwards its props does.
+  const { ...rest } = $props<{ [name: string]: unknown }>();
+</script>
+
+<p class="forwarded" {...rest}>Forwarded</p>

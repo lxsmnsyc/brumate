@@ -89,6 +89,20 @@ Shorthands:
 
 When `tag` changes in the browser, the element renders again with the new tag.
 
+A tag with no content can close itself, as a void element or a component with no children does:
+
+```brm
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { as = 'hr' } = $props<{ as?: string }>();
+</script>
+
+<{as} class="divider" />
+```
+
+`</>` is the only closing tag of a dynamic tag. `</{tag}>` is an error.
+
 ## HTML strings
 
 Inserted text is escaped. `raw` from `brumate/html` inserts a string as HTML, such as the HTML of a Markdown file:
