@@ -18,6 +18,7 @@ import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { serverFunctionId } from '../plan.ts';
+import { cloneLines } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
@@ -60,7 +61,7 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
   'TSModuleDeclaration',
 ]);
 
-type Part = { static: string } | { code: string };
+export type Part = { static: string } | { code: string };
 
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
@@ -105,7 +106,30 @@ export interface EmitterOptions {
    * expression for that scope's instance.
    */
   outer?: { inside: Scope[]; base: Scope; baseVar: string };
+  /**
+   * For a render that clones a template: the render functions of the nested `#if` and `#for`
+   * blocks that it fills after the clone, in place of their markup. A block that it gives none
+   * for renders inline.
+   */
+  fills?: (block: Block) => Fill | undefined;
+  /**
+   * Makes a constant of the module, for the templates that the functions of children clone. The
+   * functions of children render HTML without it.
+   */
+  hoist?: (code: string) => string;
 }
+
+/**
+ * Where a line of a render is: in which function, by its number, or -1 outside any, and whether
+ * in an `if`, a loop or another branch of it. See `Emitter.levels`.
+ */
+export interface Level {
+  fn: number;
+  control: boolean;
+}
+
+/** The render functions that fill a nested block of a clone. */
+export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: string };
 
 /** Writes code that renders markup to an HTML string, on the server or on the client. */
 /** The exports of the core that do on the client what the server's render context does. */
@@ -203,6 +227,23 @@ const DATA_SHAPED = new Set(['if', 'switch', 'for', 'repeat', 'try', 'offscreen'
 
 export class Emitter {
   readonly lines: string[] = [];
+  /** Each `$$html +=` line, by its index in `lines`, with its parts, for cloned templates. */
+  readonly flushes: { line: number; parts: Part[] }[] = [];
+  /**
+   * Where each line of `lines` is, for cloned templates: in which function, the first being 0,
+   * and whether in a branch or a loop of it. Plain `{` blocks do not count.
+   */
+  readonly levels: Level[] = [];
+  /** The lines that open or close a plain `{` block, which a clone can drop. */
+  readonly plainBraces: Set<number> = new Set();
+  /** The kinds of the `{` that are open: of a function, a branch or loop, or a plain block. */
+  private braces: { kind: 'fn' | 'control' | 'plain'; fn?: number }[] = [];
+  private fnCount = 0;
+  /**
+   * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
+   * `$$m` in a call is the start comment of the block.
+   */
+  readonly fills: Map<string, string> = new Map();
   private readonly file: SFCFile;
   private readonly plan: Plan;
   private readonly patch: Patch;
@@ -320,19 +361,61 @@ export class Emitter {
 
   line(code: string): void {
     this.flush();
-    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    this.push(`${'  '.repeat(this.depth)}${code}`);
     if (code.endsWith('{')) {
       this.depth++;
+      const trimmed = code.trim();
+      if (trimmed === '{') {
+        this.plainBraces.add(this.lines.length - 1);
+      }
+      if (trimmed === '{') {
+        this.braces.push({ kind: 'plain' });
+      } else if (/=> \{$|^(?:export )?(?:default )?function\b/.test(trimmed)) {
+        this.braces.push({ kind: 'fn', fn: this.fnCount++ });
+      } else {
+        this.braces.push({ kind: 'control' });
+      }
     }
   }
 
   close(code = '}'): void {
     this.flush();
     this.depth--;
-    this.lines.push(`${'  '.repeat(this.depth)}${code}`);
+    if (this.braces.pop()?.kind === 'plain' && code === '}') {
+      this.plainBraces.add(this.lines.length);
+    }
+    this.push(`${'  '.repeat(this.depth)}${code}`);
     if (code.endsWith('{')) {
       this.depth++;
+      this.braces.push({ kind: 'control' });
     }
+  }
+
+  /**
+   * The return of a render function of the browser: its clone, its HTML, or an empty string
+   * for a function with no markup, which is not HTML that the core must parse.
+   */
+  returnLine(fn: number, cloned: boolean): string {
+    if (cloned) {
+      return 'return $$f;';
+    }
+    const markup = this.flushes.some((flush) => this.levels[flush.line]!.fn === fn);
+    return markup ? 'return $$html;' : "return '';";
+  }
+
+  /** The number of the function that the next line is in, or -1. */
+  get currentFn(): number {
+    return this.braces.findLast((brace) => brace.kind === 'fn')?.fn ?? -1;
+  }
+
+  /** Adds a line, with where it is. */
+  private push(line: string): void {
+    this.lines.push(line);
+    const at = this.braces.findLastIndex((brace) => brace.kind === 'fn');
+    this.levels.push({
+      fn: at === -1 ? -1 : this.braces[at]!.fn!,
+      control: this.braces.slice(at + 1).some((brace) => brace.kind === 'control'),
+    });
   }
 
   /** Copies source code, keeping the indentation of its lines relative to the first. */
@@ -343,7 +426,7 @@ export class Emitter {
     const indent = '  '.repeat(this.depth);
     code.split('\n').forEach((line, index) => {
       const text = index === 0 ? line : line.replace(new RegExp(`^ {0,${column}}`), '');
-      this.lines.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
+      this.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
     });
   }
 
@@ -366,10 +449,11 @@ export class Emitter {
     }
     const parts = this.parts;
     this.parts = [];
+    this.flushes.push({ line: this.lines.length, parts });
     const value = parts
       .map((part) => ('static' in part ? JSON.stringify(part.static) : part.code))
       .join(' + ');
-    this.lines.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
+    this.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
   }
 
   /**
@@ -717,8 +801,13 @@ export class Emitter {
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
     if (this.plan.styles.css) {
-      // The stylesheet is written once per page, before the first instance.
-      this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
+      // The stylesheet is written once per page, before the first instance. The browser adds it
+      // to the head, so it is not in the markup.
+      if (this.options.mode === 'client') {
+        this.line(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css);`);
+      } else {
+        this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
+      }
     }
     this.emitStatements(setup, component);
     for (const template of this.file.templates) {
@@ -1368,10 +1457,13 @@ export class Emitter {
     this.line(
       `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, () => {`,
     );
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
-    this.line('return $$html;');
+    // Children whose markup can clone give the clone, which the insert puts in place.
+    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+    this.line(this.returnLine(fn, cloned));
     this.close('});');
     return name;
   }
@@ -1591,6 +1683,7 @@ export class Emitter {
     }
     const name = this.unique('portal');
     this.line(`const ${name} = ${this.wait}(${this.async}() => {`);
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     this.createScope(body);
     this.html('<!--P');
@@ -1601,7 +1694,12 @@ export class Emitter {
     this.headBlocks -= block.kind === 'head' ? 1 : 0;
     this.html('<!--/P-->');
     this.flush();
-    this.line('return $$html;');
+    // In the browser, the body clones its markup when it can.
+    const cloned =
+      this.options.mode === 'client' &&
+      this.options.hoist !== undefined &&
+      cloneLines(this, this.options.hoist, fn);
+    this.line(cloned ? 'return $$f;' : 'return $$html;');
     this.close('})();');
     // `#head` content goes to the document's head, and portal content to the end of the page.
     this.line(`${this.helper(block.kind === 'head' ? 'head' : 'portal')}(${name});`);
@@ -1714,6 +1812,96 @@ export class Emitter {
     this.close('});');
   }
 
+  /**
+   * Writes the markers of a nested `#if` or `#for` of a clone, with nothing between them, and
+   * the call that fills the block after the clone. Returns false for a block that renders inline.
+   */
+  private emitFill(block: Block, scope: Scope): boolean {
+    // A block in the function of children renders there, which the calls of a clone do not fill.
+    const fill = this.currentFn === 0 ? this.options.fills?.(block) : undefined;
+    const anchor = fill && this.anchor(scope, block);
+    if (!fill || !anchor) {
+      return false;
+    }
+    let call: string;
+    if (fill.kind === 'if' && block.kind === 'if') {
+      // The index of the branch that shows, or of the fallback, or -1.
+      let index = block.fallback ? String(block.branches.length) : '-1';
+      for (let at = block.branches.length - 1; at >= 0; at--) {
+        index = `${this.expression(block.branches[at]!.condition)} ? ${at} : ${index}`;
+      }
+      call = `$$b.fillBranch($$m, ${anchor.scope}, ${anchor.index}, ${index}, [${fill.renders.join(', ')}])`;
+    } else if (fill.kind === 'for' && block.kind === 'for') {
+      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.listOf(${this.expression(block.list)}), ${fill.render})`;
+    } else {
+      return false;
+    }
+    this.open(scope, block, fill.kind === 'if' ? '-1' : undefined);
+    this.end(block);
+    this.fills.set(`${anchor.scope}:${anchor.index}`, call);
+    return true;
+  }
+
+  /**
+   * Emits a function that renders a body, as a constant, and returns its name. The function
+   * clones its markup when it can, and gives its HTML otherwise.
+   */
+  private bodyFunction(params: string, content: () => void): string {
+    const name = this.unique('body');
+    this.line(`const ${name} = (${params}) => {`);
+    const fn = this.currentFn;
+    this.line(`let $$html = '';`);
+    content();
+    this.flush();
+    const cloned = cloneLines(this, this.options.hoist!, fn);
+    this.line(this.returnLine(fn, cloned));
+    this.close('};');
+    return name;
+  }
+
+  /**
+   * In the browser, an `#if`, a `#switch`, a `#for` or a `#repeat` that renders where it is
+   * builds its nodes with a function for each body, so the markup around it and its bodies can
+   * clone. `branchNodes` and `listNodes` write its markers, when it has them.
+   */
+  private emitNodesBlock(block: Block, scope: Scope): boolean {
+    if (this.options.mode !== 'client' || !this.options.hoist) {
+      return false;
+    }
+    const anchor = this.anchor(scope, block);
+    const marks = anchor ? `${anchor.scope}, ${anchor.index}` : 'undefined, undefined';
+    if (block.kind === 'if' || block.kind === 'switch') {
+      const branches = block.kind === 'if' ? block.branches : block.cases;
+      const bodies = branches.map((branch) =>
+        this.bodyFunction('', () => this.emitBody(branch.body)),
+      );
+      const fallback = block.fallback;
+      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      // The index of the branch that shows, then its function.
+      let index = other ? String(branches.length) : '-1';
+      for (let at = branches.length - 1; at >= 0; at--) {
+        index = `${this.expression(branches[at]!.condition)} ? ${at} : ${index}`;
+      }
+      const names = `[${[...bodies, ...(other ? [other] : [])].join(', ')}]`;
+      this.code(`$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`);
+      return true;
+    }
+    if (block.kind === 'for' || block.kind === 'repeat') {
+      const item = this.unique('item');
+      const index = this.unique('index');
+      const body = this.bodyFunction(`${item}, ${index}`, () => this.emitItem(block, item, index));
+      const fallback = block.fallback;
+      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      const items =
+        block.kind === 'for'
+          ? `$$b.listOf(${this.expression(block.list)})`
+          : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
+      this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
+      return true;
+    }
+    return false;
+  }
+
   private open(scope: Scope, block: Block, suffix?: string): void {
     const anchor = this.anchor(scope, block);
     if (anchor) {
@@ -1730,6 +1918,9 @@ export class Emitter {
   }
 
   private emitBlock(block: Block, scope: Scope): void {
+    if (this.emitFill(block, scope) || this.emitNodesBlock(block, scope)) {
+      return;
+    }
     switch (block.kind) {
       case 'if':
       case 'switch': {

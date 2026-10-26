@@ -120,19 +120,26 @@ export function u14($$s) {
 export function u15($$s) {
   $$b.text($$s, 3, $$b.get($$s, 2));
 }
+const $$k2 = $$b.template("<li b-x=\"0\" b-on=\"click=Todos_t3g9lr#h12\"><!--x1--> <time b-x=\"2\"></time></li>", 3);
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const todo = $$item;
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time b-b=\"" + $$s2 + ":2\">" + $$b.insert((format(todo.at))) + "</time></li>";
+  const $$s2 = $$b.createScope(2, $$p, undefined, 3);
+  const $$e = $$b.clone($$k2), $$f = $$e[3];
+  (todo.done) && $$e[0].setAttribute("class", "done");
+  $$b.keep($$s2, 0, $$e[0]);
+  $$b.keepText($$s2, 1, $$e[1], (todo.title));
+  $$b.keep($$s2, 2, $$e[2]);
+  $$b.setContent($$e[2], (format(todo.at)), $$s2);
   $$b.setSlots($$s2, [todo]);
   $$b.setItem($$s2, $$item);
-  return $$html;
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
 import { format } from "./date";
+import { r2 as $$r2 } from "./todos.brm?brumate-client";
 interface Todo {
     id: string;
     title: string;
@@ -140,8 +147,9 @@ interface Todo {
     at: Date;
   }
 const persist = (...$$a) => $$b.rpc("Todos_t3g9lr#persist", $$a);
+const $$t0 = $$b.template("<h1>Todos</h1><form b-x=\"0\" b-on=\"submit:prevent=Todos_t3g9lr#h5\"><input b-x=\"1\" b-on=\"input=Todos_t3g9lr#h7\"></form><ul><!--x2--><!--/b--></ul><footer>Built with brumate</footer><p><!--x3--> left</p>", 4);
 
-export default function Todos($$props: { initial: Todo[] }): string {
+export default function Todos($$props: { initial: Todo[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Todos_t3g9lr");
   const { initial } = $$b.unbind($$props, ["initial"]);
@@ -153,27 +161,14 @@ export default function Todos($$props: { initial: Todo[] }): string {
     draft = '';
     await persist(todos);
   }
-  $$html += "<h1>Todos</h1><form b-b=\"" + $$s1 + ":0\" b-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s1 + ":1\" b-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
-  {
-    const $$list0v = ( todos );
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":2-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const todo = $$item1;
-      const $$s2 = $$b.createScope(2, $$s1);
-      function toggle() {
-        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
-      }
-      $$html += "<li" + ((todo.done) ? " class=\"done\"" : "") + " b-b=\"" + $$s2 + ":0\" b-on=\"click=Todos_t3g9lr#h12\"><!--t" + $$s2 + ":1-->" + $$b.insert((todo.title)) + "<!--/t--> <time b-b=\"" + $$s2 + ":2\">" + $$b.insert((format(todo.at))) + "</time></li>";
-      $$b.setSlots($$s2, [todo]);
-      $$b.setItem($$s2, $$item1);
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + $$b.insert((left)) + "<!--/t--> left</p>";
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setAttr($$e[1], "value", (draft));
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.keepText($$s1, 3, $$e[3], (left));
   $$b.setSlots($$s1, [todos, draft, left]);
-  return $$html;
+  $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( todos )), $$r2);
+  return $$f;
 }
 
 # HTML

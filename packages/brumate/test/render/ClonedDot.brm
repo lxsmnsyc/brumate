@@ -1,0 +1,6 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { r } = $props();
+</script>
+
+<circle class="dot" r=(r) cx="5" cy="5" />

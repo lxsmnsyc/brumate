@@ -22,8 +22,8 @@ describe('devtools', () => {
     // The body of a hidden `#offscreen` block.
     const hidden: Scope = { id: 2, k: 2, p: root, s: [], children: new Set() };
     hidden.h = { scope: hidden, ranges: [] } as unknown as Scope['h'];
-    root.children.add(item);
-    root.children.add(hidden);
+    root.children!.add(item);
+    root.children!.add(hidden);
     hooks().attach!({
       scopes: new Map([
         [0, root],

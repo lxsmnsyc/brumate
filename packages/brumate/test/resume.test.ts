@@ -77,6 +77,7 @@ function toRender(code: string): string {
   return code
     .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
     .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"')
+    .replace(/\.brm\?brumate-client"/g, '.brm.client.ts"')
     .replace(/\.brm\.ts\?brumate-shared"/g, '.brm.ts.shared.ts"');
 }
 
@@ -1451,14 +1452,14 @@ describe('resume', () => {
       }
     });
     observer.observe(list, { childList: true });
-    // Each insert parses its markup in a template.
-    const create = vi.spyOn(document, 'createElement');
+    // Each insert puts a fragment into the list: of the template that a new item cloned.
+    const insert = vi.spyOn(list, 'insertBefore');
 
     click(document.querySelector('.fill')!);
     await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(6));
     observer.disconnect();
-    const templates = create.mock.calls.filter(([tag]) => tag === 'template');
-    create.mockRestore();
+    const inserts = insert.mock.calls.filter(([node]) => node instanceof DocumentFragment);
+    insert.mockRestore();
     expect([...list.querySelectorAll('span')].map((span) => span.textContent)).toEqual([
       'a',
       'b',
@@ -1468,9 +1469,10 @@ describe('resume', () => {
       'f',
     ]);
     expect(buttons().map((button) => button.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
-    // The items that stay are not moved, and new items next to each other go in with one insert.
+    // The items that stay are not moved. Each new item goes in with its own insert, so its nodes
+    // move once, and nothing else is inserted.
     expect(removed).toEqual([]);
-    expect(templates).toHaveLength(3);
+    expect(inserts).toHaveLength(4);
 
     // The new items resume like the others.
     click(buttons()[4]!);
@@ -2297,6 +2299,100 @@ describe('spreads and attributes of other code', () => {
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
     expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('cloned markup', () => {
+  it('builds the blocks that never update inside a clone, and its handlers run', async () => {
+    await resume('clonedStatic', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.box i')).toBe('a'));
+    expect([...document.querySelectorAll('.box i')].map((item) => item.textContent)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(document.querySelector('.wide')).not.toBeNull();
+    expect(document.querySelector('.narrow')).toBeNull();
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+  });
+
+  it('fills the blocks inside a clone, which update in place after', async () => {
+    await resume('clonedBlocks', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('ab'));
+    expect(document.querySelector('.more')).not.toBeNull();
+    const first = document.querySelector('.items li')!;
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+    // The list kept the items that stay.
+    expect(document.querySelector('.items li')).toBe(first);
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).toBeNull());
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).not.toBeNull());
+    // Closed and opened again, the clone fills its blocks with the values of now.
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).toBeNull());
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+  });
+
+  it('writes the text of an insert in a clone, and updates the text node that it keeps', async () => {
+    await resume('clonedText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada, you have 1 items.'));
+    const hello = document.querySelector('.hello')!;
+    // The clone holds a text node in place of each insert, and no markers.
+    expect([...hello.childNodes].map((node) => node.nodeType)).toEqual([3, 3, 3, 3, 3]);
+    const name = hello.childNodes[1]!;
+    // At the end of its element, the text node is the last child, with no comment either.
+    const last = document.querySelector('.last')!;
+    expect([...last.childNodes].map((node) => node.nodeType)).toEqual([3, 3]);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada!, you have 2 items.'));
+    expect(hello.childNodes[1]).toBe(name);
+    expect(text('.last')).toBe('Bye Ada!');
+  });
+});
+
+describe('cloned handlers', () => {
+  it('find their scope from an element around them that has an anchor', async () => {
+    await resume('clonedHandlers', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('section.on')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('2'));
+  });
+});
+
+describe('cloned SVG', () => {
+  it('parses children, components and dynamic tags inside SVG as SVG', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    // Children that a component puts inside its <svg>.
+    expect(document.querySelector('.child')!.namespaceURI).toBe(svg);
+    // A component whose top element is an SVG element, inside an <svg>.
+    expect(document.querySelector('.dot')!.namespaceURI).toBe(svg);
+    // A dynamic tag inside an <svg>.
+    expect(document.querySelector('.shape')!.namespaceURI).toBe(svg);
+    // A spread on an SVG element keeps the case of its names.
+    expect(document.querySelector('.icon')!.getAttribute('viewBox')).toBe('0 0 10 10');
+    expect(document.querySelector('.icon')!.hasAttribute('viewbox')).toBe(false);
+  });
+
+  it('puts an insert after a void element, not inside it', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.check')).not.toBeNull());
+    expect(text('.check')).toBe('Remember me');
+    expect(document.querySelector('.check input')!.childNodes).toHaveLength(0);
   });
 });
 

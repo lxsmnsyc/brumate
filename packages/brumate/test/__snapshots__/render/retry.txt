@@ -99,7 +99,7 @@ export function check(): string {
     return 'Ready';
   }
 
-export default function Retry($$props: Record<string, never>): string {
+export default function Retry($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Retry_pyus3c");
   $$html += "<!--b" + $$s1 + ":0-->";

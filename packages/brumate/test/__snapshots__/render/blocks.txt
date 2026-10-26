@@ -167,20 +167,25 @@ export function r4($$p) {
   $$html += "<p>B</p>";
   return $$html;
 }
+const $$k4 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
 export function r5($$p, $$item, $$index) {
   let $$html = '';
   const item = $$item;
   const i = $$index;
-  const $$s5 = $$b.createScope(5, $$p);
-  $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
+  const $$s5 = $$b.createScope(5, $$p, undefined, 3);
+  const $$e = $$b.clone($$k4), $$f = $$e[2];
+  $$b.keep($$s5, 0, $$e[0]);
+  $$b.appendText($$s5, 2, $$e[0], (item));
+  $$b.keepText($$s5, 1, $$e[1], (i));
   $$b.setSlots($$s5, [item, i]);
   $$b.setItem($$s5, $$item);
-  return $$html;
+  return $$f;
 }
+const $$k5 = $$b.template("<li>Empty</li>", 0);
 export function r6($$p) {
   let $$html = '';
-  $$html += "<li>Empty</li>";
-  return $$html;
+  const $$e = $$b.clone($$k5), $$f = $$e[0];
+  return $$f;
 }
 export function r11($$p) {
   let $$html = '';
@@ -190,16 +195,24 @@ export function r11($$p) {
 export function k11($$s) {
   $$b.fill($$s, 5, r11);
 }
+const $$k6 = $$b.template("Dynamic", 0);
 export function n0($$p) {
   let $$html = '';
-  $$html += "Dynamic";
-  return $$html;
+  const $$e = $$b.clone($$k6), $$f = $$e[0];
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("<p>A</p>", 0);
+const $$t1 = $$b.template("<p>B</p>", 0);
+const $$t2 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
+const $$t3 = $$b.template("<li>Empty</li>", 0);
+const $$t4 = $$b.template("<span b-x=\"0\"></span>", 1);
+const $$t5 = $$b.template("<!--x0-->", 1);
+const $$t6 = $$b.template("Dynamic", 0);
 
-export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string {
+export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Blocks_jlmev2");
   const { items, tab: initialTab } = $$b.unbind($$props, ["items","tab"]);
@@ -218,65 +231,69 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$html += "<template b-b=\"" + $$s1 + ":0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-b=\"" + $$s1 + ":1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
   input = $$b.elementAt($$s1, 2);
   $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
-  if (tab === 'a') {
-    $$html += "<!--b" + $$s1 + ":3:0--><p>A</p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":3:1--><p>B</p><!--/b-->";
-  }
-  $$html += "<ul>";
-  {
-    const $$list0v = ( list);
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":4-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const item = $$item1;
-      const i = $$index2;
-      const $$s5 = $$b.createScope(5, $$s1);
-      $$html += "<li b-b=\"" + $$s5 + ":0\"><!--t" + $$s5 + ":1-->" + $$b.insert((i)) + "<!--/t-->. <!--t" + $$s5 + ":2-->" + $$b.insert((item)) + "<!--/t--></li>";
-      $$b.setSlots($$s5, [item, i]);
-      $$b.setItem($$s5, $$item1);
-    }
-    if ($$list0.length === 0) {
-      $$html += "<li>Empty</li>";
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "</ul>";
-  {
-    const $$list3v = ( ['x', 'y']);
-    const $$list3 = Array.isArray($$list3v) ? $$list3v : Array.from($$list3v);
-    for (let $$index5 = 0; $$index5 < $$list3.length; $$index5++) {
-      const $$item4 = $$list3[$$index5];
-      const item = $$item4;
-      $$html += "<span>" + $$b.insert((item)) + "</span>";
-    }
-  }
-  {
-    const $$list6 = Array.from({ length: ( 2) }, (_, index) => index);
-    for (let $$index8 = 0; $$index8 < $$list6.length; $$index8++) {
-      const $$item7 = $$list6[$$index8];
-      const n = $$index8;
-      $$html += $$b.insert((row(n)));
-    }
-  }
-  const $$before9 = $$html;
+  const $$body0 = () => {
+    let $$html = '';
+    const $$e = $$b.clone($$t0), $$f = $$e[0];
+    return $$f;
+  };
+  const $$body1 = () => {
+    let $$html = '';
+    const $$e = $$b.clone($$t1), $$f = $$e[0];
+    return $$f;
+  };
+  $$html += $$b.nodes($$b.branchNodes($$s1, 3, (tab === 'a') ? 0 : 1, [$$body0, $$body1])) + "<ul>";
+  const $$body4 = ($$item2, $$index3) => {
+    let $$html = '';
+    const item = $$item2;
+    const i = $$index3;
+    const $$s5 = $$b.createScope(5, $$s1, undefined, 3);
+    const $$e = $$b.clone($$t2), $$f = $$e[2];
+    $$b.keep($$s5, 0, $$e[0]);
+    $$b.appendText($$s5, 2, $$e[0], (item));
+    $$b.keepText($$s5, 1, $$e[1], (i));
+    $$b.setSlots($$s5, [item, i]);
+    $$b.setItem($$s5, $$item2);
+    return $$f;
+  };
+  const $$body5 = () => {
+    let $$html = '';
+    const $$e = $$b.clone($$t3), $$f = $$e[0];
+    return $$f;
+  };
+  $$html += $$b.nodes($$b.listNodes($$s1, 4, $$b.listOf(( list)), $$body4, $$body5)) + "</ul>";
+  const $$body8 = ($$item6, $$index7) => {
+    let $$html = '';
+    const item = $$item6;
+    const $$e = $$b.clone($$t4), $$f = $$e[1];
+    $$b.setContent($$e[0], (item));
+    return $$f;
+  };
+  $$html += $$b.nodes($$b.listNodes(undefined, undefined, $$b.listOf(( ['x', 'y'])), $$body8, undefined));
+  const $$body11 = ($$item9, $$index10) => {
+    let $$html = '';
+    const n = $$index10;
+    const $$e = $$b.clone($$t5), $$f = $$e[1];
+    $$b.putText($$e[0], (row(n)));
+    return $$f;
+  };
+  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined));
+  const $$before12 = $$html;
   try {
     $$html += $$b.component(Broken, {  }, undefined, $$s1);
-  } catch ($$error10) {
-    $$html = $$before9;
-    const error = $$error10;
+  } catch ($$error13) {
+    $$html = $$before12;
+    const error = $$error13;
     $$html += "<p>" + $$b.insert((String(error))) + "</p>";
   }
   $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
-    const $$children11 = $$b.children($$s12, () => {
+    const $$children14 = $$b.children($$s12, () => {
       let $$html = '';
-      $$html += "Dynamic";
-      return $$html;
+      const $$e = $$b.clone($$t6), $$f = $$e[0];
+      return $$f;
     });
-    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children11, undefined, $$s12);
+    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": `${$$s12}:0`, "b-on": "click=Blocks_jlmev2#h20" }, $$children14, undefined, $$s12);
   }
   $$html += "<p>&lt;escaped&gt;   " + $$b.insert(([1, 2])) + "</p>";
   $$b.setSlots($$s1, [tab, list, input]);

@@ -56,8 +56,9 @@ return price('Subtotal', $$b.get($$s, 0));
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("<button b-x=\"0\" b-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p b-x=\"1\"></p>", 2);
 
-export default function TemplateUpdate($$props: Record<string, never>): string {
+export default function TemplateUpdate($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "TemplateUpdate_kx4ubq");
   let total = (1);
@@ -68,9 +69,12 @@ export default function TemplateUpdate($$props: Record<string, never>): string {
     $$b.setSlots($$s2, [label, amount]);
     return $$b.raw($$html);
   }
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p b-b=\"" + $$s1 + ":1\">" + $$b.insert((price('Subtotal', total))) + "</p>";
+  const $$e = $$b.clone($$t0), $$f = $$e[2];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.setContent($$e[1], (price('Subtotal', total)), $$s1);
   $$b.setSlots($$s1, [total]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

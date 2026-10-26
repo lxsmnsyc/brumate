@@ -48,30 +48,36 @@ const $$k1 = [2];
 export function b4($$s) {
   $$b.branch($$s, 1, ($$b.get($$s, 0)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = $$b.template("<p b-x=\"0\" s-9wx0az class=\"big\">Big</p>", 1);
 export function r2($$p) {
   let $$html = '';
   let big = $$b.get($$p, 0);
-  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$p + "\" class=\"big\">Big</p>";
-  return $$html;
+  const $$e = $$b.clone($$k2), $$f = $$e[1];
+  $$b.setAttr($$e[0], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined));
+  $$b.setAttr($$e[0], "b-v", $$p);
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2 } from "./styled.brm?brumate-client";
 const $$css = "p[s-9wx0az] {\n    color: var(--s-9wx0az-0);\n    font-size: var(--s-9wx0az-1);\n  }\n  .note[s-9wx0az]::before {\n    content: '*';\n  }\n  body .note[s-9wx0az] {\n    margin: 0;\n  }";
+const $$t0 = $$b.template("<p b-x=\"0\" s-9wx0az class=\"note\">Hello <b s-9wx0az>there</b></p><button b-x=\"1\" s-9wx0az b-on=\"click=Styled_9wx0az#h3\">Toggle</button><!--x2--><!--/b-->", 3);
 
-export default function Styled($$props: Record<string, never>): string {
+export default function Styled($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Styled_9wx0az");
-  $$html += $$b.addStyle("Styled_9wx0az", $$css);
+  $$b.addStyle("Styled_9wx0az", $$css);
   let big = (false);
-  $$html += "<p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px")) + " b-v=\"" + $$s1 + "\" class=\"note\">Hello <b s-9wx0az>there</b></p><button s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Styled_9wx0az#h3\">Toggle</button>";
-  if (big) {
-    $$html += "<!--b" + $$s1 + ":1:0--><p s-9wx0az" + $$b.attribute("style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined)) + " b-v=\"" + $$s1 + "\" class=\"big\">Big</p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":1:-1--><!--/b-->";
-  }
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
+  $$b.setAttr($$e[0], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, "padding: 1px"));
+  $$b.setAttr($$e[0], "b-v", $$s1);
+  $$b.setAttr($$e[1], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined));
+  $$b.setAttr($$e[1], "b-v", $$s1);
+  $$b.keep($$s1, 0, $$e[1]);
   $$b.setSlots($$s1, [big]);
-  return $$html;
+  $$b.fillBranch($$e[2], $$s1, 1, (big) ? 0 : -1, [$$r2]);
+  return $$f;
 }
 
 # HTML

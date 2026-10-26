@@ -2,6 +2,7 @@
 // seroval, so the core, which reads the page state without it, stays small.
 // The plugins that write and read these values are in `serial.ts`.
 
+import { HAS_BINDINGS, HAS_CHILDREN } from './features.ts';
 import { raw } from './html.ts';
 import type { Raw } from './html.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
@@ -211,6 +212,11 @@ export function unbind(
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
+/** The value of a feature that the build turned off, which no page state of it holds. */
+function unused(): never {
+  throw new Error('The page state holds a value of a feature that no component of the build uses');
+}
+
 /**
  * Makes the values of brumate's plugins. A state record calls them as `$b`,
  * with one letter each, and the plugins read nodes of server function calls
@@ -246,10 +252,12 @@ export const stateValues: {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   r: raw,
-  n: (ref, scope) => new ChildrenReference(ref, scope),
+  n: HAS_CHILDREN ? (ref, scope) => new ChildrenReference(ref, scope) : unused,
   c: (id) => Object.assign(() => '', { brumateId: id }),
   l: (scope, slot) => new SlotReference(scope, slot),
-  b: (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set),
+  b: HAS_BINDINGS
+    ? (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set)
+    : unused,
   u: (tag, data) => {
     const plugin = valuePlugins.get(tag);
     if (!plugin) {

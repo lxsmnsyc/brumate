@@ -17,6 +17,8 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
+import { cloneLines } from './template.ts';
+import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
@@ -43,6 +45,11 @@ export interface ClientOutput {
   loaders: Record<string, string[]>;
   /** False when nothing of the component runs in the browser. */
   clientCode: boolean;
+  /**
+   * The render functions of the client entry that fill a nested `#if` or `#for` of a clone,
+   * for the render module, which imports them.
+   */
+  fillOf: (block: Block) => Fill | undefined;
   diagnostics: Diagnostic[];
 }
 
@@ -231,6 +238,7 @@ class ClientGenerator {
         parts,
         loaders: Object.fromEntries(names.map((name) => [name, []])),
         clientCode,
+        fillOf: (block) => this.fillOf(block),
         diagnostics: this.diagnostics,
       };
     }
@@ -251,6 +259,7 @@ class ClientGenerator {
       parts,
       loaders,
       clientCode,
+      fillOf: (block) => this.fillOf(block),
       diagnostics: this.diagnostics,
     };
   }
@@ -1215,47 +1224,104 @@ class ClientGenerator {
     }
   }
 
+  /**
+   * Replaces the one `$$html +=` line of a render with a clone of a template and the writes on
+   * its elements. Returns false when the markup needs HTML.
+   */
+  private cloneRender(emitter: Emitter): boolean {
+    return cloneLines(emitter, (code) => this.hoist(code));
+  }
+
+  /**
+   * The code of the render function of a body. With `fill`, the body fills its nested blocks
+   * after it clones its template, and gives undefined when it cannot clone.
+   */
+  private emitRender(scope: Scope, body: Body, block: Block, fill: boolean): string | undefined {
+    const base = scope.parent!;
+    const inside = this.inside(scope);
+    const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+      mode: 'client',
+      outer: { inside, base, baseVar: '$$p' },
+      fills: fill ? (nested) => this.fillOf(nested) : undefined,
+      hoist: (code) => this.hoist(code),
+    });
+    const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
+    const isCatch = block.kind === 'try' && block.fallback === body;
+    let params = '';
+    if (isItem) {
+      params = ', $$item, $$index';
+    } else if (isCatch) {
+      params = ', $$error';
+    }
+    emitter.line(`export function r${scope.id}($$p${params}) {`);
+    emitter.line(`let $$html = '';`);
+    if (block.kind === 'try' && isCatch) {
+      if (block.error) {
+        emitter.line(`const ${block.error.name} = $$error;`);
+      }
+      if (block.reset) {
+        emitter.line(`const ${block.reset.name} = undefined;`);
+      }
+    }
+    for (const line of this.prologue(inside, base)) {
+      emitter.line(line);
+    }
+    for (const template of inside.slice(1)) {
+      emitter.emitTemplate(template.template!);
+    }
+    if (isItem) {
+      emitter.emitItem(block, '$$item', '$$index');
+    } else {
+      emitter.emitBody(body);
+    }
+    emitter.flush();
+    // The body of an `#if` or a `#for` whose markup is one string clones a template.
+    const cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+    if (fill && !cloned) {
+      return undefined;
+    }
+    emitter.line(emitter.returnLine(0, cloned));
+    emitter.close();
+    return emitter.lines.join('\n');
+  }
+
+  /** The name of the render function of a body, when the module has one. */
+  private renderOf(body: object | undefined): string | undefined {
+    const scope = body && this.plan.bodyScopes.get(body as never);
+    return scope && this.renders.has(scope) ? `r${scope.id}` : undefined;
+  }
+
+  /**
+   * The render functions that fill a nested `#if` or `#for` of a clone, when the module has
+   * them all. A `#for` with an `#else` renders inline.
+   */
+  private fillOf(block: Block): Fill | undefined {
+    if (block.kind === 'if') {
+      const bodies = [...block.branches.map((branch) => branch.body), block.fallback].filter(
+        (body) => body !== undefined,
+      );
+      const renders = bodies.map((body) => this.renderOf(body));
+      return renders.every((name) => name !== undefined)
+        ? { kind: 'if', renders: renders as string[] }
+        : undefined;
+    }
+    if (block.kind === 'for' && !block.fallback) {
+      const render = this.renderOf(block.body);
+      return render ? { kind: 'for', render } : undefined;
+    }
+    return undefined;
+  }
+
   private emitRenders(): void {
     for (const [scope, { body, block }] of this.renders) {
+      const clonable = block.kind === 'if' || block.kind === 'for';
+      // A body that fills its nested blocks must clone, so one that cannot renders again inline.
+      const lines =
+        (clonable && this.emitRender(scope, body, block, true)) ||
+        this.emitRender(scope, body, block, false)!;
+      this.emit(lines);
       const base = scope.parent!;
-      const inside = this.inside(scope);
-      const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
-        mode: 'client',
-        outer: { inside, base, baseVar: '$$p' },
-      });
-      const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
-      const isCatch = block.kind === 'try' && block.fallback === body;
-      let params = '';
-      if (isItem) {
-        params = ', $$item, $$index';
-      } else if (isCatch) {
-        params = ', $$error';
-      }
-      emitter.line(`export function r${scope.id}($$p${params}) {`);
-      emitter.line(`let $$html = '';`);
-      if (block.kind === 'try' && isCatch) {
-        if (block.error) {
-          emitter.line(`const ${block.error.name} = $$error;`);
-        }
-        if (block.reset) {
-          emitter.line(`const ${block.reset.name} = undefined;`);
-        }
-      }
-      for (const line of this.prologue(inside, base)) {
-        emitter.line(line);
-      }
-      for (const template of inside.slice(1)) {
-        emitter.emitTemplate(template.template!);
-      }
-      if (isItem) {
-        emitter.emitItem(block, '$$item', '$$index');
-      } else {
-        emitter.emitBody(body);
-      }
-      emitter.flush();
-      emitter.line('return $$html;');
-      emitter.close();
-      this.emit(emitter.lines.join('\n'));
+
       if (block.kind === 'portal' && block.target) {
         const header = this.model.sites.find(
           (site) => site.kind === 'block' && site.block === block,
@@ -1315,6 +1381,7 @@ class ClientGenerator {
       const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
         mode: 'client',
         outer: { inside, base, baseVar: '$$p' },
+        hoist: (code) => this.hoist(code),
       });
       emitter.line(`export function ${symbol}($$p) {`);
       emitter.line(`let $$html = '';`);
@@ -1349,7 +1416,8 @@ class ClientGenerator {
       }
       emitter.emitChildrenBody(node, scope);
       emitter.flush();
-      emitter.line('return $$html;');
+      const cloned = cloneLines(emitter, (code) => this.hoist(code));
+      emitter.line(emitter.returnLine(0, cloned));
       emitter.close();
       this.emit(emitter.lines.join('\n'));
     }

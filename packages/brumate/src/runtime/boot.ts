@@ -3,6 +3,7 @@
 // off does not have its code, or the parts of the core that only it uses, in
 // its bundle.
 
+import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks, Part } from './client.ts';
 import type { SerialEntry } from './values.ts';
@@ -401,11 +402,12 @@ export function boot(
     const blocks: Element[] = [];
     for (const element of select(root, SCANNED)) {
       if (element.tagName === 'TEMPLATE') {
-        if (element.hasAttribute('b-listen')) {
+        if (HAS_LISTENERS && element.hasAttribute('b-listen')) {
           onListener(element);
         } else if (
-          element.hasAttribute('b-client') ||
-          (element.hasAttribute('b-defer') && !element.hasAttribute('b-hole'))
+          HAS_BLOCKS &&
+          (element.hasAttribute('b-client') ||
+            (element.hasAttribute('b-defer') && !element.hasAttribute('b-hole')))
         ) {
           blocks.push(element);
         }
@@ -423,7 +425,7 @@ export function boot(
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {
     const form = event.target as HTMLFormElement;
-    if (event.defaultPrevented || !form.hasAttribute?.('b-result')) {
+    if (!HAS_ACTIONS || event.defaultPrevented || !form.hasAttribute?.('b-result')) {
       return;
     }
     event.preventDefault();
@@ -449,17 +451,24 @@ export function boot(
       }
     }
   };
-  const observer = new MutationObserver(scanAdded);
-  observer.observe(document, { childList: true, subtree: true });
+  // Without markup that others insert, the core scans all that comes into the page. The rest of
+  // the page that the browser reads after an `async` script starts is scanned when it ends.
+  const observer = HAS_LATE_MARKUP ? new MutationObserver(scanAdded) : undefined;
+  observer?.observe(document, { childList: true, subtree: true });
+  if (!HAS_LATE_MARKUP && document.readyState === 'loading') {
+    listen(document, 'DOMContentLoaded', () => scan(document));
+  }
   // The core scans the markup that it inserts before the insert, so the records of the insert
   // are dropped instead of scanned again. The markup that others inserted first is scanned
   // first.
   const scanInsert = (root: ParentNode): void => {
-    scanAdded(observer.takeRecords());
+    if (observer) {
+      scanAdded(observer.takeRecords());
+    }
     scan(root);
   };
   const inserted = (): void => {
-    observer.takeRecords();
+    observer?.takeRecords();
   };
 
   // The core starts at once and loads the code of the components on the page, so a call of a
@@ -486,7 +495,7 @@ export function boot(
   }
   return () => {
     stopped = true;
-    observer.disconnect();
+    observer?.disconnect();
     for (const remove of removers.splice(0)) {
       remove();
     }

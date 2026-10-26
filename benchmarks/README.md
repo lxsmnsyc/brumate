@@ -113,6 +113,8 @@ The rows scenario:
 - `browser`, a page that the server rendered with 1,000 rows. It records the main thread time and the longest task while the page loads and idles, and the JS heap. Then it measures the first select, the first update of every 10th row or the first remove, each on its own page. These include the work of resuming, or of hydrating for a framework that hydrates.
 - `dist`, `ssr-size` and `ssr-speed`: as for todos, with the page of 1,000 rows.
 
+`node benchmarks/harness/profile-rows.mjs <framework> <create|replace|append> [rounds]` takes a CPU profile of one operation of the rows page in Chrome, and prints the script and native time of each function. Build the rows app without minifying it first to read the names of brumate's functions.
+
 `--runs` sets the runs of each operation, 10 by default. `--cpu 4` slows the CPU 4 times for the measured clicks, as js-framework-benchmark does for some operations.
 
 The dashboard scenario:

@@ -207,8 +207,8 @@ describe('vite plugin', () => {
       ),
     ).toBe(true);
     const code = chunks.map((chunk) => chunk.code).join('\n');
-    // The markup that the client renders ships.
-    expect(code).toContain('<p class="welcome">Welcome');
+    // The markup that the client renders ships, as HTML or as a template that marks an element.
+    expect(code).toMatch(/<p (?:b-x="\d+" )?class="welcome">Welcome/);
     // A message of the helpers, the schema of the component and its message do not.
     expect(code).not.toContain('conflicts with another field');
     expect(code).not.toContain('~standard');

@@ -1,4 +1,12 @@
 import { trustedHTML } from './trusted.ts';
+import {
+  HAS_BINDINGS,
+  HAS_CHILDREN,
+  HAS_CLIENT_HTML,
+  HAS_LATE_MARKUP,
+  HAS_TEMPLATES,
+  HAS_TITLES,
+} from './features.ts';
 import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
@@ -119,7 +127,8 @@ export interface Scope {
    * or the setter of `$bind(name, fn)`, as a function or a reference.
    */
   b?: Record<number, unknown>;
-  children: Set<Scope>;
+  /** The scopes inside it, made with the first one. */
+  children?: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
   cleanups?: Map<string, () => void>;
@@ -128,6 +137,11 @@ export interface Scope {
   h?: HiddenBody;
   /** Effects and `$client` callbacks to run when the `#offscreen` body around the scope shows. */
   w?: Set<string>;
+  /**
+   * The nodes that updates write, by anchor, of markup that the browser cloned: elements, and
+   * the start comments of text inserts.
+   */
+  n?: Node[];
 }
 
 export interface CoreOptions {
@@ -458,7 +472,6 @@ function addScopes(state: PageState, root: string): Scope[] {
       v: record.v,
       x: record.x,
       b: record.b,
-      children: new Set(),
       r: root,
     };
     scopes.set(id, scope);
@@ -468,7 +481,9 @@ function addScopes(state: PageState, root: string): Scope[] {
     const record = state[scope.id]!;
     if (record.p !== undefined) {
       scope.p = scopes.get(record.p);
-      scope.p?.children.add(scope);
+      if (scope.p) {
+        (scope.p.children ??= new Set()).add(scope);
+      }
       treeChanges++;
     }
     if (record.o !== undefined) {
@@ -702,13 +717,21 @@ export function init(value: CoreOptions): void {
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();
-  // Records that are still streaming settle their promises when their scripts run.
+  // Records that are still streaming settle their promises when their scripts run. A promise of
+  // the page state streams in a later record without any markup that comes later.
   queue.push = pushRecords;
   for (const record of queue.splice(0)) {
     readRecord(record);
   }
-  markerObserver = new MutationObserver(indexAdded);
-  markerObserver.observe(document, { childList: true, subtree: true });
+  if (HAS_LATE_MARKUP) {
+    markerObserver = new MutationObserver(indexAdded);
+    markerObserver.observe(document, { childList: true, subtree: true });
+  } else if (document.readyState === 'loading') {
+    // The page that the browser reads after an `async` script starts is indexed when it ends.
+    document.addEventListener('DOMContentLoaded', () => indexMarkers(document.documentElement), {
+      once: true,
+    });
+  }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
   watchTitles(document);
@@ -757,7 +780,7 @@ function spreadEntries(attributes: Record<string, unknown>): string[] {
       );
     }
     // A binding that a rest prop passed on writes its slot, or calls its setter.
-    if ((name === 'value' || name === 'checked') && isBinding(value)) {
+    if ((name === 'value' || name === 'checked') && HAS_BINDINGS && isBinding(value)) {
       on.push(bindEntry(name, value.ref, setterReference(value.set)));
     }
   }
@@ -774,12 +797,12 @@ function setterReference(set: unknown): FunctionReference | undefined {
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
-  if (value instanceof ChildrenReference) {
+  if (HAS_CHILDREN && value instanceof ChildrenReference) {
     // The scope can come later in the state, such as of a page that navigation loads.
     return new RenderedChildren(value.scope, value.ref);
   }
   if (value instanceof FunctionReference) {
-    if (isTemplate(value.ref)) {
+    if (HAS_TEMPLATES && isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
     }
     // The code of the components on the page loads with the page, and handlers and updates wait
@@ -1117,7 +1140,7 @@ async function catchInto(
   error: unknown,
 ): Promise<void> {
   const updates = await loadPart(module, 'update');
-  const start = findComment(`b${owner.id}:${anchor}`);
+  const start = blockStart(owner, anchor);
   if (!start) {
     return;
   }
@@ -1214,7 +1237,7 @@ export function bindings(
   const target = typeof scope === 'object' ? scope : scopes.get(scope);
   for (const [name, slot] of Object.entries(slots)) {
     const value = props[name];
-    if (target && isBinding(value)) {
+    if (target && HAS_BINDINGS && isBinding(value)) {
       (target.b ??= {})[slot] = value.target;
     }
   }
@@ -1676,7 +1699,7 @@ function flushEffects(): void {
 }
 
 export function descendants(scope: Scope, kind: number, result: Scope[] = []): Scope[] {
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       result.push(child);
     }
@@ -1690,8 +1713,8 @@ function destroy(scope: Scope): void {
   if (scopes.get(scope.id) !== scope) {
     return;
   }
-  if (scope.children.size > 0) {
-    for (const child of Array.from(scope.children)) {
+  if (scope.children?.size) {
+    for (const child of Array.from(scope.children ?? [])) {
       destroy(child);
     }
   }
@@ -1742,7 +1765,7 @@ export function removeScope(scope: Scope): void {
     hiding?.bodies.delete(scope.h);
   }
   scopes.delete(scope.id);
-  scope.p?.children.delete(scope);
+  scope.p?.children?.delete(scope);
   scope.o?.owned?.delete(scope);
   treeChanges++;
 }
@@ -1799,7 +1822,7 @@ function destroyRange(scope: Scope, start: Node, end: Node): void {
 }
 
 function disposeKinds(scope: Scope, kinds: number[]): void {
-  for (const child of Array.from(scope.children)) {
+  for (const child of Array.from(scope.children ?? [])) {
     if (kinds.includes(child.k)) {
       destroy(child);
     }
@@ -1952,9 +1975,11 @@ function findComment(key: string): Comment | undefined {
   if (!comment?.isConnected) {
     // The index has every marker in the page once it reads the records that
     // are waiting. Before the core starts, or between pages, it reads the page.
-    if (markerObserver) {
+    // Without markup that others insert, the index has every marker of the page already, once
+    // the browser has read all of it.
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-    } else {
+    } else if (HAS_LATE_MARKUP || document.readyState === 'loading') {
       indexMarkers(document.documentElement);
     }
     comment = comments.get(key);
@@ -1963,16 +1988,23 @@ function findComment(key: string): Comment | undefined {
 }
 
 function findElement(scope: ScopeId, anchor: number): Element | null {
+  const own = scopes.get(scope)?.n?.[anchor];
+  if (own?.isConnected) {
+    return own as Element;
+  }
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
     // As for markers: once the core starts, the index has every bound element in the page,
     // with those of the inserts that are waiting.
-    if (markerObserver) {
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-      indexInserts();
-      element = elements.get(key);
     }
+    // The inserts of the core are read when an update first needs one of their elements.
+    if (HAS_CLIENT_HTML) {
+      indexInserts();
+    }
+    element = elements.get(key);
     // An insert whose first node left the page, such as the first row of a list that was
     // removed, has elements that the walk did not reach.
     if (!element?.isConnected) {
@@ -1983,6 +2015,14 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
     }
   }
   return element?.isConnected ? element : null;
+}
+
+/** The start marker of a block: kept on its scope in a clone, or found in the page. */
+function blockStart(scope: Scope, anchor: number): Comment | undefined {
+  const kept = scope.n?.[anchor];
+  return kept?.isConnected && kept.nodeType === 8
+    ? (kept as Comment)
+    : findComment(`b${scope.id}:${anchor}`);
 }
 
 /** Returns the marker that ends the range that `start` opens. */
@@ -2019,23 +2059,40 @@ function clear(start: Node, end: Node): void {
  * Inserts rendered HTML before a node, or at the end of a parent, and runs
  * the work that waits for it.
  */
-function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
-  const template = document.createElement('template');
-  template.innerHTML = trustedHTML(html);
-  const fragment = template.content;
+function insertHTML(
+  before: Node | { parent: ParentNode },
+  html: string | DocumentFragment | DocumentFragment[],
+): void {
+  // A fragment that the browser cloned from a template keeps its elements on their scopes, so
+  // it is not parsed or indexed. The clones of a list go in one by one, so each node moves once.
+  const cloned = typeof html !== 'string';
+  let fragments: DocumentFragment[];
+  if (typeof html === 'string') {
+    fragments = [parseHTML(html, 'parent' in before ? before.parent : before)];
+  } else {
+    fragments = Array.isArray(html) ? html : [html];
+  }
   // Markers that others inserted first, so the new markers win over them.
-  if (markerObserver) {
+  if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
   // The scopes that the renders since the last insert made, whose markup this is.
   const client = rendered.splice(0);
   // Markup from the server, such as `children`, names scopes with IDs that are not negative.
   // Only then are the elements of the insert read for them now.
-  const fromServer = SERVER_SCOPES.test(html);
+  const fromServer = !cloned && SERVER_SCOPES.test(html);
   const ids = fromServer ? new Set<ScopeId>() : undefined;
-  indexMarkers(fragment, ids, fromServer);
-  options.listen(fragment);
-  watchTitles(fragment);
+  const markup = clonedMarkup;
+  for (const fragment of fragments) {
+    if (!cloned || markup) {
+      // The elements of HTML in a clone are read now, since the clone is not indexed later.
+      indexMarkers(fragment, ids, fromServer || cloned || !HAS_CLIENT_HTML);
+      // A clone's handlers were read from its template, unless it holds markup that it rendered.
+      options.listen(fragment);
+    }
+    watchTitles(fragment);
+  }
+  clonedMarkup = false;
   const server: Scope[] = [];
   for (const id of ids ?? []) {
     const scope = typeof id === 'number' && id < 0 ? undefined : scopes.get(id);
@@ -2043,7 +2100,8 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
       server.push(scope);
     }
   }
-  if (!fromServer && fragment.firstChild) {
+  const fragment = fragments[0]!;
+  if (HAS_CLIENT_HTML && !cloned && !fromServer && fragment.firstChild) {
     unindexed.push([fragment.firstChild, fragment.lastChild!]);
     // Many inserts that no update read are indexed at once, so they do not hold their nodes.
     if (unindexed.length > 256) {
@@ -2051,17 +2109,21 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
-  if ('parent' in before) {
-    before.parent.append(fragment);
-  } else {
-    before.parentNode!.insertBefore(fragment, before);
+  const added = hiding?.bodies.size ? fragments.flatMap((part) => [...part.childNodes]) : undefined;
+  for (const part of fragments) {
+    if ('parent' in before) {
+      before.parent.append(part);
+    } else {
+      before.parentNode!.insertBefore(part, before);
+    }
   }
   if (added) {
     hiding!.added(added);
   }
   // The records of this insert, whose markers are indexed and whose handlers listen already.
-  markerObserver?.takeRecords();
+  if (HAS_LATE_MARKUP) {
+    markerObserver?.takeRecords();
+  }
   options.inserted?.();
   for (const fn of afterInsert.splice(0)) {
     fn();
@@ -2099,7 +2161,23 @@ export function portalTo(
 
 /** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */
 export function text(scope: Scope, anchor: number, value: unknown): void {
-  const start = findComment(`t${scope.id}:${anchor}`);
+  // A clone keeps the text node of the insert, or the start comment of its markers.
+  let kept = scope.n?.[anchor];
+  if (kept?.nodeType === 3 && kept.isConnected) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const text = String(value);
+      if ((kept as Text).data !== text) {
+        (kept as Text).data = text;
+      }
+      return;
+    }
+    // Another value needs the markers of an insert around it, which the text node gets now.
+    const start = document.createComment(`t${scope.id}:${anchor}`);
+    (kept as Text).before(start);
+    (kept as Text).after(document.createComment('/t'));
+    scope.n![anchor] = kept = start;
+  }
+  const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
   if (start) {
     write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
   }
@@ -2151,7 +2229,7 @@ function write(
   if (key) {
     writtenInserts.add(key);
   }
-  if (key && value instanceof TemplateCall) {
+  if (HAS_TEMPLATES && key && value instanceof TemplateCall) {
     const known =
       templateInserts.get(key) ??
       (firstWrite
@@ -2193,8 +2271,13 @@ function write(
   // Children and templates render here, at the scope of the insert, for its contexts. The first
   // scope that a template makes is its own, which holds its arguments.
   const made = nextId;
-  insertHTML(end ?? { parent }, value instanceof Children ? value.render(at) : insertValue(value));
-  if (key) {
+  insertHTML(
+    end ?? { parent },
+    (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
+      ? value.render(at)
+      : insertValue(value),
+  );
+  if (HAS_TEMPLATES && key) {
     const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
     if (scope) {
       templateInserts.set(key, { ref: (value as TemplateCall).ref, scope });
@@ -2240,7 +2323,7 @@ function renderedTemplate(
 const fieldValues = new WeakMap<Element, Map<string, unknown>>();
 
 function setAttribute(element: Element, name: string, value: unknown, spread = false): void {
-  if (isBinding(value)) {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   // A write of the same value changes nothing on screen, yet it still costs a style check and
@@ -2375,7 +2458,7 @@ function updateSpreadEntries(element: Element, values: Record<string, unknown>):
   options.listen(element);
 }
 
-type Render = (parent: Scope, item?: unknown, index?: number) => string;
+type Render = (parent: Scope, item?: unknown, index?: number) => string | DocumentFragment;
 
 /** Shows the branch at `index` of `#if` or `#switch`, or nothing for -1. */
 export function branch(
@@ -2385,7 +2468,7 @@ export function branch(
   renders: (Render | undefined)[],
   kinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2414,7 +2497,7 @@ export function rekey(
     return;
   }
   scope.keys.set(anchor, value);
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2437,7 +2520,7 @@ export function retag(
 ): void {
   scope.keys ??= new Map();
   if (!scope.keys.has(anchor) && typeof value === 'string') {
-    const start = findComment(`b${scope.id}:${anchor}`);
+    const start = blockStart(scope, anchor);
     let node = start?.nextSibling;
     while (node && node.nodeType !== 1 && node.nodeType !== 8) {
       node = node.nextSibling;
@@ -2463,13 +2546,13 @@ export async function reset(
   kinds: number[],
 ): Promise<void> {
   const updates = await loadPart(await loadModule(id), 'update');
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
-  let html: string;
+  let html: string | DocumentFragment;
   try {
     html = (updates[body] as Render)(scope);
   } catch (error) {
@@ -2486,7 +2569,7 @@ export async function reset(
  * `kinds` are the scope IDs inside the fallback, whose instances go.
  */
 export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   // A block that rendered its body has a third number.
   if (!start || start.data.split(':').length > 2) {
     return;
@@ -2509,7 +2592,7 @@ export function offscreen(
   render: Render,
   kind: number,
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2526,7 +2609,7 @@ export function offscreen(
     return;
   }
   let body: Scope | undefined;
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       body = child;
     }
@@ -2786,7 +2869,7 @@ export function list(
   fallback: Render | undefined,
   fallbackKinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2873,20 +2956,33 @@ export function list(
   }
   // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
-  // New items next to each other go into the page with one insert.
+  // New items next to each other go into the page with one insert: their HTML, or the
+  // fragments that they cloned.
   let added = '';
+  let addedNodes: DocumentFragment[] | undefined;
+  const flushAdded = (): void => {
+    if (added) {
+      insertHTML(cursor, added);
+      added = '';
+    } else if (addedNodes) {
+      insertHTML(cursor, addedNodes);
+    }
+    addedNodes = undefined;
+  };
   for (let index = 0; index < count; index++) {
     const id = keys[index];
     const item = previous.get(id);
     if (!item) {
-      added += render(scope, items[index], index);
+      const out = render(scope, items[index], index);
+      if (typeof out === 'string') {
+        added += out;
+      } else {
+        (addedNodes ??= []).push(out);
+      }
       continue;
     }
     // Before the item's updates run, so they see the new items before it.
-    if (added) {
-      insertHTML(cursor, added);
-      added = '';
-    }
+    flushAdded();
     previous.delete(id);
     // Slots that keep their values do not trigger updates.
     assign(item.scope, items[index], index);
@@ -2904,9 +3000,7 @@ export function list(
       }
     }
   }
-  if (added) {
-    insertHTML(cursor, added);
-  }
+  flushAdded();
   for (const item of previous.values()) {
     destroy(item.scope);
     for (let node: Node | null = item.first; node;) {
@@ -3041,7 +3135,7 @@ function syncTitle(): void {
  * block that adds or removes one, or a change of its text, sets the title.
  */
 function watchTitles(root: ParentNode): void {
-  if (titleObserver || !root.querySelector(PAGE_TITLE)) {
+  if (!HAS_TITLES || titleObserver || !root.querySelector(PAGE_TITLE)) {
     return;
   }
   titleObserver = new MutationObserver((records) => {
@@ -3092,7 +3186,7 @@ export function spreadProps(
 
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
-  if (isBinding(value)) {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   const id = scope.c?.[anchor];
@@ -3193,7 +3287,11 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
-  return value instanceof Children ? value.render(resolveScope(scope)) : insertValue(value);
+  if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
+    return insertValue(value);
+  }
+  const out = value.render(resolveScope(scope));
+  return HAS_CLIENT_HTML ? holdPlace(out) : (out as string);
 }
 
 /** Children that render where they are inserted, and the scopes that they find contexts from. */
@@ -3206,9 +3304,9 @@ const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  */
 class Children {
   private given: Scope | ScopeId | undefined;
-  private readonly html: () => string;
+  private readonly html: () => string | DocumentFragment;
 
-  constructor(from: Scope | ScopeId | undefined, html: () => string) {
+  constructor(from: Scope | ScopeId | undefined, html: () => string | DocumentFragment) {
     this.given = from;
     this.html = html;
   }
@@ -3222,7 +3320,7 @@ class Children {
     return scope;
   }
 
-  render(at: Scope | undefined): string {
+  render(at: Scope | undefined): string | DocumentFragment {
     if (!at) {
       return this.html();
     }
@@ -3272,11 +3370,14 @@ class RenderedChildren extends Children {
 
   constructor(scope: ScopeId, ref: string) {
     // The export returns HTML, as the render of a block does.
-    super(scope, () => String(this.code!(this.from)));
+    super(scope, () => {
+      const out = this.code!(this.from);
+      return out instanceof DocumentFragment ? out : String(out);
+    });
     this.ref = ref;
   }
 
-  override render(at: Scope | undefined): string {
+  override render(at: Scope | undefined): string | DocumentFragment {
     if (this.code && this.from) {
       return super.render(at);
     }
@@ -3334,6 +3435,9 @@ function findMarker(data: string): Comment | undefined {
  * runs in the scope can insert them at once. Undefined when there is nothing to load.
  */
 function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
+  if (!HAS_CHILDREN) {
+    return undefined;
+  }
   const waiting: Promise<void>[] = [];
   const seen = new Set<Scope>();
   for (let current = scope; current && !seen.has(current); current = current.p ?? current.o) {
@@ -3348,13 +3452,557 @@ function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
 }
 
 /** The children of a component that the client renders. See `Children`. */
-export function children(from: Scope | ScopeId | undefined, html: () => string): Children {
+export function children(
+  from: Scope | ScopeId | undefined,
+  html: () => string | DocumentFragment,
+): Children {
   return new Children(from, html);
 }
 
+/** Markup that the browser clones, and the paths to the elements that its render writes. */
+interface Template {
+  html: string;
+  /** How many elements the render writes, which have `b-x` in `html`. */
+  count: number;
+  /** `svg` or `math`, for markup whose elements are of SVG or MathML, which parses inside one. */
+  foreign?: string;
+  t?: HTMLTemplateElement;
+  /** The moves that reach the marked nodes of a clone. See `walkOf`. */
+  walk?: number[];
+}
+
+/** A template of the markup of a render, which `clone` parses once. */
+export function template(html: string, count: number, foreign?: string): Template {
+  return { html, count, foreign };
+}
+
+/**
+ * Parses a template, and finds the path to each element that it marks with `b-x`, as the parser
+ * placed it: after the parser's own changes, such as a `<tbody>` that it adds.
+ */
+function parseTemplate(source: Template): number[][] {
+  const element = document.createElement('template');
+  element.innerHTML = trustedHTML(
+    source.foreign ? `<${source.foreign}>${source.html}</${source.foreign}>` : source.html,
+  );
+  const root = element.content;
+  if (source.foreign) {
+    root.replaceChildren(...root.firstChild!.childNodes);
+  }
+  const paths: number[][] = Array.from({ length: source.count });
+  const pathOf = (marked: Node): number[] => {
+    const path: number[] = [];
+    for (let node: Node = marked; node !== root; node = node.parentNode!) {
+      let index = 0;
+      for (let before = node.previousSibling; before; before = before.previousSibling) {
+        index++;
+      }
+      path.unshift(index);
+    }
+    return path;
+  };
+  for (const marked of root.querySelectorAll('[b-x]')) {
+    paths[Number(marked.getAttribute('b-x'))] = pathOf(marked);
+    marked.removeAttribute('b-x');
+  }
+  // The start comments of text inserts, `<!--x` and an index, which each clone names.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const mark = /^x(\d+)$/.exec((node as Comment).data);
+    if (mark) {
+      paths[Number(mark[1])] = pathOf(node);
+    }
+  }
+  // The loader listens to the events of the handlers of the template once, not of each clone.
+  // A render before the core starts, such as in a test, has nothing that listens yet.
+  options?.listen(root);
+  source.t = element;
+  return paths;
+}
+
+// The moves of a walk: a number from 0 is the index of the node that the walk is at, and the
+// others move it.
+const FIRST_CHILD = -1;
+const PARENT = -2;
+// `NEXT - n` moves to the `n`th next sibling.
+const NEXT = -2;
+
+/**
+ * The moves that reach the marked nodes of a template, in the order of the markup, from one to
+ * the next: up to the ancestor that they share, along its children, and down. A clone makes
+ * them once for its template, as Marko encodes a walk, so the clones of a render do not walk
+ * from the top for each node or make an array of paths.
+ */
+function walkOf(paths: number[][]): number[] {
+  const order = paths
+    .map((path, mark) => ({ path, mark }))
+    .sort((a, b) => {
+      for (let depth = 0; depth < Math.min(a.path.length, b.path.length); depth++) {
+        if (a.path[depth] !== b.path[depth]) {
+          return a.path[depth]! - b.path[depth]!;
+        }
+      }
+      return a.path.length - b.path.length;
+    });
+  const moves: number[] = [];
+  const along = (count: number): void => {
+    if (count > 0) {
+      moves.push(NEXT - count);
+    }
+  };
+  let current: number[] = [];
+  for (const { path, mark } of order) {
+    let shared = 0;
+    while (shared < current.length && current[shared] === path[shared]) {
+      shared++;
+    }
+    let depth = shared;
+    if (shared < current.length) {
+      // Up to the child of the shared ancestor that holds the last node, then along to the
+      // child that holds this one.
+      for (let up = current.length - 1; up > shared; up--) {
+        moves.push(PARENT);
+      }
+      along(path[shared]! - current[shared]!);
+      depth++;
+    }
+    for (; depth < path.length; depth++) {
+      moves.push(FIRST_CHILD);
+      along(path[depth]!);
+    }
+    moves.push(mark);
+    current = path;
+  }
+  return moves;
+}
+
+/**
+ * A node of a clone: an element, the comment of an insert, or the fragment. The type lets the
+ * render pass each to the write that takes it.
+ */
+type ClonedNode = Element & Comment & DocumentFragment;
+
+/**
+ * Clones a template. Returns the nodes that the template marks, by their index, and the fragment
+ * after them, in one array.
+ */
+export function clone(source: Template): ClonedNode[] {
+  const walk = (source.walk ??= walkOf(parseTemplate(source)));
+  const fragment = source.t!.content.cloneNode(true);
+  // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
+  const nodes: Node[] = new Array(source.count + 1);
+  nodes[source.count] = fragment;
+  let node: Node = fragment;
+  for (let index = 0; index < walk.length; index++) {
+    const move = walk[index]!;
+    if (move >= 0) {
+      nodes[move] = node;
+    } else if (move === FIRST_CHILD) {
+      node = node.firstChild!;
+    } else if (move === PARENT) {
+      node = node.parentNode!;
+    } else {
+      for (let step = NEXT - move; step > 0; step--) {
+        node = node.nextSibling!;
+      }
+    }
+  }
+  return nodes as ClonedNode[];
+}
+
+/**
+ * Keeps an element of cloned markup on its scope, where updates find it. An element at the top
+ * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to
+ * find the scope.
+ */
+export function keep(scope: ScopeId, anchor: number, element: Element, named?: boolean): void {
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = element;
+  }
+  // `named`: elements inside it have handlers and find their scope from it with `closest`.
+  if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+    element.setAttribute('b-b', `${scope}:${anchor}`);
+  }
+}
+
+/**
+ * Puts the value of a text insert of cloned markup in the place of its comment. A text value is
+ * a text node, which the scope keeps, as Solid keeps it, so an update sets its data. Other
+ * values render between the markers of an insert, as in HTML.
+ */
+export function keepText(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
+  const found = scopes.get(scope);
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    place.replaceWith(node);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  keepMarkers(scope, anchor, place, value, at);
+}
+
+/** Puts a text insert at the end of an element of cloned markup, as `keepText` does. */
+export function appendText(
+  scope: ScopeId,
+  anchor: number,
+  parent: Element,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    parent.append(node);
+    const found = scopes.get(scope);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  const place = document.createComment('');
+  parent.append(place);
+  keepMarkers(scope, anchor, place, value, at);
+}
+
+/** Gives a value that is not text the markers of an insert, and renders it between them. */
+function keepMarkers(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope,
+): void {
+  const found = scopes.get(scope);
+  place.data = `t${scope}:${anchor}`;
+  place.after(document.createComment('/t'));
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  if (value !== null && value !== undefined && typeof value !== 'boolean') {
+    // Children, a template or raw HTML.
+    place.after(insertNodes(value, at, place));
+  }
+}
+
+/** Names the start marker of a nested block of cloned markup, and keeps it on its scope. */
+function keepBlock(
+  place: Comment,
+  scope: ScopeId,
+  data: string,
+  anchor: number,
+): Scope | undefined {
+  place.data = data;
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  return found;
+}
+
+/** Puts what renders gave into the range that a marker of cloned markup opens. */
+function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
+  if (html) {
+    // Markup that a render gave as HTML, which the insert of the clone indexes.
+    place.after(parseHTML(html, place));
+    clonedMarkup = true;
+  } else if (nodes) {
+    place.after(nodes);
+  }
+}
+
+/**
+ * Names a comment of cloned markup that names a scope, such as the start of an item. The start
+ * of a portal, which its scope looks for when it goes, is indexed.
+ */
+export function nameComment(place: Comment, data: string): void {
+  place.data = data;
+  if (data[0] === 'P') {
+    comments.set(data, place);
+    portals++;
+  }
+}
+
+/** Names the start marker of a block whose markup is in the clone, and keeps it on its scope. */
+export function markBlock(place: Comment, scope: ScopeId, anchor: number, suffix: string): void {
+  keepBlock(place, scope, `b${scope}:${anchor}${suffix}`, anchor);
+}
+
+/**
+ * Fills a nested `#if` of cloned markup with the branch at `index`, or nothing for -1, before
+ * the clone is in the page. `branch` updates it later.
+ */
+export function fillBranch(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  index: number,
+  renders: Render[],
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}:${index}`, anchor);
+  const render = renders[index];
+  if (found && render) {
+    const out = render(found);
+    fillRange(place, typeof out === 'string' ? out : '', typeof out === 'string' ? undefined : out);
+  }
+}
+
+/** Fills a nested `#for` of cloned markup with its items, before the clone is in the page. */
+export function fillList(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  items: unknown[],
+  render: Render,
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}`, anchor);
+  if (!found) {
+    return;
+  }
+  let html = '';
+  let nodes: DocumentFragment | undefined;
+  for (let index = 0; index < items.length; index++) {
+    const out = render(found, items[index], index);
+    if (typeof out === 'string') {
+      html += out;
+    } else {
+      (nodes ??= document.createDocumentFragment()).append(out);
+    }
+  }
+  fillRange(place, html, nodes);
+}
+
+/** Writes an attribute of an element of cloned markup, as `attribute` writes it in HTML. */
+export function setAttr(element: Element, name: string, value: unknown): void {
+  const written = attributeText(name, value);
+  if (written !== undefined) {
+    element.setAttribute(name, written);
+  }
+}
+
+/** The nodes of a block that renders where it is, in HTML: a place, which the parse fills. */
+export function nodes(fragment: DocumentFragment): string {
+  return holdPlace(fragment);
+}
+
+/** What a body gave, as nodes: its clone, or its HTML, which the insert of the clone indexes. */
+function bodyNodes(out: string | DocumentFragment): DocumentFragment {
+  if (typeof out !== 'string') {
+    return out;
+  }
+  clonedMarkup = true;
+  return parseHTML(out);
+}
+
+/** The markers of a block that renders where it is, around its nodes, with the start kept. */
+function blockNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  data: string,
+  content: DocumentFragment,
+): DocumentFragment {
+  if (scope === undefined || anchor === undefined) {
+    return content;
+  }
+  const start = document.createComment(data);
+  keepBlock(start, scope, data, anchor);
+  content.prepend(start);
+  content.append(document.createComment('/b'));
+  return content;
+}
+
+/**
+ * Renders an `#if` or a `#switch` where it is: the branch at `index`, or nothing for -1, between
+ * its markers when it has them, which `branch` updates later.
+ */
+export function branchNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  index: number,
+  bodies: (() => string | DocumentFragment)[],
+): DocumentFragment {
+  const body = bodies[index];
+  const content = body ? bodyNodes(body()) : document.createDocumentFragment();
+  return blockNodes(scope, anchor, `b${scope}:${anchor}:${index}`, content);
+}
+
+/**
+ * Renders a `#for` or a `#repeat` where it is: its items, or its fallback for none, between its
+ * markers when it has them, which `list` updates later.
+ */
+export function listNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  items: unknown[],
+  body: (item: unknown, index: number) => string | DocumentFragment,
+  fallback: (() => string | DocumentFragment) | undefined,
+): DocumentFragment {
+  const content = document.createDocumentFragment();
+  for (let index = 0; index < items.length; index++) {
+    content.append(bodyNodes(body(items[index], index)));
+  }
+  if (items.length === 0 && fallback) {
+    content.append(bodyNodes(fallback()));
+  }
+  return blockNodes(scope, anchor, `b${scope}:${anchor}`, content);
+}
+
+/** Writes attributes that code of a start tag gave as their text, as HTML has them. */
+export function setAttrText(element: Element, text: string): void {
+  if (text) {
+    // On an element of SVG or MathML, the parser gives the names their case, such as `viewBox`,
+    // and their namespace, such as of `xlink:href`.
+    const foreign = foreignOf(element);
+    const tag = foreign === 'math' ? 'mi' : 'g';
+    const parsed = parseHTML(foreign ? `<${tag}${text}/>` : `<b${text}>`, undefined, foreign)
+      .firstChild as Element;
+    // The parsed attribute moves, so a name that `setAttribute` would reject, such as `@click`,
+    // is written as the parser read it.
+    for (const attribute of Array.from(parsed.attributes)) {
+      parsed.removeAttributeNode(attribute);
+      element.setAttributeNode(attribute);
+    }
+  }
+}
+
+/** Puts a value with no markers in the place of a comment of cloned markup, as `insert` does. */
+export function putText(place: Comment, value: unknown, at?: ScopeId | Scope): void {
+  place.replaceWith(
+    typeof value === 'string' || typeof value === 'number'
+      ? document.createTextNode(String(value))
+      : insertNodes(value, at, place),
+  );
+}
+
+/** Writes the spreads of an element of cloned markup, as `spread` writes them in HTML. */
+export function setSpread(
+  element: Element,
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): void {
+  setAttrText(element, spread(attributes, on, names));
+}
+
+/** Writes the `b-on` of an element of cloned markup with spreads, as `onAttribute` does. */
+export function setOn(element: Element, on: string[], own: string): void {
+  const value = onValue(on, own);
+  if (value) {
+    // Before `keep`, which then writes the `b-b` that the handlers read.
+    element.setAttribute('b-on', value);
+    // The loader listens to the events of the handlers of the spreads.
+    options?.listen(element);
+  }
+}
+
+/** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
+export function setContent(element: Element, value: unknown, at?: ScopeId | Scope): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    element.textContent = String(value);
+    return;
+  }
+  // Children, a template or raw HTML render here. Their work after the insert waits for it.
+  element.replaceChildren(insertNodes(value, at, element));
+}
+
+/**
+ * The nodes of children, a template or raw HTML in cloned markup: the clone of children whose
+ * markup clones, or the markup, which the insert of the clone indexes, as it would in HTML.
+ */
+function insertNodes(
+  value: unknown,
+  at: ScopeId | Scope | undefined,
+  near: Node,
+): DocumentFragment {
+  const out =
+    HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
+      ? value.render(resolveScope(at))
+      : insert(value, undefined, at);
+  if (typeof out !== 'string') {
+    return out;
+  }
+  clonedMarkup = true;
+  return parseHTML(out, near);
+}
+
+/** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
+let clonedMarkup = false;
+
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
-export type Component<P = any> = (props: P) => string;
+export type Component<P = any> = (props: P) => string | DocumentFragment;
+
+/**
+ * The clones of components that HTML holds a place for, by the number in the place,
+ * `<!--f` and the number. HTML that the browser parses gets them back in their places.
+ */
+const placed = new Map<number, DocumentFragment>();
+let placedCount = 0;
+
+/**
+ * `svg` or `math` when markup in an element, or next to a node, is SVG or MathML. HTML that the
+ * browser parses there needs one around it, as the parser of a page would have one.
+ */
+function foreignOf(near: Node | null | undefined): string | undefined {
+  const element = near?.nodeType === 1 ? (near as Element) : near?.parentNode;
+  if (element?.nodeType !== 1 || (element as Element).localName === 'foreignObject') {
+    return undefined;
+  }
+  const space = (element as Element).namespaceURI;
+  if (space === 'http://www.w3.org/2000/svg') {
+    return 'svg';
+  }
+  return space === 'http://www.w3.org/1998/Math/MathML' ? 'math' : undefined;
+}
+
+/**
+ * Parses HTML that the browser renders, with the clones that it holds places for. `near` is
+ * the element that it goes in, or a node next to where it goes.
+ */
+function parseHTML(html: string, near?: Node | null, foreign = foreignOf(near)): DocumentFragment {
+  const template = document.createElement('template');
+  template.innerHTML = trustedHTML(foreign ? `<${foreign}>${html}</${foreign}>` : html);
+  const fragment = template.content;
+  if (foreign) {
+    fragment.replaceChildren(...fragment.firstChild!.childNodes);
+  }
+  if (HAS_CLIENT_HTML && placed.size > 0 && html.includes('<!--f')) {
+    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+    const places: Comment[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (/^f\d+$/.test((node as Comment).data)) {
+        places.push(node as Comment);
+      }
+    }
+    for (const place of places) {
+      const key = Number(place.data.slice(1));
+      const nodes = placed.get(key);
+      if (nodes) {
+        placed.delete(key);
+        place.replaceWith(nodes);
+      }
+    }
+  }
+  return fragment;
+}
+
+/** Puts a child component that a clone renders in the place of its comment. */
+export function place(at: Comment, out: string | Node): void {
+  if (typeof out === 'string') {
+    // A component that renders HTML: its markup, which the insert of the clone indexes.
+    at.replaceWith(parseHTML(out, at));
+    clonedMarkup = true;
+  } else {
+    at.replaceWith(out);
+  }
+}
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
   if (typeof scope === 'object') {
@@ -3382,7 +4030,90 @@ export function component<P>(
   if (parent) {
     setOwner(parent);
   }
+  return holdPlace(Child(props));
+}
+
+/** The markup of a render, or for a clone, a comment that holds its place, which a parse fills. */
+function holdPlace(out: string | DocumentFragment): string {
+  if (typeof out === 'string') {
+    return out;
+  }
+  const key = placedCount++;
+  placed.set(key, out);
+  return `<!--f${key}-->`;
+}
+
+/** Renders a child component for a clone: its markup as HTML, or the clone that it made. */
+export function componentNodes<P>(
+  Child: Component<P>,
+  props: P,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  anchor?: number,
+): string | DocumentFragment {
+  const parent = resolveScope(scope);
+  if (parent && anchor !== undefined) {
+    parent.c ??= {};
+    parent.c[anchor] = nextId;
+  }
+  if (parent) {
+    setOwner(parent);
+  }
   return Child(props);
+}
+
+/**
+ * Renders a dynamic tag for a clone: the element, with its attributes and content, or what a
+ * component renders.
+ */
+export function dynamicNodes(
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  foreign?: string,
+): string | Node {
+  if (typeof tag === 'function') {
+    return componentNodes(
+      tag as Component,
+      inner ? { ...attributes, children: inner } : attributes,
+      undefined,
+      scope,
+    );
+  }
+  const name = String(tag);
+  // The start tag as HTML, so the attributes are written as `dynamic` writes them.
+  const element = parseHTML(`<${name}${spreadText(attributes)}>`, undefined, foreign)
+    .firstChild as Element;
+  const bound = element.getAttribute('b-b');
+  if (bound) {
+    const [id, anchor] = bound.split(':');
+    const kept = scopes.get(Number(id));
+    if (kept) {
+      (kept.n ??= [])[Number(anchor)] = element;
+    }
+  }
+  if (element.hasAttribute('b-on')) {
+    // The insert of the clone listens to the events of the handlers.
+    clonedMarkup = true;
+  }
+  if (inner && !VOID_ELEMENTS.has(name)) {
+    setContent(element, inner, scope);
+  }
+  return element;
+}
+
+/** `dynamicNodes` for a dynamic tag inside SVG or MathML, `svg` or `math`. */
+export function foreignNodes(
+  foreign: string,
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  ctx?: unknown,
+  scope?: Scope | number,
+): string | Node {
+  return dynamicNodes(tag, attributes, inner, ctx, scope, foreign);
 }
 
 export function dynamic(
@@ -3417,10 +4148,20 @@ let owner: Scope | undefined;
 // renders. Each is an export of its own, so a build keeps only those that its components call.
 
 /** Creates a scope for markup that the client renders, and returns its ID. */
-export function createScope(kind: number, parent?: Scope | ScopeId, module?: string): number {
+export function createScope(
+  kind: number,
+  parent?: Scope | ScopeId,
+  module?: string,
+  nodes?: number,
+): number {
   const id = nextId--;
   const parentScope = resolveScope(parent);
-  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [] };
+  // A clone keeps this many nodes on the scope, so the array does not grow.
+  if (nodes) {
+    // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
+    created.n = new Array(nodes);
+  }
   rendered.push(created);
   // A component that the browser renders loads its code, as the components of the page do.
   if (module !== undefined) {
@@ -3439,7 +4180,9 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
       break;
     }
   }
-  parentScope?.children.add(created);
+  if (parentScope) {
+    (parentScope.children ??= new Set()).add(created);
+  }
   treeChanges++;
   scopes.set(id, created);
   return id;
@@ -3558,12 +4301,12 @@ export function deferInBrowser(id: string): void {
 }
 
 /** Adds the markup of a `#head` block to the document's head. */
-export function addHead(html: string): void {
+export function addHead(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.head }, html));
 }
 
 /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
-export function addPortal(html: string): void {
+export function addPortal(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.body }, html));
 }
 

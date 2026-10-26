@@ -33,7 +33,9 @@ import {
 import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
-import { analyzeProject, resolveRelative } from './project.ts';
+import { analyzeProject, importedComponents, resolveRelative } from './project.ts';
+import { allFeatures, featuresOf, joinFeatures, readsFeatures, writeFeatures } from './features.ts';
+import type { Features } from './features.ts';
 import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
   findPackages,
@@ -112,6 +114,12 @@ export interface BrumateOptions {
    * view transition.
    */
   navigate?: boolean | NavigateOptions;
+  /**
+   * The features of the core that the client build keeps. By default it leaves out the code of
+   * those that no component of the build uses, such as `#template` values that the browser
+   * calls. `'all'` keeps every feature, for an app that compiles components in the browser.
+   */
+  features?: 'used' | 'all';
   /**
    * Client parts of a component smaller than this many bytes in all, after
    * minifying, become one module, so its first event loads one file. 0
@@ -562,6 +570,43 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     refreshed = refreshedNames([...contents, ...scriptSources]);
     compiled.clear();
   };
+
+  /** The features of the core that the components of the build use, once for each build. */
+  let builtFeatures: Promise<Features> | undefined;
+  /** The files that `builtFeatures` counted, and the features it found. */
+  let counted = new Set<string>();
+  let knownFeatures: Features | undefined;
+  /** The components that the client build loaded. */
+  const loadedComponents = new Set<string>();
+  const buildFeatures = (): Promise<Features> =>
+    (builtFeatures ??= (async () => {
+      const seen = new Set<string>();
+      const all: Features[] = [];
+      // The files of the scan, and the components they import from outside it, such as a file
+      // of a sibling folder or of a package with no `brumate` field.
+      const visit = async (file: string): Promise<void> => {
+        if (seen.has(file)) {
+          return;
+        }
+        seen.add(file);
+        const { result } = await compileFile(file);
+        all.push(featuresOf(result));
+        const imported = importedComponents(result.file)
+          .map((specifier) => resolveComponent(specifier, file))
+          .filter((target): target is string => target !== undefined && existsSync(target));
+        await Promise.all(imported.map(visit));
+      };
+      await Promise.all([...files.values()].map(visit));
+      const features = joinFeatures(all);
+      // Client navigation inserts the pages that it loads, and a route with `_loading.brm`
+      // streams its body after the page.
+      features.lateMarkup ||=
+        options.navigate !== false ||
+        [...seen].some((file) => path.basename(file) === '_loading.brm');
+      counted = seen;
+      knownFeatures = features;
+      return features;
+    })());
 
   /** The options of the compile of a file. */
   const compileOptions = (file: string): CompileOptions => ({
@@ -1514,6 +1559,22 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (isSsrBuild) {
         return;
       }
+      // The core has no code for the features that the counted components do not use, so a
+      // component that the count did not reach must not need more of them.
+      for (const file of knownFeatures ? loadedComponents : []) {
+        if (counted.has(file)) {
+          continue;
+        }
+        const used = featuresOf((await compileFile(file)).result);
+        const missing = (Object.keys(used) as (keyof Features)[]).filter(
+          (name) => used[name] && !knownFeatures![name],
+        );
+        if (missing.length > 0) {
+          this.error(
+            `${nameOf(file)} uses ${missing.join(', ')}, which the client build left out of the core, since no component that the build found uses them. Import it from a .brm component of the app, or set \`features: 'all'\`.`,
+          );
+        }
+      }
       // Vite lists the chunks to preload after this hook, with `resolveDependencies` above.
       loaderChunk = undefined;
       coreChunk = undefined;
@@ -1649,6 +1710,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ? undefined
         : (await this.resolve('brumate/client', path.join(root, 'index.html')))?.id;
       await scan();
+      // A rebuild in watch mode counts the features of the components again.
+      builtFeatures = undefined;
+      knownFeatures = undefined;
+      loadedComponents.clear();
       writeRouteTypes();
     },
 
@@ -1800,6 +1865,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         this.error({ message, frame, loc: loc && { ...loc, file }, id: file });
       }
       const { source, result } = output;
+      if (!isServe && !isSsrBuild && isClient) {
+        loadedComponents.add(file);
+      }
       // A stylesheet that the component imports, or a module of reactive logic that it calls into,
       // changes the output of the component.
       for (const dependency of [...result.plan.styles.dependencies, ...result.modules]) {
@@ -1844,6 +1912,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async transform(code, id, transformOptions) {
+      // The client build leaves out the code of the features of the core that no component
+      // uses. The dev server and the server build keep every feature, and so does a build with
+      // `features: 'all'`, such as one that compiles components in the browser.
+      if (!isServe && !isSsrBuild && !transformOptions?.ssr && readsFeatures(code)) {
+        const features = options.features === 'all' ? allFeatures() : await buildFeatures();
+        return { code: writeFeatures(code, features), map: null };
+      }
       const [file] = id.split('?');
       // The browser gets the env file without the server variables, and with the values of the
       // public ones, read now.
